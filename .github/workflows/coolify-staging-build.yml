@@ -6,6 +6,8 @@ on:
       - v4.x
       - v3.x
       - '**v5.x**'
+      - dev
+      - main
     paths-ignore:
         - .github/workflows/saturn-helper.yml
         - .github/workflows/saturn-helper-next.yml
