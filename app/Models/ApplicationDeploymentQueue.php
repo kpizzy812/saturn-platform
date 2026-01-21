@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\DeploymentLogEntry;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -133,23 +134,28 @@ class ApplicationDeploymentQueue extends Model
         if ($message->startsWith('╔')) {
             $message = "\n".$message;
         }
+        $redactedMessage = $this->redactSensitiveInfo($message);
+        $timestamp = Carbon::now('UTC');
         $newLogEntry = [
             'command' => null,
-            'output' => $this->redactSensitiveInfo($message),
+            'output' => $redactedMessage,
             'type' => $type,
-            'timestamp' => Carbon::now('UTC'),
+            'timestamp' => $timestamp,
             'hidden' => $hidden,
             'batch' => 1,
         ];
 
+        $order = 1;
+
         // Use a transaction to ensure atomicity
-        DB::transaction(function () use ($newLogEntry) {
+        DB::transaction(function () use ($newLogEntry, &$order) {
             // Reload the model to get the latest logs
             $this->refresh();
 
             if ($this->logs) {
                 $previousLogs = json_decode($this->logs, associative: true, flags: JSON_THROW_ON_ERROR);
-                $newLogEntry['order'] = count($previousLogs) + 1;
+                $order = count($previousLogs) + 1;
+                $newLogEntry['order'] = $order;
                 $previousLogs[] = $newLogEntry;
                 $this->logs = json_encode($previousLogs, flags: JSON_THROW_ON_ERROR);
             } else {
@@ -159,5 +165,20 @@ class ApplicationDeploymentQueue extends Model
             // Save without triggering events to prevent potential race conditions
             $this->saveQuietly();
         });
+
+        // Broadcast the log entry for real-time updates (only non-hidden entries)
+        if (! $hidden && $this->deployment_uuid) {
+            try {
+                event(new DeploymentLogEntry(
+                    deploymentUuid: $this->deployment_uuid,
+                    message: (string) $redactedMessage,
+                    timestamp: $timestamp->toIso8601String(),
+                    type: $type,
+                    order: $order
+                ));
+            } catch (\Throwable) {
+                // Silently fail broadcasting - don't break deployment for WebSocket issues
+            }
+        }
     }
 }

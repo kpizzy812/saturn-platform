@@ -20,6 +20,45 @@ export default defineConfig(({ mode }) => {
                 host: env.VITE_HOST || '0.0.0.0'
             },
         },
+        build: {
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        if (id.includes('node_modules')) {
+                            // Split heavy libraries into separate chunks
+                            if (id.includes('@xyflow')) {
+                                return 'vendor-reactflow';
+                            }
+                            if (id.includes('@xterm') || id.includes('xterm')) {
+                                return 'vendor-xterm';
+                            }
+                            if (id.includes('@headlessui')) {
+                                return 'vendor-headlessui';
+                            }
+                            if (id.includes('lucide-react')) {
+                                return 'vendor-lucide';
+                            }
+                            if (id.includes('@inertiajs')) {
+                                return 'vendor-inertia';
+                            }
+                            if (id.includes('react-dom') || id.includes('scheduler')) {
+                                return 'vendor-react-dom';
+                            }
+                            if (id.includes('/react/') || id.includes('react/jsx')) {
+                                return 'vendor-react';
+                            }
+                            if (id.includes('d3-') || id.includes('/d3/')) {
+                                return 'vendor-d3';
+                            }
+                            // Group remaining large modules
+                            if (id.includes('monaco') || id.includes('codemirror')) {
+                                return 'vendor-editor';
+                            }
+                        }
+                    },
+                },
+            },
+        },
         plugins: [
             laravel({
                 input: [

@@ -1,44 +1,47 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Select } from '@/components/ui';
+import { Card, CardContent, Button, Input } from '@/components/ui';
 import {
     Settings as SettingsIcon,
     Info,
     Save,
     AlertCircle,
 } from 'lucide-react';
-import type { Application, PreviewDeploymentSettings } from '@/types';
+import type { Application } from '@/types';
+
+// Settings structure from backend (matches routes/web.php)
+interface PreviewSettings {
+    preview_url_template: string | null;
+    instant_deploy_preview: boolean;
+}
 
 interface Props {
     application: Application;
-    settings?: PreviewDeploymentSettings;
+    settings?: PreviewSettings;
     projectUuid?: string;
     environmentUuid?: string;
 }
 
-// Mock settings for demo
-const MOCK_SETTINGS: PreviewDeploymentSettings = {
-    enabled: true,
-    auto_deploy_on_pr: true,
-    url_template: 'pr-{pr_number}-{app_name}.preview.example.com',
-    auto_delete_days: 7,
-    resource_limits: {
-        cpu: '1',
-        memory: '512M',
-    },
+// Default settings when none provided
+const DEFAULT_SETTINGS: PreviewSettings = {
+    preview_url_template: null,
+    instant_deploy_preview: false,
 };
 
-export default function PreviewSettings({ application, settings: propSettings, projectUuid, environmentUuid }: Props) {
-    const [settings, setSettings] = React.useState<PreviewDeploymentSettings>(
-        propSettings || MOCK_SETTINGS
+export default function PreviewSettingsPage({ application, settings: propSettings, projectUuid, environmentUuid }: Props) {
+    const [settings, setSettings] = React.useState<PreviewSettings>(
+        propSettings || DEFAULT_SETTINGS
     );
     const [isSaving, setIsSaving] = React.useState(false);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            router.patch(`/api/v1/applications/${application.uuid}/preview-settings`, settings, {
+            router.patch(`/api/v1/applications/${application.uuid}`, {
+                preview_url_template: settings.preview_url_template,
+                instant_deploy: settings.instant_deploy_preview,
+            }, {
                 onSuccess: () => {
                     // Success notification would be shown here
                 },
@@ -85,34 +88,11 @@ export default function PreviewSettings({ application, settings: propSettings, p
                         <CardContent className="p-6">
                             <h2 className="text-lg font-semibold text-foreground mb-4">General Settings</h2>
                             <div className="space-y-4">
-                                {/* Enable/Disable */}
+                                {/* Instant Deploy on PR */}
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1">
                                         <label className="text-sm font-medium text-foreground mb-1 block">
-                                            Enable Preview Deployments
-                                        </label>
-                                        <p className="text-sm text-foreground-muted">
-                                            Create preview deployments for pull requests
-                                        </p>
-                                    </div>
-                                    <label className="relative inline-flex cursor-pointer items-center">
-                                        <input
-                                            type="checkbox"
-                                            className="peer sr-only"
-                                            checked={settings.enabled}
-                                            onChange={(e) =>
-                                                setSettings({ ...settings, enabled: e.target.checked })
-                                            }
-                                        />
-                                        <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
-                                    </label>
-                                </div>
-
-                                {/* Auto-deploy on PR */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <label className="text-sm font-medium text-foreground mb-1 block">
-                                            Auto-deploy on Pull Request
+                                            Instant Deploy on Pull Request
                                         </label>
                                         <p className="text-sm text-foreground-muted">
                                             Automatically create preview deployments when PRs are opened
@@ -122,13 +102,12 @@ export default function PreviewSettings({ application, settings: propSettings, p
                                         <input
                                             type="checkbox"
                                             className="peer sr-only"
-                                            checked={settings.auto_deploy_on_pr}
+                                            checked={settings.instant_deploy_preview}
                                             onChange={(e) =>
-                                                setSettings({ ...settings, auto_deploy_on_pr: e.target.checked })
+                                                setSettings({ ...settings, instant_deploy_preview: e.target.checked })
                                             }
-                                            disabled={!settings.enabled}
                                         />
-                                        <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                                        <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                                     </label>
                                 </div>
                             </div>
@@ -145,123 +124,37 @@ export default function PreviewSettings({ application, settings: propSettings, p
                                         Preview URL Template
                                     </label>
                                     <Input
-                                        value={settings.url_template}
+                                        value={settings.preview_url_template || ''}
                                         onChange={(e) =>
-                                            setSettings({ ...settings, url_template: e.target.value })
+                                            setSettings({ ...settings, preview_url_template: e.target.value || null })
                                         }
-                                        placeholder="pr-{pr_number}-{app_name}.preview.example.com"
-                                        disabled={!settings.enabled}
+                                        placeholder="pr-{{pr_id}}-{{app_name}}.preview.example.com"
                                     />
                                     <p className="text-xs text-foreground-muted mt-2">
-                                        Available variables: <code className="text-xs">{'{pr_number}'}</code>,{' '}
-                                        <code className="text-xs">{'{app_name}'}</code>,{' '}
-                                        <code className="text-xs">{'{branch}'}</code>
+                                        Available variables: <code className="text-xs">{'{{pr_id}}'}</code>,{' '}
+                                        <code className="text-xs">{'{{app_name}}'}</code>,{' '}
+                                        <code className="text-xs">{'{{branch}}'}</code>
                                     </p>
                                 </div>
-                                <div className="rounded-lg border border-info/50 bg-info/5 p-4">
-                                    <div className="flex gap-3">
-                                        <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
-                                        <div>
-                                            <h4 className="text-sm font-semibold text-foreground mb-1">Example URL</h4>
-                                            <p className="text-sm text-foreground-muted">
-                                                PR #42 would be deployed to:{' '}
-                                                <code className="text-xs bg-background-tertiary px-1.5 py-0.5 rounded">
-                                                    pr-42-{application.name.toLowerCase()}.preview.example.com
-                                                </code>
-                                            </p>
+                                {settings.preview_url_template && (
+                                    <div className="rounded-lg border border-info/50 bg-info/5 p-4">
+                                        <div className="flex gap-3">
+                                            <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-foreground mb-1">Example URL</h4>
+                                                <p className="text-sm text-foreground-muted">
+                                                    PR #42 would be deployed to:{' '}
+                                                    <code className="text-xs bg-background-tertiary px-1.5 py-0.5 rounded">
+                                                        {settings.preview_url_template
+                                                            .replace('{{pr_id}}', '42')
+                                                            .replace('{{app_name}}', application.name.toLowerCase())
+                                                            .replace('{{branch}}', 'feature-branch')}
+                                                    </code>
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Lifecycle Settings */}
-                    <Card>
-                        <CardContent className="p-6">
-                            <h2 className="text-lg font-semibold text-foreground mb-4">Lifecycle Settings</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">
-                                        Auto-delete after (days)
-                                    </label>
-                                    <Select
-                                        value={settings.auto_delete_days.toString()}
-                                        onChange={(e) =>
-                                            setSettings({
-                                                ...settings,
-                                                auto_delete_days: parseInt(e.target.value),
-                                            })
-                                        }
-                                        disabled={!settings.enabled}
-                                    >
-                                        <option value="1">1 day</option>
-                                        <option value="3">3 days</option>
-                                        <option value="7">7 days</option>
-                                        <option value="14">14 days</option>
-                                        <option value="30">30 days</option>
-                                        <option value="0">Never</option>
-                                    </Select>
-                                    <p className="text-xs text-foreground-muted mt-2">
-                                        Automatically delete preview deployments after this many days of inactivity
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Resource Limits */}
-                    <Card>
-                        <CardContent className="p-6">
-                            <h2 className="text-lg font-semibold text-foreground mb-4">Resource Limits</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">
-                                        CPU Limit
-                                    </label>
-                                    <Select
-                                        value={settings.resource_limits.cpu}
-                                        onChange={(e) =>
-                                            setSettings({
-                                                ...settings,
-                                                resource_limits: {
-                                                    ...settings.resource_limits,
-                                                    cpu: e.target.value,
-                                                },
-                                            })
-                                        }
-                                        disabled={!settings.enabled}
-                                    >
-                                        <option value="0.5">0.5 cores</option>
-                                        <option value="1">1 core</option>
-                                        <option value="2">2 cores</option>
-                                        <option value="4">4 cores</option>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">
-                                        Memory Limit
-                                    </label>
-                                    <Select
-                                        value={settings.resource_limits.memory}
-                                        onChange={(e) =>
-                                            setSettings({
-                                                ...settings,
-                                                resource_limits: {
-                                                    ...settings.resource_limits,
-                                                    memory: e.target.value,
-                                                },
-                                            })
-                                        }
-                                        disabled={!settings.enabled}
-                                    >
-                                        <option value="256M">256 MB</option>
-                                        <option value="512M">512 MB</option>
-                                        <option value="1G">1 GB</option>
-                                        <option value="2G">2 GB</option>
-                                        <option value="4G">4 GB</option>
-                                    </Select>
-                                </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -275,7 +168,7 @@ export default function PreviewSettings({ application, settings: propSettings, p
                             <h3 className="text-sm font-semibold text-foreground mb-3">Actions</h3>
                             <div className="space-y-2">
                                 <Button
-                                    variant="primary"
+                                    variant="default"
                                     className="w-full"
                                     onClick={handleSave}
                                     disabled={isSaving}
@@ -313,15 +206,15 @@ export default function PreviewSettings({ application, settings: propSettings, p
                     </Card>
 
                     {/* Warning Card */}
-                    {!settings.enabled && (
+                    {!settings.instant_deploy_preview && (
                         <Card className="border-warning/50 bg-warning/5">
                             <CardContent className="p-6">
                                 <div className="flex gap-3">
                                     <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <h3 className="text-sm font-semibold text-foreground mb-1">Preview Deployments Disabled</h3>
+                                        <h3 className="text-sm font-semibold text-foreground mb-1">Instant Deploy Disabled</h3>
                                         <p className="text-sm text-foreground-muted">
-                                            Enable preview deployments to automatically create preview environments for pull requests.
+                                            Enable instant deploy to automatically create preview environments for pull requests.
                                         </p>
                                     </div>
                                 </div>

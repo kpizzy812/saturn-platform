@@ -75,10 +75,37 @@ Route::group([
     Route::match(['get', 'post'], '/deploy', [DeployController::class, 'deploy'])->middleware(['api.ability:deploy']);
     Route::get('/deployments', [DeployController::class, 'deployments'])->middleware(['api.ability:read']);
     Route::get('/deployments/{uuid}', [DeployController::class, 'deployment_by_uuid'])->middleware(['api.ability:read']);
+    // Rate limited log streaming endpoint - 60 requests per minute
     Route::get('/deployments/{uuid}/logs', function ($uuid) {
-        // TODO: Implement actual log fetching
-        return response()->json(['logs' => [], 'message' => 'Logs endpoint ready']);
-    })->middleware(['api.ability:read']);
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        if (! $deployment) {
+            return response()->json(['message' => 'Deployment not found.'], 404);
+        }
+
+        // Verify the deployment belongs to the team
+        $application = $deployment->application;
+        if (! $application || $application->team()?->id !== (int) $teamId) {
+            return response()->json(['message' => 'Deployment not found.'], 404);
+        }
+
+        $logs = $deployment->logs;
+        $parsedLogs = [];
+
+        if ($logs) {
+            $parsedLogs = json_decode($logs, true) ?: [];
+        }
+
+        return response()->json([
+            'deployment_uuid' => $deployment->deployment_uuid,
+            'status' => $deployment->status,
+            'logs' => $parsedLogs,
+        ]);
+    })->middleware(['api.ability:read', 'throttle:60,1']);
     Route::post('/deployments/{uuid}/cancel', [DeployController::class, 'cancel_deployment'])->middleware(['api.ability:deploy']);
     Route::get('/deployments/applications/{uuid}', [DeployController::class, 'get_application_deployments'])->middleware(['api.ability:read']);
 
@@ -199,10 +226,40 @@ Route::group([
     Route::delete('/databases/{uuid}/backups/{scheduled_backup_uuid}/executions/{execution_uuid}', [DatabasesController::class, 'delete_execution_by_uuid'])->middleware(['api.ability:write']);
     Route::post('/databases/{uuid}/backups/{backup_uuid}/restore', [DatabasesController::class, 'restore_backup'])->middleware(['api.ability:write']);
 
-    Route::get('/databases/{uuid}/logs', function ($uuid) {
-        // TODO: Implement actual log fetching
-        return response()->json(['logs' => [], 'message' => 'Logs endpoint ready']);
-    })->middleware(['api.ability:read']);
+    Route::get('/databases/{uuid}/logs', function ($uuid, \Illuminate\Http\Request $request) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $database = queryDatabaseByUuidWithinTeam($uuid, $teamId);
+        if (! $database) {
+            return response()->json(['message' => 'Database not found.'], 404);
+        }
+
+        $server = data_get($database, 'destination.server');
+        if (! $server) {
+            return response()->json(['message' => 'Server not found for database.'], 400);
+        }
+
+        // Check if database is running
+        $containerName = $database->uuid;
+        $status = getContainerStatus($server, $containerName);
+
+        if ($status !== 'running') {
+            return response()->json(['message' => 'Database is not running.'], 400);
+        }
+
+        $lines = $request->query('lines', 100) ?: 100;
+        $logs = getContainerLogs($server, $containerName, (int) $lines);
+
+        return response()->json([
+            'database_uuid' => $database->uuid,
+            'container_name' => $containerName,
+            'status' => $status,
+            'logs' => $logs,
+        ]);
+    })->middleware(['api.ability:read', 'throttle:60,1']);
 
     Route::match(['get', 'post'], '/databases/{uuid}/start', [DatabasesController::class, 'action_deploy'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/databases/{uuid}/restart', [DatabasesController::class, 'action_restart'])->middleware(['api.ability:write']);
@@ -221,10 +278,90 @@ Route::group([
     Route::patch('/services/{uuid}/envs', [ServicesController::class, 'update_env_by_uuid'])->middleware(['api.ability:write']);
     Route::delete('/services/{uuid}/envs/{env_uuid}', [ServicesController::class, 'delete_env_by_uuid'])->middleware(['api.ability:write']);
 
-    Route::get('/services/{uuid}/logs', function ($uuid) {
-        // TODO: Implement actual log fetching
-        return response()->json(['logs' => [], 'message' => 'Logs endpoint ready']);
-    })->middleware(['api.ability:read']);
+    Route::get('/services/{uuid}/logs', function ($uuid, \Illuminate\Http\Request $request) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $service = \App\Models\Service::whereRelation('environment.project.team', 'id', $teamId)
+            ->whereUuid($uuid)
+            ->first();
+
+        if (! $service) {
+            return response()->json(['message' => 'Service not found.'], 404);
+        }
+
+        $server = $service->server;
+        if (! $server) {
+            return response()->json(['message' => 'Server not found for service.'], 400);
+        }
+
+        $lines = $request->query('lines', 100) ?: 100;
+        $containerName = $request->query('container');
+        $logs = [];
+
+        // Get all applications and databases in this service
+        $applications = $service->applications()->get();
+        $databases = $service->databases()->get();
+
+        foreach ($applications as $app) {
+            $appContainerName = $app->name.'-'.$service->uuid;
+
+            // If specific container requested, skip others
+            if ($containerName && $appContainerName !== $containerName) {
+                continue;
+            }
+
+            $status = getContainerStatus($server, $appContainerName);
+            if ($status === 'running') {
+                $logs[$appContainerName] = [
+                    'type' => 'application',
+                    'name' => $app->name,
+                    'status' => $status,
+                    'logs' => getContainerLogs($server, $appContainerName, (int) $lines),
+                ];
+            } else {
+                $logs[$appContainerName] = [
+                    'type' => 'application',
+                    'name' => $app->name,
+                    'status' => $status,
+                    'logs' => null,
+                ];
+            }
+        }
+
+        foreach ($databases as $db) {
+            $dbContainerName = $db->name.'-'.$service->uuid;
+
+            // If specific container requested, skip others
+            if ($containerName && $dbContainerName !== $containerName) {
+                continue;
+            }
+
+            $status = getContainerStatus($server, $dbContainerName);
+            if ($status === 'running') {
+                $logs[$dbContainerName] = [
+                    'type' => 'database',
+                    'name' => $db->name,
+                    'status' => $status,
+                    'logs' => getContainerLogs($server, $dbContainerName, (int) $lines),
+                ];
+            } else {
+                $logs[$dbContainerName] = [
+                    'type' => 'database',
+                    'name' => $db->name,
+                    'status' => $status,
+                    'logs' => null,
+                ];
+            }
+        }
+
+        return response()->json([
+            'service_uuid' => $service->uuid,
+            'containers' => $logs,
+        ]);
+    })->middleware(['api.ability:read', 'throttle:60,1']);
 
     Route::match(['get', 'post'], '/services/{uuid}/start', [ServicesController::class, 'action_deploy'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/services/{uuid}/restart', [ServicesController::class, 'action_restart'])->middleware(['api.ability:write']);

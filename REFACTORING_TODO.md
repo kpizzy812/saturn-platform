@@ -1,7 +1,7 @@
 # Saturn Platform - Задачи Рефакторинга и Деплоя
 
 **Дата создания:** 2026-01-21
-**Последнее обновление:** 2026-01-21 23:45
+**Последнее обновление:** 2026-01-22 23:30
 **Ответственный:** Development Team
 **Цель:** Провести рефакторинг, деплой на сервер и исправление багов
 
@@ -12,10 +12,143 @@
 - **PHPStan ошибки:** 155 → 0 (100% исправлено) ✅
 - **Frontend тесты:** 2 failed → 0 failed (100% исправлено) ✅
 - **PHP Unit тесты:** 119 failed → 0 failed (100% исправлено) ✅
+- **Log Streaming APIs:** Production-ready ✅
 - **Фаза 1 (Аудит):** ✅ Завершена
 - **Фаза исправления PHPStan:** ✅ Завершена
 - **Фаза исправления Frontend тестов:** ✅ Завершена
 - **Фаза исправления PHP Unit тестов:** ✅ Завершена (1176 тестов, 3377 assertions)
+- **Фаза Production-ready Log Streaming:** ✅ Завершена
+
+---
+
+## ✅ ВЫПОЛНЕНО В СЕССИИ 8 (2026-01-22, ночь)
+
+### P2 Task 8: Убраны моки из Settings страниц
+
+#### 1. Applications/Previews/Settings.tsx
+- Удалён `MOCK_SETTINGS` (~20 строк)
+- Интерфейс синхронизирован с backend: `preview_url_template`, `instant_deploy_preview`
+- Упрощён UI (убраны несуществующие поля: resource_limits, auto_delete_days)
+
+#### 2. Applications/Settings/Variables.tsx
+- Удалён `MOCK_VARIABLES` (~10 строк)
+- Интерфейс синхронизирован с backend: `is_buildtime`, `is_runtime`, `is_multiline`
+- Добавлен empty state для пустого списка переменных
+
+#### 3. Applications/Settings/Domains.tsx
+- Удалён `MOCK_DOMAINS` (~40 строк с SSL статусами, DNS records)
+- Упрощён до реальной структуры backend: `id`, `domain`, `is_primary`
+- Функционал SSL/DNS верификации вынесен в отдельный todo (P3)
+
+### P2 Task 9: Code Splitting для frontend
+
+**Файл:** `vite.config.ts`
+
+Добавлен `manualChunks` с функцией для разделения vendor бандлов:
+- `vendor-reactflow` - @xyflow/* (129KB)
+- `vendor-xterm` - @xterm/* (293KB)
+- `vendor-headlessui` - @headlessui/react (131KB)
+- `vendor-lucide` - lucide-react (63KB)
+- `vendor-inertia` - @inertiajs/* (225KB)
+- `vendor-react` - react (208KB)
+- `vendor-react-dom` - react-dom, scheduler (166KB)
+- `vendor-d3` - d3-* (51KB)
+
+**Результат:** Главный чанк уменьшен с 502KB до 298KB (↓41%), warning устранён.
+
+### Новые TODO файлы
+
+1. `todos/custom-domains-feature.md` - Full custom domain management (P3)
+2. `todos/server-ip-proxy-protection.md` - IP hiding/proxy protection (P3)
+
+---
+
+## ✅ ВЫПОЛНЕНО В СЕССИИ 7 (2026-01-22, ночь)
+
+### Log Streaming APIs - Production Ready Implementation
+
+#### 1. Frontend интеграция с реальным API
+
+**Файл:** `resources/js/hooks/useLogStream.ts`
+- Раскомментирован и доработан `fetchLogs()` метод (lines 247-320)
+- Поддержка формата deployment logs (logs array с output, type, timestamp)
+- Поддержка формата container logs (container_logs string)
+- Поддержка формата service logs (containers array)
+- Фильтрация hidden log entries
+- Incremental log fetching по order
+
+**Файл:** `resources/js/pages/Deployments/BuildLogs.tsx`
+- Удалены MOCK_BUILD_STEPS (~150 строк моковых данных)
+- Интегрирован `useLogStream` hook для real-time streaming
+- Добавлена функция `convertLogsToSteps()` для парсинга логов в build steps
+- Добавлены индикаторы статуса подключения (Live/Polling/Offline)
+- Добавлены кнопки Pause/Resume streaming
+- Добавлены Loading и Error states
+- Добавлена кнопка Clear Logs
+
+#### 2. Rate Limiting на log endpoints
+
+**Файл:** `routes/api.php`
+- `GET /api/v1/deployments/{uuid}/logs` - добавлен `throttle:60,1`
+- `GET /api/v1/databases/{uuid}/logs` - добавлен `throttle:60,1`
+- `GET /api/v1/services/{uuid}/logs` - добавлен `throttle:60,1`
+
+#### 3. Unit тесты для DeploymentLogEntry event
+
+**Файл:** `tests/Unit/DeploymentLogEntryEventTest.php` (NEW)
+- 10 тестов, 27 assertions
+- Тесты покрывают: создание event, broadcast channel, broadcastWith payload
+- Тесты edge cases: multiline messages, special characters, empty message, stderr
+
+#### 4. Документация
+
+**Файл:** `todos/log-streaming-production-ready.md` (NEW)
+- План реализации Production-ready Log Streaming
+- Описание текущего состояния и missing pieces
+- Рекомендации по дальнейшему развитию
+
+---
+
+## ✅ ВЫПОЛНЕНО В СЕССИИ 6 (2026-01-22, вечер)
+
+### Log Streaming APIs - P2 Task
+
+#### 1. Реализованы API endpoints для получения логов
+
+**GET /api/v1/deployments/{uuid}/logs**
+- Получение логов деплоймента из ApplicationDeploymentQueue
+- Проверка принадлежности к команде через application.team_id
+- Возвращает deployment_uuid, status, logs (parsed JSON)
+
+**GET /api/v1/databases/{uuid}/logs**
+- Получение логов контейнера базы данных
+- Поддержка всех типов БД через `queryDatabaseByUuidWithinTeam()`
+- Использует `getContainerLogs()` helper
+- Параметр `lines` для количества строк (default 100)
+- Проверка статуса контейнера перед запросом логов
+
+**GET /api/v1/services/{uuid}/logs**
+- Получение логов всех контейнеров сервиса
+- Поддержка нескольких контейнеров (applications + databases)
+- Параметр `container` для фильтрации по конкретному контейнеру
+- Параметр `lines` для количества строк (default 100)
+- Возвращает структуру containers с type, name, status, logs для каждого
+
+#### 2. Создан DeploymentLogEntry event для real-time broadcasting
+
+**Файл:** `app/Events/DeploymentLogEntry.php`
+- Implements ShouldBroadcast
+- Broadcasts to `deployment.{deploymentUuid}.logs` channel
+- Fields: deploymentUuid, message, timestamp, type, order
+- broadcastWith() returns message, timestamp, type, order
+
+#### 3. Добавлен real-time broadcasting в ApplicationDeploymentQueue
+
+**Файл:** `app/Models/ApplicationDeploymentQueue.php`
+- Import добавлен: `use App\Events\DeploymentLogEntry;`
+- Метод `addLogEntry()` теперь вызывает `event(new DeploymentLogEntry(...))`
+- Broadcasting происходит только для non-hidden entries
+- Silently fails при ошибках WebSocket (не прерывает деплой)
 
 ---
 
@@ -327,10 +460,14 @@ npm run build
 5. [x] Исправить PHP Unit тесты (119 → 0 failed) ✅
 6. [x] Запустить `./vendor/bin/pint` для форматирования ✅
 
-### P2 - Следующая неделя
-7. [ ] Реализовать Log Streaming APIs
-8. [ ] Убрать моки из Settings страниц
-9. [ ] Code splitting для frontend (chunk > 500KB)
+### P2 - Следующая неделя (ЗАВЕРШЕНО ✅)
+7. [x] Реализовать Log Streaming APIs ✅
+8. [x] Убрать моки из Settings страниц ✅
+9. [x] Code splitting для frontend (chunk > 500KB) ✅
+
+### P3 - Будущие улучшения
+10. [ ] Custom Domains Feature (see todos/custom-domains-feature.md)
+11. [ ] Server IP Proxy Protection (see todos/server-ip-proxy-protection.md)
 
 ---
 
@@ -339,9 +476,13 @@ npm run build
 | Компонент | Было | Стало | Статус |
 |-----------|------|-------|--------|
 | PHPStan | 155 ошибок | 0 ошибок | ✅ 100% исправлено |
-| Frontend Build | ✅ PASS | ✅ PASS | ✅ |
+| Frontend Build | ✅ PASS | ✅ PASS (no warnings) | ✅ |
 | Frontend Tests | 2 failed | 0 failed (59 files, 1250 tests) | ✅ 100% исправлено |
 | PHP Unit Tests | 119 failed | 0 failed (1176 tests, 3377 assertions) | ✅ 100% исправлено |
+| Log Streaming APIs | TODO stubs | Production-ready | ✅ P2 завершено |
+| BuildLogs.tsx | Mock data | Real API + WebSocket | ✅ Production-ready |
+| Settings Pages | Mock data | Real backend data | ✅ P2 завершено |
+| Bundle Size | 502KB chunk | 298KB max chunk (↓41%) | ✅ P2 завершено |
 
 ---
 
@@ -351,8 +492,15 @@ npm run build
 1. `app/Livewire/GlobalSearch.php` - новый stub класс
 2. `phpstan.neon` - конфигурация PHPStan
 
+### Сессия 6:
+3. `app/Events/DeploymentLogEntry.php` - real-time deployment log broadcasting
+
+### Сессия 7:
+4. `tests/Unit/DeploymentLogEntryEventTest.php` - unit тесты для DeploymentLogEntry event
+5. `todos/log-streaming-production-ready.md` - план реализации
+
 ### Сессия 4:
-3. `app/Livewire/Project/Application/General.php` - docker compose preview
+6. `app/Livewire/Project/Application/General.php` - docker compose preview
 4. `app/Livewire/Project/Database/Import.php` - database restore commands
 5. `app/Livewire/Project/New/DockerImage.php` - docker image auto-parsing
 6. `app/Livewire/Project/Service/Configuration.php` - service refresh events

@@ -12,26 +12,21 @@ interface Props {
     environmentUuid?: string;
 }
 
+// Structure from backend (matches routes/web.php)
 interface EnvironmentVariable {
-    id: string;
+    id: number | string;
     key: string;
     value: string;
-    is_preview: boolean;
-    is_build_time: boolean;
+    is_multiline?: boolean;
+    is_literal?: boolean;
+    is_runtime?: boolean;
+    is_buildtime?: boolean;
+    created_at?: string;
 }
 
-// Mock data for demo
-const MOCK_VARIABLES: EnvironmentVariable[] = [
-    { id: '1', key: 'DATABASE_URL', value: 'postgresql://user:pass@localhost:5432/db', is_preview: false, is_build_time: false },
-    { id: '2', key: 'API_KEY', value: 'sk_live_abc123', is_preview: true, is_build_time: false },
-    { id: '3', key: 'NODE_ENV', value: 'production', is_preview: false, is_build_time: true },
-    { id: '4', key: 'REDIS_URL', value: 'redis://localhost:6379', is_preview: false, is_build_time: false },
-];
-
 export default function ApplicationVariables({ application, variables: propVariables, projectUuid, environmentUuid }: Props) {
-    const [variables, setVariables] = React.useState<EnvironmentVariable[]>(propVariables || MOCK_VARIABLES);
-    const [showPreview, setShowPreview] = React.useState(false);
-    const [revealedVars, setRevealedVars] = React.useState<Set<string>>(new Set());
+    const [variables, setVariables] = React.useState<EnvironmentVariable[]>(propVariables || []);
+    const [revealedVars, setRevealedVars] = React.useState<Set<string | number>>(new Set());
     const [isSaving, setIsSaving] = React.useState(false);
 
     const handleAddVariable = () => {
@@ -39,21 +34,21 @@ export default function ApplicationVariables({ application, variables: propVaria
             id: `new-${Date.now()}`,
             key: '',
             value: '',
-            is_preview: false,
-            is_build_time: false,
+            is_buildtime: false,
+            is_runtime: true,
         };
         setVariables([...variables, newVar]);
     };
 
-    const handleRemoveVariable = (id: string) => {
+    const handleRemoveVariable = (id: number | string) => {
         setVariables(variables.filter(v => v.id !== id));
     };
 
-    const handleUpdateVariable = (id: string, field: keyof EnvironmentVariable, value: any) => {
+    const handleUpdateVariable = (id: number | string, field: keyof EnvironmentVariable, value: string | boolean) => {
         setVariables(variables.map(v => v.id === id ? { ...v, [field]: value } : v));
     };
 
-    const handleToggleReveal = (id: string) => {
+    const handleToggleReveal = (id: number | string) => {
         const newRevealed = new Set(revealedVars);
         if (newRevealed.has(id)) {
             newRevealed.delete(id);
@@ -66,8 +61,17 @@ export default function ApplicationVariables({ application, variables: propVaria
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            router.patch(`/api/v1/applications/${application.uuid}/variables`, {
-                variables: variables.filter(v => v.key.trim() !== ''),
+            // Filter out empty variables and send bulk update
+            const validVariables = variables
+                .filter(v => v.key.trim() !== '')
+                .map(v => ({
+                    key: v.key,
+                    value: v.value,
+                    is_build_time: v.is_buildtime ?? false,
+                }));
+
+            router.patch(`/api/v1/applications/${application.uuid}/envs/bulk`, {
+                variables: validVariables,
             }, {
                 onFinish: () => {
                     setIsSaving(false);
@@ -80,7 +84,7 @@ export default function ApplicationVariables({ application, variables: propVaria
 
     const handleExport = () => {
         const content = variables
-            .filter(v => !v.is_preview || showPreview)
+            .filter(v => v.key.trim() !== '')
             .map(v => `${v.key}=${v.value}`)
             .join('\n');
 
@@ -99,8 +103,9 @@ export default function ApplicationVariables({ application, variables: propVaria
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.txt,.env';
-        input.onchange = (e: any) => {
-            const file = e.target.files[0];
+        input.onchange = (e: Event) => {
+            const target = e.target as HTMLInputElement;
+            const file = target.files?.[0];
             if (!file) return;
 
             const reader = new FileReader();
@@ -118,8 +123,8 @@ export default function ApplicationVariables({ application, variables: propVaria
                                 id: `imported-${Date.now()}-${Math.random()}`,
                                 key: key.trim(),
                                 value: valueParts.join('=').trim(),
-                                is_preview: false,
-                                is_build_time: false,
+                                is_buildtime: false,
+                                is_runtime: true,
                             });
                         }
                     }
@@ -131,8 +136,6 @@ export default function ApplicationVariables({ application, variables: propVaria
         };
         input.click();
     };
-
-    const displayedVariables = showPreview ? variables : variables.filter(v => !v.is_preview);
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
@@ -160,14 +163,6 @@ export default function ApplicationVariables({ application, variables: propVaria
                         <Button
                             size="sm"
                             variant="secondary"
-                            onClick={() => setShowPreview(!showPreview)}
-                        >
-                            {showPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                            {showPreview ? 'Hide' : 'Show'} Preview
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="secondary"
                             onClick={handleImport}
                         >
                             <Upload className="mr-2 h-4 w-4" />
@@ -182,7 +177,7 @@ export default function ApplicationVariables({ application, variables: propVaria
                             Export
                         </Button>
                         <Button
-                            variant="primary"
+                            variant="default"
                             onClick={handleSave}
                             disabled={isSaving}
                         >
@@ -205,8 +200,17 @@ export default function ApplicationVariables({ application, variables: propVaria
                             <div className="col-span-1"></div>
                         </div>
 
+                        {/* Empty state */}
+                        {variables.length === 0 && (
+                            <div className="text-center py-8 text-foreground-muted">
+                                <Key className="mx-auto h-12 w-12 opacity-50 mb-3" />
+                                <p>No environment variables configured.</p>
+                                <p className="text-sm">Click "Add Variable" to create one.</p>
+                            </div>
+                        )}
+
                         {/* Variables */}
-                        {displayedVariables.map((variable) => (
+                        {variables.map((variable) => (
                             <div key={variable.id} className="grid grid-cols-12 gap-4 items-start">
                                 <div className="col-span-4">
                                     <Input
@@ -241,20 +245,11 @@ export default function ApplicationVariables({ application, variables: propVaria
                                     <label className="flex items-center gap-1.5 text-xs text-foreground-muted cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={variable.is_build_time}
-                                            onChange={(e) => handleUpdateVariable(variable.id, 'is_build_time', e.target.checked)}
+                                            checked={variable.is_buildtime ?? false}
+                                            onChange={(e) => handleUpdateVariable(variable.id, 'is_buildtime', e.target.checked)}
                                             className="rounded border-border"
                                         />
-                                        Build Time
-                                    </label>
-                                    <label className="flex items-center gap-1.5 text-xs text-foreground-muted cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={variable.is_preview}
-                                            onChange={(e) => handleUpdateVariable(variable.id, 'is_preview', e.target.checked)}
-                                            className="rounded border-border"
-                                        />
-                                        Preview
+                                        Build
                                     </label>
                                 </div>
                                 <div className="col-span-1 flex justify-end">
@@ -286,7 +281,7 @@ export default function ApplicationVariables({ application, variables: propVaria
             <Card className="mt-4 border-info/50 bg-info/5">
                 <CardContent className="p-4">
                     <p className="text-sm text-foreground-muted">
-                        <strong>Build Time:</strong> Available during build process. <strong>Preview:</strong> Only available in preview deployments.
+                        <strong>Build:</strong> Available during build process (docker build). Otherwise available at runtime.
                     </p>
                 </CardContent>
             </Card>

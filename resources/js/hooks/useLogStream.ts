@@ -244,26 +244,73 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
                 endpoint += `?after=${lastLogIdRef.current}`;
             }
 
-            // In production, make actual API call:
-            // const response = await fetch(endpoint, {
-            //     headers: {
-            //         'Accept': 'application/json',
-            //         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            //     },
-            // });
-            // const data = await response.json();
-            // data.logs.forEach((log: any) => {
-            //     addLogEntry({
-            //         id: log.id,
-            //         timestamp: log.timestamp,
-            //         message: log.message,
-            //         level: log.level,
-            //         source: log.source,
-            //     });
-            // });
+            const response = await fetch(endpoint, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'same-origin',
+            });
 
-            // Placeholder for development
-            console.debug(`Fetching logs from: ${endpoint}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch logs: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Handle deployment logs format (has logs array)
+            if (data.logs && Array.isArray(data.logs)) {
+                const newLogs = data.logs.filter((log: any) => !log.hidden);
+                const startOrder = lastLogIdRef.current ? parseInt(lastLogIdRef.current.split('-')[1] || '0', 10) : 0;
+
+                newLogs.forEach((log: any, index: number) => {
+                    const logOrder = log.order || (startOrder + index + 1);
+                    // Skip logs we've already seen
+                    if (lastLogIdRef.current && logOrder <= startOrder) {
+                        return;
+                    }
+
+                    addLogEntry({
+                        id: `${resourceType}-${logOrder}`,
+                        timestamp: log.timestamp || new Date().toISOString(),
+                        message: log.output || log.message || '',
+                        level: log.type === 'stderr' ? 'error' : 'info',
+                        source: resourceType,
+                    });
+                });
+            }
+
+            // Handle container logs format (has container_logs string or containers array)
+            if (data.container_logs) {
+                const lines = data.container_logs.split('\n').filter(Boolean);
+                lines.forEach((line: string, index: number) => {
+                    addLogEntry({
+                        id: `${resourceType}-${Date.now()}-${index}`,
+                        timestamp: new Date().toISOString(),
+                        message: line,
+                        level: line.toLowerCase().includes('error') ? 'error' : 'info',
+                        source: resourceType,
+                    });
+                });
+            }
+
+            // Handle service logs format (has containers array)
+            if (data.containers && Array.isArray(data.containers)) {
+                data.containers.forEach((container: any) => {
+                    if (container.logs) {
+                        const lines = container.logs.split('\n').filter(Boolean);
+                        lines.forEach((line: string, index: number) => {
+                            addLogEntry({
+                                id: `${container.name}-${Date.now()}-${index}`,
+                                timestamp: new Date().toISOString(),
+                                message: `[${container.name}] ${line}`,
+                                level: line.toLowerCase().includes('error') ? 'error' : 'info',
+                                source: container.name,
+                            });
+                        });
+                    }
+                });
+            }
         } catch (err) {
             console.error('Failed to fetch logs:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch logs'));

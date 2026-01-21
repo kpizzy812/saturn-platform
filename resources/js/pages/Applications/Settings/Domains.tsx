@@ -2,60 +2,25 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Badge } from '@/components/ui';
-import { Globe, Plus, Trash2, RefreshCw, CheckCircle, XCircle, Clock, Shield } from 'lucide-react';
-import type { Application, Domain } from '@/types';
+import { Globe, Plus, Trash2, Star, ExternalLink } from 'lucide-react';
+import type { Application } from '@/types';
 
 interface Props {
     application: Application;
-    domains?: Domain[];
+    domains?: SimpleDomain[];
     projectUuid?: string;
     environmentUuid?: string;
 }
 
-// Mock data for demo
-const MOCK_DOMAINS: Domain[] = [
-    {
-        id: '1',
-        domain: 'app.example.com',
-        status: 'active',
-        ssl_status: 'active',
-        service_id: '1',
-        service_name: 'API Server',
-        service_type: 'application',
-        verification_method: 'dns',
-        verified_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        redirect_to_www: false,
-        redirect_to_https: true,
-        ssl_certificate_id: 'cert-1',
-        dns_records: [
-            { type: 'A', name: 'app.example.com', value: '192.0.2.1' },
-        ],
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    {
-        id: '2',
-        domain: 'api.example.com',
-        status: 'active',
-        ssl_status: 'expiring_soon',
-        service_id: '1',
-        service_name: 'API Server',
-        service_type: 'application',
-        verification_method: 'dns',
-        verified_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-        redirect_to_www: false,
-        redirect_to_https: true,
-        ssl_certificate_id: 'cert-2',
-        dns_records: [
-            { type: 'A', name: 'api.example.com', value: '192.0.2.1' },
-        ],
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-    },
-];
+// Simple structure from backend (matches routes/web.php)
+interface SimpleDomain {
+    id: number;
+    domain: string;
+    is_primary: boolean;
+}
 
 export default function ApplicationDomains({ application, domains: propDomains, projectUuid, environmentUuid }: Props) {
-    const [domains, setDomains] = React.useState<Domain[]>(propDomains || MOCK_DOMAINS);
+    const [domains, setDomains] = React.useState<SimpleDomain[]>(propDomains || []);
     const [newDomain, setNewDomain] = React.useState('');
     const [isAdding, setIsAdding] = React.useState(false);
 
@@ -63,61 +28,61 @@ export default function ApplicationDomains({ application, domains: propDomains, 
         if (!newDomain.trim()) return;
 
         setIsAdding(true);
-        try {
-            router.post(`/api/v1/applications/${application.uuid}/domains`, {
-                domain: newDomain,
-            }, {
-                onSuccess: () => {
-                    setNewDomain('');
-                },
-                onFinish: () => {
-                    setIsAdding(false);
-                },
-            });
-        } catch (error) {
-            setIsAdding(false);
-        }
+
+        // Build new fqdn string (comma-separated)
+        const currentFqdns = domains.map(d => d.domain);
+        const newFqdns = [...currentFqdns, newDomain.trim()].join(',');
+
+        router.patch(`/api/v1/applications/${application.uuid}`, {
+            fqdn: newFqdns,
+        }, {
+            onSuccess: () => {
+                // Add to local state
+                setDomains([...domains, {
+                    id: domains.length,
+                    domain: newDomain.trim(),
+                    is_primary: domains.length === 0,
+                }]);
+                setNewDomain('');
+            },
+            onFinish: () => {
+                setIsAdding(false);
+            },
+        });
     };
 
-    const handleRemoveDomain = async (domainId: string) => {
+    const handleRemoveDomain = async (domainToRemove: string) => {
         if (!confirm('Are you sure you want to remove this domain?')) return;
 
-        router.delete(`/api/v1/applications/${application.uuid}/domains/${domainId}`);
+        const newFqdns = domains
+            .filter(d => d.domain !== domainToRemove)
+            .map(d => d.domain)
+            .join(',');
+
+        router.patch(`/api/v1/applications/${application.uuid}`, {
+            fqdn: newFqdns || null,
+        }, {
+            onSuccess: () => {
+                setDomains(domains.filter(d => d.domain !== domainToRemove));
+            },
+        });
     };
 
-    const handleRenewCertificate = async (domainId: string) => {
-        router.post(`/api/v1/applications/${application.uuid}/domains/${domainId}/renew-certificate`);
-    };
+    const handleSetPrimary = async (domain: string) => {
+        // Primary domain should be first in the list
+        const otherDomains = domains.filter(d => d.domain !== domain);
+        const newFqdns = [domain, ...otherDomains.map(d => d.domain)].join(',');
 
-    const getStatusBadge = (status: Domain['status']) => {
-        switch (status) {
-            case 'active':
-                return <Badge variant="success">Active</Badge>;
-            case 'pending':
-                return <Badge variant="warning">Pending</Badge>;
-            case 'failed':
-                return <Badge variant="error">Failed</Badge>;
-            case 'verifying':
-                return <Badge variant="info">Verifying</Badge>;
-        }
-    };
-
-    const getSSLBadge = (sslStatus: Domain['ssl_status']) => {
-        switch (sslStatus) {
-            case 'active':
-                return <Badge variant="success" className="flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    Active
-                </Badge>;
-            case 'pending':
-                return <Badge variant="warning">Pending</Badge>;
-            case 'expired':
-                return <Badge variant="error">Expired</Badge>;
-            case 'expiring_soon':
-                return <Badge variant="warning">Expiring Soon</Badge>;
-            case 'failed':
-                return <Badge variant="error">Failed</Badge>;
-        }
+        router.patch(`/api/v1/applications/${application.uuid}`, {
+            fqdn: newFqdns,
+        }, {
+            onSuccess: () => {
+                setDomains(domains.map((d, idx) => ({
+                    ...d,
+                    is_primary: d.domain === domain,
+                })));
+            },
+        });
     };
 
     const breadcrumbs = [
@@ -139,7 +104,7 @@ export default function ApplicationDomains({ application, domains: propDomains, 
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Domain Management</h1>
                         <p className="text-foreground-muted">
-                            Manage custom domains and SSL certificates for your application
+                            Manage custom domains for your application
                         </p>
                     </div>
                 </div>
@@ -153,12 +118,12 @@ export default function ApplicationDomains({ application, domains: propDomains, 
                         <Input
                             value={newDomain}
                             onChange={(e) => setNewDomain(e.target.value)}
-                            placeholder="example.com"
+                            placeholder="app.example.com"
                             className="flex-1"
                             onKeyPress={(e) => e.key === 'Enter' && handleAddDomain()}
                         />
                         <Button
-                            variant="primary"
+                            variant="default"
                             onClick={handleAddDomain}
                             disabled={isAdding || !newDomain.trim()}
                         >
@@ -166,6 +131,9 @@ export default function ApplicationDomains({ application, domains: propDomains, 
                             {isAdding ? 'Adding...' : 'Add Domain'}
                         </Button>
                     </div>
+                    <p className="text-xs text-foreground-muted mt-2">
+                        Make sure to point your domain's DNS to your server's IP address.
+                    </p>
                 </CardContent>
             </Card>
 
@@ -179,81 +147,53 @@ export default function ApplicationDomains({ application, domains: propDomains, 
                             </div>
                             <h3 className="mt-4 text-lg font-medium text-foreground">No domains configured</h3>
                             <p className="mt-2 text-center text-sm text-foreground-muted">
-                                Add a custom domain to make your application accessible
+                                Add a custom domain to make your application accessible via your own URL.
                             </p>
                         </CardContent>
                     </Card>
                 ) : (
                     domains.map((domain) => (
                         <Card key={domain.id}>
-                            <CardContent className="p-6">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="text-lg font-semibold text-foreground">{domain.domain}</h3>
-                                            {getStatusBadge(domain.status)}
-                                            {getSSLBadge(domain.ssl_status)}
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                            <div>
-                                                <p className="text-sm text-foreground-muted mb-1">DNS Configuration</p>
-                                                {domain.dns_records.map((record, idx) => (
-                                                    <div key={idx} className="bg-background-secondary rounded px-3 py-2 mb-2">
-                                                        <code className="text-xs text-foreground">
-                                                            <span className="text-primary">{record.type}</span> {record.name} → {record.value}
-                                                        </code>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div>
-                                                <p className="text-sm text-foreground-muted mb-2">Settings</p>
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        {domain.redirect_to_https ? (
-                                                            <CheckCircle className="h-4 w-4 text-success" />
-                                                        ) : (
-                                                            <XCircle className="h-4 w-4 text-foreground-muted" />
-                                                        )}
-                                                        <span className="text-sm text-foreground">Redirect to HTTPS</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {domain.redirect_to_www ? (
-                                                            <CheckCircle className="h-4 w-4 text-success" />
-                                                        ) : (
-                                                            <XCircle className="h-4 w-4 text-foreground-muted" />
-                                                        )}
-                                                        <span className="text-sm text-foreground">Redirect to WWW</span>
-                                                    </div>
-                                                    {domain.verified_at && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Clock className="h-4 w-4 text-foreground-muted" />
-                                                            <span className="text-sm text-foreground-muted">
-                                                                Verified {new Date(domain.verified_at).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Globe className="h-5 w-5 text-foreground-muted" />
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={`https://${domain.domain}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-lg font-medium text-foreground hover:text-primary flex items-center gap-1"
+                                                >
+                                                    {domain.domain}
+                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                </a>
+                                                {domain.is_primary && (
+                                                    <Badge variant="success" className="flex items-center gap-1">
+                                                        <Star className="h-3 w-3" />
+                                                        Primary
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2 ml-4">
-                                        {domain.ssl_status === 'expiring_soon' && (
+                                    <div className="flex gap-2">
+                                        {!domain.is_primary && (
                                             <Button
                                                 size="sm"
                                                 variant="secondary"
-                                                onClick={() => handleRenewCertificate(domain.id)}
+                                                onClick={() => handleSetPrimary(domain.domain)}
                                             >
-                                                <RefreshCw className="mr-2 h-4 w-4" />
-                                                Renew SSL
+                                                <Star className="mr-1 h-4 w-4" />
+                                                Set Primary
                                             </Button>
                                         )}
                                         <Button
                                             size="sm"
                                             variant="danger"
-                                            onClick={() => handleRemoveDomain(domain.id)}
+                                            onClick={() => handleRemoveDomain(domain.domain)}
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -264,6 +204,19 @@ export default function ApplicationDomains({ application, domains: propDomains, 
                     ))
                 )}
             </div>
+
+            {/* Help Card */}
+            {domains.length > 0 && (
+                <Card className="mt-6 border-info/50 bg-info/5">
+                    <CardContent className="p-4">
+                        <h3 className="text-sm font-semibold text-foreground mb-2">DNS Configuration</h3>
+                        <p className="text-sm text-foreground-muted">
+                            Point your domain to your server's IP address using an A record or CNAME record at your DNS provider.
+                            SSL certificates are automatically provisioned via Let's Encrypt.
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
         </AppLayout>
     );
 }

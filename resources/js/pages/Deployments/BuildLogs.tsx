@@ -17,12 +17,20 @@ import {
     Minimize2,
     Copy,
     ChevronLeft,
+    Wifi,
+    WifiOff,
+    Loader2,
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import { useLogStream, type LogEntry } from '@/hooks/useLogStream';
 
 interface Props {
-    deploymentUuid?: string;
-    buildSteps?: BuildStep[];
+    deploymentUuid: string;
+    deployment?: {
+        status: string;
+        application_name?: string;
+        created_at?: string;
+    };
 }
 
 interface BuildStep {
@@ -35,170 +43,153 @@ interface BuildStep {
     endTime?: string;
 }
 
-// Mock build steps data
-const MOCK_BUILD_STEPS: BuildStep[] = [
-    {
-        id: 1,
-        name: 'Clone Repository',
-        status: 'success',
-        duration: '2.3s',
-        startTime: '14:32:01',
-        endTime: '14:32:03',
-        logs: [
-            '[14:32:01.123] Cloning into /tmp/build-123...',
-            '[14:32:01.456] remote: Enumerating objects: 145, done.',
-            '[14:32:01.789] remote: Counting objects: 100% (145/145), done.',
-            '[14:32:02.012] remote: Compressing objects: 100% (98/98), done.',
-            '[14:32:02.345] remote: Total 145 (delta 42), reused 145 (delta 42)',
-            '[14:32:02.678] Receiving objects: 100% (145/145), 1.23 MiB | 2.34 MiB/s, done.',
-            '[14:32:02.901] Resolving deltas: 100% (42/42), done.',
-            '[14:32:03.134] ✓ Repository cloned successfully',
-        ],
-    },
-    {
-        id: 2,
-        name: 'Install Dependencies',
-        status: 'success',
-        duration: '45.7s',
-        startTime: '14:32:03',
-        endTime: '14:32:49',
-        logs: [
-            '[14:32:03.234] Running: npm install',
-            '[14:32:03.456] npm WARN deprecated package@1.0.0: Use package@2.0.0 instead',
-            '[14:32:05.123] Downloading packages...',
-            '[14:32:15.456] Installing: react@18.2.0',
-            '[14:32:20.789] Installing: typescript@5.0.0',
-            '[14:32:25.012] Installing: vite@5.0.0',
-            '[14:32:30.345] Installing: tailwindcss@3.4.0',
-            '[14:32:35.678] Installing: lucide-react@0.263.0',
-            '[14:32:40.901] Building fresh packages...',
-            '[14:32:48.234] added 847 packages, and audited 848 packages in 44s',
-            '[14:32:48.567] 127 packages are looking for funding',
-            '[14:32:48.890] run `npm fund` for details',
-            '[14:32:49.123] found 0 vulnerabilities',
-            '[14:32:49.456] ✓ Dependencies installed successfully',
-        ],
-    },
-    {
-        id: 3,
-        name: 'Build Application',
-        status: 'success',
-        duration: '1m 23s',
-        startTime: '14:32:49',
-        endTime: '14:34:12',
-        logs: [
-            '[14:32:49.567] Running: npm run build',
-            '[14:32:49.890] > app@1.0.0 build',
-            '[14:32:50.123] > vite build',
-            '[14:32:50.456] vite v5.0.0 building for production...',
-            '[14:32:51.789] transforming...',
-            '[14:33:00.012] ├─ components/ui/Button.tsx',
-            '[14:33:02.345] ├─ components/ui/Card.tsx',
-            '[14:33:04.678] ├─ components/ui/Input.tsx',
-            '[14:33:06.901] ├─ components/layout/AppLayout.tsx',
-            '[14:33:10.234] ├─ pages/Dashboard.tsx',
-            '[14:33:15.567] ├─ pages/Deployments/Index.tsx',
-            '[14:33:20.890] ├─ pages/Services/Show.tsx',
-            '[14:33:25.123] └─ app.tsx',
-            '[14:33:45.456] ✓ 234 modules transformed.',
-            '[14:33:46.789] rendering chunks...',
-            '[14:33:50.012] computing gzip size...',
-            '[14:34:10.345] dist/index.html                   0.45 kB │ gzip:  0.30 kB',
-            '[14:34:10.678] dist/assets/index-a1b2c3d4.css  12.34 kB │ gzip:  3.45 kB',
-            '[14:34:10.901] dist/assets/index-e5f6g7h8.js  145.67 kB │ gzip: 45.67 kB',
-            '[14:34:11.234] dist/assets/vendor-i9j0k1l2.js  234.56 kB │ gzip: 78.90 kB',
-            '[14:34:11.567] ✓ built in 82.3s',
-            '[14:34:12.890] Build completed successfully',
-        ],
-    },
-    {
-        id: 4,
-        name: 'Run Tests',
-        status: 'success',
-        duration: '12.4s',
-        startTime: '14:34:12',
-        endTime: '14:34:24',
-        logs: [
-            '[14:34:12.123] Running: npm run test',
-            '[14:34:12.456] > app@1.0.0 test',
-            '[14:34:12.789] > jest',
-            '[14:34:13.012] PASS  src/components/Button.test.tsx',
-            '[14:34:14.345] PASS  src/components/Card.test.tsx',
-            '[14:34:15.678] PASS  src/components/Input.test.tsx',
-            '[14:34:17.901] PASS  src/utils/helpers.test.ts',
-            '[14:34:19.234] PASS  src/hooks/useAuth.test.ts',
-            '[14:34:21.567] ',
-            '[14:34:21.890] Test Suites: 5 passed, 5 total',
-            '[14:34:22.123] Tests:       42 passed, 42 total',
-            '[14:34:22.456] Snapshots:   0 total',
-            '[14:34:22.789] Time:        11.234 s',
-            '[14:34:23.012] Ran all test suites.',
-            '[14:34:24.345] ✓ All tests passed',
-        ],
-    },
-    {
-        id: 5,
-        name: 'Create Docker Image',
-        status: 'success',
-        duration: '34.2s',
-        startTime: '14:34:24',
-        endTime: '14:34:58',
-        logs: [
-            '[14:34:24.456] Building Docker image...',
-            '[14:34:25.789] Step 1/8 : FROM node:18-alpine',
-            '[14:34:26.012]  ---> a1b2c3d4e5f6',
-            '[14:34:26.345] Step 2/8 : WORKDIR /app',
-            '[14:34:26.678]  ---> Using cache',
-            '[14:34:26.901]  ---> b2c3d4e5f6g7',
-            '[14:34:27.234] Step 3/8 : COPY package*.json ./',
-            '[14:34:27.567]  ---> Using cache',
-            '[14:34:27.890]  ---> c3d4e5f6g7h8',
-            '[14:34:28.123] Step 4/8 : RUN npm ci --only=production',
-            '[14:34:28.456]  ---> Running in d4e5f6g7h8i9',
-            '[14:34:35.789] added 234 packages in 7.2s',
-            '[14:34:36.012]  ---> e5f6g7h8i9j0',
-            '[14:34:36.345] Step 5/8 : COPY dist ./dist',
-            '[14:34:40.678]  ---> f6g7h8i9j0k1',
-            '[14:34:41.901] Step 6/8 : EXPOSE 3000',
-            '[14:34:42.234]  ---> Running in g7h8i9j0k1l2',
-            '[14:34:42.567]  ---> h8i9j0k1l2m3',
-            '[14:34:42.890] Step 7/8 : ENV NODE_ENV=production',
-            '[14:34:43.123]  ---> Running in i9j0k1l2m3n4',
-            '[14:34:43.456]  ---> j0k1l2m3n4o5',
-            '[14:34:43.789] Step 8/8 : CMD ["node", "dist/server.js"]',
-            '[14:34:44.012]  ---> Running in k1l2m3n4o5p6',
-            '[14:34:44.345]  ---> l2m3n4o5p6q7',
-            '[14:34:55.678] Successfully built l2m3n4o5p6q7',
-            '[14:34:56.901] Successfully tagged production-api:a1b2c3d4',
-            '[14:34:58.234] ✓ Docker image created successfully',
-        ],
-    },
-    {
-        id: 6,
-        name: 'Deploy Container',
-        status: 'running',
-        duration: '8.1s',
-        startTime: '14:34:58',
-        logs: [
-            '[14:34:58.345] Deploying container to server...',
-            '[14:34:59.678] Pushing image to registry...',
-            '[14:35:02.901] Image pushed successfully',
-            '[14:35:03.234] Connecting to prod-server-1...',
-            '[14:35:03.567] Connection established',
-            '[14:35:03.890] Pulling image on remote server...',
-            '[14:35:06.123] Image pulled successfully',
-            '[14:35:06.456] Stopping old container...',
-        ],
-    },
-];
+/**
+ * Convert raw log entries to build steps format
+ */
+function convertLogsToSteps(logs: LogEntry[], deploymentStatus?: string): BuildStep[] {
+    if (logs.length === 0) {
+        return [{
+            id: 1,
+            name: 'Deployment',
+            status: deploymentStatus === 'finished' ? 'success' :
+                    deploymentStatus === 'failed' ? 'failed' :
+                    deploymentStatus === 'cancelled-by-user' ? 'failed' : 'running',
+            duration: 'calculating...',
+            logs: ['Waiting for logs...'],
+        }];
+    }
 
-export default function BuildLogsView({ deploymentUuid = 'dep-1', buildSteps: propBuildSteps }: Props) {
-    const buildSteps = propBuildSteps || MOCK_BUILD_STEPS;
-    const [expandedSteps, setExpandedSteps] = React.useState<Set<number>>(new Set([6])); // Expand running step by default
+    // Group logs by build step (detect step markers like ╔══════════════════════════════════════════╗)
+    const steps: BuildStep[] = [];
+    let currentStep: BuildStep | null = null;
+    let stepId = 1;
+
+    logs.forEach((log, index) => {
+        const message = log.message;
+
+        // Detect step header (╔ pattern or common step markers)
+        const isStepHeader = message.includes('╔') ||
+                            message.startsWith('###') ||
+                            message.includes('====') ||
+                            message.match(/^Step \d+/i);
+
+        if (isStepHeader && message.includes('╔')) {
+            // Save previous step
+            if (currentStep) {
+                steps.push(currentStep);
+            }
+
+            // Extract step name from next non-border line
+            const nextLog = logs[index + 1];
+            const stepName = nextLog?.message?.replace(/[║│]/g, '').trim() || `Step ${stepId}`;
+
+            currentStep = {
+                id: stepId++,
+                name: stepName,
+                status: 'running',
+                duration: 'calculating...',
+                logs: [],
+                startTime: new Date(log.timestamp).toLocaleTimeString(),
+            };
+        } else if (currentStep) {
+            // Add log to current step
+            const timestamp = new Date(log.timestamp).toLocaleTimeString();
+            currentStep.logs.push(`[${timestamp}] ${message}`);
+
+            // Detect success/failure markers
+            if (message.includes('✓') || message.toLowerCase().includes('success') || message.toLowerCase().includes('completed')) {
+                currentStep.status = 'success';
+                currentStep.endTime = timestamp;
+            } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || log.level === 'error') {
+                currentStep.status = 'failed';
+                currentStep.endTime = timestamp;
+            }
+        } else {
+            // No current step, create default one
+            if (!currentStep) {
+                currentStep = {
+                    id: stepId++,
+                    name: 'Deployment',
+                    status: 'running',
+                    duration: 'calculating...',
+                    logs: [],
+                    startTime: new Date(log.timestamp).toLocaleTimeString(),
+                };
+            }
+            const timestamp = new Date(log.timestamp).toLocaleTimeString();
+            currentStep.logs.push(`[${timestamp}] ${message}`);
+        }
+    });
+
+    // Add last step
+    if (currentStep) {
+        // Set final status based on deployment status
+        if (deploymentStatus === 'finished') {
+            currentStep.status = 'success';
+        } else if (deploymentStatus === 'failed' || deploymentStatus === 'cancelled-by-user') {
+            currentStep.status = 'failed';
+        }
+        steps.push(currentStep);
+    }
+
+    // If no steps were created, create a single step with all logs
+    if (steps.length === 0) {
+        return [{
+            id: 1,
+            name: 'Deployment',
+            status: deploymentStatus === 'finished' ? 'success' :
+                    deploymentStatus === 'failed' ? 'failed' : 'running',
+            duration: 'calculating...',
+            logs: logs.map(l => `[${new Date(l.timestamp).toLocaleTimeString()}] ${l.message}`),
+            startTime: logs[0] ? new Date(logs[0].timestamp).toLocaleTimeString() : undefined,
+            endTime: logs.length > 0 ? new Date(logs[logs.length - 1].timestamp).toLocaleTimeString() : undefined,
+        }];
+    }
+
+    return steps;
+}
+
+export default function BuildLogsView({ deploymentUuid, deployment }: Props) {
+    // Use real log streaming hook
+    const {
+        logs,
+        isStreaming,
+        isConnected,
+        isPolling,
+        loading,
+        error,
+        clearLogs,
+        toggleStreaming,
+        refresh,
+        downloadLogs,
+    } = useLogStream({
+        resourceType: 'deployment',
+        resourceId: deploymentUuid,
+        enableWebSocket: true,
+        pollingInterval: 3000,
+        maxLogEntries: 2000,
+    });
+
+    // Convert logs to build steps format
+    const buildSteps = React.useMemo(
+        () => convertLogsToSteps(logs, deployment?.status),
+        [logs, deployment?.status]
+    );
+
+    // Find running step to expand by default
+    const runningStepId = buildSteps.find(s => s.status === 'running')?.id || buildSteps[buildSteps.length - 1]?.id;
+    const [expandedSteps, setExpandedSteps] = React.useState<Set<number>>(new Set([runningStepId || 1]));
     const [expandAll, setExpandAll] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [logLevel, setLogLevel] = React.useState<'all' | 'info' | 'warn' | 'error'>('all');
     const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+    // Update expanded step when running step changes
+    React.useEffect(() => {
+        if (runningStepId) {
+            setExpandedSteps(prev => new Set([...prev, runningStepId]));
+        }
+    }, [runningStepId]);
 
     const toggleStep = (stepId: number) => {
         setExpandedSteps((prev) => {
@@ -235,29 +226,12 @@ export default function BuildLogsView({ deploymentUuid = 'dep-1', buildSteps: pr
     };
 
     const handleDownloadLogs = () => {
-        const allLogs = buildSteps
-            .map((step) => {
-                const header = `\n=== ${step.name} ===\n`;
-                const metadata = `Status: ${step.status}\nDuration: ${step.duration}\n`;
-                const timeRange = step.startTime && step.endTime
-                    ? `Time: ${step.startTime} - ${step.endTime}\n`
-                    : step.startTime
-                    ? `Started: ${step.startTime}\n`
-                    : '';
-                const logs = step.logs.join('\n');
-                return header + metadata + timeRange + '\n' + logs;
-            })
-            .join('\n\n');
+        // Use the hook's download function for raw logs
+        downloadLogs();
+    };
 
-        const blob = new Blob([allLogs], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `build-logs-${deploymentUuid}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    const handleRefresh = async () => {
+        await refresh();
     };
 
     const isBuilding = buildSteps.some((step) => step.status === 'running');
@@ -295,13 +269,39 @@ export default function BuildLogsView({ deploymentUuid = 'dep-1', buildSteps: pr
 
     const content = (
         <div className="space-y-4">
+            {/* Loading State */}
+            {loading && logs.length === 0 && (
+                <Card>
+                    <CardContent className="flex items-center justify-center p-8">
+                        <Loader2 className="mr-2 h-6 w-6 animate-spin text-primary" />
+                        <span className="text-foreground-muted">Loading deployment logs...</span>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Error State */}
+            {error && (
+                <Card className="border-danger/50 bg-danger/5">
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-danger">
+                            <XCircle className="h-5 w-5" />
+                            <span>Failed to load logs: {error.message}</span>
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={handleRefresh} className="mt-2">
+                            <RotateCw className="mr-2 h-4 w-4" />
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Header Actions */}
             <Card>
                 <CardContent className="p-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex-1">
                             <h3 className="font-medium text-foreground">Build Logs</h3>
-                            <div className="mt-1 flex items-center gap-2 text-sm text-foreground-muted">
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-foreground-muted">
                                 {isBuilding ? (
                                     <>
                                         <AlertCircle className="h-4 w-4 animate-pulse text-warning" />
@@ -320,9 +320,43 @@ export default function BuildLogsView({ deploymentUuid = 'dep-1', buildSteps: pr
                                 )}
                                 <span>·</span>
                                 <span>Total: {Math.floor(totalDuration / 60)}m {(totalDuration % 60).toFixed(1)}s</span>
+                                <span>·</span>
+                                {/* Streaming Status Indicator */}
+                                {isConnected ? (
+                                    <span className="flex items-center gap-1 text-primary">
+                                        <Wifi className="h-3.5 w-3.5" />
+                                        <span className="text-xs">Live</span>
+                                    </span>
+                                ) : isPolling ? (
+                                    <span className="flex items-center gap-1 text-warning">
+                                        <RotateCw className="h-3.5 w-3.5 animate-spin" />
+                                        <span className="text-xs">Polling</span>
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 text-foreground-muted">
+                                        <WifiOff className="h-3.5 w-3.5" />
+                                        <span className="text-xs">Offline</span>
+                                    </span>
+                                )}
                             </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
+                            {/* Pause/Resume Streaming */}
+                            {(isConnected || isPolling) && (
+                                <Button variant="secondary" size="sm" onClick={toggleStreaming}>
+                                    {isStreaming ? (
+                                        <>
+                                            <Clock className="mr-2 h-4 w-4" />
+                                            Pause
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RotateCw className="mr-2 h-4 w-4" />
+                                            Resume
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                             <Button variant="secondary" size="sm" onClick={toggleExpandAll}>
                                 {expandAll ? (
                                     <>
@@ -499,7 +533,7 @@ export default function BuildLogsView({ deploymentUuid = 'dep-1', buildSteps: pr
             title="Build Logs"
             breadcrumbs={[
                 { label: 'Deployments', href: '/deployments' },
-                { label: deploymentUuid, href: `/deployments/${deploymentUuid}` },
+                { label: deployment?.application_name || deploymentUuid, href: `/deployments/${deploymentUuid}` },
                 { label: 'Build Logs' },
             ]}
         >
@@ -510,6 +544,12 @@ export default function BuildLogsView({ deploymentUuid = 'dep-1', buildSteps: pr
                         Back to Deployment
                     </Button>
                 </Link>
+                {/* Clear logs button */}
+                {logs.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearLogs}>
+                        Clear Logs
+                    </Button>
+                )}
             </div>
 
             {content}
