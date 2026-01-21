@@ -63,7 +63,7 @@ class ServiceController extends Controller
             return redirect()->back()->withErrors(['server_uuid' => 'Server has no destinations configured']);
         }
 
-        $service = new Service();
+        $service = new Service;
         $service->name = $validated['name'];
         $service->description = $validated['description'] ?? null;
         $service->docker_compose_raw = $validated['docker_compose_raw'];

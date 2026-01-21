@@ -157,7 +157,7 @@ class MonitorDeploymentHealthJob implements ShouldQueue
         }
 
         if (! $lastSuccessful) {
-            Log::warning("No previous successful deployment found for rollback");
+            Log::warning('No previous successful deployment found for rollback');
 
             // Create event but mark as skipped
             ApplicationRollbackEvent::create([
