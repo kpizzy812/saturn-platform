@@ -1,10 +1,10 @@
 # =============================================================================
 # Saturn Platform - VPS Deployment Workflow
 # =============================================================================
-# Deploys Saturn to your VPS via SSH.
+# Builds Saturn Docker image and deploys to your VPS via SSH.
 #
 # Triggers:
-#   - Push to dev → Auto deploy
+#   - Push to dev/main → Build image + Auto deploy
 #   - Manual trigger
 #
 # Required Secrets:
@@ -20,23 +20,84 @@ on:
   push:
     branches:
       - dev
+      - main
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/ISSUE_TEMPLATE/**'
 
   workflow_dispatch:
+    inputs:
+      skip_build:
+        description: 'Skip image build (use existing latest)'
+        type: boolean
+        default: false
 
 concurrency:
-  group: deploy-dev
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: kpizzy812/saturn-platform
+
 jobs:
+  # =============================================================================
+  # Job 1: Build and push Docker image
+  # =============================================================================
+  build:
+    if: ${{ !inputs.skip_build }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/production/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # =============================================================================
+  # Job 2: Deploy to VPS
+  # =============================================================================
   deploy:
+    needs: [build]
+    if: always() && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up SSH
         run: |
@@ -54,12 +115,15 @@ jobs:
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/saturn/
 
       - name: Deploy to VPS
+        env:
+          SATURN_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'DEPLOY_SCRIPT'
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << DEPLOY_SCRIPT
           set -e
           cd ~/saturn
           chmod +x deploy/scripts/*.sh
+          export SATURN_IMAGE="${SATURN_IMAGE}"
           ./deploy/scripts/deploy.sh
           DEPLOY_SCRIPT
 
@@ -70,4 +134,5 @@ jobs:
       - name: Deployment summary
         run: |
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **URL:** http://${{ secrets.VPS_HOST }}:8000" >> $GITHUB_STEP_SUMMARY

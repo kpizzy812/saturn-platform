@@ -38,8 +38,8 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # Data directory on server
 SATURN_DATA="/data/saturn"
 
-# Docker settings - use Coolify images for now
-SATURN_IMAGE="${SATURN_IMAGE:-ghcr.io/coollabsio/coolify:latest}"
+# Docker settings - Saturn image from GHCR
+SATURN_IMAGE="${SATURN_IMAGE:-ghcr.io/kpizzy812/saturn-platform:latest}"
 
 # Action
 ACTION="${1:-deploy}"
