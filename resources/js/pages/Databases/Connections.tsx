@@ -1,0 +1,475 @@
+import { useState } from 'react';
+import { Link, router } from '@inertiajs/react';
+import { AppLayout } from '@/components/layout';
+import { Card, CardContent, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
+import {
+    ArrowLeft,
+    Database,
+    Copy,
+    Eye,
+    EyeOff,
+    RefreshCw,
+    Settings,
+    Users,
+    CheckCircle2,
+    XCircle,
+    AlertTriangle,
+} from 'lucide-react';
+import type { StandaloneDatabase, DatabaseType } from '@/types';
+
+interface Props {
+    database: StandaloneDatabase;
+}
+
+interface ActiveConnection {
+    id: number;
+    pid: number;
+    user: string;
+    database: string;
+    state: 'active' | 'idle' | 'idle in transaction';
+    query: string;
+    duration: string;
+    clientAddr: string;
+}
+
+const databaseTypeConfig: Record<DatabaseType, { color: string; bgColor: string; displayName: string }> = {
+    postgresql: { color: 'text-blue-500', bgColor: 'bg-blue-500/10', displayName: 'PostgreSQL' },
+    mysql: { color: 'text-orange-500', bgColor: 'bg-orange-500/10', displayName: 'MySQL' },
+    mariadb: { color: 'text-orange-600', bgColor: 'bg-orange-600/10', displayName: 'MariaDB' },
+    mongodb: { color: 'text-green-500', bgColor: 'bg-green-500/10', displayName: 'MongoDB' },
+    redis: { color: 'text-red-500', bgColor: 'bg-red-500/10', displayName: 'Redis' },
+    keydb: { color: 'text-red-600', bgColor: 'bg-red-600/10', displayName: 'KeyDB' },
+    dragonfly: { color: 'text-purple-500', bgColor: 'bg-purple-500/10', displayName: 'Dragonfly' },
+    clickhouse: { color: 'text-yellow-500', bgColor: 'bg-yellow-500/10', displayName: 'ClickHouse' },
+};
+
+export default function DatabaseConnections({ database }: Props) {
+    const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
+    const [showPassword, setShowPassword] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
+    const [maxConnections, setMaxConnections] = useState(100);
+    const [poolingEnabled, setPoolingEnabled] = useState(true);
+    const [poolSize, setPoolSize] = useState(20);
+    const [showKillModal, setShowKillModal] = useState(false);
+    const [connectionToKill, setConnectionToKill] = useState<ActiveConnection | null>(null);
+    const { addToast } = useToast();
+
+    // Mock connection details - in real app, these would come from the backend
+    const connectionDetails = {
+        host: 'db.saturn.example.com',
+        port: getDefaultPort(database.database_type),
+        database: database.name,
+        username: 'saturn',
+        password: 'super_secret_password_123',
+    };
+
+    const connectionString = `${database.database_type}://${connectionDetails.username}:${connectionDetails.password}@${connectionDetails.host}:${connectionDetails.port}/${connectionDetails.database}`;
+
+    // Mock active connections
+    const [activeConnections] = useState<ActiveConnection[]>([
+        {
+            id: 1,
+            pid: 12345,
+            user: 'saturn',
+            database: database.name,
+            state: 'active',
+            query: 'SELECT * FROM users WHERE created_at > NOW() - INTERVAL \'1 day\'',
+            duration: '0.042s',
+            clientAddr: '192.168.1.100',
+        },
+        {
+            id: 2,
+            pid: 12346,
+            user: 'saturn',
+            database: database.name,
+            state: 'idle',
+            query: '<IDLE>',
+            duration: '2m 15s',
+            clientAddr: '192.168.1.101',
+        },
+        {
+            id: 3,
+            pid: 12347,
+            user: 'app_user',
+            database: database.name,
+            state: 'idle in transaction',
+            query: 'UPDATE orders SET status = \'completed\' WHERE id = 12345',
+            duration: '0.128s',
+            clientAddr: '192.168.1.102',
+        },
+    ]);
+
+    const copyToClipboard = (text: string, field: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
+
+    const generateEnvFormat = () => {
+        return `DB_HOST=${connectionDetails.host}
+DB_PORT=${connectionDetails.port}
+DB_DATABASE=${connectionDetails.database}
+DB_USERNAME=${connectionDetails.username}
+DB_PASSWORD=${connectionDetails.password}`;
+    };
+
+    const handleSaveSettings = () => {
+        // In real app, save to backend
+        addToast('success', 'Connection settings saved successfully!');
+    };
+
+    const handleKillConnection = (connection: ActiveConnection) => {
+        setConnectionToKill(connection);
+        setShowKillModal(true);
+    };
+
+    const confirmKillConnection = () => {
+        if (connectionToKill) {
+            // In real app, send kill request to backend
+            addToast('success', `Killed connection PID ${connectionToKill.pid}`);
+            setShowKillModal(false);
+            setConnectionToKill(null);
+        }
+    };
+
+    return (
+        <AppLayout
+            title={`${database.name} - Connections`}
+            breadcrumbs={[
+                { label: 'Databases', href: '/databases' },
+                { label: database.name, href: `/databases/${database.uuid}` },
+                { label: 'Connections' }
+            ]}
+        >
+            {/* Back Button */}
+            <Link
+                href={`/databases/${database.uuid}`}
+                className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
+            >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Database
+            </Link>
+
+            {/* Header */}
+            <div className="mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${config.bgColor}`}>
+                        <Database className={`h-6 w-6 ${config.color}`} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-foreground">Connection Management</h1>
+                        <p className="text-foreground-muted">Manage connection strings and active connections</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Connection String */}
+            <Card className="mb-6">
+                <CardContent className="p-6">
+                    <h3 className="mb-4 text-lg font-medium text-foreground">Connection String</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-foreground-muted">
+                                Full Connection String
+                            </label>
+                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="flex-1 font-mono text-sm text-foreground break-all">
+                                    {connectionString}
+                                </code>
+                                <button
+                                    onClick={() => copyToClipboard(connectionString, 'connectionString')}
+                                    className="flex-shrink-0 rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                    title="Copy connection string"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </button>
+                            </div>
+                            {copiedField === 'connectionString' && (
+                                <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="mb-2 block text-sm font-medium text-foreground-muted">
+                                Environment Variables Format
+                            </label>
+                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="flex-1 font-mono text-sm text-foreground whitespace-pre">
+                                    {generateEnvFormat()}
+                                </code>
+                                <button
+                                    onClick={() => copyToClipboard(generateEnvFormat(), 'env')}
+                                    className="flex-shrink-0 self-start rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                    title="Copy environment variables"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </button>
+                            </div>
+                            {copiedField === 'env' && (
+                                <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Connection Details */}
+            <Card className="mb-6">
+                <CardContent className="p-6">
+                    <h3 className="mb-4 text-lg font-medium text-foreground">Connection Details</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <ConnectionField
+                            label="Host"
+                            value={connectionDetails.host}
+                            onCopy={() => copyToClipboard(connectionDetails.host, 'host')}
+                            copied={copiedField === 'host'}
+                        />
+                        <ConnectionField
+                            label="Port"
+                            value={connectionDetails.port}
+                            onCopy={() => copyToClipboard(connectionDetails.port, 'port')}
+                            copied={copiedField === 'port'}
+                        />
+                        <ConnectionField
+                            label="Database"
+                            value={connectionDetails.database}
+                            onCopy={() => copyToClipboard(connectionDetails.database, 'database')}
+                            copied={copiedField === 'database'}
+                        />
+                        <ConnectionField
+                            label="Username"
+                            value={connectionDetails.username}
+                            onCopy={() => copyToClipboard(connectionDetails.username, 'username')}
+                            copied={copiedField === 'username'}
+                        />
+                        <div className="md:col-span-2">
+                            <label className="mb-2 block text-sm font-medium text-foreground-muted">
+                                Password
+                            </label>
+                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="flex-1 font-mono text-sm text-foreground">
+                                    {showPassword ? connectionDetails.password : '••••••••••••••••••••'}
+                                </code>
+                                <button
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                    title={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                                <button
+                                    onClick={() => copyToClipboard(connectionDetails.password, 'password')}
+                                    className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                    title="Copy password"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </button>
+                            </div>
+                            {copiedField === 'password' && (
+                                <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Connection Pooling Settings */}
+            <Card className="mb-6">
+                <CardContent className="p-6">
+                    <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-foreground">Connection Pooling</h3>
+                        <Settings className="h-5 w-5 text-foreground-muted" />
+                    </div>
+                    <div className="space-y-4">
+                        <Checkbox
+                            label="Enable connection pooling"
+                            checked={poolingEnabled}
+                            onChange={(e) => setPoolingEnabled(e.target.checked)}
+                        />
+                        {poolingEnabled && (
+                            <>
+                                <Input
+                                    type="number"
+                                    label="Pool Size"
+                                    value={poolSize}
+                                    onChange={(e) => setPoolSize(parseInt(e.target.value) || 0)}
+                                    hint="Maximum number of connections in the pool"
+                                />
+                                <Input
+                                    type="number"
+                                    label="Max Connections"
+                                    value={maxConnections}
+                                    onChange={(e) => setMaxConnections(parseInt(e.target.value) || 0)}
+                                    hint="Maximum number of concurrent connections allowed"
+                                />
+                            </>
+                        )}
+                        <div className="flex justify-end">
+                            <Button onClick={handleSaveSettings}>
+                                Save Settings
+                            </Button>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Active Connections */}
+            <Card>
+                <CardContent className="p-6">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-medium text-foreground">Active Connections</h3>
+                            <p className="text-sm text-foreground-muted">
+                                {activeConnections.length} active connection{activeConnections.length !== 1 ? 's' : ''}
+                            </p>
+                        </div>
+                        <Button variant="secondary" size="sm">
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Refresh
+                        </Button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="border-b border-border">
+                                <tr>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">PID</th>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">User</th>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">Database</th>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">State</th>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">Query</th>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">Duration</th>
+                                    <th className="pb-3 text-left text-xs font-semibold text-foreground-muted">Client</th>
+                                    <th className="pb-3 text-right text-xs font-semibold text-foreground-muted">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                                {activeConnections.map((connection) => (
+                                    <tr key={connection.id} className="transition-colors hover:bg-background-secondary/50">
+                                        <td className="py-3 font-mono text-sm text-foreground">{connection.pid}</td>
+                                        <td className="py-3 text-sm text-foreground">{connection.user}</td>
+                                        <td className="py-3 font-mono text-sm text-foreground-muted">{connection.database}</td>
+                                        <td className="py-3">
+                                            <ConnectionStateBadge state={connection.state} />
+                                        </td>
+                                        <td className="py-3 max-w-xs">
+                                            <code className="block font-mono text-xs text-foreground-muted line-clamp-1">
+                                                {connection.query}
+                                            </code>
+                                        </td>
+                                        <td className="py-3 text-sm text-foreground-muted">{connection.duration}</td>
+                                        <td className="py-3 font-mono text-xs text-foreground-muted">{connection.clientAddr}</td>
+                                        <td className="py-3 text-right">
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => handleKillConnection(connection)}
+                                            >
+                                                Kill
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Kill Connection Modal */}
+            <Modal
+                isOpen={showKillModal}
+                onClose={() => setShowKillModal(false)}
+                title="Kill Connection"
+                description="Are you sure you want to kill this connection? This action cannot be undone."
+            >
+                {connectionToKill && (
+                    <div className="space-y-3 rounded-lg border border-border bg-background-secondary p-4">
+                        <div className="flex justify-between">
+                            <span className="text-sm text-foreground-muted">PID:</span>
+                            <span className="font-mono text-sm text-foreground">{connectionToKill.pid}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-sm text-foreground-muted">User:</span>
+                            <span className="text-sm text-foreground">{connectionToKill.user}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-sm text-foreground-muted">State:</span>
+                            <ConnectionStateBadge state={connectionToKill.state} />
+                        </div>
+                    </div>
+                )}
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowKillModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={confirmKillConnection}>
+                        Kill Connection
+                    </Button>
+                </ModalFooter>
+            </Modal>
+        </AppLayout>
+    );
+}
+
+function getDefaultPort(databaseType: DatabaseType): string {
+    const ports: Record<DatabaseType, string> = {
+        postgresql: '5432',
+        mysql: '3306',
+        mariadb: '3306',
+        mongodb: '27017',
+        redis: '6379',
+        keydb: '6379',
+        dragonfly: '6379',
+        clickhouse: '9000',
+    };
+    return ports[databaseType];
+}
+
+interface ConnectionFieldProps {
+    label: string;
+    value: string;
+    onCopy: () => void;
+    copied: boolean;
+}
+
+function ConnectionField({ label, value, onCopy, copied }: ConnectionFieldProps) {
+    return (
+        <div>
+            <label className="mb-2 block text-sm font-medium text-foreground-muted">
+                {label}
+            </label>
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                <code className="flex-1 font-mono text-sm text-foreground">{value}</code>
+                <button
+                    onClick={onCopy}
+                    className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                    title={`Copy ${label.toLowerCase()}`}
+                >
+                    <Copy className="h-4 w-4" />
+                </button>
+            </div>
+            {copied && (
+                <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>
+            )}
+        </div>
+    );
+}
+
+function ConnectionStateBadge({ state }: { state: 'active' | 'idle' | 'idle in transaction' }) {
+    const variants = {
+        active: { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Active' },
+        idle: { icon: XCircle, color: 'text-foreground-muted', bg: 'bg-foreground-muted/10', label: 'Idle' },
+        'idle in transaction': { icon: AlertTriangle, color: 'text-yellow-500', bg: 'bg-yellow-500/10', label: 'In Transaction' },
+    };
+
+    const variant = variants[state];
+    const Icon = variant.icon;
+
+    return (
+        <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 ${variant.bg}`}>
+            <Icon className={`h-3 w-3 ${variant.color}`} />
+            <span className={`text-xs font-medium ${variant.color}`}>{variant.label}</span>
+        </div>
+    );
+}

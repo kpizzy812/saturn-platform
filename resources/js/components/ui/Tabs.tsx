@@ -1,0 +1,125 @@
+import * as React from 'react';
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react';
+import { cn } from '@/lib/utils';
+
+// Legacy API - tabs as an array
+interface TabItem {
+    label: string;
+    content: React.ReactNode;
+    disabled?: boolean;
+}
+
+interface LegacyTabsProps {
+    tabs: TabItem[];
+    defaultIndex?: number;
+    onChange?: (index: number) => void;
+}
+
+export function Tabs({ tabs, defaultIndex = 0, onChange }: LegacyTabsProps) {
+    return (
+        <TabGroup defaultIndex={defaultIndex} onChange={onChange}>
+            <TabList className="flex gap-1 border-b border-border">
+                {tabs.map((tab, index) => (
+                    <Tab
+                        key={index}
+                        disabled={tab.disabled}
+                        className={({ selected }) =>
+                            cn(
+                                'px-4 py-2 text-sm font-medium outline-none transition-colors',
+                                'border-b-2 -mb-px',
+                                selected
+                                    ? 'border-primary text-foreground'
+                                    : 'border-transparent text-foreground-muted hover:text-foreground',
+                                tab.disabled && 'cursor-not-allowed opacity-50'
+                            )
+                        }
+                    >
+                        {tab.label}
+                    </Tab>
+                ))}
+            </TabList>
+            <TabPanels className="mt-4">
+                {tabs.map((tab, index) => (
+                    <TabPanel key={index} className="outline-none">
+                        {tab.content}
+                    </TabPanel>
+                ))}
+            </TabPanels>
+        </TabGroup>
+    );
+}
+
+// Composable API - individual components
+interface TabsRootProps {
+    children: React.ReactNode;
+    defaultIndex?: number;
+    onChange?: (index: number) => void;
+    className?: string;
+}
+
+export function TabsRoot({ children, defaultIndex = 0, onChange, className }: TabsRootProps) {
+    return (
+        <TabGroup defaultIndex={defaultIndex} onChange={onChange} className={className}>
+            {children}
+        </TabGroup>
+    );
+}
+
+interface TabsListProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function TabsList({ children, className }: TabsListProps) {
+    return (
+        <TabList className={cn('flex gap-1 border-b border-border', className)}>
+            {children}
+        </TabList>
+    );
+}
+
+interface TabsTriggerProps {
+    children: React.ReactNode;
+    disabled?: boolean;
+    className?: string;
+}
+
+export function TabsTrigger({ children, disabled, className }: TabsTriggerProps) {
+    return (
+        <Tab
+            disabled={disabled}
+            className={({ selected }) =>
+                cn(
+                    'px-4 py-2 text-sm font-medium outline-none transition-colors',
+                    'border-b-2 -mb-px',
+                    selected
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-foreground-muted hover:text-foreground',
+                    disabled && 'cursor-not-allowed opacity-50',
+                    className
+                )
+            }
+        >
+            {children}
+        </Tab>
+    );
+}
+
+interface TabsContentProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function TabsContent({ children, className }: TabsContentProps) {
+    return <TabPanel className={cn('outline-none', className)}>{children}</TabPanel>;
+}
+
+// Also export TabsPanels for wrapping multiple TabsContent components
+interface TabsPanelsProps {
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function TabsPanels({ children, className }: TabsPanelsProps) {
+    return <TabPanels className={cn('mt-4', className)}>{children}</TabPanels>;
+}

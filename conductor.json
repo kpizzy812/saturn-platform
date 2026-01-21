@@ -1,0 +1,7 @@
+{
+    "scripts": {
+        "setup": "./scripts/conductor-setup.sh",
+        "run": "docker rm -f saturn saturn-minio-init saturn-realtime saturn-minio saturn-testing-host saturn-redis saturn-db saturn-mail saturn-vite; spin up; spin down"
+    },
+    "runScriptMode": "nonconcurrent"
+}

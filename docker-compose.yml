@@ -1,0 +1,37 @@
+services:
+    saturn:
+        container_name: saturn
+        restart: always
+        working_dir: /var/www/html
+        extra_hosts:
+            - host.docker.internal:host-gateway
+        networks:
+            - saturn
+        depends_on:
+            - postgres
+            - redis
+            - soketi
+    postgres:
+        image: postgres:15-alpine
+        container_name: saturn-db
+        restart: always
+        networks:
+            - saturn
+    redis:
+        image: redis:7-alpine
+        container_name: saturn-redis
+        restart: always
+        networks:
+            - saturn
+    soketi:
+        container_name: saturn-realtime
+        extra_hosts:
+            - host.docker.internal:host-gateway
+        restart: always
+        networks:
+            - saturn
+networks:
+    saturn:
+        name: saturn
+        driver: bridge
+        external: false

@@ -1,0 +1,15 @@
+# Railway Configuration for Coolify
+# https://docs.railway.com/guides/laravel
+
+[build]
+# Use Dockerfile for production setup
+builder = "dockerfile"
+
+[deploy]
+# Health check endpoint
+healthcheckPath = "/healthcheck.php"
+healthcheckTimeout = 300
+
+# Restart policy
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

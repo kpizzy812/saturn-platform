@@ -1,0 +1,389 @@
+/* Project Map Styles - Railway pixel-perfect dark theme */
+/* Railway Color Palette:
+   - Background: #0D0D0D (main bg - darkest)
+   - Secondary: #141414 (cards, surfaces)
+   - Tertiary: #1A1A1A (elevated surfaces)
+   - Border: #2A2A2A (subtle borders)
+   - Border Hover: #3A3A3A (hover state)
+   - Accent: #7C3AED (purple)
+   - Accent Hover: #9F67FF (lighter purple)
+   - Text Primary: #FFFFFF
+   - Text Secondary: #A1A1A1
+   - Text Muted: #6B6B6B
+*/
+
+:root {
+    --railway-bg: #0D0D0D;
+    --railway-surface: #141414;
+    --railway-surface-hover: #1A1A1A;
+    --railway-border: #2A2A2A;
+    --railway-border-hover: #3A3A3A;
+    --railway-accent: #7C3AED;
+    --railway-accent-hover: #9F67FF;
+    --railway-text: #FFFFFF;
+    --railway-text-muted: #A1A1A1;
+    --railway-text-dim: #6B6B6B;
+    --railway-success: #10B981;
+    --railway-warning: #F59E0B;
+    --railway-error: #EF4444;
+}
+
+.project-map-flow {
+    background-color: var(--railway-bg) !important;
+}
+
+/* Node styles - Railway-style cards */
+.react-flow__node {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.react-flow__node:hover {
+    z-index: 10;
+    transform: translateY(-1px);
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6));
+}
+
+.react-flow__node.selected {
+    z-index: 20;
+    filter: drop-shadow(0 0 16px rgba(124, 58, 237, 0.4));
+}
+
+/* Handle styles - Railway-style connection points */
+.react-flow__handle {
+    width: 12px !important;
+    height: 12px !important;
+    border-radius: 50% !important;
+    background-color: var(--railway-accent) !important;
+    border: 2px solid var(--railway-bg) !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.react-flow__handle:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+    background-color: var(--railway-accent-hover) !important;
+}
+
+/* Edge styles - Railway-style connections */
+.react-flow__edge-path {
+    stroke: var(--railway-accent) !important;
+    stroke-width: 2px !important;
+}
+
+.react-flow__edge.animated path {
+    stroke-dasharray: 6;
+    animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+    from { stroke-dashoffset: 12; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* Connection line - while dragging */
+.react-flow__connection-line {
+    stroke: var(--railway-accent-hover) !important;
+    stroke-width: 2px !important;
+    stroke-dasharray: 6;
+}
+
+/* Controls - Railway-style minimal */
+.react-flow__controls {
+    background-color: var(--railway-surface) !important;
+    border: 1px solid var(--railway-border) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.react-flow__controls-button {
+    background-color: var(--railway-surface) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--railway-border) !important;
+    color: var(--railway-text-dim) !important;
+    padding: 8px !important;
+    width: 32px !important;
+    height: 32px !important;
+    transition: all 0.15s ease;
+}
+
+.react-flow__controls-button:hover {
+    background-color: var(--railway-surface-hover) !important;
+    color: var(--railway-text) !important;
+}
+
+.react-flow__controls-button:last-child {
+    border-bottom: none !important;
+}
+
+.react-flow__controls-button svg {
+    fill: currentColor !important;
+    width: 14px !important;
+    height: 14px !important;
+}
+
+/* MiniMap - Railway-style */
+.react-flow__minimap {
+    background-color: var(--railway-surface) !important;
+    border: 1px solid var(--railway-border) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.react-flow__minimap-mask {
+    fill: rgba(13, 13, 13, 0.9) !important;
+}
+
+/* Background - Subtle dot grid */
+.react-flow__background {
+    background-color: var(--railway-bg) !important;
+}
+
+.react-flow__background pattern circle {
+    fill: #1A1A1A !important;
+}
+
+/* Attribution */
+.react-flow__attribution {
+    display: none !important;
+}
+
+/* Panel styling */
+.react-flow__panel {
+    margin: 12px !important;
+}
+
+/* Selection box */
+.react-flow__selection {
+    background-color: rgba(124, 58, 237, 0.1) !important;
+    border: 1px dashed var(--railway-accent) !important;
+}
+
+/* Railway accent classes */
+.bg-railway {
+    background-color: var(--railway-accent);
+}
+
+.bg-railway:hover {
+    background-color: var(--railway-accent-hover);
+}
+
+.text-railway {
+    color: var(--railway-accent);
+}
+
+.border-railway {
+    border-color: var(--railway-accent);
+}
+
+/* Node card base styles */
+.railway-node {
+    background: linear-gradient(180deg, var(--railway-surface) 0%, #101010 100%);
+    border: 1px solid var(--railway-border);
+    border-radius: 12px;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.railway-node:hover {
+    border-color: var(--railway-border-hover);
+    background: linear-gradient(180deg, var(--railway-surface-hover) 0%, var(--railway-surface) 100%);
+}
+
+.railway-node.selected {
+    border-color: var(--railway-accent);
+    box-shadow: 0 0 0 1px var(--railway-accent), 0 8px 24px rgba(124, 58, 237, 0.2);
+}
+
+/* Status indicators - Railway style */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.status-dot::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.status-running {
+    background-color: var(--railway-success);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.status-running::before {
+    background-color: var(--railway-success);
+    animation: pulse-ring 2s ease-out infinite;
+}
+
+.status-stopped {
+    background-color: #525252;
+}
+
+.status-error {
+    background-color: var(--railway-error);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.status-deploying {
+    background-color: var(--railway-warning);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Button styles - Railway */
+.railway-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--railway-accent);
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.railway-btn:hover {
+    background-color: var(--railway-accent-hover);
+    transform: translateY(-1px);
+}
+
+.railway-btn-secondary {
+    background-color: var(--railway-surface);
+    border: 1px solid var(--railway-border);
+    color: var(--railway-text-muted);
+}
+
+.railway-btn-secondary:hover {
+    background-color: var(--railway-surface-hover);
+    border-color: var(--railway-border-hover);
+    color: var(--railway-text);
+}
+
+/* Typography */
+.railway-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--railway-text);
+    line-height: 1.4;
+}
+
+.railway-subtitle {
+    font-size: 11px;
+    color: var(--railway-text-muted);
+    line-height: 1.4;
+}
+
+.railway-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--railway-text-dim);
+}
+
+/* Panel styles */
+.railway-panel {
+    background-color: var(--railway-surface);
+    border: 1px solid var(--railway-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.railway-panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--railway-border);
+}
+
+.railway-panel-body {
+    padding: 12px;
+}
+
+/* Icon container */
+.railway-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(124, 58, 237, 0.05) 100%);
+    border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.railway-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--railway-accent);
+}
+
+/* Status badge */
+.railway-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.railway-badge-success {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--railway-success);
+}
+
+.railway-badge-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--railway-warning);
+}
+
+.railway-badge-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--railway-error);
+}
+
+.railway-badge-neutral {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: var(--railway-text-muted);
+}
+
+/* Scrollbar styling */
+.railway-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.railway-scrollbar::-webkit-scrollbar-track {
+    background: var(--railway-bg);
+}
+
+.railway-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--railway-border);
+    border-radius: 3px;
+}
+
+.railway-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--railway-border-hover);
+}
