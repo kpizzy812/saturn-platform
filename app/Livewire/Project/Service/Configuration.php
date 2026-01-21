@@ -26,8 +26,18 @@ class Configuration extends Component
     }
 
     #[On('refreshServices')]
-    #[On('refresh')]
     public function refreshServices(): void
+    {
+        $this->doRefresh();
+    }
+
+    #[On('refresh')]
+    public function refresh(): void
+    {
+        $this->doRefresh();
+    }
+
+    private function doRefresh(): void
     {
         $this->service->refresh();
         $this->applications = $this->service->applications->sort();
