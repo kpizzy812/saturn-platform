@@ -56,16 +56,21 @@ BROADCAST_DRIVER=pusher
 PUSHER_APP_ID=your-app-id
 PUSHER_APP_KEY=your-app-key
 PUSHER_APP_SECRET=your-app-secret
+# Backend host - internal Docker network (Laravel -> Soketi)
 PUSHER_BACKEND_HOST=saturn-realtime
 PUSHER_BACKEND_PORT=6001
-PUSHER_SCHEME=https  # Use HTTPS in production
+PUSHER_SCHEME=https
 
 # Frontend WebSocket Configuration
+# IMPORTANT: Leave VITE_PUSHER_HOST empty for auto-detection (recommended)
+# or set to your public domain. NEVER use saturn-realtime here!
 VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
-VITE_PUSHER_HOST="${PUSHER_BACKEND_HOST}"
-VITE_PUSHER_PORT="${PUSHER_BACKEND_PORT}"
-VITE_PUSHER_SCHEME="${PUSHER_SCHEME}"
+VITE_PUSHER_HOST=
+VITE_PUSHER_PORT=443
+VITE_PUSHER_SCHEME=wss
 ```
+
+**Important:** `VITE_PUSHER_HOST` is for the browser (external). If left empty, it auto-detects from `window.location.hostname`. `PUSHER_BACKEND_HOST` is for Laravel backend (internal Docker network).
 
 ## Backend Configuration
 

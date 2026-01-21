@@ -42,16 +42,20 @@ export function initializeEcho(): Echo | null {
         }
 
         // Get WebSocket configuration from environment
-        const wsHost = import.meta.env.VITE_PUSHER_HOST;
-        const wsPort = import.meta.env.VITE_PUSHER_PORT || 6001;
-        const wsKey = import.meta.env.VITE_PUSHER_APP_KEY || 'saturn';
-        const wsScheme = import.meta.env.VITE_PUSHER_SCHEME || (window.location.protocol === 'https:' ? 'https' : 'http');
+        // If VITE_PUSHER_HOST not set, use current domain (production auto-detection)
+        const wsHost = import.meta.env.VITE_PUSHER_HOST || window.location.hostname;
+        const isAutoDetected = !import.meta.env.VITE_PUSHER_HOST;
+        const wsScheme = import.meta.env.VITE_PUSHER_SCHEME || (window.location.protocol === 'https:' ? 'wss' : 'ws');
+        const forceTLS = wsScheme === 'wss' || wsScheme === 'https';
+        // In production with auto-detection, use standard HTTPS port (Traefik handles routing)
+        // Otherwise use configured port
+        const wsPort = isAutoDetected && forceTLS ? 443 : (import.meta.env.VITE_PUSHER_PORT || 6001);
         const wssPort = import.meta.env.VITE_PUSHER_WSS_PORT || wsPort;
-        const forceTLS = wsScheme === 'https';
+        const wsKey = import.meta.env.VITE_PUSHER_APP_KEY || 'saturn';
 
-        // Skip if no WebSocket host is configured (Railway without Soketi)
-        if (!wsHost) {
-            console.debug('Echo initialization skipped: No WebSocket host configured (VITE_PUSHER_HOST not set)');
+        // Skip if hostname is internal Docker name (misconfiguration)
+        if (wsHost === 'saturn-realtime' || wsHost.endsWith('-realtime')) {
+            console.error('Echo initialization failed: VITE_PUSHER_HOST is set to internal Docker hostname. Set it to your public domain or leave empty for auto-detection.');
             window.Echo = null;
             return null;
         }
