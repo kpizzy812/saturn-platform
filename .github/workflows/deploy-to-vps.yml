@@ -4,14 +4,14 @@
 # Deploys Saturn to your VPS via SSH.
 #
 # Triggers:
-#   - Push to main → Auto deploy to dev
+#   - Push to dev → Auto deploy
 #   - Manual trigger
 #
 # Required Secrets:
-#   - VPS_HOST      - Server IP (157.180.57.47)
-#   - VPS_USER      - SSH username (root)
+#   - VPS_HOST      - Server IP
+#   - VPS_USER      - SSH username
 #   - VPS_SSH_KEY   - Private SSH key
-#   - VPS_PORT      - SSH port (22)
+#   - VPS_PORT      - SSH port
 # =============================================================================
 
 name: Deploy to VPS
@@ -34,9 +34,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
-    environment:
-      name: dev
-      url: http://${{ secrets.VPS_HOST }}:8000
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -46,11 +43,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p ${{ secrets.VPS_PORT }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Copy deployment files
         run: |
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT || 22 }} -o StrictHostKeyChecking=no" \
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no" \
             --include='docker-compose*.yml' \
             --include='deploy/***' \
             --exclude='*' \
@@ -58,7 +55,7 @@ jobs:
 
       - name: Deploy to VPS
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT || 22 }} -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'DEPLOY_SCRIPT'
           set -e
           cd ~/saturn
@@ -73,6 +70,4 @@ jobs:
       - name: Deployment summary
         run: |
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment:** dev" >> $GITHUB_STEP_SUMMARY
           echo "- **URL:** http://${{ secrets.VPS_HOST }}:8000" >> $GITHUB_STEP_SUMMARY
