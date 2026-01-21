@@ -38,7 +38,7 @@ class UpdateSaturn
 
             if ($response->successful()) {
                 $versions = $response->json();
-                $this->latestVersion = data_get($versions, 'saturn.v4.version');
+                $this->latestVersion = data_get($versions, 'coolify.v4.version');
             } else {
                 // Fallback to cache if CDN unavailable
                 $cacheVersion = get_latest_version_of_saturn();

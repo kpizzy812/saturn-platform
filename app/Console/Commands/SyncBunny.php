@@ -207,7 +207,7 @@ class SyncBunny extends Command
 
             $file = file_get_contents($versionsLocation);
             $versionsJson = json_decode($file, true);
-            $actualVersion = data_get($versionsJson, 'saturn.v4.version');
+            $actualVersion = data_get($versionsJson, 'coolify.v4.version');
 
             $timestamp = time();
             $tmpDir = sys_get_temp_dir().'/saturn-cdn-combined-'.$timestamp;

@@ -234,7 +234,7 @@ function get_latest_sentinel_version(): string
         $response = Http::get(config('constants.saturn.versions_url'));
         $versions = $response->json();
 
-        return data_get($versions, 'saturn.sentinel.version');
+        return data_get($versions, 'coolify.sentinel.version');
     } catch (\Throwable) {
         return '0.0.0';
     }
@@ -244,7 +244,7 @@ function get_latest_version_of_saturn(): string
     try {
         $versions = get_versions_data();
 
-        return data_get($versions, 'saturn.v4.version', '0.0.0');
+        return data_get($versions, 'coolify.v4.version', '0.0.0');
     } catch (\Throwable $e) {
 
         return '0.0.0';

@@ -27,7 +27,7 @@ class CheckForUpdatesJob implements ShouldBeEncrypted, ShouldQueue
             if ($response->successful()) {
                 $versions = $response->json();
 
-                $latest_version = data_get($versions, 'saturn.v4.version');
+                $latest_version = data_get($versions, 'coolify.v4.version');
                 $current_version = config('constants.saturn.version');
 
                 // Read existing cached version
@@ -35,7 +35,7 @@ class CheckForUpdatesJob implements ShouldBeEncrypted, ShouldQueue
                 $existingSaturnVersion = null;
                 if (File::exists(base_path('versions.json'))) {
                     $existingVersions = json_decode(File::get(base_path('versions.json')), true);
-                    $existingSaturnVersion = data_get($existingVersions, 'saturn.v4.version');
+                    $existingSaturnVersion = data_get($existingVersions, 'coolify.v4.version');
                 }
 
                 // Determine the BEST version to use (CDN, cache, or current)
@@ -64,7 +64,7 @@ class CheckForUpdatesJob implements ShouldBeEncrypted, ShouldQueue
                 }
 
                 // Use data_set() for safe mutation (fixes #3)
-                data_set($versions, 'saturn.v4.version', $bestVersion);
+                data_set($versions, 'coolify.v4.version', $bestVersion);
                 $latest_version = $bestVersion;
 
                 // ALWAYS write versions.json (for Sentinel, Helper, Traefik updates)

@@ -25,7 +25,7 @@ class CheckHelperImageJob implements ShouldBeEncrypted, ShouldQueue
             if ($response->successful()) {
                 $versions = $response->json();
                 $settings = instanceSettings();
-                $latest_version = data_get($versions, 'saturn.helper.version');
+                $latest_version = data_get($versions, 'coolify.helper.version');
                 $current_version = $settings->helper_version;
                 if (version_compare($latest_version, $current_version, '>')) {
                     $settings->update(['helper_version' => $latest_version]);
