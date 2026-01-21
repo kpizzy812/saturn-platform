@@ -322,10 +322,10 @@ npm run build
 2. [x] Проверить `SslHelper` vs `SSLHelper` регистр
 3. [x] Исправить `Collection::where()` static calls (ложные срабатывания)
 
-### P1 - Эта неделя
+### P1 - Эта неделя (ЗАВЕРШЕНО ✅)
 4. [x] Исправить падающие Frontend тесты (2 файла) ✅
 5. [x] Исправить PHP Unit тесты (119 → 0 failed) ✅
-6. [ ] Запустить `./vendor/bin/pint` для форматирования
+6. [x] Запустить `./vendor/bin/pint` для форматирования ✅
 
 ### P2 - Следующая неделя
 7. [ ] Реализовать Log Streaming APIs
