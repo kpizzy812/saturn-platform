@@ -82,6 +82,7 @@ function allowedPathsForBoardingAccounts()
     return [
         ...allowedPathsForUnsubscribedAccounts(),
         'onboarding',
+        'boarding',
         'livewire/update',
     ];
 }
