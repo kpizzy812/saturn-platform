@@ -16,14 +16,14 @@ class CleanupDocker
         $realtimeImage = config('constants.saturn.realtime_image');
         $realtimeImageVersion = config('constants.saturn.realtime_version');
         $realtimeImageWithVersion = "$realtimeImage:$realtimeImageVersion";
-        $realtimeImageWithoutPrefix = 'coollabsio/saturn-realtime';
-        $realtimeImageWithoutPrefixVersion = "coollabsio/saturn-realtime:$realtimeImageVersion";
+        $realtimeImageWithoutPrefix = 'coollabsio/coolify-realtime';
+        $realtimeImageWithoutPrefixVersion = "coollabsio/coolify-realtime:$realtimeImageVersion";
 
         $helperImageVersion = getHelperVersion();
         $helperImage = config('constants.saturn.helper_image');
         $helperImageWithVersion = "$helperImage:$helperImageVersion";
-        $helperImageWithoutPrefix = 'coollabsio/saturn-helper';
-        $helperImageWithoutPrefixVersion = "coollabsio/saturn-helper:$helperImageVersion";
+        $helperImageWithoutPrefix = 'coollabsio/coolify-helper';
+        $helperImageWithoutPrefixVersion = "coollabsio/coolify-helper:$helperImageVersion";
 
         $cleanupLog = [];
 
@@ -101,13 +101,13 @@ class CleanupDocker
 
         // Build grep pattern to exclude Saturn Platform infrastructure images (current version only)
         // This pattern matches the image name regardless of registry prefix:
-        // - ghcr.io/coollabsio/saturn-helper:1.0.12
-        // - docker.io/coollabsio/saturn-helper:1.0.12
-        // - coollabsio/saturn-helper:1.0.12
-        // Pattern: (^|/)coollabsio/saturn-(helper|realtime):VERSION$
+        // - ghcr.io/coollabsio/coolify-helper:1.0.12
+        // - docker.io/coollabsio/coolify-helper:1.0.12
+        // - coollabsio/coolify-helper:1.0.12
+        // Pattern: (^|/)coollabsio/coolify-(helper|realtime):VERSION$
         $escapedHelperVersion = preg_replace('/([.\\\\+*?\[\]^$(){}|])/', '\\\\$1', $helperImageVersion);
         $escapedRealtimeVersion = preg_replace('/([.\\\\+*?\[\]^$(){}|])/', '\\\\$1', $realtimeImageVersion);
-        $infraExcludePattern = "(^|/)coollabsio/saturn-helper:{$escapedHelperVersion}$|(^|/)coollabsio/saturn-realtime:{$escapedRealtimeVersion}$";
+        $infraExcludePattern = "(^|/)coollabsio/coolify-helper:{$escapedHelperVersion}$|(^|/)coollabsio/coolify-realtime:{$escapedRealtimeVersion}$";
 
         // Delete unused images that:
         // - Are not application images (don't match app repos)
