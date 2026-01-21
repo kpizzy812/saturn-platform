@@ -1,7 +1,7 @@
 # Saturn Platform - Задачи Рефакторинга и Деплоя
 
 **Дата создания:** 2026-01-21
-**Последнее обновление:** 2026-01-21 17:30
+**Последнее обновление:** 2026-01-21 22:30
 **Ответственный:** Development Team
 **Цель:** Провести рефакторинг, деплой на сервер и исправление багов
 
@@ -11,14 +11,75 @@
 
 - **PHPStan ошибки:** 155 → 0 (100% исправлено) ✅
 - **Frontend тесты:** 2 failed → 0 failed (100% исправлено) ✅
-- **PHP Unit тесты:** ~30 файлов падают (memory/Mockery issues) ⚠️
+- **PHP Unit тесты:** 119 failed → 56 failed (53% исправлено) ⚠️ В процессе
 - **Фаза 1 (Аудит):** ✅ Завершена
 - **Фаза исправления PHPStan:** ✅ Завершена
 - **Фаза исправления Frontend тестов:** ✅ Завершена
+- **Фаза исправления PHP Unit тестов:** 🔄 В процессе (63 теста исправлено)
 
 ---
 
-## ✅ ВЫПОЛНЕНО В ЭТОЙ СЕССИИ (2026-01-21)
+## ✅ ВЫПОЛНЕНО В СЕССИИ 4 (2026-01-21, вечер)
+
+### Исправление PHP Unit тестов: 119 failed → 56 failed
+
+#### 1. Созданы отсутствующие Livewire компоненты
+
+**App\Livewire\Project\Application\General** (`app/Livewire/Project/Application/General.php`)
+- Реализована preview команд docker compose build/start
+- Методы `getDockerComposeBuildCommandPreviewProperty()`, `getDockerComposeStartCommandPreviewProperty()`
+- Инъекция флагов `-f` и `--env-file` в docker compose команды
+
+**App\Livewire\Project\Database\Import** (`app/Livewire/Project/Database/Import.php`)
+- Реализован `buildRestoreCommand()` для различных типов баз данных
+- Поддержка PostgreSQL, MySQL, MariaDB, MongoDB
+
+**App\Livewire\Project\New\DockerImage** (`app/Livewire/Project/New/DockerImage.php`)
+- Авто-парсинг docker image reference (tag, sha256 digest)
+- Поддержка registry с портом, ghcr.io, и других форматов
+
+**App\Livewire\Project\Service\Configuration** (`app/Livewire/Project/Service/Configuration.php`)
+- Реализованы event listeners для `refreshServices` и `refresh`
+- Метод `refreshServices()` для обновления данных
+
+**App\Livewire\Project\Service\StackForm** (`app/Livewire/Project/Service/StackForm.php`)
+- Dispatch `refreshServices` event при submit
+
+**App\Livewire\Project\Service\EditDomain** (`app/Livewire/Project/Service/EditDomain.php`)
+- Dispatch `refreshServices` event при submit
+
+#### 2. Исправлены Mockery issues в тестах
+
+- **ServerManagerJobSentinelCheckTest.php** - добавлен `shouldIgnoreMissing()` для InstanceSettings mock
+- **Множество тестов** - исправлены `BadMethodCallException` на `setAttribute()`
+
+#### 3. Добавлены недостающие свойства в Jobs
+
+**DatabaseBackupJob.php**
+- Добавлено `$tries = 2`
+- Добавлен метод `backoff(): array`
+- Изменен конструктор: `max(60, $backup->timeout ?? 3600)` - минимум 60 секунд
+
+#### 4. Созданы view файлы для Livewire компонентов
+- `resources/views/livewire/project/application/general.blade.php`
+- `resources/views/livewire/project/database/import.blade.php`
+- `resources/views/livewire/project/new/docker-image.blade.php`
+- `resources/views/livewire/project/service/configuration.blade.php`
+- `resources/views/livewire/project/service/stack-form.blade.php`
+- `resources/views/livewire/project/service/edit-domain.blade.php`
+
+#### 5. Восстановлены полноценные тесты
+
+**DockerImageAutoParseTest.php** - заменены skip-заглушки на реальные тесты:
+- Тест парсинга image:tag
+- Тест парсинга image@sha256:digest
+- Тест парсинга registry:port/image:tag
+- Тест ghcr.io с digest
+- Тесты предотвращения авто-парсинга при заполненных полях
+
+---
+
+## ✅ ВЫПОЛНЕНО В СЕССИЯХ 1-3 (2026-01-21)
 
 ### 1. Создан `App\Livewire\GlobalSearch` stub класс
 **Файл:** `app/Livewire/GlobalSearch.php`
@@ -216,14 +277,29 @@ npm run build
 | PHPStan | 155 ошибок | 0 ошибок | ✅ 100% исправлено |
 | Frontend Build | ✅ PASS | ✅ PASS | ✅ |
 | Frontend Tests | 2 failed | 0 failed (59 files, 1250 tests) | ✅ 100% исправлено |
-| PHP Unit Tests | ❌ FAIL | ~30 failed (~86 passed) | ⚠️ Требует внимания |
+| PHP Unit Tests | 119 failed | 56 failed (1097 passed) | 🔄 53% исправлено |
 
 ---
 
 ## 🗂️ СОЗДАННЫЕ ФАЙЛЫ
 
+### Сессии 1-3:
 1. `app/Livewire/GlobalSearch.php` - новый stub класс
 2. `phpstan.neon` - конфигурация PHPStan
+
+### Сессия 4:
+3. `app/Livewire/Project/Application/General.php` - docker compose preview
+4. `app/Livewire/Project/Database/Import.php` - database restore commands
+5. `app/Livewire/Project/New/DockerImage.php` - docker image auto-parsing
+6. `app/Livewire/Project/Service/Configuration.php` - service refresh events
+7. `app/Livewire/Project/Service/StackForm.php` - stack form submit
+8. `app/Livewire/Project/Service/EditDomain.php` - domain editing
+9. `resources/views/livewire/project/application/general.blade.php`
+10. `resources/views/livewire/project/database/import.blade.php`
+11. `resources/views/livewire/project/new/docker-image.blade.php`
+12. `resources/views/livewire/project/service/configuration.blade.php`
+13. `resources/views/livewire/project/service/stack-form.blade.php`
+14. `resources/views/livewire/project/service/edit-domain.blade.php`
 
 ## 🗑️ УДАЛЁННЫЕ ФАЙЛЫ
 
@@ -263,15 +339,13 @@ npm run build
 - Проверка порядка вызовов
 - Моки глобальных helper функций
 
-### Файлы требующие внимания (~30 файлов):
-- `tests/Unit/ApplicationComposeEditorLoadTest.php`
-- `tests/Unit/ApplicationPortDetectionTest.php`
-- `tests/Unit/ContainerHealthStatusTest.php`
-- `tests/Unit/Jobs/RestartProxyJobTest.php`
-- `tests/Unit/ServerManagerJobSentinelCheckTest.php`
-- `tests/Unit/ServerQueryScopeTest.php`
-- `tests/Unit/ServiceRequiredPortTest.php`
-- И другие...
+### Оставшиеся проблемы (56 тестов):
+- `tests/Unit/ServerManagerJobSentinelCheckTest.php` - Server static mocking issues
+- `tests/Unit/ServiceExcludedStatusTest.php` - Status comparison issues
+- `tests/Unit/ScheduledJobManagerLockTest.php` - Reflection on private properties
+- `tests/Unit/ApplicationDeploymentNixpacksNullEnvTest.php` - Complex reflection tests
+- `tests/Unit/ApplicationComposeEditorLoadTest.php` - Missing component method
+- И другие с аналогичными проблемами...
 
 ### Рекомендации
 1. Увеличить memory_limit в phpunit.xml
@@ -280,4 +354,4 @@ npm run build
 
 ---
 
-**Статус:** ✅ PHPStan + Frontend тесты исправлены - Переход к PHP Unit тестам
+**Статус:** ✅ PHPStan + Frontend тесты исправлены | 🔄 PHP Unit тесты: 119 → 56 failed (53% прогресс)

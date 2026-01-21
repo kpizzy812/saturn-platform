@@ -1,4 +1,5 @@
 <?php
+
 // Simple test - does PHP work at all?
 echo "PHP works!\n";
 
@@ -8,7 +9,7 @@ try {
     if ($db_url) {
         $parsed = parse_url($db_url);
         $dsn = sprintf(
-            "pgsql:host=%s;port=%s;dbname=%s",
+            'pgsql:host=%s;port=%s;dbname=%s',
             $parsed['host'],
             $parsed['port'] ?? 5432,
             ltrim($parsed['path'], '/')
@@ -19,7 +20,7 @@ try {
         echo "DATABASE_URL not set\n";
     }
 } catch (Exception $e) {
-    echo "Database error: " . $e->getMessage() . "\n";
+    echo 'Database error: '.$e->getMessage()."\n";
 }
 
 // Test Laravel bootstrap
@@ -37,7 +38,7 @@ try {
     echo "\nLaravel boots successfully!\n";
 } catch (Throwable $e) {
     echo "\n=== LARAVEL ERROR ===\n";
-    echo "Message: " . $e->getMessage() . "\n";
-    echo "File: " . $e->getFile() . ":" . $e->getLine() . "\n";
-    echo "\nTrace:\n" . $e->getTraceAsString() . "\n";
+    echo 'Message: '.$e->getMessage()."\n";
+    echo 'File: '.$e->getFile().':'.$e->getLine()."\n";
+    echo "\nTrace:\n".$e->getTraceAsString()."\n";
 }

@@ -6,7 +6,6 @@
  * This file is used with PHP's built-in development server to properly
  * route requests to Laravel's front controller while serving static files.
  */
-
 $uri = urldecode(
     parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
 );

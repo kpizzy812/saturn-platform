@@ -13,7 +13,7 @@ use App\Models\StandaloneDocker;
  */
 it('syncs docker_compose_raw to component property after loading compose file', function () {
     // Create a mock application
-    $app = \Mockery::mock(Application::class)->makePartial();
+    $app = \Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
     $app->shouldReceive('getAttribute')->with('docker_compose_raw')->andReturn(null, 'version: "3"\nservices:\n  web:\n    image: nginx');
     $app->shouldReceive('getAttribute')->with('docker_compose_location')->andReturn('/docker-compose.yml');
     $app->shouldReceive('getAttribute')->with('base_directory')->andReturn('/');

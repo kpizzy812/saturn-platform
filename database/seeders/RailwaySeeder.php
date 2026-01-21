@@ -59,6 +59,7 @@ class RailwaySeeder extends Seeder
         try {
             if (User::find(0) !== null) {
                 echo "  Root User ID=0 already exists\n";
+
                 return;
             }
 
@@ -84,6 +85,7 @@ class RailwaySeeder extends Seeder
         try {
             if (Team::find(0) !== null) {
                 echo "  Root Team ID=0 already exists\n";
+
                 return;
             }
 
@@ -111,6 +113,7 @@ class RailwaySeeder extends Seeder
 
             if ($exists !== null) {
                 echo "  User-Team link already exists\n";
+
                 return;
             }
 

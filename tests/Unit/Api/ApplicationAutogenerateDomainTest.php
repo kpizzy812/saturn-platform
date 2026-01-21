@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Server;
-use App\Models\ServerSetting;
 
 beforeEach(function () {
     // Mock Log to prevent actual logging
@@ -10,15 +9,18 @@ beforeEach(function () {
 });
 
 it('generateUrl produces correct URL with wildcard domain', function () {
-    $serverSettings = Mockery::mock(ServerSetting::class);
+    // Create a settings object with the wildcard domain property
+    $serverSettings = new stdClass;
     $serverSettings->wildcard_domain = 'http://example.com';
 
-    $server = Mockery::mock(Server::class)->makePartial();
+    $server = Mockery::mock(Server::class)->makePartial()->shouldIgnoreMissing();
     $server->shouldReceive('getAttribute')
         ->with('settings')
         ->andReturn($serverSettings);
+    // Also support object property access
+    $server->settings = $serverSettings;
 
-    // Mock data_get to return the wildcard domain
+    // Test data_get with the mock
     $wildcard = data_get($server, 'settings.wildcard_domain');
 
     expect($wildcard)->toBe('http://example.com');

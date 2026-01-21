@@ -1,7 +1,7 @@
 <?php
 
-use App\Jobs\SaturnTask;
 use App\Jobs\DatabaseBackupJob;
+use App\Jobs\SaturnTask;
 use App\Jobs\ScheduledTaskJob;
 
 it('SaturnTask has correct retry properties defined', function () {

@@ -19,8 +19,8 @@ afterEach(function () {
 
 it('dispatches CheckAndStartSentinelJob hourly for sentinel-enabled servers', function () {
     // Mock InstanceSettings
-    $settings = \Mockery::mock(InstanceSettings::class);
-    $settings->instance_timezone = 'UTC';
+    $settings = \Mockery::mock(InstanceSettings::class)->shouldIgnoreMissing();
+    $settings->shouldReceive('getAttribute')->with('instance_timezone')->andReturn('UTC');
     $this->app->instance(InstanceSettings::class, $settings);
 
     // Create a mock server with sentinel enabled
@@ -49,8 +49,8 @@ it('dispatches CheckAndStartSentinelJob hourly for sentinel-enabled servers', fu
 
 it('does not dispatch CheckAndStartSentinelJob for servers without sentinel enabled', function () {
     // Mock InstanceSettings
-    $settings = \Mockery::mock(InstanceSettings::class);
-    $settings->instance_timezone = 'UTC';
+    $settings = \Mockery::mock(InstanceSettings::class)->shouldIgnoreMissing();
+    $settings->shouldReceive('getAttribute')->with('instance_timezone')->andReturn('UTC');
     $this->app->instance(InstanceSettings::class, $settings);
 
     // Create a mock server with sentinel disabled
@@ -77,8 +77,8 @@ it('does not dispatch CheckAndStartSentinelJob for servers without sentinel enab
 
 it('respects server timezone when scheduling sentinel checks', function () {
     // Mock InstanceSettings
-    $settings = \Mockery::mock(InstanceSettings::class);
-    $settings->instance_timezone = 'UTC';
+    $settings = \Mockery::mock(InstanceSettings::class)->shouldIgnoreMissing();
+    $settings->shouldReceive('getAttribute')->with('instance_timezone')->andReturn('UTC');
     $this->app->instance(InstanceSettings::class, $settings);
 
     // Set test time to top of hour in America/New_York (which is 17:00 UTC)
@@ -110,8 +110,8 @@ it('respects server timezone when scheduling sentinel checks', function () {
 
 it('does not dispatch sentinel check when not at top of hour', function () {
     // Mock InstanceSettings
-    $settings = \Mockery::mock(InstanceSettings::class);
-    $settings->instance_timezone = 'UTC';
+    $settings = \Mockery::mock(InstanceSettings::class)->shouldIgnoreMissing();
+    $settings->shouldReceive('getAttribute')->with('instance_timezone')->andReturn('UTC');
     $this->app->instance(InstanceSettings::class, $settings);
 
     // Set test time to middle of the hour (not top of hour)

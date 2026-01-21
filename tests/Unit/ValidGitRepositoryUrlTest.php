@@ -2,9 +2,8 @@
 
 use App\Rules\ValidGitRepositoryUrl;
 use Illuminate\Support\Facades\Validator;
-use Tests\TestCase;
 
-uses(TestCase::class);
+// uses(Tests\TestCase::class) is defined globally in tests/Pest.php
 
 it('validates standard GitHub URLs', function () {
     $rule = new ValidGitRepositoryUrl;

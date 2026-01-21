@@ -109,7 +109,6 @@ class AuditLog extends Model
      * @param  Model|null  $resource  The resource being acted upon
      * @param  string|null  $description  A human-readable description of the action
      * @param  array  $metadata  Additional metadata about the action
-     * @return static
      */
     public static function log(
         string $action,

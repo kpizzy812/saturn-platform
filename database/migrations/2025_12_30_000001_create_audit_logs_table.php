@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('audit_logs')) {
+        if (! Schema::hasTable('audit_logs')) {
             Schema::create('audit_logs', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
@@ -40,7 +40,7 @@ return new class extends Migration
      */
     private function addIndexIfNotExists(string $table, string|array $columns, string $indexName): void
     {
-        $indexExists = DB::select("SELECT 1 FROM pg_indexes WHERE indexname = ?", [$indexName]);
+        $indexExists = DB::select('SELECT 1 FROM pg_indexes WHERE indexname = ?', [$indexName]);
 
         if (empty($indexExists)) {
             Schema::table($table, function (Blueprint $table) use ($columns, $indexName) {

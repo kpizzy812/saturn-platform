@@ -1,6 +1,6 @@
 <?php
 
-uses(\Tests\TestCase::class);
+// uses(\Tests\TestCase::class) is defined globally in tests/Pest.php
 
 it('extracts commit SHA from git ls-remote output without warnings', function () {
     $output = "196d3df7665359a8c8fa3329a6bcde0267e550bf\trefs/heads/master";

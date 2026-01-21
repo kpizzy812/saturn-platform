@@ -4,8 +4,7 @@ use App\Jobs\ApplicationDeploymentJob;
 use App\Livewire\Project\Application\General;
 
 it('prevents double slashes in build command preview when baseDirectory is root', function () {
-    // Mock the component with properties
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomBuildCommand = 'docker compose build';
@@ -20,7 +19,7 @@ it('prevents double slashes in build command preview when baseDirectory is root'
 });
 
 it('correctly formats build command preview with nested baseDirectory', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/backend';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomBuildCommand = 'docker compose build';
@@ -34,7 +33,7 @@ it('correctly formats build command preview with nested baseDirectory', function
 });
 
 it('correctly formats build command preview with deeply nested baseDirectory', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/apps/api/backend';
     $component->dockerComposeLocation = '/docker-compose.prod.yaml';
     $component->dockerComposeCustomBuildCommand = 'docker compose build';
@@ -47,7 +46,7 @@ it('correctly formats build command preview with deeply nested baseDirectory', f
 });
 
 it('uses BUILD_TIME_ENV_PATH constant instead of hardcoded path in build command preview', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomBuildCommand = 'docker compose build';
@@ -61,7 +60,7 @@ it('uses BUILD_TIME_ENV_PATH constant instead of hardcoded path in build command
 });
 
 it('returns empty string for build command preview when no custom build command is set', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/backend';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomBuildCommand = null;
@@ -72,7 +71,7 @@ it('returns empty string for build command preview when no custom build command 
 });
 
 it('prevents double slashes in start command preview when baseDirectory is root', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomStartCommand = 'docker compose up -d';
@@ -87,7 +86,7 @@ it('prevents double slashes in start command preview when baseDirectory is root'
 });
 
 it('correctly formats start command preview with nested baseDirectory', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/frontend';
     $component->dockerComposeLocation = '/compose.yaml';
     $component->dockerComposeCustomStartCommand = 'docker compose up -d';
@@ -100,7 +99,7 @@ it('correctly formats start command preview with nested baseDirectory', function
 });
 
 it('uses workdir env placeholder in start command preview', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomStartCommand = 'docker compose up -d';
@@ -115,7 +114,7 @@ it('uses workdir env placeholder in start command preview', function () {
 });
 
 it('returns empty string for start command preview when no custom start command is set', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/backend';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomStartCommand = null;
@@ -126,7 +125,7 @@ it('returns empty string for start command preview when no custom start command 
 });
 
 it('handles baseDirectory with trailing slash correctly in build command', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/backend/';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomBuildCommand = 'docker compose build';
@@ -141,7 +140,7 @@ it('handles baseDirectory with trailing slash correctly in build command', funct
 });
 
 it('handles baseDirectory with trailing slash correctly in start command', function () {
-    $component = Mockery::mock(General::class)->makePartial();
+    $component = new General;
     $component->baseDirectory = '/backend/';
     $component->dockerComposeLocation = '/docker-compose.yaml';
     $component->dockerComposeCustomStartCommand = 'docker compose up -d';

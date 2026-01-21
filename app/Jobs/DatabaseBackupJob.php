@@ -32,6 +32,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 2;
+
     public $maxExceptions = 1;
 
     public ?Team $team = null;
@@ -77,7 +79,15 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
     public function __construct(public ScheduledDatabaseBackup $backup)
     {
         $this->onQueue('high');
-        $this->timeout = $backup->timeout ?? 3600;
+        $this->timeout = max(60, $backup->timeout ?? 3600);
+    }
+
+    /**
+     * Calculate the number of seconds to wait before retrying the job.
+     */
+    public function backoff(): array
+    {
+        return [60, 120];
     }
 
     public function handle(): void

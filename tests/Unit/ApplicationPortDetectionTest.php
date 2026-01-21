@@ -18,17 +18,13 @@ beforeEach(function () {
 });
 
 it('detects PORT environment variable when present', function () {
-    // Create a mock Application instance
-    $application = \Mockery::mock(Application::class)->makePartial();
+    // Create a mock Application instance with ignored missing methods
+    $application = \Mockery::mock(Application::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $application->shouldReceive('setAttribute')->andReturnSelf();
 
     // Mock environment variables collection with PORT set to 3000
-    $portEnvVar = \Mockery::mock(EnvironmentVariable::class);
+    $portEnvVar = \Mockery::mock(EnvironmentVariable::class)->shouldIgnoreMissing();
     $portEnvVar->shouldReceive('getAttribute')->with('real_value')->andReturn('3000');
-
-    $envVars = new Collection([$portEnvVar]);
-    $application->shouldReceive('getAttribute')
-        ->with('environment_variables')
-        ->andReturn($envVars);
 
     // Mock the firstWhere method to return our PORT env var
     $envVars = \Mockery::mock(Collection::class);
@@ -44,7 +40,8 @@ it('detects PORT environment variable when present', function () {
 });
 
 it('returns null when PORT environment variable is not set', function () {
-    $application = \Mockery::mock(Application::class)->makePartial();
+    $application = \Mockery::mock(Application::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $application->shouldReceive('setAttribute')->andReturnSelf();
 
     // Mock environment variables collection without PORT
     $envVars = \Mockery::mock(Collection::class);
@@ -59,10 +56,11 @@ it('returns null when PORT environment variable is not set', function () {
 });
 
 it('returns null when PORT value is not numeric', function () {
-    $application = \Mockery::mock(Application::class)->makePartial();
+    $application = \Mockery::mock(Application::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $application->shouldReceive('setAttribute')->andReturnSelf();
 
     // Mock environment variables with non-numeric PORT value
-    $portEnvVar = \Mockery::mock(EnvironmentVariable::class);
+    $portEnvVar = \Mockery::mock(EnvironmentVariable::class)->shouldIgnoreMissing();
     $portEnvVar->shouldReceive('getAttribute')->with('real_value')->andReturn('invalid-port');
 
     $envVars = \Mockery::mock(Collection::class);
@@ -77,10 +75,11 @@ it('returns null when PORT value is not numeric', function () {
 });
 
 it('handles PORT value with whitespace', function () {
-    $application = \Mockery::mock(Application::class)->makePartial();
+    $application = \Mockery::mock(Application::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $application->shouldReceive('setAttribute')->andReturnSelf();
 
     // Mock environment variables with PORT value that has whitespace
-    $portEnvVar = \Mockery::mock(EnvironmentVariable::class);
+    $portEnvVar = \Mockery::mock(EnvironmentVariable::class)->shouldIgnoreMissing();
     $portEnvVar->shouldReceive('getAttribute')->with('real_value')->andReturn('  8080  ');
 
     $envVars = \Mockery::mock(Collection::class);
@@ -95,10 +94,11 @@ it('handles PORT value with whitespace', function () {
 });
 
 it('detects PORT from preview environment variables when isPreview is true', function () {
-    $application = \Mockery::mock(Application::class)->makePartial();
+    $application = \Mockery::mock(Application::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $application->shouldReceive('setAttribute')->andReturnSelf();
 
     // Mock preview environment variables with PORT
-    $portEnvVar = \Mockery::mock(EnvironmentVariable::class);
+    $portEnvVar = \Mockery::mock(EnvironmentVariable::class)->shouldIgnoreMissing();
     $portEnvVar->shouldReceive('getAttribute')->with('real_value')->andReturn('4000');
 
     $envVars = \Mockery::mock(Collection::class);
