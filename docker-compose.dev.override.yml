@@ -1,0 +1,122 @@
+# =============================================================================
+# Saturn Platform - Development Environment Override
+# =============================================================================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.dev.override.yml up -d
+#
+# This file overrides production settings for development/testing environment.
+# Data directory: /data/saturn
+# =============================================================================
+
+services:
+  saturn:
+    container_name: saturn-dev
+    # Use Coolify image for now; CI/CD will build Saturn image later
+    image: "${SATURN_IMAGE:-ghcr.io/coollabsio/coolify:latest}"
+    volumes:
+      - type: bind
+        source: /data/saturn/source/.env
+        target: /var/www/html/.env
+        read_only: true
+      - /data/saturn/ssh:/var/www/html/storage/app/ssh
+      - /data/saturn/applications:/var/www/html/storage/app/applications
+      - /data/saturn/databases:/var/www/html/storage/app/databases
+      - /data/saturn/services:/var/www/html/storage/app/services
+      - /data/saturn/backups:/var/www/html/storage/app/backups
+    environment:
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - LOG_LEVEL=debug
+      - PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT:-512M}
+      - PHP_FPM_PM_CONTROL=${PHP_FPM_PM_CONTROL:-dynamic}
+      - PHP_FPM_PM_START_SERVERS=${PHP_FPM_PM_START_SERVERS:-2}
+      - PHP_FPM_PM_MIN_SPARE_SERVERS=${PHP_FPM_PM_MIN_SPARE_SERVERS:-1}
+      - PHP_FPM_PM_MAX_SPARE_SERVERS=${PHP_FPM_PM_MAX_SPARE_SERVERS:-5}
+    env_file:
+      - /data/saturn/source/.env
+    ports:
+      - "${APP_PORT:-8000}:8080"
+    expose:
+      - "${APP_PORT:-8000}"
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8080/api/health || exit 1
+      interval: 10s
+      retries: 5
+      timeout: 5s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      soketi:
+        condition: service_healthy
+    networks:
+      - saturn
+    labels:
+      - "saturn.environment=dev"
+      - "saturn.managed=true"
+
+  postgres:
+    container_name: saturn-db
+    image: postgres:15-alpine
+    volumes:
+      - saturn-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: "${DB_USERNAME}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+      POSTGRES_DB: "${DB_DATABASE:-saturn}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE:-saturn}"]
+      interval: 5s
+      retries: 10
+      timeout: 2s
+    networks:
+      - saturn
+
+  redis:
+    container_name: saturn-redis
+    image: redis:7-alpine
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    volumes:
+      - saturn-redis:/data
+    healthcheck:
+      test: redis-cli -a ${REDIS_PASSWORD} ping
+      interval: 5s
+      retries: 10
+      timeout: 2s
+    networks:
+      - saturn
+
+  soketi:
+    container_name: saturn-realtime
+    image: 'ghcr.io/coollabsio/coolify-realtime:1.0.10'
+    ports:
+      - "${SOKETI_PORT:-6001}:6001"
+      - "${SOKETI_METRICS_PORT:-6002}:6002"
+    volumes:
+      - /data/saturn/ssh:/var/www/html/storage/app/ssh
+    environment:
+      APP_NAME: "${APP_NAME:-Saturn Dev}"
+      SOKETI_DEBUG: "${SOKETI_DEBUG:-true}"
+      SOKETI_DEFAULT_APP_ID: "${PUSHER_APP_ID}"
+      SOKETI_DEFAULT_APP_KEY: "${PUSHER_APP_KEY}"
+      SOKETI_DEFAULT_APP_SECRET: "${PUSHER_APP_SECRET}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6001/ready && wget -qO- http://127.0.0.1:6002/ready || exit 1"]
+      interval: 5s
+      retries: 10
+      timeout: 2s
+    networks:
+      - saturn
+
+volumes:
+  saturn-db:
+    name: saturn-db
+  saturn-redis:
+    name: saturn-redis
+
+networks:
+  saturn:
+    name: saturn
+    driver: bridge

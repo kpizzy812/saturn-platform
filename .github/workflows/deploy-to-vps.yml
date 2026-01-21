@@ -1,0 +1,78 @@
+# =============================================================================
+# Saturn Platform - VPS Deployment Workflow
+# =============================================================================
+# Deploys Saturn to your VPS via SSH.
+#
+# Triggers:
+#   - Push to main → Auto deploy to dev
+#   - Manual trigger
+#
+# Required Secrets:
+#   - VPS_HOST      - Server IP (157.180.57.47)
+#   - VPS_USER      - SSH username (root)
+#   - VPS_SSH_KEY   - Private SSH key
+#   - VPS_PORT      - SSH port (22)
+# =============================================================================
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - dev
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: dev
+      url: http://${{ secrets.VPS_HOST }}:8000
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy deployment files
+        run: |
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT || 22 }} -o StrictHostKeyChecking=no" \
+            --include='docker-compose*.yml' \
+            --include='deploy/***' \
+            --exclude='*' \
+            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/saturn/
+
+      - name: Deploy to VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT || 22 }} -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'DEPLOY_SCRIPT'
+          set -e
+          cd ~/saturn
+          chmod +x deploy/scripts/*.sh
+          ./deploy/scripts/deploy.sh
+          DEPLOY_SCRIPT
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** dev" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL:** http://${{ secrets.VPS_HOST }}:8000" >> $GITHUB_STEP_SUMMARY
