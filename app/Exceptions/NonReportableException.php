@@ -8,7 +8,7 @@ use Exception;
  * Exception that should not be reported to Sentry or other error tracking services.
  * Use this for known, expected errors that don't require external tracking.
  */
-class NonReportableException extends Exception
+final class NonReportableException extends Exception
 {
     /**
      * Create a new non-reportable exception instance.
@@ -26,6 +26,6 @@ class NonReportableException extends Exception
      */
     public static function fromException(\Throwable $exception): static
     {
-        return new static($exception->getMessage(), $exception->getCode(), $exception);
+        return new self($exception->getMessage(), $exception->getCode(), $exception);
     }
 }

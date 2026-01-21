@@ -25,7 +25,7 @@ class EmailChangeVerification extends CustomEmailNotification
         $this->onQueue('high');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         // Use the configured expiry minutes value
         $expiryMinutes = config('constants.email_change.verification_code_expiry_minutes', 10);

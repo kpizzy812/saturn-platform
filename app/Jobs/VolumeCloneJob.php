@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -36,7 +37,7 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
                 $this->cloneRemoteVolume();
             }
         } catch (\Exception $e) {
-            \Log::error("Failed to copy volume data for {$this->sourceVolume}: ".$e->getMessage());
+            Log::error("Failed to copy volume data for {$this->sourceVolume}: ".$e->getMessage());
             throw $e;
         }
     }
@@ -79,7 +80,7 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
             ], $this->targetServer);
 
         } catch (\Exception $e) {
-            \Log::error("Failed to clone volume {$this->sourceVolume} to {$this->targetVolume}: ".$e->getMessage());
+            Log::error("Failed to clone volume {$this->sourceVolume} to {$this->targetVolume}: ".$e->getMessage());
             throw $e;
         } finally {
             try {
@@ -87,7 +88,7 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
                     "rm -rf $sourceCloneDir",
                 ], $this->sourceServer, false);
             } catch (\Exception $e) {
-                \Log::warning('Failed to clean up source server clone directory: '.$e->getMessage());
+                Log::warning('Failed to clean up source server clone directory: '.$e->getMessage());
             }
 
             try {
@@ -97,7 +98,7 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
                     ], $this->targetServer, false);
                 }
             } catch (\Exception $e) {
-                \Log::warning('Failed to clean up target server clone directory: '.$e->getMessage());
+                Log::warning('Failed to clean up target server clone directory: '.$e->getMessage());
             }
         }
     }

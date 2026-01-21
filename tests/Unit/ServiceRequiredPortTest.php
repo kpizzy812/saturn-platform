@@ -2,7 +2,6 @@
 
 use App\Models\Service;
 use App\Models\ServiceApplication;
-use Mockery;
 
 it('returns required port from service template', function () {
     // Mock get_service_templates() function
@@ -17,7 +16,7 @@ it('returns required port from service template', function () {
         ],
     ]);
 
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->name = 'supabase-xyz123';
 
     // Mock the get_service_templates function to return our mock data
@@ -27,7 +26,7 @@ it('returns required port from service template', function () {
 });
 
 it('returns null for service without required port', function () {
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->name = 'cloudflared-xyz123';
 
     // Mock to return null for services without port
@@ -37,7 +36,7 @@ it('returns null for service without required port', function () {
 });
 
 it('requiresPort returns true when service has required port', function () {
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->shouldReceive('getRequiredPort')->andReturn(8000);
     $service->shouldReceive('requiresPort')->andReturnUsing(function () use ($service) {
         return $service->getRequiredPort() !== null;
@@ -47,7 +46,7 @@ it('requiresPort returns true when service has required port', function () {
 });
 
 it('requiresPort returns false when service has no required port', function () {
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->shouldReceive('getRequiredPort')->andReturn(null);
     $service->shouldReceive('requiresPort')->andReturnUsing(function () use ($service) {
         return $service->getRequiredPort() !== null;
@@ -99,7 +98,7 @@ it('handles invalid URLs gracefully', function () {
 });
 
 it('checks if all FQDNs have port - single FQDN with port', function () {
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->fqdn = 'http://example.com:3000';
 
     $result = $app->allFqdnsHavePort();
@@ -108,7 +107,7 @@ it('checks if all FQDNs have port - single FQDN with port', function () {
 });
 
 it('checks if all FQDNs have port - single FQDN without port', function () {
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->fqdn = 'http://example.com';
 
     $result = $app->allFqdnsHavePort();
@@ -117,7 +116,7 @@ it('checks if all FQDNs have port - single FQDN without port', function () {
 });
 
 it('checks if all FQDNs have port - multiple FQDNs all with ports', function () {
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->fqdn = 'http://example.com:3000,https://example.org:8080';
 
     $result = $app->allFqdnsHavePort();
@@ -126,7 +125,7 @@ it('checks if all FQDNs have port - multiple FQDNs all with ports', function () 
 });
 
 it('checks if all FQDNs have port - multiple FQDNs one without port', function () {
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->fqdn = 'http://example.com:3000,https://example.org';
 
     $result = $app->allFqdnsHavePort();
@@ -135,7 +134,7 @@ it('checks if all FQDNs have port - multiple FQDNs one without port', function (
 });
 
 it('checks if all FQDNs have port - empty FQDN', function () {
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->fqdn = '';
 
     $result = $app->allFqdnsHavePort();
@@ -144,7 +143,7 @@ it('checks if all FQDNs have port - empty FQDN', function () {
 });
 
 it('checks if all FQDNs have port - null FQDN', function () {
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->fqdn = null;
 
     $result = $app->allFqdnsHavePort();
@@ -161,11 +160,11 @@ services:
       OTHER_VAR: value
 YAML;
 
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->docker_compose_raw = $yaml;
     $service->shouldReceive('getRequiredPort')->andReturn(null);
 
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->name = 'trigger';
     $app->shouldReceive('getAttribute')->with('service')->andReturn($service);
     $app->service = $service;
@@ -185,11 +184,11 @@ services:
       DATABASE_URL: postgres://...
 YAML;
 
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->docker_compose_raw = $yaml;
     $service->shouldReceive('getRequiredPort')->andReturn(null);
 
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->name = 'langfuse';
     $app->shouldReceive('getAttribute')->with('service')->andReturn($service);
     $app->service = $service;
@@ -208,11 +207,11 @@ services:
       SERVICE_URL_DB: http://localhost
 YAML;
 
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->docker_compose_raw = $yaml;
     $service->shouldReceive('getRequiredPort')->andReturn(null);
 
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->name = 'db';
     $app->shouldReceive('getAttribute')->with('service')->andReturn($service);
     $app->service = $service;
@@ -231,11 +230,11 @@ services:
       - DATABASE_URL=postgres://db/umami
 YAML;
 
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->docker_compose_raw = $yaml;
     $service->shouldReceive('getRequiredPort')->andReturn(null);
 
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->name = 'umami';
     $app->shouldReceive('getAttribute')->with('service')->andReturn($service);
     $app->service = $service;
@@ -254,11 +253,11 @@ services:
       SERVICE_URL_MULTI_8080: ""
 YAML;
 
-    $service = Mockery::mock(Service::class)->makePartial();
+    $service = \Mockery::mock(Service::class)->makePartial();
     $service->docker_compose_raw = $yaml;
     $service->shouldReceive('getRequiredPort')->andReturn(null);
 
-    $app = Mockery::mock(ServiceApplication::class)->makePartial();
+    $app = \Mockery::mock(ServiceApplication::class)->makePartial();
     $app->name = 'multi';
     $app->shouldReceive('getAttribute')->with('service')->andReturn($service);
     $app->service = $service;

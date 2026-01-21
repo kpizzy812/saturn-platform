@@ -21,7 +21,7 @@ class InvitationLink extends CustomEmailNotification
         $this->onQueue('high');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $invitation = TeamInvitation::whereEmail($this->user->email)->first();
         $invitation_team = Team::find($invitation->team->id);

@@ -42,7 +42,7 @@ class StatusChanged extends CustomEmailNotification
         return $notifiable->getEnabledChannels('status_change');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $fqdn = $this->fqdn;

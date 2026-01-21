@@ -21,7 +21,7 @@ class DockerCleanupSuccess extends CustomEmailNotification
         return $notifiable->getEnabledChannels('docker_cleanup_success');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: Docker cleanup job succeeded on {$this->server->name}");

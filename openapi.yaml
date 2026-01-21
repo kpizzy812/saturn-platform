@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: Saturn Platform
+  title: 'Saturn Platform'
   version: '0.1'
 servers:
   -
-    url: 'https://app.saturn.io/api/v1'
+    url: 'https://app.example.com/api/v1'
     description: 'Saturn Platform Cloud API. Change the host to your own instance if you are self-hosting.'
 paths:
   /applications:
@@ -3804,6 +3804,55 @@ paths:
       security:
         -
           bearerAuth: []
+  '/databases/{uuid}/backups/{backup_uuid}/restore':
+    post:
+      tags:
+        - Databases
+      summary: 'Restore Backup'
+      description: 'Restore database from a backup execution.'
+      operationId: restore-database-backup
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Database UUID'
+          required: true
+          schema:
+            type: string
+        -
+          name: backup_uuid
+          in: path
+          description: 'Backup UUID'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Restore options'
+        required: false
+        content:
+          application/json:
+            schema:
+              properties:
+                execution_uuid:
+                  type: string
+                  description: 'Specific backup execution UUID to restore from'
+              type: object
+      responses:
+        '200':
+          description: 'Database restore initiated.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Database restore initiated.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
   /deployments:
     get:
       tags:
@@ -5533,6 +5582,37 @@ paths:
           $ref: '#/components/responses/404'
         '422':
           $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/servers/{uuid}/reboot':
+    post:
+      tags:
+        - Servers
+      summary: Reboot
+      description: 'Reboot server.'
+      operationId: reboot-server
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: "Server's UUID"
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Server reboot initiated.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Server reboot initiated.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
       security:
         -
           bearerAuth: []

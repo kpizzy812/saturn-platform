@@ -9,7 +9,7 @@ use Exception;
  * These are not Saturn Platform bugs and should not be logged to laravel.log.
  * Examples: Nixpacks detection failures, missing Dockerfiles, invalid configs, etc.
  */
-class DeploymentException extends Exception
+final class DeploymentException extends Exception
 {
     /**
      * Create a new deployment exception instance.
@@ -27,6 +27,6 @@ class DeploymentException extends Exception
      */
     public static function fromException(\Throwable $exception): static
     {
-        return new static($exception->getMessage(), $exception->getCode(), $exception);
+        return new self($exception->getMessage(), $exception->getCode(), $exception);
     }
 }

@@ -5,7 +5,6 @@ namespace Tests\Unit\Jobs;
 use App\Jobs\RestartProxyJob;
 use App\Models\Server;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use Mockery;
 use Tests\TestCase;
 
 /**
@@ -19,13 +18,13 @@ class RestartProxyJobTest extends TestCase
 {
     protected function tearDown(): void
     {
-        Mockery::close();
+        \Mockery::close();
         parent::tearDown();
     }
 
     public function test_job_has_without_overlapping_middleware()
     {
-        $server = Mockery::mock(Server::class);
+        $server = \Mockery::mock(Server::class);
         $server->shouldReceive('getSchemalessAttributes')->andReturn([]);
         $server->shouldReceive('getAttribute')->with('uuid')->andReturn('test-uuid');
 
@@ -38,7 +37,7 @@ class RestartProxyJobTest extends TestCase
 
     public function test_job_has_correct_configuration()
     {
-        $server = Mockery::mock(Server::class);
+        $server = \Mockery::mock(Server::class);
 
         $job = new RestartProxyJob($server);
 
@@ -49,7 +48,7 @@ class RestartProxyJobTest extends TestCase
 
     public function test_job_stores_server()
     {
-        $server = Mockery::mock(Server::class);
+        $server = \Mockery::mock(Server::class);
 
         $job = new RestartProxyJob($server);
 

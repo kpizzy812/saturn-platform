@@ -21,7 +21,7 @@ class HighDiskUsage extends CustomEmailNotification
         return $notifiable->getEnabledChannels('server_disk_usage');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: Server ({$this->server->name}) high disk usage detected!");

@@ -27,7 +27,7 @@ class BackupFailed extends CustomEmailNotification
         return $notifiable->getEnabledChannels('backup_failure');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: [ACTION REQUIRED] Database Backup FAILED for {$this->database->name}");

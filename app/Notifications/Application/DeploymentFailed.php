@@ -52,7 +52,7 @@ class DeploymentFailed extends CustomEmailNotification
         return $notifiable->getEnabledChannels('deployment_failure');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $pull_request_id = data_get($this->preview, 'pull_request_id', 0);

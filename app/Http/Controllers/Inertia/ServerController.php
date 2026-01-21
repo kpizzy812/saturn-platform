@@ -87,7 +87,7 @@ class ServerController extends Controller
     /**
      * Validate server connection.
      */
-    public function validate(string $uuid): RedirectResponse
+    public function validateServer(string $uuid): RedirectResponse
     {
         $server = Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 

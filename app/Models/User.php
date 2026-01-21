@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -92,7 +93,7 @@ class User extends Authenticatable implements SendsEmail
         });
 
         static::deleting(function (User $user) {
-            \DB::transaction(function () use ($user) {
+            DB::transaction(function () use ($user) {
                 $teams = $user->teams;
                 foreach ($teams as $team) {
                     $user_alone_in_team = $team->members->count() === 1;

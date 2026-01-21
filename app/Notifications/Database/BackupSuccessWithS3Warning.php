@@ -34,7 +34,7 @@ class BackupSuccessWithS3Warning extends CustomEmailNotification
         return $notifiable->getEnabledChannels('backup_failure');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: Backup succeeded locally but S3 upload failed for {$this->database->name}");

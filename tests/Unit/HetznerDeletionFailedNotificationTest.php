@@ -1,10 +1,9 @@
 <?php
 
 use App\Notifications\Server\HetznerDeletionFailed;
-use Mockery;
 
 afterEach(function () {
-    Mockery::close();
+    \Mockery::close();
 });
 
 it('can be instantiated with correct properties', function () {
@@ -27,7 +26,7 @@ it('uses hetzner_deletion_failed event for channels', function () {
         errorMessage: 'Test error'
     );
 
-    $mockNotifiable = Mockery::mock();
+    $mockNotifiable = \Mockery::mock();
     $mockNotifiable->shouldReceive('getEnabledChannels')
         ->with('hetzner_deletion_failed')
         ->once()
@@ -45,7 +44,8 @@ it('generates correct mail content', function () {
         errorMessage: 'Connection timeout'
     );
 
-    $mail = $notification->toMail();
+    $mockNotifiable = \Mockery::mock();
+    $mail = $notification->toMail($mockNotifiable);
 
     expect($mail->subject)->toBe('Saturn Platform: [ACTION REQUIRED] Failed to delete Hetzner server #67890')
         ->and($mail->view)->toBe('emails.hetzner-deletion-failed')

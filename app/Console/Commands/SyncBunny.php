@@ -555,7 +555,7 @@ class SyncBunny extends Command
             $file = fread($fileStream, filesize($fileName));
             $that->info('Uploading: '.$fileName);
 
-            return PendingRequest::baseUrl('https://storage.bunnycdn.com')->withHeaders($headers)->withBody($file)->throw();
+            return Http::baseUrl('https://storage.bunnycdn.com')->withHeaders($headers)->withBody($file)->throw();
         });
         PendingRequest::macro('purge', function ($url) use ($that) {
             $headers = [
@@ -564,7 +564,7 @@ class SyncBunny extends Command
             ];
             $that->info('Purging: '.$url);
 
-            return PendingRequest::withHeaders($headers)->get('https://api.bunny.net/purge', [
+            return Http::withHeaders($headers)->get('https://api.bunny.net/purge', [
                 'url' => $url,
                 'async' => false,
             ]);

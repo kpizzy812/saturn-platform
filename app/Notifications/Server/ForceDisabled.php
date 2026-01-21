@@ -21,7 +21,7 @@ class ForceDisabled extends CustomEmailNotification
         return $notifiable->getEnabledChannels('server_force_disabled');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: Server ({$this->server->name}) disabled because it is not paid!");

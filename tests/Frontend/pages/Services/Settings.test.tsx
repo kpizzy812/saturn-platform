@@ -198,7 +198,7 @@ describe('Service Settings Page', () => {
 
     it('displays webhook URL', () => {
         render(<SettingsTab service={mockService} />);
-        const webhookInput = screen.getByDisplayValue(`https://api.saturn.io/webhooks/${mockService.uuid}`);
+        const webhookInput = screen.getByDisplayValue(`https://api.example.com/webhooks/${mockService.uuid}`);
         expect(webhookInput).toBeInTheDocument();
         expect(webhookInput).toHaveAttribute('readOnly');
     });

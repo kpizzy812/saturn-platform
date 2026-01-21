@@ -22,7 +22,9 @@ describe('Header Component', () => {
     it('renders Saturn logo and brand name', () => {
         render(<Header />);
         expect(screen.getByText('Saturn')).toBeInTheDocument();
-        expect(screen.getByText('S')).toBeInTheDocument(); // Logo letter
+        // Logo is an SVG element (SaturnLogo component), not text
+        const logoLink = screen.getByRole('link', { name: /saturn/i });
+        expect(logoLink.querySelector('svg')).toBeInTheDocument();
     });
 
     it('shows New button by default', () => {

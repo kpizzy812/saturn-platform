@@ -6,7 +6,6 @@ use App\Models\InstanceSettings;
 use App\Models\Server;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
-use Mockery;
 
 beforeEach(function () {
     Queue::fake();
@@ -14,18 +13,18 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    Mockery::close();
+    \Mockery::close();
     Carbon::setTestNow(); // Reset frozen time
 });
 
 it('dispatches CheckAndStartSentinelJob hourly for sentinel-enabled servers', function () {
     // Mock InstanceSettings
-    $settings = Mockery::mock(InstanceSettings::class);
+    $settings = \Mockery::mock(InstanceSettings::class);
     $settings->instance_timezone = 'UTC';
     $this->app->instance(InstanceSettings::class, $settings);
 
     // Create a mock server with sentinel enabled
-    $server = Mockery::mock(Server::class)->makePartial();
+    $server = \Mockery::mock(Server::class)->makePartial();
     $server->shouldReceive('isSentinelEnabled')->andReturn(true);
     $server->id = 1;
     $server->name = 'test-server';
@@ -50,12 +49,12 @@ it('dispatches CheckAndStartSentinelJob hourly for sentinel-enabled servers', fu
 
 it('does not dispatch CheckAndStartSentinelJob for servers without sentinel enabled', function () {
     // Mock InstanceSettings
-    $settings = Mockery::mock(InstanceSettings::class);
+    $settings = \Mockery::mock(InstanceSettings::class);
     $settings->instance_timezone = 'UTC';
     $this->app->instance(InstanceSettings::class, $settings);
 
     // Create a mock server with sentinel disabled
-    $server = Mockery::mock(Server::class)->makePartial();
+    $server = \Mockery::mock(Server::class)->makePartial();
     $server->shouldReceive('isSentinelEnabled')->andReturn(false);
     $server->id = 2;
     $server->name = 'test-server-no-sentinel';
@@ -78,7 +77,7 @@ it('does not dispatch CheckAndStartSentinelJob for servers without sentinel enab
 
 it('respects server timezone when scheduling sentinel checks', function () {
     // Mock InstanceSettings
-    $settings = Mockery::mock(InstanceSettings::class);
+    $settings = \Mockery::mock(InstanceSettings::class);
     $settings->instance_timezone = 'UTC';
     $this->app->instance(InstanceSettings::class, $settings);
 
@@ -86,7 +85,7 @@ it('respects server timezone when scheduling sentinel checks', function () {
     Carbon::setTestNow('2025-01-15 17:00:00'); // 12:00 PM EST (top of hour in EST)
 
     // Create a mock server with sentinel enabled and America/New_York timezone
-    $server = Mockery::mock(Server::class)->makePartial();
+    $server = \Mockery::mock(Server::class)->makePartial();
     $server->shouldReceive('isSentinelEnabled')->andReturn(true);
     $server->id = 3;
     $server->name = 'test-server-est';
@@ -111,7 +110,7 @@ it('respects server timezone when scheduling sentinel checks', function () {
 
 it('does not dispatch sentinel check when not at top of hour', function () {
     // Mock InstanceSettings
-    $settings = Mockery::mock(InstanceSettings::class);
+    $settings = \Mockery::mock(InstanceSettings::class);
     $settings->instance_timezone = 'UTC';
     $this->app->instance(InstanceSettings::class, $settings);
 
@@ -119,7 +118,7 @@ it('does not dispatch sentinel check when not at top of hour', function () {
     Carbon::setTestNow('2025-01-15 12:30:00');
 
     // Create a mock server with sentinel enabled
-    $server = Mockery::mock(Server::class)->makePartial();
+    $server = \Mockery::mock(Server::class)->makePartial();
     $server->shouldReceive('isSentinelEnabled')->andReturn(true);
     $server->id = 4;
     $server->name = 'test-server-mid-hour';

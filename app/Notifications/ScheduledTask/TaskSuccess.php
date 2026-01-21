@@ -28,7 +28,7 @@ class TaskSuccess extends CustomEmailNotification
         return $notifiable->getEnabledChannels('scheduled_task_success');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: Scheduled task ({$this->task->name}) succeeded.");

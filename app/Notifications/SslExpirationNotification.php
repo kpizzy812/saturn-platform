@@ -59,7 +59,7 @@ class SslExpirationNotification extends CustomEmailNotification
         return $notifiable->getEnabledChannels('ssl_certificate_renewal');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject('Saturn Platform: [Action Required] SSL Certificates Renewed - Manual Redeployment Needed');

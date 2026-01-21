@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class CleanupHelperContainersJob implements ShouldBeEncrypted, ShouldBeUnique, ShouldQueue
 {
@@ -31,7 +32,7 @@ class CleanupHelperContainersJob implements ShouldBeEncrypted, ShouldBeUnique, S
                 ->pluck('deployment_uuid')
                 ->toArray();
 
-            \Log::info('CleanupHelperContainersJob - Active deployments', [
+            Log::info('CleanupHelperContainersJob - Active deployments', [
                 'server' => $this->server->name,
                 'active_deployment_uuids' => $activeDeployments,
             ]);
@@ -54,7 +55,7 @@ class CleanupHelperContainersJob implements ShouldBeEncrypted, ShouldBeUnique, S
                     }
 
                     if ($isActiveDeployment) {
-                        \Log::info('CleanupHelperContainersJob - Skipping active deployment container', [
+                        Log::info('CleanupHelperContainersJob - Skipping active deployment container', [
                             'container' => $containerName,
                             'id' => $containerId,
                         ]);
@@ -62,7 +63,7 @@ class CleanupHelperContainersJob implements ShouldBeEncrypted, ShouldBeUnique, S
                         continue;
                     }
 
-                    \Log::info('CleanupHelperContainersJob - Removing orphaned helper container', [
+                    Log::info('CleanupHelperContainersJob - Removing orphaned helper container', [
                         'container' => $containerName,
                         'id' => $containerId,
                     ]);

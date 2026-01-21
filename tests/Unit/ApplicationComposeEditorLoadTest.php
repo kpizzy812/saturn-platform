@@ -3,7 +3,6 @@
 use App\Models\Application;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
-use Mockery;
 
 /**
  * Unit test to verify docker_compose_raw is properly synced to the Livewire component
@@ -14,7 +13,7 @@ use Mockery;
  */
 it('syncs docker_compose_raw to component property after loading compose file', function () {
     // Create a mock application
-    $app = Mockery::mock(Application::class)->makePartial();
+    $app = \Mockery::mock(Application::class)->makePartial();
     $app->shouldReceive('getAttribute')->with('docker_compose_raw')->andReturn(null, 'version: "3"\nservices:\n  web:\n    image: nginx');
     $app->shouldReceive('getAttribute')->with('docker_compose_location')->andReturn('/docker-compose.yml');
     $app->shouldReceive('getAttribute')->with('base_directory')->andReturn('/');
@@ -23,10 +22,10 @@ it('syncs docker_compose_raw to component property after loading compose file', 
     $app->shouldReceive('getAttribute')->with('settings')->andReturn((object) ['is_raw_compose_deployment_enabled' => false]);
 
     // Mock destination and server
-    $server = Mockery::mock(Server::class);
+    $server = \Mockery::mock(Server::class);
     $server->shouldReceive('proxyType')->andReturn('traefik');
 
-    $destination = Mockery::mock(StandaloneDocker::class);
+    $destination = \Mockery::mock(StandaloneDocker::class);
     $destination->server = $server;
 
     $app->shouldReceive('getAttribute')->with('destination')->andReturn($destination);

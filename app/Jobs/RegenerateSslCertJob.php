@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Helpers\SSLHelper;
+use App\Helpers\SslHelper;
 use App\Models\SslCertificate;
 use App\Models\Team;
 use App\Notifications\SslExpirationNotification;
@@ -54,7 +54,7 @@ class RegenerateSslCertJob implements ShouldQueue
 
                     return;
                 }
-                SSLHelper::generateSslCertificate(
+                SslHelper::generateSslCertificate(
                     commonName: $certificate->common_name,
                     subjectAlternativeNames: $certificate->subject_alternative_names,
                     resourceType: $certificate->resource_type,

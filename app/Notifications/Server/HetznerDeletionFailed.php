@@ -23,7 +23,7 @@ class HetznerDeletionFailed extends CustomEmailNotification
         return $notifiable->getEnabledChannels('hetzner_deletion_failed');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: [ACTION REQUIRED] Failed to delete Hetzner server #{$this->hetznerServerId}");

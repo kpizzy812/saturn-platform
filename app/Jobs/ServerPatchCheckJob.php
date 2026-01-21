@@ -12,6 +12,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ServerPatchCheckJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -57,7 +58,7 @@ class ServerPatchCheckJob implements ShouldBeEncrypted, ShouldQueue
             }
         } catch (\Throwable $e) {
             // Log error but don't fail the job
-            \Illuminate\Support\Facades\Log::error('ServerPatchCheckJob failed: '.$e->getMessage(), [
+            Log::error('ServerPatchCheckJob failed: '.$e->getMessage(), [
                 'server_id' => $this->server->id,
                 'server_name' => $this->server->name,
                 'error' => $e->getMessage(),

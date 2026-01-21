@@ -21,7 +21,7 @@ class ContainerStopped extends CustomEmailNotification
         return $notifiable->getEnabledChannels('status_change');
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject("Saturn Platform: A resource  has been stopped unexpectedly on {$this->server->name}");

@@ -25,6 +25,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 
 class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -171,7 +172,7 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
             }
         } catch (\Throwable $e) {
             // Log the error but don't fail the job
-            \Log::warning('Error stopping preview containers for application '.$application->uuid.', PR #'.$pull_request_id.': '.$e->getMessage());
+            Log::warning('Error stopping preview containers for application '.$application->uuid.', PR #'.$pull_request_id.': '.$e->getMessage());
         }
 
         // Finally, force delete to trigger resource cleanup

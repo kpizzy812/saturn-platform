@@ -5,6 +5,7 @@ namespace App\Actions\Stripe;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Stripe\StripeClient;
 
 class CancelSubscription
@@ -96,7 +97,7 @@ class CancelSubscription
                 ]);
             } catch (\Exception $e) {
                 $errors[] = "Error verifying subscription {$subscription->stripe_subscription_id}: ".$e->getMessage();
-                \Log::error("Error verifying subscription {$subscription->stripe_subscription_id}: ".$e->getMessage());
+                Log::error("Error verifying subscription {$subscription->stripe_subscription_id}: ".$e->getMessage());
             }
         }
 
@@ -131,7 +132,7 @@ class CancelSubscription
                 $failedCount++;
                 $errorMessage = "Failed to cancel subscription {$subscription->stripe_subscription_id}: ".$e->getMessage();
                 $errors[] = $errorMessage;
-                \Log::error($errorMessage);
+                Log::error($errorMessage);
             }
         }
 
@@ -168,7 +169,7 @@ class CancelSubscription
             $subscription->team->subscriptionEnded();
         }
 
-        \Log::info("Cancelled Stripe subscription: {$subscriptionId} for team: {$subscription->team->name}");
+        Log::info("Cancelled Stripe subscription: {$subscriptionId} for team: {$subscription->team->name}");
     }
 
     /**
@@ -201,7 +202,7 @@ class CancelSubscription
 
             return true;
         } catch (\Exception $e) {
-            \Log::error("Failed to cancel subscription {$subscriptionId}: ".$e->getMessage());
+            Log::error("Failed to cancel subscription {$subscriptionId}: ".$e->getMessage());
 
             return false;
         }

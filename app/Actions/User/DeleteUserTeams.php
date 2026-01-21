@@ -4,6 +4,7 @@ namespace App\Actions\User;
 
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 class DeleteUserTeams
 {
@@ -124,7 +125,7 @@ class DeleteUserTeams
                 $team->delete();
                 $counts['deleted']++;
             } catch (\Exception $e) {
-                \Log::error("Failed to delete team {$team->id}: ".$e->getMessage());
+                Log::error("Failed to delete team {$team->id}: ".$e->getMessage());
                 throw $e; // Re-throw to trigger rollback
             }
         }
@@ -143,7 +144,7 @@ class DeleteUserTeams
 
                 $counts['transferred']++;
             } catch (\Exception $e) {
-                \Log::error("Failed to transfer ownership of team {$item['team']->id}: ".$e->getMessage());
+                Log::error("Failed to transfer ownership of team {$item['team']->id}: ".$e->getMessage());
                 throw $e; // Re-throw to trigger rollback
             }
         }
@@ -154,7 +155,7 @@ class DeleteUserTeams
                 $team->members()->detach($this->user->id);
                 $counts['left']++;
             } catch (\Exception $e) {
-                \Log::error("Failed to remove user from team {$team->id}: ".$e->getMessage());
+                Log::error("Failed to remove user from team {$team->id}: ".$e->getMessage());
                 throw $e; // Re-throw to trigger rollback
             }
         }

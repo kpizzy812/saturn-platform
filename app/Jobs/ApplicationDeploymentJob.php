@@ -30,6 +30,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Spatie\Url\Url;
@@ -355,7 +356,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ]);
             } catch (Exception $e) {
                 // Log but don't fail - finished_at is not critical
-                \Log::warning('Failed to update finished_at for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+                Log::warning('Failed to update finished_at for deployment '.$this->deployment_uuid.': '.$e->getMessage());
             }
 
             try {
@@ -374,14 +375,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->graceful_shutdown_container($this->deployment_uuid, skipRemove: true);
             } catch (Exception $e) {
                 // Log but don't fail - container cleanup errors are expected when container is already gone
-                \Log::warning('Failed to shutdown container '.$this->deployment_uuid.': '.$e->getMessage());
+                Log::warning('Failed to shutdown container '.$this->deployment_uuid.': '.$e->getMessage());
             }
 
             try {
                 ServiceStatusChanged::dispatch(data_get($this->application, 'environment.project.team.id'));
             } catch (Exception $e) {
                 // Log but don't fail - event dispatch errors shouldn't prevent status updates
-                \Log::warning('Failed to dispatch ServiceStatusChanged for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+                Log::warning('Failed to dispatch ServiceStatusChanged for deployment '.$this->deployment_uuid.': '.$e->getMessage());
             }
         }
     }
@@ -494,7 +495,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         try {
             GetContainersStatus::dispatch($this->server);
         } catch (\Exception $e) {
-            \Log::warning('Failed to dispatch GetContainersStatus for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+            Log::warning('Failed to dispatch GetContainersStatus for deployment '.$this->deployment_uuid.': '.$e->getMessage());
         }
 
         if ($this->pull_request_id !== 0) {
@@ -502,7 +503,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 try {
                     ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::FINISHED);
                 } catch (\Exception $e) {
-                    \Log::warning('Failed to dispatch PR update for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+                    Log::warning('Failed to dispatch PR update for deployment '.$this->deployment_uuid.': '.$e->getMessage());
                 }
             }
         }
@@ -510,13 +511,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $this->run_post_deployment_command();
         } catch (\Exception $e) {
-            \Log::warning('Post deployment command failed for '.$this->deployment_uuid.': '.$e->getMessage());
+            Log::warning('Post deployment command failed for '.$this->deployment_uuid.': '.$e->getMessage());
         }
 
         try {
             $this->application->isConfigurationChanged(true);
         } catch (\Exception $e) {
-            \Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+            Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
         }
     }
 

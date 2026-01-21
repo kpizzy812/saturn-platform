@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Application;
-use Mockery;
 
 /**
  * Unit tests to verify that containers without health checks are not
@@ -15,9 +14,9 @@ use Mockery;
  */
 it('does not mark containers as unhealthy when health status is missing', function () {
     // Mock an application with a server
-    $application = Mockery::mock(Application::class)->makePartial();
-    $server = Mockery::mock('App\Models\Server')->makePartial();
-    $destination = Mockery::mock('App\Models\StandaloneDocker')->makePartial();
+    $application = \Mockery::mock(Application::class)->makePartial();
+    $server = \Mockery::mock('App\Models\Server')->makePartial();
+    $destination = \Mockery::mock('App\Models\StandaloneDocker')->makePartial();
 
     $destination->shouldReceive('getAttribute')
         ->with('server')

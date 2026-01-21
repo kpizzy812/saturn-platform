@@ -3,11 +3,10 @@
 use App\Enums\ProxyTypes;
 use App\Models\Server;
 use Illuminate\Database\Eloquent\Builder;
-use Mockery;
 
 it('filters servers by proxy type using whereProxyType scope', function () {
     // Mock the Builder
-    $mockBuilder = Mockery::mock(Builder::class);
+    $mockBuilder = \Mockery::mock(Builder::class);
 
     // Expect the where method to be called with the correct parameters
     $mockBuilder->shouldReceive('where')
@@ -25,7 +24,7 @@ it('filters servers by proxy type using whereProxyType scope', function () {
 
 it('can chain whereProxyType scope with other query methods', function () {
     // Mock the Builder
-    $mockBuilder = Mockery::mock(Builder::class);
+    $mockBuilder = \Mockery::mock(Builder::class);
 
     // Expect multiple chained calls
     $mockBuilder->shouldReceive('where')
@@ -43,7 +42,7 @@ it('can chain whereProxyType scope with other query methods', function () {
 
 it('accepts any proxy type string value', function () {
     // Mock the Builder
-    $mockBuilder = Mockery::mock(Builder::class);
+    $mockBuilder = \Mockery::mock(Builder::class);
 
     // Test with a custom proxy type
     $customProxyType = 'custom-proxy';

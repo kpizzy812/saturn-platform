@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Url\Url;
 
 class InstanceSettings extends Model
@@ -37,7 +38,7 @@ class InstanceSettings extends Model
         static::updated(function ($settings) {
             // Clear trusted hosts cache when FQDN changes
             if ($settings->wasChanged('fqdn')) {
-                \Cache::forget('instance_settings_fqdn_host');
+                Cache::forget('instance_settings_fqdn_host');
             }
         });
     }

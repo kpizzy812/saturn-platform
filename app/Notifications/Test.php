@@ -57,7 +57,7 @@ class Test extends Notification implements ShouldQueue
         };
     }
 
-    public function toMail(): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $mail = new MailMessage;
         $mail->subject('Saturn Platform: Test Email');

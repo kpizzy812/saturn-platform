@@ -96,9 +96,12 @@ class CleanupSleepingPreviewsJob implements ShouldQueue
 
     protected function deletePreview(ApplicationPreview $preview): void
     {
-        // Use existing cleanup action
-        $action = new \App\Actions\Application\CleanupPreviewDeployment($preview);
-        $action->handle();
+        // Use existing cleanup action with correct AsAction pattern
+        \App\Actions\Application\CleanupPreviewDeployment::run(
+            $preview->application,
+            $preview->pull_request_id,
+            $preview
+        );
 
         Log::info("Deleted old preview: {$preview->id} (PR #{$preview->pull_request_id})");
     }

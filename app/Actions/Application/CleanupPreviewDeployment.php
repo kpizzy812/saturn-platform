@@ -7,6 +7,7 @@ use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\ApplicationPreview;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 class CleanupPreviewDeployment
@@ -106,7 +107,7 @@ class CleanupPreviewDeployment
                 $this->killHelperContainer($deployment->deployment_uuid, $server);
                 $cancelled++;
             } catch (\Throwable $e) {
-                \Log::warning("Failed to cancel deployment {$deployment->id}: {$e->getMessage()}");
+                Log::warning("Failed to cancel deployment {$deployment->id}: {$e->getMessage()}");
             }
         }
 
@@ -168,7 +169,7 @@ class CleanupPreviewDeployment
                 }
             }
         } catch (\Throwable $e) {
-            \Log::warning("Error stopping containers for PR #{$pull_request_id}: {$e->getMessage()}");
+            Log::warning("Error stopping containers for PR #{$pull_request_id}: {$e->getMessage()}");
         }
 
         return $killed;
