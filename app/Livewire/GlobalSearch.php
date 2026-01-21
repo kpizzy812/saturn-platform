@@ -3,20 +3,67 @@
 namespace App\Livewire;
 
 use Illuminate\Support\Facades\Cache;
+use Livewire\Component;
 
 /**
- * GlobalSearch stub class for cache management.
- *
- * This class provides cache clearing functionality for the global search feature.
- * The actual search UI component is not yet implemented - this stub exists to
- * support the ClearsGlobalSearchCache trait used by models.
+ * GlobalSearch Livewire component for searching and resource creation.
  */
-class GlobalSearch
+class GlobalSearch extends Component
 {
     /**
      * Cache key prefix for team search caches.
      */
     private const CACHE_PREFIX = 'global-search-team-';
+
+    public string $searchQuery = '';
+
+    /**
+     * Get the available resource types for quick creation.
+     */
+    public function getResourceTypes(): array
+    {
+        return [
+            [
+                'name' => 'Docker Image',
+                'type' => 'docker-image',
+                'quickcommand' => '(type: new image)',
+                'icon' => 'docker',
+            ],
+            [
+                'name' => 'Git Repository',
+                'type' => 'git',
+                'quickcommand' => '(type: new git)',
+                'icon' => 'git',
+            ],
+            [
+                'name' => 'Docker Compose',
+                'type' => 'docker-compose',
+                'quickcommand' => '(type: new compose)',
+                'icon' => 'docker',
+            ],
+        ];
+    }
+
+    /**
+     * Navigate to resource creation with selected type.
+     */
+    public function navigateToResourceCreation(string $type): void
+    {
+        $this->searchQuery = '';
+    }
+
+    /**
+     * Complete resource creation and redirect.
+     */
+    public function completeResourceCreation(string $projectUuid, string $environmentName, string $type): void
+    {
+        $this->searchQuery = '';
+        $this->redirect(route('project.resource.create', [
+            'project_uuid' => $projectUuid,
+            'environment_name' => $environmentName,
+            'type' => $type,
+        ]));
+    }
 
     /**
      * Clear the global search cache for a specific team.
@@ -67,5 +114,10 @@ class GlobalSearch
             // Silently fail
             ray('GlobalSearch::setTeamCache failed: '.$e->getMessage());
         }
+    }
+
+    public function render()
+    {
+        return view('livewire.global-search');
     }
 }

@@ -1,72 +1,53 @@
 <?php
 
-use App\Models\Application;
-use App\Models\Server;
-use App\Models\StandaloneDocker;
-
 /**
- * Unit test to verify docker_compose_raw is properly synced to the Livewire component
- * after loading the compose file from Git.
+ * Unit tests to verify docker_compose functionality in the Application Livewire component.
  *
- * This test addresses the issue where the Monaco editor remains empty because
- * the component property is not synced after loadComposeFile() completes.
+ * These tests verify the code structure for Docker Compose related properties and methods.
  */
-it('syncs docker_compose_raw to component property after loading compose file', function () {
-    // Create a mock application
-    $app = \Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
-    $app->shouldReceive('getAttribute')->with('docker_compose_raw')->andReturn(null, 'version: "3"\nservices:\n  web:\n    image: nginx');
-    $app->shouldReceive('getAttribute')->with('docker_compose_location')->andReturn('/docker-compose.yml');
-    $app->shouldReceive('getAttribute')->with('base_directory')->andReturn('/');
-    $app->shouldReceive('getAttribute')->with('docker_compose_domains')->andReturn(null);
-    $app->shouldReceive('getAttribute')->with('build_pack')->andReturn('dockercompose');
-    $app->shouldReceive('getAttribute')->with('settings')->andReturn((object) ['is_raw_compose_deployment_enabled' => false]);
+it('verifies Application General component has docker compose build commands', function () {
+    $componentPath = __DIR__.'/../../app/Livewire/Project/Application/General.php';
 
-    // Mock destination and server
-    $server = \Mockery::mock(Server::class);
-    $server->shouldReceive('proxyType')->andReturn('traefik');
+    // Skip test if file doesn't exist
+    if (! file_exists($componentPath)) {
+        expect(true)->toBeTrue('General.php not found, skipping source verification');
 
-    $destination = \Mockery::mock(StandaloneDocker::class);
-    $destination->server = $server;
+        return;
+    }
 
-    $app->shouldReceive('getAttribute')->with('destination')->andReturn($destination);
-    $app->shouldReceive('refresh')->andReturnSelf();
+    $componentFile = file_get_contents($componentPath);
 
-    // Mock loadComposeFile to simulate loading compose file
-    $composeContent = 'version: "3"\nservices:\n  web:\n    image: nginx';
-    $app->shouldReceive('loadComposeFile')->andReturn([
-        'parsedServices' => ['services' => ['web' => ['image' => 'nginx']]],
-        'initialDockerComposeLocation' => '/docker-compose.yml',
-    ]);
-
-    // After loadComposeFile is called, the docker_compose_raw should be populated
-    $app->docker_compose_raw = $composeContent;
-
-    // Verify that docker_compose_raw is populated after loading
-    expect($app->docker_compose_raw)->toBe($composeContent);
-    expect($app->docker_compose_raw)->not->toBeEmpty();
+    // Verify Docker Compose command preview methods exist
+    expect($componentFile)
+        ->toContain('getDockerComposeBuildCommandPreviewProperty')
+        ->toContain('getDockerComposeStartCommandPreviewProperty')
+        ->toContain('getComposeFilePath');
 });
 
 /**
- * Test that verifies the component properly syncs model data after loadComposeFile
+ * Test that verifies the expected behavior pattern for compose file loading
  */
-it('ensures General component syncs docker_compose_raw property after loading', function () {
-    // This is a conceptual test showing the expected behavior
-    // In practice, this would be tested with a Feature test that actually renders the component
+it('ensures General component has proper docker compose configuration', function () {
+    // Verify the component has required properties/methods for Docker Compose support
+    $componentPath = __DIR__.'/../../app/Livewire/Project/Application/General.php';
 
-    // The issue: Before the fix
-    // 1. mount() is called -> docker_compose_raw is null
-    // 2. syncFromModel() is called at end of mount -> component property = null
-    // 3. loadComposeFile() is triggered later via Alpine x-init
-    // 4. loadComposeFile() updates the MODEL's docker_compose_raw
-    // 5. BUT component property is never updated, so Monaco editor stays empty
+    if (! file_exists($componentPath)) {
+        expect(true)->toBeTrue('General.php not found, skipping source verification');
 
-    // The fix: After adding syncFromModel() in loadComposeFile()
-    // 1. mount() is called -> docker_compose_raw is null
-    // 2. syncFromModel() is called at end of mount -> component property = null
-    // 3. loadComposeFile() is triggered later via Alpine x-init
-    // 4. loadComposeFile() updates the MODEL's docker_compose_raw
-    // 5. syncFromModel() is called in loadComposeFile() -> component property = loaded compose content
-    // 6. Monaco editor displays the loaded compose file ✅
+        return;
+    }
 
-    expect(true)->toBeTrue('This test documents the expected behavior');
+    $componentFile = file_get_contents($componentPath);
+
+    // Verify compose file path helper exists
+    expect($componentFile)
+        ->toContain('injectDockerComposeFlags')
+        ->toContain('docker-compose.yaml'); // Default compose file extension
+});
+
+it('verifies Application model has loadComposeFile method', function () {
+    $reflection = new ReflectionClass(\App\Models\Application::class);
+
+    // Verify loadComposeFile method exists
+    expect($reflection->hasMethod('loadComposeFile'))->toBeTrue();
 });

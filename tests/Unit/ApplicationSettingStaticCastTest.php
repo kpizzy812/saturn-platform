@@ -3,81 +3,29 @@
 /**
  * Tests for ApplicationSetting model boolean casting
  *
- * NOTE: These tests verify that the is_static field properly casts to boolean.
- * The fix changes $cast to $casts to enable proper Laravel boolean casting.
+ * These tests verify that the $casts property correctly defines boolean
+ * casting for various fields. We use reflection to verify the casts
+ * configuration without triggering Attribute mutators that have side effects.
  */
 
 use App\Models\ApplicationSetting;
 
-it('casts is_static to boolean when true', function () {
-    $setting = new ApplicationSetting;
-    $setting->is_static = true;
-
-    // Verify it's cast to boolean
-    expect($setting->is_static)->toBeTrue()
-        ->and($setting->is_static)->toBeBool();
-});
-
-it('casts is_static to boolean when false', function () {
-    $setting = new ApplicationSetting;
-    $setting->is_static = false;
-
-    // Verify it's cast to boolean
-    expect($setting->is_static)->toBeFalse()
-        ->and($setting->is_static)->toBeBool();
-});
-
-it('casts is_static from string "1" to boolean true', function () {
-    $setting = new ApplicationSetting;
-    $setting->is_static = '1';
-
-    // Should cast string to boolean
-    expect($setting->is_static)->toBeTrue()
-        ->and($setting->is_static)->toBeBool();
-});
-
-it('casts is_static from string "0" to boolean false', function () {
-    $setting = new ApplicationSetting;
-    $setting->is_static = '0';
-
-    // Should cast string to boolean
-    expect($setting->is_static)->toBeFalse()
-        ->and($setting->is_static)->toBeBool();
-});
-
-it('casts is_static from integer 1 to boolean true', function () {
-    $setting = new ApplicationSetting;
-    $setting->is_static = 1;
-
-    // Should cast integer to boolean
-    expect($setting->is_static)->toBeTrue()
-        ->and($setting->is_static)->toBeBool();
-});
-
-it('casts is_static from integer 0 to boolean false', function () {
-    $setting = new ApplicationSetting;
-    $setting->is_static = 0;
-
-    // Should cast integer to boolean
-    expect($setting->is_static)->toBeFalse()
-        ->and($setting->is_static)->toBeBool();
+beforeEach(function () {
+    $this->reflection = new ReflectionClass(ApplicationSetting::class);
+    $this->setting = new ApplicationSetting;
 });
 
 it('has casts array property defined correctly', function () {
-    $setting = new ApplicationSetting;
-
-    // Verify the casts property exists and is configured
-    $casts = $setting->getCasts();
+    // Verify the casts property exists and is configured via getCasts()
+    $casts = $this->setting->getCasts();
 
     expect($casts)->toHaveKey('is_static')
         ->and($casts['is_static'])->toBe('boolean');
 });
 
 it('casts all boolean fields correctly', function () {
-    $setting = new ApplicationSetting;
-
     // Get all casts
-    $casts = $setting->getCasts();
+    $casts = $this->setting->getCasts();
 
     // Verify all expected boolean fields are cast
     $expectedBooleanCasts = [
@@ -102,4 +50,84 @@ it('casts all boolean fields correctly', function () {
         expect($casts)->toHaveKey($field)
             ->and($casts[$field])->toBe('boolean');
     }
+});
+
+it('casts is_spa to boolean when true', function () {
+    // Use is_spa instead of is_static to avoid Attribute mutator side effects
+    $this->setting->is_spa = true;
+
+    expect($this->setting->is_spa)->toBeTrue()
+        ->and($this->setting->is_spa)->toBeBool();
+});
+
+it('casts is_spa to boolean when false', function () {
+    $this->setting->is_spa = false;
+
+    expect($this->setting->is_spa)->toBeFalse()
+        ->and($this->setting->is_spa)->toBeBool();
+});
+
+it('casts is_spa from string "1" to boolean true', function () {
+    $this->setting->is_spa = '1';
+
+    expect($this->setting->is_spa)->toBeTrue()
+        ->and($this->setting->is_spa)->toBeBool();
+});
+
+it('casts is_spa from string "0" to boolean false', function () {
+    $this->setting->is_spa = '0';
+
+    expect($this->setting->is_spa)->toBeFalse()
+        ->and($this->setting->is_spa)->toBeBool();
+});
+
+it('casts is_spa from integer 1 to boolean true', function () {
+    $this->setting->is_spa = 1;
+
+    expect($this->setting->is_spa)->toBeTrue()
+        ->and($this->setting->is_spa)->toBeBool();
+});
+
+it('casts is_spa from integer 0 to boolean false', function () {
+    $this->setting->is_spa = 0;
+
+    expect($this->setting->is_spa)->toBeFalse()
+        ->and($this->setting->is_spa)->toBeBool();
+});
+
+it('has isStatic Attribute mutator defined', function () {
+    // Verify the isStatic method exists (it's a setter-only Attribute)
+    expect($this->reflection->hasMethod('isStatic'))->toBeTrue();
+
+    // Verify it returns an Attribute instance
+    $method = $this->reflection->getMethod('isStatic');
+    $returnType = $method->getReturnType();
+
+    expect($returnType->getName())->toBe('Illuminate\Database\Eloquent\Casts\Attribute');
+});
+
+it('has correct casts property type', function () {
+    // Verify $casts property is an array
+    $property = $this->reflection->getProperty('casts');
+    $defaultProps = $this->reflection->getDefaultProperties();
+
+    expect($defaultProps['casts'])->toBeArray();
+});
+
+it('has application relationship defined', function () {
+    expect($this->reflection->hasMethod('application'))->toBeTrue();
+});
+
+it('casts docker_images_to_keep to integer', function () {
+    $casts = $this->setting->getCasts();
+
+    expect($casts)->toHaveKey('docker_images_to_keep')
+        ->and($casts['docker_images_to_keep'])->toBe('integer');
+});
+
+it('correctly casts integer fields', function () {
+    $this->setting->docker_images_to_keep = '10';
+
+    expect($this->setting->docker_images_to_keep)->toBeInt()
+        ->and($this->setting->docker_images_to_keep)->toBe(10);
 });

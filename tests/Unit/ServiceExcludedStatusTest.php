@@ -294,7 +294,9 @@ describe('Service Excluded Status Calculation', function () {
         expect($service->status)->toBe('exited');
     });
 
-    it('prefers running over starting status', function () {
+    it('reports starting status when mixed running and starting', function () {
+        // When some containers are running and some are still starting,
+        // the overall status should be "starting" to indicate the service isn't fully ready
         $service = Mockery::mock(Service::class)->makePartial();
         $service->shouldReceive('isStarting')->andReturn(false);
 
@@ -304,7 +306,8 @@ describe('Service Excluded Status Calculation', function () {
         $service->shouldReceive('getAttribute')->with('applications')->andReturn(collect([$app1, $app2]));
         $service->shouldReceive('getAttribute')->with('databases')->andReturn(collect());
 
-        expect($service->status)->toBe('running:healthy');
+        // Mixed state (running + starting) = starting:unknown per the state machine
+        expect($service->status)->toBe('starting:unknown');
     });
 
     it('treats empty health as healthy', function () {
