@@ -68,6 +68,14 @@ validate_prerequisites() {
         exit 1
     fi
 
+    # Create required directories
+    log_info "Ensuring data directories exist..."
+    mkdir -p "${SATURN_DATA}/ssh/keys"
+    mkdir -p "${SATURN_DATA}/applications"
+    mkdir -p "${SATURN_DATA}/databases"
+    mkdir -p "${SATURN_DATA}/services"
+    mkdir -p "${SATURN_DATA}/backups"
+
     log_success "Prerequisites OK"
 }
 
@@ -166,6 +174,16 @@ run_migrations() {
     log_success "Migrations done"
 }
 
+run_seeders() {
+    log_step "Running seeders..."
+
+    docker exec saturn-dev php artisan db:seed --class=ProductionSeeder --force || {
+        log_warn "ProductionSeeder failed (may be expected on first run)"
+    }
+
+    log_success "Seeders done"
+}
+
 clear_caches() {
     log_step "Rebuilding caches..."
 
@@ -237,6 +255,7 @@ deploy() {
     stop_services
     start_services
     run_migrations
+    run_seeders
     clear_caches
 
     if health_check; then
