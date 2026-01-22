@@ -1,6 +1,6 @@
 # Project Canvas Fix - Progress Tracker
 
-## Current Status: 🔄 In Progress (Phase 1+2+3+4 Complete)
+## Current Status: 🔄 In Progress (Phase 1+2+3+4+5 Complete)
 
 **Started:** 2026-01-22
 **Last Updated:** 2026-01-22
@@ -8,6 +8,7 @@
 **Phase 2 Completed:** 2026-01-22
 **Phase 3 Completed:** 2026-01-22
 **Phase 4 Completed:** 2026-01-22
+**Phase 5 Completed:** 2026-01-22
 
 ---
 
@@ -75,10 +76,11 @@
 
 ---
 
-## Phase 5: Input/Toggle Saving — P2
+## Phase 5: Input/Toggle Saving — P2 ✅ COMPLETED
 
-- [ ] Cron Schedule toggle + input (Show.tsx:1509-1525)
-- [ ] Health Check toggle + inputs (Show.tsx:1545-1579)
+- [x] Cron Schedule toggle + controlled input
+- [x] Health Check toggle + controlled inputs (endpoint, timeout, interval)
+- [x] Save Settings button with API call to PATCH /api/v1/applications/{uuid}
 
 ---
 
@@ -121,6 +123,6 @@ After completion:
 - [x] Cancel deployment → works
 - [x] Create dropdown → all items navigate correctly
 - [x] Copy buttons → copy to clipboard ✅
-- [ ] Toggle Cron/Health → saves to backend (Phase 5)
+- [x] Toggle Cron/Health → saves to backend ✅
 - [ ] LogsViewer → shows real logs (Phase 6)
 - [x] `./vendor/bin/pint && npm run build` → no errors ✅

@@ -1657,18 +1657,54 @@ function MetricsTab() {
 
 function AppSettingsTab({ service }: { service: SelectedService }) {
     const [cronEnabled, setCronEnabled] = useState(false);
+    const [cronExpression, setCronExpression] = useState('0 * * * *');
     const [healthCheckEnabled, setHealthCheckEnabled] = useState(true);
+    const [healthEndpoint, setHealthEndpoint] = useState('/health');
+    const [healthTimeout, setHealthTimeout] = useState(10);
+    const [healthInterval, setHealthInterval] = useState(30);
     const [replicas, setReplicas] = useState(1);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleReplicasChange = async (newReplicas: number) => {
         if (newReplicas < 1) return;
         setReplicas(newReplicas);
-        // TODO: API call to update replicas when backend supports it
-        // await fetch(`/api/v1/applications/${service.uuid}`, {
-        //     method: 'PATCH',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({ replicas: newReplicas }),
-        // });
+    };
+
+    const handleSaveSettings = async () => {
+        if (!service.uuid) {
+            alert('Cannot save: service UUID not available');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const response = await fetch(`/api/v1/applications/${service.uuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    health_check_enabled: healthCheckEnabled,
+                    health_check_path: healthEndpoint,
+                    health_check_timeout: healthTimeout,
+                    health_check_interval: healthInterval,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to save settings');
+            }
+
+            alert('Settings saved successfully');
+        } catch (err) {
+            console.error('Save settings error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to save settings');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -1912,7 +1948,8 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                 <label className="text-xs text-foreground-muted">Schedule (cron expression)</label>
                                 <input
                                     type="text"
-                                    defaultValue="0 * * * *"
+                                    value={cronExpression}
+                                    onChange={(e) => setCronExpression(e.target.value)}
                                     className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none"
                                     placeholder="0 * * * *"
                                 />
@@ -1949,7 +1986,8 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                     <label className="text-xs text-foreground-muted">Endpoint</label>
                                     <input
                                         type="text"
-                                        defaultValue="/health"
+                                        value={healthEndpoint}
+                                        onChange={(e) => setHealthEndpoint(e.target.value)}
                                         className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none"
                                         placeholder="/health"
                                     />
@@ -1959,7 +1997,8 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                         <label className="text-xs text-foreground-muted">Timeout (s)</label>
                                         <input
                                             type="number"
-                                            defaultValue="10"
+                                            value={healthTimeout}
+                                            onChange={(e) => setHealthTimeout(parseInt(e.target.value) || 10)}
                                             className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none"
                                         />
                                     </div>
@@ -1967,7 +2006,8 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                         <label className="text-xs text-foreground-muted">Interval (s)</label>
                                         <input
                                             type="number"
-                                            defaultValue="30"
+                                            value={healthInterval}
+                                            onChange={(e) => setHealthInterval(parseInt(e.target.value) || 30)}
                                             className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none"
                                         />
                                     </div>
@@ -1979,6 +2019,17 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                         </p>
                     </div>
                 )}
+            </div>
+
+            {/* Save Settings Button */}
+            <div className="border-t border-border pt-4">
+                <Button
+                    onClick={handleSaveSettings}
+                    disabled={isSaving}
+                    className="w-full"
+                >
+                    {isSaving ? 'Saving...' : 'Save Settings'}
+                </Button>
             </div>
 
             {/* Danger Zone */}
