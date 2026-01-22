@@ -221,7 +221,13 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
 // React/Inertia Routes (new frontend)
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
-        return \Inertia\Inertia::render('Dashboard');
+        $projects = \App\Models\Project::ownedByCurrentTeam()
+            ->with(['environments.applications', 'environments.databases', 'environments.services'])
+            ->get();
+
+        return \Inertia\Inertia::render('Dashboard', [
+            'projects' => $projects,
+        ]);
     })->name('dashboard');
 
     // Auth Routes (require authentication)
