@@ -62,6 +62,14 @@ export interface Environment {
     updated_at: string;
 }
 
+export interface Destination {
+    id: number;
+    uuid: string;
+    name: string;
+    server_id: number;
+    server?: Server;
+}
+
 export interface Application {
     id: number;
     uuid: string;
@@ -75,6 +83,7 @@ export interface Application {
     status: ApplicationStatus;
     environment_id: number;
     destination_id: number;
+    destination?: Destination;
     created_at: string;
     updated_at: string;
 }
@@ -95,6 +104,33 @@ export interface StandaloneDatabase {
     database_type: DatabaseType;
     status: string;
     environment_id: number;
+    destination_id?: number;
+    destination?: Destination;
+    // Connection URLs (appended by backend)
+    internal_db_url?: string;
+    external_db_url?: string;
+    // PostgreSQL specific
+    postgres_user?: string;
+    postgres_password?: string;
+    postgres_db?: string;
+    // MySQL/MariaDB specific
+    mysql_user?: string;
+    mysql_password?: string;
+    mysql_database?: string;
+    mysql_root_password?: string;
+    // MongoDB specific
+    mongo_initdb_root_username?: string;
+    mongo_initdb_root_password?: string;
+    mongo_initdb_database?: string;
+    // Redis/KeyDB/Dragonfly specific
+    redis_password?: string;
+    keydb_password?: string;
+    dragonfly_password?: string;
+    // ClickHouse specific
+    clickhouse_admin_user?: string;
+    clickhouse_admin_password?: string;
+    // Public port for external access
+    public_port?: number;
     created_at: string;
     updated_at: string;
 }

@@ -1,81 +1,70 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, Search, Download, Filter, RefreshCw, Pause, Play, ChevronDown, Terminal, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { X, Search, Download, Filter, RefreshCw, Pause, Play, ChevronDown, Terminal, AlertCircle, Info, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-
-interface LogEntry {
-    id: string;
-    timestamp: string;
-    level: 'info' | 'warn' | 'error' | 'debug';
-    message: string;
-    source?: string;
-}
+import { useLogStream, type LogEntry } from '@/hooks/useLogStream';
 
 interface LogsViewerProps {
     isOpen: boolean;
     onClose: () => void;
     serviceName: string;
+    serviceUuid?: string;
+    serviceType?: 'application' | 'deployment' | 'database' | 'service';
     deploymentId?: string;
 }
 
-// Demo log entries
-const generateDemoLogs = (): LogEntry[] => [
-    { id: '1', timestamp: '2024-01-15 14:32:05.123', level: 'info', message: 'Server listening on port 3000', source: 'api-server' },
-    { id: '2', timestamp: '2024-01-15 14:32:05.456', level: 'info', message: 'Connected to PostgreSQL database', source: 'api-server' },
-    { id: '3', timestamp: '2024-01-15 14:32:06.789', level: 'info', message: 'Redis connection established', source: 'api-server' },
-    { id: '4', timestamp: '2024-01-15 14:32:10.012', level: 'info', message: 'GET /health 200 - 2ms', source: 'api-server' },
-    { id: '5', timestamp: '2024-01-15 14:32:15.345', level: 'warn', message: 'Slow query detected: SELECT * FROM users - 1523ms', source: 'api-server' },
-    { id: '6', timestamp: '2024-01-15 14:32:20.678', level: 'info', message: 'POST /api/auth/login 200 - 45ms', source: 'api-server' },
-    { id: '7', timestamp: '2024-01-15 14:32:25.901', level: 'error', message: 'Failed to fetch user profile: Connection timeout', source: 'api-server' },
-    { id: '8', timestamp: '2024-01-15 14:32:26.234', level: 'info', message: 'Retrying connection...', source: 'api-server' },
-    { id: '9', timestamp: '2024-01-15 14:32:27.567', level: 'info', message: 'Connection restored', source: 'api-server' },
-    { id: '10', timestamp: '2024-01-15 14:32:30.890', level: 'debug', message: 'Cache hit for key: user:123', source: 'api-server' },
-    { id: '11', timestamp: '2024-01-15 14:32:35.123', level: 'info', message: 'GET /api/users/123 200 - 12ms', source: 'api-server' },
-    { id: '12', timestamp: '2024-01-15 14:32:40.456', level: 'warn', message: 'Rate limit approaching for IP: 192.168.1.1', source: 'api-server' },
-    { id: '13', timestamp: '2024-01-15 14:32:45.789', level: 'info', message: 'Background job completed: sendEmailNotifications', source: 'api-server' },
-    { id: '14', timestamp: '2024-01-15 14:32:50.012', level: 'error', message: 'Unhandled promise rejection: TypeError: Cannot read property of undefined', source: 'api-server' },
-    { id: '15', timestamp: '2024-01-15 14:32:55.345', level: 'info', message: 'Health check passed', source: 'api-server' },
-];
-
-export function LogsViewer({ isOpen, onClose, serviceName, deploymentId }: LogsViewerProps) {
-    const [logs, setLogs] = useState<LogEntry[]>(generateDemoLogs());
+export function LogsViewer({ isOpen, onClose, serviceName, serviceUuid, serviceType = 'application', deploymentId }: LogsViewerProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLevel, setSelectedLevel] = useState<string>('all');
-    const [isStreaming, setIsStreaming] = useState(true);
     const [selectedDeployment, setSelectedDeployment] = useState(deploymentId || 'latest');
     const logsContainerRef = useRef<HTMLDivElement>(null);
+
+    // Use the real log stream hook when serviceUuid is provided
+    const {
+        logs: streamLogs,
+        isStreaming,
+        isConnected,
+        isPolling,
+        loading,
+        error,
+        clearLogs,
+        toggleStreaming,
+        refresh,
+        downloadLogs: downloadStreamLogs,
+    } = useLogStream({
+        resourceType: serviceType,
+        resourceId: serviceUuid || 'demo',
+        enableWebSocket: !!serviceUuid,
+        pollingInterval: serviceUuid ? 2000 : 0, // Disable polling if no UUID
+        maxLogEntries: 500,
+        autoScroll: true,
+        filterLevel: selectedLevel === 'all' ? 'all' : selectedLevel as 'info' | 'error' | 'warning' | 'debug',
+    });
 
     // Auto-scroll to bottom when new logs arrive
     useEffect(() => {
         if (isStreaming && logsContainerRef.current) {
             logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
         }
-    }, [logs, isStreaming]);
+    }, [streamLogs, isStreaming]);
 
-    // Simulate streaming logs
-    useEffect(() => {
-        if (!isOpen || !isStreaming) return;
+    // Map logs from hook format to display format
+    const displayLogs = useMemo(() => {
+        return streamLogs.map(log => ({
+            ...log,
+            level: (log.level === 'warning' ? 'warn' : log.level) as 'info' | 'warn' | 'error' | 'debug',
+        }));
+    }, [streamLogs]);
 
-        const interval = setInterval(() => {
-            const newLog: LogEntry = {
-                id: String(Date.now()),
-                timestamp: new Date().toISOString().replace('T', ' ').slice(0, 23),
-                level: Math.random() > 0.8 ? 'warn' : Math.random() > 0.95 ? 'error' : 'info',
-                message: `Request processed - ${Math.floor(Math.random() * 100)}ms`,
-                source: serviceName,
-            };
-            setLogs(prev => [...prev.slice(-100), newLog]); // Keep last 100 logs
-        }, 2000);
-
-        return () => clearInterval(interval);
-    }, [isOpen, isStreaming, serviceName]);
-
-    const filteredLogs = logs.filter(log => {
-        const matchesSearch = searchQuery === '' ||
-            log.message.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesLevel = selectedLevel === 'all' || log.level === selectedLevel;
-        return matchesSearch && matchesLevel;
-    });
+    // Filter logs by search query and level
+    const filteredLogs = useMemo(() => {
+        return displayLogs.filter(log => {
+            const matchesSearch = searchQuery === '' ||
+                log.message.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesLevel = selectedLevel === 'all' || log.level === selectedLevel;
+            return matchesSearch && matchesLevel;
+        });
+    }, [displayLogs, searchQuery, selectedLevel]);
 
     const getLevelColor = (level: string) => {
         switch (level) {
@@ -95,20 +84,27 @@ export function LogsViewer({ isOpen, onClose, serviceName, deploymentId }: LogsV
     };
 
     const handleDownload = () => {
-        const content = filteredLogs.map(log =>
-            `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`
-        ).join('\n');
+        if (serviceUuid) {
+            downloadStreamLogs();
+        } else {
+            // Fallback for demo mode
+            const content = filteredLogs.map(log =>
+                `[${log.timestamp}] [${(log.level || 'info').toUpperCase()}] ${log.message}`
+            ).join('\n');
 
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${serviceName}-logs-${new Date().toISOString().slice(0, 10)}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${serviceName}-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
     };
 
     if (!isOpen) return null;
+
+    const connectionStatus = isConnected ? 'WebSocket' : isPolling ? 'Polling' : 'Disconnected';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -126,6 +122,18 @@ export function LogsViewer({ isOpen, onClose, serviceName, deploymentId }: LogsV
                             <span className={`h-1.5 w-1.5 rounded-full ${isStreaming ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
                             {isStreaming ? 'Live' : 'Paused'}
                         </span>
+                        {/* Connection status indicator */}
+                        {serviceUuid && (
+                            <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${isConnected ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                                {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                                {connectionStatus}
+                            </span>
+                        )}
+                        {!serviceUuid && (
+                            <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400">
+                                Demo Mode
+                            </span>
+                        )}
                     </div>
                     <button onClick={onClose} className="rounded p-1 text-foreground-muted hover:bg-background-secondary hover:text-foreground">
                         <X className="h-5 w-5" />
@@ -192,14 +200,14 @@ export function LogsViewer({ isOpen, onClose, serviceName, deploymentId }: LogsV
                     <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setIsStreaming(!isStreaming)}
+                        onClick={toggleStreaming}
                     >
                         {isStreaming ? <Pause className="mr-1 h-3.5 w-3.5" /> : <Play className="mr-1 h-3.5 w-3.5" />}
                         {isStreaming ? 'Pause' : 'Resume'}
                     </Button>
 
-                    <Button size="sm" variant="secondary" onClick={() => setLogs(generateDemoLogs())}>
-                        <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                    <Button size="sm" variant="secondary" onClick={() => { clearLogs(); refresh(); }} disabled={loading}>
+                        <RefreshCw className={`mr-1 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
 
@@ -209,16 +217,34 @@ export function LogsViewer({ isOpen, onClose, serviceName, deploymentId }: LogsV
                     </Button>
                 </div>
 
+                {/* Error Banner */}
+                {error && (
+                    <div className="flex items-center gap-2 border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{error.message}</span>
+                        <Button size="sm" variant="ghost" onClick={refresh} className="ml-auto">
+                            Retry
+                        </Button>
+                    </div>
+                )}
+
                 {/* Logs */}
                 <div
                     ref={logsContainerRef}
+                    data-log-container
                     className="flex-1 overflow-y-auto font-mono text-sm"
                 >
-                    {filteredLogs.length === 0 ? (
+                    {loading && filteredLogs.length === 0 ? (
+                        <div className="flex h-full flex-col items-center justify-center text-foreground-muted">
+                            <RefreshCw className="mb-4 h-12 w-12 animate-spin opacity-50" />
+                            <p>Loading logs...</p>
+                        </div>
+                    ) : filteredLogs.length === 0 ? (
                         <div className="flex h-full flex-col items-center justify-center text-foreground-muted">
                             <Terminal className="mb-4 h-12 w-12 opacity-50" />
                             <p>No logs found</p>
                             {searchQuery && <p className="mt-1 text-sm">Try adjusting your search or filters</p>}
+                            {!serviceUuid && <p className="mt-2 text-sm text-yellow-500">Provide a service UUID for real logs</p>}
                         </div>
                     ) : (
                         <div className="p-2">
@@ -228,9 +254,9 @@ export function LogsViewer({ isOpen, onClose, serviceName, deploymentId }: LogsV
                                     className="group flex items-start gap-2 rounded px-2 py-1 hover:bg-white/5"
                                 >
                                     <span className="shrink-0 text-foreground-subtle">{log.timestamp}</span>
-                                    <span className={`shrink-0 flex items-center gap-1 ${getLevelColor(log.level)}`}>
-                                        {getLevelIcon(log.level)}
-                                        <span className="w-12 text-xs uppercase">[{log.level}]</span>
+                                    <span className={`shrink-0 flex items-center gap-1 ${getLevelColor(log.level || 'info')}`}>
+                                        {getLevelIcon(log.level || 'info')}
+                                        <span className="w-12 text-xs uppercase">[{log.level || 'info'}]</span>
                                     </span>
                                     <span className="text-foreground">{log.message}</span>
                                 </div>

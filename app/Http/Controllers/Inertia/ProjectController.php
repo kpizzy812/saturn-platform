@@ -63,7 +63,11 @@ class ProjectController extends Controller
     public function show(string $uuid): Response
     {
         $project = Project::ownedByCurrentTeam()
-            ->with(['environments.applications', 'environments.databases', 'environments.services'])
+            ->with([
+                'environments.applications.destination.server',
+                'environments.databases.destination.server',
+                'environments.services',
+            ])
             ->where('uuid', $uuid)
             ->firstOrFail();
 

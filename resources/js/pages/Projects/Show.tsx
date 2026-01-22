@@ -2,12 +2,14 @@ import { useState, useCallback, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Badge, Button, Tabs } from '@/components/ui';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, Hash, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, Hash, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
 import type { Project, Environment, Application, StandaloneDatabase } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
 import { LogsViewer } from '@/components/features/LogsViewer';
+import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
+import { useDatabase, useDatabaseBackups } from '@/hooks/useDatabases';
 import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 
@@ -116,6 +118,7 @@ type SelectedService = {
     status: string;
     fqdn?: string;
     dbType?: string;
+    serverUuid?: string;
 };
 
 export default function ProjectShow({ project }: Props) {
@@ -150,6 +153,8 @@ export default function ProjectShow({ project }: Props) {
     // Logs viewer state
     const [logsViewerOpen, setLogsViewerOpen] = useState(false);
     const [logsViewerService, setLogsViewerService] = useState<string>('');
+    const [logsViewerServiceUuid, setLogsViewerServiceUuid] = useState<string>('');
+    const [logsViewerServiceType, setLogsViewerServiceType] = useState<'application' | 'database'>('application');
 
     // Undo/Redo history for canvas state
     const historyRef = useRef<{ past: SelectedService[][]; future: SelectedService[][] }>({
@@ -240,6 +245,7 @@ export default function ProjectShow({ project }: Props) {
                     name: app.name,
                     status: app.status || 'unknown',
                     fqdn: app.fqdn,
+                    serverUuid: app.destination?.server?.uuid,
                 });
             }
         } else if (type === 'db') {
@@ -252,6 +258,7 @@ export default function ProjectShow({ project }: Props) {
                     name: db.name,
                     status: db.status || 'unknown',
                     dbType: db.database_type,
+                    serverUuid: db.destination?.server?.uuid,
                 });
             }
         }
@@ -312,6 +319,8 @@ export default function ProjectShow({ project }: Props) {
         const node = contextMenuNode;
         if (node) {
             setLogsViewerService(node.name);
+            setLogsViewerServiceUuid(node.uuid);
+            setLogsViewerServiceType(node.type === 'db' ? 'database' : 'application');
             setLogsViewerOpen(true);
         }
     };
@@ -587,6 +596,8 @@ export default function ProjectShow({ project }: Props) {
             return;
         }
         setLogsViewerService(selectedService.name);
+        setLogsViewerServiceUuid(selectedService.uuid);
+        setLogsViewerServiceType(selectedService.type === 'db' ? 'database' : 'application');
         setLogsViewerOpen(true);
     }, [selectedService]);
 
@@ -1116,7 +1127,7 @@ export default function ProjectShow({ project }: Props) {
                                     <>
                                         {activeAppTab === 'deployments' && <DeploymentsTab service={selectedService} />}
                                         {activeAppTab === 'variables' && <VariablesTab />}
-                                        {activeAppTab === 'metrics' && <MetricsTab />}
+                                        {activeAppTab === 'metrics' && <MetricsTab service={selectedService} />}
                                         {activeAppTab === 'settings' && <AppSettingsTab service={selectedService} />}
                                     </>
                                 ) : (
@@ -1174,6 +1185,8 @@ export default function ProjectShow({ project }: Props) {
                 isOpen={logsViewerOpen}
                 onClose={() => setLogsViewerOpen(false)}
                 serviceName={logsViewerService}
+                serviceUuid={logsViewerServiceUuid}
+                serviceType={logsViewerServiceType}
             />
         </ToastProvider>
     );
@@ -1494,14 +1507,16 @@ function VariablesTab() {
     );
 }
 
-function MetricsTab() {
-    const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d' | '30d'>('24h');
+function MetricsTab({ service }: { service: SelectedService }) {
+    const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
 
-    // Demo metrics data
-    const cpuData = [35, 42, 38, 45, 52, 48, 55, 62, 58, 45, 40, 38];
-    const memoryData = [65, 68, 70, 72, 71, 74, 76, 75, 73, 72, 70, 69];
-    const networkIn = [12, 18, 25, 32, 28, 35, 42, 38, 30, 25, 20, 15];
-    const networkOut = [8, 12, 18, 22, 20, 28, 35, 30, 25, 18, 14, 10];
+    // Use the Sentinel metrics hook with the real server UUID
+    const { metrics, historicalData, isLoading, error, refetch } = useSentinelMetrics({
+        serverUuid: service.serverUuid || '',
+        timeRange,
+        autoRefresh: !!service.serverUuid,
+        refreshInterval: 30000, // 30 seconds
+    });
 
     const renderMiniChart = (data: number[], color: string, max: number = 100) => {
         const height = 40;
@@ -1528,27 +1543,68 @@ function MetricsTab() {
         );
     };
 
+    // Extract data from hook
+    const cpuData = historicalData?.cpu?.data?.map(d => d.value) || [];
+    const memoryData = historicalData?.memory?.data?.map(d => d.value) || [];
+    const networkData = historicalData?.network?.data?.map(d => d.value) || [];
+
+    // Show message if no server is associated
+    if (!service.serverUuid) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Gauge className="mb-4 h-12 w-12 text-foreground-muted opacity-50" />
+                <p className="text-foreground-muted">Metrics unavailable</p>
+                <p className="mt-1 text-sm text-foreground-subtle">
+                    No server associated with this service
+                </p>
+            </div>
+        );
+    }
+
+    if (isLoading && !metrics) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             {/* Time Range Selector */}
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground">Resource Usage</h3>
-                <div className="flex gap-1 rounded-lg bg-background-secondary p-1">
-                    {(['1h', '6h', '24h', '7d', '30d'] as const).map((range) => (
-                        <button
-                            key={range}
-                            onClick={() => setTimeRange(range)}
-                            className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                                timeRange === range
-                                    ? 'bg-primary text-white'
-                                    : 'text-foreground-muted hover:text-foreground'
-                            }`}
-                        >
-                            {range}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => refetch()}
+                        className="rounded p-1 text-foreground-muted hover:text-foreground"
+                        title="Refresh metrics"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <div className="flex gap-1 rounded-lg bg-background-secondary p-1">
+                        {(['1h', '24h', '7d', '30d'] as const).map((range) => (
+                            <button
+                                key={range}
+                                onClick={() => setTimeRange(range)}
+                                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                                    timeRange === range
+                                        ? 'bg-primary text-white'
+                                        : 'text-foreground-muted hover:text-foreground'
+                                }`}
+                            >
+                                {range}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
+
+            {error && (
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+                    Using cached/demo metrics. Real-time data unavailable.
+                </div>
+            )}
 
             {/* CPU Usage */}
             <div className="rounded-lg border border-border bg-background-secondary p-4">
@@ -1558,14 +1614,14 @@ function MetricsTab() {
                         <span className="text-sm font-medium text-foreground">CPU Usage</span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold text-foreground">{cpuData[cpuData.length - 1]}%</span>
+                        <span className="text-2xl font-bold text-foreground">{metrics?.cpu?.current || '0%'}</span>
                         <span className="text-xs text-foreground-muted">of 1 vCPU</span>
                     </div>
                 </div>
-                {renderMiniChart(cpuData, '#3b82f6')}
+                {cpuData.length > 0 && renderMiniChart(cpuData, '#3b82f6')}
                 <div className="mt-2 flex justify-between text-xs text-foreground-muted">
-                    <span>Avg: 46%</span>
-                    <span>Max: 62%</span>
+                    <span>Avg: {historicalData?.cpu?.average || 'N/A'}</span>
+                    <span>Max: {historicalData?.cpu?.peak || 'N/A'}</span>
                 </div>
             </div>
 
@@ -1577,14 +1633,14 @@ function MetricsTab() {
                         <span className="text-sm font-medium text-foreground">Memory Usage</span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold text-foreground">{memoryData[memoryData.length - 1]}%</span>
-                        <span className="text-xs text-foreground-muted">of 512 MB</span>
+                        <span className="text-2xl font-bold text-foreground">{metrics?.memory?.current || '0 GB'}</span>
+                        <span className="text-xs text-foreground-muted">of {metrics?.memory?.total || '512 MB'}</span>
                     </div>
                 </div>
-                {renderMiniChart(memoryData, '#10b981')}
+                {memoryData.length > 0 && renderMiniChart(memoryData, '#10b981')}
                 <div className="mt-2 flex justify-between text-xs text-foreground-muted">
-                    <span>Avg: 71%</span>
-                    <span>Max: 76%</span>
+                    <span>Avg: {historicalData?.memory?.average || 'N/A'}</span>
+                    <span>Max: {historicalData?.memory?.peak || 'N/A'}</span>
                 </div>
             </div>
 
@@ -1598,23 +1654,22 @@ function MetricsTab() {
                     <div className="flex items-center gap-4 text-xs">
                         <span className="flex items-center gap-1">
                             <span className="h-2 w-2 rounded-full bg-purple-500" />
-                            In: {networkIn[networkIn.length - 1]} KB/s
+                            In: {metrics?.network?.in || '0 MB/s'}
                         </span>
                         <span className="flex items-center gap-1">
                             <span className="h-2 w-2 rounded-full bg-pink-500" />
-                            Out: {networkOut[networkOut.length - 1]} KB/s
+                            Out: {metrics?.network?.out || '0 MB/s'}
                         </span>
                     </div>
                 </div>
-                <div className="relative">
-                    {renderMiniChart(networkIn, '#a855f7', 50)}
-                    <div className="absolute inset-0">
-                        {renderMiniChart(networkOut, '#ec4899', 50)}
+                {networkData.length > 0 && (
+                    <div className="relative">
+                        {renderMiniChart(networkData, '#a855f7', 100)}
                     </div>
-                </div>
+                )}
                 <div className="mt-2 flex justify-between text-xs text-foreground-muted">
-                    <span>Total In: 2.4 GB</span>
-                    <span>Total Out: 1.8 GB</span>
+                    <span>Avg: {historicalData?.network?.average || 'N/A'}</span>
+                    <span>Peak: {historicalData?.network?.peak || 'N/A'}</span>
                 </div>
             </div>
 
@@ -1625,31 +1680,41 @@ function MetricsTab() {
                         <HardDrive className="h-4 w-4 text-foreground-muted" />
                         <span className="text-sm font-medium text-foreground">Disk Usage</span>
                     </div>
-                    <span className="text-sm text-foreground">1.2 GB / 5 GB</span>
+                    <span className="text-sm text-foreground">
+                        {metrics?.disk?.current || '0 GB'} / {metrics?.disk?.total || '5 GB'}
+                    </span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-background">
-                    <div className="h-2 w-[24%] rounded-full bg-orange-500" />
+                    <div
+                        className="h-2 rounded-full bg-orange-500 transition-all"
+                        style={{ width: `${metrics?.disk?.percentage || 0}%` }}
+                    />
                 </div>
-                <p className="mt-2 text-xs text-foreground-muted">24% used</p>
+                <p className="mt-2 text-xs text-foreground-muted">
+                    {metrics?.disk?.percentage || 0}% used
+                </p>
             </div>
 
             {/* Request Stats */}
             <div className="rounded-lg border border-border bg-background-secondary p-4">
-                <h4 className="mb-3 text-sm font-medium text-foreground">Request Stats (24h)</h4>
+                <h4 className="mb-3 text-sm font-medium text-foreground">Request Stats ({timeRange})</h4>
                 <div className="grid grid-cols-3 gap-4">
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-foreground">12.4k</p>
+                        <p className="text-2xl font-bold text-foreground">--</p>
                         <p className="text-xs text-foreground-muted">Total Requests</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-green-500">99.2%</p>
+                        <p className="text-2xl font-bold text-green-500">--</p>
                         <p className="text-xs text-foreground-muted">Success Rate</p>
                     </div>
                     <div className="text-center">
-                        <p className="text-2xl font-bold text-foreground">45ms</p>
+                        <p className="text-2xl font-bold text-foreground">--</p>
                         <p className="text-xs text-foreground-muted">Avg Latency</p>
                     </div>
                 </div>
+                <p className="mt-3 text-center text-xs text-foreground-subtle">
+                    Request metrics require application instrumentation
+                </p>
             </div>
         </div>
     );
@@ -2094,23 +2159,71 @@ function DatabaseDataTab({ service }: { service: SelectedService }) {
 }
 
 function DatabaseConnectTab({ service }: { service: SelectedService }) {
-    const getConnectionString = () => {
-        switch (service.dbType?.toLowerCase()) {
+    // Fetch real database data
+    const { database, isLoading, error } = useDatabase({ uuid: service.uuid });
+
+    // Get connection strings from API data
+    const internalUrl = database?.internal_db_url;
+    const externalUrl = database?.external_db_url;
+
+    // Generate environment variables based on database type
+    const getEnvVariables = () => {
+        const dbType = service.dbType?.toLowerCase();
+        switch (dbType) {
             case 'postgresql':
-                return 'postgresql://postgres:••••••••@postgres.railway.internal:5432/railway';
-            case 'redis':
-                return 'redis://default:••••••••@redis.railway.internal:6379';
+                return [
+                    { key: 'DATABASE_URL', value: internalUrl ? '(set)' : '(not configured)' },
+                    { key: 'PGHOST', value: database?.uuid || service.uuid },
+                    { key: 'PGPORT', value: '5432' },
+                    { key: 'PGUSER', value: database?.postgres_user || 'postgres' },
+                    { key: 'PGDATABASE', value: database?.postgres_db || 'postgres' },
+                ];
             case 'mysql':
-                return 'mysql://root:••••••••@mysql.railway.internal:3306/railway';
+            case 'mariadb':
+                return [
+                    { key: 'DATABASE_URL', value: internalUrl ? '(set)' : '(not configured)' },
+                    { key: 'MYSQL_HOST', value: database?.uuid || service.uuid },
+                    { key: 'MYSQL_PORT', value: '3306' },
+                    { key: 'MYSQL_USER', value: database?.mysql_user || 'root' },
+                    { key: 'MYSQL_DATABASE', value: database?.mysql_database || 'mysql' },
+                ];
             case 'mongodb':
-                return 'mongodb://mongo:••••••••@mongodb.railway.internal:27017/railway';
+                return [
+                    { key: 'MONGO_URL', value: internalUrl ? '(set)' : '(not configured)' },
+                    { key: 'MONGO_HOST', value: database?.uuid || service.uuid },
+                    { key: 'MONGO_PORT', value: '27017' },
+                ];
+            case 'redis':
+            case 'keydb':
+            case 'dragonfly':
+                return [
+                    { key: 'REDIS_URL', value: internalUrl ? '(set)' : '(not configured)' },
+                    { key: 'REDIS_HOST', value: database?.uuid || service.uuid },
+                    { key: 'REDIS_PORT', value: '6379' },
+                ];
             default:
-                return 'database://user:password@host:port/database';
+                return [
+                    { key: 'DATABASE_URL', value: internalUrl ? '(set)' : '(not configured)' },
+                ];
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            {error && (
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+                    Unable to load connection details. Check API permissions.
+                </div>
+            )}
+
             {/* Private Network */}
             <div>
                 <div className="mb-3 flex items-center gap-2">
@@ -2123,15 +2236,18 @@ function DatabaseConnectTab({ service }: { service: SelectedService }) {
                 <div className="rounded-lg border border-border bg-background-secondary p-3">
                     <div className="flex items-center justify-between gap-2">
                         <code className="flex-1 truncate text-sm text-foreground">
-                            {getConnectionString()}
+                            {internalUrl || 'Not configured - enable public port or check settings'}
                         </code>
                         <button
                             onClick={() => {
-                                navigator.clipboard.writeText(getConnectionString());
-                                alert('Connection string copied to clipboard');
+                                if (internalUrl) {
+                                    navigator.clipboard.writeText(internalUrl);
+                                    alert('Connection string copied to clipboard');
+                                }
                             }}
-                            className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                            className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"
                             title="Copy connection string"
+                            disabled={!internalUrl}
                         >
                             <Copy className="h-4 w-4" />
                         </button>
@@ -2151,16 +2267,18 @@ function DatabaseConnectTab({ service }: { service: SelectedService }) {
                 <div className="rounded-lg border border-border bg-background-secondary p-3">
                     <div className="flex items-center justify-between gap-2">
                         <code className="flex-1 truncate text-sm text-foreground">
-                            {service.dbType?.toLowerCase()}.saturn.railway.app:5432
+                            {externalUrl || `Public access not configured (port: ${database?.public_port || 'N/A'})`}
                         </code>
                         <button
                             onClick={() => {
-                                const publicHost = `${service.dbType?.toLowerCase()}.saturn.railway.app:5432`;
-                                navigator.clipboard.writeText(publicHost);
-                                alert('Public host copied to clipboard');
+                                if (externalUrl) {
+                                    navigator.clipboard.writeText(externalUrl);
+                                    alert('External URL copied to clipboard');
+                                }
                             }}
-                            className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
-                            title="Copy public host"
+                            className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"
+                            title="Copy external URL"
+                            disabled={!externalUrl}
                         >
                             <Copy className="h-4 w-4" />
                         </button>
@@ -2172,13 +2290,7 @@ function DatabaseConnectTab({ service }: { service: SelectedService }) {
             <div>
                 <h3 className="mb-3 text-sm font-medium text-foreground">Variables</h3>
                 <div className="space-y-2">
-                    {[
-                        { key: 'DATABASE_URL', value: '(connection string)' },
-                        { key: 'PGHOST', value: 'postgres.railway.internal' },
-                        { key: 'PGPORT', value: '5432' },
-                        { key: 'PGUSER', value: 'postgres' },
-                        { key: 'PGDATABASE', value: 'railway' },
-                    ].map((v) => (
+                    {getEnvVariables().map((v) => (
                         <div key={v.key} className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-2">
                             <code className="text-xs text-foreground-muted">{v.key}</code>
                             <code className="text-xs text-foreground">{v.value}</code>
@@ -2191,60 +2303,166 @@ function DatabaseConnectTab({ service }: { service: SelectedService }) {
 }
 
 function DatabaseCredentialsTab({ service }: { service: SelectedService }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const { database, isLoading, error } = useDatabase({ uuid: service.uuid });
+
+    // Get credentials based on database type
+    const getCredentials = () => {
+        const dbType = service.dbType?.toLowerCase() || '';
+
+        if (dbType.includes('postgresql') || dbType.includes('postgres')) {
+            return {
+                username: database?.postgres_user || 'postgres',
+                password: database?.postgres_password,
+                database: database?.postgres_db || 'postgres',
+            };
+        }
+        if (dbType.includes('mysql') || dbType.includes('mariadb')) {
+            return {
+                username: database?.mysql_user || 'root',
+                password: database?.mysql_password || database?.mysql_root_password,
+                database: database?.mysql_database || 'mysql',
+            };
+        }
+        if (dbType.includes('mongodb') || dbType.includes('mongo')) {
+            return {
+                username: database?.mongo_initdb_root_username || 'root',
+                password: database?.mongo_initdb_root_password,
+                database: database?.mongo_initdb_database || 'admin',
+            };
+        }
+        if (dbType.includes('redis')) {
+            return {
+                username: null,
+                password: database?.redis_password,
+                database: null,
+            };
+        }
+        if (dbType.includes('keydb')) {
+            return {
+                username: null,
+                password: database?.keydb_password,
+                database: null,
+            };
+        }
+        if (dbType.includes('dragonfly')) {
+            return {
+                username: null,
+                password: database?.dragonfly_password,
+                database: null,
+            };
+        }
+        if (dbType.includes('clickhouse')) {
+            return {
+                username: database?.clickhouse_admin_user || 'default',
+                password: database?.clickhouse_admin_password,
+                database: 'default',
+            };
+        }
+        return { username: null, password: null, database: null };
+    };
+
+    const credentials = getCredentials();
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            {error && (
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+                    Unable to load credentials. Check API permissions (requires read:sensitive).
+                </div>
+            )}
+
             {/* Current Credentials */}
             <div>
                 <h3 className="mb-3 text-sm font-medium text-foreground">Current Credentials</h3>
                 <div className="space-y-2">
-                    <div className="rounded-lg border border-border bg-background-secondary p-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs text-foreground-muted">Username</p>
-                                <code className="text-sm text-foreground">postgres</code>
+                    {credentials.username !== null && (
+                        <div className="rounded-lg border border-border bg-background-secondary p-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-foreground-muted">Username</p>
+                                    <code className="text-sm text-foreground">{credentials.username}</code>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (credentials.username) {
+                                            navigator.clipboard.writeText(credentials.username);
+                                            alert('Username copied to clipboard');
+                                        }
+                                    }}
+                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                                    title="Copy username"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => {
-                                    navigator.clipboard.writeText('postgres');
-                                    alert('Username copied to clipboard');
-                                }}
-                                className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
-                                title="Copy username"
-                            >
-                                <Copy className="h-4 w-4" />
-                            </button>
                         </div>
-                    </div>
+                    )}
                     <div className="rounded-lg border border-border bg-background-secondary p-3">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-xs text-foreground-muted">Password</p>
-                                <code className="text-sm text-foreground">••••••••••••••••</code>
+                                <code className="text-sm text-foreground">
+                                    {credentials.password
+                                        ? (showPassword ? credentials.password : '••••••••••••••••')
+                                        : '(not available - requires read:sensitive permission)'}
+                                </code>
                             </div>
                             <div className="flex gap-1">
                                 <button
-                                    onClick={() => {
-                                        alert('Password visibility toggle coming soon');
-                                    }}
-                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
-                                    title="Show password"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"
+                                    title={showPassword ? 'Hide password' : 'Show password'}
+                                    disabled={!credentials.password}
                                 >
-                                    <Eye className="h-4 w-4" />
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                                 <button
                                     onClick={() => {
-                                        // TODO: Get real password from API when available
-                                        navigator.clipboard.writeText('password_placeholder');
-                                        alert('Password copied to clipboard (placeholder - real credentials coming soon)');
+                                        if (credentials.password) {
+                                            navigator.clipboard.writeText(credentials.password);
+                                            alert('Password copied to clipboard');
+                                        }
                                     }}
-                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"
                                     title="Copy password"
+                                    disabled={!credentials.password}
                                 >
                                     <Copy className="h-4 w-4" />
                                 </button>
                             </div>
                         </div>
                     </div>
+                    {credentials.database !== null && (
+                        <div className="rounded-lg border border-border bg-background-secondary p-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs text-foreground-muted">Database</p>
+                                    <code className="text-sm text-foreground">{credentials.database}</code>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        if (credentials.database) {
+                                            navigator.clipboard.writeText(credentials.database);
+                                            alert('Database name copied to clipboard');
+                                        }
+                                    }}
+                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                                    title="Copy database name"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -2273,23 +2491,23 @@ function DatabaseCredentialsTab({ service }: { service: SelectedService }) {
 }
 
 function DatabaseBackupsTab({ service }: { service: SelectedService }) {
-    const backups = [
-        { id: 1, date: '2024-01-15 14:30', size: '24.5 MB', type: 'manual' },
-        { id: 2, date: '2024-01-14 00:00', size: '23.8 MB', type: 'scheduled' },
-        { id: 3, date: '2024-01-13 00:00', size: '22.1 MB', type: 'scheduled' },
-    ];
+    const { backups, isLoading, error, createBackup, deleteBackup, refetch } = useDatabaseBackups({
+        databaseUuid: service.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const [isCreating, setIsCreating] = useState(false);
 
     const handleCreateBackup = async () => {
+        setIsCreating(true);
         try {
-            const response = await fetch(`/api/v1/databases/${service.uuid}/backups`, {
-                method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error('Failed to create backup');
+            await createBackup();
             alert('Backup creation started');
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Failed to create backup');
+        } finally {
+            setIsCreating(false);
         }
     };
 
@@ -2297,61 +2515,115 @@ function DatabaseBackupsTab({ service }: { service: SelectedService }) {
         alert('Backup scheduling modal coming soon. Configure in database settings.');
     };
 
-    const handleRestoreBackup = (backupId: number) => {
+    const handleRestoreBackup = (backupUuid: string) => {
         if (window.confirm('Are you sure you want to restore this backup? Current data will be replaced.')) {
-            alert(`Restore backup ${backupId} - API integration coming soon`);
+            alert(`Restore backup ${backupUuid} - API integration coming soon`);
         }
     };
 
-    const handleDeleteBackup = (backupId: number) => {
+    const handleDeleteBackup = async (backupUuid: string) => {
         if (window.confirm('Are you sure you want to delete this backup?')) {
-            alert(`Delete backup ${backupId} - API integration coming soon`);
+            try {
+                await deleteBackup(backupUuid);
+                alert('Backup deleted');
+            } catch (err) {
+                alert(err instanceof Error ? err.message : 'Failed to delete backup');
+            }
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
+            {error && (
+                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
+                    Unable to load backups. Check API permissions.
+                </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2">
-                <Button size="sm" onClick={handleCreateBackup}>
-                    <Plus className="mr-1 h-3 w-3" />
+                <Button size="sm" onClick={handleCreateBackup} disabled={isCreating}>
+                    {isCreating ? (
+                        <RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                        <Plus className="mr-1 h-3 w-3" />
+                    )}
                     Create Backup
                 </Button>
                 <Button size="sm" variant="secondary" onClick={handleScheduleBackup}>
                     <Clock className="mr-1 h-3 w-3" />
                     Schedule
                 </Button>
+                <Button size="sm" variant="ghost" onClick={refetch}>
+                    <RefreshCw className="h-3 w-3" />
+                </Button>
             </div>
 
             {/* Backup List */}
             <div>
                 <h3 className="mb-3 text-sm font-medium text-foreground">Backups</h3>
-                <div className="space-y-2">
-                    {backups.map((backup) => (
-                        <div
-                            key={backup.id}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3"
-                        >
-                            <div className="flex items-center gap-3">
-                                <HardDrive className="h-4 w-4 text-foreground-muted" />
-                                <div>
-                                    <p className="text-sm text-foreground">{backup.date}</p>
-                                    <p className="text-xs text-foreground-muted">
-                                        {backup.size} • {backup.type}
-                                    </p>
+                {backups.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                        <HardDrive className="mx-auto h-8 w-8 text-foreground-subtle" />
+                        <p className="mt-2 text-sm text-foreground-muted">No backups yet</p>
+                        <p className="mt-1 text-xs text-foreground-subtle">
+                            Create your first backup to protect your data
+                        </p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {backups.map((backup) => (
+                            <div
+                                key={backup.uuid}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <HardDrive className={`h-4 w-4 ${
+                                        backup.status === 'completed' ? 'text-emerald-500' :
+                                        backup.status === 'in_progress' ? 'text-blue-500 animate-pulse' :
+                                        'text-red-500'
+                                    }`} />
+                                    <div>
+                                        <p className="text-sm text-foreground">
+                                            {new Date(backup.created_at).toLocaleString()}
+                                        </p>
+                                        <p className="text-xs text-foreground-muted">
+                                            {backup.size} • {backup.status}
+                                            {backup.filename && ` • ${backup.filename}`}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleRestoreBackup(backup.uuid)}
+                                        disabled={backup.status !== 'completed'}
+                                    >
+                                        Restore
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-red-500 hover:text-red-400"
+                                        onClick={() => handleDeleteBackup(backup.uuid)}
+                                        disabled={backup.status === 'in_progress'}
+                                    >
+                                        Delete
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => handleRestoreBackup(backup.id)}>
-                                    Restore
-                                </Button>
-                                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400" onClick={() => handleDeleteBackup(backup.id)}>
-                                    Delete
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Info */}
