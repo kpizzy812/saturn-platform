@@ -1064,7 +1064,11 @@ $schema://$host {
         $isFunctional = data_get($this->settings, 'is_reachable') && data_get($this->settings, 'is_usable') && data_get($this->settings, 'force_disabled') === false && $this->ip !== '1.2.3.4';
 
         if ($isFunctional === false) {
-            Storage::disk('ssh-mux')->delete($this->muxFilename());
+            try {
+                Storage::disk('ssh-mux')->delete($this->muxFilename());
+            } catch (\Throwable) {
+                // Ignore errors if ssh-mux directory doesn't exist
+            }
         }
 
         return $isFunctional;
