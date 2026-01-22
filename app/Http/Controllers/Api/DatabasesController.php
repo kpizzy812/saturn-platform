@@ -2848,27 +2848,29 @@ class DatabasesController extends Controller
             return response()->json(['message' => 'Cannot restore from a failed backup.'], 400);
         }
 
+        // Check if restore is already in progress
+        if ($execution->restore_status === 'in_progress') {
+            return response()->json([
+                'message' => 'Restore is already in progress for this backup.',
+            ], 409);
+        }
+
         try {
-            // Note: Actual restore implementation would go here
-            // This would typically involve:
-            // 1. Downloading backup from S3 or local storage
-            // 2. Stopping the database container
-            // 3. Restoring the backup data
-            // 4. Restarting the database container
-            // For now, we return a placeholder response
+            // Dispatch the restore job
+            \App\Jobs\DatabaseRestoreJob::dispatch($backup, $execution);
 
             return response()->json([
-                'message' => 'Database restore from backup is not yet implemented. This endpoint is ready for implementation.',
+                'message' => 'Database restore initiated.',
                 'backup_execution' => [
                     'uuid' => $execution->uuid,
                     'created_at' => $execution->created_at,
                     'filename' => $execution->filename,
                     'size' => $execution->size,
                 ],
-            ], 501);
+            ]);
         } catch (\Throwable $e) {
             return response()->json([
-                'message' => 'Failed to restore database.',
+                'message' => 'Failed to initiate database restore.',
                 'error' => $e->getMessage(),
             ], 500);
         }

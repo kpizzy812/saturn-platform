@@ -40,14 +40,33 @@ interface CreateDatabaseData {
     [key: string]: any;
 }
 
+interface DatabaseBackupExecution {
+    id: number;
+    uuid: string;
+    database_name: string;
+    filename: string;
+    size: string;
+    status: 'success' | 'in_progress' | 'failed';
+    message?: string;
+    s3_uploaded?: boolean;
+    local_storage_deleted?: boolean;
+    restore_status?: 'pending' | 'in_progress' | 'success' | 'failed';
+    restore_message?: string;
+    created_at: string;
+    finished_at?: string;
+}
+
 interface DatabaseBackup {
     id: number;
     uuid: string;
     database_id: number;
-    filename: string;
-    size: string;
-    status: 'completed' | 'in_progress' | 'failed';
+    database_type: string;
+    save_s3: boolean;
+    frequency: string;
+    number_of_backups_locally?: number;
+    executions: DatabaseBackupExecution[];
     created_at: string;
+    updated_at: string;
 }
 
 interface UseDatabaseBackupsOptions {
@@ -63,6 +82,7 @@ interface UseDatabaseBackupsReturn {
     refetch: () => Promise<void>;
     createBackup: () => Promise<void>;
     deleteBackup: (backupUuid: string) => Promise<void>;
+    restoreBackup: (backupUuid: string, executionUuid?: string) => Promise<void>;
 }
 
 /**
@@ -408,6 +428,29 @@ export function useDatabaseBackups({
         }
     }, [databaseUuid, fetchBackups]);
 
+    const restoreBackup = React.useCallback(async (backupUuid: string, executionUuid?: string) => {
+        try {
+            const response = await fetch(`/api/v1/databases/${databaseUuid}/backups/${backupUuid}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: executionUuid ? JSON.stringify({ execution_uuid: executionUuid }) : undefined,
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || `Failed to restore backup: ${response.statusText}`);
+            }
+
+            await fetchBackups();
+        } catch (err) {
+            throw err instanceof Error ? err : new Error('Failed to restore backup');
+        }
+    }, [databaseUuid, fetchBackups]);
+
     // Initial fetch
     React.useEffect(() => {
         fetchBackups();
@@ -431,5 +474,6 @@ export function useDatabaseBackups({
         refetch: fetchBackups,
         createBackup,
         deleteBackup,
+        restoreBackup,
     };
 }
