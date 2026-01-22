@@ -852,9 +852,26 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     Route::get('/projects/{uuid}', function (string $uuid) {
         $project = \App\Models\Project::ownedByCurrentTeam()
-            ->with(['environments.applications', 'environments.databases', 'environments.services'])
+            ->with([
+                'environments.applications',
+                'environments.services',
+                // Load all database types (databases() is not a relationship)
+                'environments.postgresqls',
+                'environments.redis',
+                'environments.mongodbs',
+                'environments.mysqls',
+                'environments.mariadbs',
+                'environments.keydbs',
+                'environments.dragonflies',
+                'environments.clickhouses',
+            ])
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        // Add computed databases to each environment
+        $project->environments->each(function ($env) {
+            $env->databases = $env->databases();
+        });
 
         return \Inertia\Inertia::render('Projects/Show', [
             'project' => $project,
