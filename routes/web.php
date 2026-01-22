@@ -3581,7 +3581,12 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Boarding route
     Route::get('/boarding', function () {
-        return \Inertia\Inertia::render('Boarding/Index');
+        $servers = \App\Models\Server::ownedByCurrentTeam()->get(['id', 'name', 'ip']);
+
+        return \Inertia\Inertia::render('Boarding/Index', [
+            'userName' => auth()->user()->name,
+            'existingServers' => $servers,
+        ]);
     })->name('boarding.index');
 
     Route::post('/boarding/skip', function () {

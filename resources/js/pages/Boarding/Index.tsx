@@ -25,6 +25,10 @@ interface Props {
 type Step = 'welcome' | 'server' | 'git' | 'deploy' | 'complete';
 
 export default function BoardingIndex({ userName, existingServers = [], existingGitSources = [] }: Props) {
+    // Check if localhost server exists (id=0 or name='localhost')
+    const localhostServer = existingServers.find(s => s.id === 0 || s.name === 'localhost');
+    const hasLocalhost = !!localhostServer;
+
     const [currentStep, setCurrentStep] = useState<Step>('welcome');
     const [completedSteps, setCompletedSteps] = useState<Set<Step>>(new Set());
 
@@ -33,8 +37,8 @@ export default function BoardingIndex({ userName, existingServers = [], existing
     const [serverIp, setServerIp] = useState('');
     const [serverPort, setServerPort] = useState('22');
     const [serverUser, setServerUser] = useState('root');
-    const [useExistingServer, setUseExistingServer] = useState(false);
-    const [selectedServerId, setSelectedServerId] = useState('');
+    const [useExistingServer, setUseExistingServer] = useState(hasLocalhost);
+    const [selectedServerId, setSelectedServerId] = useState(localhostServer?.id?.toString() || '');
 
     // Git source form state
     const [useExistingGit, setUseExistingGit] = useState(false);
@@ -173,7 +177,16 @@ export default function BoardingIndex({ userName, existingServers = [], existing
                 {currentStep === 'welcome' && (
                     <WelcomeStep
                         userName={userName}
-                        onNext={() => setCurrentStep('server')}
+                        hasLocalhost={hasLocalhost}
+                        onNext={() => {
+                            if (hasLocalhost) {
+                                // Skip server step if localhost is available
+                                markStepComplete('server');
+                                setCurrentStep('git');
+                            } else {
+                                setCurrentStep('server');
+                            }
+                        }}
                         onSkip={handleSkip}
                     />
                 )}
@@ -238,11 +251,12 @@ export default function BoardingIndex({ userName, existingServers = [], existing
 
 interface WelcomeStepProps {
     userName?: string;
+    hasLocalhost?: boolean;
     onNext: () => void;
     onSkip: () => void;
 }
 
-function WelcomeStep({ userName, onNext, onSkip }: WelcomeStepProps) {
+function WelcomeStep({ userName, hasLocalhost, onNext, onSkip }: WelcomeStepProps) {
     return (
         <Card>
             <CardContent className="p-12 text-center">
@@ -253,9 +267,16 @@ function WelcomeStep({ userName, onNext, onSkip }: WelcomeStepProps) {
                     Welcome to Saturn Platform{userName ? `, ${userName}` : ''}!
                 </h1>
                 <p className="text-lg text-foreground-muted mb-8 max-w-md mx-auto">
-                    Let's get you started by setting up your first server and deploying your first application.
-                    This will only take a few minutes.
+                    {hasLocalhost
+                        ? "Your localhost server is ready. Let's deploy your first application!"
+                        : "Let's get you started by setting up your first server and deploying your first application."}
                 </p>
+                {hasLocalhost && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-success mb-6">
+                        <Check className="h-4 w-4" />
+                        <span>Localhost server detected</span>
+                    </div>
+                )}
                 <div className="flex justify-center gap-4">
                     <Button variant="outline" onClick={onSkip}>
                         Skip Setup
