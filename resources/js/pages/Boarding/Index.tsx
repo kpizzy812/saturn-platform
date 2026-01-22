@@ -61,7 +61,7 @@ export default function BoardingIndex({ userName, existingServers = [], existing
     };
 
     const handleSkip = () => {
-        router.visit('/dashboard');
+        router.post('/boarding/skip');
     };
 
     const handleServerSubmit = () => {

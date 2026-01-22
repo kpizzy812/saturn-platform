@@ -3584,6 +3584,15 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         return \Inertia\Inertia::render('Boarding/Index');
     })->name('boarding.index');
 
+    Route::post('/boarding/skip', function () {
+        $team = currentTeam();
+        $team->show_boarding = false;
+        $team->save();
+        refreshSession($team);
+
+        return redirect()->route('dashboard');
+    })->name('boarding.skip');
+
     // Error pages (for preview)
     Route::get('/errors/404', function () {
         return \Inertia\Inertia::render('Errors/404');
