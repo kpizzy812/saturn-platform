@@ -8,6 +8,7 @@ import type { Project, Environment, Server } from '@/types';
 interface Props {
     projects?: Project[];
     servers?: Server[];
+    needsProject?: boolean;
 }
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
@@ -27,8 +28,12 @@ interface FormData {
     docker_image?: string;
 }
 
-export default function ApplicationsCreate({ projects = [], servers = [] }: Props) {
+export default function ApplicationsCreate({ projects = [], servers = [], needsProject = false }: Props) {
     const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [projectList, setProjectList] = useState<Project[]>(projects);
+    const [showCreateProject, setShowCreateProject] = useState(needsProject);
+    const [newProjectName, setNewProjectName] = useState('');
+    const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [formData, setFormData] = useState<FormData>({
         name: '',
         source_type: null,
@@ -44,7 +49,41 @@ export default function ApplicationsCreate({ projects = [], servers = [] }: Prop
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const selectedProject = projects.find(p => p.uuid === formData.project_uuid);
+    const handleCreateProject = async () => {
+        if (!newProjectName.trim()) {
+            setErrors({ newProjectName: 'Project name is required' });
+            return;
+        }
+        setIsCreatingProject(true);
+        try {
+            const response = await fetch('/api/v1/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ name: newProjectName }),
+            });
+            if (response.ok) {
+                const newProject = await response.json();
+                setProjectList(prev => [...prev, newProject]);
+                setFormData(prev => ({
+                    ...prev,
+                    project_uuid: newProject.uuid,
+                    environment_uuid: newProject.environments?.[0]?.uuid || '',
+                }));
+                setShowCreateProject(false);
+                setNewProjectName('');
+            } else {
+                setErrors({ newProjectName: 'Failed to create project' });
+            }
+        } catch {
+            setErrors({ newProjectName: 'Failed to create project' });
+        }
+        setIsCreatingProject(false);
+    };
+
+    const selectedProject = projectList.find(p => p.uuid === formData.project_uuid);
     const environments = selectedProject?.environments || [];
 
     const handleSourceSelect = (sourceType: SourceType) => {
@@ -255,24 +294,65 @@ export default function ApplicationsCreate({ projects = [], servers = [] }: Prop
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Project *
                                         </label>
-                                        <Select
-                                            value={formData.project_uuid}
-                                            onChange={(e) => {
-                                                const newProjectUuid = e.target.value;
-                                                const newProject = projects.find(p => p.uuid === newProjectUuid);
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    project_uuid: newProjectUuid,
-                                                    environment_uuid: newProject?.environments[0]?.uuid || '',
-                                                }));
-                                            }}
-                                        >
-                                            {projects.map(project => (
-                                                <option key={project.uuid} value={project.uuid}>
-                                                    {project.name}
-                                                </option>
-                                            ))}
-                                        </Select>
+                                        {showCreateProject || projectList.length === 0 ? (
+                                            <div className="space-y-3">
+                                                <Input
+                                                    value={newProjectName}
+                                                    onChange={(e) => setNewProjectName(e.target.value)}
+                                                    placeholder="Enter project name"
+                                                    error={errors.newProjectName}
+                                                />
+                                                {errors.newProjectName && (
+                                                    <p className="text-sm text-destructive">{errors.newProjectName}</p>
+                                                )}
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        onClick={handleCreateProject}
+                                                        disabled={isCreatingProject}
+                                                    >
+                                                        {isCreatingProject ? 'Creating...' : 'Create Project'}
+                                                    </Button>
+                                                    {projectList.length > 0 && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => setShowCreateProject(false)}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <Select
+                                                    value={formData.project_uuid}
+                                                    onChange={(e) => {
+                                                        const newProjectUuid = e.target.value;
+                                                        const newProject = projectList.find(p => p.uuid === newProjectUuid);
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            project_uuid: newProjectUuid,
+                                                            environment_uuid: newProject?.environments[0]?.uuid || '',
+                                                        }));
+                                                    }}
+                                                >
+                                                    {projectList.map(project => (
+                                                        <option key={project.uuid} value={project.uuid}>
+                                                            {project.name}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCreateProject(true)}
+                                                    className="text-sm text-primary hover:underline"
+                                                >
+                                                    + Create new project
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div>
