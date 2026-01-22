@@ -277,9 +277,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Servers
     Route::get('/servers', function () {
-        $servers = \App\Models\Server::with('settings')
-            ->ownedByCurrentTeam()
-            ->get();
+        $servers = \App\Models\Server::ownedByCurrentTeam()->get();
 
         return \Inertia\Inertia::render('Servers/Index', [
             'servers' => $servers,
@@ -330,10 +328,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('servers.store');
 
     Route::get('/servers/{uuid}', function (string $uuid) {
-        $server = \App\Models\Server::with('settings')
-            ->where('uuid', $uuid)
-            ->ownedByCurrentTeam()
-            ->firstOrFail();
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
         return \Inertia\Inertia::render('Servers/Show', [
             'server' => $server,

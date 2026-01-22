@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА:
+Делай коммиты и пуш в dev ветку, чтобы код деплоился на мой VPS
+
+Пиши по русски и думай по русски, но комментарии в коде СТРОГО на Англипйском
+
+НЕ забывай использовать context7 MCP для изучения актуальных сниппетов документаций!
+
+Так же если нужно Web Fetch тоже следует использовать
+
+Обязательно проверяй код линтером и/или билдом
+
 ## Project Overview
 
 Saturn Platform is a self-hosted PaaS (Platform as a Service) - an open-source alternative to Heroku/Netlify/Vercel. It manages servers, applications, and databases via SSH connections, supporting Docker-based deployments.
