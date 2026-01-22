@@ -124,16 +124,24 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
             return;
         }
 
-        // TODO: Create and deploy application via API
-        router.post('/applications', {
+        if (!selectedServerId) {
+            alert('No server selected. Please go back and select a server.');
+            return;
+        }
+
+        router.post('/boarding/deploy', {
             name: appName,
             git_repository: gitRepository,
             git_branch: gitBranch,
-            auto_deploy: true,
+            server_id: selectedServerId,
+            github_app_id: selectedGithubAppId || null,
         }, {
             onSuccess: () => {
                 markStepComplete('deploy');
                 setCurrentStep('complete');
+            },
+            onError: (errors) => {
+                console.error('Deploy failed:', errors);
             },
             preserveScroll: true,
         });
@@ -220,7 +228,7 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
                         existingServers={existingServers}
                         onNext={handleServerSubmit}
                         onBack={() => setCurrentStep('welcome')}
-                        onSkip={() => setCurrentStep('git')}
+                        onSkip={handleSkip}
                     />
                 )}
 
@@ -231,7 +239,7 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
                         setSelectedGithubAppId={setSelectedGithubAppId}
                         onNext={handleGitSubmit}
                         onBack={() => setCurrentStep('server')}
-                        onSkip={() => setCurrentStep('deploy')}
+                        onSkip={handleSkip}
                     />
                 )}
 
