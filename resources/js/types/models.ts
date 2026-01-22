@@ -123,12 +123,15 @@ export interface Service {
 export interface Deployment {
     id: number;
     uuid: string;
+    deployment_uuid?: string;
     application_id: number;
     status: DeploymentStatus;
     commit: string | null;
     commit_message: string | null;
     created_at: string;
     updated_at: string;
+    started_at?: string;
+    finished_at?: string;
 }
 
 export type DeploymentStatus =

@@ -363,9 +363,12 @@ function DeploymentItem({ deployment, applicationUuid }: DeploymentItemProps) {
         cancelled: <XCircle className="h-4 w-4 text-foreground-muted" />,
     };
 
+    // Use deployment_uuid if available (from backend), otherwise fallback to uuid
+    const deploymentUuid = (deployment as { deployment_uuid?: string }).deployment_uuid || deployment.uuid;
+
     return (
         <Link
-            href={`/applications/${applicationUuid}/deployments/${deployment.uuid}`}
+            href={`/applications/${applicationUuid}/deployments/${deploymentUuid}`}
             className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:border-primary/50 hover:bg-background-secondary"
         >
             <div className="flex items-center gap-3 flex-1 min-w-0">

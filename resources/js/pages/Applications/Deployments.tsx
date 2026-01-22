@@ -14,10 +14,13 @@ interface Props {
 
 // Extended deployment interface with additional details
 interface ExtendedDeployment extends Deployment {
+    deployment_uuid?: string;
     trigger: DeploymentTrigger;
     duration?: number;
     deployed_by?: string;
     branch?: string;
+    started_at?: string;
+    finished_at?: string;
 }
 
 // Mock data for demo
@@ -242,7 +245,7 @@ export default function ApplicationDeployments({ application, deployments: propD
                                     </div>
 
                                     <div className="flex gap-2 flex-shrink-0">
-                                        <Link href={`/applications/${application.uuid}/deployments/${deployment.uuid}`}>
+                                        <Link href={`/applications/${application.uuid}/deployments/${deployment.deployment_uuid || deployment.uuid}`}>
                                             <Button size="sm" variant="secondary">
                                                 <ExternalLink className="mr-2 h-4 w-4" />
                                                 Details
@@ -252,7 +255,7 @@ export default function ApplicationDeployments({ application, deployments: propD
                                             <Button
                                                 size="sm"
                                                 variant="secondary"
-                                                onClick={() => handleRollback(deployment.uuid)}
+                                                onClick={() => handleRollback(deployment.deployment_uuid || deployment.uuid)}
                                             >
                                                 <RotateCcw className="mr-2 h-4 w-4" />
                                                 Rollback

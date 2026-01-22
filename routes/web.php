@@ -1814,6 +1814,78 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         ]);
     })->name('applications.deployments');
 
+    // Application Deployment Details Route (Saturn)
+    Route::get('/applications/{uuid}/deployments/{deploymentUuid}', function (string $uuid, string $deploymentUuid) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        $deployment = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+            ->where('deployment_uuid', $deploymentUuid)
+            ->firstOrFail();
+
+        $project = $application->environment->project;
+        $environment = $application->environment;
+
+        // Parse logs from JSON
+        $logs = [];
+        if ($deployment->logs) {
+            $rawLogs = json_decode($deployment->logs, true);
+            if (is_array($rawLogs)) {
+                $logs = collect($rawLogs)
+                    ->filter(fn ($log) => ! ($log['hidden'] ?? false))
+                    ->map(fn ($log) => [
+                        'output' => $log['output'] ?? '',
+                        'type' => $log['type'] ?? 'stdout',
+                        'timestamp' => $log['timestamp'] ?? null,
+                        'order' => $log['order'] ?? 0,
+                    ])
+                    ->sortBy('order')
+                    ->values()
+                    ->all();
+            }
+        }
+
+        // Calculate duration
+        $duration = null;
+        if ($deployment->created_at && $deployment->updated_at && in_array($deployment->status, ['finished', 'failed', 'cancelled'])) {
+            $duration = $deployment->updated_at->diffInSeconds($deployment->created_at);
+        }
+
+        // Get server info
+        $server = $deployment->server;
+
+        return \Inertia\Inertia::render('Applications/DeploymentDetails', [
+            'application' => [
+                'id' => $application->id,
+                'uuid' => $application->uuid,
+                'name' => $application->name,
+                'git_repository' => $application->git_repository,
+                'git_branch' => $application->git_branch,
+            ],
+            'deployment' => [
+                'id' => $deployment->id,
+                'deployment_uuid' => $deployment->deployment_uuid,
+                'status' => $deployment->status,
+                'commit' => $deployment->commit,
+                'commit_message' => $deployment->commitMessage(),
+                'is_webhook' => $deployment->is_webhook,
+                'is_api' => $deployment->is_api,
+                'force_rebuild' => $deployment->force_rebuild,
+                'rollback' => $deployment->rollback,
+                'only_this_server' => $deployment->only_this_server,
+                'created_at' => $deployment->created_at,
+                'updated_at' => $deployment->updated_at,
+                'duration' => $duration,
+                'server_name' => $server?->name ?? 'Unknown',
+                'server_id' => $deployment->server_id,
+            ],
+            'logs' => $logs,
+            'projectUuid' => $project->uuid,
+            'environmentUuid' => $environment->uuid,
+        ]);
+    })->name('applications.deployment.show');
+
     // Subscription Routes
     Route::get('/subscription', function () {
         return \Inertia\Inertia::render('Subscription/Index');

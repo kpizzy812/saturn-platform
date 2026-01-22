@@ -7,6 +7,8 @@ import {
     FolderKanban,
     Database,
     Settings,
+    Layers,
+    Box,
 } from 'lucide-react';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
 import { useSidebar } from '@/contexts/SidebarContext';
@@ -20,8 +22,10 @@ interface NavItem {
 const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="h-5 w-5" /> },
     { label: 'Projects', href: '/projects', icon: <FolderKanban className="h-5 w-5" /> },
-    { label: 'Servers', href: '/servers', icon: <Server className="h-5 w-5" /> },
+    { label: 'Applications', href: '/applications', icon: <Layers className="h-5 w-5" /> },
+    { label: 'Services', href: '/services', icon: <Box className="h-5 w-5" /> },
     { label: 'Databases', href: '/databases', icon: <Database className="h-5 w-5" /> },
+    { label: 'Servers', href: '/servers', icon: <Server className="h-5 w-5" /> },
     { label: 'Settings', href: '/settings', icon: <Settings className="h-5 w-5" /> },
 ];
 
