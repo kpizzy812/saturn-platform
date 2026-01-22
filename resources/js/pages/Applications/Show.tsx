@@ -189,13 +189,13 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                         <div className="text-right">
                                             <p className="text-sm text-foreground-muted mb-2">Domain</p>
                                             <a
-                                                href={`https://${application.fqdn}`}
+                                                href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex items-center gap-2 text-primary hover:underline"
                                             >
                                                 <Globe className="h-4 w-4" />
-                                                {application.fqdn}
+                                                {application.fqdn.replace(/^https?:\/\//, '')}
                                                 <ExternalLink className="h-3 w-3" />
                                             </a>
                                         </div>

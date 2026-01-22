@@ -238,14 +238,14 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
                             <StatusBadge status={currentStatus} />
                             {application.fqdn && (
                                 <a
-                                    href={`https://${application.fqdn}`}
+                                    href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-primary hover:underline flex items-center gap-1 min-w-0 flex-1"
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <Globe className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{application.fqdn}</span>
+                                    <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
                                 </a>
                             )}
                         </div>

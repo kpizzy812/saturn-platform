@@ -151,11 +151,13 @@ export function ContextMenu({
     ];
 
     if (node.fqdn) {
+        const fqdnUrl = node.fqdn.startsWith('http') ? node.fqdn : `https://${node.fqdn}`;
+        const fqdnDisplay = node.fqdn.replace(/^https?:\/\//, '');
         appActions.push({
             id: 'open-url',
-            label: `Open ${node.fqdn}`,
+            label: `Open ${fqdnDisplay}`,
             icon: <ExternalLink className="h-4 w-4" />,
-            action: () => onOpenUrl?.(`https://${node.fqdn}`),
+            action: () => onOpenUrl?.(fqdnUrl),
         });
     }
 

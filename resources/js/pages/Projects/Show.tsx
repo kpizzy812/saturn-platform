@@ -724,11 +724,11 @@ export default function ProjectShow({ project }: Props) {
                                 {selectedService.fqdn && (
                                     <div className="mt-3 flex items-center gap-2 rounded-lg bg-background-secondary p-2">
                                         <Globe className="h-4 w-4 text-foreground-muted" />
-                                        <code className="flex-1 truncate text-sm text-foreground">{selectedService.fqdn}</code>
+                                        <code className="flex-1 truncate text-sm text-foreground">{selectedService.fqdn.replace(/^https?:\/\//, '')}</code>
                                         <button className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
                                             <Copy className="h-3 w-3" />
                                         </button>
-                                        <a href={`https://${selectedService.fqdn}`} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
+                                        <a href={selectedService.fqdn.startsWith('http') ? selectedService.fqdn : `https://${selectedService.fqdn}`} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
                                             <ExternalLink className="h-3 w-3" />
                                         </a>
                                     </div>
