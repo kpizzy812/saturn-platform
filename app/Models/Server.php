@@ -107,7 +107,7 @@ class Server extends BaseModel
 
     public static $batch_counter = 0;
 
-    protected $appends = ['is_saturn_host'];
+    protected $appends = ['is_saturn_host', 'is_localhost'];
 
     protected static function booted()
     {
@@ -233,6 +233,19 @@ class Server extends BaseModel
         return Attribute::make(
             get: function () {
                 return $this->id === 0;
+            }
+        );
+    }
+
+    /**
+     * Check if this is the localhost server (Saturn host).
+     * Used to prevent accidental deletion of the platform server.
+     */
+    protected function isLocalhost(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                return $this->ip === 'host.docker.internal' || $this->id === 0;
             }
         );
     }

@@ -173,16 +173,20 @@ function ServerCard({ server }: { server: ServerType }) {
                                         <Settings className="h-4 w-4" />
                                         Server Settings
                                     </DropdownItem>
-                                    <DropdownDivider />
-                                    <DropdownItem onClick={(e) => {
-                                        e.preventDefault();
-                                        if (confirm(`Are you sure you want to delete "${server.name}"? This action cannot be undone.`)) {
-                                            router.delete(`/servers/${server.uuid}`);
-                                        }
-                                    }} danger>
-                                        <Trash2 className="h-4 w-4" />
-                                        Delete Server
-                                    </DropdownItem>
+                                    {!server.is_localhost && (
+                                        <>
+                                            <DropdownDivider />
+                                            <DropdownItem onClick={(e) => {
+                                                e.preventDefault();
+                                                if (confirm(`Are you sure you want to delete "${server.name}"? This action cannot be undone.`)) {
+                                                    router.delete(`/servers/${server.uuid}`);
+                                                }
+                                            }} danger>
+                                                <Trash2 className="h-4 w-4" />
+                                                Delete Server
+                                            </DropdownItem>
+                                        </>
+                                    )}
                                 </DropdownContent>
                             </Dropdown>
                         </div>

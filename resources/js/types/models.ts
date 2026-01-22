@@ -26,6 +26,7 @@ export interface Server {
     user: string;
     is_reachable: boolean;
     is_usable: boolean;
+    is_localhost: boolean;
     settings: ServerSettings | null;
     created_at: string;
     updated_at: string;
