@@ -208,7 +208,7 @@ export default function BoardingIndex({ userName, existingServers = [], existing
                         existingServers={existingServers}
                         onNext={handleServerSubmit}
                         onBack={() => setCurrentStep('welcome')}
-                        onSkip={handleSkip}
+                        onSkip={() => setCurrentStep('git')}
                     />
                 )}
 
@@ -221,7 +221,7 @@ export default function BoardingIndex({ userName, existingServers = [], existing
                         existingGitSources={existingGitSources}
                         onNext={handleGitSubmit}
                         onBack={() => setCurrentStep('server')}
-                        onSkip={handleSkip}
+                        onSkip={() => setCurrentStep('deploy')}
                     />
                 )}
 
