@@ -1024,7 +1024,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->get();
 
         $servers = \App\Models\Server::ownedByCurrentTeam()
-            ->where('is_usable', true)
+            ->whereRelation('settings', 'is_usable', true)
             ->get();
 
         return \Inertia\Inertia::render('Services/Create', [
@@ -1282,7 +1282,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->get();
 
         $servers = \App\Models\Server::ownedByCurrentTeam()
-            ->where('is_usable', true)
+            ->whereRelation('settings', 'is_usable', true)
             ->get();
 
         return \Inertia\Inertia::render('Applications/Create', [
