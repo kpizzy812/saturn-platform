@@ -156,7 +156,7 @@ export function DropdownItem({
                     className={cn(
                         // Base styles
                         'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left',
-                        'text-sm font-medium',
+                        'text-sm font-medium whitespace-nowrap',
                         // Transitions
                         'transition-all duration-150',
                         // Active/hover states
@@ -175,14 +175,14 @@ export function DropdownItem({
                 >
                     {icon && (
                         <span className={cn(
-                            'flex-shrink-0 h-4 w-4',
+                            'flex-shrink-0',
                             active ? 'opacity-100' : 'opacity-60'
                         )}>
                             {icon}
                         </span>
                     )}
-                    <div className="flex-1 min-w-0">
-                        <div className="truncate">{children}</div>
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className="truncate">{children}</span>
                         {description && (
                             <div className="text-xs text-foreground-subtle truncate mt-0.5">
                                 {description}

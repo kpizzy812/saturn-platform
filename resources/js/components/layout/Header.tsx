@@ -12,8 +12,28 @@ interface HeaderProps {
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
     const user = props.auth?.user as { name?: string; email?: string } | undefined;
-    const [isDark, setIsDark] = React.useState(true);
     const { isExpanded, toggleSidebar } = useSidebar();
+
+    // Theme state with persistence
+    const [isDark, setIsDark] = React.useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('theme');
+            if (saved) return saved === 'dark';
+            return document.documentElement.classList.contains('dark');
+        }
+        return true;
+    });
+
+    // Apply theme changes
+    React.useEffect(() => {
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
+    }, [isDark]);
 
     // Detect OS for keyboard shortcut display
     const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -62,7 +82,7 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                 {showNewProject && (
                     <Link
                         href="/projects/create"
-                        className="flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-foreground/90 hover:shadow-md"
+                        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-glow-primary"
                     >
                         <Plus className="h-4 w-4" />
                         <span>New</span>
@@ -78,12 +98,10 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                         </button>
                     </DropdownTrigger>
                     <DropdownContent align="right">
-                        <DropdownItem>
-                            <FileText className="h-4 w-4" />
+                        <DropdownItem icon={<FileText className="h-4 w-4" />}>
                             Documentation
                         </DropdownItem>
-                        <DropdownItem>
-                            <Headphones className="h-4 w-4" />
+                        <DropdownItem icon={<Headphones className="h-4 w-4" />}>
                             Support
                         </DropdownItem>
                     </DropdownContent>
@@ -114,22 +132,21 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                             <p className="text-xs text-foreground-muted">{user?.email || 'user@example.com'}</p>
                         </div>
                         <DropdownDivider />
-                        <DropdownItem>
-                            <Settings className="h-4 w-4" />
+                        <DropdownItem icon={<Settings className="h-4 w-4" />}>
                             Account Settings
                         </DropdownItem>
-                        <DropdownItem>
-                            <Settings className="h-4 w-4" />
+                        <DropdownItem icon={<Settings className="h-4 w-4" />}>
                             Workspace Settings
                         </DropdownItem>
                         <DropdownDivider />
-                        <DropdownItem onClick={() => setIsDark(!isDark)}>
-                            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                        <DropdownItem
+                            onClick={() => setIsDark(!isDark)}
+                            icon={isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                        >
                             {isDark ? 'Light Theme' : 'Dark Theme'}
                         </DropdownItem>
                         <DropdownDivider />
-                        <DropdownItem>
-                            <LogOut className="h-4 w-4" />
+                        <DropdownItem icon={<LogOut className="h-4 w-4" />}>
                             Logout
                         </DropdownItem>
                     </DropdownContent>
