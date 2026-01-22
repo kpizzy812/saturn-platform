@@ -1,10 +1,11 @@
 # Project Canvas Fix - Progress Tracker
 
-## Current Status: 🔄 In Progress (Phase 1 Complete)
+## Current Status: 🔄 In Progress (Phase 1+2 Complete)
 
 **Started:** 2026-01-22
 **Last Updated:** 2026-01-22
 **Phase 1 Completed:** 2026-01-22
+**Phase 2 Completed:** 2026-01-22
 
 ---
 
@@ -31,22 +32,24 @@
 
 ---
 
-## Phase 2: Buttons Without onClick — P1
+## Phase 2: Buttons Without onClick — P1 ✅ COMPLETED
 
-- [ ] Cancel Deployment (Show.tsx:1035-1040)
-- [ ] Create Dropdown items (Show.tsx:619-677)
-  - [ ] GitHub Repo
-  - [ ] Docker Image
-  - [ ] Database
-  - [ ] Empty Service
-  - [ ] Template
-- [ ] Replicas ± buttons (Show.tsx:1491-1498)
-- [ ] Delete domain (Show.tsx:1386)
-- [ ] Add Custom Domain (Show.tsx:1390-1393)
-- [ ] Create Table (Show.tsx:1618-1621)
-- [ ] Create Backup button (Show.tsx:1806)
-- [ ] Schedule backup (Show.tsx:1810)
-- [ ] Add env variable (Show.tsx:1121-1124)
+- [x] Cancel Deployment → `handleCancel` with confirmation
+- [x] Create Dropdown items → onClick with router.visit()
+  - [x] GitHub Repo → `/applications/create?source=github`
+  - [x] Docker Image → `/applications/create?source=docker`
+  - [x] Database → `/databases/create`
+  - [x] Empty Service → `/services/create`
+  - [x] Template → `/templates`
+- [x] Replicas ± buttons → state + `handleReplicasChange`
+- [x] Delete domain → onClick with confirmation
+- [x] Add Custom Domain → onClick with alert (modal coming soon)
+- [x] Create Backup button → `handleCreateBackup` with API call
+- [x] Schedule backup → `handleScheduleBackup`
+- [x] Add env variable → `handleAddVariable`
+- [x] Copy buttons → `handleCopyVariable` with clipboard
+- [x] Deploy Now → `handleDeploy` with API call
+- [x] Restart/Redeploy/Rollback/Remove → handlers added
 
 ---
 

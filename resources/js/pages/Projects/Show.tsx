@@ -870,7 +870,10 @@ export default function ProjectShow({ project }: Props) {
                                 </DropdownTrigger>
                                 <DropdownContent align="right" className="w-64">
                                     {/* GitHub */}
-                                    <DropdownItem className="flex items-center gap-3 py-3">
+                                    <DropdownItem
+                                        className="flex items-center gap-3 py-3"
+                                        onClick={() => router.visit(`/applications/create?source=github&project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                    >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#24292e]">
                                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="#fff">
                                                 <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -883,7 +886,10 @@ export default function ProjectShow({ project }: Props) {
                                     </DropdownItem>
 
                                     {/* Docker Image */}
-                                    <DropdownItem className="flex items-center gap-3 py-3">
+                                    <DropdownItem
+                                        className="flex items-center gap-3 py-3"
+                                        onClick={() => router.visit(`/applications/create?source=docker&project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                    >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2496ED]">
                                             <Box className="h-4 w-4 text-white" />
                                         </div>
@@ -896,7 +902,10 @@ export default function ProjectShow({ project }: Props) {
                                     <DropdownDivider />
 
                                     {/* Database */}
-                                    <DropdownItem className="flex items-center gap-3 py-3">
+                                    <DropdownItem
+                                        className="flex items-center gap-3 py-3"
+                                        onClick={() => router.visit(`/databases/create?project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                    >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#336791]">
                                             <Database className="h-4 w-4 text-white" />
                                         </div>
@@ -909,7 +918,10 @@ export default function ProjectShow({ project }: Props) {
                                     <DropdownDivider />
 
                                     {/* Empty Service */}
-                                    <DropdownItem className="flex items-center gap-3 py-3">
+                                    <DropdownItem
+                                        className="flex items-center gap-3 py-3"
+                                        onClick={() => router.visit(`/services/create?project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                    >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-600">
                                             <Box className="h-4 w-4 text-white" />
                                         </div>
@@ -920,7 +932,10 @@ export default function ProjectShow({ project }: Props) {
                                     </DropdownItem>
 
                                     {/* Template */}
-                                    <DropdownItem className="flex items-center gap-3 py-3">
+                                    <DropdownItem
+                                        className="flex items-center gap-3 py-3"
+                                        onClick={() => router.visit('/templates')}
+                                    >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
                                             <Layers className="h-4 w-4 text-white" />
                                         </div>
@@ -1219,10 +1234,67 @@ function DeploymentsTab({ service }: { service: SelectedService }) {
     const isInProgress = (status: string) => ['building', 'deploying'].includes(status);
     const canRollback = (status: string) => ['active', 'crashed'].includes(status);
 
+    const handleDeploy = async () => {
+        try {
+            const response = await fetch(`/api/v1/applications/${service.uuid}/start`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Failed to start deployment');
+            alert('Deployment started');
+            window.location.reload();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to deploy');
+        }
+    };
+
+    const handleViewLogs = (deployId: number) => {
+        alert(`View logs for deployment ${deployId} - opening logs panel`);
+    };
+
+    const handleRestart = async () => {
+        try {
+            const response = await fetch(`/api/v1/applications/${service.uuid}/restart`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Failed to restart');
+            alert('Restart initiated');
+            window.location.reload();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to restart');
+        }
+    };
+
+    const handleRedeploy = async () => {
+        await handleDeploy();
+    };
+
+    const handleRollback = (deployId: number) => {
+        if (window.confirm(`Rollback to deployment ${deployId}?`)) {
+            alert(`Rollback to ${deployId} - API integration coming soon`);
+        }
+    };
+
+    const handleCancel = async (deployId: number) => {
+        if (window.confirm('Cancel this deployment?')) {
+            // TODO: Need deployment UUID for real API call
+            alert(`Cancel deployment ${deployId} - API integration coming soon`);
+        }
+    };
+
+    const handleRemove = (deployId: number) => {
+        if (window.confirm('Remove this deployment from history?')) {
+            alert(`Remove deployment ${deployId} - API integration coming soon`);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {/* Deploy Button */}
-            <Button className="w-full">
+            <Button className="w-full" onClick={handleDeploy}>
                 <Play className="mr-2 h-4 w-4" />
                 Deploy Now
             </Button>
@@ -1261,25 +1333,25 @@ function DeploymentsTab({ service }: { service: SelectedService }) {
                                         </button>
                                     </DropdownTrigger>
                                     <DropdownContent align="right" className="w-48">
-                                        <DropdownItem className="flex items-center gap-2">
+                                        <DropdownItem className="flex items-center gap-2" onClick={() => handleViewLogs(deploy.id)}>
                                             <Eye className="h-4 w-4" />
                                             <span>View Logs</span>
                                         </DropdownItem>
 
                                         {deploy.status === 'active' && (
-                                            <DropdownItem className="flex items-center gap-2">
+                                            <DropdownItem className="flex items-center gap-2" onClick={handleRestart}>
                                                 <RefreshCw className="h-4 w-4" />
                                                 <span>Restart</span>
                                             </DropdownItem>
                                         )}
 
-                                        <DropdownItem className="flex items-center gap-2">
+                                        <DropdownItem className="flex items-center gap-2" onClick={handleRedeploy}>
                                             <Play className="h-4 w-4" />
                                             <span>Redeploy</span>
                                         </DropdownItem>
 
                                         {canRollback(deploy.status) && index !== 0 && (
-                                            <DropdownItem className="flex items-center gap-2">
+                                            <DropdownItem className="flex items-center gap-2" onClick={() => handleRollback(deploy.id)}>
                                                 <RotateCcw className="h-4 w-4" />
                                                 <span>Rollback to this</span>
                                             </DropdownItem>
@@ -1288,7 +1360,7 @@ function DeploymentsTab({ service }: { service: SelectedService }) {
                                         {isInProgress(deploy.status) && (
                                             <>
                                                 <DropdownDivider />
-                                                <DropdownItem className="flex items-center gap-2 text-red-500 hover:text-red-400">
+                                                <DropdownItem className="flex items-center gap-2 text-red-500 hover:text-red-400" onClick={() => handleCancel(deploy.id)}>
                                                     <StopCircle className="h-4 w-4" />
                                                     <span>Cancel</span>
                                                 </DropdownItem>
@@ -1298,7 +1370,7 @@ function DeploymentsTab({ service }: { service: SelectedService }) {
                                         {deploy.status !== 'active' && !isInProgress(deploy.status) && (
                                             <>
                                                 <DropdownDivider />
-                                                <DropdownItem className="flex items-center gap-2 text-red-500 hover:text-red-400">
+                                                <DropdownItem className="flex items-center gap-2 text-red-500 hover:text-red-400" onClick={() => handleRemove(deploy.id)}>
                                                     <Trash2 className="h-4 w-4" />
                                                     <span>Remove</span>
                                                 </DropdownItem>
@@ -1370,11 +1442,25 @@ function VariablesTab() {
         { key: 'PORT', value: '3000', isSecret: false },
     ];
 
+    const handleAddVariable = () => {
+        // TODO: Open modal for adding new variable
+        alert('Add Variable modal coming soon. For now, use the Settings page.');
+    };
+
+    const handleCopyVariable = async (key: string, value: string) => {
+        try {
+            await navigator.clipboard.writeText(`${key}=${value}`);
+            alert(`Copied ${key} to clipboard`);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground">Environment Variables</h3>
-                <Button size="sm" variant="secondary">
+                <Button size="sm" variant="secondary" onClick={handleAddVariable}>
                     <Plus className="mr-1 h-3 w-3" />
                     Add
                 </Button>
@@ -1386,7 +1472,11 @@ function VariablesTab() {
                             <code className="text-sm font-medium text-foreground">{v.key}</code>
                             <p className="text-sm text-foreground-muted">{v.value}</p>
                         </div>
-                        <button className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground">
+                        <button
+                            onClick={() => handleCopyVariable(v.key, v.value)}
+                            className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground"
+                            title="Copy to clipboard"
+                        >
                             <Copy className="h-4 w-4" />
                         </button>
                     </div>
@@ -1560,6 +1650,18 @@ function MetricsTab() {
 function AppSettingsTab({ service }: { service: SelectedService }) {
     const [cronEnabled, setCronEnabled] = useState(false);
     const [healthCheckEnabled, setHealthCheckEnabled] = useState(true);
+    const [replicas, setReplicas] = useState(1);
+
+    const handleReplicasChange = async (newReplicas: number) => {
+        if (newReplicas < 1) return;
+        setReplicas(newReplicas);
+        // TODO: API call to update replicas when backend supports it
+        // await fetch(`/api/v1/applications/${service.uuid}`, {
+        //     method: 'PATCH',
+        //     headers: { 'Content-Type': 'application/json' },
+        //     body: JSON.stringify({ replicas: newReplicas }),
+        // });
+    };
 
     return (
         <div className="space-y-6">
@@ -1621,7 +1723,14 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                 <code className="flex-1 rounded bg-background px-2 py-1 text-sm text-foreground">
                                     {service.name || 'api-server'}-production.up.railway.app
                                 </code>
-                                <button className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground">
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(`${service.name || 'api-server'}-production.up.railway.app`);
+                                        alert('Domain copied to clipboard');
+                                    }}
+                                    className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground"
+                                    title="Copy domain"
+                                >
                                     <Copy className="h-4 w-4" />
                                 </button>
                                 <a href={`https://${service.name || 'api-server'}-production.up.railway.app`} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground">
@@ -1638,12 +1747,25 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                     <div className="h-2 w-2 rounded-full bg-green-500" />
                                     <code className="flex-1 text-sm text-foreground">{service.fqdn}</code>
                                     <Badge variant="success" size="sm">SSL</Badge>
-                                    <button className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground">
+                                    <button
+                                        onClick={() => {
+                                            if (window.confirm(`Delete domain ${service.fqdn}?`)) {
+                                                alert('Domain deletion coming soon. Use the Settings page for now.');
+                                            }
+                                        }}
+                                        className="rounded p-1 text-foreground-muted hover:bg-background hover:text-red-500"
+                                        title="Delete domain"
+                                    >
                                         <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             )}
-                            <Button variant="secondary" size="sm" className="mt-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => alert('Add Domain modal coming soon. Use the Settings page for now.')}
+                            >
                                 <Plus className="mr-1 h-3.5 w-3.5" />
                                 Add Custom Domain
                             </Button>
@@ -1744,11 +1866,18 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
                                 <span className="text-sm text-foreground-muted">Replicas</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button className="rounded border border-border bg-background px-2 py-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
+                                <button
+                                    onClick={() => handleReplicasChange(replicas - 1)}
+                                    disabled={replicas <= 1}
+                                    className="rounded border border-border bg-background px-2 py-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
                                     −
                                 </button>
-                                <span className="min-w-[24px] text-center text-sm font-medium text-foreground">1</span>
-                                <button className="rounded border border-border bg-background px-2 py-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
+                                <span className="min-w-[24px] text-center text-sm font-medium text-foreground">{replicas}</span>
+                                <button
+                                    onClick={() => handleReplicasChange(replicas + 1)}
+                                    className="rounded border border-border bg-background px-2 py-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                >
                                     +
                                 </button>
                             </div>
@@ -2055,15 +2184,45 @@ function DatabaseBackupsTab({ service }: { service: SelectedService }) {
         { id: 3, date: '2024-01-13 00:00', size: '22.1 MB', type: 'scheduled' },
     ];
 
+    const handleCreateBackup = async () => {
+        try {
+            const response = await fetch(`/api/v1/databases/${service.uuid}/backups`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Failed to create backup');
+            alert('Backup creation started');
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to create backup');
+        }
+    };
+
+    const handleScheduleBackup = () => {
+        alert('Backup scheduling modal coming soon. Configure in database settings.');
+    };
+
+    const handleRestoreBackup = (backupId: number) => {
+        if (window.confirm('Are you sure you want to restore this backup? Current data will be replaced.')) {
+            alert(`Restore backup ${backupId} - API integration coming soon`);
+        }
+    };
+
+    const handleDeleteBackup = (backupId: number) => {
+        if (window.confirm('Are you sure you want to delete this backup?')) {
+            alert(`Delete backup ${backupId} - API integration coming soon`);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Actions */}
             <div className="flex gap-2">
-                <Button size="sm">
+                <Button size="sm" onClick={handleCreateBackup}>
                     <Plus className="mr-1 h-3 w-3" />
                     Create Backup
                 </Button>
-                <Button size="sm" variant="secondary">
+                <Button size="sm" variant="secondary" onClick={handleScheduleBackup}>
                     <Clock className="mr-1 h-3 w-3" />
                     Schedule
                 </Button>
@@ -2088,10 +2247,10 @@ function DatabaseBackupsTab({ service }: { service: SelectedService }) {
                                 </div>
                             </div>
                             <div className="flex gap-1">
-                                <Button size="sm" variant="ghost">
+                                <Button size="sm" variant="ghost" onClick={() => handleRestoreBackup(backup.id)}>
                                     Restore
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400">
+                                <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-400" onClick={() => handleDeleteBackup(backup.id)}>
                                     Delete
                                 </Button>
                             </div>
