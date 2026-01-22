@@ -1055,9 +1055,16 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->firstOrFail();
 
         // Find server and destination
-        $server = \App\Models\Server::ownedByCurrentTeam()
-            ->where('uuid', $validated['server_uuid'])
-            ->firstOrFail();
+        // First check if it's localhost (platform's master server with id=0)
+        $localhost = \App\Models\Server::where('id', 0)->first();
+        if ($localhost && $localhost->uuid === $validated['server_uuid']) {
+            $server = $localhost;
+        } else {
+            // Otherwise, look for user's own servers
+            $server = \App\Models\Server::ownedByCurrentTeam()
+                ->where('uuid', $validated['server_uuid'])
+                ->firstOrFail();
+        }
 
         $destination = $server->destinations()->first();
         if (! $destination) {
@@ -1331,9 +1338,16 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->firstOrFail();
 
         // Find server and destination
-        $server = \App\Models\Server::ownedByCurrentTeam()
-            ->where('uuid', $validated['server_uuid'])
-            ->firstOrFail();
+        // First check if it's localhost (platform's master server with id=0)
+        $localhost = \App\Models\Server::where('id', 0)->first();
+        if ($localhost && $localhost->uuid === $validated['server_uuid']) {
+            $server = $localhost;
+        } else {
+            // Otherwise, look for user's own servers
+            $server = \App\Models\Server::ownedByCurrentTeam()
+                ->where('uuid', $validated['server_uuid'])
+                ->firstOrFail();
+        }
 
         $destination = $server->destinations()->first();
         if (! $destination) {
