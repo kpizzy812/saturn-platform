@@ -87,6 +87,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            POSTGRES_VERSION=15
+            CLOUDFLARED_VERSION=2025.7.0
 
   # =============================================================================
   # Job 2: Deploy to VPS
