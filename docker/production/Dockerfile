@@ -5,8 +5,6 @@ ARG SERVERSIDEUP_PHP_VERSION=8.4-fpm-nginx-alpine
 ARG MINIO_VERSION=RELEASE.2025-05-21T01-59-54Z
 # https://github.com/cloudflare/cloudflared/releases
 ARG CLOUDFLARED_VERSION=2025.7.0
-# https://www.postgresql.org/support/versioning/
-ARG POSTGRES_VERSION=15
 
 # Add user/group
 ARG USER_ID=9999
@@ -57,7 +55,6 @@ FROM serversideup/php:${SERVERSIDEUP_PHP_VERSION}
 ARG USER_ID
 ARG GROUP_ID
 ARG TARGETPLATFORM
-ARG POSTGRES_VERSION
 ARG CLOUDFLARED_VERSION
 ARG CI=true
 
@@ -68,16 +65,11 @@ USER root
 RUN docker-php-serversideup-set-id www-data $USER_ID:$GROUP_ID && \
     docker-php-serversideup-set-file-permissions --owner $USER_ID:$GROUP_ID --service nginx
 
-# Install PostgreSQL repository and keys
-RUN apk add --no-cache gnupg && \
-    mkdir -p /usr/share/keyrings && \
-    curl -fSsL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor > /usr/share/keyrings/postgresql.gpg
-
 # Install system dependencies
 RUN --mount=type=cache,target=/var/cache/apk \
     apk upgrade && \
     apk add --no-cache \
-    postgresql${POSTGRES_VERSION}-client \
+    postgresql-client \
     openssh-client \
     git \
     git-lfs \
