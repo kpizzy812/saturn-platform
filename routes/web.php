@@ -14,8 +14,8 @@ use App\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Symfony\Component\Cuid2\Cuid2;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Visus\Cuid2\Cuid2;
 
 // SuperAdmin routes
 require __DIR__.'/superadmin.php';
