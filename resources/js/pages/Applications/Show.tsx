@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, StatusBadge } from '@/components/ui';
@@ -44,7 +44,7 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     const [application, setApplication] = useState<ApplicationWithRelations>(initialApplication);
     const [showEnvVars, setShowEnvVars] = useState(false);
 
-    // Real-time status updates
+    // Real-time status updates via WebSocket
     useRealtimeStatus({
         onApplicationStatusChange: (data) => {
             if (data.applicationId === application.id) {
@@ -53,11 +53,37 @@ export default function ApplicationShow({ application: initialApplication }: Pro
         },
         onDeploymentCreated: (data) => {
             if (data.applicationId === application.id) {
-                // Optionally refresh deployments list
+                router.reload({ only: ['application'] });
+            }
+        },
+        onDeploymentFinished: (data) => {
+            if (data.applicationId === application.id) {
                 router.reload({ only: ['application'] });
             }
         },
     });
+
+    // Polling fallback for real-time updates when WebSocket is not available
+    // or when there's an active deployment
+    useEffect(() => {
+        const hasActiveDeployment = application.recent_deployments?.some(
+            (d) => d.status === 'in_progress' || d.status === 'queued'
+        );
+
+        // Poll more frequently when there's an active deployment
+        if (!hasActiveDeployment) return;
+
+        const interval = setInterval(() => {
+            router.reload({ only: ['application'], preserveScroll: true });
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [application.recent_deployments]);
+
+    // Update state when props change (from polling or WebSocket)
+    useEffect(() => {
+        setApplication(initialApplication);
+    }, [initialApplication]);
 
     const handleAction = (action: 'start' | 'stop' | 'restart' | 'deploy') => {
         router.post(`/applications/${application.uuid}/${action}`, {}, {

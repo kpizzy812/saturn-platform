@@ -2,6 +2,7 @@
 
 use App\Actions\Application\StopApplication;
 use App\Enums\ApplicationDeploymentStatus;
+use App\Events\DeploymentCreated;
 use App\Jobs\ApplicationDeploymentJob;
 use App\Jobs\VolumeCloneJob;
 use App\Models\Application;
@@ -80,6 +81,22 @@ function queue_application_deployment(Application $application, string $deployme
         'git_type' => $git_type,
         'only_this_server' => $only_this_server,
     ]);
+
+    // Broadcast deployment created event for real-time updates
+    try {
+        $teamId = $application->environment?->project?->team_id;
+        if ($teamId) {
+            event(new DeploymentCreated(
+                deploymentId: $deployment->id,
+                applicationId: $application_id,
+                deploymentUuid: $deployment_uuid,
+                teamId: $teamId
+            ));
+        }
+    } catch (\Throwable $e) {
+        // Don't break deployment if broadcasting fails
+        \Log::warning('Failed to broadcast DeploymentCreated event: '.$e->getMessage());
+    }
 
     if ($no_questions_asked) {
         $deployment->update([
