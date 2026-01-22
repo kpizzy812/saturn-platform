@@ -20,7 +20,7 @@ class DecideWhatToDoWithUser
             refreshSession(auth()->user()->currentTeam());
         }
         if (! auth()->user() || ! isCloud() || isInstanceAdmin()) {
-            if (! isCloud() && showBoarding() && ! in_array($request->path(), allowedPathsForBoardingAccounts())) {
+            if (! isCloud() && showBoarding() && ! $this->isAllowedForBoarding($request->path())) {
                 return redirect()->route('boarding.index');
             }
 
@@ -42,7 +42,7 @@ class DecideWhatToDoWithUser
                 return redirect()->route('subscription.index');
             }
         }
-        if (showBoarding() && ! in_array($request->path(), allowedPathsForBoardingAccounts())) {
+        if (showBoarding() && ! $this->isAllowedForBoarding($request->path())) {
             if (Str::startsWith($request->path(), 'invitations')) {
                 return $next($request);
             }
@@ -57,5 +57,16 @@ class DecideWhatToDoWithUser
         }
 
         return $next($request);
+    }
+
+    private function isAllowedForBoarding(string $path): bool
+    {
+        foreach (allowedPathsForBoardingAccounts() as $allowedPath) {
+            if ($path === $allowedPath || Str::startsWith($path, $allowedPath.'/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

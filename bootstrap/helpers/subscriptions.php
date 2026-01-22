@@ -84,6 +84,9 @@ function allowedPathsForBoardingAccounts()
         'onboarding',
         'boarding',
         'livewire/update',
+        'sources',
+        'source',
+        'servers',
     ];
 }
 function allowedPathsForInvalidAccounts()
