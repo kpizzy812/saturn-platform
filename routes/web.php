@@ -1546,9 +1546,13 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('applications.restart');
 
     Route::delete('/applications/{uuid}', function (string $uuid) {
+        \Log::info('Delete application requested', ['uuid' => $uuid]);
+
         $application = \App\Models\Application::ownedByCurrentTeam()
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        \Log::info('Application found, dispatching delete job', ['id' => $application->id, 'name' => $application->name]);
 
         DeleteResourceJob::dispatch(
             resource: $application,
@@ -1557,6 +1561,8 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             deleteConfigurations: true,
             dockerCleanup: true
         );
+
+        \Log::info('Delete job dispatched');
 
         return redirect()->route('applications.index')->with('success', 'Application deletion queued');
     })->name('applications.destroy');

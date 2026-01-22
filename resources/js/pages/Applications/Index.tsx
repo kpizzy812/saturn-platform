@@ -220,8 +220,18 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
                                     icon={<Trash2 className="h-4 w-4" />}
                                     onClick={(e) => {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         if (confirm(`Are you sure you want to delete "${application.name}"? This action cannot be undone.`)) {
-                                            router.delete(`/applications/${application.uuid}`);
+                                            router.delete(`/applications/${application.uuid}`, {
+                                                preserveScroll: true,
+                                                onSuccess: () => {
+                                                    console.log('Application deleted successfully');
+                                                },
+                                                onError: (errors) => {
+                                                    console.error('Delete failed:', errors);
+                                                    alert('Failed to delete application');
+                                                },
+                                            });
                                         }
                                     }}
                                     danger
