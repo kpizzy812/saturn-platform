@@ -15,7 +15,9 @@ import {
     GitBranch,
     Globe,
     Server as ServerIcon,
-    FolderGit2
+    FolderGit2,
+    Settings,
+    Trash2
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Application, ApplicationStatus } from '@/types';
@@ -176,44 +178,74 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
                                 </button>
                             </DropdownTrigger>
                             <DropdownContent align="right">
-                                <DropdownItem onClick={(e) => handleAction('deploy', e)}>
-                                    <Rocket className="h-4 w-4" />
+                                <DropdownItem
+                                    icon={<Rocket className="h-4 w-4" />}
+                                    onClick={(e) => handleAction('deploy', e)}
+                                >
                                     Deploy
                                 </DropdownItem>
-                                <DropdownItem onClick={(e) => handleAction('restart', e)}>
-                                    <RotateCw className="h-4 w-4" />
+                                <DropdownItem
+                                    icon={<RotateCw className="h-4 w-4" />}
+                                    onClick={(e) => handleAction('restart', e)}
+                                >
                                     Restart
                                 </DropdownItem>
                                 <DropdownDivider />
                                 {currentStatus === 'running' ? (
-                                    <DropdownItem onClick={(e) => handleAction('stop', e)}>
-                                        <Square className="h-4 w-4" />
+                                    <DropdownItem
+                                        icon={<Square className="h-4 w-4" />}
+                                        onClick={(e) => handleAction('stop', e)}
+                                    >
                                         Stop
                                     </DropdownItem>
                                 ) : (
-                                    <DropdownItem onClick={(e) => handleAction('start', e)}>
-                                        <Play className="h-4 w-4" />
+                                    <DropdownItem
+                                        icon={<Play className="h-4 w-4" />}
+                                        onClick={(e) => handleAction('start', e)}
+                                    >
                                         Start
                                     </DropdownItem>
                                 )}
+                                <DropdownItem
+                                    icon={<Settings className="h-4 w-4" />}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        router.visit(`/applications/${application.uuid}/settings`);
+                                    }}
+                                >
+                                    Settings
+                                </DropdownItem>
+                                <DropdownDivider />
+                                <DropdownItem
+                                    icon={<Trash2 className="h-4 w-4" />}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (confirm(`Are you sure you want to delete "${application.name}"? This action cannot be undone.`)) {
+                                            router.delete(`/applications/${application.uuid}`);
+                                        }
+                                    }}
+                                    danger
+                                >
+                                    Delete
+                                </DropdownItem>
                             </DropdownContent>
                         </Dropdown>
                     </div>
 
                     {/* Status & Info */}
                     <div className="mt-4 space-y-2">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
                             <StatusBadge status={currentStatus} />
                             {application.fqdn && (
                                 <a
                                     href={`https://${application.fqdn}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                                    className="text-xs text-primary hover:underline flex items-center gap-1 min-w-0 flex-1"
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <Globe className="h-3 w-3" />
-                                    {application.fqdn}
+                                    <Globe className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">{application.fqdn}</span>
                                 </a>
                             )}
                         </div>
