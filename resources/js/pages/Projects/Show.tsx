@@ -8,7 +8,7 @@ import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
 import { LogsViewer } from '@/components/features/LogsViewer';
-import { ToastProvider } from '@/components/ui/Toast';
+import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 
 // Database Logo Components
@@ -110,6 +110,7 @@ interface Props {
 
 type SelectedService = {
     id: string;
+    uuid: string;
     type: 'app' | 'db';
     name: string;
     status: string;
@@ -234,6 +235,7 @@ export default function ProjectShow({ project }: Props) {
             if (app) {
                 setSelectedService({
                     id: String(app.id),
+                    uuid: app.uuid,
                     type: 'app',
                     name: app.name,
                     status: app.status || 'unknown',
@@ -245,6 +247,7 @@ export default function ProjectShow({ project }: Props) {
             if (db) {
                 setSelectedService({
                     id: String(db.id),
+                    uuid: db.uuid,
                     type: 'db',
                     name: db.name,
                     status: db.status || 'unknown',
@@ -274,6 +277,7 @@ export default function ProjectShow({ project }: Props) {
             if (app) {
                 nodeData = {
                     id: String(app.id),
+                    uuid: app.uuid,
                     type: 'app',
                     name: app.name,
                     status: app.status || 'unknown',
@@ -285,6 +289,7 @@ export default function ProjectShow({ project }: Props) {
             if (db) {
                 nodeData = {
                     id: String(db.id),
+                    uuid: db.uuid,
                     type: 'db',
                     name: db.name,
                     status: db.status || 'unknown',
@@ -319,6 +324,200 @@ export default function ProjectShow({ project }: Props) {
         window.open(url, '_blank');
     };
 
+    // API action handlers for context menu
+    const handleDeploy = useCallback(async (nodeId: string) => {
+        const node = contextMenuNode;
+        if (!node) return;
+
+        try {
+            const response = await fetch(`/api/v1/applications/${node.uuid}/start`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to deploy');
+            }
+
+            router.reload();
+        } catch (err) {
+            console.error('Deploy error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to deploy application');
+        }
+    }, [contextMenuNode]);
+
+    const handleRestart = useCallback(async (nodeId: string) => {
+        const node = contextMenuNode;
+        if (!node) return;
+
+        const endpoint = node.type === 'app'
+            ? `/api/v1/applications/${node.uuid}/restart`
+            : `/api/v1/databases/${node.uuid}/restart`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to restart');
+            }
+
+            router.reload();
+        } catch (err) {
+            console.error('Restart error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to restart');
+        }
+    }, [contextMenuNode]);
+
+    const handleStop = useCallback(async (nodeId: string) => {
+        const node = contextMenuNode;
+        if (!node) return;
+
+        const endpoint = node.type === 'app'
+            ? `/api/v1/applications/${node.uuid}/stop`
+            : `/api/v1/databases/${node.uuid}/stop`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to stop');
+            }
+
+            router.reload();
+        } catch (err) {
+            console.error('Stop error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to stop');
+        }
+    }, [contextMenuNode]);
+
+    const handleDelete = useCallback(async (nodeId: string) => {
+        const node = contextMenuNode;
+        if (!node) return;
+
+        const confirmed = window.confirm(`Are you sure you want to delete "${node.name}"? This action cannot be undone.`);
+        if (!confirmed) return;
+
+        const endpoint = node.type === 'app'
+            ? `/api/v1/applications/${node.uuid}`
+            : `/api/v1/databases/${node.uuid}`;
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to delete');
+            }
+
+            setSelectedService(null);
+            router.reload();
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to delete');
+        }
+    }, [contextMenuNode]);
+
+    // Deploy all staged changes
+    const handleDeployChanges = useCallback(async () => {
+        const env = project.environments?.[0];
+        if (!env?.applications?.length) {
+            setHasStagedChanges(false);
+            return;
+        }
+
+        try {
+            // Deploy all applications in the environment
+            const deployPromises = env.applications.map(app =>
+                fetch(`/api/v1/applications/${app.uuid}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                })
+            );
+
+            await Promise.all(deployPromises);
+            setHasStagedChanges(false);
+            router.reload();
+        } catch (err) {
+            console.error('Deploy changes error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to deploy changes');
+        }
+    }, [project.environments]);
+
+    // Database backup handlers
+    const handleCreateBackup = useCallback(async (nodeId: string) => {
+        const node = contextMenuNode;
+        if (!node || node.type !== 'db') return;
+
+        try {
+            const response = await fetch(`/api/v1/databases/${node.uuid}/backups`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to create backup');
+            }
+
+            alert('Backup started successfully');
+            router.reload();
+        } catch (err) {
+            console.error('Create backup error:', err);
+            alert(err instanceof Error ? err.message : 'Failed to create backup');
+        }
+    }, [contextMenuNode]);
+
+    const handleRestoreBackup = useCallback(async (nodeId: string) => {
+        const node = contextMenuNode;
+        if (!node || node.type !== 'db') return;
+
+        // For now, navigate to the backups tab where user can select a backup to restore
+        setSelectedService({
+            id: node.id,
+            uuid: node.uuid,
+            type: 'db',
+            name: node.name,
+            status: node.status,
+        });
+        setActiveDbTab('backups');
+    }, [contextMenuNode]);
+
     // Canvas zoom controls
     const handleZoomIn = useCallback(() => {
         if ((window as any).__projectCanvasZoomIn) {
@@ -342,6 +541,55 @@ export default function ProjectShow({ project }: Props) {
         setZoomLevel(zoom);
     }, []);
 
+    // Command palette handlers
+    const handlePaletteDeploy = useCallback(async () => {
+        if (!selectedService || selectedService.type !== 'app') {
+            alert('Please select an application first');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/v1/applications/${selectedService.uuid}/start`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Failed to deploy');
+            router.reload();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to deploy');
+        }
+    }, [selectedService]);
+
+    const handlePaletteRestart = useCallback(async () => {
+        if (!selectedService) {
+            alert('Please select a service first');
+            return;
+        }
+        const endpoint = selectedService.type === 'app'
+            ? `/api/v1/applications/${selectedService.uuid}/restart`
+            : `/api/v1/databases/${selectedService.uuid}/restart`;
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (!response.ok) throw new Error('Failed to restart');
+            router.reload();
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to restart');
+        }
+    }, [selectedService]);
+
+    const handlePaletteViewLogs = useCallback(() => {
+        if (!selectedService) {
+            alert('Please select a service first');
+            return;
+        }
+        setLogsViewerService(selectedService.name);
+        setLogsViewerOpen(true);
+    }, [selectedService]);
+
     // Prepare services for command palette
     const commandPaletteServices = [
         ...(selectedEnv?.applications || []).map((app) => ({
@@ -359,7 +607,13 @@ export default function ProjectShow({ project }: Props) {
     return (
         <ToastProvider>
             <Head title={`${project.name} | Saturn`} />
-            <CommandPalette services={commandPaletteServices} />
+            <CommandPalette
+                services={commandPaletteServices}
+                onDeploy={handlePaletteDeploy}
+                onRestart={handlePaletteRestart}
+                onViewLogs={handlePaletteViewLogs}
+                onAddService={handleAddService}
+            />
             <div className="flex h-screen flex-col bg-background">
                 {/* Top Header */}
                 <header className="flex h-12 items-center justify-between border-b border-border bg-background px-4">
@@ -484,7 +738,7 @@ export default function ProjectShow({ project }: Props) {
                             </Button>
                             <Button
                                 size="sm"
-                                onClick={() => setHasStagedChanges(false)}
+                                onClick={handleDeployChanges}
                             >
                                 <Play className="mr-2 h-3 w-3" />
                                 Deploy Changes
@@ -864,9 +1118,9 @@ export default function ProjectShow({ project }: Props) {
                 position={contextMenuPosition}
                 node={contextMenuNode}
                 onClose={closeContextMenu}
-                onDeploy={(id) => console.log('Deploy', id)}
-                onRestart={(id) => console.log('Restart', id)}
-                onStop={(id) => console.log('Stop', id)}
+                onDeploy={handleDeploy}
+                onRestart={handleRestart}
+                onStop={handleStop}
                 onViewLogs={handleViewLogs}
                 onOpenSettings={(id) => {
                     // Open the panel with settings tab
@@ -885,9 +1139,11 @@ export default function ProjectShow({ project }: Props) {
                         }
                     }
                 }}
-                onDelete={(id) => console.log('Delete', id)}
+                onDelete={handleDelete}
                 onCopyId={handleCopyId}
                 onOpenUrl={handleOpenUrl}
+                onCreateBackup={handleCreateBackup}
+                onRestoreBackup={handleRestoreBackup}
             />
 
             {/* Logs Viewer Modal */}

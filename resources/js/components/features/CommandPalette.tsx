@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from '@inertiajs/react';
 import {
     Search,
     Play,
@@ -34,9 +33,23 @@ interface CommandItem {
 
 interface CommandPaletteProps {
     services?: Array<{ name: string; type: string; id: string }>;
+    onDeploy?: () => void;
+    onRestart?: () => void;
+    onViewLogs?: () => void;
+    onAddService?: () => void;
+    onAddDatabase?: () => void;
+    onAddTemplate?: () => void;
 }
 
-export function CommandPalette({ services = [] }: CommandPaletteProps) {
+export function CommandPalette({
+    services = [],
+    onDeploy,
+    onRestart,
+    onViewLogs,
+    onAddService,
+    onAddDatabase,
+    onAddTemplate,
+}: CommandPaletteProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -53,7 +66,7 @@ export function CommandPalette({ services = [] }: CommandPaletteProps) {
             icon: <Play className="h-4 w-4" />,
             category: 'actions',
             shortcut: '⌘D',
-            action: () => console.log('Deploy'),
+            action: onDeploy,
         },
         {
             id: 'restart',
@@ -62,7 +75,7 @@ export function CommandPalette({ services = [] }: CommandPaletteProps) {
             icon: <RefreshCw className="h-4 w-4" />,
             category: 'actions',
             shortcut: '⌘R',
-            action: () => console.log('Restart'),
+            action: onRestart,
         },
         {
             id: 'view-logs',
@@ -71,7 +84,7 @@ export function CommandPalette({ services = [] }: CommandPaletteProps) {
             icon: <Terminal className="h-4 w-4" />,
             category: 'actions',
             shortcut: '⌘L',
-            action: () => console.log('View Logs'),
+            action: onViewLogs,
         },
         {
             id: 'add-service',
@@ -80,7 +93,8 @@ export function CommandPalette({ services = [] }: CommandPaletteProps) {
             icon: <Plus className="h-4 w-4" />,
             category: 'actions',
             shortcut: '⌘N',
-            action: () => console.log('Add Service'),
+            action: onAddService,
+            href: onAddService ? undefined : '/services/create',
         },
         {
             id: 'add-database',
@@ -88,7 +102,8 @@ export function CommandPalette({ services = [] }: CommandPaletteProps) {
             description: 'Add a new database',
             icon: <Database className="h-4 w-4" />,
             category: 'actions',
-            action: () => console.log('Add Database'),
+            action: onAddDatabase,
+            href: onAddDatabase ? undefined : '/databases/create',
         },
         {
             id: 'add-template',
@@ -96,7 +111,8 @@ export function CommandPalette({ services = [] }: CommandPaletteProps) {
             description: 'Deploy from a template',
             icon: <Layers className="h-4 w-4" />,
             category: 'actions',
-            action: () => console.log('Add Template'),
+            action: onAddTemplate,
+            href: onAddTemplate ? undefined : '/templates',
         },
 
         // Navigation

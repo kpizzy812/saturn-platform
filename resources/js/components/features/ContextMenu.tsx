@@ -24,6 +24,7 @@ export interface ContextMenuPosition {
 
 export interface ContextMenuNode {
     id: string;
+    uuid: string;
     type: 'app' | 'db';
     name: string;
     status: string;
@@ -51,6 +52,8 @@ interface ContextMenuProps {
     onDelete?: (nodeId: string) => void;
     onCopyId?: (nodeId: string) => void;
     onOpenUrl?: (url: string) => void;
+    onCreateBackup?: (nodeId: string) => void;
+    onRestoreBackup?: (nodeId: string) => void;
 }
 
 export function ContextMenu({
@@ -65,6 +68,8 @@ export function ContextMenu({
     onDelete,
     onCopyId,
     onOpenUrl,
+    onCreateBackup,
+    onRestoreBackup,
 }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -208,13 +213,13 @@ export function ContextMenu({
             id: 'backup',
             label: 'Create Backup',
             icon: <Download className="h-4 w-4" />,
-            action: () => console.log('Create backup'),
+            action: () => onCreateBackup?.(node.id),
         },
         {
             id: 'restore',
             label: 'Restore from Backup',
             icon: <RotateCcw className="h-4 w-4" />,
-            action: () => console.log('Restore backup'),
+            action: () => onRestoreBackup?.(node.id),
             divider: true,
         },
         {
