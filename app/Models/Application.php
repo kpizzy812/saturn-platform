@@ -447,12 +447,8 @@ class Application extends BaseModel
 
     public function link()
     {
-        if (data_get($this, 'environment.project.uuid')) {
-            return route('project.application.configuration', [
-                'project_uuid' => data_get($this, 'environment.project.uuid'),
-                'environment_uuid' => data_get($this, 'environment.uuid'),
-                'application_uuid' => data_get($this, 'uuid'),
-            ]);
+        if ($this->uuid) {
+            return route('applications.show', $this->uuid);
         }
 
         return null;

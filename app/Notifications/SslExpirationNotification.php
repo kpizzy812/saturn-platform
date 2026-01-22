@@ -22,20 +22,17 @@ class SslExpirationNotification extends CustomEmailNotification
 
         // Collect URLs for each resource
         $this->resources->each(function ($resource) {
-            if (data_get($resource, 'environment.project.uuid')) {
+            $uuid = data_get($resource, 'uuid');
+            if ($uuid) {
                 $routeName = match ($resource->type()) {
-                    'application' => 'project.application.configuration',
-                    'database' => 'project.database.configuration',
-                    'service' => 'project.service.configuration',
+                    'application' => 'applications.show',
+                    'database' => 'databases.show',
+                    'service' => 'services.show',
                     default => null
                 };
 
                 if ($routeName) {
-                    $route = route($routeName, [
-                        'project_uuid' => data_get($resource, 'environment.project.uuid'),
-                        'environment_uuid' => data_get($resource, 'environment.uuid'),
-                        $resource->type().'_uuid' => data_get($resource, 'uuid'),
-                    ]);
+                    $route = route($routeName, $uuid);
 
                     $settings = instanceSettings();
                     if (data_get($settings, 'fqdn')) {
