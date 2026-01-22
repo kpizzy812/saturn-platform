@@ -90,21 +90,26 @@ function ProjectCard({ project }: { project: Project }) {
                         </button>
                     </DropdownTrigger>
                     <DropdownContent align="right">
-                        <DropdownItem onClick={(e) => {
-                            e.preventDefault();
-                            router.visit(`/projects/${project.uuid || project.id}/settings`);
-                        }}>
-                            <Settings className="h-4 w-4" />
+                        <DropdownItem
+                            icon={<Settings className="h-4 w-4" />}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                router.visit(`/projects/${project.uuid || project.id}/settings`);
+                            }}
+                        >
                             Project Settings
                         </DropdownItem>
                         <DropdownDivider />
-                        <DropdownItem onClick={(e) => {
-                            e.preventDefault();
-                            if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
-                                router.delete(`/projects/${project.uuid || project.id}`);
-                            }
-                        }} danger>
-                            <Trash2 className="h-4 w-4" />
+                        <DropdownItem
+                            icon={<Trash2 className="h-4 w-4" />}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
+                                    router.delete(`/projects/${project.uuid || project.id}`);
+                                }
+                            }}
+                            danger
+                        >
                             Delete Project
                         </DropdownItem>
                     </DropdownContent>
