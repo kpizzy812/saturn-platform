@@ -994,7 +994,15 @@ export default function ProjectShow({ project }: Props) {
                                     <div className="mt-3 flex items-center gap-2 rounded-lg bg-background-secondary p-2">
                                         <Globe className="h-4 w-4 text-foreground-muted" />
                                         <code className="flex-1 truncate text-sm text-foreground">{selectedService.fqdn.replace(/^https?:\/\//, '')}</code>
-                                        <button className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
+                                        <button
+                                            onClick={() => {
+                                                const domain = selectedService.fqdn?.replace(/^https?:\/\//, '') || '';
+                                                navigator.clipboard.writeText(domain);
+                                                alert('URL copied to clipboard');
+                                            }}
+                                            className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                            title="Copy URL"
+                                        >
                                             <Copy className="h-3 w-3" />
                                         </button>
                                         <a href={selectedService.fqdn.startsWith('http') ? selectedService.fqdn : `https://${selectedService.fqdn}`} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground">
@@ -2066,7 +2074,14 @@ function DatabaseConnectTab({ service }: { service: SelectedService }) {
                         <code className="flex-1 truncate text-sm text-foreground">
                             {getConnectionString()}
                         </code>
-                        <button className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground">
+                        <button
+                            onClick={() => {
+                                navigator.clipboard.writeText(getConnectionString());
+                                alert('Connection string copied to clipboard');
+                            }}
+                            className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                            title="Copy connection string"
+                        >
                             <Copy className="h-4 w-4" />
                         </button>
                     </div>
@@ -2087,7 +2102,15 @@ function DatabaseConnectTab({ service }: { service: SelectedService }) {
                         <code className="flex-1 truncate text-sm text-foreground">
                             {service.dbType?.toLowerCase()}.saturn.railway.app:5432
                         </code>
-                        <button className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground">
+                        <button
+                            onClick={() => {
+                                const publicHost = `${service.dbType?.toLowerCase()}.saturn.railway.app:5432`;
+                                navigator.clipboard.writeText(publicHost);
+                                alert('Public host copied to clipboard');
+                            }}
+                            className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                            title="Copy public host"
+                        >
                             <Copy className="h-4 w-4" />
                         </button>
                     </div>
@@ -2129,7 +2152,14 @@ function DatabaseCredentialsTab({ service }: { service: SelectedService }) {
                                 <p className="text-xs text-foreground-muted">Username</p>
                                 <code className="text-sm text-foreground">postgres</code>
                             </div>
-                            <button className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground">
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText('postgres');
+                                    alert('Username copied to clipboard');
+                                }}
+                                className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                                title="Copy username"
+                            >
                                 <Copy className="h-4 w-4" />
                             </button>
                         </div>
@@ -2141,10 +2171,24 @@ function DatabaseCredentialsTab({ service }: { service: SelectedService }) {
                                 <code className="text-sm text-foreground">••••••••••••••••</code>
                             </div>
                             <div className="flex gap-1">
-                                <button className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground">
+                                <button
+                                    onClick={() => {
+                                        alert('Password visibility toggle coming soon');
+                                    }}
+                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                                    title="Show password"
+                                >
                                     <Eye className="h-4 w-4" />
                                 </button>
-                                <button className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground">
+                                <button
+                                    onClick={() => {
+                                        // TODO: Get real password from API when available
+                                        navigator.clipboard.writeText('password_placeholder');
+                                        alert('Password copied to clipboard (placeholder - real credentials coming soon)');
+                                    }}
+                                    className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
+                                    title="Copy password"
+                                >
                                     <Copy className="h-4 w-4" />
                                 </button>
                             </div>

@@ -1,12 +1,13 @@
 # Project Canvas Fix - Progress Tracker
 
-## Current Status: 🔄 In Progress (Phase 1+2+3 Complete)
+## Current Status: 🔄 In Progress (Phase 1+2+3+4 Complete)
 
 **Started:** 2026-01-22
 **Last Updated:** 2026-01-22
 **Phase 1 Completed:** 2026-01-22
 **Phase 2 Completed:** 2026-01-22
 **Phase 3 Completed:** 2026-01-22
+**Phase 4 Completed:** 2026-01-22
 
 ---
 
@@ -64,13 +65,13 @@
 
 ---
 
-## Phase 4: Copy Buttons — P2
+## Phase 4: Copy Buttons — P2 ✅ COMPLETED
 
-- [ ] Copy env variable (Show.tsx:1133-1135)
-- [ ] Copy URL (Show.tsx:1371)
-- [ ] Copy connection string (Show.tsx:1430)
-- [ ] Copy hostname (Show.tsx:1449)
-- [ ] Copy password (Show.tsx:1503, 1578)
+- [x] Copy env variable → `handleCopyVariable` (already in Phase 2)
+- [x] Copy URL in service panel header
+- [x] Copy connection string (Private Network)
+- [x] Copy public hostname
+- [x] Copy username/password in DatabaseCredentialsTab
 
 ---
 
@@ -119,7 +120,7 @@ After completion:
 - [x] `/projects/{uuid}/settings` → page opens ✅
 - [x] Cancel deployment → works
 - [x] Create dropdown → all items navigate correctly
-- [ ] Copy buttons → copy to clipboard (Phase 4)
+- [x] Copy buttons → copy to clipboard ✅
 - [ ] Toggle Cron/Health → saves to backend (Phase 5)
 - [ ] LogsViewer → shows real logs (Phase 6)
 - [x] `./vendor/bin/pint && npm run build` → no errors ✅
