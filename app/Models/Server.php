@@ -26,6 +26,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Stringable;
+use League\Flysystem\UnableToCreateDirectory;
 use OpenApi\Attributes as OA;
 use Spatie\SchemalessAttributes\Casts\SchemalessAttributes;
 use Spatie\SchemalessAttributes\SchemalessAttributesTrait;
@@ -1066,8 +1067,8 @@ $schema://$host {
         if ($isFunctional === false) {
             try {
                 Storage::disk('ssh-mux')->delete($this->muxFilename());
-            } catch (\Throwable) {
-                // Ignore errors if ssh-mux directory doesn't exist
+            } catch (UnableToCreateDirectory) {
+                // Directory doesn't exist yet, nothing to delete
             }
         }
 
