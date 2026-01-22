@@ -222,7 +222,7 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
 Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         $projects = \App\Models\Project::ownedByCurrentTeam()
-            ->with(['environments.applications', 'environments.databases', 'environments.services'])
+            ->with(['environments.applications', 'environments.services'])
             ->get();
 
         return \Inertia\Inertia::render('Dashboard', [
