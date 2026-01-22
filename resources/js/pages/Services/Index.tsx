@@ -15,6 +15,7 @@ export default function ServicesIndex({ services = [] }: Props) {
             title="Services"
             breadcrumbs={[{ label: 'Services' }]}
         >
+            <div className="mx-auto max-w-6xl px-6 py-8">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>
@@ -39,6 +40,7 @@ export default function ServicesIndex({ services = [] }: Props) {
                     ))}
                 </div>
             )}
+            </div>
         </AppLayout>
     );
 }
@@ -70,35 +72,44 @@ function ServiceCard({ service }: { service: Service }) {
                                 </button>
                             </DropdownTrigger>
                             <DropdownContent align="right">
-                                <DropdownItem onClick={(e) => {
-                                    e.preventDefault();
-                                    router.visit(`/services/${service.uuid}/settings`);
-                                }}>
-                                    <Settings className="h-4 w-4" />
+                                <DropdownItem
+                                    icon={<Settings className="h-4 w-4" />}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        router.visit(`/services/${service.uuid}/settings`);
+                                    }}
+                                >
                                     Service Settings
                                 </DropdownItem>
-                                <DropdownItem onClick={(e) => {
-                                    e.preventDefault();
-                                    router.post(`/services/${service.uuid}/restart`);
-                                }}>
-                                    <RotateCw className="h-4 w-4" />
+                                <DropdownItem
+                                    icon={<RotateCw className="h-4 w-4" />}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        router.post(`/services/${service.uuid}/restart`);
+                                    }}
+                                >
                                     Restart Service
                                 </DropdownItem>
-                                <DropdownItem onClick={(e) => {
-                                    e.preventDefault();
-                                    router.post(`/services/${service.uuid}/stop`);
-                                }}>
-                                    <Power className="h-4 w-4" />
+                                <DropdownItem
+                                    icon={<Power className="h-4 w-4" />}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        router.post(`/services/${service.uuid}/stop`);
+                                    }}
+                                >
                                     Stop Service
                                 </DropdownItem>
                                 <DropdownDivider />
-                                <DropdownItem onClick={(e) => {
-                                    e.preventDefault();
-                                    if (confirm(`Are you sure you want to delete "${service.name}"? This action cannot be undone.`)) {
-                                        router.delete(`/services/${service.uuid}`);
-                                    }
-                                }} danger>
-                                    <Trash2 className="h-4 w-4" />
+                                <DropdownItem
+                                    icon={<Trash2 className="h-4 w-4" />}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (confirm(`Are you sure you want to delete "${service.name}"? This action cannot be undone.`)) {
+                                            router.delete(`/services/${service.uuid}`);
+                                        }
+                                    }}
+                                    danger
+                                >
                                     Delete Service
                                 </DropdownItem>
                             </DropdownContent>

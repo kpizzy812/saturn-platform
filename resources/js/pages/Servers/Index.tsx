@@ -54,6 +54,7 @@ export default function ServersIndex({ servers = [] }: Props) {
             title="Servers"
             breadcrumbs={[{ label: 'Servers' }]}
         >
+            <div className="mx-auto max-w-6xl px-6 py-8">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>
@@ -88,6 +89,7 @@ export default function ServersIndex({ servers = [] }: Props) {
                     })}
                 </div>
             )}
+            </div>
         </AppLayout>
     );
 }
@@ -152,37 +154,46 @@ function ServerCard({ server }: { server: ServerType }) {
                                     </button>
                                 </DropdownTrigger>
                                 <DropdownContent align="right">
-                                    <DropdownItem onClick={(e) => {
-                                        e.preventDefault();
-                                        router.post(`/servers/${server.uuid}/validate`);
-                                    }}>
-                                        <RefreshCw className="h-4 w-4" />
+                                    <DropdownItem
+                                        icon={<RefreshCw className="h-4 w-4" />}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            router.post(`/servers/${server.uuid}/validate`);
+                                        }}
+                                    >
                                         Validate Server
                                     </DropdownItem>
-                                    <DropdownItem onClick={(e) => {
-                                        e.preventDefault();
-                                        router.visit(`/servers/${server.uuid}/terminal`);
-                                    }}>
-                                        <Terminal className="h-4 w-4" />
+                                    <DropdownItem
+                                        icon={<Terminal className="h-4 w-4" />}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            router.visit(`/servers/${server.uuid}/terminal`);
+                                        }}
+                                    >
                                         Open Terminal
                                     </DropdownItem>
-                                    <DropdownItem onClick={(e) => {
-                                        e.preventDefault();
-                                        router.visit(`/servers/${server.uuid}/settings`);
-                                    }}>
-                                        <Settings className="h-4 w-4" />
+                                    <DropdownItem
+                                        icon={<Settings className="h-4 w-4" />}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            router.visit(`/servers/${server.uuid}/settings`);
+                                        }}
+                                    >
                                         Server Settings
                                     </DropdownItem>
                                     {!server.is_localhost && (
                                         <>
                                             <DropdownDivider />
-                                            <DropdownItem onClick={(e) => {
-                                                e.preventDefault();
-                                                if (confirm(`Are you sure you want to delete "${server.name}"? This action cannot be undone.`)) {
-                                                    router.delete(`/servers/${server.uuid}`);
-                                                }
-                                            }} danger>
-                                                <Trash2 className="h-4 w-4" />
+                                            <DropdownItem
+                                                icon={<Trash2 className="h-4 w-4" />}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    if (confirm(`Are you sure you want to delete "${server.name}"? This action cannot be undone.`)) {
+                                                        router.delete(`/servers/${server.uuid}`);
+                                                    }
+                                                }}
+                                                danger
+                                            >
                                                 Delete Server
                                             </DropdownItem>
                                         </>

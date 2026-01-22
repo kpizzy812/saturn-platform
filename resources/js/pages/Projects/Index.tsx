@@ -15,6 +15,7 @@ export default function ProjectsIndex({ projects = [] }: Props) {
             title="Projects"
             breadcrumbs={[{ label: 'Projects' }]}
         >
+            <div className="mx-auto max-w-6xl px-6 py-8">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>
@@ -39,6 +40,7 @@ export default function ProjectsIndex({ projects = [] }: Props) {
                     ))}
                 </div>
             )}
+            </div>
         </AppLayout>
     );
 }

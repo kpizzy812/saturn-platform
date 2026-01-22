@@ -283,7 +283,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Servers
     Route::get('/servers', function () {
-        $servers = \App\Models\Server::ownedByCurrentTeam()->get();
+        $servers = \App\Models\Server::ownedByCurrentTeam()
+            ->with('settings')
+            ->get();
 
         return \Inertia\Inertia::render('Servers/Index', [
             'servers' => $servers,

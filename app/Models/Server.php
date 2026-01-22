@@ -107,7 +107,7 @@ class Server extends BaseModel
 
     public static $batch_counter = 0;
 
-    protected $appends = ['is_saturn_host', 'is_localhost'];
+    protected $appends = ['is_saturn_host', 'is_localhost', 'is_reachable', 'is_usable'];
 
     protected static function booted()
     {
@@ -244,7 +244,21 @@ class Server extends BaseModel
         );
     }
 
-    public static function isReachable()
+    protected function isReachable(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => (bool) $this->settings?->is_reachable
+        );
+    }
+
+    protected function isUsable(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => (bool) $this->settings?->is_usable
+        );
+    }
+
+    public static function queryReachable()
     {
         return Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true);
     }
@@ -271,7 +285,7 @@ class Server extends BaseModel
         });
     }
 
-    public static function isUsable()
+    public static function queryUsable()
     {
         return Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true)->whereRelation('settings', 'is_usable', true)->whereRelation('settings', 'is_swarm_worker', false)->whereRelation('settings', 'is_build_server', false)->whereRelation('settings', 'force_disabled', false);
     }
