@@ -781,7 +781,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Projects
     Route::get('/projects', function () {
         $projects = \App\Models\Project::ownedByCurrentTeam()
-            ->with(['environments.applications', 'environments.databases'])
+            ->with(['environments.applications'])
             ->get();
 
         return \Inertia\Inertia::render('Projects/Index', [
@@ -2516,8 +2516,33 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Databases
     Route::get('/databases', function () {
+        // Collect all database types
+        $formatDb = fn ($db, $type) => [
+            'id' => $db->id,
+            'uuid' => $db->uuid,
+            'name' => $db->name,
+            'description' => $db->description,
+            'database_type' => $type,
+            'status' => $db->status(),
+            'environment_id' => $db->environment_id,
+            'created_at' => $db->created_at,
+            'updated_at' => $db->updated_at,
+        ];
+
+        $databases = collect()
+            ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
+            ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'mysql')))
+            ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
+            ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
+            ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'redis')))
+            ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'keydb')))
+            ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
+            ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
+            ->sortByDesc('updated_at')
+            ->values();
+
         return \Inertia\Inertia::render('Databases/Index', [
-            'databases' => getAllDatabases(),
+            'databases' => $databases,
         ]);
     })->name('databases.index');
 

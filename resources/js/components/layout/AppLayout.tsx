@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { ToastProvider } from '@/components/ui/Toast';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
+import { SidebarProvider } from '@/contexts/SidebarContext';
 import { ChevronRight } from 'lucide-react';
 
 export interface Breadcrumb {
@@ -58,22 +59,24 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
     const commandPalette = useCommandPalette();
 
     return (
-        <ToastProvider>
-            <Head title={title ? `${title} | Saturn` : 'Saturn'} />
-            <div className="flex h-screen bg-background">
-                {/* Sidebar */}
-                <Sidebar />
+        <SidebarProvider>
+            <ToastProvider>
+                <Head title={title ? `${title} | Saturn` : 'Saturn'} />
+                <div className="flex h-screen bg-background">
+                    {/* Sidebar */}
+                    <Sidebar />
 
-                {/* Main content area */}
-                <div className="flex flex-1 flex-col overflow-hidden">
-                    <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
-                    {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
-                    <main className="flex-1 overflow-auto">
-                        {children}
-                    </main>
+                    {/* Main content area */}
+                    <div className="flex flex-1 flex-col overflow-hidden">
+                        <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
+                        {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
+                        <main className="flex-1 overflow-auto">
+                            {children}
+                        </main>
+                    </div>
                 </div>
-            </div>
-            <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} />
-        </ToastProvider>
+                <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} />
+            </ToastProvider>
+        </SidebarProvider>
     );
 }

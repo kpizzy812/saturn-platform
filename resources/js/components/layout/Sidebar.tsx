@@ -7,10 +7,9 @@ import {
     FolderKanban,
     Database,
     Settings,
-    ChevronLeft,
-    ChevronRight,
 } from 'lucide-react';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
+import { useSidebar } from '@/contexts/SidebarContext';
 
 interface NavItem {
     label: string;
@@ -28,20 +27,7 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
     const { url } = usePage();
-    const [isExpanded, setIsExpanded] = React.useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('sidebar-expanded') === 'true';
-        }
-        return false;
-    });
-
-    const toggleSidebar = () => {
-        const newValue = !isExpanded;
-        setIsExpanded(newValue);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('sidebar-expanded', String(newValue));
-        }
-    };
+    const { isExpanded } = useSidebar();
 
     const isActive = (href: string) => url.startsWith(href);
 
@@ -82,21 +68,6 @@ export function Sidebar() {
                     </Link>
                 ))}
             </nav>
-
-            {/* Toggle Button */}
-            <div className="border-t border-border p-2">
-                <button
-                    onClick={toggleSidebar}
-                    className="flex w-full items-center justify-center rounded-lg p-2.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
-                    title={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-                >
-                    {isExpanded ? (
-                        <ChevronLeft className="h-5 w-5" />
-                    ) : (
-                        <ChevronRight className="h-5 w-5" />
-                    )}
-                </button>
-            </div>
         </aside>
     );
 }
