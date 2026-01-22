@@ -2911,8 +2911,93 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('onboarding.welcome');
 
     Route::get('/onboarding/connect-repo', function () {
-        return \Inertia\Inertia::render('Onboarding/ConnectRepo');
+        // Get GitHub Apps for current team
+        $githubApps = \App\Models\GithubApp::where(function ($query) {
+            $query->where('team_id', currentTeam()->id)
+                ->orWhere('is_system_wide', true);
+        })->whereNotNull('app_id')->get();
+
+        return \Inertia\Inertia::render('Onboarding/ConnectRepo', [
+            'githubApps' => $githubApps->map(fn ($app) => [
+                'id' => $app->id,
+                'uuid' => $app->uuid,
+                'name' => $app->name,
+                'installation_id' => $app->installation_id,
+            ]),
+        ]);
     })->name('onboarding.connect-repo');
+
+    // GitHub App API routes (for web session)
+    Route::get('/web-api/github-apps/{github_app_id}/repositories', function ($github_app_id) {
+        $githubApp = \App\Models\GithubApp::where('id', $github_app_id)
+            ->where(function ($query) {
+                $query->where('team_id', currentTeam()->id)
+                    ->orWhere('is_system_wide', true);
+            })
+            ->firstOrFail();
+
+        $token = generateGithubInstallationToken($githubApp);
+        $repositories = collect();
+        $page = 1;
+        $maxPages = 100;
+
+        while ($page <= $maxPages) {
+            $response = \Illuminate\Support\Facades\Http::GitHub($githubApp->api_url, $token)
+                ->timeout(20)
+                ->retry(3, 200, throw: false)
+                ->get('/installation/repositories', [
+                    'per_page' => 100,
+                    'page' => $page,
+                ]);
+
+            if ($response->status() !== 200) {
+                return response()->json([
+                    'message' => $response->json()['message'] ?? 'Failed to load repositories',
+                ], $response->status());
+            }
+
+            $json = $response->json();
+            $repos = $json['repositories'] ?? [];
+
+            if (empty($repos)) {
+                break;
+            }
+
+            $repositories = $repositories->concat($repos);
+            $page++;
+        }
+
+        return response()->json([
+            'repositories' => $repositories->sortBy('name')->values(),
+        ]);
+    })->name('web-api.github-apps.repositories');
+
+    Route::get('/web-api/github-apps/{github_app_id}/repositories/{owner}/{repo}/branches', function ($github_app_id, $owner, $repo) {
+        $githubApp = \App\Models\GithubApp::where('id', $github_app_id)
+            ->where(function ($query) {
+                $query->where('team_id', currentTeam()->id)
+                    ->orWhere('is_system_wide', true);
+            })
+            ->firstOrFail();
+
+        $token = generateGithubInstallationToken($githubApp);
+
+        $response = \Illuminate\Support\Facades\Http::GitHub($githubApp->api_url, $token)
+            ->timeout(20)
+            ->retry(3, 200, throw: false)
+            ->get("/repos/{$owner}/{$repo}/branches");
+
+        if ($response->status() !== 200) {
+            return response()->json([
+                'message' => 'Error loading branches from GitHub.',
+                'error' => $response->json('message'),
+            ], $response->status());
+        }
+
+        return response()->json([
+            'branches' => $response->json(),
+        ]);
+    })->name('web-api.github-apps.branches');
 
     // Support routes
     Route::get('/support', function () {

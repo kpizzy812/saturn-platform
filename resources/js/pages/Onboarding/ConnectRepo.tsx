@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Select } from '@/components/ui';
@@ -11,17 +11,27 @@ import {
     CheckCircle,
     GitBranch,
     FolderGit,
-    Settings,
     Zap,
+    Loader2,
+    AlertCircle,
+    Plus,
+    ExternalLink,
 } from 'lucide-react';
 
 interface Props {
     provider?: 'github' | 'gitlab' | 'bitbucket';
-    repositories?: Repository[];
+    githubApps?: GithubApp[];
+}
+
+interface GithubApp {
+    id: number;
+    uuid: string;
+    name: string;
+    installation_id: number | null;
 }
 
 interface Repository {
-    id: string;
+    id: number;
     name: string;
     full_name: string;
     description: string | null;
@@ -29,70 +39,14 @@ interface Repository {
     default_branch: string;
     language: string | null;
     updated_at: string;
-    branches: string[];
 }
 
-// Mock repositories
-const mockRepositories: Repository[] = [
-    {
-        id: '1',
-        name: 'my-awesome-app',
-        full_name: 'johndoe/my-awesome-app',
-        description: 'A modern web application built with React and Node.js',
-        private: false,
-        default_branch: 'main',
-        language: 'TypeScript',
-        updated_at: new Date(Date.now() - 86400000).toISOString(),
-        branches: ['main', 'develop', 'staging'],
-    },
-    {
-        id: '2',
-        name: 'api-backend',
-        full_name: 'johndoe/api-backend',
-        description: 'RESTful API backend with Express and PostgreSQL',
-        private: true,
-        default_branch: 'main',
-        language: 'JavaScript',
-        updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-        branches: ['main', 'develop', 'feature/auth'],
-    },
-    {
-        id: '3',
-        name: 'portfolio-website',
-        full_name: 'johndoe/portfolio-website',
-        description: 'Personal portfolio and blog',
-        private: false,
-        default_branch: 'master',
-        language: 'HTML',
-        updated_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-        branches: ['master'],
-    },
-    {
-        id: '4',
-        name: 'e-commerce-platform',
-        full_name: 'johndoe/e-commerce-platform',
-        description: 'Full-stack e-commerce solution',
-        private: true,
-        default_branch: 'main',
-        language: 'TypeScript',
-        updated_at: new Date(Date.now() - 86400000 * 14).toISOString(),
-        branches: ['main', 'develop', 'staging', 'production'],
-    },
-    {
-        id: '5',
-        name: 'mobile-app',
-        full_name: 'johndoe/mobile-app',
-        description: 'React Native mobile application',
-        private: false,
-        default_branch: 'main',
-        language: 'JavaScript',
-        updated_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-        branches: ['main', 'develop'],
-    },
-];
+interface Branch {
+    name: string;
+    protected: boolean;
+}
 
-export default function OnboardingConnectRepo({ provider = 'github', repositories: propRepositories }: Props) {
-    const repositories = propRepositories || mockRepositories;
+export default function OnboardingConnectRepo({ provider = 'github', githubApps = [] }: Props) {
     const [selectedProvider, setSelectedProvider] = useState(provider);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
@@ -101,17 +55,103 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
     const [startCommand, setStartCommand] = useState('npm start');
     const [rootDirectory, setRootDirectory] = useState('./');
 
+    // GitHub App state
+    const [selectedGithubApp, setSelectedGithubApp] = useState<GithubApp | null>(
+        githubApps.length > 0 ? githubApps[0] : null
+    );
+    const [repositories, setRepositories] = useState<Repository[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [isLoadingRepos, setIsLoadingRepos] = useState(false);
+    const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Load repositories when GitHub App is selected
+    useEffect(() => {
+        if (selectedGithubApp && selectedProvider === 'github') {
+            loadRepositories();
+        }
+    }, [selectedGithubApp]);
+
+    // Load branches when repository is selected
+    useEffect(() => {
+        if (selectedRepo && selectedGithubApp) {
+            loadBranches();
+        }
+    }, [selectedRepo]);
+
+    const loadRepositories = async () => {
+        if (!selectedGithubApp) return;
+
+        setIsLoadingRepos(true);
+        setError(null);
+        setRepositories([]);
+
+        try {
+            const response = await fetch(`/web-api/github-apps/${selectedGithubApp.id}/repositories`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to load repositories');
+            }
+
+            const data = await response.json();
+            setRepositories(data.repositories || []);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load repositories');
+        } finally {
+            setIsLoadingRepos(false);
+        }
+    };
+
+    const loadBranches = async () => {
+        if (!selectedGithubApp || !selectedRepo) return;
+
+        setIsLoadingBranches(true);
+        setBranches([]);
+
+        try {
+            const [owner, repo] = selectedRepo.full_name.split('/');
+            const response = await fetch(
+                `/web-api/github-apps/${selectedGithubApp.id}/repositories/${owner}/${repo}/branches`,
+                {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to load branches');
+            }
+
+            const data = await response.json();
+            setBranches(data.branches || []);
+
+            // Auto-select default branch
+            if (selectedRepo.default_branch) {
+                setSelectedBranch(selectedRepo.default_branch);
+            }
+        } catch (err) {
+            console.error('Failed to load branches:', err);
+        } finally {
+            setIsLoadingBranches(false);
+        }
+    };
+
     // Filter repositories by search
     const filteredRepos = repositories.filter(
         (repo) =>
             repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
-    const handleConnect = () => {
-        // In real app, this would trigger OAuth flow
-        router.visit(`/auth/${selectedProvider}/redirect`);
-    };
 
     const handleDeploy = () => {
         if (!selectedRepo || !selectedBranch) return;
@@ -122,6 +162,7 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
             build_command: buildCommand,
             start_command: startCommand,
             root_directory: rootDirectory,
+            github_app_id: selectedGithubApp?.id,
         });
     };
 
@@ -146,9 +187,14 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
             Rust: 'bg-orange-500',
             HTML: 'bg-orange-400',
             CSS: 'bg-purple-500',
+            PHP: 'bg-indigo-500',
+            Java: 'bg-red-600',
         };
         return colors[language || ''] || 'bg-foreground-muted';
     };
+
+    // Check if GitHub App needs to be created
+    const needsGithubApp = selectedProvider === 'github' && githubApps.length === 0;
 
     return (
         <AuthLayout>
@@ -182,6 +228,7 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
                                     selected={selectedProvider === 'github'}
                                     icon={<Github className="h-6 w-6" />}
                                     label="GitHub"
+                                    connected={githubApps.length > 0}
                                     onClick={() => setSelectedProvider('github')}
                                 />
                                 <ProviderButton
@@ -189,6 +236,7 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
                                     selected={selectedProvider === 'gitlab'}
                                     icon={<Gitlab className="h-6 w-6" />}
                                     label="GitLab"
+                                    connected={false}
                                     onClick={() => setSelectedProvider('gitlab')}
                                 />
                                 <ProviderButton
@@ -196,99 +244,219 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
                                     selected={selectedProvider === 'bitbucket'}
                                     icon={<FolderGit className="h-6 w-6" />}
                                     label="Bitbucket"
+                                    connected={false}
                                     onClick={() => setSelectedProvider('bitbucket')}
                                 />
-                            </div>
-                            <div className="mt-4 flex justify-end">
-                                <Button onClick={handleConnect}>
-                                    {getProviderIcon(selectedProvider)}
-                                    <span className="ml-2">Connect {selectedProvider}</span>
-                                </Button>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Repository Selection */}
-                    <Card className="mb-6">
-                        <CardContent className="p-6">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-foreground">
-                                    Select Repository
-                                </h3>
-                                <Badge variant="default">{repositories.length} repositories</Badge>
-                            </div>
-                            <div className="mb-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-                                    <Input
-                                        placeholder="Search repositories..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-10"
-                                    />
-                                </div>
-                            </div>
-                            <div className="max-h-96 space-y-2 overflow-y-auto">
-                                {filteredRepos.map((repo) => (
-                                    <button
-                                        key={repo.id}
-                                        onClick={() => {
-                                            setSelectedRepo(repo);
-                                            setSelectedBranch(repo.default_branch);
-                                        }}
-                                        className={`w-full rounded-lg border p-4 text-left transition-all hover:border-primary/50 ${
-                                            selectedRepo?.id === repo.id
-                                                ? 'border-primary bg-primary/5'
-                                                : 'border-border bg-background-secondary'
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="mb-1 flex items-center gap-2">
-                                                    <span className="font-semibold text-foreground">
-                                                        {repo.name}
-                                                    </span>
-                                                    {repo.private && (
-                                                        <Badge variant="default">Private</Badge>
-                                                    )}
-                                                    {repo.language && (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div
-                                                                className={`h-2 w-2 rounded-full ${getLanguageColor(
-                                                                    repo.language
-                                                                )}`}
-                                                            />
-                                                            <span className="text-xs text-foreground-muted">
-                                                                {repo.language}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {repo.description && (
-                                                    <p className="mb-2 text-sm text-foreground-muted">
-                                                        {repo.description}
-                                                    </p>
-                                                )}
-                                                <div className="flex items-center gap-2 text-xs text-foreground-subtle">
-                                                    <span>{repo.full_name}</span>
-                                                    <span>•</span>
-                                                    <span>
-                                                        Updated{' '}
-                                                        {new Date(
-                                                            repo.updated_at
-                                                        ).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            {selectedRepo?.id === repo.id && (
-                                                <CheckCircle className="h-5 w-5 text-primary" />
-                                            )}
+                    {/* GitHub App Setup Required */}
+                    {needsGithubApp && (
+                        <Card className="mb-6">
+                            <CardContent className="p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-warning/10">
+                                        <AlertCircle className="h-6 w-6 text-warning" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="mb-2 text-lg font-semibold text-foreground">
+                                            GitHub App Required
+                                        </h3>
+                                        <p className="mb-4 text-foreground-muted">
+                                            To access your GitHub repositories, you need to create and install a GitHub App.
+                                            This allows Saturn to securely access your code and set up automatic deployments.
+                                        </p>
+                                        <div className="flex gap-3">
+                                            <Link href="/sources/github/create">
+                                                <Button>
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Create GitHub App
+                                                </Button>
+                                            </Link>
+                                            <a
+                                                href="https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >
+                                                <Button variant="ghost">
+                                                    Learn More
+                                                    <ExternalLink className="ml-2 h-4 w-4" />
+                                                </Button>
+                                            </a>
                                         </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* GitLab/Bitbucket Not Supported Yet */}
+                    {(selectedProvider === 'gitlab' || selectedProvider === 'bitbucket') && (
+                        <Card className="mb-6">
+                            <CardContent className="p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-info/10">
+                                        <AlertCircle className="h-6 w-6 text-info" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="mb-2 text-lg font-semibold text-foreground">
+                                            Coming Soon
+                                        </h3>
+                                        <p className="text-foreground-muted">
+                                            {selectedProvider === 'gitlab' ? 'GitLab' : 'Bitbucket'} integration
+                                            is coming soon. For now, please use GitHub or deploy using a public
+                                            repository URL.
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* GitHub App Selector (if multiple apps) */}
+                    {selectedProvider === 'github' && githubApps.length > 1 && (
+                        <Card className="mb-6">
+                            <CardContent className="p-6">
+                                <h3 className="mb-4 text-lg font-semibold text-foreground">
+                                    Select GitHub App
+                                </h3>
+                                <Select
+                                    value={selectedGithubApp?.id.toString() || ''}
+                                    onChange={(e) => {
+                                        const app = githubApps.find(a => a.id === parseInt(e.target.value));
+                                        setSelectedGithubApp(app || null);
+                                        setSelectedRepo(null);
+                                        setSelectedBranch('');
+                                    }}
+                                >
+                                    {githubApps.map((app) => (
+                                        <option key={app.id} value={app.id}>
+                                            {app.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Repository Selection */}
+                    {selectedProvider === 'github' && githubApps.length > 0 && (
+                        <Card className="mb-6">
+                            <CardContent className="p-6">
+                                <div className="mb-4 flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-foreground">
+                                        Select Repository
+                                    </h3>
+                                    {!isLoadingRepos && (
+                                        <Badge variant="default">{repositories.length} repositories</Badge>
+                                    )}
+                                </div>
+
+                                {error && (
+                                    <div className="mb-4 rounded-lg bg-danger/10 p-4 text-danger">
+                                        <div className="flex items-center gap-2">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <span>{error}</span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={loadRepositories}
+                                            className="mt-2"
+                                        >
+                                            Try Again
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {isLoadingRepos ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                        <span className="ml-3 text-foreground-muted">Loading repositories...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="mb-4">
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
+                                                <Input
+                                                    placeholder="Search repositories..."
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    className="pl-10"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="max-h-96 space-y-2 overflow-y-auto">
+                                            {filteredRepos.length === 0 && !isLoadingRepos && (
+                                                <div className="py-8 text-center text-foreground-muted">
+                                                    {searchQuery ? 'No repositories match your search' : 'No repositories found'}
+                                                </div>
+                                            )}
+                                            {filteredRepos.map((repo) => (
+                                                <button
+                                                    key={repo.id}
+                                                    onClick={() => {
+                                                        setSelectedRepo(repo);
+                                                        setSelectedBranch(repo.default_branch);
+                                                    }}
+                                                    className={`w-full rounded-lg border p-4 text-left transition-all hover:border-primary/50 ${
+                                                        selectedRepo?.id === repo.id
+                                                            ? 'border-primary bg-primary/5'
+                                                            : 'border-border bg-background-secondary'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1">
+                                                            <div className="mb-1 flex items-center gap-2">
+                                                                <span className="font-semibold text-foreground">
+                                                                    {repo.name}
+                                                                </span>
+                                                                {repo.private && (
+                                                                    <Badge variant="default">Private</Badge>
+                                                                )}
+                                                                {repo.language && (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <div
+                                                                            className={`h-2 w-2 rounded-full ${getLanguageColor(
+                                                                                repo.language
+                                                                            )}`}
+                                                                        />
+                                                                        <span className="text-xs text-foreground-muted">
+                                                                            {repo.language}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {repo.description && (
+                                                                <p className="mb-2 text-sm text-foreground-muted">
+                                                                    {repo.description}
+                                                                </p>
+                                                            )}
+                                                            <div className="flex items-center gap-2 text-xs text-foreground-subtle">
+                                                                <span>{repo.full_name}</span>
+                                                                <span>•</span>
+                                                                <span>
+                                                                    Updated{' '}
+                                                                    {new Date(
+                                                                        repo.updated_at
+                                                                    ).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {selectedRepo?.id === repo.id && (
+                                                            <CheckCircle className="h-5 w-5 text-primary" />
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Build Settings Preview */}
                     {selectedRepo && (
@@ -303,18 +471,25 @@ export default function OnboardingConnectRepo({ provider = 'github', repositorie
                                             <GitBranch className="mr-1 inline h-4 w-4" />
                                             Branch
                                         </label>
-                                        <Select
-                                            value={selectedBranch}
-                                            onChange={(e) => setSelectedBranch(e.target.value)}
-                                        >
-                                            {selectedRepo.branches.map((branch) => (
-                                                <option key={branch} value={branch}>
-                                                    {branch}
-                                                    {branch === selectedRepo.default_branch &&
-                                                        ' (default)'}
-                                                </option>
-                                            ))}
-                                        </Select>
+                                        {isLoadingBranches ? (
+                                            <div className="flex items-center gap-2 py-2">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span className="text-sm text-foreground-muted">Loading branches...</span>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={selectedBranch}
+                                                onChange={(e) => setSelectedBranch(e.target.value)}
+                                            >
+                                                {branches.map((branch) => (
+                                                    <option key={branch.name} value={branch.name}>
+                                                        {branch.name}
+                                                        {branch.name === selectedRepo.default_branch &&
+                                                            ' (default)'}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        )}
                                     </div>
 
                                     <div>
@@ -414,12 +589,14 @@ function ProviderButton({
     selected,
     icon,
     label,
+    connected,
     onClick,
 }: {
     provider: string;
     selected: boolean;
     icon: React.ReactNode;
     label: string;
+    connected: boolean;
     onClick: () => void;
 }) {
     return (
@@ -440,8 +617,10 @@ function ProviderButton({
             </div>
             <div className="text-left">
                 <div className="font-semibold text-foreground">{label}</div>
-                {selected && (
-                    <div className="text-xs text-primary">Connected</div>
+                {connected ? (
+                    <div className="text-xs text-success">Connected</div>
+                ) : (
+                    <div className="text-xs text-foreground-muted">Not connected</div>
                 )}
             </div>
         </button>
