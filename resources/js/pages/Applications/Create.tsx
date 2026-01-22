@@ -7,7 +7,8 @@ import type { Project, Environment, Server } from '@/types';
 
 interface Props {
     projects?: Project[];
-    servers?: Server[];
+    localhost?: Server;
+    userServers?: Server[];
     needsProject?: boolean;
 }
 
@@ -28,12 +29,16 @@ interface FormData {
     docker_image?: string;
 }
 
-export default function ApplicationsCreate({ projects = [], servers = [], needsProject = false }: Props) {
+export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false }: Props) {
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [projectList, setProjectList] = useState<Project[]>(projects);
     const [showCreateProject, setShowCreateProject] = useState(needsProject);
     const [newProjectName, setNewProjectName] = useState('');
     const [isCreatingProject, setIsCreatingProject] = useState(false);
+
+    // Default to localhost server (platform's master server)
+    const defaultServerUuid = localhost?.uuid || userServers[0]?.uuid || '';
+
     const [formData, setFormData] = useState<FormData>({
         name: '',
         source_type: null,
@@ -42,7 +47,7 @@ export default function ApplicationsCreate({ projects = [], servers = [], needsP
         build_pack: 'nixpacks',
         project_uuid: projects[0]?.uuid || '',
         environment_uuid: projects[0]?.environments[0]?.uuid || '',
-        server_uuid: servers[0]?.uuid || '',
+        server_uuid: defaultServerUuid,
         fqdn: '',
         description: '',
     });
@@ -374,18 +379,26 @@ export default function ApplicationsCreate({ projects = [], servers = [], needsP
 
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">
-                                            Server *
+                                            Server
                                         </label>
                                         <Select
                                             value={formData.server_uuid}
                                             onChange={(e) => setFormData(prev => ({ ...prev, server_uuid: e.target.value }))}
                                         >
-                                            {servers.map(server => (
+                                            {localhost && (
+                                                <option value={localhost.uuid}>
+                                                    {localhost.name} (Platform Default)
+                                                </option>
+                                            )}
+                                            {userServers.map(server => (
                                                 <option key={server.uuid} value={server.uuid}>
                                                     {server.name} ({server.ip})
                                                 </option>
                                             ))}
                                         </Select>
+                                        <p className="mt-1 text-xs text-foreground-muted">
+                                            Deploy to platform server by default
+                                        </p>
                                     </div>
 
                                     <div>
@@ -398,7 +411,7 @@ export default function ApplicationsCreate({ projects = [], servers = [], needsP
                                             placeholder="app.example.com"
                                         />
                                         <p className="mt-1 text-xs text-foreground-muted">
-                                            Leave empty to skip domain configuration
+                                            Leave empty for auto-generated domain
                                         </p>
                                     </div>
                                 </div>
@@ -444,7 +457,11 @@ export default function ApplicationsCreate({ projects = [], servers = [], needsP
                                     )}
                                     <ReviewItem label="Project" value={selectedProject?.name || ''} />
                                     <ReviewItem label="Environment" value={environments.find(e => e.uuid === formData.environment_uuid)?.name || ''} />
-                                    <ReviewItem label="Server" value={servers.find(s => s.uuid === formData.server_uuid)?.name || ''} />
+                                    <ReviewItem label="Server" value={
+                                        localhost?.uuid === formData.server_uuid
+                                            ? `${localhost.name} (Platform Default)`
+                                            : userServers.find(s => s.uuid === formData.server_uuid)?.name || 'Platform Default'
+                                    } />
                                     {formData.fqdn && <ReviewItem label="Domain" value={formData.fqdn} />}
                                 </div>
 

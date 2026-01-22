@@ -1023,26 +1023,19 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->with('environments')
             ->get();
 
-        // Get usable servers
-        $servers = \App\Models\Server::ownedByCurrentTeam()
+        // Always get localhost (platform's master server) - used by default
+        $localhost = \App\Models\Server::where('id', 0)->first();
+
+        // Get user's additional servers (optional)
+        $userServers = \App\Models\Server::ownedByCurrentTeam()
+            ->where('id', '!=', 0)
             ->whereRelation('settings', 'is_usable', true)
             ->get();
 
-        // If no usable servers, include localhost (master server) as fallback
-        if ($servers->isEmpty()) {
-            $localhost = \App\Models\Server::ownedByCurrentTeam()
-                ->where(function ($q) {
-                    $q->where('id', 0)->orWhere('ip', 'host.docker.internal');
-                })
-                ->first();
-            if ($localhost) {
-                $servers = collect([$localhost]);
-            }
-        }
-
         return \Inertia\Inertia::render('Services/Create', [
             'projects' => $projects,
-            'servers' => $servers,
+            'localhost' => $localhost,
+            'userServers' => $userServers,
             'needsProject' => $projects->isEmpty(),
         ]);
     })->name('services.create');
@@ -1295,26 +1288,19 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->with('environments')
             ->get();
 
-        // Get usable servers
-        $servers = \App\Models\Server::ownedByCurrentTeam()
+        // Always get localhost (platform's master server) - used by default
+        $localhost = \App\Models\Server::where('id', 0)->first();
+
+        // Get user's additional servers (optional, for advanced users)
+        $userServers = \App\Models\Server::ownedByCurrentTeam()
+            ->where('id', '!=', 0)
             ->whereRelation('settings', 'is_usable', true)
             ->get();
 
-        // If no usable servers, include localhost (master server) as fallback
-        if ($servers->isEmpty()) {
-            $localhost = \App\Models\Server::ownedByCurrentTeam()
-                ->where(function ($q) {
-                    $q->where('id', 0)->orWhere('ip', 'host.docker.internal');
-                })
-                ->first();
-            if ($localhost) {
-                $servers = collect([$localhost]);
-            }
-        }
-
         return \Inertia\Inertia::render('Applications/Create', [
             'projects' => $projects,
-            'servers' => $servers,
+            'localhost' => $localhost,
+            'userServers' => $userServers,
             'needsProject' => $projects->isEmpty(),
         ]);
     })->name('applications.create');
