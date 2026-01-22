@@ -237,19 +237,6 @@ class Server extends BaseModel
         );
     }
 
-    /**
-     * Check if this is the localhost server (Saturn host).
-     * Used to prevent accidental deletion of the platform server.
-     */
-    protected function isLocalhost(): Attribute
-    {
-        return Attribute::make(
-            get: function () {
-                return $this->ip === 'host.docker.internal' || $this->id === 0;
-            }
-        );
-    }
-
     public static function isReachable()
     {
         return Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true);
