@@ -1,16 +1,7 @@
 import * as React from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { cn } from '@/lib/utils';
-import { HelpCircle, Bell, ChevronDown, Settings, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command, LayoutDashboard, Server, Database, FolderKanban } from 'lucide-react';
+import { HelpCircle, Bell, ChevronDown, Settings, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { SaturnLogo } from '@/components/ui/SaturnLogo';
-
-const navItems = [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Projects', href: '/projects', icon: FolderKanban },
-    { label: 'Servers', href: '/servers', icon: Server },
-    { label: 'Databases', href: '/databases', icon: Database },
-];
 
 interface HeaderProps {
     showNewProject?: boolean;
@@ -18,50 +9,21 @@ interface HeaderProps {
 }
 
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
-    const { props, url } = usePage();
+    const { props } = usePage();
     const user = props.auth?.user as { name?: string; email?: string } | undefined;
     const [isDark, setIsDark] = React.useState(true);
 
     // Detect OS for keyboard shortcut display
     const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
-    const isActive = (href: string) => url.startsWith(href);
-
     return (
         <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4">
-            {/* Left: Logo + Navigation */}
-            <div className="flex items-center gap-6">
-                <Link href="/dashboard" className="flex items-center gap-2">
-                    <SaturnLogo size="sm" />
-                    <span className="text-lg font-semibold text-foreground">Saturn</span>
-                </Link>
-
-                {/* Main Navigation */}
-                <nav className="hidden items-center gap-1 md:flex">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={cn(
-                                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                                    isActive(item.href)
-                                        ? 'bg-background-secondary text-foreground'
-                                        : 'text-foreground-muted hover:bg-background-secondary hover:text-foreground'
-                                )}
-                            >
-                                <Icon className="h-4 w-4" />
-                                {item.label}
-                            </Link>
-                        );
-                    })}
-                </nav>
-
+            {/* Left: Search */}
+            <div className="flex items-center gap-4">
                 {/* Command Palette Trigger */}
                 <button
                     onClick={onCommandPalette}
-                    className="hidden items-center gap-3 rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-foreground-muted transition-all duration-200 hover:border-border/80 hover:bg-background-tertiary hover:text-foreground lg:flex"
+                    className="hidden items-center gap-3 rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-foreground-muted transition-all duration-200 hover:border-border/80 hover:bg-background-tertiary hover:text-foreground md:flex"
                 >
                     <Search className="h-4 w-4" />
                     <span>Search...</span>
