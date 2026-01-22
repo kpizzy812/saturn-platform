@@ -98,6 +98,8 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log('[Create App] handleSubmit called');
+        console.log('[Create App] formData:', formData);
 
         // Basic validation
         const newErrors: Record<string, string> = {};
@@ -114,19 +116,28 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         if (!formData.server_uuid) newErrors.server_uuid = 'Server is required';
 
         if (Object.keys(newErrors).length > 0) {
+            console.log('[Create App] Validation failed:', newErrors);
             setErrors(newErrors);
             return;
         }
 
+        console.log('[Create App] Validation passed, submitting...');
         setIsSubmitting(true);
 
         router.post('/applications', formData, {
-            onSuccess: () => {
-                // Redirect handled by backend
+            onStart: () => {
+                console.log('[Create App] Request started');
+            },
+            onSuccess: (page) => {
+                console.log('[Create App] Success:', page);
             },
             onError: (errors) => {
+                console.log('[Create App] Error:', errors);
                 setErrors(errors as Record<string, string>);
                 setIsSubmitting(false);
+            },
+            onFinish: () => {
+                console.log('[Create App] Request finished');
             },
         });
     };
