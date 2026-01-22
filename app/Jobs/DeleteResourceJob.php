@@ -210,8 +210,6 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
-        $server = $this->resource->destination->server;
-
         // Cancel any active deployments for this application
         $activeDeployments = \App\Models\ApplicationDeploymentQueue::where('application_id', $this->resource->id)
             ->whereIn('status', [
@@ -222,25 +220,32 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
 
         foreach ($activeDeployments as $activeDeployment) {
             try {
-                // Mark deployment as cancelled
+                // Mark deployment as cancelled (no SSH required)
                 $activeDeployment->update([
                     'status' => \App\Enums\ApplicationDeploymentStatus::CANCELLED_BY_USER->value,
                 ]);
 
                 $activeDeployment->addLogEntry('Deployment cancelled: Application deleted.');
+            } catch (\Throwable $e) {
+                Log::warning('Error updating deployment status: '.$e->getMessage());
+            }
 
-                // Kill helper container if exists
-                $deployment_uuid = $activeDeployment->deployment_uuid;
-                $escapedDeploymentUuid = escapeshellarg($deployment_uuid);
-                $checkCommand = "docker ps -a --filter name={$escapedDeploymentUuid} --format '{{.Names}}'";
-                $containerExists = instant_remote_process([$checkCommand], $server);
+            // Try to kill helper container (requires SSH, may fail)
+            try {
+                $server = $this->resource->destination->server;
+                if ($server && $server->privateKey) {
+                    $deployment_uuid = $activeDeployment->deployment_uuid;
+                    $escapedDeploymentUuid = escapeshellarg($deployment_uuid);
+                    $checkCommand = "docker ps -a --filter name={$escapedDeploymentUuid} --format '{{.Names}}'";
+                    $containerExists = instant_remote_process([$checkCommand], $server);
 
-                if ($containerExists && str($containerExists)->trim()->isNotEmpty()) {
-                    instant_remote_process(["docker rm -f {$escapedDeploymentUuid}"], $server);
-                    $activeDeployment->addLogEntry('Deployment container stopped.');
+                    if ($containerExists && str($containerExists)->trim()->isNotEmpty()) {
+                        instant_remote_process(["docker rm -f {$escapedDeploymentUuid}"], $server);
+                        $activeDeployment->addLogEntry('Deployment container stopped.');
+                    }
                 }
             } catch (\Throwable $e) {
-                Log::warning('Error cancelling deployment during application delete: '.$e->getMessage());
+                Log::warning('Error stopping deployment container: '.$e->getMessage());
             }
         }
     }

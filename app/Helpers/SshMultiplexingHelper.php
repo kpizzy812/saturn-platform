@@ -13,7 +13,16 @@ class SshMultiplexingHelper
 {
     public static function serverSshConfiguration(Server $server)
     {
-        $privateKey = PrivateKey::findOrFail($server->private_key_id);
+        $privateKey = PrivateKey::find($server->private_key_id);
+
+        if (! $privateKey) {
+            throw new \RuntimeException(
+                "SSH key not found for server '{$server->name}' (id={$server->id}). ".
+                'Please configure a valid SSH key for this server. '.
+                'For localhost server, ensure the ProductionSeeder ran successfully and created the SSH key.'
+            );
+        }
+
         $sshKeyLocation = $privateKey->getKeyLocation();
         $muxFilename = '/var/www/html/storage/app/ssh/mux/mux_'.$server->uuid;
 
@@ -158,7 +167,15 @@ class SshMultiplexingHelper
         $sshConfig = self::serverSshConfiguration($server);
         $sshKeyLocation = $sshConfig['sshKeyLocation'];
 
-        self::validateSshKey($server->privateKey);
+        $privateKey = $server->privateKey;
+        if (! $privateKey) {
+            throw new \RuntimeException(
+                "SSH key not found for server '{$server->name}' (id={$server->id}). ".
+                'Please configure a valid SSH key for this server.'
+            );
+        }
+
+        self::validateSshKey($privateKey);
 
         $muxSocket = $sshConfig['muxFilename'];
 

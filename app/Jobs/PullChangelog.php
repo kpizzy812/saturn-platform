@@ -30,6 +30,13 @@ class PullChangelog implements ShouldBeEncrypted, ShouldQueue
             // Fetch from CDN instead of GitHub API to avoid rate limits
             $cdnUrl = config('constants.saturn.releases_url');
 
+            // Skip if releases_url is not configured
+            if (empty($cdnUrl)) {
+                Log::debug('PullChangelog: releases_url is not configured, skipping');
+
+                return;
+            }
+
             $response = Http::retry(3, 1000)
                 ->timeout(30)
                 ->get($cdnUrl);
