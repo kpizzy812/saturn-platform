@@ -900,6 +900,55 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         ]);
     })->name('projects.environments');
 
+    // Project settings page
+    Route::get('/projects/{uuid}/settings', function (string $uuid) {
+        $project = \App\Models\Project::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        return \Inertia\Inertia::render('Projects/Settings', [
+            'project' => [
+                'id' => $project->id,
+                'uuid' => $project->uuid,
+                'name' => $project->name,
+                'description' => $project->description,
+                'created_at' => $project->created_at,
+                'updated_at' => $project->updated_at,
+            ],
+        ]);
+    })->name('projects.settings');
+
+    // Update project
+    Route::patch('/projects/{uuid}', function (\Illuminate\Http\Request $request, string $uuid) {
+        $project = \App\Models\Project::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        $project->update($request->only(['name', 'description']));
+
+        return redirect()->back()->with('success', 'Project updated successfully');
+    })->name('projects.update');
+
+    // Delete project
+    Route::delete('/projects/{uuid}', function (string $uuid) {
+        $project = \App\Models\Project::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        if (! $project->isEmpty()) {
+            return redirect()->back()->with('error', 'Cannot delete project with active resources. Please remove all applications and databases first.');
+        }
+
+        $project->delete();
+
+        return redirect()->route('projects.index')->with('success', 'Project deleted successfully');
+    })->name('projects.destroy');
+
     // DEMO: Mock project for preview (no database required)
     Route::get('/demo/project', function () {
         $mockProject = [
