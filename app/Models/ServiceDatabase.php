@@ -115,7 +115,7 @@ class ServiceDatabase extends BaseModel
     {
         $port = $this->public_port;
         $realIp = $this->service->server->ip;
-        if ($this->service->server->isLocalhost() || isDev()) {
+        if ($this->service->server->checkIsLocalhost() || isDev()) {
             $realIp = base_ip();
         }
 

@@ -115,7 +115,7 @@ class ServerSetting extends Model
     {
         $domain = null;
         $settings = InstanceSettings::get();
-        if ($this->server->isLocalhost()) {
+        if ($this->server->checkIsLocalhost()) {
             $domain = 'http://host.docker.internal:8000';
         } elseif ($settings->fqdn) {
             $domain = $settings->fqdn;

@@ -754,7 +754,7 @@ class ServersController extends Controller
         if ($server->definedResources()->count() > 0) {
             return response()->json(['message' => 'Server has resources, so you need to delete them before.'], 400);
         }
-        if ($server->isLocalhost()) {
+        if ($server->checkIsLocalhost()) {
             return response()->json(['message' => 'Local server cannot be deleted.'], 400);
         }
         $server->delete();

@@ -237,6 +237,13 @@ class Server extends BaseModel
         );
     }
 
+    protected function isLocalhost(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->checkIsLocalhost()
+        );
+    }
+
     public static function isReachable()
     {
         return Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true);
@@ -396,7 +403,7 @@ class Server extends BaseModel
         $dynamic_config_path = $this->proxyPath().'/dynamic';
         if ($this->proxyType() === ProxyTypes::TRAEFIK->value) {
             $file = "$dynamic_config_path/saturn.yaml";
-            if (empty($settings->fqdn) || (isCloud() && $this->id !== 0) || ! $this->isLocalhost()) {
+            if (empty($settings->fqdn) || (isCloud() && $this->id !== 0) || ! $this->checkIsLocalhost()) {
                 instant_remote_process([
                     "rm -f $file",
                 ], $this);
@@ -524,7 +531,7 @@ class Server extends BaseModel
             }
         } elseif ($this->proxyType() === 'CADDY') {
             $file = "$dynamic_config_path/saturn.caddy";
-            if (empty($settings->fqdn) || (isCloud() && $this->id !== 0) || ! $this->isLocalhost()) {
+            if (empty($settings->fqdn) || (isCloud() && $this->id !== 0) || ! $this->checkIsLocalhost()) {
                 instant_remote_process([
                     "rm -f $file",
                 ], $this);
@@ -591,7 +598,7 @@ $schema://$host {
         return $query->where('proxy->type', $proxyType);
     }
 
-    public function isLocalhost()
+    public function checkIsLocalhost(): bool
     {
         return $this->ip === 'host.docker.internal' || $this->id === 0;
     }
@@ -955,7 +962,7 @@ $schema://$host {
                 if (isDev()) {
                     return '127.0.0.1';
                 }
-                if ($this->isLocalhost()) {
+                if ($this->checkIsLocalhost()) {
                     return base_ip();
                 }
 
