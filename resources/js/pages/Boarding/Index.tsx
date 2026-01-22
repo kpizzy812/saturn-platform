@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, Link } from '@inertiajs/react';
 import { Card, CardContent, Button, Input, Select } from '@/components/ui';
 import {
     Check,
@@ -14,17 +14,27 @@ import {
     Globe,
     Database,
     Package,
+    Plus,
+    ExternalLink,
+    AlertCircle,
 } from 'lucide-react';
+
+interface GithubApp {
+    id: number;
+    uuid: string;
+    name: string;
+    installation_id: number | null;
+}
 
 interface Props {
     userName?: string;
     existingServers?: any[];
-    existingGitSources?: any[];
+    githubApps?: GithubApp[];
 }
 
 type Step = 'welcome' | 'server' | 'git' | 'deploy' | 'complete';
 
-export default function BoardingIndex({ userName, existingServers = [], existingGitSources = [] }: Props) {
+export default function BoardingIndex({ userName, existingServers = [], githubApps = [] }: Props) {
     // Check if localhost server exists (id=0 or name='localhost')
     const localhostServer = existingServers.find(s => s.id === 0 || s.name === 'localhost');
     const hasLocalhost = !!localhostServer;
@@ -41,8 +51,10 @@ export default function BoardingIndex({ userName, existingServers = [], existing
     const [selectedServerId, setSelectedServerId] = useState(localhostServer?.id?.toString() || '');
 
     // Git source form state
-    const [useExistingGit, setUseExistingGit] = useState(false);
-    const [selectedGitSourceId, setSelectedGitSourceId] = useState('');
+    const [selectedGithubAppId, setSelectedGithubAppId] = useState(
+        githubApps.length > 0 ? githubApps[0].id.toString() : ''
+    );
+    const hasGithubApp = githubApps.length > 0;
 
     // App deployment form state
     const [appName, setAppName] = useState('');
@@ -96,14 +108,14 @@ export default function BoardingIndex({ userName, existingServers = [], existing
     };
 
     const handleGitSubmit = () => {
-        if (useExistingGit && selectedGitSourceId) {
+        if (hasGithubApp && selectedGithubAppId) {
             markStepComplete('git');
             setCurrentStep('deploy');
             return;
         }
 
-        // Redirect to GitHub OAuth
-        window.location.href = '/auth/github/redirect?onboarding=true';
+        // Redirect to GitHub App creation page
+        router.visit('/sources/github/create');
     };
 
     const handleDeploySubmit = () => {
@@ -214,11 +226,9 @@ export default function BoardingIndex({ userName, existingServers = [], existing
 
                 {currentStep === 'git' && (
                     <GitStep
-                        useExisting={useExistingGit}
-                        setUseExisting={setUseExistingGit}
-                        selectedGitSourceId={selectedGitSourceId}
-                        setSelectedGitSourceId={setSelectedGitSourceId}
-                        existingGitSources={existingGitSources}
+                        githubApps={githubApps}
+                        selectedGithubAppId={selectedGithubAppId}
+                        setSelectedGithubAppId={setSelectedGithubAppId}
                         onNext={handleGitSubmit}
                         onBack={() => setCurrentStep('server')}
                         onSkip={() => setCurrentStep('deploy')}
@@ -422,20 +432,20 @@ function ServerStep({
 }
 
 interface GitStepProps {
-    useExisting: boolean;
-    setUseExisting: (value: boolean) => void;
-    selectedGitSourceId: string;
-    setSelectedGitSourceId: (value: string) => void;
-    existingGitSources: any[];
+    githubApps: GithubApp[];
+    selectedGithubAppId: string;
+    setSelectedGithubAppId: (value: string) => void;
     onNext: () => void;
     onBack: () => void;
     onSkip: () => void;
 }
 
 function GitStep({
-    useExisting, setUseExisting, selectedGitSourceId, setSelectedGitSourceId,
-    existingGitSources, onNext, onBack, onSkip
+    githubApps, selectedGithubAppId, setSelectedGithubAppId,
+    onNext, onBack, onSkip
 }: GitStepProps) {
+    const hasGithubApp = githubApps.length > 0;
+
     return (
         <Card>
             <CardContent className="p-8">
@@ -445,48 +455,74 @@ function GitStep({
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold text-foreground">Connect Git Source</h2>
-                        <p className="text-foreground-muted">Link your GitHub account to deploy repositories</p>
+                        <p className="text-foreground-muted">Link your GitHub to deploy repositories</p>
                     </div>
                 </div>
 
-                {existingGitSources.length > 0 && (
-                    <div className="mb-6">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={useExisting}
-                                onChange={(e) => setUseExisting(e.target.checked)}
-                                className="rounded border-border"
-                            />
-                            <span className="text-sm text-foreground">Use existing Git source</span>
-                        </label>
-                    </div>
-                )}
-
-                {useExisting ? (
+                {hasGithubApp ? (
                     <div className="space-y-4">
-                        <Select
-                            value={selectedGitSourceId}
-                            onChange={(e) => setSelectedGitSourceId(e.target.value)}
-                        >
-                            <option value="">Select a Git source</option>
-                            {existingGitSources.map((source: any) => (
-                                <option key={source.id} value={source.id}>
-                                    {source.name} ({source.type})
-                                </option>
-                            ))}
-                        </Select>
+                        <div className="flex items-center gap-2 text-sm text-success mb-4">
+                            <Check className="h-4 w-4" />
+                            <span>GitHub App connected</span>
+                        </div>
+                        {githubApps.length > 1 && (
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">
+                                    Select GitHub App
+                                </label>
+                                <Select
+                                    value={selectedGithubAppId}
+                                    onChange={(e) => setSelectedGithubAppId(e.target.value)}
+                                >
+                                    {githubApps.map((app) => (
+                                        <option key={app.id} value={app.id}>
+                                            {app.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                            </div>
+                        )}
+                        {githubApps.length === 1 && (
+                            <div className="bg-background-secondary p-4 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <Github className="h-6 w-6" />
+                                    <span className="font-medium">{githubApps[0].name}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <Github className="h-16 w-16 mx-auto text-foreground-muted mb-4" />
-                        <p className="text-foreground-muted mb-6">
-                            Connect your GitHub account to access your repositories
-                        </p>
-                        <Button onClick={onNext} className="gap-2">
-                            <Github className="h-4 w-4" />
-                            Connect GitHub
-                        </Button>
+                    <div className="space-y-4">
+                        <div className="flex items-start gap-4 p-4 bg-warning/10 rounded-lg">
+                            <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-medium text-foreground">GitHub App Required</p>
+                                <p className="text-sm text-foreground-muted mt-1">
+                                    To access your GitHub repositories, you need to create and install a GitHub App.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-center py-4">
+                            <Github className="h-12 w-12 mx-auto text-foreground-muted mb-4" />
+                            <div className="flex justify-center gap-3">
+                                <Link href="/sources/github/create">
+                                    <Button className="gap-2">
+                                        <Plus className="h-4 w-4" />
+                                        Create GitHub App
+                                    </Button>
+                                </Link>
+                                <a
+                                    href="https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Button variant="ghost" className="gap-2">
+                                        Learn More
+                                        <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -497,7 +533,7 @@ function GitStep({
                     </Button>
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={onSkip}>Skip</Button>
-                        {useExisting && (
+                        {hasGithubApp && (
                             <Button onClick={onNext}>
                                 Continue
                                 <ChevronRight className="ml-2 h-4 w-4" />

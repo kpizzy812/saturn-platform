@@ -3668,9 +3668,21 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('/boarding', function () {
         $servers = \App\Models\Server::ownedByCurrentTeam()->get(['id', 'name', 'ip']);
 
+        // Get GitHub Apps for current team
+        $githubApps = \App\Models\GithubApp::where(function ($query) {
+            $query->where('team_id', currentTeam()->id)
+                ->orWhere('is_system_wide', true);
+        })->whereNotNull('app_id')->get();
+
         return \Inertia\Inertia::render('Boarding/Index', [
             'userName' => auth()->user()->name,
             'existingServers' => $servers,
+            'githubApps' => $githubApps->map(fn ($app) => [
+                'id' => $app->id,
+                'uuid' => $app->uuid,
+                'name' => $app->name,
+                'installation_id' => $app->installation_id,
+            ]),
         ]);
     })->name('boarding.index');
 
