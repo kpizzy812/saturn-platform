@@ -203,7 +203,15 @@ return [
                 'balanceMaxShift' => env('HORIZON_BALANCE_MAX_SHIFT', 1),
                 'balanceCooldown' => env('HORIZON_BALANCE_COOLDOWN', 1),
             ],
-
+        ],
+        'development' => [
+            's6' => [
+                'autoScalingStrategy' => 'size',
+                'minProcesses' => env('HORIZON_MIN_PROCESSES', 1),
+                'maxProcesses' => env('HORIZON_MAX_PROCESSES', 4),
+                'balanceMaxShift' => env('HORIZON_BALANCE_MAX_SHIFT', 1),
+                'balanceCooldown' => env('HORIZON_BALANCE_COOLDOWN', 1),
+            ],
         ],
         'local' => [
             's6' => [
