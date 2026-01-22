@@ -143,6 +143,7 @@ export function DropdownItem({
     shortcut,
     description,
 }: DropdownItemProps) {
+    const buttonId = React.useId();
     const handleClick = (e: React.MouseEvent) => {
         onClick?.(e);
         onSelect?.();
@@ -152,6 +153,7 @@ export function DropdownItem({
         <MenuItem disabled={disabled}>
             {({ active, disabled: isDisabled }) => (
                 <button
+                    id={buttonId}
                     onClick={handleClick}
                     className={cn(
                         // Base styles
