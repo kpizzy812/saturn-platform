@@ -1019,9 +1019,20 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('services.index');
 
     Route::get('/services/create', function () {
+        $team = currentTeam();
         $projects = \App\Models\Project::ownedByCurrentTeam()
             ->with('environments')
             ->get();
+
+        // Auto-create default project if none exist
+        if ($projects->isEmpty()) {
+            $project = \App\Models\Project::create([
+                'name' => 'Default Project',
+                'team_id' => $team->id,
+            ]);
+            $project->environments()->create(['name' => 'production']);
+            $projects = collect([$project->load('environments')]);
+        }
 
         $servers = \App\Models\Server::ownedByCurrentTeam()
             ->whereRelation('settings', 'is_usable', true)
@@ -1280,6 +1291,16 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         $projects = \App\Models\Project::ownedByCurrentTeam()
             ->with('environments')
             ->get();
+
+        // Auto-create default project if none exist
+        if ($projects->isEmpty()) {
+            $project = \App\Models\Project::create([
+                'name' => 'Default Project',
+                'team_id' => $team->id,
+            ]);
+            $project->environments()->create(['name' => 'production']);
+            $projects = collect([$project->load('environments')]);
+        }
 
         $servers = \App\Models\Server::ownedByCurrentTeam()
             ->whereRelation('settings', 'is_usable', true)
