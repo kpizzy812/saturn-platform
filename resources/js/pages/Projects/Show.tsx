@@ -447,7 +447,8 @@ export default function ProjectShow({ project }: Props) {
             }
 
             setSelectedService(null);
-            router.reload();
+            setContextMenuNode(null);
+            router.reload({ preserveState: false, preserveScroll: true });
         } catch (err) {
             console.error('Delete error:', err);
             alert(err instanceof Error ? err.message : 'Failed to delete');
