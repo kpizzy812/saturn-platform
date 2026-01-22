@@ -1030,7 +1030,6 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 'name' => 'Default Project',
                 'team_id' => $team->id,
             ]);
-            $project->environments()->create(['name' => 'production']);
             $projects = collect([$project->load('environments')]);
         }
 
@@ -1292,13 +1291,12 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ->with('environments')
             ->get();
 
-        // Auto-create default project if none exist
+        // Auto-create default project if none exist (environment auto-created via Project::booted)
         if ($projects->isEmpty()) {
             $project = \App\Models\Project::create([
                 'name' => 'Default Project',
                 'team_id' => $team->id,
             ]);
-            $project->environments()->create(['name' => 'production']);
             $projects = collect([$project->load('environments')]);
         }
 
