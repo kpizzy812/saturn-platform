@@ -151,7 +151,7 @@ const MOCK_DEPLOYMENTS: ExtendedDeployment[] = [
 
 export default function DeploymentsIndex({ deployments: propDeployments, currentPage = 1, totalPages = 3, filters: initialFilters }: Props) {
     const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(
-        propDeployments as ExtendedDeployment[] || MOCK_DEPLOYMENTS
+        Array.isArray(propDeployments) ? propDeployments as ExtendedDeployment[] : MOCK_DEPLOYMENTS
     );
     const [filterStatus, setFilterStatus] = React.useState<DeploymentStatus | 'all'>(initialFilters?.status || 'all');
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -241,6 +241,7 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
 
     return (
         <AppLayout title="Deployments" breadcrumbs={[{ label: 'Deployments' }]}>
+            <div className="mx-auto max-w-6xl px-6 py-8">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-foreground">Deployment History</h1>
@@ -381,6 +382,7 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
                     )}
                 </>
             )}
+            </div>
         </AppLayout>
     );
 }
