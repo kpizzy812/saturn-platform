@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Badge, useToast } from '@/components/ui';
 import {
     ArrowLeft,
     Database,
@@ -38,6 +38,7 @@ const databaseTypeConfig: Record<DatabaseType, { color: string; bgColor: string;
 export default function DatabaseOverview({ database }: Props) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const [isRestarting, setIsRestarting] = useState(false);
+    const { addToast } = useToast();
 
     // Fetch real-time metrics from backend
     const { metrics: dbMetrics, isLoading } = useDatabaseMetrics({
@@ -73,10 +74,17 @@ export default function DatabaseOverview({ database }: Props) {
     const handleRestart = () => {
         if (confirm(`Are you sure you want to restart ${database.name}? This will cause brief downtime.`)) {
             setIsRestarting(true);
-            // Simulate restart
-            setTimeout(() => {
-                setIsRestarting(false);
-            }, 3000);
+            router.post(`/databases/${database.uuid}/restart`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    addToast('success', 'Database restart initiated successfully');
+                    setIsRestarting(false);
+                },
+                onError: () => {
+                    addToast('error', 'Failed to restart database');
+                    setIsRestarting(false);
+                },
+            });
         }
     };
 
