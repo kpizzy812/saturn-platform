@@ -3944,7 +3944,8 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         $application->environment_id = $environment->id;
         $application->destination_id = $destination->id;
         $application->destination_type = $destination->getMorphClass();
-        $application->ports_exposes = '80';
+        $application->ports_exposes = '80'; // Will be auto-detected during deployment
+        $application->auto_inject_database_url = true; // Enable auto-inject for Railway-like experience
 
         // Set source (GitHub App or public)
         $githubAppId = $validated['github_app_id'] ?? 0;
@@ -3961,6 +3962,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             $application->fqdn = generateUrl(server: $server, random: $application->uuid);
             $application->save();
         }
+
+        // Auto-inject database URLs from linked databases in the same environment
+        $application->autoInjectDatabaseUrl();
 
         // Queue deployment
         queue_application_deployment(

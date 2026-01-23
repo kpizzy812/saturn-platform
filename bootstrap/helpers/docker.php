@@ -193,20 +193,52 @@ function generateApplicationContainerName(Application $application, $pull_reques
 }
 function get_port_from_dockerfile($dockerfile): ?int
 {
+    $ports = get_ports_from_dockerfile($dockerfile);
+
+    return $ports[0] ?? null;
+}
+
+/**
+ * Parse all EXPOSE directives from a Dockerfile.
+ * Supports: EXPOSE 3000, EXPOSE 3000 8080, EXPOSE 3000/tcp
+ *
+ * @return array<int> Array of port numbers
+ */
+function get_ports_from_dockerfile($dockerfile): array
+{
+    if (empty($dockerfile)) {
+        return [];
+    }
+
     $dockerfile_array = explode("\n", $dockerfile);
-    $found_exposed_port = null;
+    $ports = [];
+
     foreach ($dockerfile_array as $line) {
         $line_str = str($line)->trim();
         if ($line_str->startsWith('EXPOSE')) {
-            $found_exposed_port = $line_str->replace('EXPOSE', '')->trim();
-            break;
+            // Remove EXPOSE keyword and trim
+            $expose_value = $line_str->replace('EXPOSE', '')->trim()->value();
+
+            // Split by spaces to handle multiple ports: EXPOSE 3000 8080
+            $port_parts = preg_split('/\s+/', $expose_value);
+
+            foreach ($port_parts as $port_part) {
+                if (empty($port_part)) {
+                    continue;
+                }
+
+                // Handle port/protocol syntax: 3000/tcp or 8080/udp
+                $port_value = str($port_part)->before('/')->trim()->value();
+
+                if (is_numeric($port_value)) {
+                    $ports[] = (int) $port_value;
+                }
+            }
         }
     }
-    if ($found_exposed_port) {
-        return (int) $found_exposed_port->value();
-    }
 
-    return null;
+    // Remove duplicates and return unique ports
+    return array_values(array_unique($ports));
 }
 
 function defaultDatabaseLabels($database)

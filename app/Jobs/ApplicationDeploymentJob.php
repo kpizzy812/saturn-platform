@@ -887,6 +887,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->clone_repository();
         $this->cleanup_git();
         $this->generate_nixpacks_confs();
+        $this->autoDetectPortFromNixpacks();
         $this->generate_compose_file();
 
         // Save build-time .env file BEFORE the build for Nixpacks
@@ -1710,6 +1711,39 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->application_deployment_queue->addLogEntry('Database connection URLs injected successfully.');
     }
 
+    /**
+     * Auto-detect port from Nixpacks plan variables.
+     * Only updates ports_exposes if it's empty or set to default '80'.
+     */
+    private function autoDetectPortFromNixpacks(): void
+    {
+        // Skip if user has explicitly set a port (not empty and not default 80)
+        $currentPort = $this->application->ports_exposes;
+        if (! empty($currentPort) && $currentPort !== '80') {
+            return;
+        }
+
+        // First, check PORT variable from environment
+        $envPort = $this->application->detectPortFromEnvironment($this->pull_request_id !== 0);
+        if ($envPort) {
+            $this->application->update(['ports_exposes' => (string) $envPort]);
+            $this->application_deployment_queue->addLogEntry("Auto-detected port from environment: {$envPort}");
+
+            return;
+        }
+
+        // Next, try to get PORT from Nixpacks plan
+        if ($this->nixpacks_plan_json) {
+            $portFromPlan = data_get($this->nixpacks_plan_json, 'variables.PORT');
+            if (is_numeric($portFromPlan)) {
+                $this->application->update(['ports_exposes' => (string) $portFromPlan]);
+                $this->application_deployment_queue->addLogEntry("Auto-detected port from Nixpacks plan: {$portFromPlan}");
+
+                return;
+            }
+        }
+    }
+
     private function elixir_finetunes()
     {
         if ($this->pull_request_id === 0) {
@@ -1927,6 +1961,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->cleanup_git();
         if ($this->application->build_pack === 'nixpacks') {
             $this->generate_nixpacks_confs();
+            $this->autoDetectPortFromNixpacks();
         }
         $this->generate_compose_file();
 
