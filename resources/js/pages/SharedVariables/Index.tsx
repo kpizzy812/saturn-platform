@@ -40,7 +40,7 @@ export default function SharedVariablesIndex({ variables = [], team }: Props) {
         }
     };
 
-    const getScopeBadgeVariant = (scope: string) => {
+    const getScopeBadgeVariant = (scope: string): 'info' | 'warning' | 'success' | 'default' => {
         switch (scope) {
             case 'team': return 'info';
             case 'project': return 'warning';
@@ -88,7 +88,7 @@ export default function SharedVariablesIndex({ variables = [], team }: Props) {
                     {tabs.map(tab => (
                         <button
                             key={tab.key}
-                            onClick={() => setActiveTab(tab.key as any)}
+                            onClick={() => setActiveTab(tab.key as 'all' | 'team' | 'project' | 'environment')}
                             className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
                                 activeTab === tab.key
                                     ? 'bg-background-secondary text-foreground border-b-2 border-primary'
@@ -139,7 +139,7 @@ export default function SharedVariablesIndex({ variables = [], team }: Props) {
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <code className="font-mono font-medium">{variable.key}</code>
-                                                        <Badge variant={getScopeBadgeVariant(variable.scope) as any}>
+                                                        <Badge variant={getScopeBadgeVariant(variable.scope)}>
                                                             {getScopeIcon(variable.scope)}
                                                             <span className="ml-1 capitalize">{variable.scope}</span>
                                                         </Badge>

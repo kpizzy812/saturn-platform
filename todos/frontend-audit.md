@@ -211,7 +211,22 @@
     - [x] `resources/js/pages/Projects/Show.tsx` + `resources/js/components/features/canvas/ProjectCanvas.tsx`:
       - Создан `resources/js/types/global.d.ts` с типами для window extensions
       - Удалены все `(window as any)` в пользу типизированного `window.__projectCanvas*`
-  - Примечание: В проекте остаётся ~55 других мест с `as any`, которые можно исправить постепенно
+    - [x] `resources/js/pages/Deployments/Show.tsx`:
+      - Заменён `e.target.value as any` на конкретный union type `'all' | 'info' | 'warn' | 'error'`
+    - [x] `resources/js/pages/Activity/Timeline.tsx`:
+      - Заменён `initialFilters?.dateRange as any` на `'today' | 'week' | 'month' | 'all'`
+    - [x] `resources/js/pages/Auth/TwoFactor/Setup.tsx`:
+      - Добавлен интерфейс `TwoFactorResponseProps` для типизированного доступа к backupCodes
+    - [x] `resources/js/pages/SharedVariables/Index.tsx`:
+      - Типизирована функция `getScopeBadgeVariant()` с возвращаемым типом
+      - Заменён `tab.key as any` на конкретный union type
+    - [x] `resources/js/pages/SharedVariables/Show.tsx`:
+      - Типизирована функция `getScopeBadgeVariant()` с возвращаемым типом
+    - [x] `resources/js/pages/ScheduledTasks/History.tsx`:
+      - Заменён `e.target.value as any` на `'all' | 'completed' | 'failed'`
+    - [x] `resources/js/pages/Applications/Settings/Index.tsx`:
+      - Заменён `e.target.value as any` на `'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage'`
+  - Примечание: В проекте остаётся ~45 других мест с `as any` (в основном тесты), которые можно исправить постепенно
 
 ### Placeholder URLs
 
@@ -235,9 +250,9 @@
 | TODO незавершённые | 2 | ✅ 2 | 🟡 Средняя |
 | confirm() → Modal | ~80 | ✅ 46 файлов | 🟡 Средняя |
 | localStorage | 2 | ✅ 2 (verified safe) | 🟡 Средняя |
-| TypeScript any | 60+ | ✅ 3 приоритетных файла | 🟢 Низкая |
+| TypeScript any | 60+ | ✅ 12 приоритетных файлов | 🟢 Низкая |
 
-**Прогресс: 21 из ~25 критических/высоких/средних проблем исправлено (4 были неактуальны)**
+**Прогресс: 22 из ~25 критических/высоких/средних проблем исправлено (4 были неактуальны)**
 
 ---
 
@@ -296,10 +311,11 @@
 ### Этап 3: Средние (неделя 2)
 9. ~~Создать ConfirmationModal компонент~~ ✅
 10. ~~Заменить все confirm() вызовы (46 файлов)~~ ✅
-11. Завершить TODO функциональность
+11. ~~Завершить TODO функциональность~~ ✅ (VariablesTab в Projects/Show.tsx)
 
 ### Этап 4: Низкие (ongoing)
-12. Постепенно исправлять `as any` типизацию
+12. ~~Исправить приоритетные `as any` типизации~~ ✅ (12 файлов)
+13. Постепенно исправлять оставшиеся `as any` (~45 мест, в основном тесты)
 
 ---
 
@@ -326,3 +342,24 @@
   - Исправлен `handleServerSubmit` для отправки `private_key_id` или `private_key`
   - Заменены все `alert()` на `useConfirm` hook
   - Удалён неиспользуемый код `deployType`/`setDeployType`
+
+## Обновлённые файлы (VariablesTab + TypeScript as any)
+
+**Projects/Show.tsx - VariablesTab:**
+- Удалены hardcoded mock переменные
+- Добавлен props `service: SelectedService` для контекста
+- Реализована загрузка переменных через `GET /api/v1/applications/{uuid}/envs`
+- Добавлена inline-модалка для создания новых переменных
+- Добавлена валидация ключа (только A-Z, 0-9, _)
+- Добавлены кнопки show/hide для значений переменных
+- Заменены `alert()` на `useToast`
+- Добавлен тип `EnvironmentVariable` в `resources/js/types/models.ts`
+
+**TypeScript `as any` исправления (9 файлов):**
+- `Deployments/Show.tsx` - типизация logLevel
+- `Activity/Timeline.tsx` - типизация dateRange
+- `Auth/TwoFactor/Setup.tsx` - типизация backupCodes response
+- `SharedVariables/Index.tsx` - типизация getScopeBadgeVariant + activeTab
+- `SharedVariables/Show.tsx` - типизация getScopeBadgeVariant
+- `ScheduledTasks/History.tsx` - типизация statusFilter
+- `Applications/Settings/Index.tsx` - типизация build_pack

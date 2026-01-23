@@ -279,6 +279,24 @@ export interface ActivityLog {
     timestamp: string;
 }
 
+// Environment Variable types
+export interface EnvironmentVariable {
+    id: number;
+    uuid: string;
+    key: string;
+    value: string;
+    real_value?: string;
+    is_literal?: boolean;
+    is_multiline?: boolean;
+    is_preview?: boolean;
+    is_runtime?: boolean;
+    is_buildtime?: boolean;
+    is_shared?: boolean;
+    is_shown_once?: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 // Domain and SSL types
 export type DomainStatus = 'active' | 'pending' | 'failed' | 'verifying';
 export type SSLStatus = 'active' | 'pending' | 'expired' | 'expiring_soon' | 'failed';

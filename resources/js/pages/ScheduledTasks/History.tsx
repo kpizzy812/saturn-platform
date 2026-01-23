@@ -168,7 +168,7 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
                             />
                         </div>
                         <div>
-                            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
+                            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'completed' | 'failed')}>
                                 <option value="all">All Status</option>
                                 <option value="completed">Success</option>
                                 <option value="failed">Failed</option>

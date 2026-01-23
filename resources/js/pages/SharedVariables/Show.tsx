@@ -69,7 +69,7 @@ export default function SharedVariableShow({ variable: initialVariable }: Props)
         }
     };
 
-    const getScopeBadgeVariant = (scope: string) => {
+    const getScopeBadgeVariant = (scope: string): 'info' | 'warning' | 'success' | 'default' => {
         switch (scope) {
             case 'team': return 'info';
             case 'project': return 'warning';
@@ -319,7 +319,7 @@ export default function SharedVariableShow({ variable: initialVariable }: Props)
                         <div className="flex items-center justify-between">
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <Badge variant={getScopeBadgeVariant(variable.scope) as any}>
+                                    <Badge variant={getScopeBadgeVariant(variable.scope)}>
                                         <span className="capitalize">{variable.scope}</span>
                                     </Badge>
                                     {variable.scope !== 'team' && (

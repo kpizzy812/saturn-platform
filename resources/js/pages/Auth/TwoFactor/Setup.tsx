@@ -11,6 +11,10 @@ interface Props {
     backupCodes?: string[];
 }
 
+interface TwoFactorResponseProps {
+    backupCodes?: string[];
+}
+
 export default function Setup({ qrCode, manualEntryCode, backupCodes: propBackupCodes }: Props) {
     const [showBackupCodes, setShowBackupCodes] = useState(false);
     const [copiedCode, setCopiedCode] = useState(false);
@@ -47,7 +51,7 @@ export default function Setup({ qrCode, manualEntryCode, backupCodes: propBackup
         post('/user/two-factor-authentication/enable', {
             onSuccess: (page) => {
                 // Backup codes should be returned from the server after 2FA is enabled
-                const responseBackupCodes = (page.props as any).backupCodes;
+                const responseBackupCodes = (page.props as TwoFactorResponseProps).backupCodes;
                 if (responseBackupCodes && Array.isArray(responseBackupCodes)) {
                     setBackupCodes(responseBackupCodes);
                 }

@@ -112,7 +112,7 @@ export default function ApplicationSettings({ application, projectUuid, environm
                                     </label>
                                     <Select
                                         value={settings.build_pack}
-                                        onChange={(e) => setSettings({ ...settings, build_pack: e.target.value as any })}
+                                        onChange={(e) => setSettings({ ...settings, build_pack: e.target.value as 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage' })}
                                     >
                                         <option value="nixpacks">Nixpacks</option>
                                         <option value="dockerfile">Dockerfile</option>

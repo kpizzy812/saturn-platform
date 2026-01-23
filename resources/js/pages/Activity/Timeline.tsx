@@ -187,7 +187,7 @@ export default function ActivityTimelinePage({ activities: propActivities, proje
     );
     const [searchQuery, setSearchQuery] = React.useState('');
     const [dateRange, setDateRange] = React.useState<'today' | 'week' | 'month' | 'all'>(
-        (initialFilters?.dateRange as any) || 'all'
+        (initialFilters?.dateRange as 'today' | 'week' | 'month' | 'all') || 'all'
     );
 
     // Filter activities
