@@ -1,5 +1,40 @@
-import { GitCommit, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { GitCommit } from 'lucide-react';
 import { Badge } from '@/components/ui';
+import { getStatusIcon, getStatusVariant, type BadgeVariant } from '@/lib/statusUtils';
+
+// Timeline-specific mapping from variant to node styles
+const variantToTimelineClass: Record<BadgeVariant, { normal: string; active: string }> = {
+    success: {
+        normal: 'bg-primary/20 border-primary hover:bg-primary/30',
+        active: 'bg-primary border-primary'
+    },
+    danger: {
+        normal: 'bg-danger/20 border-danger hover:bg-danger/30',
+        active: 'bg-danger border-danger'
+    },
+    warning: {
+        normal: 'bg-warning/20 border-warning hover:bg-warning/30',
+        active: 'bg-warning border-warning'
+    },
+    default: {
+        normal: 'bg-foreground-subtle/20 border-foreground-subtle hover:bg-foreground-subtle/30',
+        active: 'bg-foreground-subtle border-foreground-subtle'
+    },
+    info: {
+        normal: 'bg-info/20 border-info hover:bg-info/30',
+        active: 'bg-info border-info'
+    },
+    primary: {
+        normal: 'bg-primary/20 border-primary hover:bg-primary/30',
+        active: 'bg-primary border-primary'
+    },
+};
+
+const getTimelineNodeClass = (status: string, isCurrent: boolean): string => {
+    const variant = getStatusVariant(status);
+    const styles = variantToTimelineClass[variant] ?? variantToTimelineClass.default;
+    return isCurrent ? styles.active : styles.normal;
+};
 
 interface Deployment {
     id: number;
@@ -22,34 +57,6 @@ export function RollbackTimeline({
     currentDeploymentId,
     onSelectDeployment
 }: RollbackTimelineProps) {
-    const getStatusColor = (status: string, isCurrent: boolean) => {
-        if (isCurrent) return 'bg-primary border-primary';
-        switch (status) {
-            case 'finished':
-                return 'bg-primary/20 border-primary hover:bg-primary/30';
-            case 'failed':
-                return 'bg-danger/20 border-danger hover:bg-danger/30';
-            case 'rolled_back':
-                return 'bg-warning/20 border-warning hover:bg-warning/30';
-            default:
-                return 'bg-foreground-subtle/20 border-foreground-subtle hover:bg-foreground-subtle/30';
-        }
-    };
-
-    const getStatusIcon = (status: string, isCurrent: boolean) => {
-        const className = `h-3 w-3 ${isCurrent ? 'text-white' : ''}`;
-        switch (status) {
-            case 'finished':
-                return <CheckCircle className={className} />;
-            case 'failed':
-                return <XCircle className={className} />;
-            case 'rolled_back':
-                return <AlertCircle className={className} />;
-            default:
-                return <Clock className={className} />;
-        }
-    };
-
     const formatTimeAgo = (date: string): string => {
         const now = new Date();
         const then = new Date(date);
@@ -100,13 +107,13 @@ export function RollbackTimeline({
                                     className={`
                                         group relative flex h-10 w-10 items-center justify-center
                                         rounded-full border-2 transition-all duration-200
-                                        ${getStatusColor(deployment.status, isCurrent)}
+                                        ${getTimelineNodeClass(deployment.status, isCurrent)}
                                         ${onSelectDeployment ? 'cursor-pointer' : 'cursor-default'}
                                         ${!isCurrent && onSelectDeployment ? 'hover:scale-110' : ''}
                                     `}
                                     disabled={!onSelectDeployment}
                                 >
-                                    {getStatusIcon(deployment.status, isCurrent)}
+                                    {getStatusIcon(deployment.status, { size: 'xs', className: isCurrent ? 'text-white' : undefined })}
 
                                     {/* Tooltip on hover */}
                                     {onSelectDeployment && (
@@ -121,7 +128,7 @@ export function RollbackTimeline({
                                                 {deployment.commit_message || 'No commit message'}
                                             </p>
                                             <div className="mt-2 flex items-center gap-2">
-                                                <Badge variant={deployment.status === 'finished' ? 'success' : 'danger'} className="text-xs">
+                                                <Badge variant={getStatusVariant(deployment.status)} className="text-xs">
                                                     {deployment.status}
                                                 </Badge>
                                                 {deployment.rollback && (

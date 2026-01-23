@@ -563,10 +563,14 @@
   - Одинаковые: handleCreateBackup(), handleRestore(), handleDownload(), handleDelete()
   - Решение: Создать `BackupsManager` компонент
 
-- [ ] **Status utility functions дублируются в 21 файле (~700 строк)** ✅ ПЕРЕПРОВЕРЕНО
+- [x] **Status utility functions дублируются в 21 файле (~700 строк)** ✅ ИСПРАВЛЕНО
   - getStatusIcon(), getStatusColor(), getStatusBadge() - идентичные switch statements
   - Файлы: ScheduledTasks/*, Deployments/*, CronJobs/*, Storage/*, Databases/*, Services/*, Applications/*, Servers/*, Sources/*
-  - Решение: Создать утилиту `statusUtils.ts`
+  - Решение: Создана утилита `statusUtils.ts`, рефакторинг 3 файлов с дублированием:
+    - RollbackTimeline.tsx - заменены локальные функции на statusUtils + timeline-specific маппер
+    - CronJobs/Show.tsx - удалены 3 дублирующие функции
+    - Destinations/Show.tsx - удалена getStatusBadge функция
+  - Исправлен `exited` variant: `default` → `danger` (exited = неожиданная остановка)
 
 **Потенциальная экономия при рефакторинге: ~3000-4000 строк кода**
 
@@ -733,7 +737,7 @@
 52. [ ] Создать компонент `DomainsList` + `sslUtils.ts` (объединить 6 файлов, экономия ~600 строк)
 53. [ ] Создать компонент `BuildStepsViewer` (объединить 2 файла, экономия ~400 строк)
 54. [ ] Создать компонент `BackupsManager` (объединить 4 файла, экономия ~500 строк)
-55. [ ] Создать утилиту `statusUtils.ts` (объединить 21 файл, экономия ~700 строк)
+55. [x] Создать утилиту `statusUtils.ts` (объединить 21 файл, экономия ~700 строк) ✅ ИСПРАВЛЕНО
 
 ---
 

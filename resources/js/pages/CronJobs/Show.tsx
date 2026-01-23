@@ -8,6 +8,7 @@ import {
     Edit, Trash2, Play, Pause, Clock, CheckCircle, XCircle,
     AlertCircle, TrendingUp, Calendar, Terminal, Settings as SettingsIcon
 } from 'lucide-react';
+import { getStatusVariant, getStatusLabel, getStatusIcon } from '@/lib/statusUtils';
 import type { CronJob, CronJobExecution } from '@/types/models';
 
 interface Props {
@@ -81,19 +82,6 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         return Math.round((cronJob.success_count / total) * 100);
     };
 
-    const getStatusBadge = (status: CronJob['status']) => {
-        switch (status) {
-            case 'enabled':
-                return <Badge variant="success">Enabled</Badge>;
-            case 'disabled':
-                return <Badge variant="default">Disabled</Badge>;
-            case 'running':
-                return <Badge variant="info">Running</Badge>;
-            case 'failed':
-                return <Badge variant="danger">Failed</Badge>;
-        }
-    };
-
     const tabs = [
         {
             label: 'Overview',
@@ -140,7 +128,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold text-foreground">{cronJob.name}</h1>
-                            {getStatusBadge(cronJob.status)}
+                            <Badge variant={getStatusVariant(cronJob.status)}>{getStatusLabel(cronJob.status)}</Badge>
                         </div>
                         {cronJob.description && (
                             <p className="text-foreground-muted">{cronJob.description}</p>
@@ -344,28 +332,6 @@ function ExecutionHistoryTab({
         return new Date(dateString).toLocaleString();
     };
 
-    const getStatusIcon = (status: CronJobExecution['status']) => {
-        switch (status) {
-            case 'success':
-                return <CheckCircle className="h-4 w-4 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-4 w-4 text-danger" />;
-            case 'running':
-                return <AlertCircle className="h-4 w-4 text-info animate-pulse" />;
-        }
-    };
-
-    const getStatusBadge = (status: CronJobExecution['status']) => {
-        switch (status) {
-            case 'success':
-                return <Badge variant="success">Success</Badge>;
-            case 'failed':
-                return <Badge variant="danger">Failed</Badge>;
-            case 'running':
-                return <Badge variant="info">Running</Badge>;
-        }
-    };
-
     return (
         <div className="grid gap-6 lg:grid-cols-2">
             {/* Execution List */}
@@ -388,12 +354,12 @@ function ExecutionHistoryTab({
                                 >
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
-                                            {getStatusIcon(execution.status)}
+                                            {getStatusIcon(execution.status, { size: 'sm' })}
                                             <span className="text-sm font-medium text-foreground">
                                                 {formatDateTime(execution.started_at)}
                                             </span>
                                         </div>
-                                        {getStatusBadge(execution.status)}
+                                        <Badge variant={getStatusVariant(execution.status)}>{getStatusLabel(execution.status)}</Badge>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-foreground-muted">
                                         <span>Duration: {formatDuration(execution.duration)}</span>
@@ -419,7 +385,7 @@ function ExecutionHistoryTab({
                             <div className="space-y-4">
                                 <div>
                                     <p className="text-sm text-foreground-muted mb-1">Status</p>
-                                    {getStatusBadge(selectedExecution.status)}
+                                    <Badge variant={getStatusVariant(selectedExecution.status)}>{getStatusLabel(selectedExecution.status)}</Badge>
                                 </div>
                                 <div>
                                     <p className="text-sm text-foreground-muted mb-1">Started At</p>

@@ -7,6 +7,7 @@ import {
     CheckCircle2, XCircle, Settings, ExternalLink,
     Copy, AlertTriangle, Info
 } from 'lucide-react';
+import { getStatusVariant, getStatusLabel } from '@/lib/statusUtils';
 
 interface Resource {
     id: number;
@@ -88,15 +89,6 @@ export default function DestinationShow({ destination, resources = [] }: Props) 
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'running': return <Badge variant="success">Running</Badge>;
-            case 'stopped': return <Badge variant="default">Stopped</Badge>;
-            case 'exited': return <Badge variant="danger">Exited</Badge>;
-            case 'restarting': return <Badge variant="warning">Restarting</Badge>;
-            default: return <Badge variant="default">{status}</Badge>;
-        }
-    };
 
     return (
         <AppLayout
@@ -290,7 +282,7 @@ export default function DestinationShow({ destination, resources = [] }: Props) 
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                {getStatusBadge(resource.status)}
+                                                <Badge variant={getStatusVariant(resource.status)}>{getStatusLabel(resource.status)}</Badge>
                                                 <ExternalLink className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </div>
