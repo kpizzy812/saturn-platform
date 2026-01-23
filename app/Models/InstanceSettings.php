@@ -31,6 +31,20 @@ class InstanceSettings extends Model
         'update_check_frequency' => 'string',
         'sentinel_token' => 'encrypted',
         'is_wire_navigate_enabled' => 'boolean',
+
+        // Resource monitoring
+        'resource_warning_cpu_threshold' => 'integer',
+        'resource_critical_cpu_threshold' => 'integer',
+        'resource_warning_memory_threshold' => 'integer',
+        'resource_critical_memory_threshold' => 'integer',
+        'resource_warning_disk_threshold' => 'integer',
+        'resource_critical_disk_threshold' => 'integer',
+        'resource_monitoring_enabled' => 'boolean',
+        'resource_check_interval_minutes' => 'integer',
+
+        // Auto-provisioning
+        'auto_provision_enabled' => 'boolean',
+        'auto_provision_api_key' => 'encrypted',
     ];
 
     protected static function booted(): void

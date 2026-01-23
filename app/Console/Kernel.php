@@ -10,6 +10,7 @@ use App\Jobs\CleanupOrphanedPreviewContainersJob;
 use App\Jobs\PullChangelog;
 use App\Jobs\PullTemplatesFromCDN;
 use App\Jobs\RegenerateSslCertJob;
+use App\Jobs\ResourceMonitoringManagerJob;
 use App\Jobs\ScheduledJobManager;
 use App\Jobs\ServerManagerJob;
 use App\Jobs\UpdateSaturnJob;
@@ -51,6 +52,9 @@ class Kernel extends ConsoleKernel
             // Server Jobs
             $this->scheduleInstance->job(new ServerManagerJob)->everyMinute()->onOneServer();
 
+            // Resource Monitoring (every 5 minutes)
+            $this->scheduleInstance->job(new ResourceMonitoringManagerJob)->everyFiveMinutes()->onOneServer();
+
             // Scheduled Jobs (Backups & Tasks)
             $this->scheduleInstance->job(new ScheduledJobManager)->everyMinute()->onOneServer();
 
@@ -69,6 +73,9 @@ class Kernel extends ConsoleKernel
 
             // Server Jobs
             $this->scheduleInstance->job(new ServerManagerJob)->everyMinute()->onOneServer();
+
+            // Resource Monitoring (every 5 minutes by default, configurable via settings)
+            $this->scheduleResourceMonitoring();
 
             $this->pullImages();
 
@@ -109,6 +116,23 @@ class Kernel extends ConsoleKernel
                 ->timezone($this->instanceTimezone)
                 ->onOneServer();
         }
+    }
+
+    private function scheduleResourceMonitoring(): void
+    {
+        if (! $this->settings->resource_monitoring_enabled) {
+            return;
+        }
+
+        $interval = $this->settings->resource_check_interval_minutes ?? 5;
+
+        // Schedule based on configured interval
+        $cron = "*/{$interval} * * * *";
+
+        $this->scheduleInstance->job(new ResourceMonitoringManagerJob)
+            ->cron($cron)
+            ->timezone($this->instanceTimezone)
+            ->onOneServer();
     }
 
     protected function commands(): void
