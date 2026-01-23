@@ -2344,7 +2344,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Team Settings POST/DELETE routes
     Route::post('/settings/team/members/{id}/role', function (string $id, \Illuminate\Http\Request $request) {
         $request->validate([
-            'role' => 'required|string|in:owner,admin,member',
+            'role' => 'required|string|in:owner,admin,member,viewer',
         ]);
 
         $team = currentTeam();
@@ -2407,7 +2407,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::post('/settings/team/invite', function (\Illuminate\Http\Request $request) {
         $request->validate([
             'email' => 'required|email',
-            'role' => 'required|string|in:owner,admin,member',
+            'role' => 'required|string|in:owner,admin,member,viewer',
         ]);
 
         $email = strtolower($request->email);
@@ -4124,6 +4124,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'avatar' => null, // Gravatar can be implemented later on frontend
                 'role' => $user->pivot->role ?? 'member',
                 'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
                 'lastActive' => $lastActive,
@@ -4134,6 +4135,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             'team' => [
                 'id' => $team->id,
                 'name' => $team->name,
+                'avatar' => null, // Team avatar not implemented yet
                 'memberCount' => $members->count(),
             ],
             'members' => $members,
