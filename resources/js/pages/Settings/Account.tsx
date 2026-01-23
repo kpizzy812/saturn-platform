@@ -2,31 +2,17 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, useToast } from '@/components/ui';
 import { usePage, router } from '@inertiajs/react';
-import { Shield, Trash2, Upload } from 'lucide-react';
+import { Shield, Trash2, Upload, AlertCircle } from 'lucide-react';
 import { validatePassword, validatePasswordMatch } from '@/lib/validation';
+import type { AuthUser } from '@/types/inertia';
 
-interface User {
-    id: number;
-    name: string;
-    email: string;
-    avatar?: string;
-}
-
-interface Props {
-    user?: User;
-}
-
-export default function AccountSettings({ user }: Props) {
-    const { props } = usePage();
-    const currentUser = user || (props.auth as any)?.user || {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@example.com',
-    };
+export default function AccountSettings() {
+    const { props } = usePage<{ auth: AuthUser | null }>();
+    const currentUser = props.auth;
 
     const [profile, setProfile] = React.useState({
-        name: currentUser.name,
-        email: currentUser.email,
+        name: currentUser?.name ?? '',
+        email: currentUser?.email ?? '',
     });
 
     const [password, setPassword] = React.useState({
@@ -42,7 +28,7 @@ export default function AccountSettings({ user }: Props) {
 
     const [passwordStrength, setPasswordStrength] = React.useState<'weak' | 'medium' | 'strong'>('weak');
 
-    const [twoFactorEnabled, setTwoFactorEnabled] = React.useState(false);
+    const [twoFactorEnabled, setTwoFactorEnabled] = React.useState(currentUser?.two_factor_enabled ?? false);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [isSavingProfile, setIsSavingProfile] = React.useState(false);
     const [isSavingPassword, setIsSavingPassword] = React.useState(false);
@@ -186,6 +172,27 @@ export default function AccountSettings({ user }: Props) {
             }
         });
     };
+
+    // Show error state if user is not authenticated
+    if (!currentUser) {
+        return (
+            <SettingsLayout activeSection="account">
+                <Card>
+                    <CardContent className="py-12">
+                        <div className="flex flex-col items-center justify-center text-center">
+                            <AlertCircle className="h-12 w-12 text-danger mb-4" />
+                            <h3 className="text-lg font-semibold text-foreground mb-2">
+                                Authentication Required
+                            </h3>
+                            <p className="text-foreground-muted">
+                                Please log in to access your account settings.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </SettingsLayout>
+        );
+    }
 
     return (
         <SettingsLayout activeSection="account">
