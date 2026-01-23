@@ -180,6 +180,14 @@ export interface Service {
     docker_compose_raw: string;
     environment_id: number;
     destination_id: number;
+    // Resource limits
+    limits_memory: string;
+    limits_memory_swap: string;
+    limits_memory_swappiness: number;
+    limits_memory_reservation: string;
+    limits_cpus: string;
+    limits_cpuset: string | null;
+    limits_cpu_shares: number;
     created_at: string;
     updated_at: string;
 }

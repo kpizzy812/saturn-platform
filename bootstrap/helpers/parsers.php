@@ -2426,6 +2426,36 @@ function serviceParser(Service $resource): Collection
 
         $payload['env_file'] = $envFiles;
 
+        // Apply resource limits from Service model if configured
+        if ($resource->hasResourceLimits()) {
+            $limits = $resource->getLimits();
+
+            // Apply memory limits
+            if ($limits['limits_memory'] !== '0') {
+                $payload['mem_limit'] = $limits['limits_memory'];
+            }
+            if ($limits['limits_memory_swap'] !== '0') {
+                $payload['memswap_limit'] = $limits['limits_memory_swap'];
+            }
+            if ($limits['limits_memory_swappiness'] !== 60) {
+                $payload['mem_swappiness'] = $limits['limits_memory_swappiness'];
+            }
+            if ($limits['limits_memory_reservation'] !== '0') {
+                $payload['mem_reservation'] = $limits['limits_memory_reservation'];
+            }
+
+            // Apply CPU limits
+            if ($limits['limits_cpus'] !== '0') {
+                $payload['cpus'] = (float) $limits['limits_cpus'];
+            }
+            if (! is_null($limits['limits_cpuset'])) {
+                $payload['cpuset'] = $limits['limits_cpuset'];
+            }
+            if ($limits['limits_cpu_shares'] !== 1024) {
+                $payload['cpu_shares'] = $limits['limits_cpu_shares'];
+            }
+        }
+
         $parsedServices->put($serviceName, $payload);
     }
     $topLevel->put('services', $parsedServices);

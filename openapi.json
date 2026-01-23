@@ -10016,6 +10016,35 @@
                                     "docker_compose_raw": {
                                         "type": "string",
                                         "description": "The Docker Compose raw content."
+                                    },
+                                    "limits_memory": {
+                                        "type": "string",
+                                        "description": "Memory limit for all containers (e.g., \"512m\", \"1g\", \"0\" for no limit)."
+                                    },
+                                    "limits_memory_swap": {
+                                        "type": "string",
+                                        "description": "Memory swap limit (e.g., \"1g\", \"0\" for no limit)."
+                                    },
+                                    "limits_memory_swappiness": {
+                                        "type": "integer",
+                                        "description": "Memory swappiness (0-100)."
+                                    },
+                                    "limits_memory_reservation": {
+                                        "type": "string",
+                                        "description": "Memory reservation (soft limit)."
+                                    },
+                                    "limits_cpus": {
+                                        "type": "string",
+                                        "description": "CPU limit (e.g., \"0.5\", \"2\", \"0\" for no limit)."
+                                    },
+                                    "limits_cpuset": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "CPU set (e.g., \"0,1\" or \"0-3\")."
+                                    },
+                                    "limits_cpu_shares": {
+                                        "type": "integer",
+                                        "description": "CPU shares (relative weight, default 1024)."
                                     }
                                 },
                                 "type": "object"
@@ -12125,6 +12154,35 @@
                     "service_type": {
                         "type": "string",
                         "description": "The type of the service."
+                    },
+                    "limits_memory": {
+                        "type": "string",
+                        "description": "Memory limit for all containers (e.g., \"512m\", \"1g\")."
+                    },
+                    "limits_memory_swap": {
+                        "type": "string",
+                        "description": "Memory swap limit."
+                    },
+                    "limits_memory_swappiness": {
+                        "type": "integer",
+                        "description": "Memory swappiness (0-100)."
+                    },
+                    "limits_memory_reservation": {
+                        "type": "string",
+                        "description": "Memory reservation."
+                    },
+                    "limits_cpus": {
+                        "type": "string",
+                        "description": "CPU limit (e.g., \"0.5\", \"2\")."
+                    },
+                    "limits_cpuset": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "CPU set (e.g., \"0,1\" or \"0-3\")."
+                    },
+                    "limits_cpu_shares": {
+                        "type": "integer",
+                        "description": "CPU shares (relative weight)."
                     },
                     "created_at": {
                         "type": "string",

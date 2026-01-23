@@ -704,6 +704,13 @@ class ServicesController extends Controller
                             'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the service should be deployed instantly.'],
                             'connect_to_docker_network' => ['type' => 'boolean', 'default' => false, 'description' => 'Connect the service to the predefined docker network.'],
                             'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
+                            'limits_memory' => ['type' => 'string', 'description' => 'Memory limit for all containers (e.g., "512m", "1g", "0" for no limit).'],
+                            'limits_memory_swap' => ['type' => 'string', 'description' => 'Memory swap limit (e.g., "1g", "0" for no limit).'],
+                            'limits_memory_swappiness' => ['type' => 'integer', 'description' => 'Memory swappiness (0-100).'],
+                            'limits_memory_reservation' => ['type' => 'string', 'description' => 'Memory reservation (soft limit).'],
+                            'limits_cpus' => ['type' => 'string', 'description' => 'CPU limit (e.g., "0.5", "2", "0" for no limit).'],
+                            'limits_cpuset' => ['type' => 'string', 'nullable' => true, 'description' => 'CPU set (e.g., "0,1" or "0-3").'],
+                            'limits_cpu_shares' => ['type' => 'integer', 'description' => 'CPU shares (relative weight, default 1024).'],
                         ],
                     )
                 ),
@@ -763,7 +770,11 @@ class ServicesController extends Controller
 
         $this->authorize('update', $service);
 
-        $allowedFields = ['name', 'description', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network'];
+        $allowedFields = [
+            'name', 'description', 'instant_deploy', 'docker_compose_raw', 'connect_to_docker_network',
+            'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness', 'limits_memory_reservation',
+            'limits_cpus', 'limits_cpuset', 'limits_cpu_shares',
+        ];
 
         $validator = customApiValidator($request->all(), [
             'name' => 'string|max:255',
@@ -771,6 +782,14 @@ class ServicesController extends Controller
             'instant_deploy' => 'boolean',
             'connect_to_docker_network' => 'boolean',
             'docker_compose_raw' => 'string|nullable',
+            // Resource limits
+            'limits_memory' => 'string|nullable',
+            'limits_memory_swap' => 'string|nullable',
+            'limits_memory_swappiness' => 'integer|min:0|max:100|nullable',
+            'limits_memory_reservation' => 'string|nullable',
+            'limits_cpus' => 'string|nullable',
+            'limits_cpuset' => 'string|nullable',
+            'limits_cpu_shares' => 'integer|min:0|nullable',
         ]);
 
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
@@ -832,6 +851,30 @@ class ServicesController extends Controller
         if ($request->has('connect_to_docker_network')) {
             $service->connect_to_docker_network = $request->connect_to_docker_network;
         }
+
+        // Resource limits
+        if ($request->has('limits_memory')) {
+            $service->limits_memory = $request->limits_memory;
+        }
+        if ($request->has('limits_memory_swap')) {
+            $service->limits_memory_swap = $request->limits_memory_swap;
+        }
+        if ($request->has('limits_memory_swappiness')) {
+            $service->limits_memory_swappiness = $request->limits_memory_swappiness;
+        }
+        if ($request->has('limits_memory_reservation')) {
+            $service->limits_memory_reservation = $request->limits_memory_reservation;
+        }
+        if ($request->has('limits_cpus')) {
+            $service->limits_cpus = $request->limits_cpus;
+        }
+        if ($request->has('limits_cpuset')) {
+            $service->limits_cpuset = $request->limits_cpuset;
+        }
+        if ($request->has('limits_cpu_shares')) {
+            $service->limits_cpu_shares = $request->limits_cpu_shares;
+        }
+
         $service->save();
 
         $service->parse();

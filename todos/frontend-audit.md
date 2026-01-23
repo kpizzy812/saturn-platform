@@ -81,11 +81,18 @@
     - Добавлены API endpoints `GET/PUT /api/v1/notifications/preferences`
     - Frontend загружает preferences при рендере и сохраняет через `router.put()`
 
-- [ ] **Services Scaling - Apply Changes не работает**
-  - Файл: `resources/js/pages/Services/Scaling.tsx:38-51`
-  - Кнопка на строке: 270 (Apply Changes)
+- [x] **Services Scaling - Apply Changes не работает** ✅ ИСПРАВЛЕНО
+  - Файл: `resources/js/pages/Services/Scaling.tsx`
   - Проблема: Только `console.log()`, не вызывает API
-  - Решение: Реализовать API вызов для применения scaling конфигурации
+  - Решение:
+    - Создана миграция `add_scaling_fields_to_services_table` для полей resource limits
+    - Обновлена модель `app/Models/Service.php` с методами `getLimits()` и `hasResourceLimits()`
+    - Обновлён API контроллер `app/Http/Controllers/Api/ServicesController.php` для поддержки scaling
+    - Обновлён `bootstrap/helpers/parsers.php` для применения limits при генерации docker-compose
+    - Полностью переписан фронтенд компонент с реальными слайдерами для CPU/Memory limits
+    - Добавлен unit тест `tests/Unit/ServiceResourceLimitsTest.php`
+    - Обновлён тип Service в `resources/js/types/models.ts`
+    - Примечание: Функции replicas/auto-scaling/regions/sleep mode удалены как нереализуемые в текущей архитектуре (требуют Docker Swarm/Kubernetes)
 
 - [ ] **Database Restart не работает**
   - Файл: `resources/js/pages/Databases/Overview.tsx:73-81`
@@ -193,7 +200,7 @@
 |-----------|-----------|------------|-------------|
 | XSS уязвимость | 1 | ✅ 1 | 🔴 Критическая |
 | Mock данные | 5 | ✅ 4 | 🔴 Критическая |
-| Неработающие кнопки | 4 | ✅ 2 | 🟠 Высокая |
+| Неработающие кнопки | 4 | ✅ 3 | 🟠 Высокая |
 | Memory leaks | 3 | 0 | 🟠 Высокая |
 | Обработка ошибок | 2 | 0 | 🟠 Высокая |
 | TODO незавершённые | 2 | 0 | 🟡 Средняя |
@@ -201,7 +208,7 @@
 | localStorage | 2 | 0 | 🟡 Средняя |
 | TypeScript any | 60+ | 0 | 🟢 Низкая |
 
-**Прогресс: 7 из ~25 критических/высоких проблем исправлено**
+**Прогресс: 8 из ~25 критических/высоких проблем исправлено**
 
 ---
 
@@ -230,6 +237,16 @@
 - `resources/js/types/inertia.d.ts` - исправлены типы PageProps для соответствия HandleInertiaRequests middleware
 - `resources/js/pages/Settings/Account.tsx` - удалён mock fallback, добавлена типизация и обработка null
 
+## Созданные/Обновлённые файлы (Services Scaling)
+
+- `database/migrations/2026_01_23_113426_add_scaling_fields_to_services_table.php` - миграция для полей resource limits
+- `app/Models/Service.php` - добавлены методы `getLimits()` и `hasResourceLimits()`, OpenAPI документация
+- `app/Http/Controllers/Api/ServicesController.php` - поддержка scaling полей в update_by_uuid
+- `bootstrap/helpers/parsers.php` - применение resource limits при генерации docker-compose
+- `resources/js/pages/Services/Scaling.tsx` - полностью переписанный компонент с реальными слайдерами
+- `resources/js/types/models.ts` - добавлены поля resource limits в тип Service
+- `tests/Unit/ServiceResourceLimitsTest.php` - unit тесты для Service resource limits
+
 ---
 
 ## План исправления
@@ -243,7 +260,7 @@
 ### Этап 2: Высокие (неделя 1)
 4. ~~Реализовать API для Services/Settings.tsx~~ ✅
 5. ~~Реализовать API для Notifications/Preferences.tsx~~ ✅
-6. Реализовать API для Services/Scaling.tsx
+6. ~~Реализовать API для Services/Scaling.tsx~~ ✅
 7. Реализовать API для Databases/Overview.tsx restart
 8. Исправить memory leaks в Terminal и ProjectCanvas
 

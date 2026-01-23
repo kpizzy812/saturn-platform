@@ -36,6 +36,13 @@ use Visus\Cuid2\Cuid2;
         'is_container_label_readonly_enabled' => ['type' => 'boolean', 'description' => 'The flag to enable the container label readonly.'],
         'config_hash' => ['type' => 'string', 'description' => 'The hash of the service configuration.'],
         'service_type' => ['type' => 'string', 'description' => 'The type of the service.'],
+        'limits_memory' => ['type' => 'string', 'description' => 'Memory limit for all containers (e.g., "512m", "1g").'],
+        'limits_memory_swap' => ['type' => 'string', 'description' => 'Memory swap limit.'],
+        'limits_memory_swappiness' => ['type' => 'integer', 'description' => 'Memory swappiness (0-100).'],
+        'limits_memory_reservation' => ['type' => 'string', 'description' => 'Memory reservation.'],
+        'limits_cpus' => ['type' => 'string', 'description' => 'CPU limit (e.g., "0.5", "2").'],
+        'limits_cpuset' => ['type' => 'string', 'nullable' => true, 'description' => 'CPU set (e.g., "0,1" or "0-3").'],
+        'limits_cpu_shares' => ['type' => 'integer', 'description' => 'CPU shares (relative weight).'],
         'created_at' => ['type' => 'string', 'description' => 'The date and time when the service was created.'],
         'updated_at' => ['type' => 'string', 'description' => 'The date and time when the service was last updated.'],
         'deleted_at' => ['type' => 'string', 'description' => 'The date and time when the service was deleted.'],
@@ -1516,5 +1523,34 @@ class Service extends BaseModel
                 return true;
             }
         );
+    }
+
+    /**
+     * Get resource limits configuration for the service.
+     *
+     * @return array<string, mixed>
+     */
+    public function getLimits(): array
+    {
+        return [
+            'limits_memory' => $this->limits_memory,
+            'limits_memory_swap' => $this->limits_memory_swap,
+            'limits_memory_swappiness' => $this->limits_memory_swappiness,
+            'limits_memory_reservation' => $this->limits_memory_reservation,
+            'limits_cpus' => $this->limits_cpus,
+            'limits_cpuset' => $this->limits_cpuset,
+            'limits_cpu_shares' => $this->limits_cpu_shares,
+        ];
+    }
+
+    /**
+     * Check if resource limits are configured (non-zero values).
+     */
+    public function hasResourceLimits(): bool
+    {
+        return $this->limits_memory !== '0' ||
+            $this->limits_cpus !== '0' ||
+            $this->limits_memory_swap !== '0' ||
+            $this->limits_memory_reservation !== '0';
     }
 }
