@@ -24,14 +24,14 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Mock connection details
+    // Connection details from backend
     const connectionDetails = {
-        host: 'db.example.com',
-        port: '27017',
-        database: database.name,
-        username: 'admin',
-        password: 'super_secret_password_123',
-        connectionString: `mongodb://admin:super_secret_password_123@db.example.com:27017/${database.name}`,
+        host: database.connection?.internal_host || '',
+        port: database.connection?.port || '27017',
+        database: database.mongo_initdb_database || database.name,
+        username: database.mongo_initdb_root_username || database.connection?.username || '',
+        password: database.mongo_initdb_root_password || database.connection?.password || '',
+        connectionString: database.internal_db_url || '',
     };
 
     const stats = [

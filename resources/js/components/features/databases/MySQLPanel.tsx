@@ -23,16 +23,14 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Mock connection details
-    const isMariaDB = database.database_type === 'mariadb';
-    const defaultPort = isMariaDB ? '3306' : '3306';
+    // Connection details from backend
     const connectionDetails = {
-        host: 'db.example.com',
-        port: defaultPort,
-        database: database.name,
-        username: 'root',
-        password: 'super_secret_password_123',
-        connectionString: `mysql://root:super_secret_password_123@db.example.com:${defaultPort}/${database.name}`,
+        host: database.connection?.internal_host || '',
+        port: database.connection?.port || '3306',
+        database: database.mysql_database || database.name,
+        username: database.mysql_user || database.connection?.username || 'root',
+        password: database.mysql_password || database.mysql_root_password || database.connection?.password || '',
+        connectionString: database.internal_db_url || '',
     };
 
     const stats = [

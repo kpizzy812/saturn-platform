@@ -24,14 +24,14 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Mock connection details - in real app, these would come from the backend
+    // Connection details from backend
     const connectionDetails = {
-        host: 'db.example.com',
-        port: '5432',
-        database: database.name,
-        username: 'postgres',
-        password: 'super_secret_password_123',
-        connectionString: `postgresql://postgres:super_secret_password_123@db.example.com:5432/${database.name}`,
+        host: database.connection?.internal_host || '',
+        port: database.connection?.port || '5432',
+        database: database.postgres_db || database.name,
+        username: database.postgres_user || database.connection?.username || '',
+        password: database.postgres_password || database.connection?.password || '',
+        connectionString: database.internal_db_url || '',
     };
 
     const stats = [

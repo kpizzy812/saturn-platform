@@ -84,6 +84,21 @@ export interface Application {
     environment_id: number;
     destination_id: number;
     destination?: Destination;
+    // Build & Deploy settings
+    build_command?: string | null;
+    install_command?: string | null;
+    start_command?: string | null;
+    base_directory?: string | null;
+    publish_directory?: string | null;
+    // Health check settings
+    health_check_enabled?: boolean;
+    health_check_path?: string | null;
+    health_check_interval?: number;
+    // Resource limits
+    limits_cpus?: string | null;
+    limits_memory?: string | null;
+    // Auto-deploy settings
+    is_auto_deploy_enabled?: boolean;
     created_at: string;
     updated_at: string;
 }

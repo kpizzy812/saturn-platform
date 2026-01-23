@@ -28,24 +28,6 @@ interface Props {
     environmentUuid?: string;
 }
 
-// Mock preview for demo
-const MOCK_PREVIEW: PreviewDeployment = {
-    id: 1,
-    uuid: 'preview-1',
-    application_id: 1,
-    pull_request_id: 101,
-    pull_request_number: 42,
-    pull_request_title: 'feat: Add user authentication with JWT tokens',
-    branch: 'feature/auth',
-    commit: 'a1b2c3d4e5f6',
-    commit_message: 'feat: Add JWT token support with refresh tokens',
-    preview_url: 'https://pr-42-app.preview.example.com',
-    status: 'running',
-    auto_delete_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-};
-
 const getStatusColor = (status: PreviewDeploymentStatus): string => {
     switch (status) {
         case 'running':
@@ -77,8 +59,21 @@ const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger'
     }
 };
 
-export default function PreviewShow({ application, preview: propPreview, previewUuid, projectUuid, environmentUuid }: Props) {
-    const preview = propPreview || MOCK_PREVIEW;
+export default function PreviewShow({ application, preview, previewUuid, projectUuid, environmentUuid }: Props) {
+    if (!preview) {
+        return (
+            <AppLayout title="Preview Not Found">
+                <div className="flex flex-col items-center justify-center py-12">
+                    <AlertCircle className="h-12 w-12 text-foreground-subtle" />
+                    <h2 className="mt-4 text-lg font-medium text-foreground">Preview not found</h2>
+                    <p className="mt-1 text-sm text-foreground-muted">The preview deployment could not be found.</p>
+                    <Link href={`/applications/${application.uuid}/previews`} className="mt-6">
+                        <Button variant="secondary">Back to Previews</Button>
+                    </Link>
+                </div>
+            </AppLayout>
+        );
+    }
 
     const handleRedeploy = () => {
         if (confirm(`Redeploy preview for PR #${preview.pull_request_number}?`)) {

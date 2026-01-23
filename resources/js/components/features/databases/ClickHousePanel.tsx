@@ -23,15 +23,15 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Mock connection details
+    // Connection details from backend
     const connectionDetails = {
-        host: 'db.example.com',
-        port: '9000',
+        host: database.connection?.internal_host || '',
+        port: database.connection?.port || '9000',
         httpPort: '8123',
         database: database.name,
-        username: 'default',
-        password: 'super_secret_password_123',
-        connectionString: `clickhouse://default:super_secret_password_123@db.example.com:9000/${database.name}`,
+        username: database.clickhouse_admin_user || database.connection?.username || 'default',
+        password: database.clickhouse_admin_password || database.connection?.password || '',
+        connectionString: database.internal_db_url || '',
     };
 
     const stats = [

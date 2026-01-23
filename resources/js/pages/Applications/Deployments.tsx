@@ -23,68 +23,8 @@ interface ExtendedDeployment extends Deployment {
     finished_at?: string;
 }
 
-// Mock data for demo
-const MOCK_DEPLOYMENTS: ExtendedDeployment[] = [
-    {
-        id: 1,
-        uuid: 'dep-001',
-        application_id: 1,
-        status: 'finished',
-        commit: 'a1b2c3d4e5f6',
-        commit_message: 'feat: Add user authentication',
-        trigger: 'push',
-        duration: 145,
-        deployed_by: 'john.doe@example.com',
-        branch: 'main',
-        created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-        id: 2,
-        uuid: 'dep-002',
-        application_id: 1,
-        status: 'finished',
-        commit: 'b2c3d4e5f6g7',
-        commit_message: 'fix: Resolve memory leak in worker process',
-        trigger: 'manual',
-        duration: 132,
-        deployed_by: 'jane.smith@example.com',
-        branch: 'main',
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-        id: 3,
-        uuid: 'dep-003',
-        application_id: 1,
-        status: 'failed',
-        commit: 'c3d4e5f6g7h8',
-        commit_message: 'refactor: Update database schema',
-        trigger: 'push',
-        duration: 45,
-        deployed_by: 'john.doe@example.com',
-        branch: 'main',
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    },
-    {
-        id: 4,
-        uuid: 'dep-004',
-        application_id: 1,
-        status: 'finished',
-        commit: 'd4e5f6g7h8i9',
-        commit_message: 'chore: Update dependencies',
-        trigger: 'rollback',
-        duration: 128,
-        deployed_by: 'jane.smith@example.com',
-        branch: 'main',
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-];
-
 export default function ApplicationDeployments({ application, deployments: propDeployments, projectUuid, environmentUuid }: Props) {
-    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(propDeployments || MOCK_DEPLOYMENTS);
+    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(propDeployments || []);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [selectedDeployment, setSelectedDeployment] = React.useState<ExtendedDeployment | null>(null);
 

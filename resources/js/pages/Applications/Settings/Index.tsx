@@ -15,16 +15,16 @@ export default function ApplicationSettings({ application, projectUuid, environm
     const [settings, setSettings] = React.useState({
         name: application.name || '',
         description: application.description || '',
-        build_command: '',
-        install_command: '',
-        start_command: '',
-        health_check_path: '/health',
-        health_check_interval: 30,
-        cpu_limit: '1',
-        memory_limit: '512M',
+        build_command: application.build_command || '',
+        install_command: application.install_command || '',
+        start_command: application.start_command || '',
+        health_check_path: application.health_check_path || '',
+        health_check_interval: application.health_check_interval || 30,
+        cpu_limit: application.limits_cpus || '',
+        memory_limit: application.limits_memory || '',
         build_pack: application.build_pack || 'nixpacks',
-        auto_deploy: true,
-        deploy_on_push: true,
+        auto_deploy: application.is_auto_deploy_enabled ?? true,
+        deploy_on_push: application.is_auto_deploy_enabled ?? true,
     });
     const [isSaving, setIsSaving] = React.useState(false);
 

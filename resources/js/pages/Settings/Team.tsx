@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { router } from '@inertiajs/react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
 import { Mail, UserX, Crown, Shield, User as UserIcon } from 'lucide-react';
@@ -42,32 +43,40 @@ export default function TeamSettings() {
         e.preventDefault();
         setIsInviting(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            const newInvitation: Invitation = {
-                id: invitations.length + 1,
-                email: inviteEmail,
-                role: inviteRole,
-                sentAt: new Date().toISOString().split('T')[0],
-            };
-            setInvitations([...invitations, newInvitation]);
-            setInviteEmail('');
-            setInviteRole('member');
-            setIsInviting(false);
-            setShowInviteModal(false);
-        }, 1000);
+        router.post('/api/v1/teams/invitations', {
+            email: inviteEmail,
+            role: inviteRole,
+        }, {
+            onSuccess: () => {
+                setInviteEmail('');
+                setInviteRole('member');
+                setShowInviteModal(false);
+                router.reload({ only: ['invitations'] });
+            },
+            onFinish: () => {
+                setIsInviting(false);
+            },
+        });
     };
 
     const handleRemoveMember = () => {
         if (memberToRemove) {
-            setMembers(members.filter((m) => m.id !== memberToRemove.id));
-            setMemberToRemove(null);
-            setShowRemoveModal(false);
+            router.delete(`/api/v1/teams/members/${memberToRemove.id}`, {
+                onSuccess: () => {
+                    setMemberToRemove(null);
+                    setShowRemoveModal(false);
+                    router.reload({ only: ['members'] });
+                },
+            });
         }
     };
 
     const handleRevokeInvitation = (invitationId: number) => {
-        setInvitations(invitations.filter((inv) => inv.id !== invitationId));
+        router.delete(`/api/v1/teams/invitations/${invitationId}`, {
+            onSuccess: () => {
+                router.reload({ only: ['invitations'] });
+            },
+        });
     };
 
     const getRoleIcon = (role: string) => {

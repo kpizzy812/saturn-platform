@@ -141,14 +141,14 @@ function ConnectionTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Mock connection details - in real app, these would come from the backend
+    // Connection details from backend
     const connectionDetails = {
-        host: 'db.example.com',
-        port: database.database_type === 'postgresql' ? '5432' : database.database_type === 'mysql' || database.database_type === 'mariadb' ? '3306' : database.database_type === 'mongodb' ? '27017' : '6379',
-        database: database.name,
-        username: 'saturn',
-        password: 'super_secret_password_123',
-        connectionString: `${database.database_type}://saturn:super_secret_password_123@db.example.com:5432/${database.name}`,
+        host: database.connection?.internal_host || database.internal_db_url?.split('@')[1]?.split(':')[0] || '',
+        port: database.connection?.port || (database.database_type === 'postgresql' ? '5432' : database.database_type === 'mysql' || database.database_type === 'mariadb' ? '3306' : database.database_type === 'mongodb' ? '27017' : '6379'),
+        database: database.connection?.database || database.name,
+        username: database.connection?.username || '',
+        password: database.connection?.password || '',
+        connectionString: database.internal_db_url || '',
     };
 
     const copyToClipboard = (text: string, field: string) => {

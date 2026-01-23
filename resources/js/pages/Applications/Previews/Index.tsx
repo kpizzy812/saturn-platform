@@ -13,77 +13,9 @@ interface Props {
     environmentUuid?: string;
 }
 
-// Mock data for demo
-const MOCK_PREVIEWS: PreviewDeployment[] = [
-    {
-        id: 1,
-        uuid: 'preview-1',
-        application_id: 1,
-        pull_request_id: 101,
-        pull_request_number: 42,
-        pull_request_title: 'feat: Add user authentication',
-        branch: 'feature/auth',
-        commit: 'a1b2c3d4e5f6',
-        commit_message: 'feat: Add JWT token support',
-        preview_url: 'https://pr-42-app.preview.example.com',
-        status: 'running',
-        auto_delete_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-        id: 2,
-        uuid: 'preview-2',
-        application_id: 1,
-        pull_request_id: 102,
-        pull_request_number: 38,
-        pull_request_title: 'fix: Resolve memory leak in worker process',
-        branch: 'bugfix/memory-leak',
-        commit: 'b2c3d4e5f6g7',
-        commit_message: 'fix: Clear event listeners on cleanup',
-        preview_url: 'https://pr-38-app.preview.example.com',
-        status: 'running',
-        auto_delete_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5).toISOString(),
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    {
-        id: 3,
-        uuid: 'preview-3',
-        application_id: 1,
-        pull_request_id: 103,
-        pull_request_number: 35,
-        pull_request_title: 'refactor: Update database schema',
-        branch: 'feature/db-refactor',
-        commit: 'c3d4e5f6g7h8',
-        commit_message: 'refactor: Normalize user tables',
-        preview_url: 'https://pr-35-app.preview.example.com',
-        status: 'deploying',
-        auto_delete_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 6).toISOString(),
-        created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-        id: 4,
-        uuid: 'preview-4',
-        application_id: 1,
-        pull_request_id: 104,
-        pull_request_number: 31,
-        pull_request_title: 'chore: Update dependencies',
-        branch: 'chore/deps-update',
-        commit: 'd4e5f6g7h8i9',
-        commit_message: 'chore: Bump React to v18.3',
-        preview_url: 'https://pr-31-app.preview.example.com',
-        status: 'failed',
-        auto_delete_at: new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString(),
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-    },
-];
-
 export default function PreviewsIndex({ application, previews: propPreviews, projectUuid, environmentUuid }: Props) {
     const [previews, setPreviews] = React.useState<PreviewDeployment[]>(
-        propPreviews || MOCK_PREVIEWS
+        propPreviews || []
     );
     const [filterStatus, setFilterStatus] = React.useState<PreviewDeploymentStatus | 'all'>('all');
     const [searchQuery, setSearchQuery] = React.useState('');

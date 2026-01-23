@@ -23,13 +23,20 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    // Mock connection details
+    // Connection details from backend
+    const getRedisPassword = () => {
+        if (database.database_type === 'redis') return database.redis_password;
+        if (database.database_type === 'keydb') return database.keydb_password;
+        if (database.database_type === 'dragonfly') return database.dragonfly_password;
+        return database.connection?.password;
+    };
+
     const connectionDetails = {
-        host: 'db.example.com',
-        port: '6379',
+        host: database.connection?.internal_host || '',
+        port: database.connection?.port || '6379',
         database: '0',
-        password: 'super_secret_password_123',
-        connectionString: `redis://:super_secret_password_123@db.example.com:6379/0`,
+        password: getRedisPassword() || '',
+        connectionString: database.internal_db_url || '',
     };
 
     const stats = [

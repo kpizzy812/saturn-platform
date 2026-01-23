@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Input, Select, Textarea, Checkbox } from '@/components/ui';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import {
     Mail,
     X,
@@ -74,47 +74,43 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
         e.preventDefault();
         setIsSending(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            const validEmails = emails.filter(email => email.trim() !== '');
-            const newInvitations: Invitation[] = validEmails.map((email, index) => ({
-                id: invitations.length + index + 1,
-                email,
-                role,
-                projectAccess: projectAccess === 'all' ? 'all' : selectedProjects,
-                message: message || undefined,
-                sentAt: new Date().toISOString(),
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                status: 'pending' as const
-            }));
+        const validEmails = emails.filter(email => email.trim() !== '');
 
-            setInvitations([...newInvitations, ...invitations]);
-
-            // Reset form
-            setEmails(['']);
-            setRole('member');
-            setProjectAccess('all');
-            setSelectedProjects([]);
-            setMessage('');
-            setIsSending(false);
-        }, 1000);
+        router.post('/api/v1/teams/invitations/bulk', {
+            emails: validEmails,
+            role,
+            project_access: projectAccess === 'all' ? 'all' : selectedProjects,
+            message: message || undefined,
+        }, {
+            onSuccess: () => {
+                // Reset form
+                setEmails(['']);
+                setRole('member');
+                setProjectAccess('all');
+                setSelectedProjects([]);
+                setMessage('');
+                router.reload({ only: ['pendingInvitations'] });
+            },
+            onFinish: () => {
+                setIsSending(false);
+            },
+        });
     };
 
     const handleResendInvitation = (invitationId: number) => {
-        setInvitations(invitations.map(inv =>
-            inv.id === invitationId
-                ? {
-                    ...inv,
-                    sentAt: new Date().toISOString(),
-                    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                    status: 'pending' as const
-                }
-                : inv
-        ));
+        router.post(`/api/v1/teams/invitations/${invitationId}/resend`, {}, {
+            onSuccess: () => {
+                router.reload({ only: ['pendingInvitations'] });
+            },
+        });
     };
 
     const handleCancelInvitation = (invitationId: number) => {
-        setInvitations(invitations.filter(inv => inv.id !== invitationId));
+        router.delete(`/api/v1/teams/invitations/${invitationId}`, {
+            onSuccess: () => {
+                router.reload({ only: ['pendingInvitations'] });
+            },
+        });
     };
 
     const getRoleIcon = (role: string) => {
