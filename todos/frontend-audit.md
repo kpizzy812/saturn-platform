@@ -276,10 +276,21 @@
   - Строки: 19-56 (`mockIntegrations` - GitHub, GitLab, Slack, Discord)
   - Проблема: Интеграции захардкожены вместо получения с API
 
-- [ ] **Mock данные в Settings/Security.tsx**
+- [x] **Mock данные в Settings/Security.tsx** ✅ ИСПРАВЛЕНО
   - Файл: `resources/js/pages/Settings/Security.tsx`
   - Строки: 34-62 (`mockSessions`), 64-97 (`mockLoginHistory`), 99-112 (`mockIPAllowlist`)
   - Проблема: Сессии, история логинов и IP whitelist захардкожены
+  - Решение:
+    - Создана миграция `login_history` таблицы для хранения истории логинов
+    - Создана модель `app/Models/LoginHistory.php` с методами record(), cleanupOld(), hasSuspiciousActivity()
+    - Созданы Listeners `RecordSuccessfulLogin` и `RecordFailedLogin` для Laravel Auth events
+    - Добавлены поля `security_new_login`, `security_failed_login`, `security_api_access` в `user_notification_preferences`
+    - Обновлена модель `UserNotificationPreference` с методами getSecurityNotifications(), updateSecurityNotifications()
+    - Обновлён route `/settings/security` для передачи реальных данных через Inertia props
+    - Добавлен route `/settings/security/notifications` для сохранения настроек уведомлений
+    - Установлен пакет `ua-parser-js` для парсинга User-Agent на клиенте
+    - Полностью переписан фронтенд с использованием props вместо mock данных
+    - Созданы unit тесты `tests/Unit/LoginHistoryTest.php`
 
 - [ ] **Mock данные в Settings/AuditLog.tsx**
   - Файл: `resources/js/pages/Settings/AuditLog.tsx`

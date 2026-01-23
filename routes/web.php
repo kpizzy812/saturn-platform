@@ -2043,7 +2043,57 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('settings.integrations.legacy');
 
     Route::get('/settings/security', function () {
-        return \Inertia\Inertia::render('Settings/Security');
+        $user = auth()->user();
+        $currentSessionId = session()->getId();
+
+        // Get user sessions from database
+        $sessions = \Illuminate\Support\Facades\DB::table('sessions')
+            ->where('user_id', $user->id)
+            ->orderByDesc('last_activity')
+            ->get()
+            ->map(fn ($session) => [
+                'id' => $session->id,
+                'ip' => $session->ip_address,
+                'userAgent' => $session->user_agent,
+                'lastActive' => \Carbon\Carbon::createFromTimestamp($session->last_activity)->toISOString(),
+                'current' => $session->id === $currentSessionId,
+            ]);
+
+        // Get login history
+        $loginHistory = \App\Models\LoginHistory::where('user_id', $user->id)
+            ->orderByDesc('logged_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($log) => [
+                'id' => $log->id,
+                'timestamp' => $log->logged_at->toISOString(),
+                'ip' => $log->ip_address,
+                'userAgent' => $log->user_agent,
+                'success' => $log->status === 'success',
+                'location' => $log->location ?? 'Unknown',
+            ]);
+
+        // Get IP allowlist from InstanceSettings
+        $settings = \App\Models\InstanceSettings::get();
+        $ipAllowlist = $settings->allowed_ips
+            ? collect(json_decode($settings->allowed_ips, true))->map(fn ($item, $index) => [
+                'id' => $index,
+                'ip' => $item['ip'] ?? '',
+                'description' => $item['description'] ?? '',
+                'createdAt' => $item['created_at'] ?? now()->toISOString(),
+            ])->values()->all()
+            : [];
+
+        // Get security notification preferences
+        $preferences = \App\Models\UserNotificationPreference::getOrCreateForUser($user->id);
+        $securityNotifications = $preferences->getSecurityNotifications();
+
+        return \Inertia\Inertia::render('Settings/Security', [
+            'sessions' => $sessions,
+            'loginHistory' => $loginHistory,
+            'ipAllowlist' => $ipAllowlist,
+            'securityNotifications' => $securityNotifications,
+        ]);
     })->name('settings.security');
 
     Route::get('/settings/workspace', function () {
@@ -2277,6 +2327,19 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
         return redirect()->back()->withErrors(['ip_allowlist' => 'IP address not found']);
     })->name('settings.security.ip-allowlist.destroy');
+
+    Route::post('/settings/security/notifications', function (\Illuminate\Http\Request $request) {
+        $user = auth()->user();
+        $preferences = \App\Models\UserNotificationPreference::getOrCreateForUser($user->id);
+
+        $preferences->updateSecurityNotifications([
+            'newLogin' => $request->boolean('newLogin'),
+            'failedLogin' => $request->boolean('failedLogin'),
+            'apiAccess' => $request->boolean('apiAccess'),
+        ]);
+
+        return redirect()->back()->with('success', 'Security notification settings updated');
+    })->name('settings.security.notifications');
 
     // Team Settings POST/DELETE routes
     Route::post('/settings/team/members/{id}/role', function (string $id, \Illuminate\Http\Request $request) {

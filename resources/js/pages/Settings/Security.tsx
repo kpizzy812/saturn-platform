@@ -1,12 +1,44 @@
 import * as React from 'react';
+import { UAParser } from 'ua-parser-js';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Modal, ModalFooter, Input, useToast } from '@/components/ui';
 import { router } from '@inertiajs/react';
 import { Monitor, Smartphone, Globe, Trash2, Shield, Bell, Plus, X } from 'lucide-react';
 import { validateCIDR } from '@/lib/validation';
 
-interface Session {
-    id: number;
+// Props from backend
+interface Props {
+    sessions: Array<{
+        id: string;
+        ip: string | null;
+        userAgent: string | null;
+        lastActive: string;
+        current: boolean;
+    }>;
+    loginHistory: Array<{
+        id: number;
+        timestamp: string;
+        ip: string | null;
+        userAgent: string | null;
+        success: boolean;
+        location: string;
+    }>;
+    ipAllowlist: Array<{
+        id: number;
+        ip: string;
+        description: string;
+        createdAt: string;
+    }>;
+    securityNotifications: {
+        newLogin: boolean;
+        failedLogin: boolean;
+        apiAccess: boolean;
+    };
+}
+
+// Parsed session for display
+interface ParsedSession {
+    id: string;
     device: string;
     deviceType: 'desktop' | 'mobile';
     location: string;
@@ -15,7 +47,8 @@ interface Session {
     current: boolean;
 }
 
-interface LoginHistory {
+// Parsed login history for display
+interface ParsedLoginHistory {
     id: number;
     timestamp: string;
     ip: string;
@@ -24,108 +57,72 @@ interface LoginHistory {
     success: boolean;
 }
 
-interface IPAllowlistEntry {
-    id: number;
-    ip: string;
-    description: string;
-    createdAt: string;
+// Parse user agent string into readable format
+function parseUserAgent(userAgent: string | null): { device: string; deviceType: 'desktop' | 'mobile' } {
+    if (!userAgent) {
+        return { device: 'Unknown device', deviceType: 'desktop' };
+    }
+
+    const parser = new UAParser(userAgent);
+    const browser = parser.getBrowser();
+    const os = parser.getOS();
+    const device = parser.getDevice();
+
+    const browserName = browser.name || 'Unknown browser';
+    const osName = os.name || 'Unknown OS';
+    const deviceName = `${browserName} on ${osName}`;
+    const deviceType: 'desktop' | 'mobile' = device.type === 'mobile' || device.type === 'tablet' ? 'mobile' : 'desktop';
+
+    return { device: deviceName, deviceType };
 }
 
-const mockSessions: Session[] = [
-    {
-        id: 1,
-        device: 'Chrome on macOS',
-        deviceType: 'desktop',
-        location: 'San Francisco, CA',
-        ip: '192.168.1.100',
-        lastActive: '2024-03-28T14:30:00Z',
-        current: true,
-    },
-    {
-        id: 2,
-        device: 'Safari on iPhone',
-        deviceType: 'mobile',
-        location: 'San Francisco, CA',
-        ip: '192.168.1.101',
-        lastActive: '2024-03-27T10:15:00Z',
-        current: false,
-    },
-    {
-        id: 3,
-        device: 'Firefox on Windows',
-        deviceType: 'desktop',
-        location: 'New York, NY',
-        ip: '192.168.1.102',
-        lastActive: '2024-03-25T16:45:00Z',
-        current: false,
-    },
-];
+export default function SecuritySettings({
+    sessions: initialSessions,
+    loginHistory: initialLoginHistory,
+    ipAllowlist: initialIpAllowlist,
+    securityNotifications: initialNotifications,
+}: Props) {
+    // Parse sessions with user agent info
+    const parsedSessions = React.useMemo<ParsedSession[]>(() => {
+        return initialSessions.map(session => {
+            const { device, deviceType } = parseUserAgent(session.userAgent);
+            return {
+                id: session.id,
+                device,
+                deviceType,
+                location: 'Unknown', // GeoIP not implemented
+                ip: session.ip || 'Unknown',
+                lastActive: session.lastActive,
+                current: session.current,
+            };
+        });
+    }, [initialSessions]);
 
-const mockLoginHistory: LoginHistory[] = [
-    {
-        id: 1,
-        timestamp: '2024-03-28T14:30:00Z',
-        ip: '192.168.1.100',
-        location: 'San Francisco, CA',
-        device: 'Chrome on macOS',
-        success: true,
-    },
-    {
-        id: 2,
-        timestamp: '2024-03-27T10:15:00Z',
-        ip: '192.168.1.101',
-        location: 'San Francisco, CA',
-        device: 'Safari on iPhone',
-        success: true,
-    },
-    {
-        id: 3,
-        timestamp: '2024-03-26T08:20:00Z',
-        ip: '192.168.1.150',
-        location: 'Unknown',
-        device: 'Chrome on Linux',
-        success: false,
-    },
-    {
-        id: 4,
-        timestamp: '2024-03-25T16:45:00Z',
-        ip: '192.168.1.102',
-        location: 'New York, NY',
-        device: 'Firefox on Windows',
-        success: true,
-    },
-];
+    // Parse login history with user agent info
+    const parsedLoginHistory = React.useMemo<ParsedLoginHistory[]>(() => {
+        return initialLoginHistory.map(log => {
+            const { device } = parseUserAgent(log.userAgent);
+            return {
+                id: log.id,
+                timestamp: log.timestamp,
+                ip: log.ip || 'Unknown',
+                location: log.location,
+                device,
+                success: log.success,
+            };
+        });
+    }, [initialLoginHistory]);
 
-const mockIPAllowlist: IPAllowlistEntry[] = [
-    {
-        id: 1,
-        ip: '192.168.1.0/24',
-        description: 'Office Network',
-        createdAt: '2024-01-15',
-    },
-    {
-        id: 2,
-        ip: '10.0.0.100',
-        description: 'CI/CD Server',
-        createdAt: '2024-02-20',
-    },
-];
-
-export default function SecuritySettings() {
-    const [sessions, setSessions] = React.useState<Session[]>(mockSessions);
-    const [loginHistory] = React.useState<LoginHistory[]>(mockLoginHistory);
-    const [ipAllowlist, setIpAllowlist] = React.useState<IPAllowlistEntry[]>(mockIPAllowlist);
+    const [sessions, setSessions] = React.useState<ParsedSession[]>(parsedSessions);
+    const [loginHistory] = React.useState<ParsedLoginHistory[]>(parsedLoginHistory);
+    const [ipAllowlist, setIpAllowlist] = React.useState(initialIpAllowlist);
     const [showRevokeAllModal, setShowRevokeAllModal] = React.useState(false);
     const [showRevokeSessionModal, setShowRevokeSessionModal] = React.useState(false);
     const [showAddIPModal, setShowAddIPModal] = React.useState(false);
-    const [sessionToRevoke, setSessionToRevoke] = React.useState<Session | null>(null);
+    const [sessionToRevoke, setSessionToRevoke] = React.useState<ParsedSession | null>(null);
     const [newIP, setNewIP] = React.useState({ ip: '', description: '' });
     const [ipError, setIpError] = React.useState<string>();
-    const [securityNotifications, setSecurityNotifications] = React.useState({
-        newLogin: true,
-        failedLogin: true,
-        apiAccess: false,
-    });
+    const [securityNotifications, setSecurityNotifications] = React.useState(initialNotifications);
     const [isRevokingSession, setIsRevokingSession] = React.useState(false);
     const [isRevokingAll, setIsRevokingAll] = React.useState(false);
     const [isAddingIP, setIsAddingIP] = React.useState(false);
@@ -163,13 +160,12 @@ export default function SecuritySettings() {
                     setSessionToRevoke(null);
                     setShowRevokeSessionModal(false);
                 },
-                onError: (errors) => {
+                onError: () => {
                     addToast({
                         title: 'Failed to revoke session',
                         description: 'An error occurred while revoking the session.',
                         variant: 'danger',
                     });
-                    console.error(errors);
                 },
                 onFinish: () => {
                     setIsRevokingSession(false);
@@ -190,13 +186,12 @@ export default function SecuritySettings() {
                 });
                 setShowRevokeAllModal(false);
             },
-            onError: (errors) => {
+            onError: () => {
                 addToast({
                     title: 'Failed to revoke sessions',
                     description: 'An error occurred while revoking sessions.',
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsRevokingAll(false);
@@ -212,13 +207,13 @@ export default function SecuritySettings() {
 
         setIsAddingIP(true);
 
-        router.post('/settings/security/ip-allowlist', newIP, {
+        router.post('/settings/security/ip-allowlist', { ip_address: newIP.ip, description: newIP.description }, {
             onSuccess: () => {
-                const newEntry: IPAllowlistEntry = {
-                    id: ipAllowlist.length + 1,
+                const newEntry = {
+                    id: ipAllowlist.length,
                     ip: newIP.ip,
                     description: newIP.description,
-                    createdAt: new Date().toISOString().split('T')[0],
+                    createdAt: new Date().toISOString(),
                 };
                 setIpAllowlist([...ipAllowlist, newEntry]);
                 addToast({
@@ -229,13 +224,12 @@ export default function SecuritySettings() {
                 setIpError(undefined);
                 setShowAddIPModal(false);
             },
-            onError: (errors) => {
+            onError: () => {
                 addToast({
                     title: 'Failed to add IP',
                     description: 'An error occurred while adding the IP address.',
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsAddingIP(false);
@@ -252,13 +246,12 @@ export default function SecuritySettings() {
                     description: 'The IP address has been removed from the allowlist.',
                 });
             },
-            onError: (errors) => {
+            onError: () => {
                 addToast({
                     title: 'Failed to remove IP',
                     description: 'An error occurred while removing the IP address.',
                     variant: 'danger',
                 });
-                console.error(errors);
             }
         });
     };
@@ -279,13 +272,12 @@ export default function SecuritySettings() {
                     description: 'Your notification preferences have been saved.',
                 });
             },
-            onError: (errors) => {
+            onError: () => {
                 addToast({
                     title: 'Failed to update notifications',
                     description: 'An error occurred while updating notification settings.',
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsUpdatingNotifications(false);
@@ -311,6 +303,7 @@ export default function SecuritySettings() {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
+        if (diffMins < 1) return 'Just now';
         if (diffMins < 60) return `${diffMins} minutes ago`;
         if (diffHours < 24) return `${diffHours} hours ago`;
         return `${diffDays} days ago`;
@@ -340,49 +333,59 @@ export default function SecuritySettings() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            {sessions.map((session) => {
-                                const Icon = session.deviceType === 'mobile' ? Smartphone : Monitor;
-                                return (
-                                    <div
-                                        key={session.id}
-                                        className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                                <Icon className="h-5 w-5 text-primary" />
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-medium text-foreground">{session.device}</p>
-                                                    {session.current && (
-                                                        <Badge variant="success">Current</Badge>
-                                                    )}
+                        {sessions.length === 0 ? (
+                            <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
+                                <Monitor className="mx-auto h-12 w-12 text-foreground-muted" />
+                                <h3 className="mt-4 text-sm font-medium text-foreground">No active sessions</h3>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    Your session data will appear here
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {sessions.map((session) => {
+                                    const Icon = session.deviceType === 'mobile' ? Smartphone : Monitor;
+                                    return (
+                                        <div
+                                            key={session.id}
+                                            className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                                    <Icon className="h-5 w-5 text-primary" />
                                                 </div>
-                                                <p className="text-sm text-foreground-muted">
-                                                    {session.location} • {session.ip}
-                                                </p>
-                                                <p className="text-xs text-foreground-subtle">
-                                                    Last active {formatRelativeTime(session.lastActive)}
-                                                </p>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-medium text-foreground">{session.device}</p>
+                                                        {session.current && (
+                                                            <Badge variant="success">Current</Badge>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-foreground-muted">
+                                                        {session.ip}
+                                                    </p>
+                                                    <p className="text-xs text-foreground-subtle">
+                                                        Last active {formatRelativeTime(session.lastActive)}
+                                                    </p>
+                                                </div>
                                             </div>
+                                            {!session.current && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSessionToRevoke(session);
+                                                        setShowRevokeSessionModal(true);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
-                                        {!session.current && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setSessionToRevoke(session);
-                                                    setShowRevokeSessionModal(true);
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -395,38 +398,48 @@ export default function SecuritySettings() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            {loginHistory.map((login) => (
-                                <div
-                                    key={login.id}
-                                    className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                                            login.success ? 'bg-success/10' : 'bg-danger/10'
-                                        }`}>
-                                            <Shield className={`h-5 w-5 ${
-                                                login.success ? 'text-success' : 'text-danger'
-                                            }`} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-medium text-foreground">{login.device}</p>
-                                                <Badge variant={login.success ? 'success' : 'danger'}>
-                                                    {login.success ? 'Success' : 'Failed'}
-                                                </Badge>
+                        {loginHistory.length === 0 ? (
+                            <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
+                                <Shield className="mx-auto h-12 w-12 text-foreground-muted" />
+                                <h3 className="mt-4 text-sm font-medium text-foreground">No login history</h3>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    Your login history will appear here after your next login
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {loginHistory.map((login) => (
+                                    <div
+                                        key={login.id}
+                                        className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                                                login.success ? 'bg-success/10' : 'bg-danger/10'
+                                            }`}>
+                                                <Shield className={`h-5 w-5 ${
+                                                    login.success ? 'text-success' : 'text-danger'
+                                                }`} />
                                             </div>
-                                            <p className="text-sm text-foreground-muted">
-                                                {login.location} • {login.ip}
-                                            </p>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium text-foreground">{login.device}</p>
+                                                    <Badge variant={login.success ? 'success' : 'danger'}>
+                                                        {login.success ? 'Success' : 'Failed'}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm text-foreground-muted">
+                                                    {login.location} {login.ip}
+                                                </p>
+                                            </div>
                                         </div>
+                                        <p className="text-xs text-foreground-subtle">
+                                            {formatTimestamp(login.timestamp)}
+                                        </p>
                                     </div>
-                                    <p className="text-xs text-foreground-subtle">
-                                        {formatTimestamp(login.timestamp)}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

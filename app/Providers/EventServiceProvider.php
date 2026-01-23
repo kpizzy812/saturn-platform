@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Listeners\RecordFailedLogin;
+use App\Listeners\RecordSuccessfulLogin;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use SocialiteProviders\Authentik\AuthentikExtendSocialite;
 use SocialiteProviders\Azure\AzureExtendSocialite;
@@ -23,6 +27,12 @@ class EventServiceProvider extends ServiceProvider
             GoogleExtendSocialite::class.'@handle',
             InfomaniakExtendSocialite::class.'@handle',
             ZitadelExtendSocialite::class.'@handle',
+        ],
+        Login::class => [
+            RecordSuccessfulLogin::class,
+        ],
+        Failed::class => [
+            RecordFailedLogin::class,
         ],
     ];
 

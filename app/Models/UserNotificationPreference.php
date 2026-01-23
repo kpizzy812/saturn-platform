@@ -18,6 +18,10 @@ class UserNotificationPreference extends Model
         'in_app_billing',
         'in_app_security',
         'digest_frequency',
+        // Security-specific notification preferences
+        'security_new_login',
+        'security_failed_login',
+        'security_api_access',
     ];
 
     protected $casts = [
@@ -29,6 +33,10 @@ class UserNotificationPreference extends Model
         'in_app_team' => 'boolean',
         'in_app_billing' => 'boolean',
         'in_app_security' => 'boolean',
+        // Security-specific notification preferences
+        'security_new_login' => 'boolean',
+        'security_failed_login' => 'boolean',
+        'security_api_access' => 'boolean',
     ];
 
     /**
@@ -56,8 +64,44 @@ class UserNotificationPreference extends Model
                 'in_app_billing' => true,
                 'in_app_security' => true,
                 'digest_frequency' => 'instant',
+                // Security-specific defaults
+                'security_new_login' => true,
+                'security_failed_login' => true,
+                'security_api_access' => false,
             ]
         );
+    }
+
+    /**
+     * Get security notification preferences.
+     */
+    public function getSecurityNotifications(): array
+    {
+        return [
+            'newLogin' => $this->security_new_login ?? true,
+            'failedLogin' => $this->security_failed_login ?? true,
+            'apiAccess' => $this->security_api_access ?? false,
+        ];
+    }
+
+    /**
+     * Update security notification preferences.
+     */
+    public function updateSecurityNotifications(array $data): bool
+    {
+        $attributes = [];
+
+        if (isset($data['newLogin'])) {
+            $attributes['security_new_login'] = (bool) $data['newLogin'];
+        }
+        if (isset($data['failedLogin'])) {
+            $attributes['security_failed_login'] = (bool) $data['failedLogin'];
+        }
+        if (isset($data['apiAccess'])) {
+            $attributes['security_api_access'] = (bool) $data['apiAccess'];
+        }
+
+        return $this->update($attributes);
     }
 
     /**

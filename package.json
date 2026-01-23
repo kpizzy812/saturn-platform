@@ -40,6 +40,7 @@
         "@sentry/react": "^10.36.0",
         "@tailwindcss/forms": "0.5.10",
         "@tailwindcss/typography": "0.5.16",
+        "@types/ua-parser-js": "^0.7.39",
         "@xterm/addon-fit": "0.10.0",
         "@xterm/xterm": "5.5.0",
         "@xyflow/react": "^12.3.6",
@@ -49,6 +50,7 @@
         "lucide-react": "^0.562.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
-        "tailwind-merge": "^3.4.0"
+        "tailwind-merge": "^3.4.0",
+        "ua-parser-js": "^2.0.8"
     }
 }
