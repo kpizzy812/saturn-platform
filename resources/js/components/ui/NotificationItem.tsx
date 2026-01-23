@@ -59,7 +59,7 @@ export const NotificationItem = React.forwardRef<HTMLDivElement, NotificationIte
             }, 150);
         };
 
-        const handleMarkAsRead = (e: React.MouseEvent) => {
+        const handleMarkAsRead = (e: React.SyntheticEvent) => {
             e.preventDefault();
             e.stopPropagation();
             if (!notification.isRead) {
@@ -82,7 +82,7 @@ export const NotificationItem = React.forwardRef<HTMLDivElement, NotificationIte
                 tabIndex={0}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                        handleMarkAsRead(e as any);
+                        handleMarkAsRead(e);
                     }
                 }}
             >

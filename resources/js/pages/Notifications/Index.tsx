@@ -60,7 +60,9 @@ export default function NotificationsIndex({ notifications: propNotifications }:
     const playNotificationSound = React.useCallback(() => {
         if (soundEnabled) {
             // Create a simple notification sound using Web Audio API
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            const audioContext = new AudioContextClass();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
 

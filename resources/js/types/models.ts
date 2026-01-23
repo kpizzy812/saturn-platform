@@ -1,4 +1,8 @@
 // Core models matching Laravel backend
+
+// Resource status type matching StatusBadge component
+export type ResourceStatus = 'online' | 'offline' | 'deploying' | 'error' | 'stopped' | 'initializing' | 'running' | 'failed' | 'queued' | 'in_progress' | 'finished' | 'cancelled';
+
 export interface User {
     id: number;
     name: string;
@@ -127,7 +131,7 @@ export interface StandaloneDatabase {
     name: string;
     description: string | null;
     database_type: DatabaseType;
-    status: string;
+    status: ResourceStatus;
     environment_id: number;
     destination_id?: number;
     destination?: Destination;
