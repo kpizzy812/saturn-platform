@@ -1,38 +1,46 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm, Link } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
 import { Shield, Copy, Check } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface Props {
     qrCode: string;
     manualEntryCode: string;
+    backupCodes?: string[];
 }
 
-export default function Setup({ qrCode, manualEntryCode }: Props) {
+export default function Setup({ qrCode, manualEntryCode, backupCodes: propBackupCodes }: Props) {
     const [showBackupCodes, setShowBackupCodes] = useState(false);
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedBackup, setCopiedBackup] = useState(false);
+    const [backupCodes, setBackupCodes] = useState<string[]>(propBackupCodes || []);
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
     });
 
-    const backupCodes = [
-        'ABC123-DEF456',
-        'GHI789-JKL012',
-        'MNO345-PQR678',
-        'STU901-VWX234',
-        'YZA567-BCD890',
-        'EFG123-HIJ456',
-        'KLM789-NOP012',
-        'QRS345-TUV678',
-    ];
+    // Sanitize QR code SVG to prevent XSS attacks
+    const sanitizedQrCode = useMemo(() => {
+        return DOMPurify.sanitize(qrCode, {
+            USE_PROFILES: { svg: true, svgFilters: true },
+            ADD_TAGS: ['svg', 'path', 'rect', 'g', 'defs', 'clipPath', 'use'],
+            ADD_ATTR: ['viewBox', 'fill', 'd', 'transform', 'clip-path', 'xmlns'],
+        });
+    }, [qrCode]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         post('/user/two-factor-authentication/enable', {
-            onSuccess: () => setShowBackupCodes(true),
+            onSuccess: (page) => {
+                // Backup codes should be returned from the server after 2FA is enabled
+                const responseBackupCodes = (page.props as any).backupCodes;
+                if (responseBackupCodes && Array.isArray(responseBackupCodes)) {
+                    setBackupCodes(responseBackupCodes);
+                }
+                setShowBackupCodes(true);
+            },
         });
     };
 
@@ -87,11 +95,17 @@ export default function Setup({ qrCode, manualEntryCode }: Props) {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 rounded-lg bg-background p-4 font-mono text-sm">
-                            {backupCodes.map((code, index) => (
-                                <div key={index} className="text-foreground-muted">
-                                    {code}
+                            {backupCodes.length > 0 ? (
+                                backupCodes.map((code, index) => (
+                                    <div key={index} className="text-foreground-muted">
+                                        {code}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-2 text-center text-foreground-muted">
+                                    Backup codes will be displayed here after enabling 2FA.
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
@@ -136,7 +150,7 @@ export default function Setup({ qrCode, manualEntryCode }: Props) {
                         <div className="flex justify-center">
                             <div
                                 className="rounded-lg bg-white p-4"
-                                dangerouslySetInnerHTML={{ __html: qrCode }}
+                                dangerouslySetInnerHTML={{ __html: sanitizedQrCode }}
                             />
                         </div>
                     </CardContent>

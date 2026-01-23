@@ -3127,8 +3127,51 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Notifications routes
     Route::get('/notifications', function () {
-        return \Inertia\Inertia::render('Notifications/Index');
+        $team = auth()->user()->currentTeam();
+        $notifications = \App\Models\UserNotification::where('team_id', $team->id)
+            ->orderBy('created_at', 'desc')
+            ->take(50)
+            ->get()
+            ->map(fn ($n) => $n->toFrontendArray());
+
+        return \Inertia\Inertia::render('Notifications/Index', [
+            'notifications' => $notifications,
+        ]);
     })->name('notifications.index');
+
+    Route::post('/notifications/{id}/read', function (string $id) {
+        $team = auth()->user()->currentTeam();
+        $notification = \App\Models\UserNotification::where('team_id', $team->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $notification->markAsRead();
+
+        return back();
+    })->name('notifications.read');
+
+    Route::post('/notifications/read-all', function () {
+        $team = auth()->user()->currentTeam();
+        \App\Models\UserNotification::where('team_id', $team->id)
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => now(),
+            ]);
+
+        return back();
+    })->name('notifications.read-all');
+
+    Route::delete('/notifications/{id}', function (string $id) {
+        $team = auth()->user()->currentTeam();
+        $notification = \App\Models\UserNotification::where('team_id', $team->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
+        $notification->delete();
+
+        return back();
+    })->name('notifications.destroy');
 
     // CLI routes
     Route::get('/cli/setup', function () {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DatabasesController;
 use App\Http\Controllers\Api\DeployController;
 use App\Http\Controllers\Api\GithubController;
 use App\Http\Controllers\Api\HetznerController;
+use App\Http\Controllers\Api\NotificationsController;
 use App\Http\Controllers\Api\OtherController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ResourceLinkController;
@@ -47,6 +48,14 @@ Route::group([
     Route::get('/teams/current/members', [TeamController::class, 'current_team_members'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}', [TeamController::class, 'team_by_id'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}/members', [TeamController::class, 'members_by_id'])->middleware(['api.ability:read']);
+
+    // Notifications
+    Route::get('/notifications', [NotificationsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::get('/notifications/unread-count', [NotificationsController::class, 'unreadCount'])->middleware(['api.ability:read']);
+    Route::post('/notifications/read-all', [NotificationsController::class, 'markAllAsRead'])->middleware(['api.ability:write']);
+    Route::get('/notifications/{id}', [NotificationsController::class, 'show'])->middleware(['api.ability:read']);
+    Route::post('/notifications/{id}/read', [NotificationsController::class, 'markAsRead'])->middleware(['api.ability:write']);
+    Route::delete('/notifications/{id}', [NotificationsController::class, 'destroy'])->middleware(['api.ability:write']);
 
     Route::get('/projects', [ProjectController::class, 'projects'])->middleware(['api.ability:read']);
     Route::get('/projects/{uuid}', [ProjectController::class, 'project_by_uuid'])->middleware(['api.ability:read']);

@@ -7276,6 +7276,316 @@
                 ]
             }
         },
+        "\/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List",
+                "description": "Get all notifications for the current team.",
+                "operationId": "list-notifications",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Items per page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Filter by notification type",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "is_read",
+                        "in": "query",
+                        "description": "Filter by read status",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of notifications.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#\/components\/schemas\/UserNotification"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "unread_count": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/notifications\/{id}": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get",
+                "description": "Get a specific notification by ID.",
+                "operationId": "get-notification",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Notification UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification details.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/UserNotification"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete",
+                "description": "Delete a notification.",
+                "operationId": "delete-notification",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Notification UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification deleted.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Notification deleted."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/notifications\/{id}\/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark as Read",
+                "description": "Mark a notification as read.",
+                "operationId": "mark-notification-read",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Notification UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification marked as read.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Notification marked as read."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/notifications\/read-all": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark All as Read",
+                "description": "Mark all notifications as read for the current team.",
+                "operationId": "mark-all-notifications-read",
+                "responses": {
+                    "200": {
+                        "description": "All notifications marked as read.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "All notifications marked as read."
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/notifications\/unread-count": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Unread Count",
+                "description": "Get the count of unread notifications.",
+                "operationId": "get-unread-notifications-count",
+                "responses": {
+                    "200": {
+                        "description": "Unread notification count.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/version": {
             "get": {
                 "summary": "Version",
@@ -11342,6 +11652,72 @@
                     }
                 },
                 "type": "object"
+            },
+            "UserNotification": {
+                "description": "User notification model",
+                "properties": {
+                    "id": {
+                        "description": "The unique identifier of the notification.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "team_id": {
+                        "description": "The team ID this notification belongs to.",
+                        "type": "integer"
+                    },
+                    "user_id": {
+                        "description": "The user ID this notification is for (null for team-wide).",
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "type": {
+                        "description": "The type of notification.",
+                        "type": "string"
+                    },
+                    "title": {
+                        "description": "The notification title.",
+                        "type": "string"
+                    },
+                    "description": {
+                        "description": "The notification description.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "action_url": {
+                        "description": "URL for the notification action.",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "is_read": {
+                        "description": "Whether the notification has been read.",
+                        "type": "boolean"
+                    },
+                    "read_at": {
+                        "description": "When the notification was read.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "description": "When the notification was created.",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "description": "When the notification was last updated.",
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
             }
         },
         "responses": {
@@ -11485,6 +11861,10 @@
         {
             "name": "Hetzner",
             "description": "Hetzner"
+        },
+        {
+            "name": "Notifications",
+            "description": "Notifications"
         },
         {
             "name": "Projects",

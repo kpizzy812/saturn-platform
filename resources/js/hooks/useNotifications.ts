@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { router } from '@inertiajs/react';
 import type { Notification } from '@/types';
 
 interface UseNotificationsOptions {
@@ -20,13 +21,12 @@ interface UseNotificationsReturn {
 }
 
 /**
- * Custom hook for managing notifications with real-time updates simulation
+ * Custom hook for managing notifications with real-time updates
  *
  * Features:
  * - Fetch and manage notifications
  * - Mark notifications as read/unread
  * - Delete notifications
- * - Real-time updates simulation (WebSocket placeholder)
  * - Unread count tracking
  * - Auto-refresh capability
  */
@@ -40,7 +40,14 @@ export function useNotifications({
     const [error, setError] = React.useState<Error | null>(null);
     const [isConnected, setIsConnected] = React.useState(false);
 
-    // Simulate WebSocket connection status
+    // Update notifications when initialNotifications change (e.g., from Inertia page props)
+    React.useEffect(() => {
+        if (initialNotifications.length > 0) {
+            setNotifications(initialNotifications);
+        }
+    }, [initialNotifications]);
+
+    // Simulate connection status (can be replaced with actual WebSocket connection)
     React.useEffect(() => {
         const timer = setTimeout(() => setIsConnected(true), 1000);
         return () => clearTimeout(timer);
@@ -52,23 +59,19 @@ export function useNotifications({
         [notifications]
     );
 
-    // Fetch notifications from API
+    // Refresh notifications by reloading the page (Inertia way)
     const fetchNotifications = React.useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
 
-            // In production, this would be an actual API call:
-            // const response = await fetch('/api/notifications');
-            // const data = await response.json();
-            // setNotifications(data);
-
-            // For now, we'll keep the existing notifications
-            // This is a placeholder for the real implementation
-
+            // Use Inertia to reload the page and get fresh data
+            router.reload({
+                only: ['notifications'],
+                onFinish: () => setLoading(false),
+            });
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to fetch notifications'));
-        } finally {
             setLoading(false);
         }
     }, []);
@@ -81,49 +84,68 @@ export function useNotifications({
                 prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
             );
 
-            // In production, make API call:
-            // await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
-
+            // Make API call
+            router.post(`/notifications/${id}/read`, {}, {
+                preserveState: true,
+                preserveScroll: true,
+                onError: () => {
+                    // Revert on error
+                    setNotifications((prev) =>
+                        prev.map((n) => (n.id === id ? { ...n, isRead: false } : n))
+                    );
+                    setError(new Error('Failed to mark as read'));
+                },
+            });
         } catch (err) {
-            // Revert on error
             setError(err instanceof Error ? err : new Error('Failed to mark as read'));
-            fetchNotifications();
         }
-    }, [fetchNotifications]);
+    }, []);
 
     // Mark all notifications as read
     const markAllAsRead = React.useCallback(async () => {
         try {
-            const previousNotifications = notifications;
+            const previousNotifications = [...notifications];
 
             // Optimistic update
             setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
 
-            // In production, make API call:
-            // await fetch('/api/notifications/read-all', { method: 'POST' });
-
+            // Make API call
+            router.post('/notifications/read-all', {}, {
+                preserveState: true,
+                preserveScroll: true,
+                onError: () => {
+                    // Revert on error
+                    setNotifications(previousNotifications);
+                    setError(new Error('Failed to mark all as read'));
+                },
+            });
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to mark all as read'));
-            fetchNotifications();
         }
-    }, [notifications, fetchNotifications]);
+    }, [notifications]);
 
     // Delete a notification
     const deleteNotification = React.useCallback(async (id: string) => {
         try {
-            const previousNotifications = notifications;
+            const previousNotifications = [...notifications];
 
             // Optimistic update
             setNotifications((prev) => prev.filter((n) => n.id !== id));
 
-            // In production, make API call:
-            // await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
-
+            // Make API call
+            router.delete(`/notifications/${id}`, {
+                preserveState: true,
+                preserveScroll: true,
+                onError: () => {
+                    // Revert on error
+                    setNotifications(previousNotifications);
+                    setError(new Error('Failed to delete notification'));
+                },
+            });
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to delete notification'));
-            fetchNotifications();
         }
-    }, [notifications, fetchNotifications]);
+    }, [notifications]);
 
     // Auto-refresh notifications
     React.useEffect(() => {
@@ -135,30 +157,6 @@ export function useNotifications({
 
         return () => clearInterval(interval);
     }, [autoRefresh, refreshInterval, fetchNotifications]);
-
-    // Simulate real-time notification updates
-    // In production, this would be replaced with actual WebSocket connection
-    React.useEffect(() => {
-        if (!isConnected) return;
-
-        // Simulate receiving a new notification every 60 seconds
-        const simulateNewNotification = () => {
-            const newNotification: Notification = {
-                id: `sim-${Date.now()}`,
-                type: 'info',
-                title: 'New Activity',
-                description: 'A new deployment has started',
-                timestamp: new Date().toISOString(),
-                isRead: false,
-            };
-
-            // Uncomment to enable simulation:
-            // setNotifications((prev) => [newNotification, ...prev]);
-        };
-
-        // const interval = setInterval(simulateNewNotification, 60000);
-        // return () => clearInterval(interval);
-    }, [isConnected]);
 
     return {
         notifications,

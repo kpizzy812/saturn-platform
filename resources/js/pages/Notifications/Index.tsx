@@ -11,70 +11,11 @@ interface Props {
     notifications?: Notification[];
 }
 
-// Mock data for demo - in production this would come from the backend
-const MOCK_NOTIFICATIONS: Notification[] = [
-    {
-        id: '1',
-        type: 'deployment_success',
-        title: 'Deployment Successful',
-        description: 'production-api deployed successfully to production environment',
-        timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 mins ago
-        isRead: false,
-    },
-    {
-        id: '2',
-        type: 'deployment_failure',
-        title: 'Deployment Failed',
-        description: 'staging-frontend failed to deploy: Build step returned exit code 1',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-        isRead: false,
-    },
-    {
-        id: '3',
-        type: 'team_invite',
-        title: 'Team Invitation',
-        description: 'John Doe invited you to join the "Acme Corp" team',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
-        isRead: true,
-    },
-    {
-        id: '4',
-        type: 'billing_alert',
-        title: 'Billing Alert',
-        description: 'Your monthly invoice of $49.99 is ready',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-        isRead: true,
-    },
-    {
-        id: '5',
-        type: 'security_alert',
-        title: 'Security Alert',
-        description: 'New login detected from a different location',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-        isRead: true,
-    },
-    {
-        id: '6',
-        type: 'deployment_success',
-        title: 'Database Backup Completed',
-        description: 'Automated backup for postgres-prod completed successfully',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 days ago
-        isRead: true,
-    },
-    {
-        id: '7',
-        type: 'info',
-        title: 'System Maintenance',
-        description: 'Scheduled maintenance window: Sunday, 2AM - 4AM UTC',
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(), // 1 week ago
-        isRead: true,
-    },
-];
-
 type FilterType = 'all' | 'unread' | 'deployment' | 'team' | 'billing' | 'security';
 
 export default function NotificationsIndex({ notifications: propNotifications }: Props) {
-    const initialNotifications = propNotifications || MOCK_NOTIFICATIONS;
+    // Use empty array if no notifications provided - no mock data in production
+    const initialNotifications = propNotifications || [];
 
     // Use the notifications hook
     const {
