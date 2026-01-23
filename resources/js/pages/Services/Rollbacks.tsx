@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, Badge, Button, Modal, ModalFooter } from '@/components/ui';
-import { GitCommit, Clock, User, CheckCircle, XCircle, AlertCircle, RotateCw, Eye } from 'lucide-react';
+import { GitCommit, Clock, User, RotateCw, Eye } from 'lucide-react';
 import type { Service } from '@/types';
+import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 
 interface Props {
     service: Service;
@@ -114,28 +115,6 @@ export function RollbacksTab({ service }: Props) {
     const [showRollbackModal, setShowRollbackModal] = useState(false);
     const [showDiffModal, setShowDiffModal] = useState(false);
     const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
-
-    const getStatusIcon = (status: DeploymentStatus) => {
-        switch (status) {
-            case 'success':
-                return <CheckCircle className="h-4 w-4 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-4 w-4 text-danger" />;
-            case 'rolled_back':
-                return <AlertCircle className="h-4 w-4 text-warning" />;
-        }
-    };
-
-    const getStatusVariant = (status: DeploymentStatus): 'success' | 'danger' | 'warning' => {
-        switch (status) {
-            case 'success':
-                return 'success';
-            case 'failed':
-                return 'danger';
-            case 'rolled_back':
-                return 'warning';
-        }
-    };
 
     const handleRollbackClick = (deployment: Deployment) => {
         setSelectedDeployment(deployment);

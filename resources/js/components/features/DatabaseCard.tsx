@@ -1,8 +1,9 @@
 import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, Badge, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { Database, MoreVertical, Settings, Trash2, Power, RotateCw } from 'lucide-react';
+import { Database, MoreVertical, Settings, Trash2, RotateCw } from 'lucide-react';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
+import { getStatusColor } from '@/lib/statusUtils';
 
 interface DatabaseCardProps {
     database: StandaloneDatabase;
@@ -121,23 +122,6 @@ const formatDatabaseType = (type: DatabaseType): string => {
         clickhouse: 'ClickHouse',
     };
     return typeMap[type] || type;
-};
-
-const getStatusColor = (status: string): string => {
-    switch (status.toLowerCase()) {
-        case 'running':
-            return 'bg-green-500';
-        case 'stopped':
-            return 'bg-gray-500';
-        case 'starting':
-        case 'restarting':
-            return 'bg-yellow-500';
-        case 'error':
-        case 'failed':
-            return 'bg-red-500';
-        default:
-            return 'bg-gray-500';
-    }
 };
 
 export function DatabaseCard({ database }: DatabaseCardProps) {

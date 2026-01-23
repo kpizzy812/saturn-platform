@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { GitCommit, Clock, CheckCircle, XCircle, AlertCircle, RotateCw, Play, Loader2 } from 'lucide-react';
+import { GitCommit, Clock, RotateCw, Play, Loader2 } from 'lucide-react';
 import type { Service } from '@/types';
+import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 
 type DeploymentStatus = 'queued' | 'in_progress' | 'finished' | 'failed' | 'cancelled';
 
@@ -94,38 +95,6 @@ export function DeploymentsTab({ service, deployments: propDeployments = [] }: P
     const filteredDeployments = filter === 'all'
         ? deployments
         : deployments.filter(d => d.status === filter);
-
-    const getStatusIcon = (status: DeploymentStatus) => {
-        switch (status) {
-            case 'finished':
-                return <CheckCircle className="h-4 w-4 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-4 w-4 text-danger" />;
-            case 'in_progress':
-                return <AlertCircle className="h-4 w-4 animate-pulse text-warning" />;
-            case 'queued':
-                return <Clock className="h-4 w-4 text-foreground-muted" />;
-            case 'cancelled':
-                return <XCircle className="h-4 w-4 text-foreground-muted" />;
-            default:
-                return <AlertCircle className="h-4 w-4 text-foreground-muted" />;
-        }
-    };
-
-    const getStatusVariant = (status: DeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-        switch (status) {
-            case 'finished':
-                return 'success';
-            case 'failed':
-            case 'cancelled':
-                return 'danger';
-            case 'in_progress':
-            case 'queued':
-                return 'warning';
-            default:
-                return 'default';
-        }
-    };
 
     return (
         <div className="space-y-4">

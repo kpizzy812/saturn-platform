@@ -11,10 +11,17 @@ interface Toast {
     message?: string;
 }
 
+interface ToastOptions {
+    title: string;
+    description?: string;
+    variant?: ToastType;
+}
+
 interface ToastContextType {
     toasts: Toast[];
     addToast: (type: ToastType, title: string, message?: string) => void;
     removeToast: (id: string) => void;
+    toast: (options: ToastOptions) => void;
 }
 
 const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
@@ -36,8 +43,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
+    // Helper function for shadcn-like toast API
+    const toast = React.useCallback((options: ToastOptions) => {
+        addToast(options.variant || 'info', options.title, options.description);
+    }, [addToast]);
+
     return (
-        <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+        <ToastContext.Provider value={{ toasts, addToast, removeToast, toast }}>
             {children}
             <ToastContainer toasts={toasts} removeToast={removeToast} />
         </ToastContext.Provider>

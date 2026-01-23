@@ -3,9 +3,10 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, Modal, ModalFooter } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Link, router } from '@inertiajs/react';
-import { GitCommit, Clock, User, CheckCircle, XCircle, AlertCircle, RotateCw, Eye, ArrowLeft, Loader2 } from 'lucide-react';
+import { GitCommit, Clock, User, RotateCw, Eye, ArrowLeft, Loader2 } from 'lucide-react';
 import type { Application } from '@/types';
 import { RollbackTimeline } from '@/components/features/RollbackTimeline';
+import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 
 interface Props {
     application: Application;
@@ -91,37 +92,6 @@ export default function ApplicationRollbackIndex({ application, projectUuid, env
 
         loadData();
     }, [application.uuid, addToast]);
-
-    const getStatusIcon = (status: DeploymentStatus) => {
-        switch (status) {
-            case 'finished':
-                return <CheckCircle className="h-4 w-4 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-4 w-4 text-danger" />;
-            case 'rolled_back':
-                return <AlertCircle className="h-4 w-4 text-warning" />;
-            case 'in_progress':
-                return <Loader2 className="h-4 w-4 text-warning animate-spin" />;
-            default:
-                return <Clock className="h-4 w-4 text-foreground-muted" />;
-        }
-    };
-
-    const getStatusVariant = (status: DeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-        switch (status) {
-            case 'finished':
-                return 'success';
-            case 'failed':
-            case 'cancelled':
-                return 'danger';
-            case 'rolled_back':
-            case 'in_progress':
-            case 'queued':
-                return 'warning';
-            default:
-                return 'default';
-        }
-    };
 
     const handleRollbackClick = (deployment: Deployment) => {
         setSelectedDeployment(deployment);

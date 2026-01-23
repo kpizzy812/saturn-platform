@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { getStatusBadgeConfig } from '@/lib/statusUtils';
 
 const badgeVariants = {
     default: 'bg-white/[0.08] text-foreground-muted border-white/[0.06]',
@@ -77,77 +78,15 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
 Badge.displayName = 'Badge';
 
 // Status Badge - special variant for service status
+// Uses centralized status configuration from statusUtils
 interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-    status: 'online' | 'offline' | 'deploying' | 'error' | 'stopped' | 'initializing' | 'running' | 'failed' | 'queued' | 'in_progress' | 'finished' | 'cancelled';
+    status: string;
     size?: 'sm' | 'default' | 'lg';
 }
 
-const statusConfig = {
-    online: {
-        label: 'Online',
-        variant: 'success' as const,
-        dotClass: 'status-online',
-    },
-    running: {
-        label: 'running',
-        variant: 'success' as const,
-        dotClass: 'status-online',
-    },
-    offline: {
-        label: 'Offline',
-        variant: 'default' as const,
-        dotClass: 'status-stopped',
-    },
-    deploying: {
-        label: 'Deploying',
-        variant: 'warning' as const,
-        dotClass: 'status-deploying',
-    },
-    error: {
-        label: 'Error',
-        variant: 'danger' as const,
-        dotClass: 'status-error',
-    },
-    failed: {
-        label: 'failed',
-        variant: 'danger' as const,
-        dotClass: 'status-error',
-    },
-    stopped: {
-        label: 'Stopped',
-        variant: 'default' as const,
-        dotClass: 'status-stopped',
-    },
-    initializing: {
-        label: 'Initializing',
-        variant: 'info' as const,
-        dotClass: 'status-initializing',
-    },
-    queued: {
-        label: 'queued',
-        variant: 'info' as const,
-        dotClass: 'status-initializing',
-    },
-    in_progress: {
-        label: 'in_progress',
-        variant: 'warning' as const,
-        dotClass: 'status-deploying',
-    },
-    finished: {
-        label: 'finished',
-        variant: 'success' as const,
-        dotClass: 'status-online',
-    },
-    cancelled: {
-        label: 'cancelled',
-        variant: 'default' as const,
-        dotClass: 'status-stopped',
-    },
-};
-
 export const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
     ({ status, size = 'default', className, ...props }, ref) => {
-        const config = statusConfig[status] || statusConfig['stopped'];
+        const config = getStatusBadgeConfig(status);
 
         return (
             <span

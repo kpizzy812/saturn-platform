@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Select } from '@/components/ui';
-import { Activity, CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Activity, Clock } from 'lucide-react';
 import type { Service } from '@/types';
+import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 
 interface Props {
     service: Service;
@@ -47,28 +48,6 @@ export function HealthChecksTab({ service }: Props) {
 
     // Current health status (mock)
     const currentStatus: HealthStatus = 'healthy';
-
-    const getStatusIcon = (status: HealthStatus) => {
-        switch (status) {
-            case 'healthy':
-                return <CheckCircle className="h-5 w-5 text-primary" />;
-            case 'unhealthy':
-                return <XCircle className="h-5 w-5 text-danger" />;
-            case 'degraded':
-                return <AlertTriangle className="h-5 w-5 text-warning" />;
-        }
-    };
-
-    const getStatusVariant = (status: HealthStatus): 'success' | 'danger' | 'warning' => {
-        switch (status) {
-            case 'healthy':
-                return 'success';
-            case 'unhealthy':
-                return 'danger';
-            case 'degraded':
-                return 'warning';
-        }
-    };
 
     const handleSaveConfiguration = () => {
         console.log('Saving health check configuration:', {

@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
 import {
     Download, RotateCw, ChevronDown, ChevronRight,
-    CheckCircle, XCircle, Clock, AlertCircle, Terminal
+    CheckCircle, XCircle, AlertCircle, Terminal
 } from 'lucide-react';
 import type { Service } from '@/types';
+import { getStatusIcon } from '@/lib/statusUtils';
 
 interface Props {
     service: Service;
@@ -157,19 +158,6 @@ export function BuildLogsTab({ service }: Props) {
             }
             return newSet;
         });
-    };
-
-    const getStatusIcon = (status: BuildStep['status']) => {
-        switch (status) {
-            case 'success':
-                return <CheckCircle className="h-5 w-5 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-5 w-5 text-danger" />;
-            case 'running':
-                return <AlertCircle className="h-5 w-5 animate-pulse text-warning" />;
-            case 'pending':
-                return <Clock className="h-5 w-5 text-foreground-muted" />;
-        }
     };
 
     const handleDownloadLogs = () => {

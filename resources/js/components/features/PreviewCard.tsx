@@ -12,44 +12,14 @@ import {
     Clock,
     AlertTriangle
 } from 'lucide-react';
-import type { PreviewDeployment, PreviewDeploymentStatus } from '@/types';
+import type { PreviewDeployment } from '@/types';
 import { formatRelativeTime, isSafeUrl, safeOpenUrl } from '@/lib/utils';
+import { getStatusColor, getStatusVariant } from '@/lib/statusUtils';
 
 interface PreviewCardProps {
     preview: PreviewDeployment;
     applicationUuid: string;
 }
-
-const getStatusColor = (status: PreviewDeploymentStatus): string => {
-    switch (status) {
-        case 'running':
-            return 'bg-green-500';
-        case 'stopped':
-            return 'bg-gray-500';
-        case 'deploying':
-            return 'bg-yellow-500';
-        case 'failed':
-            return 'bg-red-500';
-        case 'deleting':
-            return 'bg-orange-500';
-        default:
-            return 'bg-gray-500';
-    }
-};
-
-const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-    switch (status) {
-        case 'running':
-            return 'success';
-        case 'failed':
-            return 'danger';
-        case 'deploying':
-        case 'deleting':
-            return 'warning';
-        default:
-            return 'default';
-    }
-};
 
 export function PreviewCard({ preview, applicationUuid }: PreviewCardProps) {
     const confirm = useConfirm();

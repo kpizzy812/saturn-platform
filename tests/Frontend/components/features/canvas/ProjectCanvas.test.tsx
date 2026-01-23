@@ -142,6 +142,23 @@ const mockDatabases: StandaloneDatabase[] = [
     } as StandaloneDatabase,
 ];
 
+// Mock resource links for edge tests
+const mockResourceLinks = [
+    {
+        id: 1,
+        environment_id: 1,
+        source_type: 'application',
+        source_id: 1,
+        source_name: 'api-server',
+        target_type: 'database',
+        target_id: 1,
+        target_name: 'postgres',
+        inject_as: 'DATABASE_URL',
+        env_key: 'DATABASE_URL',
+        auto_inject: true,
+    },
+];
+
 describe('ProjectCanvas', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -240,26 +257,21 @@ describe('ProjectCanvas', () => {
     });
 
     describe('Edge Creation', () => {
-        it('creates edges between applications and databases', () => {
+        it('creates edges from resourceLinks', () => {
             render(
                 <ProjectCanvas
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            // Check edge from first app to first database
-            const edge1 = screen.getByTestId('edge-edge-app-1-db-1');
+            // Check edge from first app to first database based on resourceLinks
+            const edge1 = screen.getByTestId('edge-link-1');
             expect(edge1).toBeInTheDocument();
             expect(edge1).toHaveAttribute('data-source', 'app-1');
             expect(edge1).toHaveAttribute('data-target', 'db-1');
-
-            // Check edge from second app to second database
-            const edge2 = screen.getByTestId('edge-edge-app-2-db-2');
-            expect(edge2).toBeInTheDocument();
-            expect(edge2).toHaveAttribute('data-source', 'app-2');
-            expect(edge2).toHaveAttribute('data-target', 'db-2');
         });
 
         it('creates edge with correct styling', () => {
@@ -268,20 +280,23 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
-            expect(edge).toHaveAttribute('data-stroke', '#4a4a5e');
+            const edge = screen.getByTestId('edge-link-1');
+            // Auto-inject enabled -> green color
+            expect(edge).toHaveAttribute('data-stroke', '#22c55e');
             expect(edge).toHaveAttribute('data-stroke-width', '2');
         });
 
-        it('does not create edges when no applications', () => {
+        it('does not create edges when no resourceLinks', () => {
             render(
                 <ProjectCanvas
-                    applications={[]}
+                    applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={[]}
                 />
             );
 
@@ -303,10 +318,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             // Click to select edge
             fireEvent.click(edge);
@@ -324,10 +340,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
             fireEvent.click(edge);
 
             await waitFor(() => {
@@ -343,10 +360,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
             const reactFlow = screen.getByTestId('react-flow');
 
             // Select edge
@@ -367,10 +385,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
             const node = screen.getByTestId('node-app-1');
 
             // Select edge
@@ -392,10 +411,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             fireEvent.contextMenu(edge);
 
@@ -410,10 +430,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             // Open context menu
             fireEvent.contextMenu(edge);
@@ -438,11 +459,12 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             // Open context menu
             fireEvent.contextMenu(edge);
@@ -451,7 +473,7 @@ describe('ProjectCanvas', () => {
             fireEvent.click(deleteButton);
 
             waitFor(() => {
-                expect(onEdgeDelete).toHaveBeenCalledWith('edge-app-1-db-1');
+                expect(onEdgeDelete).toHaveBeenCalledWith('link-1');
             });
         });
     });
@@ -465,11 +487,12 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             // Select edge
             fireEvent.click(edge);
@@ -478,7 +501,7 @@ describe('ProjectCanvas', () => {
             fireEvent.keyDown(window, { key: 'Delete' });
 
             waitFor(() => {
-                expect(onEdgeDelete).toHaveBeenCalledWith('edge-app-1-db-1');
+                expect(onEdgeDelete).toHaveBeenCalledWith('link-1');
             });
         });
 
@@ -490,11 +513,12 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             // Select edge
             fireEvent.click(edge);
@@ -503,7 +527,7 @@ describe('ProjectCanvas', () => {
             fireEvent.keyDown(window, { key: 'Backspace' });
 
             waitFor(() => {
-                expect(onEdgeDelete).toHaveBeenCalledWith('edge-app-1-db-1');
+                expect(onEdgeDelete).toHaveBeenCalledWith('link-1');
             });
         });
 
@@ -515,6 +539,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
@@ -531,10 +556,11 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
+                    resourceLinks={mockResourceLinks}
                 />
             );
 
-            const edge = screen.getByTestId('edge-edge-app-1-db-1');
+            const edge = screen.getByTestId('edge-link-1');
 
             // Select edge
             fireEvent.click(edge);

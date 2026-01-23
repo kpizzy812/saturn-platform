@@ -3,21 +3,18 @@ import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Tabs } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
+import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { useLogStream } from '@/hooks/useLogStream';
 import type { Deployment, DeploymentStatus } from '@/types';
 import {
     GitCommit,
     Clock,
-    CheckCircle,
-    XCircle,
-    AlertCircle,
     Play,
     RotateCw,
     Terminal,
     Download,
     ChevronLeft,
     GitBranch,
-    User,
     Calendar,
     Activity,
     Package,
@@ -167,38 +164,6 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
     const deployLogs = isStreaming && streamedLogs.length > 0
         ? streamedLogs.filter(log => log.source === 'deploy').map(log => log.message)
         : (deployment.deploy_logs || []);
-
-    const getStatusIcon = (status: DeploymentStatus) => {
-        switch (status) {
-            case 'finished':
-                return <CheckCircle className="h-6 w-6 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-6 w-6 text-danger" />;
-            case 'in_progress':
-                return <AlertCircle className="h-6 w-6 animate-pulse text-warning" />;
-            case 'queued':
-                return <Clock className="h-6 w-6 text-foreground-muted" />;
-            case 'cancelled':
-                return <XCircle className="h-6 w-6 text-foreground-muted" />;
-            default:
-                return <AlertCircle className="h-6 w-6 text-foreground-muted" />;
-        }
-    };
-
-    const getStatusVariant = (status: DeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-        switch (status) {
-            case 'finished':
-                return 'success';
-            case 'failed':
-            case 'cancelled':
-                return 'danger';
-            case 'in_progress':
-            case 'queued':
-                return 'warning';
-            default:
-                return 'default';
-        }
-    };
 
     const initials = deployment.author?.name
         .split(' ')

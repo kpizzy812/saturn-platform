@@ -6,10 +6,6 @@ import {
     RotateCw,
     ChevronDown,
     ChevronRight,
-    CheckCircle,
-    XCircle,
-    Clock,
-    AlertCircle,
     Terminal,
     Search,
     Filter,
@@ -23,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { useLogStream, type LogEntry } from '@/hooks/useLogStream';
+import { getStatusIcon } from '@/lib/statusUtils';
 
 interface Props {
     deploymentUuid: string;
@@ -210,19 +207,6 @@ export default function BuildLogsView({ deploymentUuid, deployment }: Props) {
             setExpandedSteps(new Set(buildSteps.map(s => s.id)));
         }
         setExpandAll(!expandAll);
-    };
-
-    const getStatusIcon = (status: BuildStep['status']) => {
-        switch (status) {
-            case 'success':
-                return <CheckCircle className="h-5 w-5 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-5 w-5 text-danger" />;
-            case 'running':
-                return <AlertCircle className="h-5 w-5 animate-pulse text-warning" />;
-            case 'pending':
-                return <Clock className="h-5 w-5 text-foreground-muted" />;
-        }
     };
 
     const handleDownloadLogs = () => {

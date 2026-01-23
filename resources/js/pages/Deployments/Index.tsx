@@ -3,19 +3,15 @@ import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, Input, Select } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
+import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import type { Deployment, DeploymentStatus } from '@/types';
 import {
     GitCommit,
     Clock,
-    CheckCircle,
-    XCircle,
-    AlertCircle,
     Play,
     RotateCw,
     Search,
     Filter,
-    Calendar,
-    User,
     ChevronLeft,
     ChevronRight,
 } from 'lucide-react';
@@ -192,38 +188,6 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
         return filtered;
     }, [deployments, filterStatus, serviceFilter, searchQuery]);
 
-    const getStatusIcon = (status: DeploymentStatus) => {
-        switch (status) {
-            case 'finished':
-                return <CheckCircle className="h-5 w-5 text-primary" />;
-            case 'failed':
-                return <XCircle className="h-5 w-5 text-danger" />;
-            case 'in_progress':
-                return <AlertCircle className="h-5 w-5 animate-pulse text-warning" />;
-            case 'queued':
-                return <Clock className="h-5 w-5 text-foreground-muted" />;
-            case 'cancelled':
-                return <XCircle className="h-5 w-5 text-foreground-muted" />;
-            default:
-                return <AlertCircle className="h-5 w-5 text-foreground-muted" />;
-        }
-    };
-
-    const getStatusVariant = (status: DeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-        switch (status) {
-            case 'finished':
-                return 'success';
-            case 'failed':
-            case 'cancelled':
-                return 'danger';
-            case 'in_progress':
-            case 'queued':
-                return 'warning';
-            default:
-                return 'default';
-        }
-    };
-
     const getTriggerBadgeColor = (trigger?: string) => {
         switch (trigger) {
             case 'push':
@@ -339,12 +303,10 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
             ) : (
                 <>
                     <div className="space-y-3">
-                        {filteredDeployments.map((deployment, index) => (
+                        {filteredDeployments.map((deployment) => (
                             <DeploymentCard
                                 key={deployment.id}
                                 deployment={deployment}
-                                getStatusIcon={getStatusIcon}
-                                getStatusVariant={getStatusVariant}
                                 getTriggerBadgeColor={getTriggerBadgeColor}
                             />
                         ))}
@@ -389,12 +351,10 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
 
 interface DeploymentCardProps {
     deployment: ExtendedDeployment;
-    getStatusIcon: (status: DeploymentStatus) => React.ReactNode;
-    getStatusVariant: (status: DeploymentStatus) => 'success' | 'danger' | 'warning' | 'default';
     getTriggerBadgeColor: (trigger?: string) => string;
 }
 
-function DeploymentCard({ deployment, getStatusIcon, getStatusVariant, getTriggerBadgeColor }: DeploymentCardProps) {
+function DeploymentCard({ deployment, getTriggerBadgeColor }: DeploymentCardProps) {
     const initials = deployment.author?.name
         .split(' ')
         .map((n) => n[0])

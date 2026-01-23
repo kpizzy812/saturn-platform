@@ -2,8 +2,9 @@ import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { Card, CardContent, Badge, Button, Spinner } from '@/components/ui';
 import { GitPullRequest, ExternalLink, Plus, Settings } from 'lucide-react';
-import type { PreviewDeployment, PreviewDeploymentStatus } from '@/types';
+import type { PreviewDeployment } from '@/types';
 import { formatRelativeTime } from '@/lib/utils';
+import { getStatusVariant } from '@/lib/statusUtils';
 
 interface PreviewDeploymentListProps {
     applicationUuid: string;
@@ -11,20 +12,6 @@ interface PreviewDeploymentListProps {
     compact?: boolean;
     maxItems?: number;
 }
-
-const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-    switch (status) {
-        case 'running':
-            return 'success';
-        case 'failed':
-            return 'danger';
-        case 'deploying':
-        case 'deleting':
-            return 'warning';
-        default:
-            return 'default';
-    }
-};
 
 export function PreviewDeploymentList({
     applicationUuid,

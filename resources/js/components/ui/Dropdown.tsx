@@ -131,6 +131,7 @@ interface DropdownItemProps {
     icon?: React.ReactNode;
     shortcut?: string;
     description?: string;
+    className?: string;
 }
 
 export function DropdownItem({
@@ -142,6 +143,7 @@ export function DropdownItem({
     icon,
     shortcut,
     description,
+    className,
 }: DropdownItemProps) {
     const buttonId = React.useId();
     const handleClick = (e: React.MouseEvent) => {
@@ -172,6 +174,8 @@ export function DropdownItem({
                         ],
                         // Disabled
                         isDisabled && 'cursor-not-allowed opacity-40',
+                        // Custom className
+                        className,
                     )}
                     disabled={isDisabled}
                 >

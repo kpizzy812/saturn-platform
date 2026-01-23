@@ -14,17 +14,16 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->team->members()->attach($this->user->id, ['role' => 'owner']);
 
-    // Set current team context
+    // Authenticate user and set current team context
+    $this->actingAs($this->user);
     session(['currentTeam' => $this->team]);
 
     // Create an API token for the user
     $this->token = $this->user->createToken('test-token', ['*']);
     $this->bearerToken = $this->token->plainTextToken;
 
-    // Create a private key for the team
-    $this->privateKey = PrivateKey::create([
-        'name' => 'Test Key',
-        'private_key' => 'test-private-key-content',
+    // Create a private key for the team with valid RSA key
+    $this->privateKey = PrivateKey::factory()->create([
         'team_id' => $this->team->id,
     ]);
 });
@@ -154,9 +153,7 @@ describe('GET /api/v1/github-apps', function () {
 
         // Create another team with a GitHub app
         $otherTeam = Team::factory()->create();
-        $otherPrivateKey = PrivateKey::create([
-            'name' => 'Other Key',
-            'private_key' => 'other-key',
+        $otherPrivateKey = PrivateKey::factory()->create([
             'team_id' => $otherTeam->id,
         ]);
         GithubApp::create([

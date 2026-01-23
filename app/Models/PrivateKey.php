@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\HasSafeStringAttribute;
 use DanHarrin\LivewireRateLimiting\WithRateLimiting;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -29,7 +30,7 @@ use phpseclib3\Crypt\PublicKeyLoader;
 )]
 class PrivateKey extends BaseModel
 {
-    use HasSafeStringAttribute, WithRateLimiting;
+    use HasFactory, HasSafeStringAttribute, WithRateLimiting;
 
     protected $fillable = [
         'name',

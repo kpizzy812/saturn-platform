@@ -479,7 +479,7 @@ export default function ProjectVariables({ project, variables: propVariables = [
 
                         <div className="space-y-2">
                             <h4 className="text-sm font-medium text-foreground">Environment Overrides</h4>
-                            {mockEnvironments.map((env) => {
+                            {environments.map((env: { id: string; name: string; uuid: string }) => {
                                 const isOverridden = selectedVariable.overriddenIn.includes(env.name);
                                 return (
                                     <div

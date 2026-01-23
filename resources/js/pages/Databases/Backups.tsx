@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Checkbox, useConfirm } from '@/components/ui';
-import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
+import { getStatusIcon, getStatusVariant, getStatusLabel } from '@/lib/statusUtils';
 
 interface Props {
     database: StandaloneDatabase;
@@ -204,40 +205,18 @@ function BackupCard({
     onDownload: () => void;
     onDelete: () => void;
 }) {
-    const getStatusIcon = () => {
-        switch (backup.status) {
-            case 'completed':
-                return <CheckCircle2 className="h-5 w-5 text-success" />;
-            case 'failed':
-                return <XCircle className="h-5 w-5 text-danger" />;
-            case 'in_progress':
-                return <AlertCircle className="h-5 w-5 text-warning" />;
-        }
-    };
-
-    const getStatusBadge = () => {
-        switch (backup.status) {
-            case 'completed':
-                return <Badge variant="default">Completed</Badge>;
-            case 'failed':
-                return <Badge variant="secondary">Failed</Badge>;
-            case 'in_progress':
-                return <Badge variant="default">In Progress</Badge>;
-        }
-    };
-
     return (
         <Card>
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background-tertiary">
-                            {getStatusIcon()}
+                            {getStatusIcon(backup.status)}
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
                                 <h3 className="font-medium text-foreground">{backup.filename}</h3>
-                                {getStatusBadge()}
+                                <Badge variant={getStatusVariant(backup.status)}>{getStatusLabel(backup.status)}</Badge>
                             </div>
                             <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
                                 <span className="flex items-center gap-1">

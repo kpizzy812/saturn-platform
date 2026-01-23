@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
-import { Badge, Button, Tabs } from '@/components/ui';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, Hash, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
-import type { Project, Environment, Application, StandaloneDatabase } from '@/types';
+import { Badge, Button } from '@/components/ui';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
+import type { Project, Environment } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
@@ -225,7 +225,7 @@ export default function ProjectShow({ project }: Props) {
     };
 
     // Track state changes for undo/redo
-    const trackStateChange = useCallback((newService: SelectedService | null) => {
+    const trackStateChange = useCallback((_newService: SelectedService | null) => {
         historyRef.current = {
             past: [...historyRef.current.past, selectedService ? [selectedService] : []],
             future: [],
@@ -233,6 +233,8 @@ export default function ProjectShow({ project }: Props) {
         setCanUndo(true);
         setCanRedo(false);
     }, [selectedService]);
+    // Note: trackStateChange is prepared for future use but currently unused
+    void trackStateChange;
 
     const handleNodeClick = useCallback((id: string, type: string) => {
         const env = project.environments?.[0];
@@ -247,7 +249,7 @@ export default function ProjectShow({ project }: Props) {
                     type: 'app',
                     name: app.name,
                     status: app.status || 'unknown',
-                    fqdn: app.fqdn,
+                    fqdn: app.fqdn ?? undefined,
                     serverUuid: app.destination?.server?.uuid,
                 });
             }
@@ -291,7 +293,7 @@ export default function ProjectShow({ project }: Props) {
                     type: 'app',
                     name: app.name,
                     status: app.status || 'unknown',
-                    fqdn: app.fqdn,
+                    fqdn: app.fqdn ?? undefined,
                 };
             }
         } else if (type === 'db') {
@@ -318,7 +320,7 @@ export default function ProjectShow({ project }: Props) {
         setContextMenuNode(null);
     };
 
-    const handleViewLogs = (nodeId: string) => {
+    const handleViewLogs = (_nodeId: string) => {
         const node = contextMenuNode;
         if (node) {
             setLogsViewerService(node.name);
@@ -328,8 +330,8 @@ export default function ProjectShow({ project }: Props) {
         }
     };
 
-    const handleCopyId = (nodeId: string) => {
-        navigator.clipboard.writeText(nodeId);
+    const handleCopyId = (_nodeId: string) => {
+        navigator.clipboard.writeText(_nodeId);
     };
 
     const handleOpenUrl = (url: string) => {
@@ -337,7 +339,7 @@ export default function ProjectShow({ project }: Props) {
     };
 
     // API action handlers for context menu
-    const handleDeploy = useCallback(async (nodeId: string) => {
+    const handleDeploy = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
         if (!node) return;
 
@@ -363,7 +365,7 @@ export default function ProjectShow({ project }: Props) {
         }
     }, [contextMenuNode]);
 
-    const handleRestart = useCallback(async (nodeId: string) => {
+    const handleRestart = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
         if (!node) return;
 
@@ -393,7 +395,7 @@ export default function ProjectShow({ project }: Props) {
         }
     }, [contextMenuNode]);
 
-    const handleStop = useCallback(async (nodeId: string) => {
+    const handleStop = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
         if (!node) return;
 
@@ -423,7 +425,7 @@ export default function ProjectShow({ project }: Props) {
         }
     }, [contextMenuNode]);
 
-    const handleDelete = useCallback(async (nodeId: string) => {
+    const handleDelete = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
         if (!node) return;
 
@@ -451,7 +453,7 @@ export default function ProjectShow({ project }: Props) {
 
             setSelectedService(null);
             setContextMenuNode(null);
-            router.reload({ preserveState: false, preserveScroll: true });
+            router.reload();
         } catch (err) {
             console.error('Delete error:', err);
             alert(err instanceof Error ? err.message : 'Failed to delete');
@@ -489,7 +491,7 @@ export default function ProjectShow({ project }: Props) {
     }, [project.environments]);
 
     // Database backup handlers
-    const handleCreateBackup = useCallback(async (nodeId: string) => {
+    const handleCreateBackup = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
         if (!node || node.type !== 'db') return;
 
@@ -516,7 +518,7 @@ export default function ProjectShow({ project }: Props) {
         }
     }, [contextMenuNode]);
 
-    const handleRestoreBackup = useCallback(async (nodeId: string) => {
+    const handleRestoreBackup = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
         if (!node || node.type !== 'db') return;
 
@@ -549,6 +551,8 @@ export default function ProjectShow({ project }: Props) {
             window.__projectCanvasFitView();
         }
     }, []);
+    // Note: handleFitView is available for canvas controls
+    void handleFitView;
 
     const handleViewportChange = useCallback((zoom: number) => {
         setZoomLevel(zoom);
@@ -1161,11 +1165,12 @@ export default function ProjectShow({ project }: Props) {
                 onRestart={handleRestart}
                 onStop={handleStop}
                 onViewLogs={handleViewLogs}
-                onOpenSettings={(id) => {
+                onOpenSettings={(_id) => {
                     // Open the panel with settings tab
                     if (contextMenuNode) {
                         setSelectedService({
                             id: contextMenuNode.id,
+                            uuid: contextMenuNode.uuid,
                             type: contextMenuNode.type,
                             name: contextMenuNode.name,
                             status: contextMenuNode.status,
@@ -1304,7 +1309,7 @@ function DeploymentsTab({ service }: { service: SelectedService }) {
         const deploymentUuid = deployment.deployment_uuid || deployment.uuid;
         const confirmed = await confirm({
             title: 'Rollback deployment',
-            message: `Are you sure you want to rollback to this deployment? This will redeploy the application with the previous configuration.`,
+            description: `Are you sure you want to rollback to this deployment? This will redeploy the application with the previous configuration.`,
             confirmText: 'Rollback',
             variant: 'warning',
         });
@@ -1341,7 +1346,7 @@ function DeploymentsTab({ service }: { service: SelectedService }) {
         const deploymentUuid = deployment.deployment_uuid || deployment.uuid;
         const confirmed = await confirm({
             title: 'Cancel deployment',
-            message: 'Are you sure you want to cancel this deployment?',
+            description: 'Are you sure you want to cancel this deployment?',
             confirmText: 'Cancel Deployment',
             variant: 'danger',
         });
@@ -1587,7 +1592,7 @@ function VariablesTab({ service }: { service: SelectedService }) {
                     setVariables(data.filter((env: EnvVariable) => !env.is_preview));
                 }
             } catch {
-                toast({ title: 'Failed to load variables', variant: 'destructive' });
+                toast({ title: 'Failed to load variables', variant: 'error' });
             } finally {
                 setIsLoading(false);
             }
@@ -1597,7 +1602,7 @@ function VariablesTab({ service }: { service: SelectedService }) {
 
     const handleAddVariable = async () => {
         if (!newKey.trim()) {
-            toast({ title: 'Key is required', variant: 'destructive' });
+            toast({ title: 'Key is required', variant: 'error' });
             return;
         }
         try {
@@ -1620,10 +1625,10 @@ function VariablesTab({ service }: { service: SelectedService }) {
                 toast({ title: 'Variable created' });
             } else {
                 const error = await response.json();
-                toast({ title: error.message || 'Failed to create variable', variant: 'destructive' });
+                toast({ title: error.message || 'Failed to create variable', variant: 'error' });
             }
         } catch {
-            toast({ title: 'Failed to create variable', variant: 'destructive' });
+            toast({ title: 'Failed to create variable', variant: 'error' });
         } finally {
             setIsSubmitting(false);
         }
@@ -1634,7 +1639,7 @@ function VariablesTab({ service }: { service: SelectedService }) {
             await navigator.clipboard.writeText(`${key}=${value}`);
             toast({ title: `Copied ${key} to clipboard` });
         } catch {
-            toast({ title: 'Failed to copy', variant: 'destructive' });
+            toast({ title: 'Failed to copy', variant: 'error' });
         }
     };
 
@@ -2339,7 +2344,7 @@ function AppSettingsTab({ service }: { service: SelectedService }) {
    DATABASE-SPECIFIC TAB COMPONENTS
    ============================================ */
 
-function DatabaseDataTab({ service }: { service: SelectedService }) {
+function DatabaseDataTab({ service: _service }: { service: SelectedService }) {
     const tables = [
         { name: 'users', rows: 1234, size: '2.4 MB' },
         { name: 'sessions', rows: 5678, size: '1.1 MB' },
@@ -2901,7 +2906,7 @@ function DatabaseBackupsTab({ service }: { service: SelectedService }) {
     );
 }
 
-function DatabaseExtensionsTab({ service }: { service: SelectedService }) {
+function DatabaseExtensionsTab({ service: _service }: { service: SelectedService }) {
     const [searchQuery, setSearchQuery] = useState('');
 
     const extensions = [

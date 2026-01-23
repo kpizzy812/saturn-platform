@@ -3,6 +3,7 @@ import { render, RenderOptions } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ToastProvider } from '@/components/ui/Toast';
+import { ConfirmationProvider } from '@/components/ui/ConfirmationModal';
 
 // Mock Inertia
 vi.mock('@inertiajs/react', () => ({
@@ -36,7 +37,13 @@ vi.mock('@inertiajs/react', () => ({
 
 // Providers wrapper
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-    return <ToastProvider>{children}</ToastProvider>;
+    return (
+        <ToastProvider>
+            <ConfirmationProvider>
+                {children}
+            </ConfirmationProvider>
+        </ToastProvider>
+    );
 };
 
 const customRender = (

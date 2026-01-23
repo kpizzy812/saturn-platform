@@ -17,8 +17,9 @@ import {
     HardDrive,
     AlertCircle,
 } from 'lucide-react';
-import type { PreviewDeployment, PreviewDeploymentStatus, Application } from '@/types';
+import type { PreviewDeployment, Application } from '@/types';
 import { formatRelativeTime } from '@/lib/utils';
+import { getStatusColor, getStatusVariant } from '@/lib/statusUtils';
 
 interface Props {
     application: Application;
@@ -27,37 +28,6 @@ interface Props {
     projectUuid?: string;
     environmentUuid?: string;
 }
-
-const getStatusColor = (status: PreviewDeploymentStatus): string => {
-    switch (status) {
-        case 'running':
-            return 'bg-green-500';
-        case 'stopped':
-            return 'bg-gray-500';
-        case 'deploying':
-            return 'bg-yellow-500';
-        case 'failed':
-            return 'bg-red-500';
-        case 'deleting':
-            return 'bg-orange-500';
-        default:
-            return 'bg-gray-500';
-    }
-};
-
-const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger' | 'warning' | 'default' => {
-    switch (status) {
-        case 'running':
-            return 'success';
-        case 'failed':
-            return 'danger';
-        case 'deploying':
-        case 'deleting':
-            return 'warning';
-        default:
-            return 'default';
-    }
-};
 
 export default function PreviewShow({ application, preview, previewUuid, projectUuid, environmentUuid }: Props) {
     const confirm = useConfirm();
