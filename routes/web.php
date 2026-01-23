@@ -1970,7 +1970,27 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('settings.account');
 
     Route::get('/settings/team', function () {
-        return \Inertia\Inertia::render('Settings/Team');
+        $team = currentTeam();
+
+        $members = $team->members->map(fn ($user) => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->pivot->role ?? 'member',
+            'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
+        ]);
+
+        $invitations = $team->invitations->map(fn ($invitation) => [
+            'id' => $invitation->id,
+            'email' => $invitation->email,
+            'role' => $invitation->role ?? 'member',
+            'sentAt' => $invitation->created_at->toISOString(),
+        ]);
+
+        return \Inertia\Inertia::render('Settings/Team', [
+            'members' => $members,
+            'invitations' => $invitations,
+        ]);
     })->name('settings.team');
 
     Route::get('/settings/billing', function () {
@@ -1994,7 +2014,18 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('settings.billing.usage');
 
     Route::get('/settings/tokens', function () {
-        return \Inertia\Inertia::render('Settings/Tokens');
+        $tokens = auth()->user()->tokens->map(fn ($token) => [
+            'id' => $token->id,
+            'name' => $token->name,
+            'abilities' => $token->abilities,
+            'last_used_at' => $token->last_used_at?->toISOString(),
+            'created_at' => $token->created_at->toISOString(),
+            'expires_at' => $token->expires_at?->toISOString(),
+        ]);
+
+        return \Inertia\Inertia::render('Settings/Tokens', [
+            'tokens' => $tokens,
+        ]);
     })->name('settings.tokens');
 
     Route::get('/settings/integrations', function () {
@@ -2355,20 +2386,26 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::post('/settings/tokens', function (\Illuminate\Http\Request $request) {
         $request->validate([
             'name' => 'required|string|max:255',
-            'expires_at' => 'nullable|date',
+            'abilities' => 'array',
+            'abilities.*' => 'string|in:read,write,deploy,root,read:sensitive',
+            'expires_at' => 'nullable|date|after:today',
         ]);
 
         $user = auth()->user();
+        $abilities = $request->abilities ?? ['read'];
         $expiresAt = $request->expires_at ? new \DateTime($request->expires_at) : null;
 
         // Create the token using Sanctum
-        $tokenResult = $user->createToken($request->name, ['*'], $expiresAt);
-        $plainTextToken = $tokenResult->plainTextToken;
+        $tokenResult = $user->createToken($request->name, $abilities, $expiresAt);
 
-        // Return with the token (only shown once)
-        return redirect()->back()->with([
-            'success' => 'API token created successfully',
-            'token' => $plainTextToken,
+        // Return JSON response with the token (only shown once)
+        return response()->json([
+            'token' => $tokenResult->plainTextToken,
+            'id' => $tokenResult->accessToken->id,
+            'name' => $request->name,
+            'abilities' => $abilities,
+            'created_at' => $tokenResult->accessToken->created_at->toISOString(),
+            'expires_at' => $expiresAt?->format('c'),
         ]);
     })->name('settings.tokens.store');
 
@@ -2831,6 +2868,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             'database' => formatDatabaseForView($database),
         ]);
     })->name('databases.metrics');
+
+    // API endpoint for real-time database metrics (JSON)
+    Route::get('/api/databases/{uuid}/metrics', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMetrics'])
+        ->name('databases.metrics.api');
 
     Route::get('/databases/{uuid}/settings', function (string $uuid) {
         $database = findDatabaseByUuid($uuid);
@@ -3822,8 +3863,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('projects.variables');
 
     // Settings additional routes
+    // Redirect legacy api-tokens route to new tokens route
     Route::get('/settings/api-tokens', function () {
-        return \Inertia\Inertia::render('Settings/APITokens');
+        return redirect()->route('settings.tokens');
     })->name('settings.api-tokens');
 
     Route::get('/settings/audit-log', function () {

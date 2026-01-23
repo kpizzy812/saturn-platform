@@ -2,41 +2,23 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, Badge, useToast } from '@/components/ui';
 import { router } from '@inertiajs/react';
-import { Key, Copy, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
+import { Key, Copy, Trash2, Plus } from 'lucide-react';
 
 interface ApiToken {
     id: number;
     name: string;
-    token: string;
-    lastUsed?: string;
-    createdAt: string;
+    abilities?: string[];
+    last_used_at?: string;
+    created_at: string;
+    expires_at?: string;
 }
 
-const mockTokens: ApiToken[] = [
-    {
-        id: 1,
-        name: 'Production Deploy',
-        token: 'sat_prod_1a2b3c4d5e6f7g8h9i0j',
-        lastUsed: '2024-03-28',
-        createdAt: '2024-01-15',
-    },
-    {
-        id: 2,
-        name: 'CI/CD Pipeline',
-        token: 'sat_cicd_9i8h7g6f5e4d3c2b1a0z',
-        lastUsed: '2024-03-27',
-        createdAt: '2024-02-10',
-    },
-    {
-        id: 3,
-        name: 'Development Testing',
-        token: 'sat_dev_x1y2z3a4b5c6d7e8f9g0',
-        createdAt: '2024-03-01',
-    },
-];
+interface Props {
+    tokens: ApiToken[];
+}
 
-export default function TokensSettings() {
-    const [tokens, setTokens] = React.useState<ApiToken[]>(mockTokens);
+export default function TokensSettings({ tokens: initialTokens }: Props) {
+    const [tokens, setTokens] = React.useState<ApiToken[]>(initialTokens);
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [showRevokeModal, setShowRevokeModal] = React.useState(false);
     const [showNewTokenModal, setShowNewTokenModal] = React.useState(false);
@@ -45,46 +27,58 @@ export default function TokensSettings() {
     const [newlyCreatedToken, setNewlyCreatedToken] = React.useState('');
     const [isCreating, setIsCreating] = React.useState(false);
     const [isRevoking, setIsRevoking] = React.useState(false);
-    const [visibleTokens, setVisibleTokens] = React.useState<Set<number>>(new Set());
     const { addToast } = useToast();
 
-    const handleCreateToken = (e: React.FormEvent) => {
+    const handleCreateToken = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsCreating(true);
 
-        router.post('/settings/tokens', { name: newTokenName }, {
-            onSuccess: (response) => {
-                // The backend should return the newly created token in the response
-                const generatedToken = (response as any)?.token || `sat_${newTokenName.toLowerCase().replace(/\s+/g, '_')}_${Math.random().toString(36).substring(2, 15)}`;
-                const newToken: ApiToken = {
-                    id: tokens.length + 1,
-                    name: newTokenName,
-                    token: generatedToken,
-                    createdAt: new Date().toISOString().split('T')[0],
-                };
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-                setTokens([...tokens, newToken]);
-                setNewlyCreatedToken(generatedToken);
-                setNewTokenName('');
-                setShowCreateModal(false);
-                setShowNewTokenModal(true);
-                addToast({
-                    title: 'Token created',
-                    description: 'Your API token has been created successfully.',
-                });
-            },
-            onError: (errors) => {
-                addToast({
-                    title: 'Failed to create token',
-                    description: 'An error occurred while creating the API token.',
-                    variant: 'danger',
-                });
-                console.error(errors);
-            },
-            onFinish: () => {
-                setIsCreating(false);
+            const response = await fetch('/settings/tokens', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ name: newTokenName }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to create token');
             }
-        });
+
+            const data = await response.json();
+
+            const newToken: ApiToken = {
+                id: data.id,
+                name: data.name,
+                abilities: data.abilities,
+                created_at: data.created_at,
+                expires_at: data.expires_at,
+            };
+
+            setTokens([...tokens, newToken]);
+            setNewlyCreatedToken(data.token);
+            setNewTokenName('');
+            setShowCreateModal(false);
+            setShowNewTokenModal(true);
+            addToast({
+                title: 'Token created',
+                description: 'Your API token has been created successfully.',
+            });
+        } catch (error) {
+            addToast({
+                title: 'Failed to create token',
+                description: error instanceof Error ? error.message : 'An error occurred while creating the API token.',
+                variant: 'danger',
+            });
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     const handleRevokeToken = () => {
@@ -124,26 +118,6 @@ export default function TokensSettings() {
         });
     };
 
-    const toggleTokenVisibility = (tokenId: number) => {
-        setVisibleTokens((prev) => {
-            const newSet = new Set(prev);
-            if (newSet.has(tokenId)) {
-                newSet.delete(tokenId);
-            } else {
-                newSet.add(tokenId);
-            }
-            return newSet;
-        });
-    };
-
-    const maskToken = (token: string) => {
-        const parts = token.split('_');
-        if (parts.length >= 3) {
-            return `${parts[0]}_${parts[1]}_${'•'.repeat(parts[2].length)}`;
-        }
-        return '•'.repeat(token.length);
-    };
-
     return (
         <SettingsLayout activeSection="tokens">
             <div className="space-y-6">
@@ -180,69 +154,57 @@ export default function TokensSettings() {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {tokens.map((token) => {
-                                    const isVisible = visibleTokens.has(token.id);
-                                    return (
-                                        <div
-                                            key={token.id}
-                                            className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                                        <Key className="h-5 w-5 text-primary" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="font-medium text-foreground">{token.name}</p>
-                                                        <div className="mt-1 flex items-center gap-2">
-                                                            <code className="text-xs text-foreground-muted">
-                                                                {isVisible ? token.token : maskToken(token.token)}
-                                                            </code>
-                                                            <button
-                                                                onClick={() => toggleTokenVisibility(token.id)}
-                                                                className="text-foreground-muted transition-colors hover:text-foreground"
-                                                            >
-                                                                {isVisible ? (
-                                                                    <EyeOff className="h-3 w-3" />
-                                                                ) : (
-                                                                    <Eye className="h-3 w-3" />
-                                                                )}
-                                                            </button>
+                                {tokens.map((token) => (
+                                    <div
+                                        key={token.id}
+                                        className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
+                                    >
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                                    <Key className="h-5 w-5 text-primary" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-foreground">{token.name}</p>
+                                                    {token.abilities && token.abilities.length > 0 && (
+                                                        <div className="mt-1 flex flex-wrap gap-1">
+                                                            {token.abilities.map((ability) => (
+                                                                <Badge key={ability} variant="default" className="text-xs">
+                                                                    {ability}
+                                                                </Badge>
+                                                            ))}
                                                         </div>
-                                                        {token.lastUsed ? (
-                                                            <p className="mt-1 text-xs text-foreground-subtle">
-                                                                Last used {new Date(token.lastUsed).toLocaleDateString()}
-                                                            </p>
+                                                    )}
+                                                    <div className="mt-1 flex items-center gap-2 text-xs text-foreground-subtle">
+                                                        <span>Created {new Date(token.created_at).toLocaleDateString()}</span>
+                                                        {token.last_used_at ? (
+                                                            <span>• Last used {new Date(token.last_used_at).toLocaleDateString()}</span>
                                                         ) : (
-                                                            <Badge variant="warning" className="mt-1">
+                                                            <Badge variant="warning" className="ml-1">
                                                                 Never used
                                                             </Badge>
+                                                        )}
+                                                        {token.expires_at && (
+                                                            <span>• Expires {new Date(token.expires_at).toLocaleDateString()}</span>
                                                         )}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleCopyToken(token.token)}
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setTokenToRevoke(token);
-                                                        setShowRevokeModal(true);
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-danger" />
-                                                </Button>
-                                            </div>
                                         </div>
-                                    );
-                                })}
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setTokenToRevoke(token);
+                                                    setShowRevokeModal(true);
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-danger" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </CardContent>

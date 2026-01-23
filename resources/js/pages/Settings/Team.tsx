@@ -19,19 +19,14 @@ interface Invitation {
     sentAt: string;
 }
 
-const mockMembers: TeamMember[] = [
-    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'owner', joinedAt: '2024-01-15' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'admin', joinedAt: '2024-02-20' },
-    { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'member', joinedAt: '2024-03-10' },
-];
+interface Props {
+    members: TeamMember[];
+    invitations: Invitation[];
+}
 
-const mockInvitations: Invitation[] = [
-    { id: 1, email: 'alice@example.com', role: 'member', sentAt: '2024-03-25' },
-];
-
-export default function TeamSettings() {
-    const [members, setMembers] = React.useState<TeamMember[]>(mockMembers);
-    const [invitations, setInvitations] = React.useState<Invitation[]>(mockInvitations);
+export default function TeamSettings({ members: initialMembers, invitations: initialInvitations }: Props) {
+    const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
+    const [invitations, setInvitations] = React.useState<Invitation[]>(initialInvitations);
     const [showInviteModal, setShowInviteModal] = React.useState(false);
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [memberToRemove, setMemberToRemove] = React.useState<TeamMember | null>(null);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, Users, Settings, FileText, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue, type MysqlMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -23,6 +24,15 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
+    // Fetch real-time metrics from backend
+    const { metrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const mysqlMetrics = metrics as MysqlMetrics | null;
+
     // Connection details from backend
     const connectionDetails = {
         host: database.connection?.internal_host || '',
@@ -34,10 +44,25 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     };
 
     const stats = [
-        { label: 'Active Connections', value: '18 / 150' },
-        { label: 'Database Size', value: '1.8 GB' },
-        { label: 'Queries/sec', value: '1,240' },
-        { label: 'Slow Queries', value: '3' },
+        {
+            label: 'Active Connections',
+            value: isLoading ? '...' : formatMetricValue(
+                mysqlMetrics?.activeConnections,
+                ` / ${mysqlMetrics?.maxConnections || 150}`
+            ),
+        },
+        {
+            label: 'Database Size',
+            value: isLoading ? '...' : (mysqlMetrics?.databaseSize || 'N/A'),
+        },
+        {
+            label: 'Queries/sec',
+            value: isLoading ? '...' : formatMetricValue(mysqlMetrics?.queriesPerSec),
+        },
+        {
+            label: 'Slow Queries',
+            value: isLoading ? '...' : formatMetricValue(mysqlMetrics?.slowQueries),
+        },
     ];
 
     const copyToClipboard = (text: string, field: string) => {

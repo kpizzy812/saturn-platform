@@ -22,6 +22,19 @@ export {
 } from './useDatabases';
 
 export {
+    useDatabaseMetrics,
+    formatMetricValue,
+} from './useDatabaseMetrics';
+export type {
+    PostgresMetrics,
+    MysqlMetrics,
+    RedisMetrics,
+    MongoMetrics,
+    ClickhouseMetrics,
+    DatabaseMetrics,
+} from './useDatabaseMetrics';
+
+export {
     useServices,
     useService,
     useServiceEnvs,

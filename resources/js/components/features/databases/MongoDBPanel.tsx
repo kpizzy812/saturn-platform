@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, FileText, Settings, RefreshCw, Eye, EyeOff, Copy, Layers, TrendingUp } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue, type MongoMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -24,6 +25,15 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
+    // Fetch real-time metrics from backend
+    const { metrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const mongoMetrics = metrics as MongoMetrics | null;
+
     // Connection details from backend
     const connectionDetails = {
         host: database.connection?.internal_host || '',
@@ -35,10 +45,10 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     };
 
     const stats = [
-        { label: 'Collections', value: '12' },
-        { label: 'Documents', value: '45,234' },
-        { label: 'Database Size', value: '3.2 GB' },
-        { label: 'Index Size', value: '512 MB' },
+        { label: 'Collections', value: isLoading ? '...' : formatMetricValue(mongoMetrics?.collections) },
+        { label: 'Documents', value: isLoading ? '...' : formatMetricValue(mongoMetrics?.documents) },
+        { label: 'Database Size', value: isLoading ? '...' : (mongoMetrics?.databaseSize || 'N/A') },
+        { label: 'Index Size', value: isLoading ? '...' : (mongoMetrics?.indexSize || 'N/A') },
     ];
 
     const copyToClipboard = (text: string, field: string) => {

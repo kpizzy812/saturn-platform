@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, FileText, Settings, RefreshCw, Eye, EyeOff, Copy, Activity, GitMerge } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue, type ClickhouseMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -23,6 +24,15 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
+    // Fetch real-time metrics from backend
+    const { metrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const clickhouseMetrics = metrics as ClickhouseMetrics | null;
+
     // Connection details from backend
     const connectionDetails = {
         host: database.connection?.internal_host || '',
@@ -35,10 +45,10 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     };
 
     const stats = [
-        { label: 'Total Tables', value: '24' },
-        { label: 'Total Rows', value: '1.2B' },
-        { label: 'Database Size', value: '45 GB' },
-        { label: 'Queries/sec', value: '2,847' },
+        { label: 'Total Tables', value: isLoading ? '...' : formatMetricValue(clickhouseMetrics?.totalTables) },
+        { label: 'Total Rows', value: isLoading ? '...' : formatMetricValue(clickhouseMetrics?.totalRows) },
+        { label: 'Database Size', value: isLoading ? '...' : (clickhouseMetrics?.databaseSize || 'N/A') },
+        { label: 'Queries/sec', value: isLoading ? '...' : formatMetricValue(clickhouseMetrics?.queriesPerSec) },
     ];
 
     const copyToClipboard = (text: string, field: string) => {

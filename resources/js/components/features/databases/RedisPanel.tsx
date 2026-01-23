@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, FileText, Settings, RefreshCw, Eye, EyeOff, Copy, Trash2, Key, HardDrive, Zap } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue, type RedisMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -23,6 +24,15 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
+    // Fetch real-time metrics from backend
+    const { metrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const redisMetrics = metrics as RedisMetrics | null;
+
     // Connection details from backend
     const getRedisPassword = () => {
         if (database.database_type === 'redis') return database.redis_password;
@@ -40,10 +50,10 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     };
 
     const stats = [
-        { label: 'Total Keys', value: '12,453', icon: Key, color: 'text-info', bgColor: 'bg-info/10' },
-        { label: 'Memory Used', value: '245 MB', icon: HardDrive, color: 'text-warning', bgColor: 'bg-warning/10' },
-        { label: 'Ops/sec', value: '3,482', icon: Zap, color: 'text-success', bgColor: 'bg-success/10' },
-        { label: 'Hit Rate', value: '94.2%', icon: Database, color: 'text-primary', bgColor: 'bg-primary/10' },
+        { label: 'Total Keys', value: isLoading ? '...' : formatMetricValue(redisMetrics?.totalKeys), icon: Key, color: 'text-info', bgColor: 'bg-info/10' },
+        { label: 'Memory Used', value: isLoading ? '...' : (redisMetrics?.memoryUsed || 'N/A'), icon: HardDrive, color: 'text-warning', bgColor: 'bg-warning/10' },
+        { label: 'Ops/sec', value: isLoading ? '...' : formatMetricValue(redisMetrics?.opsPerSec), icon: Zap, color: 'text-success', bgColor: 'bg-success/10' },
+        { label: 'Hit Rate', value: isLoading ? '...' : (redisMetrics?.hitRate || 'N/A'), icon: Database, color: 'text-primary', bgColor: 'bg-primary/10' },
     ];
 
     const copyToClipboard = (text: string, field: string) => {

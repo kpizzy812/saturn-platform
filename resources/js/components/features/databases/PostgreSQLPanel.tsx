@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Database, Users, Settings, FileText, Play, Trash2, RefreshCw, Eye, EyeOff, Copy } from 'lucide-react';
+import { Database, Users, Settings, FileText, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue, type PostgresMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -24,6 +25,15 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
+    // Fetch real-time metrics from backend
+    const { metrics, isLoading, isAvailable } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const postgresMetrics = metrics as PostgresMetrics | null;
+
     // Connection details from backend
     const connectionDetails = {
         host: database.connection?.internal_host || '',
@@ -35,10 +45,25 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     };
 
     const stats = [
-        { label: 'Active Connections', value: '12 / 100' },
-        { label: 'Database Size', value: '2.4 GB' },
-        { label: 'Queries/sec', value: '847' },
-        { label: 'Cache Hit Ratio', value: '98.5%' },
+        {
+            label: 'Active Connections',
+            value: isLoading ? '...' : formatMetricValue(
+                postgresMetrics?.activeConnections,
+                ` / ${postgresMetrics?.maxConnections || 100}`
+            ),
+        },
+        {
+            label: 'Database Size',
+            value: isLoading ? '...' : (postgresMetrics?.databaseSize || 'N/A'),
+        },
+        {
+            label: 'Queries/sec',
+            value: isLoading ? '...' : formatMetricValue(postgresMetrics?.queriesPerSec),
+        },
+        {
+            label: 'Cache Hit Ratio',
+            value: isLoading ? '...' : (postgresMetrics?.cacheHitRatio || 'N/A'),
+        },
     ];
 
     const copyToClipboard = (text: string, field: string) => {

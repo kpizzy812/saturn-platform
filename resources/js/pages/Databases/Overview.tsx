@@ -17,6 +17,7 @@ import {
     Zap,
     AlertCircle
 } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 
 interface Props {
@@ -38,21 +39,36 @@ export default function DatabaseOverview({ database }: Props) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const [isRestarting, setIsRestarting] = useState(false);
 
-    // Mock metrics - in real app, these would come from the backend
+    // Fetch real-time metrics from backend
+    const { metrics: dbMetrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    // Format metrics for display
     const metrics = {
-        storageUsed: { value: '2.4 GB', total: '10 GB', percentage: 24 },
-        activeConnections: { value: 24, max: 100, percentage: 24 },
-        queriesPerSec: { value: 1240, change: '+12%' },
-        avgResponseTime: { value: '45ms', change: '-8%' },
-        uptime: '14 days, 3 hours',
-        lastBackup: '2 hours ago',
+        storageUsed: {
+            value: isLoading ? '...' : ((dbMetrics as any)?.databaseSize || 'N/A'),
+            total: 'N/A',
+            percentage: 0,
+        },
+        activeConnections: {
+            value: isLoading ? 0 : ((dbMetrics as any)?.activeConnections ?? 0),
+            max: (dbMetrics as any)?.maxConnections || 100,
+            percentage: isLoading ? 0 : Math.round(((dbMetrics as any)?.activeConnections || 0) / ((dbMetrics as any)?.maxConnections || 100) * 100),
+        },
+        queriesPerSec: {
+            value: isLoading ? 0 : ((dbMetrics as any)?.queriesPerSec ?? 0),
+            change: 'N/A',
+        },
+        avgResponseTime: { value: 'N/A', change: 'N/A' },
+        uptime: 'N/A',
+        lastBackup: 'N/A',
     };
 
-    const recentQueries = [
-        { id: 1, query: 'SELECT * FROM users WHERE created_at > NOW() - INTERVAL \'7 days\'', duration: '42ms', time: '2 min ago' },
-        { id: 2, query: 'UPDATE orders SET status = \'completed\' WHERE id = 12345', duration: '18ms', time: '5 min ago' },
-        { id: 3, query: 'INSERT INTO logs (level, message) VALUES (\'info\', \'User login\')', duration: '12ms', time: '8 min ago' },
-    ];
+    // Recent queries are not available from metrics - would need separate API
+    const recentQueries: { id: number; query: string; duration: string; time: string }[] = [];
 
     const handleRestart = () => {
         if (confirm(`Are you sure you want to restart ${database.name}? This will cause brief downtime.`)) {
