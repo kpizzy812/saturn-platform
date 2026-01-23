@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { Plus, RefreshCw, Trash2, ExternalLink, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Bitbucket } from '@/components/icons/Bitbucket';
 
@@ -21,12 +21,20 @@ interface Props {
 }
 
 export default function BitbucketIndex({ connections = [] }: Props) {
+    const confirm = useConfirm();
+
     const handleSync = (uuid: string) => {
         router.post(`/sources/bitbucket/${uuid}/sync`);
     };
 
-    const handleDelete = (uuid: string) => {
-        if (confirm('Are you sure you want to disconnect this Bitbucket workspace?')) {
+    const handleDelete = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Disconnect Bitbucket Workspace',
+            description: 'Are you sure you want to disconnect this Bitbucket workspace?',
+            confirmText: 'Disconnect',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/sources/bitbucket/${uuid}`);
         }
     };

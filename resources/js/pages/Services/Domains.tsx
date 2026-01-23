@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     Plus, Trash2, Star, CheckCircle, XCircle, AlertCircle,
     Copy, ExternalLink, Shield, Globe
@@ -48,6 +48,7 @@ const mockDomains: Domain[] = [
 ];
 
 export function DomainsTab({ service }: Props) {
+    const confirm = useConfirm();
     const [domains, setDomains] = useState<Domain[]>(mockDomains);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newDomain, setNewDomain] = useState('');
@@ -80,8 +81,14 @@ export function DomainsTab({ service }: Props) {
         );
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this domain?')) {
+    const handleDelete = async (id: number) => {
+        const confirmed = await confirm({
+            title: 'Delete Domain',
+            description: 'Are you sure you want to delete this domain? The domain will no longer point to this service.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setDomains((prev) => prev.filter((d) => d.id !== id));
         }
     };

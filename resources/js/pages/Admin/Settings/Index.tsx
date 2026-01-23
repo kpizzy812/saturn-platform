@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
+import { useConfirm } from '@/components/ui';
 import {
     Settings,
     Globe,
@@ -68,6 +69,7 @@ export default function AdminSettingsIndex({
     settings = defaultSettings,
     featureFlags = defaultFeatureFlags,
 }: Props) {
+    const confirm = useConfirm();
     const [formData, setFormData] = React.useState(settings);
     const [flags, setFlags] = React.useState(featureFlags);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -83,8 +85,14 @@ export default function AdminSettingsIndex({
         );
     };
 
-    const handleReset = () => {
-        if (confirm('Reset all settings to defaults?')) {
+    const handleReset = async () => {
+        const confirmed = await confirm({
+            title: 'Reset Settings',
+            description: 'Reset all settings to defaults?',
+            confirmText: 'Reset',
+            variant: 'warning',
+        });
+        if (confirmed) {
             setFormData(defaultSettings);
             setFlags(defaultFeatureFlags);
         }

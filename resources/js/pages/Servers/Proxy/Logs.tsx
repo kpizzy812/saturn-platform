@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { Terminal, Download, Trash2, Play, Pause, Search } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export default function ProxyLogs({ server, logs: initialLogs }: Props) {
+    const confirm = useConfirm();
     const [logs, setLogs] = useState<LogEntry[]>(initialLogs);
     const [isStreaming, setIsStreaming] = useState(true);
     const [selectedLevel, setSelectedLevel] = useState<string>('all');
@@ -73,8 +74,14 @@ export default function ProxyLogs({ server, logs: initialLogs }: Props) {
         URL.revokeObjectURL(url);
     };
 
-    const handleClearLogs = () => {
-        if (confirm('Are you sure you want to clear all logs? This cannot be undone.')) {
+    const handleClearLogs = async () => {
+        const confirmed = await confirm({
+            title: 'Clear Logs',
+            description: 'Are you sure you want to clear all logs? This cannot be undone.',
+            confirmText: 'Clear',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setLogs([]);
         }
     };

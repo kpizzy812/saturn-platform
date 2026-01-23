@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { ArrowLeft, Plus, FileText, CheckCircle, XCircle, Trash2, ExternalLink } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
@@ -20,8 +20,16 @@ interface LogDrain {
 }
 
 export default function ServerLogDrainsIndex({ server, logDrains = [] }: Props) {
-    const handleDelete = (logDrain: LogDrain) => {
-        if (confirm(`Are you sure you want to delete log drain "${logDrain.name}"?`)) {
+    const confirm = useConfirm();
+
+    const handleDelete = async (logDrain: LogDrain) => {
+        const confirmed = await confirm({
+            title: 'Delete Log Drain',
+            description: `Are you sure you want to delete log drain "${logDrain.name}"?`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/servers/${server.uuid}/log-drains/${logDrain.uuid}`);
         }
     };

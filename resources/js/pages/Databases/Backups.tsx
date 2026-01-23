@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Checkbox } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Checkbox, useConfirm } from '@/components/ui';
 import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 
@@ -41,14 +41,21 @@ export default function DatabaseBackups({ database, backups }: Props) {
     }
     const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
     const [backupFrequency, setBackupFrequency] = useState('daily');
+    const confirm = useConfirm();
 
     const handleCreateBackup = () => {
         // In a real app, this would trigger a backup
         router.post(`/databases/${database.uuid}/backups`);
     };
 
-    const handleRestore = (backupId: number) => {
-        if (confirm('Are you sure you want to restore this backup? This will overwrite the current database.')) {
+    const handleRestore = async (backupId: number) => {
+        const confirmed = await confirm({
+            title: 'Restore Backup',
+            description: 'Are you sure you want to restore this backup? This will overwrite the current database.',
+            confirmText: 'Restore',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/databases/${database.uuid}/backups/${backupId}/restore`);
         }
     };
@@ -58,8 +65,14 @@ export default function DatabaseBackups({ database, backups }: Props) {
         window.location.href = `/databases/${database.uuid}/backups/${backupId}/download`;
     };
 
-    const handleDelete = (backupId: number) => {
-        if (confirm('Are you sure you want to delete this backup?')) {
+    const handleDelete = async (backupId: number) => {
+        const confirmed = await confirm({
+            title: 'Delete Backup',
+            description: 'Are you sure you want to delete this backup?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/databases/${database.uuid}/backups/${backupId}`);
         }
     };

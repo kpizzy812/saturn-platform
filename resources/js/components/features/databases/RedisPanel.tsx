@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, FileText, Settings, RefreshCw, Eye, EyeOff, Copy, Trash2, Key, HardDrive, Zap } from 'lucide-react';
 import { useDatabaseMetrics, formatMetricValue, type RedisMetrics } from '@/hooks';
@@ -185,6 +185,7 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 
 function KeysTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
+    const confirm = useConfirm();
     const [keys] = useState([
         { name: 'user:1234:session', type: 'string', ttl: '1h 23m', size: '2.4 KB' },
         { name: 'cache:posts:trending', type: 'list', ttl: '15m', size: '145 KB' },
@@ -198,8 +199,14 @@ function KeysTab({ database }: { database: StandaloneDatabase }) {
         addToast('info', `Viewing key: ${name}`);
     };
 
-    const handleDeleteKey = (name: string) => {
-        if (confirm(`Are you sure you want to delete key "${name}"?`)) {
+    const handleDeleteKey = async (name: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Key',
+            description: `Are you sure you want to delete key "${name}"?`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             addToast('info', `Deleting key: ${name}`);
         }
     };
@@ -263,15 +270,28 @@ function KeysTab({ database }: { database: StandaloneDatabase }) {
 
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
+    const confirm = useConfirm();
 
-    const handleFlushDB = () => {
-        if (confirm('Are you sure you want to flush the current database? This will delete all keys in DB 0.')) {
+    const handleFlushDB = async () => {
+        const confirmed = await confirm({
+            title: 'Flush Current Database',
+            description: 'Are you sure you want to flush the current database? This will delete all keys in DB 0.',
+            confirmText: 'Flush DB',
+            variant: 'danger',
+        });
+        if (confirmed) {
             addToast('warning', 'Flushing current database...');
         }
     };
 
-    const handleFlushAll = () => {
-        if (confirm('Are you sure you want to flush ALL databases? This will delete ALL keys in ALL databases.')) {
+    const handleFlushAll = async () => {
+        const confirmed = await confirm({
+            title: 'Flush All Databases',
+            description: 'Are you sure you want to flush ALL databases? This will delete ALL keys in ALL databases.',
+            confirmText: 'Flush All',
+            variant: 'danger',
+        });
+        if (confirmed) {
             addToast('warning', 'Flushing all databases...');
         }
     };

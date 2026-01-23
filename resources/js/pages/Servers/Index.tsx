@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, Server, Cpu, HardDrive, Activity, MoreVertical, CheckCircle, XCircle, Settings, Trash2, RefreshCw, Terminal } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
@@ -95,7 +95,21 @@ export default function ServersIndex({ servers = [] }: Props) {
 }
 
 function ServerCard({ server }: { server: ServerType }) {
+    const confirm = useConfirm();
     const isOnline = server.is_reachable && server.is_usable;
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        const confirmed = await confirm({
+            title: 'Delete Server',
+            description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.delete(`/servers/${server.uuid}`);
+        }
+    };
 
     return (
         <Link href={`/servers/${server.uuid}`}>
@@ -186,12 +200,7 @@ function ServerCard({ server }: { server: ServerType }) {
                                             <DropdownDivider />
                                             <DropdownItem
                                                 icon={<Trash2 className="h-4 w-4" />}
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    if (confirm(`Are you sure you want to delete "${server.name}"? This action cannot be undone.`)) {
-                                                        router.delete(`/servers/${server.uuid}`);
-                                                    }
-                                                }}
+                                                onClick={handleDelete}
                                                 danger
                                             >
                                                 Delete Server

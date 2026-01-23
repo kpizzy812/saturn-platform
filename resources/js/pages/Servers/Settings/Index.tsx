@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, useConfirm } from '@/components/ui';
 import { ArrowLeft, Server, Settings as SettingsIcon, Network, HardDrive, Trash2 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
@@ -9,6 +9,8 @@ interface Props {
 }
 
 export default function ServerSettingsIndex({ server }: Props) {
+    const confirm = useConfirm();
+
     const settingsSections = [
         {
             title: 'General Settings',
@@ -99,8 +101,14 @@ export default function ServerSettingsIndex({ server }: Props) {
                         </div>
                         <Button
                             variant="danger"
-                            onClick={() => {
-                                if (confirm(`Are you sure you want to delete "${server.name}"? This action cannot be undone.`)) {
+                            onClick={async () => {
+                                const confirmed = await confirm({
+                                    title: 'Delete Server',
+                                    description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
+                                    confirmText: 'Delete',
+                                    variant: 'danger',
+                                });
+                                if (confirmed) {
                                     router.delete(`/servers/${server.uuid}`);
                                 }
                             }}

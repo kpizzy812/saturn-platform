@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { TabsRoot, TabsList, TabsTrigger, TabsContent, TabsPanels } from '@/components/ui/Tabs';
+import { useConfirm } from '@/components/ui';
 import {
     User,
     Mail,
@@ -137,20 +138,41 @@ export default function AdminUserShow({
     activityLogs = defaultActivityLogs,
     billing,
 }: Props) {
-    const handleImpersonate = () => {
-        if (confirm(`Impersonate ${user.name}? You will be logged in as this user.`)) {
+    const confirm = useConfirm();
+
+    const handleImpersonate = async () => {
+        const confirmed = await confirm({
+            title: 'Impersonate User',
+            description: `Impersonate ${user.name}? You will be logged in as this user.`,
+            confirmText: 'Impersonate',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/admin/users/${user.id}/impersonate`);
         }
     };
 
-    const handleToggleSuspension = () => {
-        if (confirm(`${user.status === 'suspended' ? 'Activate' : 'Suspend'} ${user.name}?`)) {
+    const handleToggleSuspension = async () => {
+        const isSuspended = user.status === 'suspended';
+        const confirmed = await confirm({
+            title: isSuspended ? 'Activate User' : 'Suspend User',
+            description: `${isSuspended ? 'Activate' : 'Suspend'} ${user.name}?`,
+            confirmText: isSuspended ? 'Activate' : 'Suspend',
+            variant: isSuspended ? 'warning' : 'danger',
+        });
+        if (confirmed) {
             router.post(`/admin/users/${user.id}/toggle-suspension`);
         }
     };
 
-    const handleDelete = () => {
-        if (confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete User',
+            description: `Are you sure you want to delete ${user.name}? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/admin/users/${user.id}`);
         }
     };

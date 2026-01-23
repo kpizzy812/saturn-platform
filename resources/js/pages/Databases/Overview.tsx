@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, useToast } from '@/components/ui';
+import { Card, CardContent, Button, Badge, useToast, useConfirm } from '@/components/ui';
 import {
     ArrowLeft,
     Database,
@@ -39,6 +39,7 @@ export default function DatabaseOverview({ database }: Props) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const [isRestarting, setIsRestarting] = useState(false);
     const { addToast } = useToast();
+    const confirm = useConfirm();
 
     // Fetch real-time metrics from backend
     const { metrics: dbMetrics, isLoading } = useDatabaseMetrics({
@@ -71,8 +72,14 @@ export default function DatabaseOverview({ database }: Props) {
     // Recent queries are not available from metrics - would need separate API
     const recentQueries: { id: number; query: string; duration: string; time: string }[] = [];
 
-    const handleRestart = () => {
-        if (confirm(`Are you sure you want to restart ${database.name}? This will cause brief downtime.`)) {
+    const handleRestart = async () => {
+        const confirmed = await confirm({
+            title: 'Restart Database',
+            description: `Are you sure you want to restart ${database.name}? This will cause brief downtime.`,
+            confirmText: 'Restart',
+            variant: 'warning',
+        });
+        if (confirmed) {
             setIsRestarting(true);
             router.post(`/databases/${database.uuid}/restart`, {}, {
                 preserveScroll: true,

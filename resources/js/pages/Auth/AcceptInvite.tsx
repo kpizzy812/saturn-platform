@@ -1,6 +1,6 @@
 import { useForm, Link } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Button, Badge } from '@/components/ui';
+import { Button, Badge, useConfirm } from '@/components/ui';
 import { Users, UserCheck, Shield, Mail, X } from 'lucide-react';
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export default function AcceptInvite({ invitation, isAuthenticated }: Props) {
+    const confirm = useConfirm();
     const { post, processing } = useForm();
 
     const handleAccept = () => {
@@ -27,8 +28,14 @@ export default function AcceptInvite({ invitation, isAuthenticated }: Props) {
         });
     };
 
-    const handleDecline = () => {
-        if (confirm('Are you sure you want to decline this invitation?')) {
+    const handleDecline = async () => {
+        const confirmed = await confirm({
+            title: 'Decline Invitation',
+            description: 'Are you sure you want to decline this invitation?',
+            confirmText: 'Decline',
+            variant: 'danger',
+        });
+        if (confirmed) {
             post(`/invitations/${invitation.id}/decline`, {
                 onSuccess: () => {
                     window.location.href = isAuthenticated ? '/dashboard' : '/login';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Checkbox, Input, Select, Modal, ModalFooter } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Checkbox, Input, Select, Modal, ModalFooter, useConfirm } from '@/components/ui';
 import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, CheckCircle2, XCircle, AlertCircle, Calendar, Settings } from 'lucide-react';
 
 interface Props {
@@ -57,6 +57,7 @@ const mockBackups: Backup[] = [
 ];
 
 export default function StorageBackups({ volumeId = 'vol_123', volumeName = 'app-data' }: Props) {
+    const confirm = useConfirm();
     const [backups] = useState<Backup[]>(mockBackups);
     const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
     const [backupFrequency, setBackupFrequency] = useState('daily');
@@ -85,8 +86,14 @@ export default function StorageBackups({ volumeId = 'vol_123', volumeName = 'app
         window.location.href = `/storage/${volumeId}/backups/${backupId}/download`;
     };
 
-    const handleDelete = (backupId: number, filename: string) => {
-        if (confirm(`Are you sure you want to delete ${filename}?`)) {
+    const handleDelete = async (backupId: number, filename: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Backup',
+            description: `Are you sure you want to delete ${filename}?`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/storage/${volumeId}/backups/${backupId}`);
         }
     };

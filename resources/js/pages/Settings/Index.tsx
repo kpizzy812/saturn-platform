@@ -2,7 +2,7 @@ import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, BarChart3, FileText, Shield, Bell } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Shield, Bell } from 'lucide-react';
 
 interface SettingSection {
     id: string;
@@ -18,7 +18,6 @@ const settingSections: SettingSection[] = [
     { id: 'integrations', label: 'Integrations', icon: Plug, href: '/settings/integrations' },
     { id: 'notifications', label: 'Notifications', icon: Bell, href: '/settings/notifications' },
     { id: 'workspace', label: 'Workspace', icon: Building2, href: '/settings/workspace' },
-    { id: 'usage', label: 'Usage', icon: BarChart3, href: '/settings/usage' },
     { id: 'audit-log', label: 'Audit Log', icon: FileText, href: '/settings/audit-log' },
     { id: 'security', label: 'Security', icon: Shield, href: '/settings/security' },
 ];

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, StatusBadge } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, StatusBadge, useConfirm } from '@/components/ui';
 import {
     Tag as TagIcon,
     Edit2,
@@ -30,6 +30,7 @@ interface Props {
 }
 
 export default function TagShow({ tag: initialTag, applications = [], services = [], databases = [] }: Props) {
+    const confirm = useConfirm();
     const [tag, setTag] = useState(initialTag);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(tag.name);
@@ -57,13 +58,19 @@ export default function TagShow({ tag: initialTag, applications = [], services =
         setIsEditing(false);
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (totalResources > 0) {
             alert('Cannot delete tag with resources. Remove all resources from this tag first.');
             return;
         }
 
-        if (confirm('Are you sure you want to delete this tag? This action cannot be undone.')) {
+        const confirmed = await confirm({
+            title: 'Delete Tag',
+            description: 'Are you sure you want to delete this tag? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/tags/${tag.id}`, {
                 onSuccess: () => {
                     router.visit('/tags');

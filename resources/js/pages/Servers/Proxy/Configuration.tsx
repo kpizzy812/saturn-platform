@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Alert } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Alert, useConfirm } from '@/components/ui';
 import { Save, RotateCcw, FileCode, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
@@ -12,6 +12,7 @@ interface Props {
 }
 
 export default function ProxyConfiguration({ server, configuration, filePath }: Props) {
+    const confirm = useConfirm();
     const [config, setConfig] = useState(configuration);
     const [isDirty, setIsDirty] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -50,16 +51,28 @@ export default function ProxyConfiguration({ server, configuration, filePath }: 
         }
     };
 
-    const handleReset = () => {
-        if (confirm('Are you sure you want to reset to the original configuration? All changes will be lost.')) {
+    const handleReset = async () => {
+        const confirmed = await confirm({
+            title: 'Discard Changes',
+            description: 'Are you sure you want to reset to the original configuration? All changes will be lost.',
+            confirmText: 'Discard',
+            variant: 'warning',
+        });
+        if (confirmed) {
             setConfig(configuration);
             setIsDirty(false);
             setValidationError(null);
         }
     };
 
-    const handleResetToDefault = () => {
-        if (confirm('Are you sure you want to reset to the default configuration? This will overwrite all custom settings.')) {
+    const handleResetToDefault = async () => {
+        const confirmed = await confirm({
+            title: 'Reset to Default',
+            description: 'Are you sure you want to reset to the default configuration? This will overwrite all custom settings.',
+            confirmText: 'Reset',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.post(`/servers/${server.uuid}/proxy/configuration/reset`, {}, {
                 preserveScroll: true,
             });

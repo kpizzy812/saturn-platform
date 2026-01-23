@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { Card, CardContent, Badge } from '@/components/ui';
+import { Card, CardContent, Badge, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Database, MoreVertical, Settings, Trash2, Power, RotateCw } from 'lucide-react';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
@@ -141,6 +141,7 @@ const getStatusColor = (status: string): string => {
 };
 
 export function DatabaseCard({ database }: DatabaseCardProps) {
+    const confirm = useConfirm();
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
 
     return (
@@ -184,9 +185,15 @@ export function DatabaseCard({ database }: DatabaseCardProps) {
                                     Restart
                                 </DropdownItem>
                                 <DropdownDivider />
-                                <DropdownItem onClick={(e) => {
+                                <DropdownItem onClick={async (e) => {
                                     e.preventDefault();
-                                    if (confirm(`Are you sure you want to delete "${database.name}"? This action cannot be undone.`)) {
+                                    const confirmed = await confirm({
+                                        title: 'Delete Database',
+                                        description: `Are you sure you want to delete "${database.name}"? This action cannot be undone.`,
+                                        confirmText: 'Delete',
+                                        variant: 'danger',
+                                    });
+                                    if (confirmed) {
                                         router.delete(`/databases/${database.uuid}`);
                                     }
                                 }} danger>

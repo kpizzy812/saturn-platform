@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { Plus, Github, CheckCircle2, RefreshCw, Trash2, ExternalLink, ArrowLeft } from 'lucide-react';
 
 interface GitHubApp {
@@ -21,12 +21,20 @@ interface Props {
 }
 
 export default function GitHubIndex({ apps = [] }: Props) {
+    const confirm = useConfirm();
+
     const handleSync = (uuid: string) => {
         router.post(`/sources/github/${uuid}/sync`);
     };
 
-    const handleDelete = (uuid: string) => {
-        if (confirm('Are you sure you want to disconnect this GitHub App?')) {
+    const handleDelete = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Disconnect GitHub App',
+            description: 'Are you sure you want to disconnect this GitHub App?',
+            confirmText: 'Disconnect',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/sources/github/${uuid}`);
         }
     };

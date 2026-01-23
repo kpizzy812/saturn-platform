@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { Card, CardContent, Badge } from '@/components/ui';
+import { Card, CardContent, Badge, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     GitPullRequest,
@@ -51,18 +51,32 @@ const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger'
 };
 
 export function PreviewCard({ preview, applicationUuid }: PreviewCardProps) {
-    const handleRedeploy = (e: React.MouseEvent) => {
+    const confirm = useConfirm();
+
+    const handleRedeploy = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm(`Redeploy preview for PR #${preview.pull_request_number}?`)) {
+        const confirmed = await confirm({
+            title: 'Redeploy Preview',
+            description: `Redeploy preview for PR #${preview.pull_request_number}?`,
+            confirmText: 'Redeploy',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/api/v1/previews/${preview.uuid}/redeploy`);
         }
     };
 
-    const handleDelete = (e: React.MouseEvent) => {
+    const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (confirm(`Delete preview for PR #${preview.pull_request_number}? This action cannot be undone.`)) {
+        const confirmed = await confirm({
+            title: 'Delete Preview',
+            description: `Delete preview for PR #${preview.pull_request_number}? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/api/v1/previews/${preview.uuid}`);
         }
     };

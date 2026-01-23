@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Link, router } from '@inertiajs/react';
@@ -21,6 +21,7 @@ interface Props {
 }
 
 export default function ServiceShow({ service }: Props) {
+    const confirm = useConfirm();
     const [isDeploying, setIsDeploying] = useState(false);
     const [isRestarting, setIsRestarting] = useState(false);
     const [currentStatus, setCurrentStatus] = useState(service?.status || 'running');
@@ -74,8 +75,14 @@ export default function ServiceShow({ service }: Props) {
         });
     };
 
-    const handleDelete = () => {
-        if (confirm(`Are you sure you want to delete "${service.name}"? This action cannot be undone.`)) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Service',
+            description: `Are you sure you want to delete "${service.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/services/${service.uuid}`);
         }
     };

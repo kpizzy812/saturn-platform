@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input, Select, StatusBadge } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input, Select, StatusBadge, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     Plus,
@@ -144,6 +144,27 @@ interface ApplicationCardProps {
 }
 
 function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
+    const confirm = useConfirm();
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const confirmed = await confirm({
+            title: 'Delete Application',
+            description: `Are you sure you want to delete "${application.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.delete(`/applications/${application.uuid}`, {
+                preserveScroll: true,
+                onError: (errors) => {
+                    console.error('Delete failed:', errors);
+                },
+            });
+        }
+    };
+
     const handleAction = (action: 'start' | 'stop' | 'restart' | 'deploy', e: React.MouseEvent) => {
         e.preventDefault();
         router.post(`/applications/${application.uuid}/${action}`, {}, {
@@ -218,22 +239,7 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
                                 <DropdownDivider />
                                 <DropdownItem
                                     icon={<Trash2 className="h-4 w-4" />}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (confirm(`Are you sure you want to delete "${application.name}"? This action cannot be undone.`)) {
-                                            router.delete(`/applications/${application.uuid}`, {
-                                                preserveScroll: true,
-                                                onSuccess: () => {
-                                                    console.log('Application deleted successfully');
-                                                },
-                                                onError: (errors) => {
-                                                    console.error('Delete failed:', errors);
-                                                    alert('Failed to delete application');
-                                                },
-                                            });
-                                        }
-                                    }}
+                                    onClick={handleDelete}
                                     danger
                                 >
                                     Delete

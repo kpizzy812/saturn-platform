@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, useConfirm } from '@/components/ui';
 import {
     Rocket,
     GitCommit,
@@ -73,6 +73,7 @@ export default function DeploymentDetails({
     projectUuid,
     environmentUuid,
 }: Props) {
+    const confirm = useConfirm();
     const [deployment, setDeployment] = React.useState(initialDeployment);
     const [logs, setLogs] = React.useState<LogEntry[]>(initialLogs);
     const [autoScroll, setAutoScroll] = React.useState(true);
@@ -159,8 +160,14 @@ export default function DeploymentDetails({
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleCancel = () => {
-        if (!confirm('Are you sure you want to cancel this deployment?')) return;
+    const handleCancel = async () => {
+        const confirmed = await confirm({
+            title: 'Cancel Deployment',
+            description: 'Are you sure you want to cancel this deployment? This action cannot be undone.',
+            confirmText: 'Cancel Deployment',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
         router.post(`/api/v1/deployments/${deployment.deployment_uuid}/cancel`);
     };
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Modal } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Modal, useConfirm } from '@/components/ui';
 import { Plus, Eye, EyeOff, Copy, Edit2, Trash2, Check } from 'lucide-react';
 import type { Service } from '@/types';
 
@@ -25,6 +25,7 @@ const mockVariables: Variable[] = [
 ];
 
 export function VariablesTab({ service }: Props) {
+    const confirm = useConfirm();
     const [variables, setVariables] = useState<Variable[]>(mockVariables);
     const [showValues, setShowValues] = useState<Record<number, boolean>>({});
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -48,8 +49,14 @@ export function VariablesTab({ service }: Props) {
         setIsEditModalOpen(true);
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this variable?')) {
+    const handleDelete = async (id: number) => {
+        const confirmed = await confirm({
+            title: 'Delete Variable',
+            description: 'Are you sure you want to delete this variable? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setVariables((prev) => prev.filter((v) => v.id !== id));
         }
     };

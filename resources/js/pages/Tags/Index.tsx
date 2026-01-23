@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Input, Badge, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     Plus,
@@ -23,6 +23,7 @@ interface Props {
 }
 
 export default function TagsIndex({ tags = [] }: Props) {
+    const confirm = useConfirm();
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -31,9 +32,15 @@ export default function TagsIndex({ tags = [] }: Props) {
         tag.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleDelete = (tagId: number, e: React.MouseEvent) => {
+    const handleDelete = async (tagId: number, e: React.MouseEvent) => {
         e.preventDefault();
-        if (confirm('Are you sure you want to delete this tag? This action cannot be undone.')) {
+        const confirmed = await confirm({
+            title: 'Delete Tag',
+            description: 'Are you sure you want to delete this tag? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/tags/${tagId}`, {
                 preserveScroll: true,
             });

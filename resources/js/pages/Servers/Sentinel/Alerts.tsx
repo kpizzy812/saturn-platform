@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
+import { useConfirm } from '@/components/ui';
 import {
     AlertTriangle,
     Plus,
@@ -170,6 +171,7 @@ function AlertHistoryCard({ alert }: { alert: AlertHistoryItem }) {
 }
 
 export default function SentinelAlerts({ server, alertRules = [], alertHistory = [] }: Props) {
+    const confirm = useConfirm();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
 
@@ -219,8 +221,14 @@ export default function SentinelAlerts({ server, alertRules = [], alertHistory =
         setIsCreateModalOpen(true);
     };
 
-    const handleDeleteRule = (ruleId: number) => {
-        if (confirm('Are you sure you want to delete this alert rule?')) {
+    const handleDeleteRule = async (ruleId: number) => {
+        const confirmed = await confirm({
+            title: 'Delete Alert Rule',
+            description: 'Are you sure you want to delete this alert rule?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/api/v1/servers/${server.uuid}/sentinel/alerts/${ruleId}`);
         }
     };

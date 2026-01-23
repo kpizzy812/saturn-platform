@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Checkbox, Tabs } from '@/components/ui';
+import { Card, CardContent, Button, Input, Checkbox, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import {
     ArrowLeft,
@@ -34,6 +34,7 @@ const databaseTypeConfig: Record<DatabaseType, { color: string; bgColor: string;
 export default function DatabaseSettings({ database }: Props) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const { addToast } = useToast();
+    const confirm = useConfirm();
 
     // State for settings
     const [name, setName] = useState(database.name);
@@ -96,8 +97,14 @@ export default function DatabaseSettings({ database }: Props) {
         setHasChanges(false);
     };
 
-    const handleRestart = () => {
-        if (confirm(`Are you sure you want to restart ${database.name}? This will cause brief downtime.`)) {
+    const handleRestart = async () => {
+        const confirmed = await confirm({
+            title: 'Restart Database',
+            description: `Are you sure you want to restart ${database.name}? This will cause brief downtime.`,
+            confirmText: 'Restart',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/databases/${database.uuid}/restart`, {}, {
                 onSuccess: () => {
                     addToast('success', 'Database restarting...');
@@ -110,9 +117,21 @@ export default function DatabaseSettings({ database }: Props) {
         }
     };
 
-    const handleDelete = () => {
-        if (confirm(`Are you sure you want to delete ${database.name}? This action cannot be undone and all data will be lost.`)) {
-            if (confirm('Please confirm again. All data will be permanently deleted!')) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Database',
+            description: `Are you sure you want to delete ${database.name}? This action cannot be undone and all data will be lost.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            const confirmedAgain = await confirm({
+                title: 'Final Confirmation',
+                description: 'Please confirm again. All data will be permanently deleted!',
+                confirmText: 'Delete Permanently',
+                variant: 'danger',
+            });
+            if (confirmedAgain) {
                 router.delete(`/databases/${database.uuid}`);
             }
         }

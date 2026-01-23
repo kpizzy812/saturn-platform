@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, useConfirm } from '@/components/ui';
 import { Github, Mail, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 
 interface OAuthProvider {
@@ -46,14 +46,21 @@ export default function Connect({ providers: initialProviders }: Props) {
         return providedData ? { ...defaultProvider, ...providedData } : defaultProvider;
     });
 
+    const confirm = useConfirm();
     const { post, processing } = useForm();
 
     const handleConnect = (provider: string) => {
         window.location.href = `/auth/${provider}/redirect`;
     };
 
-    const handleDisconnect = (provider: string) => {
-        if (confirm('Are you sure you want to disconnect this provider?')) {
+    const handleDisconnect = async (provider: string) => {
+        const confirmed = await confirm({
+            title: 'Disconnect Provider',
+            description: 'Are you sure you want to disconnect this provider?',
+            confirmText: 'Disconnect',
+            variant: 'danger',
+        });
+        if (confirmed) {
             post(`/auth/${provider}/disconnect`);
         }
     };

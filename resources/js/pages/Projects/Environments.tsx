@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     Plus, Copy, ArrowRight, GitBranch, CheckCircle,
     XCircle, RefreshCw, Download, Upload
@@ -412,11 +412,18 @@ interface SyncVariablesModalProps {
 }
 
 function SyncVariablesModal({ environments, onClose, onSync }: SyncVariablesModalProps) {
+    const confirm = useConfirm();
     const [sourceEnv, setSourceEnv] = useState(environments[0]?.slug || '');
     const [targetEnv, setTargetEnv] = useState(environments[1]?.slug || '');
 
-    const handleSync = () => {
-        if (confirm(`Sync variables from ${sourceEnv} to ${targetEnv}?`)) {
+    const handleSync = async () => {
+        const confirmed = await confirm({
+            title: 'Sync Variables',
+            description: `This will copy all variables from ${sourceEnv} to ${targetEnv}, overwriting any existing values.`,
+            confirmText: 'Sync',
+            variant: 'warning',
+        });
+        if (confirmed) {
             onSync();
         }
     };

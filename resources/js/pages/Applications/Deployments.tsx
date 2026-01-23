@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import { Rocket, GitCommit, Clock, User, Search, RotateCcw, ExternalLink, ChevronRight } from 'lucide-react';
 import type { Application, Deployment, DeploymentStatus, DeploymentTrigger } from '@/types';
 
@@ -24,6 +24,7 @@ interface ExtendedDeployment extends Deployment {
 }
 
 export default function ApplicationDeployments({ application, deployments: propDeployments, projectUuid, environmentUuid }: Props) {
+    const confirm = useConfirm();
     const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(propDeployments || []);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [selectedDeployment, setSelectedDeployment] = React.useState<ExtendedDeployment | null>(null);
@@ -39,7 +40,13 @@ export default function ApplicationDeployments({ application, deployments: propD
     }, [deployments, searchQuery]);
 
     const handleRollback = async (deploymentUuid: string) => {
-        if (!confirm('Are you sure you want to rollback to this deployment?')) return;
+        const confirmed = await confirm({
+            title: 'Rollback Deployment',
+            description: 'Are you sure you want to rollback to this deployment? This will replace your current deployment.',
+            confirmText: 'Rollback',
+            variant: 'warning',
+        });
+        if (!confirmed) return;
 
         router.post(`/api/v1/applications/${application.uuid}/rollback`, {
             deployment_uuid: deploymentUuid,

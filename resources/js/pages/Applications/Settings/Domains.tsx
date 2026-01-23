@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Input, Badge, useConfirm } from '@/components/ui';
 import { Globe, Plus, Trash2, Star, ExternalLink } from 'lucide-react';
 import type { Application } from '@/types';
 
@@ -20,6 +20,7 @@ interface SimpleDomain {
 }
 
 export default function ApplicationDomains({ application, domains: propDomains, projectUuid, environmentUuid }: Props) {
+    const confirm = useConfirm();
     const [domains, setDomains] = React.useState<SimpleDomain[]>(propDomains || []);
     const [newDomain, setNewDomain] = React.useState('');
     const [isAdding, setIsAdding] = React.useState(false);
@@ -52,7 +53,13 @@ export default function ApplicationDomains({ application, domains: propDomains, 
     };
 
     const handleRemoveDomain = async (domainToRemove: string) => {
-        if (!confirm('Are you sure you want to remove this domain?')) return;
+        const confirmed = await confirm({
+            title: 'Remove Domain',
+            description: `Are you sure you want to remove "${domainToRemove}"? The domain will no longer point to this application.`,
+            confirmText: 'Remove',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         const newFqdns = domains
             .filter(d => d.domain !== domainToRemove)

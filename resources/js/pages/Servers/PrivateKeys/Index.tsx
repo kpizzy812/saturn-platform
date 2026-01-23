@@ -1,9 +1,8 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { ArrowLeft, Plus, Key, CheckCircle, XCircle, Trash2, Eye, EyeOff } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
-import { useState } from 'react';
 
 interface Props {
     server: ServerType;
@@ -21,8 +20,16 @@ interface PrivateKey {
 }
 
 export default function ServerPrivateKeysIndex({ server, privateKeys = [] }: Props) {
-    const handleDelete = (key: PrivateKey) => {
-        if (confirm(`Are you sure you want to delete SSH key "${key.name}"?`)) {
+    const confirm = useConfirm();
+
+    const handleDelete = async (key: PrivateKey) => {
+        const confirmed = await confirm({
+            title: 'Delete SSH Key',
+            description: `Are you sure you want to delete SSH key "${key.name}"?`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/servers/${server.uuid}/private-keys/${key.uuid}`);
         }
     };

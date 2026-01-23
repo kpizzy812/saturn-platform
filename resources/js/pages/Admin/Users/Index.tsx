@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useConfirm } from '@/components/ui';
 import {
     Search,
     MoreHorizontal,
@@ -73,14 +74,29 @@ const defaultUsers: User[] = [
 ];
 
 function UserRow({ user }: { user: User }) {
-    const handleImpersonate = () => {
-        if (confirm(`Impersonate ${user.name}? You will be logged in as this user.`)) {
+    const confirm = useConfirm();
+
+    const handleImpersonate = async () => {
+        const confirmed = await confirm({
+            title: 'Impersonate User',
+            description: `Impersonate ${user.name}? You will be logged in as this user.`,
+            confirmText: 'Impersonate',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/admin/users/${user.id}/impersonate`);
         }
     };
 
-    const handleSuspend = () => {
-        if (confirm(`${user.status === 'suspended' ? 'Activate' : 'Suspend'} ${user.name}?`)) {
+    const handleSuspend = async () => {
+        const isSuspended = user.status === 'suspended';
+        const confirmed = await confirm({
+            title: isSuspended ? 'Activate User' : 'Suspend User',
+            description: `${isSuspended ? 'Activate' : 'Suspend'} ${user.name}?`,
+            confirmText: isSuspended ? 'Activate' : 'Suspend',
+            variant: isSuspended ? 'warning' : 'danger',
+        });
+        if (confirmed) {
             router.post(`/admin/users/${user.id}/toggle-suspension`);
         }
     };

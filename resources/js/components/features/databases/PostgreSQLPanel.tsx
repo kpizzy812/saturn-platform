@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, Users, Settings, FileText, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
 import { useDatabaseMetrics, formatMetricValue, type PostgresMetrics } from '@/hooks';
@@ -230,6 +230,7 @@ function ExtensionsTab({ database }: { database: StandaloneDatabase }) {
 
 function UsersTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
+    const confirm = useConfirm();
     const [users] = useState([
         { name: 'postgres', role: 'Superuser', connections: 5 },
         { name: 'app_user', role: 'Standard', connections: 12 },
@@ -240,8 +241,14 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
         addToast('info', 'Create user functionality coming soon');
     };
 
-    const handleDeleteUser = (username: string) => {
-        if (confirm(`Are you sure you want to delete user ${username}?`)) {
+    const handleDeleteUser = async (username: string) => {
+        const confirmed = await confirm({
+            title: 'Delete User',
+            description: `Are you sure you want to delete user ${username}?`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             addToast('info', `Deleting user ${username}...`);
         }
     };

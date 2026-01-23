@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
-import { Card, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { GitCommit, Clock, CheckCircle, XCircle, AlertCircle, RotateCw, Play, Loader2 } from 'lucide-react';
 import type { Service } from '@/types';
@@ -40,6 +40,7 @@ const formatTimeAgo = (date?: string): string => {
 };
 
 export function DeploymentsTab({ service, deployments: propDeployments = [] }: Props) {
+    const confirm = useConfirm();
     const [filter, setFilter] = useState<DeploymentStatus | 'all'>('all');
     const [deployments, setDeployments] = useState<Deployment[]>(propDeployments);
     const [isLoading, setIsLoading] = useState(propDeployments.length === 0);
@@ -71,8 +72,14 @@ export function DeploymentsTab({ service, deployments: propDeployments = [] }: P
         });
     };
 
-    const handleRollback = (deploymentId: number, commit: string) => {
-        if (confirm(`Are you sure you want to rollback to commit ${commit}?`)) {
+    const handleRollback = async (deploymentId: number, commit: string) => {
+        const confirmed = await confirm({
+            title: 'Rollback Deployment',
+            description: `Are you sure you want to rollback to commit ${commit.substring(0, 7)}?`,
+            confirmText: 'Rollback',
+            variant: 'warning',
+        });
+        if (confirmed) {
             setRollingBack(deploymentId);
             router.post(`/api/v1/services/${service.uuid}/start`, { commit }, {
                 onFinish: () => setRollingBack(null),

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { LogsViewer } from '@/components/features/LogsViewer';
 import {
     GitPullRequest,
@@ -60,6 +60,8 @@ const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger'
 };
 
 export default function PreviewShow({ application, preview, previewUuid, projectUuid, environmentUuid }: Props) {
+    const confirm = useConfirm();
+
     if (!preview) {
         return (
             <AppLayout title="Preview Not Found">
@@ -75,14 +77,26 @@ export default function PreviewShow({ application, preview, previewUuid, project
         );
     }
 
-    const handleRedeploy = () => {
-        if (confirm(`Redeploy preview for PR #${preview.pull_request_number}?`)) {
+    const handleRedeploy = async () => {
+        const confirmed = await confirm({
+            title: 'Redeploy Preview',
+            description: `Redeploy preview for PR #${preview.pull_request_number}?`,
+            confirmText: 'Redeploy',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/api/v1/previews/${preview.uuid}/redeploy`);
         }
     };
 
-    const handleDelete = () => {
-        if (confirm(`Delete preview for PR #${preview.pull_request_number}? This action cannot be undone.`)) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Preview',
+            description: `Delete preview for PR #${preview.pull_request_number}? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/api/v1/previews/${preview.uuid}`, {
                 onSuccess: () => {
                     router.visit(`/applications/${application.uuid}/previews`);

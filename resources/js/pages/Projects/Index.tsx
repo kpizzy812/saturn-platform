@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, FolderKanban, MoreVertical, Globe, GitBranch, Settings, Trash2 } from 'lucide-react';
 import type { Project } from '@/types';
@@ -46,6 +46,21 @@ export default function ProjectsIndex({ projects = [] }: Props) {
 }
 
 function ProjectCard({ project }: { project: Project }) {
+    const confirm = useConfirm();
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        const confirmed = await confirm({
+            title: 'Delete Project',
+            description: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.delete(`/projects/${project.uuid}`);
+        }
+    };
+
     const serviceCount = project.environments?.reduce(
         (acc, env) => acc + (env.applications?.length || 0) + (env.databases?.length || 0),
         0
@@ -89,12 +104,7 @@ function ProjectCard({ project }: { project: Project }) {
                                 <DropdownDivider />
                                 <DropdownItem
                                     icon={<Trash2 className="h-4 w-4" />}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
-                                            router.delete(`/projects/${project.uuid}`);
-                                        }
-                                    }}
+                                    onClick={handleDelete}
                                     danger
                                 >
                                     Delete Project

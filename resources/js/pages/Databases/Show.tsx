@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity } from 'lucide-react';
@@ -323,8 +323,16 @@ function BackupsTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
-    const handleDelete = () => {
-        if (confirm(`Are you sure you want to delete ${database.name}? This action cannot be undone.`)) {
+    const confirm = useConfirm();
+
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Database',
+            description: `Are you sure you want to delete ${database.name}? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/databases/${database.uuid}`);
         }
     };

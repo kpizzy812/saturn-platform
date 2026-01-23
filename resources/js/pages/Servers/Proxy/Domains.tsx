@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import {
     Globe, Plus, Trash2, ShieldCheck, ShieldAlert,
     ExternalLink, RefreshCw, Lock, Unlock
@@ -27,6 +27,7 @@ interface Props {
 }
 
 export default function ProxyDomains({ server, domains: initialDomains }: Props) {
+    const confirm = useConfirm();
     const [domains, setDomains] = useState<Domain[]>(initialDomains);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newDomain, setNewDomain] = useState('');
@@ -44,8 +45,14 @@ export default function ProxyDomains({ server, domains: initialDomains }: Props)
         });
     };
 
-    const handleDeleteDomain = (domainId: number) => {
-        if (!confirm('Are you sure you want to remove this domain?')) return;
+    const handleDeleteDomain = async (domainId: number) => {
+        const confirmed = await confirm({
+            title: 'Remove Domain',
+            description: 'Are you sure you want to remove this domain?',
+            confirmText: 'Remove',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
 
         router.delete(`/servers/${server.uuid}/proxy/domains/${domainId}`);
     };

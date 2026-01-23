@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Link, router } from '@inertiajs/react';
 import { Plus, MoreHorizontal, Settings, Trash2, FolderOpen } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { useConfirm } from '@/components/ui';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Project as BaseProject } from '@/types';
 
@@ -46,6 +47,21 @@ const countServices = (project: Project): number => {
 };
 
 function ProjectCard({ project }: { project: Project }) {
+    const confirm = useConfirm();
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        const confirmed = await confirm({
+            title: 'Delete Project',
+            description: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.delete(`/projects/${project.uuid || project.id}`);
+        }
+    };
+
     const statusConfig = {
         active: {
             dot: 'bg-success shadow-success/50 shadow-sm',
@@ -102,12 +118,7 @@ function ProjectCard({ project }: { project: Project }) {
                         <DropdownDivider />
                         <DropdownItem
                             icon={<Trash2 className="h-4 w-4" />}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                if (confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
-                                    router.delete(`/projects/${project.uuid || project.id}`);
-                                }
-                            }}
+                            onClick={handleDelete}
                             danger
                         >
                             Delete Project

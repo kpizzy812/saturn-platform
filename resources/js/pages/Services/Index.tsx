@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, Container, MoreVertical, Settings, Trash2, Power, RotateCw, FileCode } from 'lucide-react';
 import type { Service } from '@/types';
@@ -46,6 +46,21 @@ export default function ServicesIndex({ services = [] }: Props) {
 }
 
 function ServiceCard({ service }: { service: Service }) {
+    const confirm = useConfirm();
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        const confirmed = await confirm({
+            title: 'Delete Service',
+            description: `Are you sure you want to delete "${service.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.delete(`/services/${service.uuid}`);
+        }
+    };
+
     return (
         <Link href={`/services/${service.uuid}`}>
             <Card className="transition-colors hover:border-primary/50">
@@ -102,12 +117,7 @@ function ServiceCard({ service }: { service: Service }) {
                                 <DropdownDivider />
                                 <DropdownItem
                                     icon={<Trash2 className="h-4 w-4" />}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (confirm(`Are you sure you want to delete "${service.name}"? This action cannot be undone.`)) {
-                                            router.delete(`/services/${service.uuid}`);
-                                        }
-                                    }}
+                                    onClick={handleDelete}
                                     danger
                                 >
                                     Delete Service

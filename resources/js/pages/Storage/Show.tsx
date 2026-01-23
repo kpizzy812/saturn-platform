@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
 import {
     Cloud,
     Settings,
@@ -57,6 +57,7 @@ function detectProvider(storage: S3Storage): string {
 }
 
 export default function StorageShow({ storage, backups = [], usageStats }: Props) {
+    const confirm = useConfirm();
     const provider = detectProvider(storage);
     const info = providerInfo[provider];
 
@@ -125,8 +126,14 @@ export default function StorageShow({ storage, backups = [], usageStats }: Props
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
-                            if (confirm('Are you sure you want to delete this storage? Backups will remain in the bucket.')) {
+                        onClick={async () => {
+                            const confirmed = await confirm({
+                                title: 'Delete Storage',
+                                description: 'Are you sure you want to delete this storage? Backups will remain in the bucket.',
+                                confirmText: 'Delete',
+                                variant: 'danger',
+                            });
+                            if (confirmed) {
                                 router.delete(`/storage/${storage.uuid}`);
                             }
                         }}
@@ -331,6 +338,8 @@ function UsageTab({ usageStats }: { usageStats?: Props['usageStats'] }) {
 }
 
 function SettingsTab({ storage }: { storage: S3Storage }) {
+    const confirm = useConfirm();
+
     return (
         <div className="space-y-4">
             <Card>
@@ -357,8 +366,14 @@ function SettingsTab({ storage }: { storage: S3Storage }) {
                     </p>
                     <Button
                         variant="danger"
-                        onClick={() => {
-                            if (confirm('Are you sure you want to delete this storage? This action cannot be undone.')) {
+                        onClick={async () => {
+                            const confirmed = await confirm({
+                                title: 'Delete Storage',
+                                description: 'Are you sure you want to delete this storage? This action cannot be undone.',
+                                confirmText: 'Delete',
+                                variant: 'danger',
+                            });
+                            if (confirmed) {
                                 router.delete(`/storage/${storage.uuid}`);
                             }
                         }}

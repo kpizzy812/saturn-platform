@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { ArrowLeft, Trash2, AlertTriangle, CheckCircle, HardDrive, Package, Database as DatabaseIcon } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
@@ -19,6 +19,7 @@ interface CleanupStats {
 }
 
 export default function ServerCleanupIndex({ server, cleanupStats }: Props) {
+    const confirm = useConfirm();
     const [isRunning, setIsRunning] = useState(false);
     const [lastCleanup, setLastCleanup] = useState<string | null>(null);
 
@@ -31,7 +32,13 @@ export default function ServerCleanupIndex({ server, cleanupStats }: Props) {
     };
 
     const handleCleanup = async (type: string) => {
-        if (confirm(`Are you sure you want to clean up ${type}? This action cannot be undone.`)) {
+        const confirmed = await confirm({
+            title: 'Clean Up Resources',
+            description: `Are you sure you want to clean up ${type}? This action cannot be undone.`,
+            confirmText: 'Clean Up',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setIsRunning(true);
             router.post(`/servers/${server.uuid}/cleanup/${type}`, {}, {
                 onFinish: () => {
@@ -42,8 +49,14 @@ export default function ServerCleanupIndex({ server, cleanupStats }: Props) {
         }
     };
 
-    const handleCleanupAll = () => {
-        if (confirm('Are you sure you want to clean up all unused resources? This action cannot be undone.')) {
+    const handleCleanupAll = async () => {
+        const confirmed = await confirm({
+            title: 'Clean Up All Resources',
+            description: 'Are you sure you want to clean up all unused resources? This action cannot be undone.',
+            confirmText: 'Clean Up All',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setIsRunning(true);
             router.post(`/servers/${server.uuid}/cleanup/all`, {}, {
                 onFinish: () => {
