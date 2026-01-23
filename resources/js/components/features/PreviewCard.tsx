@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { Card, CardContent, Badge, useConfirm } from '@/components/ui';
+import { Card, CardContent, Badge, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     GitPullRequest,
@@ -9,10 +9,11 @@ import {
     Trash2,
     GitBranch,
     Calendar,
-    Clock
+    Clock,
+    AlertTriangle
 } from 'lucide-react';
 import type { PreviewDeployment, PreviewDeploymentStatus } from '@/types';
-import { formatRelativeTime } from '@/lib/utils';
+import { formatRelativeTime, isSafeUrl, safeOpenUrl } from '@/lib/utils';
 
 interface PreviewCardProps {
     preview: PreviewDeployment;
@@ -52,6 +53,8 @@ const getStatusVariant = (status: PreviewDeploymentStatus): 'success' | 'danger'
 
 export function PreviewCard({ preview, applicationUuid }: PreviewCardProps) {
     const confirm = useConfirm();
+    const { addToast } = useToast();
+    const isUrlSafe = isSafeUrl(preview.preview_url);
 
     const handleRedeploy = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -84,7 +87,9 @@ export function PreviewCard({ preview, applicationUuid }: PreviewCardProps) {
     const handleOpenUrl = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        window.open(preview.preview_url, '_blank');
+        if (!safeOpenUrl(preview.preview_url)) {
+            addToast('Unable to open URL - invalid or unsafe protocol', 'error');
+        }
     };
 
     return (
@@ -150,16 +155,26 @@ export function PreviewCard({ preview, applicationUuid }: PreviewCardProps) {
 
                     {/* Preview URL */}
                     <div className="mt-4 flex items-center gap-2">
-                        <ExternalLink className="h-3.5 w-3.5 text-foreground-muted" />
-                        <a
-                            href={preview.preview_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline truncate"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {preview.preview_url}
-                        </a>
+                        {isUrlSafe ? (
+                            <ExternalLink className="h-3.5 w-3.5 text-foreground-muted" />
+                        ) : (
+                            <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+                        )}
+                        {isUrlSafe ? (
+                            <a
+                                href={preview.preview_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline truncate"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {preview.preview_url}
+                            </a>
+                        ) : (
+                            <span className="text-sm text-foreground-muted truncate" title="URL uses unsafe protocol">
+                                {preview.preview_url}
+                            </span>
+                        )}
                     </div>
 
                     {/* Status indicator */}

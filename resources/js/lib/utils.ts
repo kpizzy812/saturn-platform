@@ -28,3 +28,47 @@ export function formatRelativeTime(date: string | Date): string {
     if (minutes > 0) return `${minutes}m ago`;
     return 'just now';
 }
+
+/**
+ * Validates that a URL uses a safe protocol (http: or https:).
+ * Prevents XSS attacks via javascript:, data:, vbscript: and other dangerous protocols.
+ *
+ * @param url - The URL to validate
+ * @returns true if the URL is safe to open, false otherwise
+ */
+export function isSafeUrl(url: string | null | undefined): boolean {
+    if (!url) return false;
+
+    const trimmed = url.trim();
+    if (!trimmed) return false;
+
+    // Block protocol-relative URLs (//evil.com) - these can be used for open redirects
+    if (trimmed.startsWith('//')) return false;
+
+    // Allow relative paths starting with /
+    if (trimmed.startsWith('/')) return true;
+
+    try {
+        const parsed = new URL(trimmed);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+        // If URL parsing fails, it's not a valid URL
+        return false;
+    }
+}
+
+/**
+ * Safely opens a URL in a new tab, only if it uses http: or https: protocol.
+ * Returns false if the URL is unsafe and was not opened.
+ *
+ * @param url - The URL to open
+ * @returns true if the URL was opened, false if blocked
+ */
+export function safeOpenUrl(url: string | null | undefined): boolean {
+    if (!isSafeUrl(url)) {
+        console.warn('Blocked attempt to open unsafe URL:', url);
+        return false;
+    }
+    window.open(url!, '_blank', 'noopener,noreferrer');
+    return true;
+}

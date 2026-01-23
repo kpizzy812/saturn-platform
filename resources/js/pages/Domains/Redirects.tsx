@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, useConfirm } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, useConfirm, useToast } from '@/components/ui';
 import { Route, ArrowRight, Plus, Trash2, Edit, ExternalLink, Check, X } from 'lucide-react';
+import { safeOpenUrl } from '@/lib/utils';
 
 interface RedirectRule {
     id: number;
@@ -20,6 +21,7 @@ interface Props {
 
 export default function DomainsRedirects({ redirects: propRedirects = [] }: Props) {
     const confirm = useConfirm();
+    const { addToast } = useToast();
     const [redirects, setRedirects] = useState<RedirectRule[]>(propRedirects);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -108,9 +110,15 @@ export default function DomainsRedirects({ redirects: propRedirects = [] }: Prop
     };
 
     const handleTest = (redirect: RedirectRule) => {
-        // In a real app, this would open a test window or show test results
+        // Validate source path starts with / (already enforced by handleSave, but double-check)
+        if (!redirect.source.startsWith('/')) {
+            addToast('Invalid redirect source path', 'error');
+            return;
+        }
         const testUrl = `${window.location.origin}${redirect.source}`;
-        window.open(testUrl, '_blank');
+        if (!safeOpenUrl(testUrl)) {
+            addToast('Unable to open URL - invalid protocol', 'error');
+        }
     };
 
     const formatDate = (dateString: string) => {

@@ -247,21 +247,380 @@
 
 ---
 
+## 🔴 НОВЫЕ КРИТИЧЕСКИЕ ПРОБЛЕМЫ (найдено при аудите 2026-01-23)
+
+### Mock данные в Settings (17 файлов)
+
+- [ ] **Mock данные в Settings/Workspace.tsx**
+  - Файл: `resources/js/pages/Settings/Workspace.tsx`
+  - Строки: 15 (`mockWorkspace`), 22-34 (`timezones`), 36-40 (`environments`)
+  - Проблема: Захардкоженные данные workspace, timezones и environments
+
+- [ ] **Mock данные в Settings/Team/Index.tsx**
+  - Файл: `resources/js/pages/Settings/Team/Index.tsx`
+  - Строки: 47-51 (`mockTeam`), 53-94 (`mockMembers` - 5 фейковых членов команды)
+  - Проблема: Данные команды и участников должны приходить с API
+
+- [ ] **Mock данные в Settings/Team/Activity.tsx**
+  - Файл: `resources/js/pages/Settings/Team/Activity.tsx`
+  - Строки: 24-200 (`mockActivities` - 9 записей активности)
+  - Проблема: История активности команды захардкожена
+
+- [ ] **Mock данные в Settings/Members/Show.tsx**
+  - Файл: `resources/js/pages/Settings/Members/Show.tsx`
+  - Строки: 48-55 (`mockMember`), 57-61 (`mockProjects`), 63-124 (`mockActivities`)
+  - Проблема: Данные участника, проекты и активности захардкожены
+
+- [ ] **Mock данные в Settings/Integrations.tsx**
+  - Файл: `resources/js/pages/Settings/Integrations.tsx`
+  - Строки: 19-56 (`mockIntegrations` - GitHub, GitLab, Slack, Discord)
+  - Проблема: Интеграции захардкожены вместо получения с API
+
+- [ ] **Mock данные в Settings/Security.tsx**
+  - Файл: `resources/js/pages/Settings/Security.tsx`
+  - Строки: 34-62 (`mockSessions`), 64-97 (`mockLoginHistory`), 99-112 (`mockIPAllowlist`)
+  - Проблема: Сессии, история логинов и IP whitelist захардкожены
+
+- [ ] **Mock данные в Settings/AuditLog.tsx**
+  - Файл: `resources/js/pages/Settings/AuditLog.tsx`
+  - Строки: 17-92 (`mockAuditLogs` - 8 записей аудита)
+  - Проблема: Логи аудита захардкожены
+
+### Mock данные в Notifications Settings (6 файлов)
+
+- [ ] **Event options захардкожены**
+  - Файлы:
+    - `resources/js/pages/Settings/Notifications/Email.tsx:43-54`
+    - `resources/js/pages/Settings/Notifications/Telegram.tsx:47-61`
+    - `resources/js/pages/Settings/Notifications/Discord.tsx:33-47`
+    - `resources/js/pages/Settings/Notifications/Slack.tsx:32-46`
+    - `resources/js/pages/Settings/Notifications/Pushover.tsx:33-47`
+    - `resources/js/pages/Settings/Notifications/Webhook.tsx:33-48`
+  - Проблема: `eventOptions` массивы с 10-13 типами событий захардкожены
+
+### Mock данные в Database Panels (5 файлов)
+
+- [ ] **Mock данные в ClickHousePanel.tsx**
+  - Файл: `resources/js/components/features/databases/ClickHousePanel.tsx`
+  - Строки: 187-209 (queries), 246-252 (replication), 332-337 (logs)
+  - Проблема: Запросы, репликация и логи захардкожены
+
+- [ ] **Mock данные в PostgreSQLPanel.tsx**
+  - Файл: `resources/js/components/features/databases/PostgreSQLPanel.tsx`
+  - Строки: 176-183 (extensions), 234-238 (users), 363-368 (logs)
+  - Проблема: Расширения, пользователи и логи захардкожены
+
+- [ ] **Mock данные в других Database Panels**
+  - Файлы: MySQLPanel.tsx, MongoDBPanel.tsx, RedisPanel.tsx
+  - Проблема: Аналогичные захардкоженные данные
+
+### Mock данные в Projects
+
+- [ ] **PostgreSQL extensions в Projects/Show.tsx**
+  - Файл: `resources/js/pages/Projects/Show.tsx`
+  - Строки: 2907-2916 (8 захардкоженных расширений)
+  - Проблема: Расширения БД должны загружаться динамически
+
+- [ ] **Service types в AddServicePanel.jsx** ⚠️ ДОПУСТИМО
+  - Файл: `resources/js/project-map/components/AddServicePanel.jsx`
+  - Строки: 3-82 (`serviceTypes` - 6 типов сервисов)
+  - Статус: Можно оставить как статический конфиг (типы сервисов редко меняются)
+
+---
+
+## 🟠 НОВЫЕ ВЫСОКИЕ ПРОБЛЕМЫ (найдено при аудите 2026-01-23)
+
+### Кнопки без API интеграции (4 файла)
+
+- [ ] **Templates/Submit.tsx - Submit не отправляет данные**
+  - Файл: `resources/js/pages/Templates/Submit.tsx:45-59`
+  - Проблема: `handleSubmit()` использует `setTimeout` с `// Simulate API call`, данные шаблона теряются
+  - Требуется: Создать API endpoint для сохранения шаблонов
+
+- [ ] **Settings/Integrations.tsx - Connect не сохраняет**
+  - Файл: `resources/js/pages/Settings/Integrations.tsx:82-108`
+  - Проблема: `handleConnect()` только обновляет локальное состояние, API токены не сохраняются
+  - Требуется: API для сохранения интеграций команды
+
+- [ ] **Databases/Query.tsx - SQL запросы не выполняются**
+  - Файл: `resources/js/pages/Databases/Query.tsx:48-69`
+  - Проблема: `executeQuery()` всегда возвращает hardcoded результаты (3 фейковых пользователя)
+  - Требуется: API для выполнения SQL через SSH на целевом сервере
+
+- [ ] **Errors/Maintenance.tsx - Subscribe не сохраняет**
+  - Файл: `resources/js/pages/Errors/Maintenance.tsx:24-33`
+  - Проблема: `handleSubscribe()` не сохраняет email на сервере
+  - Требуется: API endpoint для подписки на уведомления о восстановлении
+
+### React баги - потенциальные memory leaks (4 файла)
+
+- [ ] **terminal.js - множественные проблемы**
+  - Файл: `resources/js/terminal.js`
+  - Строки: 44-46, 60-63, 103-106, 372-383
+  - Проблемы:
+    - `setTimeout` без cleanup при размонтировании
+    - Рекурсивный `setTimeout(focusWhenReady, 100)` может выполняться бесконечно
+    - `window.onresize` без `removeEventListener`
+    - Нет SSR проверки `typeof window !== 'undefined'`
+
+- [ ] **useTerminal.ts - потенциальный infinite loop**
+  - Файл: `resources/js/hooks/useTerminal.ts:336-342`
+  - Проблема: `scheduleReconnect` с `connect` в deps может вызвать циклическое переподключение
+
+- [ ] **useRealtimeStatus.ts - рекурсивный reconnect**
+  - Файл: `resources/js/hooks/useRealtimeStatus.ts:298-301`
+  - Проблема: Рекурсивный `setTimeout(() => reconnect(), ...)` без гарантии остановки
+
+- [ ] **CommandPalette.tsx / Terminal.tsx - SSR unsafe**
+  - Файлы: `components/ui/CommandPalette.tsx:218-228`, `components/features/Terminal.tsx:226`
+  - Проблема: `window.addEventListener` без проверки `typeof window !== 'undefined'`
+
+### console.log в продакшн коде (23 файла)
+
+- [ ] **Debug логирование для удаления (23 файла с console.log/warn/error):**
+  - `Deployments/Show.tsx` - debug logging
+  - `Projects/Show.tsx` - debug logging
+  - `Settings/AuditLog.tsx` - `console.log('Exporting audit logs...')`
+  - `Settings/Members/Show.tsx` - `console.log('Remove member:', ...)`, `console.log('Change role:', ...)`
+  - `Settings/Tokens.tsx` - debug logging
+  - `Settings/Account.tsx` - debug logging
+  - `Settings/Security.tsx` - debug logging
+  - `Settings/Team/Index.tsx` - debug logging
+  - `Settings/Workspace.tsx` - debug logging
+  - `ScheduledTasks/History.tsx` - `console.log('Exporting history...')`
+  - `Observability/Metrics.tsx` - `console.log('Exporting/Refreshing metrics...')`
+  - `Observability/Logs.tsx` - `console.log('Downloading/Sharing logs...')`
+  - `Environments/Secrets.tsx` - `console.log('Secret viewed')`
+  - `Services/Rollbacks.tsx` - `console.log('Rolling back...')`
+  - `Services/HealthChecks.tsx` - `console.log('Saving health check...')`
+  - `Services/Networking.tsx` - `console.log('Saving network config...')`
+  - `Services/Scaling.tsx` - debug logging
+  - `Applications/DeploymentDetails.tsx` - `console.warn('Echo not available')`
+  - `Applications/Index.tsx` - debug logging
+  - `Applications/Rollback/Index.tsx`, `Applications/Rollback/Show.tsx` - debug logging
+  - `Boarding/Index.tsx` - debug logging
+  - `Onboarding/ConnectRepo.tsx` - debug logging
+
+---
+
+## 🟡 НОВЫЕ СРЕДНИЕ ПРОБЛЕМЫ (найдено при аудите 2026-01-23)
+
+### TypeScript качество (оставшиеся проблемы)
+
+- [ ] **`: any` в параметрах функций (11 файлов)**
+  - `lib/api.ts:14,21,28` - `data: any` в createResource/updateResource/patchResource
+  - `hooks/useLogStream.ts:263,266,299` - `log: any`, `container: any`
+  - `hooks/useTerminal.ts:261` - `error: any`
+  - `components/features/canvas/ProjectCanvas.tsx:302,413` - `error: any`, `_: any`
+  - `pages/Servers/Proxy/Settings.tsx:29` - `value: any`
+  - `pages/Activity/Timeline.tsx:46-47` - `before?: any`, `after?: any`
+
+- [ ] **`: any` в интерфейсах (2 файла)**
+  - `Observability/Index.tsx:42` - `icon: any`
+  - `Observability/Metrics.tsx:29` - `icon: any`
+
+- [ ] **`Record<string, any>` (5 файлов)**
+  - `hooks/useDatabases.ts:40`
+  - `Observability/Logs.tsx:23`
+  - `Admin/Logs/Index.tsx:30`
+  - `Settings/AuditLog.tsx:14`
+  - `Databases/Query.tsx:12`
+
+---
+
+## 🔴 ДОПОЛНИТЕЛЬНЫЕ КРИТИЧЕСКИЕ ПРОБЛЕМЫ (найдено при втором аудите)
+
+### Безопасность
+
+- [x] **URL injection через window.open()** ✅ ИСПРАВЛЕНО
+  - Файл: `resources/js/pages/Domains/Redirects.tsx:112-113`
+  - Проблема: `window.open(testUrl, '_blank')` без валидации protocol (javascript:, data:)
+  - Файл: `resources/js/components/features/PreviewCard.tsx:87`
+  - Проблема: `window.open(preview.preview_url, '_blank')` без валидации
+  - Решение:
+    - Создана утилита `isSafeUrl()` в `resources/js/lib/utils.ts` для валидации протоколов (только http:/https:)
+    - Создана функция `safeOpenUrl()` для безопасного открытия URL в новой вкладке
+    - `Domains/Redirects.tsx` - используется `safeOpenUrl()` с toast уведомлением при блокировке
+    - `PreviewCard.tsx` - добавлена проверка `isSafeUrl()` для кнопки и ссылки
+    - Добавлены unit тесты `resources/js/lib/__tests__/utils.test.ts` (18 тестов)
+
+- [ ] **API tokens видимы в React DevTools**
+  - Файл: `resources/js/pages/Settings/Tokens.tsx:27,65,113-114,273`
+  - Проблема: API токены хранятся в state и отображаются в `<code>` элементе
+
+- [ ] **Пароли отображаются без маскировки по умолчанию**
+  - Файлы: SharedVariables/Show.tsx:303, Databases/Connections.tsx:151, Databases/Users.tsx:262-273
+  - Проблема: Connection strings с паролями видны plain text при загрузке
+
+- [ ] **JSON.parse без try-catch**
+  - Файл: `resources/js/pages/Notifications/Index.tsx:36`
+  - Проблема: `JSON.parse(saved)` из localStorage без обработки ошибок
+
+### Broken Links (несуществующие страницы)
+
+- [ ] **Ссылки на несуществующие страницы**
+  - `/terms` - используется в Auth/Register.tsx, Templates/Submit.tsx - **НЕ СУЩЕСТВУЕТ**
+  - `/privacy` - используется в Auth/Register.tsx, Templates/Submit.tsx - **НЕ СУЩЕСТВУЕТ**
+  - `/support` - используется в Auth/VerifyEmail.tsx:141 - **НЕ СУЩЕСТВУЕТ**
+
+### API вызовы с проблемами
+
+- [ ] **Неправильные API пути**
+  - `hooks/useDatabaseMetrics.ts:92` - `/api/databases/` вместо `/api/v1/databases/`
+  - `hooks/useDatabaseMetricsHistory.ts:103` - `/api/databases/` вместо `/api/v1/databases/`
+  - `pages/Settings/Tokens.tsx:39` - `/settings/tokens` вместо `/api/v1/tokens`
+
+- [ ] **Отсутствует credentials: 'include'**
+  - `pages/Applications/Create.tsx:64` - fetch без credentials
+  - `pages/Settings/Tokens.tsx:39` - fetch без credentials
+
+---
+
+## 🟠 ДОПОЛНИТЕЛЬНЫЕ ВЫСОКИЕ ПРОБЛЕМЫ (найдено при втором аудите)
+
+### Формы без proper обработки
+
+- [ ] **Формы без disabled state при submit (inputs остаются активными)**
+  - `pages/Servers/Create.tsx` - нет disabled на inputs
+  - `pages/Databases/Create.tsx` - нет disabled на inputs
+  - `pages/Settings/Team/Invite.tsx` - нет disabled на inputs
+  - `pages/CronJobs/Create.tsx` - нет disabled на inputs
+  - `pages/Auth/ForgotPassword.tsx` - нет disabled на input
+
+- [ ] **Формы без обработки ошибок сервера (нет onError callback)**
+  - `pages/Servers/Create.tsx` - router.post без onError
+  - `pages/Databases/Create.tsx` - router.post без onError
+  - `pages/Settings/Team/Invite.tsx` - router.post без onError
+  - `pages/Auth/ForgotPassword.tsx` - post без onError
+
+- [ ] **Формы без HTML5 валидации (нет minLength, pattern, и т.д.)**
+  - `pages/Auth/Register.tsx` - password без minLength="8"
+  - `pages/Servers/Create.tsx` - ip без pattern, port без min/max
+  - `pages/Settings/Notifications/Email.tsx` - smtp_port без min/max
+  - `pages/CronJobs/Create.tsx` - command без required
+
+### Accessibility проблемы
+
+- [ ] **Input компонент без aria-invalid и aria-describedby**
+  - `components/ui/Input.tsx` - нет aria-invalid при ошибке
+
+- [ ] **Отсутствие aria-label**
+  - `pages/Servers/Create.tsx:173-223` - SSH key mode buttons без aria-label
+  - `pages/Settings/Team/Invite.tsx:249-280` - Project access buttons без aria-label
+  - `pages/Settings/Account.tsx:219-222` - Avatar upload без aria-label
+  - `pages/CronJobs/Create.tsx:145-168` - Command textarea без label связи
+
+### Роутинг проблемы
+
+- [ ] **Небезопасный javascript: protocol в href (2 файла)**
+  - `pages/Errors/404.tsx:47` - `href="javascript:history.back()"` - ОПАСНО!
+  - `pages/Errors/403.tsx:93` - `href="javascript:history.back()"` - ОПАСНО!
+
+- [ ] **window.location.href вместо router.visit() (9 мест)**
+  - `pages/Auth/Onboarding/Index.tsx:350`
+  - `pages/Auth/OAuth/Connect.tsx:53,189`
+  - `pages/Auth/AcceptInvite.tsx:26,41`
+  - `components/ErrorBoundary.tsx:68`
+  - И другие файлы
+
+- [ ] **Legacy paths (/project/ вместо /projects/)**
+  - `pages/Applications/Rollback/Show.tsx:104` - неправильный путь
+
+### TODO комментарий
+
+- [ ] **Resource limits API не реализован**
+  - Файл: `pages/Services/Settings.tsx:245`
+  - Проблема: `TODO: Resource limits API not implemented yet in ServicesController`
+
+---
+
+## 🟡 ДОПОЛНИТЕЛЬНЫЕ СРЕДНИЕ ПРОБЛЕМЫ (найдено при втором аудите)
+
+### Дублирование кода (требуется рефакторинг)
+
+- [ ] **Logs pages - 5 почти идентичных файлов (~1500 строк)** ✅ ПЕРЕПРОВЕРЕНО
+  - Databases/Logs.tsx, Applications/Logs.tsx, Services/Logs.tsx, **Servers/Proxy/Logs.tsx**, Deployments/BuildLogs.tsx
+  - Одинаковые: getLevelColor(), LogEntry component, UI structure
+  - Решение: Создать общий `LogsViewer` компонент
+
+- [ ] **Variables pages - 6 файлов с 85% совпадением (~2200 строк)** ✅ ПЕРЕПРОВЕРЕНО
+  - Environments/Variables.tsx, Applications/Settings/Variables.tsx, Projects/Variables.tsx, **Services/Variables.tsx**, **Projects/Show.tsx (VariablesTab)**, **Environments/Secrets.tsx**
+  - Одинаковые: toggleMask(), copyToClipboard(), handleAddVariable(), handleExport(), handleImport()
+  - Решение: Создать `VariablesManager` компонент + `useVariablesManager` хук
+
+- [ ] **Domains/SSL pages - 6 файлов с SSL status логикой (~1000 строк)** ✅ ПЕРЕПРОВЕРЕНО
+  - Services/Domains.tsx, Servers/Proxy/Domains.tsx, Domains/Show.tsx, Domains/Index.tsx, SSL/Index.tsx, Projects/Show.tsx
+  - Одинаковые: SSL status badges, SSL status icons
+  - Решение: Создать `DomainsList` компонент + `sslUtils.ts`
+
+- [ ] **Build Logs pages - 2 файла с 70% совпадением (~900 строк)**
+  - Services/BuildLogs.tsx, Deployments/BuildLogs.tsx
+  - Одинаковые: getStatusIcon(), handleDownloadLogs(), toggleStep()
+  - Решение: Создать `BuildStepsViewer` компонент
+
+- [ ] **Backups pages - 4 файла с 70% совпадением (~1000 строк)** ✅ ПЕРЕПРОВЕРЕНО
+  - Databases/Backups.tsx, Storage/Backups.tsx, **Storage/Snapshots.tsx**, Projects/Show.tsx
+  - Одинаковые: handleCreateBackup(), handleRestore(), handleDownload(), handleDelete()
+  - Решение: Создать `BackupsManager` компонент
+
+- [ ] **Status utility functions дублируются в 21 файле (~700 строк)** ✅ ПЕРЕПРОВЕРЕНО
+  - getStatusIcon(), getStatusColor(), getStatusBadge() - идентичные switch statements
+  - Файлы: ScheduledTasks/*, Deployments/*, CronJobs/*, Storage/*, Databases/*, Services/*, Applications/*, Servers/*, Sources/*
+  - Решение: Создать утилиту `statusUtils.ts`
+
+**Потенциальная экономия при рефакторинге: ~3000-4000 строк кода**
+
+---
+
 ## Статистика
+
+### Исправленные проблемы (ранее)
 
 | Категория | Количество | Исправлено | Критичность |
 |-----------|-----------|------------|-------------|
 | XSS уязвимость | 1 | ✅ 1 | 🔴 Критическая |
-| Mock данные | 5 | ✅ 4 | 🔴 Критическая |
-| Неработающие кнопки | 4 | ✅ 4 | 🟠 Высокая |
-| Memory leaks | 3 | ✅ 3 (1 fix + 2 n/a) | 🟠 Высокая |
+| Mock данные (первичные) | 5 | ✅ 5 | 🔴 Критическая |
+| Неработающие кнопки (первичные) | 4 | ✅ 4 | 🟠 Высокая |
+| Memory leaks (первичные) | 3 | ✅ 3 (1 fix + 2 n/a) | 🟠 Высокая |
 | Обработка ошибок | 2 | ✅ 2 (n/a) | 🟠 Высокая |
 | TODO незавершённые | 2 | ✅ 2 | 🟡 Средняя |
 | confirm() → Modal | ~80 | ✅ 46 файлов | 🟡 Средняя |
 | localStorage | 2 | ✅ 2 (verified safe) | 🟡 Средняя |
-| TypeScript any | 60+ | ✅ 15 файлов (все в основном коде) | 🟢 Низкая |
+| TypeScript `as any` | 15 | ✅ 15 файлов (основной код) | 🟢 Низкая |
 
-**Прогресс: 25 из ~25 критических/высоких/средних проблем исправлено! В основном коде (не тесты) `as any` полностью удалены.**
+### Новые проблемы (найдено при аудите 2026-01-23)
+
+| Категория | Количество | Критичность |
+|-----------|-----------|-------------|
+| Mock данные в Settings | 7 файлов | 🔴 Критическая |
+| Mock данные в Notifications Settings | 6 файлов | 🔴 Критическая |
+| Mock данные в Database Panels | 5 файлов | 🔴 Критическая |
+| Mock данные в Projects | 1 файл | 🟠 Высокая |
+| Кнопки без API (новые) | 4 файла | 🟠 Высокая |
+| React баги / Memory leaks | 4 файла | 🟠 Высокая |
+| console.log в продакшн | 23 файла | 🟠 Высокая |
+| TypeScript `: any` параметры | 11 файлов | 🟡 Средняя |
+| `Record<string, any>` | 5 файлов | 🟡 Средняя |
+
+### Дополнительные проблемы (найдено при втором аудите)
+
+| Категория | Количество | Исправлено | Критичность |
+|-----------|-----------|------------|-------------|
+| URL injection (security) | 2 места | ✅ 2 | 🔴 Критическая |
+| API tokens visible | 1 файл | 🔴 Критическая |
+| Broken links (несуществующие страницы) | 3 страницы | 🔴 Критическая |
+| Неправильные API пути | 2 файла | 🔴 Критическая |
+| Пароли без маскировки | 3 файла | 🟠 Высокая |
+| Формы без disabled state | 5 файлов | 🟠 Высокая |
+| Формы без server error handling | 4 файла | 🟠 Высокая |
+| Формы без HTML5 валидации | 4 файла | 🟠 Высокая |
+| Accessibility (aria-*) | 5 файлов | 🟠 Высокая |
+| window.location вместо router | 9 мест | 🟠 Высокая |
+| javascript: protocol в href | 2 места | 🟠 Высокая |
+| Дублирование кода | ~7000 строк (21+ файлов) | 🟡 Средняя |
+| TODO незакрытый | 1 место | 🟡 Средняя |
+
+**Прогресс: 26 исправлено ✅ | 100+ новых проблем найдено ⚠️**
 
 ---
 
@@ -304,27 +663,102 @@
 
 ## План исправления
 
-### Этап 1: Критические (до продакшна)
+### ~~Этап 1-4: Завершён~~ ✅
+
+Все ранее найденные проблемы исправлены (25 из 25).
+
+---
+
+### Этап 5: Новые критические проблемы (Mock данные в Settings)
+
+14. [ ] Реализовать API для Settings/Team - команда и участники
+15. [ ] Реализовать API для Settings/Team/Activity - история активности
+16. [ ] Реализовать API для Settings/Members/Show - данные участника
+17. [ ] Реализовать API для Settings/Integrations - подключение интеграций
+18. [ ] Реализовать API для Settings/Security - сессии, логины, IP whitelist
+19. [ ] Реализовать API для Settings/AuditLog - логи аудита
+20. [ ] Реализовать API для Settings/Workspace - данные workspace
+
+### Этап 6: Новые высокие проблемы
+
+21. [ ] Реализовать API для Templates/Submit - сохранение шаблонов
+22. [ ] Реализовать API для Databases/Query - выполнение SQL запросов
+23. [ ] Реализовать API для Errors/Maintenance - подписка на уведомления
+24. [ ] Исправить memory leaks в terminal.js (setTimeout cleanup, SSR checks)
+25. [ ] Исправить reconnect логику в useTerminal.ts и useRealtimeStatus.ts
+26. [ ] Удалить все console.log из продакшн кода (15 мест)
+
+### Этап 7: Database Panels
+
+27. [ ] Заменить mock данные в ClickHousePanel.tsx на реальные API вызовы
+28. [ ] Заменить mock данные в PostgreSQLPanel.tsx на реальные API вызовы
+29. [ ] Заменить mock данные в MySQLPanel.tsx на реальные API вызовы
+30. [ ] Заменить mock данные в MongoDBPanel.tsx на реальные API вызовы
+31. [ ] Заменить mock данные в RedisPanel.tsx на реальные API вызовы
+
+### Этап 8: TypeScript качество (ongoing)
+
+32. [ ] Заменить `: any` в lib/api.ts на generic types
+33. [ ] Заменить `: any` в hooks (useLogStream, useTerminal)
+34. [ ] Заменить `Record<string, any>` на конкретные интерфейсы
+35. [ ] Заменить `icon: any` на `icon: LucideIcon` в Observability
+
+### Этап 9: Безопасность (КРИТИЧНО)
+
+36. [x] ~~Исправить URL injection в Domains/Redirects.tsx и PreviewCard.tsx (валидация protocol)~~ ✅
+37. [ ] Скрыть API токены от React DevTools в Settings/Tokens.tsx
+38. [ ] Добавить маскировку паролей по умолчанию в SharedVariables/Show.tsx, Databases/*
+39. [ ] Обернуть JSON.parse в try-catch в Notifications/Index.tsx
+40. [ ] Создать страницы /terms, /privacy, /support или удалить ссылки
+
+### Этап 10: Формы и Accessibility
+
+41. [ ] Добавить disabled state на inputs при submit (5 файлов)
+42. [ ] Добавить onError callback в router.post (4 файла)
+43. [ ] Добавить HTML5 валидацию (minLength, pattern, min/max) в формы
+44. [ ] Добавить aria-invalid, aria-describedby в Input компонент
+45. [ ] Добавить aria-label на кнопки без текста (5 файлов)
+
+### Этап 11: Роутинг
+
+46. [ ] Заменить `javascript:history.back()` на onClick handler в 404.tsx и 403.tsx
+47. [ ] Заменить window.location.href на router.visit (5 файлов)
+48. [ ] Исправить legacy path /project/ на /projects/ в Rollback/Show.tsx
+49. [ ] Исправить API пути в useDatabaseMetrics.ts, useDatabaseMetricsHistory.ts и Tokens.tsx
+
+### Этап 12: Рефакторинг (дублирование кода) - экономия ~3000-4000 строк
+
+50. [ ] Создать компонент `LogsViewer` (объединить 5 файлов, экономия ~1000 строк)
+51. [ ] Создать компонент `VariablesManager` + хук (объединить 5 файлов, экономия ~1200 строк)
+52. [ ] Создать компонент `DomainsList` + `sslUtils.ts` (объединить 6 файлов, экономия ~600 строк)
+53. [ ] Создать компонент `BuildStepsViewer` (объединить 2 файла, экономия ~400 строк)
+54. [ ] Создать компонент `BackupsManager` (объединить 4 файла, экономия ~500 строк)
+55. [ ] Создать утилиту `statusUtils.ts` (объединить 21 файл, экономия ~700 строк)
+
+---
+
+### Ранее завершённые этапы (для истории):
+
+#### ~~Этап 1: Критические (до продакшна)~~ ✅
 1. ~~Исправить XSS в TwoFactor/Setup.tsx~~ ✅
 2. ~~Удалить mock данные из Notifications/Index.tsx~~ ✅
-3. ~~Удалить mock данные из Webhooks~~ ✅ (Integrations/Webhooks.tsx и Services/Webhooks.tsx)
+3. ~~Удалить mock данные из Webhooks~~ ✅
 4. ~~Удалить mock данные из Settings/Account.tsx~~ ✅
 
-### Этап 2: Высокие (неделя 1)
-4. ~~Реализовать API для Services/Settings.tsx~~ ✅
-5. ~~Реализовать API для Notifications/Preferences.tsx~~ ✅
-6. ~~Реализовать API для Services/Scaling.tsx~~ ✅
-7. ~~Реализовать API для Databases/Overview.tsx restart~~ ✅
-8. ~~Исправить memory leaks в Terminal и ProjectCanvas~~ ✅ (setTimeout fix + остальные были неактуальны)
+#### ~~Этап 2: Высокие~~ ✅
+5. ~~Реализовать API для Services/Settings.tsx~~ ✅
+6. ~~Реализовать API для Notifications/Preferences.tsx~~ ✅
+7. ~~Реализовать API для Services/Scaling.tsx~~ ✅
+8. ~~Реализовать API для Databases/Overview.tsx restart~~ ✅
+9. ~~Исправить memory leaks в Terminal и ProjectCanvas~~ ✅
 
-### Этап 3: Средние (неделя 2)
-9. ~~Создать ConfirmationModal компонент~~ ✅
-10. ~~Заменить все confirm() вызовы (46 файлов)~~ ✅
-11. ~~Завершить TODO функциональность~~ ✅ (VariablesTab в Projects/Show.tsx)
+#### ~~Этап 3: Средние~~ ✅
+10. ~~Создать ConfirmationModal компонент~~ ✅
+11. ~~Заменить все confirm() вызовы (46 файлов)~~ ✅
+12. ~~Завершить TODO функциональность~~ ✅
 
-### Этап 4: Низкие (ongoing)
-12. ~~Исправить приоритетные `as any` типизации~~ ✅ (15 файлов)
-13. ~~Удалить все `as any` из основного кода~~ ✅ (осталось только в тестах)
+#### ~~Этап 4: Низкие~~ ✅
+13. ~~Исправить приоритетные `as any` типизации~~ ✅ (15 файлов)
 
 ---
 
@@ -372,3 +806,10 @@
 - `SharedVariables/Show.tsx` - типизация getScopeBadgeVariant
 - `ScheduledTasks/History.tsx` - типизация statusFilter
 - `Applications/Settings/Index.tsx` - типизация build_pack
+
+## Обновлённые файлы (URL injection fix)
+
+- `resources/js/lib/utils.ts` - добавлены функции `isSafeUrl()` и `safeOpenUrl()` для безопасной валидации URL
+- `resources/js/pages/Domains/Redirects.tsx` - использует `safeOpenUrl()` для безопасного открытия тестовых URL
+- `resources/js/components/features/PreviewCard.tsx` - проверяет URL через `isSafeUrl()` перед открытием
+- `resources/js/lib/__tests__/utils.test.ts` - unit тесты для функций валидации URL (18 тестов)
