@@ -1,114 +1,52 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, Checkbox } from '@/components/ui';
+import { router, usePage } from '@inertiajs/react';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import {
-    Plus, Trash2, Edit2, Eye, EyeOff, Copy, Check,
+    Plus, Trash2, Eye, EyeOff, Copy, Check,
     Send, CheckCircle, XCircle, Clock, Webhook
 } from 'lucide-react';
 import type { Service } from '@/types';
 
-interface Props {
-    service: Service;
+interface WebhookDelivery {
+    id: number;
+    uuid: string;
+    event: string;
+    status: 'success' | 'failed' | 'pending';
+    status_code: number | null;
+    response_time_ms: number | null;
+    attempts: number;
+    created_at: string;
 }
 
 interface WebhookConfig {
     id: number;
+    uuid: string;
+    name: string;
     url: string;
     events: string[];
     secret: string;
-    active: boolean;
-    createdAt: string;
+    enabled: boolean;
+    created_at: string;
+    deliveries?: WebhookDelivery[];
 }
 
-interface WebhookDelivery {
-    id: number;
-    webhookId: number;
-    event: string;
-    status: 'success' | 'failed' | 'pending';
-    statusCode: number | null;
-    timestamp: string;
-    responseTime: string;
+interface AvailableEvent {
+    value: string;
+    label: string;
+    description: string;
 }
 
-// Mock webhooks data
-const mockWebhooks: WebhookConfig[] = [
-    {
-        id: 1,
-        url: 'https://api.example.com/webhooks/deploy',
-        events: ['deployment.started', 'deployment.finished', 'deployment.failed'],
-        secret: 'whsec_1234567890abcdefghijklmnop',
-        active: true,
-        createdAt: '2024-01-15',
-    },
-    {
-        id: 2,
-        url: 'https://slack-webhook.example.com/services/T00/B00/XXX',
-        events: ['deployment.failed'],
-        secret: 'whsec_abcdefghijklmnop1234567890',
-        active: true,
-        createdAt: '2024-02-01',
-    },
-    {
-        id: 3,
-        url: 'https://monitoring.example.com/webhooks',
-        events: ['service.health_check_failed'],
-        secret: 'whsec_xyz123abc456def789ghi012jkl',
-        active: false,
-        createdAt: '2024-02-10',
-    },
-];
+interface Props {
+    service: Service;
+    webhooks: WebhookConfig[];
+    availableEvents: AvailableEvent[];
+}
 
-const mockDeliveries: WebhookDelivery[] = [
-    {
-        id: 1,
-        webhookId: 1,
-        event: 'deployment.finished',
-        status: 'success',
-        statusCode: 200,
-        timestamp: '2 minutes ago',
-        responseTime: '234ms',
-    },
-    {
-        id: 2,
-        webhookId: 1,
-        event: 'deployment.started',
-        status: 'success',
-        statusCode: 200,
-        timestamp: '15 minutes ago',
-        responseTime: '189ms',
-    },
-    {
-        id: 3,
-        webhookId: 2,
-        event: 'deployment.failed',
-        status: 'failed',
-        statusCode: 500,
-        timestamp: '1 hour ago',
-        responseTime: '5234ms',
-    },
-    {
-        id: 4,
-        webhookId: 1,
-        event: 'deployment.finished',
-        status: 'success',
-        statusCode: 200,
-        timestamp: '3 hours ago',
-        responseTime: '156ms',
-    },
-];
+export function WebhooksTab({ service }: { service: Service }) {
+    const { webhooks: initialWebhooks = [], availableEvents = [] } = usePage<{ props: Props }>().props as unknown as Props;
 
-const availableEvents = [
-    { value: 'deployment.started', label: 'Deployment Started' },
-    { value: 'deployment.finished', label: 'Deployment Finished' },
-    { value: 'deployment.failed', label: 'Deployment Failed' },
-    { value: 'service.started', label: 'Service Started' },
-    { value: 'service.stopped', label: 'Service Stopped' },
-    { value: 'service.health_check_failed', label: 'Health Check Failed' },
-];
-
-export function WebhooksTab({ service }: Props) {
-    const [webhooks, setWebhooks] = useState<WebhookConfig[]>(mockWebhooks);
-    const [deliveries] = useState<WebhookDelivery[]>(mockDeliveries);
+    const [webhooks, setWebhooks] = useState<WebhookConfig[]>(initialWebhooks);
     const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
     const [copiedId, setCopiedId] = useState<number | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -125,20 +63,49 @@ export function WebhooksTab({ service }: Props) {
         setTimeout(() => setCopiedId(null), 2000);
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this webhook?')) {
-            setWebhooks((prev) => prev.filter((w) => w.id !== id));
-        }
+    const handleDelete = (uuid: string) => {
+        router.delete(`/integrations/webhooks/${uuid}`, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setWebhooks((prev) => prev.filter((w) => w.uuid !== uuid));
+                addToast('success', 'Webhook deleted successfully');
+            },
+            onError: () => {
+                addToast('error', 'Failed to delete webhook');
+            },
+        });
     };
 
-    const handleToggleActive = (id: number) => {
-        setWebhooks((prev) =>
-            prev.map((w) => (w.id === id ? { ...w, active: !w.active } : w))
-        );
+    const handleToggleActive = (webhook: WebhookConfig) => {
+        router.post(`/integrations/webhooks/${webhook.uuid}/toggle`, {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setWebhooks((prev) =>
+                    prev.map((w) => (w.uuid === webhook.uuid ? { ...w, enabled: !w.enabled } : w))
+                );
+                addToast('success', `Webhook ${webhook.enabled ? 'disabled' : 'enabled'} successfully`);
+            },
+            onError: () => {
+                addToast('error', 'Failed to toggle webhook');
+            },
+        });
     };
 
-    const handleTestWebhook = (id: number) => {
-        addToast('info', `Testing webhook ${id}...`);
+    const handleTestWebhook = (webhook: WebhookConfig) => {
+        router.post(`/integrations/webhooks/${webhook.uuid}/test`, {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                addToast('success', 'Test webhook sent');
+                router.reload({ only: ['webhooks'] });
+            },
+            onError: () => {
+                addToast('error', 'Failed to send test webhook');
+            },
+        });
+    };
+
+    const getWebhookDeliveries = (webhook: WebhookConfig): WebhookDelivery[] => {
+        return webhook.deliveries || [];
     };
 
     return (
@@ -178,165 +145,176 @@ export function WebhooksTab({ service }: Props) {
                         </CardContent>
                     </Card>
                 ) : (
-                    webhooks.map((webhook) => (
-                        <Card key={webhook.id}>
-                            <CardContent className="p-4">
-                                <div className="space-y-3">
-                                    {/* Webhook Header */}
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <code className="text-sm font-medium text-foreground">
+                    webhooks.map((webhook) => {
+                        const deliveries = getWebhookDeliveries(webhook);
+
+                        return (
+                            <Card key={webhook.id}>
+                                <CardContent className="p-4">
+                                    <div className="space-y-3">
+                                        {/* Webhook Header */}
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-foreground">{webhook.name}</span>
+                                                    <Badge variant={webhook.enabled ? 'success' : 'default'}>
+                                                        {webhook.enabled ? 'Active' : 'Inactive'}
+                                                    </Badge>
+                                                </div>
+                                                <code className="mt-1 block text-sm text-foreground-muted">
                                                     {webhook.url}
                                                 </code>
-                                                <Badge variant={webhook.active ? 'success' : 'default'}>
-                                                    {webhook.active ? 'Active' : 'Inactive'}
-                                                </Badge>
-                                            </div>
-                                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                {webhook.events.map((event) => (
-                                                    <Badge key={event} variant="default" className="text-xs">
-                                                        {event}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => handleTestWebhook(webhook.id)}
-                                                className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                                title="Test webhook"
-                                            >
-                                                <Send className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleToggleActive(webhook.id)}
-                                                className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                                title={webhook.active ? 'Disable' : 'Enable'}
-                                            >
-                                                {webhook.active ? (
-                                                    <CheckCircle className="h-4 w-4 text-primary" />
-                                                ) : (
-                                                    <XCircle className="h-4 w-4" />
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(webhook.id)}
-                                                className="rounded p-2 text-danger transition-colors hover:bg-danger/10"
-                                                title="Delete webhook"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Secret Key */}
-                                    <div className="rounded-lg border border-border bg-background-secondary p-3">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <p className="text-xs font-medium text-foreground-muted mb-1">
-                                                    Secret Key
-                                                </p>
-                                                <code className="text-sm text-foreground">
-                                                    {showSecrets[webhook.id]
-                                                        ? webhook.secret
-                                                        : '••••••••••••••••••••••••••••••'}
-                                                </code>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    {webhook.events.map((event) => (
+                                                        <Badge key={event} variant="default" className="text-xs">
+                                                            {event}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <button
-                                                    onClick={() => toggleShowSecret(webhook.id)}
+                                                    onClick={() => handleTestWebhook(webhook)}
                                                     className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                                    title={showSecrets[webhook.id] ? 'Hide secret' : 'Show secret'}
+                                                    title="Test webhook"
                                                 >
-                                                    {showSecrets[webhook.id] ? (
-                                                        <EyeOff className="h-4 w-4" />
+                                                    <Send className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleToggleActive(webhook)}
+                                                    className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                                    title={webhook.enabled ? 'Disable' : 'Enable'}
+                                                >
+                                                    {webhook.enabled ? (
+                                                        <CheckCircle className="h-4 w-4 text-primary" />
                                                     ) : (
-                                                        <Eye className="h-4 w-4" />
+                                                        <XCircle className="h-4 w-4" />
                                                     )}
                                                 </button>
                                                 <button
-                                                    onClick={() => handleCopy(webhook.secret, webhook.id)}
-                                                    className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                                    title="Copy secret"
+                                                    onClick={() => handleDelete(webhook.uuid)}
+                                                    className="rounded p-2 text-danger transition-colors hover:bg-danger/10"
+                                                    title="Delete webhook"
                                                 >
-                                                    {copiedId === webhook.id ? (
-                                                        <Check className="h-4 w-4 text-primary" />
-                                                    ) : (
-                                                        <Copy className="h-4 w-4" />
-                                                    )}
+                                                    <Trash2 className="h-4 w-4" />
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Recent Deliveries */}
-                                    <div>
-                                        <button
-                                            onClick={() =>
-                                                setSelectedWebhook(
-                                                    selectedWebhook === webhook.id ? null : webhook.id
-                                                )
-                                            }
-                                            className="text-xs font-medium text-primary hover:underline"
-                                        >
-                                            {selectedWebhook === webhook.id
-                                                ? 'Hide delivery history'
-                                                : 'View delivery history'}
-                                        </button>
-                                        {selectedWebhook === webhook.id && (
-                                            <div className="mt-2 space-y-2">
-                                                {deliveries
-                                                    .filter((d) => d.webhookId === webhook.id)
-                                                    .map((delivery) => (
-                                                        <div
-                                                            key={delivery.id}
-                                                            className="flex items-center justify-between rounded border border-border bg-background p-2 text-xs"
-                                                        >
-                                                            <div className="flex items-center gap-2">
-                                                                {delivery.status === 'success' ? (
-                                                                    <CheckCircle className="h-3 w-3 text-primary" />
-                                                                ) : delivery.status === 'failed' ? (
-                                                                    <XCircle className="h-3 w-3 text-danger" />
-                                                                ) : (
-                                                                    <Clock className="h-3 w-3 text-warning" />
-                                                                )}
-                                                                <span className="font-medium text-foreground">
-                                                                    {delivery.event}
-                                                                </span>
-                                                                {delivery.statusCode && (
-                                                                    <Badge
-                                                                        variant={
-                                                                            delivery.status === 'success'
-                                                                                ? 'success'
-                                                                                : 'danger'
-                                                                        }
-                                                                        className="text-xs"
-                                                                    >
-                                                                        {delivery.statusCode}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-3 text-foreground-muted">
-                                                                <span>{delivery.responseTime}</span>
-                                                                <span>·</span>
-                                                                <span>{delivery.timestamp}</span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                        {/* Secret Key */}
+                                        <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <p className="text-xs font-medium text-foreground-muted mb-1">
+                                                        Secret Key
+                                                    </p>
+                                                    <code className="text-sm text-foreground">
+                                                        {showSecrets[webhook.id]
+                                                            ? webhook.secret
+                                                            : '••••••••••••••••••••••••••••••'}
+                                                    </code>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => toggleShowSecret(webhook.id)}
+                                                        className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                                        title={showSecrets[webhook.id] ? 'Hide secret' : 'Show secret'}
+                                                    >
+                                                        {showSecrets[webhook.id] ? (
+                                                            <EyeOff className="h-4 w-4" />
+                                                        ) : (
+                                                            <Eye className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleCopy(webhook.secret, webhook.id)}
+                                                        className="rounded p-2 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                                        title="Copy secret"
+                                                    >
+                                                        {copiedId === webhook.id ? (
+                                                            <Check className="h-4 w-4 text-primary" />
+                                                        ) : (
+                                                            <Copy className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </div>
                                             </div>
-                                        )}
+                                        </div>
+
+                                        {/* Recent Deliveries */}
+                                        <div>
+                                            <button
+                                                onClick={() =>
+                                                    setSelectedWebhook(
+                                                        selectedWebhook === webhook.id ? null : webhook.id
+                                                    )
+                                                }
+                                                className="text-xs font-medium text-primary hover:underline"
+                                            >
+                                                {selectedWebhook === webhook.id
+                                                    ? 'Hide delivery history'
+                                                    : 'View delivery history'}
+                                            </button>
+                                            {selectedWebhook === webhook.id && (
+                                                <div className="mt-2 space-y-2">
+                                                    {deliveries.length === 0 ? (
+                                                        <div className="rounded-lg border border-border bg-background p-4 text-center text-sm text-foreground-muted">
+                                                            No deliveries yet
+                                                        </div>
+                                                    ) : (
+                                                        deliveries.map((delivery) => (
+                                                            <div
+                                                                key={delivery.id}
+                                                                className="flex items-center justify-between rounded border border-border bg-background p-2 text-xs"
+                                                            >
+                                                                <div className="flex items-center gap-2">
+                                                                    {delivery.status === 'success' ? (
+                                                                        <CheckCircle className="h-3 w-3 text-primary" />
+                                                                    ) : delivery.status === 'failed' ? (
+                                                                        <XCircle className="h-3 w-3 text-danger" />
+                                                                    ) : (
+                                                                        <Clock className="h-3 w-3 text-warning" />
+                                                                    )}
+                                                                    <span className="font-medium text-foreground">
+                                                                        {delivery.event}
+                                                                    </span>
+                                                                    {delivery.status_code && (
+                                                                        <Badge
+                                                                            variant={
+                                                                                delivery.status === 'success'
+                                                                                    ? 'success'
+                                                                                    : 'danger'
+                                                                            }
+                                                                            className="text-xs"
+                                                                        >
+                                                                            {delivery.status_code}
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-foreground-muted">
+                                                                    {delivery.response_time_ms && (
+                                                                        <span>{delivery.response_time_ms}ms</span>
+                                                                    )}
+                                                                    <span>{new Date(delivery.created_at).toLocaleString()}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
+                                </CardContent>
+                            </Card>
+                        );
+                    })
                 )}
             </div>
 
             {/* Add Webhook Modal */}
             {isAddModalOpen && (
                 <AddWebhookModal
+                    availableEvents={availableEvents}
                     onClose={() => setIsAddModalOpen(false)}
                     onAdd={(webhook) => {
                         setWebhooks((prev) => [...prev, webhook]);
@@ -349,28 +327,40 @@ export function WebhooksTab({ service }: Props) {
 }
 
 interface AddWebhookModalProps {
+    availableEvents: AvailableEvent[];
     onClose: () => void;
     onAdd: (webhook: WebhookConfig) => void;
 }
 
-function AddWebhookModal({ onClose, onAdd }: AddWebhookModalProps) {
+function AddWebhookModal({ availableEvents, onClose, onAdd }: AddWebhookModalProps) {
+    const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const { addToast } = useToast();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!url || selectedEvents.length === 0) return;
+        if (!name || !url || selectedEvents.length === 0) return;
 
-        const webhook: WebhookConfig = {
-            id: Date.now(),
+        setIsLoading(true);
+
+        router.post('/integrations/webhooks', {
+            name,
             url,
             events: selectedEvents,
-            secret: `whsec_${Math.random().toString(36).substring(2, 32)}`,
-            active: true,
-            createdAt: new Date().toISOString().split('T')[0],
-        };
-
-        onAdd(webhook);
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                addToast('success', 'Webhook created successfully');
+                router.reload({ only: ['webhooks'] });
+                onClose();
+            },
+            onError: () => {
+                addToast('error', 'Failed to create webhook');
+                setIsLoading(false);
+            },
+        });
     };
 
     const toggleEvent = (event: string) => {
@@ -380,51 +370,69 @@ function AddWebhookModal({ onClose, onAdd }: AddWebhookModalProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-xl">
-                <h2 className="text-xl font-semibold text-foreground">Add Webhook</h2>
-                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                            Webhook URL
-                        </label>
-                        <Input
-                            type="url"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                            placeholder="https://api.example.com/webhooks"
-                            required
-                        />
-                    </div>
+        <Modal
+            isOpen={true}
+            onClose={onClose}
+            title="Add Webhook"
+            description="Create a new webhook to receive notifications"
+        >
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                    label="Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Production Notifications"
+                    required
+                />
 
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                            Events to Subscribe
-                        </label>
-                        <div className="space-y-2 max-h-48 overflow-y-auto rounded border border-border p-3">
-                            {availableEvents.map((event) => (
-                                <label
-                                    key={event.value}
-                                    className="flex items-center gap-2 cursor-pointer"
-                                >
-                                    <Checkbox
-                                        checked={selectedEvents.includes(event.value)}
-                                        onChange={() => toggleEvent(event.value)}
-                                    />
+                <Input
+                    label="Webhook URL"
+                    type="url"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://api.example.com/webhooks"
+                    required
+                />
+
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                        Events to Subscribe
+                    </label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto rounded border border-border p-3">
+                        {availableEvents.map((event) => (
+                            <label
+                                key={event.value}
+                                className="flex items-center gap-2 cursor-pointer"
+                            >
+                                <Checkbox
+                                    checked={selectedEvents.includes(event.value)}
+                                    onChange={() => toggleEvent(event.value)}
+                                />
+                                <div>
                                     <span className="text-sm text-foreground">{event.label}</span>
-                                </label>
-                            ))}
-                        </div>
+                                    <p className="text-xs text-foreground-muted">{event.description}</p>
+                                </div>
+                            </label>
+                        ))}
                     </div>
+                </div>
 
-                    <div className="flex justify-end gap-2">
-                        <Button type="button" variant="secondary" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit">Add Webhook</Button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <ModalFooter>
+                    <Button type="button" variant="secondary" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" loading={isLoading} disabled={selectedEvents.length === 0}>
+                        Add Webhook
+                    </Button>
+                </ModalFooter>
+            </form>
+        </Modal>
     );
+}
+
+// Default export for page
+export default function WebhooksPage() {
+    const { service } = usePage<{ props: Props }>().props as unknown as Props;
+
+    return <WebhooksTab service={service} />;
 }

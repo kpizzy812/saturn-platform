@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\SecurityController;
 use App\Http\Controllers\Api\ServersController;
 use App\Http\Controllers\Api\ServicesController;
 use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\TeamWebhooksController;
 use App\Http\Middleware\ApiAllowed;
 use App\Jobs\PushServerUpdateJob;
 use App\Models\Server;
@@ -56,6 +57,17 @@ Route::group([
     Route::get('/notifications/{id}', [NotificationsController::class, 'show'])->middleware(['api.ability:read']);
     Route::post('/notifications/{id}/read', [NotificationsController::class, 'markAsRead'])->middleware(['api.ability:write']);
     Route::delete('/notifications/{id}', [NotificationsController::class, 'destroy'])->middleware(['api.ability:write']);
+
+    // Webhooks
+    Route::get('/webhooks', [TeamWebhooksController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/webhooks', [TeamWebhooksController::class, 'store'])->middleware(['api.ability:write']);
+    Route::get('/webhooks/{uuid}', [TeamWebhooksController::class, 'show'])->middleware(['api.ability:read']);
+    Route::put('/webhooks/{uuid}', [TeamWebhooksController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/webhooks/{uuid}', [TeamWebhooksController::class, 'destroy'])->middleware(['api.ability:write']);
+    Route::post('/webhooks/{uuid}/toggle', [TeamWebhooksController::class, 'toggle'])->middleware(['api.ability:write']);
+    Route::post('/webhooks/{uuid}/test', [TeamWebhooksController::class, 'test'])->middleware(['api.ability:write']);
+    Route::get('/webhooks/{uuid}/deliveries', [TeamWebhooksController::class, 'deliveries'])->middleware(['api.ability:read']);
+    Route::post('/webhooks/{uuid}/deliveries/{deliveryUuid}/retry', [TeamWebhooksController::class, 'retryDelivery'])->middleware(['api.ability:write']);
 
     Route::get('/projects', [ProjectController::class, 'projects'])->middleware(['api.ability:read']);
     Route::get('/projects/{uuid}', [ProjectController::class, 'project_by_uuid'])->middleware(['api.ability:read']);

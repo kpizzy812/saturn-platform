@@ -1,114 +1,35 @@
 import * as React from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, Badge, Checkbox, useToast } from '@/components/ui';
 import { Webhook, Plus, Copy, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, ChevronDown, ChevronRight, Send } from 'lucide-react';
+import { useWebhooks, type Webhook as WebhookType, type WebhookDelivery, type AvailableEvent } from '@/hooks/useWebhooks';
 
-interface Webhook {
-    id: number;
-    name: string;
-    url: string;
-    events: string[];
-    secret: string;
-    enabled: boolean;
-    createdAt: string;
-    lastTriggered?: string;
+interface Props {
+    webhooks: WebhookType[];
+    availableEvents: AvailableEvent[];
 }
-
-interface WebhookDelivery {
-    id: number;
-    webhookId: number;
-    event: string;
-    status: 'success' | 'failed' | 'pending';
-    statusCode?: number;
-    timestamp: string;
-    payload: string;
-    response?: string;
-    attempts: number;
-}
-
-const mockWebhooks: Webhook[] = [
-    {
-        id: 1,
-        name: 'Production Notifications',
-        url: 'https://hooks.example.com/production',
-        events: ['deploy.started', 'deploy.finished', 'deploy.failed'],
-        secret: 'whsec_abcdef1234567890',
-        enabled: true,
-        createdAt: '2024-01-15',
-        lastTriggered: '2024-03-28',
-    },
-    {
-        id: 2,
-        name: 'Slack Integration',
-        url: 'https://hooks.slack.com/services/T00/B00/XXXX',
-        events: ['deploy.finished', 'deploy.failed'],
-        secret: 'whsec_xyz789012345',
-        enabled: true,
-        createdAt: '2024-02-10',
-        lastTriggered: '2024-03-27',
-    },
-    {
-        id: 3,
-        name: 'Development Webhook',
-        url: 'https://webhook.site/unique-id',
-        events: ['deploy.started'],
-        secret: 'whsec_dev123456',
-        enabled: false,
-        createdAt: '2024-03-01',
-    },
-];
-
-const mockDeliveries: WebhookDelivery[] = [
-    {
-        id: 1,
-        webhookId: 1,
-        event: 'deploy.finished',
-        status: 'success',
-        statusCode: 200,
-        timestamp: '2024-03-28 14:32:15',
-        payload: '{"event":"deploy.finished","project":"production-api","status":"success"}',
-        response: '{"received":true}',
-        attempts: 1,
-    },
-    {
-        id: 2,
-        webhookId: 1,
-        event: 'deploy.started',
-        status: 'success',
-        statusCode: 200,
-        timestamp: '2024-03-28 14:30:00',
-        payload: '{"event":"deploy.started","project":"production-api"}',
-        response: '{"received":true}',
-        attempts: 1,
-    },
-    {
-        id: 3,
-        webhookId: 2,
-        event: 'deploy.failed',
-        status: 'failed',
-        statusCode: 500,
-        timestamp: '2024-03-27 09:15:22',
-        payload: '{"event":"deploy.failed","project":"staging-api","error":"Build failed"}',
-        attempts: 3,
-    },
-];
-
-const availableEvents = [
-    { value: 'deploy.started', label: 'Deploy Started', description: 'When a deployment begins' },
-    { value: 'deploy.finished', label: 'Deploy Finished', description: 'When a deployment completes successfully' },
-    { value: 'deploy.failed', label: 'Deploy Failed', description: 'When a deployment fails' },
-    { value: 'service.created', label: 'Service Created', description: 'When a new service is created' },
-    { value: 'service.deleted', label: 'Service Deleted', description: 'When a service is deleted' },
-    { value: 'database.backup', label: 'Database Backup', description: 'When a database backup completes' },
-];
 
 export default function WebhooksPage() {
-    const [webhooks, setWebhooks] = React.useState<Webhook[]>(mockWebhooks);
-    const [deliveries, setDeliveries] = React.useState<WebhookDelivery[]>(mockDeliveries);
+    const { webhooks: initialWebhooks, availableEvents: initialEvents } = usePage<{ props: Props }>().props as unknown as Props;
+
+    const {
+        webhooks,
+        availableEvents,
+        loading,
+        createWebhook,
+        deleteWebhook,
+        toggleWebhook,
+        testWebhook,
+        retryDelivery,
+    } = useWebhooks({
+        initialWebhooks: initialWebhooks || [],
+        availableEvents: initialEvents || [],
+    });
+
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [showDeliveryModal, setShowDeliveryModal] = React.useState(false);
-    const [selectedWebhook, setSelectedWebhook] = React.useState<Webhook | null>(null);
+    const [selectedWebhook, setSelectedWebhook] = React.useState<WebhookType | null>(null);
     const [selectedDelivery, setSelectedDelivery] = React.useState<WebhookDelivery | null>(null);
     const [expandedWebhooks, setExpandedWebhooks] = React.useState<Set<number>>(new Set());
     const [newWebhookName, setNewWebhookName] = React.useState('');
@@ -117,82 +38,67 @@ export default function WebhooksPage() {
     const [isCreating, setIsCreating] = React.useState(false);
     const { addToast } = useToast();
 
-    const handleCreateWebhook = (e: React.FormEvent) => {
+    const handleCreateWebhook = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsCreating(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            const newWebhook: Webhook = {
-                id: webhooks.length + 1,
+        try {
+            await createWebhook({
                 name: newWebhookName,
                 url: newWebhookUrl,
                 events: Array.from(selectedEvents),
-                secret: `whsec_${Math.random().toString(36).substring(2, 15)}`,
-                enabled: true,
-                createdAt: new Date().toISOString().split('T')[0],
-            };
+            });
 
-            setWebhooks([...webhooks, newWebhook]);
             setNewWebhookName('');
             setNewWebhookUrl('');
             setSelectedEvents(new Set());
-            setIsCreating(false);
             setShowCreateModal(false);
-
             addToast('success', 'Webhook created', 'Your webhook has been created successfully.');
-        }, 1000);
-    };
-
-    const handleDeleteWebhook = () => {
-        if (selectedWebhook) {
-            setWebhooks(webhooks.filter(w => w.id !== selectedWebhook.id));
-            setShowDeleteModal(false);
-            setSelectedWebhook(null);
-
-            addToast('success', 'Webhook deleted', 'The webhook has been deleted successfully.');
+        } catch {
+            addToast('error', 'Error', 'Failed to create webhook.');
+        } finally {
+            setIsCreating(false);
         }
     };
 
-    const handleToggleWebhook = (webhook: Webhook) => {
-        setWebhooks(webhooks.map(w =>
-            w.id === webhook.id ? { ...w, enabled: !w.enabled } : w
-        ));
-
-        addToast('success', webhook.enabled ? 'Webhook disabled' : 'Webhook enabled', `${webhook.name} has been ${webhook.enabled ? 'disabled' : 'enabled'}.`);
+    const handleDeleteWebhook = async () => {
+        if (selectedWebhook) {
+            try {
+                await deleteWebhook(selectedWebhook.uuid);
+                setShowDeleteModal(false);
+                setSelectedWebhook(null);
+                addToast('success', 'Webhook deleted', 'The webhook has been deleted successfully.');
+            } catch {
+                addToast('error', 'Error', 'Failed to delete webhook.');
+            }
+        }
     };
 
-    const handleTestWebhook = (webhook: Webhook) => {
-        addToast('success', 'Test event sent', `Test webhook delivery sent to ${webhook.name}.`);
-
-        // Simulate adding a test delivery
-        const testDelivery: WebhookDelivery = {
-            id: deliveries.length + 1,
-            webhookId: webhook.id,
-            event: 'test.event',
-            status: 'success',
-            statusCode: 200,
-            timestamp: new Date().toISOString(),
-            payload: '{"event":"test.event","message":"Test webhook delivery"}',
-            response: '{"received":true}',
-            attempts: 1,
-        };
-        setDeliveries([testDelivery, ...deliveries]);
+    const handleToggleWebhook = async (webhook: WebhookType) => {
+        try {
+            await toggleWebhook(webhook.uuid);
+            addToast('success', webhook.enabled ? 'Webhook disabled' : 'Webhook enabled', `${webhook.name} has been ${webhook.enabled ? 'disabled' : 'enabled'}.`);
+        } catch {
+            addToast('error', 'Error', 'Failed to toggle webhook.');
+        }
     };
 
-    const handleRetryDelivery = (delivery: WebhookDelivery) => {
-        addToast('info', 'Retrying delivery', 'Webhook delivery retry in progress...');
+    const handleTestWebhook = async (webhook: WebhookType) => {
+        try {
+            await testWebhook(webhook.uuid);
+            addToast('success', 'Test event sent', `Test webhook delivery sent to ${webhook.name}.`);
+        } catch {
+            addToast('error', 'Error', 'Failed to send test webhook.');
+        }
+    };
 
-        // Simulate retry
-        setTimeout(() => {
-            setDeliveries(deliveries.map(d =>
-                d.id === delivery.id
-                    ? { ...d, status: 'success' as const, statusCode: 200, attempts: d.attempts + 1 }
-                    : d
-            ));
-
-            addToast('success', 'Retry successful', 'Webhook delivery completed successfully.');
-        }, 1500);
+    const handleRetryDelivery = async (delivery: WebhookDelivery, webhookUuid: string) => {
+        try {
+            await retryDelivery(webhookUuid, delivery.uuid);
+            addToast('info', 'Retrying delivery', 'Webhook delivery retry in progress...');
+        } catch {
+            addToast('error', 'Error', 'Failed to retry delivery.');
+        }
     };
 
     const handleCopy = (text: string, label: string) => {
@@ -224,8 +130,8 @@ export default function WebhooksPage() {
         });
     };
 
-    const getWebhookDeliveries = (webhookId: number) => {
-        return deliveries.filter(d => d.webhookId === webhookId);
+    const getWebhookDeliveries = (webhook: WebhookType): WebhookDelivery[] => {
+        return webhook.deliveries || [];
     };
 
     return (
@@ -241,7 +147,7 @@ export default function WebhooksPage() {
                                 Configure webhooks to receive real-time event notifications
                             </p>
                         </div>
-                        <Button onClick={() => setShowCreateModal(true)}>
+                        <Button onClick={() => setShowCreateModal(true)} disabled={loading}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add Webhook
                         </Button>
@@ -274,7 +180,7 @@ export default function WebhooksPage() {
                                 <div className="space-y-3">
                                     {webhooks.map(webhook => {
                                         const isExpanded = expandedWebhooks.has(webhook.id);
-                                        const webhookDeliveries = getWebhookDeliveries(webhook.id);
+                                        const webhookDeliveries = getWebhookDeliveries(webhook);
 
                                         return (
                                             <div
@@ -350,26 +256,28 @@ export default function WebhooksPage() {
                                                 {isExpanded && (
                                                     <div className="space-y-4 border-t border-border p-4">
                                                         {/* Secret Key */}
-                                                        <div>
-                                                            <p className="mb-2 text-sm font-medium text-foreground">
-                                                                Secret Key
-                                                            </p>
-                                                            <div className="flex items-center gap-2">
-                                                                <code className="flex-1 rounded-lg bg-background-tertiary p-3 text-sm text-foreground">
-                                                                    {webhook.secret}
-                                                                </code>
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    size="sm"
-                                                                    onClick={() => handleCopy(webhook.secret, 'Secret')}
-                                                                >
-                                                                    <Copy className="h-4 w-4" />
-                                                                </Button>
+                                                        {webhook.secret && (
+                                                            <div>
+                                                                <p className="mb-2 text-sm font-medium text-foreground">
+                                                                    Secret Key
+                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <code className="flex-1 rounded-lg bg-background-tertiary p-3 text-sm text-foreground">
+                                                                        {webhook.secret}
+                                                                    </code>
+                                                                    <Button
+                                                                        variant="secondary"
+                                                                        size="sm"
+                                                                        onClick={() => handleCopy(webhook.secret!, 'Secret')}
+                                                                    >
+                                                                        <Copy className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                                <p className="mt-1 text-xs text-foreground-subtle">
+                                                                    Use this secret to verify webhook signatures
+                                                                </p>
                                                             </div>
-                                                            <p className="mt-1 text-xs text-foreground-subtle">
-                                                                Use this secret to verify webhook signatures
-                                                            </p>
-                                                        </div>
+                                                        )}
 
                                                         {/* Recent Deliveries */}
                                                         <div>
@@ -390,6 +298,7 @@ export default function WebhooksPage() {
                                                                             key={delivery.id}
                                                                             onClick={() => {
                                                                                 setSelectedDelivery(delivery);
+                                                                                setSelectedWebhook(webhook);
                                                                                 setShowDeliveryModal(true);
                                                                             }}
                                                                             className="flex w-full items-center justify-between rounded-lg border border-border bg-background-secondary p-3 transition-colors hover:bg-background-tertiary"
@@ -407,16 +316,16 @@ export default function WebhooksPage() {
                                                                                         {delivery.event}
                                                                                     </p>
                                                                                     <p className="text-xs text-foreground-muted">
-                                                                                        {delivery.timestamp}
+                                                                                        {new Date(delivery.created_at).toLocaleString()}
                                                                                     </p>
                                                                                 </div>
                                                                             </div>
                                                                             <div className="flex items-center gap-2">
-                                                                                {delivery.statusCode && (
+                                                                                {delivery.status_code && (
                                                                                     <Badge
                                                                                         variant={delivery.status === 'success' ? 'success' : 'danger'}
                                                                                     >
-                                                                                        {delivery.statusCode}
+                                                                                        {delivery.status_code}
                                                                                     </Badge>
                                                                                 )}
                                                                                 {delivery.status === 'failed' && (
@@ -425,7 +334,7 @@ export default function WebhooksPage() {
                                                                                         size="sm"
                                                                                         onClick={(e) => {
                                                                                             e.stopPropagation();
-                                                                                            handleRetryDelivery(delivery);
+                                                                                            handleRetryDelivery(delivery, webhook.uuid);
                                                                                         }}
                                                                                     >
                                                                                         <RefreshCw className="h-3 w-3" />
@@ -560,7 +469,7 @@ export default function WebhooksPage() {
                 isOpen={showDeliveryModal}
                 onClose={() => setShowDeliveryModal(false)}
                 title="Delivery Details"
-                description={selectedDelivery ? `${selectedDelivery.event} - ${selectedDelivery.timestamp}` : ''}
+                description={selectedDelivery ? `${selectedDelivery.event} - ${new Date(selectedDelivery.created_at).toLocaleString()}` : ''}
                 size="lg"
             >
                 {selectedDelivery && (
@@ -569,24 +478,31 @@ export default function WebhooksPage() {
                             <Badge variant={selectedDelivery.status === 'success' ? 'success' : 'danger'}>
                                 {selectedDelivery.status.toUpperCase()}
                             </Badge>
-                            {selectedDelivery.statusCode && (
-                                <Badge variant="default">HTTP {selectedDelivery.statusCode}</Badge>
+                            {selectedDelivery.status_code && (
+                                <Badge variant="default">HTTP {selectedDelivery.status_code}</Badge>
                             )}
                             <Badge variant="default">{selectedDelivery.attempts} attempt(s)</Badge>
+                            {selectedDelivery.response_time_ms && (
+                                <Badge variant="default">{selectedDelivery.response_time_ms}ms</Badge>
+                            )}
                         </div>
 
-                        <div>
-                            <p className="mb-2 text-sm font-medium text-foreground">Payload</p>
-                            <pre className="max-h-48 overflow-auto rounded-lg bg-background-tertiary p-4 text-xs text-foreground">
-                                {JSON.stringify(JSON.parse(selectedDelivery.payload), null, 2)}
-                            </pre>
-                        </div>
+                        {selectedDelivery.payload && (
+                            <div>
+                                <p className="mb-2 text-sm font-medium text-foreground">Payload</p>
+                                <pre className="max-h-48 overflow-auto rounded-lg bg-background-tertiary p-4 text-xs text-foreground">
+                                    {typeof selectedDelivery.payload === 'string'
+                                        ? JSON.stringify(JSON.parse(selectedDelivery.payload), null, 2)
+                                        : JSON.stringify(selectedDelivery.payload, null, 2)}
+                                </pre>
+                            </div>
+                        )}
 
                         {selectedDelivery.response && (
                             <div>
                                 <p className="mb-2 text-sm font-medium text-foreground">Response</p>
                                 <pre className="max-h-48 overflow-auto rounded-lg bg-background-tertiary p-4 text-xs text-foreground">
-                                    {JSON.stringify(JSON.parse(selectedDelivery.response), null, 2)}
+                                    {selectedDelivery.response}
                                 </pre>
                             </div>
                         )}
@@ -594,12 +510,12 @@ export default function WebhooksPage() {
                 )}
 
                 <ModalFooter>
-                    {selectedDelivery?.status === 'failed' && (
+                    {selectedDelivery?.status === 'failed' && selectedWebhook && (
                         <Button
                             variant="secondary"
                             onClick={() => {
-                                if (selectedDelivery) {
-                                    handleRetryDelivery(selectedDelivery);
+                                if (selectedDelivery && selectedWebhook) {
+                                    handleRetryDelivery(selectedDelivery, selectedWebhook.uuid);
                                     setShowDeliveryModal(false);
                                 }
                             }}

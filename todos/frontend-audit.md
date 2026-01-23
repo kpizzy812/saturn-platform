@@ -14,15 +14,23 @@
 
 ### Mock данные в продакшн коде
 
-- [ ] **Mock webhooks в Integrations**
+- [x] **Mock webhooks в Integrations** ✅ ИСПРАВЛЕНО
   - Файл: `resources/js/pages/Integrations/Webhooks.tsx:29-94`
   - Проблема: Захардкоженные `mockWebhooks` и `mockDeliveries` используются в useState
-  - Решение: Реализовать реальный API, удалить mock данные
+  - Решение:
+    - Создана миграция `team_webhooks` и `webhook_deliveries` таблиц
+    - Созданы модели `app/Models/TeamWebhook.php` и `app/Models/WebhookDelivery.php`
+    - Создан API контроллер `app/Http/Controllers/Api/TeamWebhooksController.php`
+    - Создан Job `app/Jobs/SendTeamWebhookJob.php`
+    - Добавлен hook `resources/js/hooks/useWebhooks.ts`
+    - Добавлены API routes в `routes/api.php`
+    - Добавлены web routes для Inertia в `routes/web.php`
+    - Удалены все mock данные из фронтенда
 
-- [ ] **Mock webhooks в Services**
+- [x] **Mock webhooks в Services** ✅ ИСПРАВЛЕНО
   - Файл: `resources/js/pages/Services/Webhooks.tsx:34-98`
   - Проблема: Аналогичные mock данные для webhooks
-  - Решение: Реализовать реальный API, удалить mock данные
+  - Решение: Использует общую систему Team Webhooks, удалены все mock данные
 
 - [x] **Mock notifications** ✅ ИСПРАВЛЕНО
   - Файл: `resources/js/pages/Notifications/Index.tsx:14-72`
@@ -157,11 +165,11 @@
 
 ### Placeholder URLs
 
-- [ ] **Примеры URL с XXX**
+- [x] **Примеры URL с XXX** ✅ ИСПРАВЛЕНО
   - Файл: `resources/js/pages/Integrations/Webhooks.tsx:43`
   - Файл: `resources/js/pages/Services/Webhooks.tsx:45`
   - Проблема: URL типа `https://hooks.slack.com/services/T00/B00/XXXX`
-  - Решение: Удалить вместе с mock данными
+  - Решение: Удалены вместе с mock данными при реализации реального API
 
 ---
 
@@ -170,7 +178,7 @@
 | Категория | Количество | Исправлено | Критичность |
 |-----------|-----------|------------|-------------|
 | XSS уязвимость | 1 | ✅ 1 | 🔴 Критическая |
-| Mock данные | 5 | ✅ 1 | 🔴 Критическая |
+| Mock данные | 5 | ✅ 3 | 🔴 Критическая |
 | Неработающие кнопки | 4 | 0 | 🟠 Высокая |
 | Memory leaks | 3 | 0 | 🟠 Высокая |
 | Обработка ошибок | 2 | 0 | 🟠 Высокая |
@@ -179,7 +187,7 @@
 | localStorage | 2 | 0 | 🟡 Средняя |
 | TypeScript any | 60+ | 0 | 🟢 Низкая |
 
-**Прогресс: 2 из ~25 критических/высоких проблем исправлено**
+**Прогресс: 4 из ~25 критических/высоких проблем исправлено**
 
 ---
 
@@ -190,6 +198,19 @@
 - `app/Http/Controllers/Api/NotificationsController.php`
 - Обновлены: `routes/api.php`, `routes/web.php`, `resources/js/hooks/useNotifications.ts`
 
+## Созданные файлы (Webhooks система)
+
+- `database/migrations/2026_01_23_135645_create_team_webhooks_table.php`
+- `app/Models/TeamWebhook.php`
+- `app/Models/WebhookDelivery.php`
+- `app/Http/Controllers/Api/TeamWebhooksController.php`
+- `app/Jobs/SendTeamWebhookJob.php`
+- `resources/js/hooks/useWebhooks.ts`
+- `tests/Unit/TeamWebhookTest.php`
+- `tests/Unit/WebhookDeliveryTest.php`
+- Обновлены: `routes/api.php`, `routes/web.php`, `app/Models/Team.php`
+- Обновлены: `resources/js/pages/Integrations/Webhooks.tsx`, `resources/js/pages/Services/Webhooks.tsx`
+
 ---
 
 ## План исправления
@@ -197,7 +218,8 @@
 ### Этап 1: Критические (до продакшна)
 1. ~~Исправить XSS в TwoFactor/Setup.tsx~~ ✅
 2. ~~Удалить mock данные из Notifications/Index.tsx~~ ✅
-3. Удалить mock данные из остальных 3 файлов (webhooks, account)
+3. ~~Удалить mock данные из Webhooks~~ ✅ (Integrations/Webhooks.tsx и Services/Webhooks.tsx)
+4. Удалить mock данные из Settings/Account.tsx
 
 ### Этап 2: Высокие (неделя 1)
 4. Реализовать API для Services/Settings.tsx

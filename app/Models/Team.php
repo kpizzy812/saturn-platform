@@ -325,4 +325,9 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     {
         return $this->hasMany(UserNotification::class);
     }
+
+    public function webhooks()
+    {
+        return $this->hasMany(TeamWebhook::class);
+    }
 }
