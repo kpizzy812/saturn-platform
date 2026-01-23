@@ -7,6 +7,7 @@ use App\Jobs\CheckHelperImageJob;
 use App\Jobs\CheckTraefikVersionJob;
 use App\Jobs\CleanupInstanceStuffsJob;
 use App\Jobs\CleanupOrphanedPreviewContainersJob;
+use App\Jobs\DatabaseMetricsManagerJob;
 use App\Jobs\PullChangelog;
 use App\Jobs\PullTemplatesFromCDN;
 use App\Jobs\RegenerateSslCertJob;
@@ -55,6 +56,9 @@ class Kernel extends ConsoleKernel
             // Resource Monitoring (every 5 minutes)
             $this->scheduleInstance->job(new ResourceMonitoringManagerJob)->everyFiveMinutes()->onOneServer();
 
+            // Database Metrics Collection (every 5 minutes)
+            $this->scheduleInstance->job(new DatabaseMetricsManagerJob)->everyFiveMinutes()->onOneServer();
+
             // Scheduled Jobs (Backups & Tasks)
             $this->scheduleInstance->job(new ScheduledJobManager)->everyMinute()->onOneServer();
 
@@ -76,6 +80,9 @@ class Kernel extends ConsoleKernel
 
             // Resource Monitoring (every 5 minutes by default, configurable via settings)
             $this->scheduleResourceMonitoring();
+
+            // Database Metrics Collection (every 5 minutes)
+            $this->scheduleDatabaseMetrics();
 
             $this->pullImages();
 
@@ -131,6 +138,15 @@ class Kernel extends ConsoleKernel
 
         $this->scheduleInstance->job(new ResourceMonitoringManagerJob)
             ->cron($cron)
+            ->timezone($this->instanceTimezone)
+            ->onOneServer();
+    }
+
+    private function scheduleDatabaseMetrics(): void
+    {
+        // Collect database metrics every 5 minutes
+        $this->scheduleInstance->job(new DatabaseMetricsManagerJob)
+            ->everyFiveMinutes()
             ->timezone($this->instanceTimezone)
             ->onOneServer();
     }

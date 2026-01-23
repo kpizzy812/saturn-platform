@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Inertia;
 
 use App\Http\Controllers\Controller;
+use App\Models\DatabaseMetric;
 use App\Models\StandaloneClickhouse;
 use App\Models\StandaloneDragonfly;
 use App\Models\StandaloneKeydb;
@@ -12,6 +13,7 @@ use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DatabaseMetricsController extends Controller
 {
@@ -19,6 +21,45 @@ class DatabaseMetricsController extends Controller
      * Get real-time metrics for a database.
      */
     public function getMetrics(string $uuid): JsonResponse
+    {
+        return $this->fetchCurrentMetrics($uuid);
+    }
+
+    /**
+     * Get historical metrics for charts and analytics.
+     */
+    public function getHistoricalMetrics(Request $request, string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['available' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $timeRange = $request->input('timeRange', '24h');
+        $validRanges = ['1h', '6h', '24h', '7d', '30d'];
+        if (! in_array($timeRange, $validRanges)) {
+            $timeRange = '24h';
+        }
+
+        $aggregatedMetrics = DatabaseMetric::getAggregatedMetrics($uuid, $timeRange);
+
+        // Check if we have any historical data
+        $hasData = ! empty($aggregatedMetrics['cpu']['data']) ||
+                   ! empty($aggregatedMetrics['memory']['data']);
+
+        return response()->json([
+            'available' => true,
+            'hasHistoricalData' => $hasData,
+            'timeRange' => $timeRange,
+            'metrics' => $aggregatedMetrics,
+        ]);
+    }
+
+    /**
+     * Fetch current real-time metrics.
+     */
+    protected function fetchCurrentMetrics(string $uuid): JsonResponse
     {
         [$database, $type] = $this->findDatabase($uuid);
 

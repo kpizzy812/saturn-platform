@@ -34,6 +34,9 @@ export type {
     DatabaseMetrics,
 } from './useDatabaseMetrics';
 
+export { useDatabaseMetricsHistory } from './useDatabaseMetricsHistory';
+export type { DatabaseMetricsHistory } from './useDatabaseMetricsHistory';
+
 export {
     useServices,
     useService,

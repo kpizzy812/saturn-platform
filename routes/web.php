@@ -2873,6 +2873,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     Route::get('/api/databases/{uuid}/metrics', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMetrics'])
         ->name('databases.metrics.api');
 
+    // API endpoint for historical database metrics (JSON)
+    Route::get('/api/databases/{uuid}/metrics/history', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getHistoricalMetrics'])
+        ->name('databases.metrics.history.api');
+
     Route::get('/databases/{uuid}/settings', function (string $uuid) {
         $database = findDatabaseByUuid($uuid);
 

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Select } from '@/components/ui';
-import { ArrowLeft, Activity, Database, Cpu, HardDrive, Network, Clock, TrendingUp } from 'lucide-react';
+import { Card, CardContent, Select } from '@/components/ui';
+import { ArrowLeft, Activity, Database, Cpu, HardDrive, Network, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { useDatabaseMetricsHistory } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -17,44 +18,12 @@ interface MetricData {
 export default function DatabaseMetrics({ database }: Props) {
     const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d' | '30d'>('24h');
 
-    // Mock metrics data - in real app, fetch from backend
-    const metrics = {
-        cpu: {
-            current: 42.5,
-            average: 38.2,
-            peak: 87.3,
-            data: generateMockData(50),
-        },
-        memory: {
-            current: 1.8,
-            total: 4.0,
-            percentage: 45,
-            data: generateMockData(50),
-        },
-        storage: {
-            used: 12.4,
-            total: 50,
-            percentage: 24.8,
-            data: generateMockData(50),
-        },
-        connections: {
-            current: 24,
-            max: 100,
-            percentage: 24,
-            data: generateMockData(50),
-        },
-        queries: {
-            perSecond: 1240,
-            total: 4_328_912,
-            slow: 12,
-            data: generateMockData(50),
-        },
-        network: {
-            in: 2.4,
-            out: 1.8,
-            data: generateMockData(50),
-        },
-    };
+    const { metrics, hasHistoricalData, isLoading, error } = useDatabaseMetricsHistory({
+        uuid: database.uuid,
+        timeRange,
+        autoRefresh: true,
+        refreshInterval: 60000, // Refresh every minute
+    });
 
     return (
         <AppLayout
@@ -93,91 +62,141 @@ export default function DatabaseMetrics({ database }: Props) {
                 />
             </div>
 
-            {/* Overview Cards */}
-            <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <MetricCard
-                    title="CPU Usage"
-                    current={`${metrics.cpu.current}%`}
-                    subtitle={`Avg: ${metrics.cpu.average}% | Peak: ${metrics.cpu.peak}%`}
-                    icon={Cpu}
-                    color="text-primary"
-                    bgColor="bg-primary/10"
-                    trend="+2.3%"
-                />
-                <MetricCard
-                    title="Memory"
-                    current={`${metrics.memory.current} GB`}
-                    subtitle={`${metrics.memory.percentage}% of ${metrics.memory.total} GB`}
-                    icon={Activity}
-                    color="text-info"
-                    bgColor="bg-info/10"
-                    trend="+5.1%"
-                />
-                <MetricCard
-                    title="Storage"
-                    current={`${metrics.storage.used} GB`}
-                    subtitle={`${metrics.storage.percentage}% of ${metrics.storage.total} GB`}
-                    icon={HardDrive}
-                    color="text-success"
-                    bgColor="bg-success/10"
-                    trend="+0.8%"
-                />
-                <MetricCard
-                    title="Active Connections"
-                    current={metrics.connections.current.toString()}
-                    subtitle={`${metrics.connections.percentage}% of ${metrics.connections.max} max`}
-                    icon={Network}
-                    color="text-warning"
-                    bgColor="bg-warning/10"
-                    trend="-1.2%"
-                />
-                <MetricCard
-                    title="Queries/sec"
-                    current={metrics.queries.perSecond.toLocaleString()}
-                    subtitle={`${metrics.queries.total.toLocaleString()} total | ${metrics.queries.slow} slow`}
-                    icon={Database}
-                    color="text-danger"
-                    bgColor="bg-danger/10"
-                    trend="+12.4%"
-                />
-                <MetricCard
-                    title="Network I/O"
-                    current={`${metrics.network.in + metrics.network.out} MB/s`}
-                    subtitle={`In: ${metrics.network.in} MB/s | Out: ${metrics.network.out} MB/s`}
-                    icon={TrendingUp}
-                    color="text-primary"
-                    bgColor="bg-primary/10"
-                    trend="+8.7%"
-                />
-            </div>
+            {/* Loading State */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-3 text-foreground-muted">Loading metrics...</span>
+                </div>
+            )}
 
-            {/* Detailed Charts */}
-            <div className="space-y-6">
-                <ChartCard
-                    title="CPU Usage Over Time"
-                    data={metrics.cpu.data}
-                    unit="%"
-                    color="rgb(var(--color-primary))"
-                />
-                <ChartCard
-                    title="Memory Usage Over Time"
-                    data={metrics.memory.data}
-                    unit="GB"
-                    color="rgb(var(--color-info))"
-                />
-                <ChartCard
-                    title="Active Connections Over Time"
-                    data={metrics.connections.data}
-                    unit=""
-                    color="rgb(var(--color-warning))"
-                />
-                <ChartCard
-                    title="Query Rate Over Time"
-                    data={metrics.queries.data}
-                    unit=" queries/sec"
-                    color="rgb(var(--color-danger))"
-                />
-            </div>
+            {/* Error State */}
+            {error && !isLoading && (
+                <Card className="border-danger/20 bg-danger/5">
+                    <CardContent className="flex items-center gap-3 p-6">
+                        <AlertCircle className="h-5 w-5 text-danger" />
+                        <div>
+                            <p className="font-medium text-foreground">Failed to load metrics</p>
+                            <p className="text-sm text-foreground-muted">{error}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* No Historical Data Yet */}
+            {!isLoading && !error && !hasHistoricalData && (
+                <Card className="border-warning/20 bg-warning/5">
+                    <CardContent className="flex items-center gap-3 p-6">
+                        <AlertCircle className="h-5 w-5 text-warning" />
+                        <div>
+                            <p className="font-medium text-foreground">No historical data yet</p>
+                            <p className="text-sm text-foreground-muted">
+                                Metrics collection has started. Historical data will appear as metrics are collected every 5 minutes.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Metrics Content */}
+            {!isLoading && !error && metrics && (
+                <>
+                    {/* Overview Cards */}
+                    <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <MetricCard
+                            title="CPU Usage"
+                            current={`${metrics.cpu.current.toFixed(1)}%`}
+                            subtitle={`Avg: ${metrics.cpu.average.toFixed(1)}% | Peak: ${metrics.cpu.peak.toFixed(1)}%`}
+                            icon={Cpu}
+                            color="text-primary"
+                            bgColor="bg-primary/10"
+                            trend={calculateTrend(metrics.cpu.data)}
+                        />
+                        <MetricCard
+                            title="Memory"
+                            current={`${metrics.memory.current.toFixed(2)} GB`}
+                            subtitle={`${metrics.memory.percentage.toFixed(1)}% of ${metrics.memory.total.toFixed(1)} GB`}
+                            icon={Activity}
+                            color="text-info"
+                            bgColor="bg-info/10"
+                            trend={calculateTrend(metrics.memory.data)}
+                        />
+                        <MetricCard
+                            title="Storage"
+                            current={`${metrics.storage.used.toFixed(2)} GB`}
+                            subtitle={`${metrics.storage.percentage.toFixed(1)}% of ${metrics.storage.total} GB`}
+                            icon={HardDrive}
+                            color="text-success"
+                            bgColor="bg-success/10"
+                        />
+                        <MetricCard
+                            title="Active Connections"
+                            current={metrics.connections.current.toString()}
+                            subtitle={`${metrics.connections.percentage.toFixed(1)}% of ${metrics.connections.max} max`}
+                            icon={Network}
+                            color="text-warning"
+                            bgColor="bg-warning/10"
+                            trend={calculateTrend(metrics.connections.data)}
+                        />
+                        <MetricCard
+                            title="Queries/sec"
+                            current={metrics.queries.perSecond.toLocaleString()}
+                            subtitle={`${metrics.queries.total.toLocaleString()} total | ${metrics.queries.slow} slow`}
+                            icon={Database}
+                            color="text-danger"
+                            bgColor="bg-danger/10"
+                            trend={calculateTrend(metrics.queries.data)}
+                        />
+                        <MetricCard
+                            title="Network I/O"
+                            current={`${(metrics.network.in + metrics.network.out).toFixed(2)} MB/s`}
+                            subtitle={`In: ${metrics.network.in.toFixed(2)} MB/s | Out: ${metrics.network.out.toFixed(2)} MB/s`}
+                            icon={TrendingUp}
+                            color="text-primary"
+                            bgColor="bg-primary/10"
+                            trend={calculateTrend(metrics.network.data)}
+                        />
+                    </div>
+
+                    {/* Detailed Charts */}
+                    {hasHistoricalData && (
+                        <div className="space-y-6">
+                            {metrics.cpu.data.length > 0 && (
+                                <ChartCard
+                                    title="CPU Usage Over Time"
+                                    data={metrics.cpu.data}
+                                    unit="%"
+                                    color="rgb(var(--color-primary))"
+                                />
+                            )}
+                            {metrics.memory.data.length > 0 && (
+                                <ChartCard
+                                    title="Memory Usage Over Time"
+                                    data={metrics.memory.data}
+                                    unit=" GB"
+                                    color="rgb(var(--color-info))"
+                                />
+                            )}
+                            {metrics.connections.data.length > 0 && (
+                                <ChartCard
+                                    title="Active Connections Over Time"
+                                    data={metrics.connections.data}
+                                    unit=""
+                                    color="rgb(var(--color-warning))"
+                                />
+                            )}
+                            {metrics.queries.data.length > 0 && (
+                                <ChartCard
+                                    title="Query Rate Over Time"
+                                    data={metrics.queries.data}
+                                    unit=" q/s"
+                                    color="rgb(var(--color-danger))"
+                                />
+                            )}
+                        </div>
+                    )}
+                </>
+            )}
         </AppLayout>
     );
 }
@@ -194,6 +213,7 @@ interface MetricCardProps {
 
 function MetricCard({ title, current, subtitle, icon: Icon, color, bgColor, trend }: MetricCardProps) {
     const isPositive = trend?.startsWith('+');
+    const isNegative = trend?.startsWith('-');
 
     return (
         <Card>
@@ -210,8 +230,8 @@ function MetricCard({ title, current, subtitle, icon: Icon, color, bgColor, tren
                 </div>
                 {trend && (
                     <div className="mt-4 flex items-center gap-1">
-                        <TrendingUp className={`h-3.5 w-3.5 ${isPositive ? 'text-success' : 'text-danger'}`} />
-                        <span className={`text-xs font-medium ${isPositive ? 'text-success' : 'text-danger'}`}>
+                        <TrendingUp className={`h-3.5 w-3.5 ${isPositive ? 'text-success' : isNegative ? 'text-danger' : 'text-foreground-muted'}`} />
+                        <span className={`text-xs font-medium ${isPositive ? 'text-success' : isNegative ? 'text-danger' : 'text-foreground-muted'}`}>
                             {trend}
                         </span>
                         <span className="text-xs text-foreground-muted">vs last period</span>
@@ -230,9 +250,14 @@ interface ChartCardProps {
 }
 
 function ChartCard({ title, data, unit, color }: ChartCardProps) {
-    const maxValue = Math.max(...data.map(d => d.value));
-    const minValue = Math.min(...data.map(d => d.value));
-    const avgValue = data.reduce((sum, d) => sum + d.value, 0) / data.length;
+    if (data.length === 0) {
+        return null;
+    }
+
+    const values = data.map(d => d.value);
+    const maxValue = Math.max(...values, 1); // Avoid division by zero
+    const minValue = Math.min(...values);
+    const avgValue = values.reduce((sum, v) => sum + v, 0) / values.length;
 
     return (
         <Card>
@@ -278,23 +303,11 @@ function ChartCard({ title, data, unit, color }: ChartCardProps) {
 }
 
 // Helper functions
-function generateMockData(points: number): MetricData[] {
-    const data: MetricData[] = [];
-    const now = Date.now();
-
-    for (let i = 0; i < points; i++) {
-        data.push({
-            timestamp: new Date(now - (points - i) * 60000).toISOString(),
-            value: Math.random() * 80 + 20, // Random value between 20-100
-        });
-    }
-
-    return data;
-}
-
 function generateLinePath(data: MetricData[], maxValue: number): string {
+    if (data.length === 0) return '';
+
     const points = data.map((d, i) => {
-        const x = (i / (data.length - 1)) * 1000;
+        const x = (i / Math.max(data.length - 1, 1)) * 1000;
         const y = 300 - (d.value / maxValue) * 300;
         return `${x},${y}`;
     });
@@ -303,11 +316,34 @@ function generateLinePath(data: MetricData[], maxValue: number): string {
 }
 
 function generateAreaPath(data: MetricData[], maxValue: number): string {
+    if (data.length === 0) return '';
+
     const points = data.map((d, i) => {
-        const x = (i / (data.length - 1)) * 1000;
+        const x = (i / Math.max(data.length - 1, 1)) * 1000;
         const y = 300 - (d.value / maxValue) * 300;
         return `${x},${y}`;
     });
 
     return `M 0,300 L ${points.join(' L ')} L 1000,300 Z`;
+}
+
+function calculateTrend(data: MetricData[]): string | undefined {
+    if (data.length < 2) return undefined;
+
+    const midpoint = Math.floor(data.length / 2);
+    const firstHalf = data.slice(0, midpoint);
+    const secondHalf = data.slice(midpoint);
+
+    if (firstHalf.length === 0 || secondHalf.length === 0) return undefined;
+
+    const firstAvg = firstHalf.reduce((sum, d) => sum + d.value, 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((sum, d) => sum + d.value, 0) / secondHalf.length;
+
+    if (firstAvg === 0) return undefined;
+
+    const change = ((secondAvg - firstAvg) / firstAvg) * 100;
+
+    if (Math.abs(change) < 0.1) return undefined;
+
+    return change > 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
 }
