@@ -149,15 +149,21 @@
 
 ### UX проблемы
 
-- [ ] **confirm() вместо модальных окон (~80 мест)** 🔄 В ПРОЦЕССЕ
+- [x] **confirm() вместо модальных окон (~80 мест)** ✅ ИСПРАВЛЕНО
   - Файлы: SharedVariables/Show.tsx:51, Applications/Index.tsx:224 и др.
   - Проблема: Нативный `confirm()` не соответствует дизайну системы
   - Решение: Создан компонент `ConfirmationModal` + хук `useConfirm` + провайдер `ConfirmationProvider`
-  - Затронутые файлы (выборочно):
-    - [x] `resources/js/pages/SharedVariables/Show.tsx` ✅
-    - [ ] `resources/js/pages/Applications/Index.tsx`
-    - [x] `resources/js/pages/Services/Settings.tsx` ✅
-    - [ ] И другие (~77 файлов)
+  - Заменено во всех 46 файлах:
+    - [x] Dashboard, Projects (Index, Environments, Variables)
+    - [x] Applications (Index, Deployments, DeploymentDetails, Previews/Show, Settings/Domains)
+    - [x] Services (Index, Show, Deployments, Domains, Variables, Settings)
+    - [x] Databases (Overview, Show, Backups, Settings/Index) + панели (MySQL, PostgreSQL, Redis)
+    - [x] Servers (Index, Settings, Cleanup, LogDrains, PrivateKeys, Proxy/*, Sentinel/Alerts)
+    - [x] Admin (Settings, Users/Index, Users/Show)
+    - [x] Auth (AcceptInvite, OAuth/Connect)
+    - [x] Misc (CronJobs, Domains, Environments, Observability, Destinations, ScheduledTasks)
+    - [x] Sources (GitHub, GitLab, Bitbucket), Storage, Tags
+    - [x] Components (DatabaseCard, PreviewCard)
 
 ### localStorage использование
 
@@ -206,11 +212,11 @@
 | Memory leaks | 3 | ✅ 3 (1 fix + 2 n/a) | 🟠 Высокая |
 | Обработка ошибок | 2 | ✅ 2 (n/a) | 🟠 Высокая |
 | TODO незавершённые | 2 | 0 | 🟡 Средняя |
-| confirm() → Modal | ~80 | 🔄 2 (component created) | 🟡 Средняя |
+| confirm() → Modal | ~80 | ✅ 46 файлов | 🟡 Средняя |
 | localStorage | 2 | 0 | 🟡 Средняя |
 | TypeScript any | 60+ | 0 | 🟢 Низкая |
 
-**Прогресс: 14 из ~25 критических/высоких проблем исправлено (4 были неактуальны)**
+**Прогресс: 15 из ~25 критических/высоких/средних проблем исправлено (4 были неактуальны)**
 
 ---
 
@@ -268,7 +274,7 @@
 
 ### Этап 3: Средние (неделя 2)
 9. ~~Создать ConfirmationModal компонент~~ ✅
-10. Заменить все confirm() вызовы (2/80 сделано)
+10. ~~Заменить все confirm() вызовы (46 файлов)~~ ✅
 11. Завершить TODO функциональность
 
 ### Этап 4: Низкие (ongoing)
@@ -284,4 +290,6 @@
   - `ConfirmationProvider` - провайдер для глобального использования
   - `useConfirm` - хук для Promise-based подтверждения (замена `confirm()`)
 - Обновлены: `resources/js/components/ui/index.ts`, `resources/js/app.tsx`
-- Примеры использования: `resources/js/pages/SharedVariables/Show.tsx`, `resources/js/pages/Services/Settings.tsx`
+- Полный список обновлённых файлов (46 файлов):
+  - Pages: Dashboard, Projects/*, Applications/*, Services/*, Databases/*, Servers/*, Admin/*, Auth/*, CronJobs/*, Domains/*, Environments/*, Observability/*, Destinations/*, ScheduledTasks/*, Sources/*, Storage/*, Tags/*
+  - Components: DatabaseCard, PreviewCard, MySQLPanel, PostgreSQLPanel, RedisPanel
