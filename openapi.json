@@ -7586,6 +7586,171 @@
                 ]
             }
         },
+        "\/notifications\/preferences": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get Preferences",
+                "description": "Get notification preferences for the current user.",
+                "operationId": "get-notification-preferences",
+                "responses": {
+                    "200": {
+                        "description": "Notification preferences.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "email": {
+                                            "properties": {
+                                                "deployments": {
+                                                    "type": "boolean"
+                                                },
+                                                "team": {
+                                                    "type": "boolean"
+                                                },
+                                                "billing": {
+                                                    "type": "boolean"
+                                                },
+                                                "security": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "inApp": {
+                                            "properties": {
+                                                "deployments": {
+                                                    "type": "boolean"
+                                                },
+                                                "team": {
+                                                    "type": "boolean"
+                                                },
+                                                "billing": {
+                                                    "type": "boolean"
+                                                },
+                                                "security": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "digest": {
+                                            "type": "string",
+                                            "enum": [
+                                                "instant",
+                                                "daily",
+                                                "weekly"
+                                            ]
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Update Preferences",
+                "description": "Update notification preferences for the current user.",
+                "operationId": "update-notification-preferences",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "email": {
+                                        "properties": {
+                                            "deployments": {
+                                                "type": "boolean"
+                                            },
+                                            "team": {
+                                                "type": "boolean"
+                                            },
+                                            "billing": {
+                                                "type": "boolean"
+                                            },
+                                            "security": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "inApp": {
+                                        "properties": {
+                                            "deployments": {
+                                                "type": "boolean"
+                                            },
+                                            "team": {
+                                                "type": "boolean"
+                                            },
+                                            "billing": {
+                                                "type": "boolean"
+                                            },
+                                            "security": {
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "digest": {
+                                        "type": "string",
+                                        "enum": [
+                                            "instant",
+                                            "daily",
+                                            "weekly"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Preferences updated successfully.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Preferences updated successfully."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/version": {
             "get": {
                 "summary": "Version",

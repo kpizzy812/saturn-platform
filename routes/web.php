@@ -3964,13 +3964,19 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('tags.show');
 
     // Notifications additional routes
+    // NOTE: preferences route must be before {uuid} to avoid conflict
+    Route::get('/notifications/preferences', function () {
+        $user = auth()->user();
+        $preferences = \App\Models\UserNotificationPreference::getOrCreateForUser($user->id);
+
+        return \Inertia\Inertia::render('Notifications/Preferences', [
+            'preferences' => $preferences->toFrontendFormat(),
+        ]);
+    })->name('notifications.preferences');
+
     Route::get('/notifications/{uuid}', function (string $uuid) {
         return \Inertia\Inertia::render('Notifications/NotificationDetail', ['uuid' => $uuid]);
     })->name('notifications.detail');
-
-    Route::get('/notifications/preferences', function () {
-        return \Inertia\Inertia::render('Notifications/Preferences');
-    })->name('notifications.preferences');
 
     // Activity additional routes
     Route::get('/activity/project/{projectUuid}', function (string $projectUuid) {

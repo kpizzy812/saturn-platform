@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserNotification;
+use App\Models\UserNotificationPreference;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -333,5 +334,135 @@ class NotificationsController extends Controller
             ->count();
 
         return response()->json(['count' => $count]);
+    }
+
+    #[OA\Get(
+        summary: 'Get Preferences',
+        description: 'Get notification preferences for the current user.',
+        path: '/notifications/preferences',
+        operationId: 'get-notification-preferences',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Notifications'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Notification preferences.',
+                content: new OA\JsonContent(
+                    properties: [
+                        'email' => new OA\Property(
+                            property: 'email',
+                            type: 'object',
+                            properties: [
+                                'deployments' => new OA\Property(property: 'deployments', type: 'boolean'),
+                                'team' => new OA\Property(property: 'team', type: 'boolean'),
+                                'billing' => new OA\Property(property: 'billing', type: 'boolean'),
+                                'security' => new OA\Property(property: 'security', type: 'boolean'),
+                            ]
+                        ),
+                        'inApp' => new OA\Property(
+                            property: 'inApp',
+                            type: 'object',
+                            properties: [
+                                'deployments' => new OA\Property(property: 'deployments', type: 'boolean'),
+                                'team' => new OA\Property(property: 'team', type: 'boolean'),
+                                'billing' => new OA\Property(property: 'billing', type: 'boolean'),
+                                'security' => new OA\Property(property: 'security', type: 'boolean'),
+                            ]
+                        ),
+                        'digest' => new OA\Property(property: 'digest', type: 'string', enum: ['instant', 'daily', 'weekly']),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+        ]
+    )]
+    public function preferences(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $preferences = UserNotificationPreference::getOrCreateForUser($user->id);
+
+        return response()->json($preferences->toFrontendFormat());
+    }
+
+    #[OA\Put(
+        summary: 'Update Preferences',
+        description: 'Update notification preferences for the current user.',
+        path: '/notifications/preferences',
+        operationId: 'update-notification-preferences',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Notifications'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    'email' => new OA\Property(
+                        property: 'email',
+                        type: 'object',
+                        properties: [
+                            'deployments' => new OA\Property(property: 'deployments', type: 'boolean'),
+                            'team' => new OA\Property(property: 'team', type: 'boolean'),
+                            'billing' => new OA\Property(property: 'billing', type: 'boolean'),
+                            'security' => new OA\Property(property: 'security', type: 'boolean'),
+                        ]
+                    ),
+                    'inApp' => new OA\Property(
+                        property: 'inApp',
+                        type: 'object',
+                        properties: [
+                            'deployments' => new OA\Property(property: 'deployments', type: 'boolean'),
+                            'team' => new OA\Property(property: 'team', type: 'boolean'),
+                            'billing' => new OA\Property(property: 'billing', type: 'boolean'),
+                            'security' => new OA\Property(property: 'security', type: 'boolean'),
+                        ]
+                    ),
+                    'digest' => new OA\Property(property: 'digest', type: 'string', enum: ['instant', 'daily', 'weekly']),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Preferences updated successfully.',
+                content: new OA\JsonContent(
+                    properties: [
+                        'message' => new OA\Property(property: 'message', type: 'string', example: 'Preferences updated successfully.'),
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 422,
+                ref: '#/components/responses/422',
+            ),
+        ]
+    )]
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $preferences = UserNotificationPreference::getOrCreateForUser($user->id);
+        $preferences->updateFromFrontendFormat($request->all());
+
+        return response()->json([
+            'message' => 'Preferences updated successfully.',
+            'preferences' => $preferences->toFrontendFormat(),
+        ]);
     }
 }

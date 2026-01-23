@@ -53,6 +53,8 @@ Route::group([
     // Notifications
     Route::get('/notifications', [NotificationsController::class, 'index'])->middleware(['api.ability:read']);
     Route::get('/notifications/unread-count', [NotificationsController::class, 'unreadCount'])->middleware(['api.ability:read']);
+    Route::get('/notifications/preferences', [NotificationsController::class, 'preferences'])->middleware(['api.ability:read']);
+    Route::put('/notifications/preferences', [NotificationsController::class, 'updatePreferences'])->middleware(['api.ability:write']);
     Route::post('/notifications/read-all', [NotificationsController::class, 'markAllAsRead'])->middleware(['api.ability:write']);
     Route::get('/notifications/{id}', [NotificationsController::class, 'show'])->middleware(['api.ability:read']);
     Route::post('/notifications/{id}/read', [NotificationsController::class, 'markAsRead'])->middleware(['api.ability:write']);

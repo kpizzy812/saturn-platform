@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Checkbox, Select } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { ChevronLeft, Save } from 'lucide-react';
 
 interface NotificationPreferences {
@@ -36,9 +37,16 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
     digest: 'instant',
 };
 
-export default function NotificationsPreferences() {
-    const [preferences, setPreferences] = React.useState<NotificationPreferences>(DEFAULT_PREFERENCES);
+interface Props {
+    preferences?: NotificationPreferences;
+}
+
+export default function NotificationsPreferences({ preferences: initialPreferences }: Props) {
+    const [preferences, setPreferences] = React.useState<NotificationPreferences>(
+        initialPreferences || DEFAULT_PREFERENCES
+    );
     const [isSaving, setIsSaving] = React.useState(false);
+    const { addToast } = useToast();
 
     const handleEmailToggle = (category: keyof NotificationPreferences['email']) => {
         setPreferences((prev) => ({
@@ -69,10 +77,17 @@ export default function NotificationsPreferences() {
 
     const handleSave = () => {
         setIsSaving(true);
-        // TODO: Save preferences to backend
-        setTimeout(() => {
-            setIsSaving(false);
-        }, 1000);
+        router.put('/api/v1/notifications/preferences', preferences, {
+            onSuccess: () => {
+                addToast('success', 'Notification preferences saved successfully');
+            },
+            onError: () => {
+                addToast('error', 'Failed to save notification preferences');
+            },
+            onFinish: () => {
+                setIsSaving(false);
+            },
+        });
     };
 
     return (
