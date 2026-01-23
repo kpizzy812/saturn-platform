@@ -311,6 +311,9 @@ class DatabaseController extends Controller
     {
         [$database, $type] = is_array($databaseWithType) ? $databaseWithType : [$databaseWithType, 'postgresql'];
 
+        // Get connection details based on database type
+        $connectionDetails = $this->getConnectionDetails($database, $type);
+
         return [
             'id' => $database->id,
             'uuid' => $database->uuid,
@@ -321,6 +324,81 @@ class DatabaseController extends Controller
             'environment_id' => $database->environment_id,
             'created_at' => $database->created_at,
             'updated_at' => $database->updated_at,
+            // Connection URLs for Railway-like experience
+            'internal_db_url' => $database->internal_db_url ?? null,
+            'external_db_url' => $database->external_db_url ?? null,
+            // Connection details
+            'connection' => $connectionDetails,
+        ];
+    }
+
+    /**
+     * Get connection details for a database.
+     */
+    protected function getConnectionDetails(mixed $database, string $type): array
+    {
+        $port = match ($type) {
+            'postgresql' => '5432',
+            'mysql', 'mariadb' => '3306',
+            'mongodb' => '27017',
+            'redis', 'keydb', 'dragonfly' => '6379',
+            'clickhouse' => '9000',
+            default => '5432',
+        };
+
+        // Internal hostname is the container UUID
+        $internalHost = $database->uuid;
+
+        // External host depends on server configuration
+        $server = $database->destination?->server;
+        $externalHost = $server ? ($server->ip ?? 'localhost') : 'localhost';
+        $publicPort = $database->public_port ?? null;
+
+        // Get credentials based on database type
+        $credentials = match ($type) {
+            'postgresql' => [
+                'username' => $database->postgres_user ?? 'postgres',
+                'password' => $database->postgres_password ?? null,
+                'database' => $database->postgres_db ?? 'postgres',
+            ],
+            'mysql' => [
+                'username' => $database->mysql_user ?? 'root',
+                'password' => $database->mysql_password ?? $database->mysql_root_password ?? null,
+                'database' => $database->mysql_database ?? 'mysql',
+            ],
+            'mariadb' => [
+                'username' => $database->mariadb_user ?? 'root',
+                'password' => $database->mariadb_password ?? $database->mariadb_root_password ?? null,
+                'database' => $database->mariadb_database ?? 'mariadb',
+            ],
+            'mongodb' => [
+                'username' => $database->mongo_initdb_root_username ?? 'root',
+                'password' => $database->mongo_initdb_root_password ?? null,
+                'database' => $database->mongo_initdb_database ?? 'admin',
+            ],
+            'redis', 'keydb', 'dragonfly' => [
+                'username' => null,
+                'password' => $database->redis_password ?? null,
+                'database' => '0',
+            ],
+            'clickhouse' => [
+                'username' => $database->clickhouse_admin_user ?? 'default',
+                'password' => $database->clickhouse_admin_password ?? null,
+                'database' => 'default',
+            ],
+            default => [
+                'username' => null,
+                'password' => null,
+                'database' => null,
+            ],
+        };
+
+        return [
+            'internal_host' => $internalHost,
+            'external_host' => $externalHost,
+            'port' => $port,
+            'public_port' => $publicPort,
+            ...$credentials,
         ];
     }
 

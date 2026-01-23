@@ -96,6 +96,16 @@ export type ApplicationStatus =
     | 'failed'
     | 'exited';
 
+export interface DatabaseConnectionDetails {
+    internal_host: string;
+    external_host: string;
+    port: string;
+    public_port: number | null;
+    username: string | null;
+    password: string | null;
+    database: string | null;
+}
+
 export interface StandaloneDatabase {
     id: number;
     uuid: string;
@@ -109,6 +119,8 @@ export interface StandaloneDatabase {
     // Connection URLs (appended by backend)
     internal_db_url?: string;
     external_db_url?: string;
+    // Connection details (from controller)
+    connection?: DatabaseConnectionDetails;
     // PostgreSQL specific
     postgres_user?: string;
     postgres_password?: string;

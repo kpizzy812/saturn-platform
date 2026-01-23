@@ -15,6 +15,9 @@ import {
     CheckCircle2,
     XCircle,
     AlertTriangle,
+    Globe,
+    Server,
+    Info,
 } from 'lucide-react';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 
@@ -55,16 +58,25 @@ export default function DatabaseConnections({ database }: Props) {
     const [connectionToKill, setConnectionToKill] = useState<ActiveConnection | null>(null);
     const { addToast } = useToast();
 
-    // Mock connection details - in real app, these would come from the backend
+    // Use real connection details from backend
+    const conn = database.connection;
     const connectionDetails = {
-        host: 'db.saturn.example.com',
-        port: getDefaultPort(database.database_type),
-        database: database.name,
-        username: 'saturn',
-        password: 'super_secret_password_123',
+        host: conn?.external_host || 'localhost',
+        internalHost: conn?.internal_host || database.uuid,
+        port: conn?.port || getDefaultPort(database.database_type),
+        publicPort: conn?.public_port,
+        database: conn?.database || database.name,
+        username: conn?.username || 'root',
+        password: conn?.password || '',
     };
 
-    const connectionString = `${database.database_type}://${connectionDetails.username}:${connectionDetails.password}@${connectionDetails.host}:${connectionDetails.port}/${connectionDetails.database}`;
+    // Use real URLs from backend if available
+    const internalUrl = database.internal_db_url;
+    const externalUrl = database.external_db_url;
+
+    // Fallback connection string if external_db_url not provided
+    const connectionString = externalUrl ||
+        `${database.database_type}://${connectionDetails.username}:${connectionDetails.password}@${connectionDetails.host}:${connectionDetails.publicPort || connectionDetails.port}/${connectionDetails.database}`;
 
     // Mock active connections
     const [activeConnections] = useState<ActiveConnection[]>([
@@ -107,11 +119,45 @@ export default function DatabaseConnections({ database }: Props) {
     };
 
     const generateEnvFormat = () => {
-        return `DB_HOST=${connectionDetails.host}
-DB_PORT=${connectionDetails.port}
-DB_DATABASE=${connectionDetails.database}
-DB_USERNAME=${connectionDetails.username}
-DB_PASSWORD=${connectionDetails.password}`;
+        const envVarName = getEnvVarName(database.database_type);
+        const lines = [];
+
+        // Add the main connection URL (recommended way)
+        if (internalUrl) {
+            lines.push(`# Internal connection (recommended for apps in same environment)`);
+            lines.push(`${envVarName}=${internalUrl}`);
+            lines.push('');
+        }
+
+        // Add individual connection details
+        lines.push(`# Individual connection details`);
+        lines.push(`DB_HOST=${connectionDetails.internalHost}`);
+        lines.push(`DB_PORT=${connectionDetails.port}`);
+        lines.push(`DB_DATABASE=${connectionDetails.database || ''}`);
+        lines.push(`DB_USERNAME=${connectionDetails.username || ''}`);
+        lines.push(`DB_PASSWORD=${connectionDetails.password || ''}`);
+
+        return lines.join('\n');
+    };
+
+    // Get the appropriate env var name for the database type
+    const getEnvVarName = (dbType: DatabaseType): string => {
+        switch (dbType) {
+            case 'postgresql':
+            case 'mysql':
+            case 'mariadb':
+                return 'DATABASE_URL';
+            case 'redis':
+            case 'keydb':
+            case 'dragonfly':
+                return 'REDIS_URL';
+            case 'mongodb':
+                return 'MONGODB_URL';
+            case 'clickhouse':
+                return 'CLICKHOUSE_URL';
+            default:
+                return 'DATABASE_URL';
+        }
     };
 
     const handleSaveSettings = () => {
@@ -163,6 +209,84 @@ DB_PASSWORD=${connectionDetails.password}`;
                     </div>
                 </div>
             </div>
+
+            {/* Internal URL - Railway-like Experience */}
+            {internalUrl && (
+                <Card className="mb-6 border-green-500/30 bg-green-500/5">
+                    <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-green-500/20">
+                                <Server className="h-5 w-5 text-green-500" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="mb-2 flex items-center gap-2">
+                                    <h3 className="text-lg font-medium text-foreground">Internal URL</h3>
+                                    <Badge variant="success" size="sm">Recommended</Badge>
+                                </div>
+                                <p className="mb-4 text-sm text-foreground-muted">
+                                    Use this URL to connect from other apps in the same environment. It's automatically injected as DATABASE_URL when you link resources.
+                                </p>
+                                <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-background p-3">
+                                    <code className="flex-1 font-mono text-sm text-foreground break-all">
+                                        {internalUrl}
+                                    </code>
+                                    <button
+                                        onClick={() => copyToClipboard(internalUrl, 'internalUrl')}
+                                        className="flex-shrink-0 rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                        title="Copy internal URL"
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                {copiedField === 'internalUrl' && (
+                                    <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>
+                                )}
+                                <div className="mt-3 flex items-start gap-2 rounded-lg bg-background-secondary p-3">
+                                    <Info className="h-4 w-4 flex-shrink-0 text-blue-400 mt-0.5" />
+                                    <p className="text-xs text-foreground-muted">
+                                        This URL uses the container hostname and is only accessible from within the Docker network.
+                                        Apps deployed in the same environment can connect using this URL.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* External URL - for external access */}
+            {externalUrl && connectionDetails.publicPort && (
+                <Card className="mb-6 border-blue-500/30">
+                    <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/20">
+                                <Globe className="h-5 w-5 text-blue-500" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="mb-2 text-lg font-medium text-foreground">External URL</h3>
+                                <p className="mb-4 text-sm text-foreground-muted">
+                                    Use this URL to connect from outside the Docker network (local development, external tools).
+                                </p>
+                                <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                                    <code className="flex-1 font-mono text-sm text-foreground break-all">
+                                        {externalUrl}
+                                    </code>
+                                    <button
+                                        onClick={() => copyToClipboard(externalUrl, 'externalUrl')}
+                                        className="flex-shrink-0 rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                        title="Copy external URL"
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                {copiedField === 'externalUrl' && (
+                                    <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Connection String */}
             <Card className="mb-6">
@@ -220,27 +344,41 @@ DB_PASSWORD=${connectionDetails.password}`;
                     <h3 className="mb-4 text-lg font-medium text-foreground">Connection Details</h3>
                     <div className="grid gap-4 md:grid-cols-2">
                         <ConnectionField
-                            label="Host"
+                            label="Internal Host (Docker network)"
+                            value={connectionDetails.internalHost}
+                            onCopy={() => copyToClipboard(connectionDetails.internalHost, 'internalHost')}
+                            copied={copiedField === 'internalHost'}
+                        />
+                        <ConnectionField
+                            label="External Host"
                             value={connectionDetails.host}
                             onCopy={() => copyToClipboard(connectionDetails.host, 'host')}
                             copied={copiedField === 'host'}
                         />
                         <ConnectionField
-                            label="Port"
+                            label="Internal Port"
                             value={connectionDetails.port}
                             onCopy={() => copyToClipboard(connectionDetails.port, 'port')}
                             copied={copiedField === 'port'}
                         />
+                        {connectionDetails.publicPort && (
+                            <ConnectionField
+                                label="Public Port"
+                                value={String(connectionDetails.publicPort)}
+                                onCopy={() => copyToClipboard(String(connectionDetails.publicPort), 'publicPort')}
+                                copied={copiedField === 'publicPort'}
+                            />
+                        )}
                         <ConnectionField
                             label="Database"
-                            value={connectionDetails.database}
-                            onCopy={() => copyToClipboard(connectionDetails.database, 'database')}
+                            value={connectionDetails.database || '-'}
+                            onCopy={() => copyToClipboard(connectionDetails.database || '', 'database')}
                             copied={copiedField === 'database'}
                         />
                         <ConnectionField
                             label="Username"
-                            value={connectionDetails.username}
-                            onCopy={() => copyToClipboard(connectionDetails.username, 'username')}
+                            value={connectionDetails.username || '-'}
+                            onCopy={() => copyToClipboard(connectionDetails.username || '', 'username')}
                             copied={copiedField === 'username'}
                         />
                         <div className="md:col-span-2">
