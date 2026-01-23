@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Input } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     Globe,
     Shield,
@@ -24,6 +24,7 @@ interface Props {
 }
 
 export default function DomainsShow({ domain, sslCertificate }: Props) {
+    const confirm = useConfirm();
     const [verifying, setVerifying] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -40,8 +41,14 @@ export default function DomainsShow({ domain, sslCertificate }: Props) {
         });
     };
 
-    const handleDelete = () => {
-        if (confirm(`Are you sure you want to delete ${domain.domain}?`)) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Domain',
+            description: `Are you sure you want to delete ${domain.domain}?`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/domains/${domain.id}`);
         }
     };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, useConfirm } from '@/components/ui';
 import { Route, ArrowRight, Plus, Trash2, Edit, ExternalLink, Check, X } from 'lucide-react';
 
 interface RedirectRule {
@@ -19,6 +19,7 @@ interface Props {
 }
 
 export default function DomainsRedirects({ redirects: propRedirects = [] }: Props) {
+    const confirm = useConfirm();
     const [redirects, setRedirects] = useState<RedirectRule[]>(propRedirects);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -94,8 +95,14 @@ export default function DomainsRedirects({ redirects: propRedirects = [] }: Prop
         });
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this redirect rule?')) {
+    const handleDelete = async (id: number) => {
+        const confirmed = await confirm({
+            title: 'Delete Redirect Rule',
+            description: 'Are you sure you want to delete this redirect rule?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/domains/redirects/${id}`);
         }
     };

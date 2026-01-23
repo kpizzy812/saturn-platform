@@ -11,6 +11,7 @@ import {
     Modal,
     ModalFooter,
     Textarea,
+    useConfirm,
 } from '@/components/ui';
 import {
     Plus,
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export default function ScheduledTasksIndex({ tasks = [] }: Props) {
+    const confirm = useConfirm();
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | ScheduledTask['status']>('all');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -56,14 +58,26 @@ export default function ScheduledTasksIndex({ tasks = [] }: Props) {
         return matchesSearch && matchesStatus;
     });
 
-    const handleCancelTask = (uuid: string) => {
-        if (confirm('Are you sure you want to cancel this task?')) {
+    const handleCancelTask = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Cancel Task',
+            description: 'Are you sure you want to cancel this task?',
+            confirmText: 'Cancel Task',
+            variant: 'warning',
+        });
+        if (confirmed) {
             router.post(`/scheduled-tasks/${uuid}/cancel`);
         }
     };
 
-    const handleDeleteTask = (uuid: string) => {
-        if (confirm('Are you sure you want to delete this task?')) {
+    const handleDeleteTask = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Task',
+            description: 'Are you sure you want to delete this task?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/scheduled-tasks/${uuid}`);
         }
     };

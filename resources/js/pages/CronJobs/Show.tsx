@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import {
-    Card, CardContent, CardHeader, CardTitle, Button, Badge, Tabs
+    Card, CardContent, CardHeader, CardTitle, Button, Badge, Tabs, useConfirm
 } from '@/components/ui';
 import {
     Edit, Trash2, Play, Pause, Clock, CheckCircle, XCircle,
@@ -16,6 +16,7 @@ interface Props {
 }
 
 export default function CronJobShow({ cronJob, executions = [] }: Props) {
+    const confirm = useConfirm();
     const [selectedExecution, setSelectedExecution] = useState<CronJobExecution | null>(null);
 
     const handleToggleStatus = () => {
@@ -27,8 +28,14 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         router.post(`/cron-jobs/${cronJob.uuid}/run`);
     };
 
-    const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this cron job?')) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Cron Job',
+            description: 'Are you sure you want to delete this cron job?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/cron-jobs/${cronJob.uuid}`, {
                 onSuccess: () => router.visit('/cron-jobs'),
             });

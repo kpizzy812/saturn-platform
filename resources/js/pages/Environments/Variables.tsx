@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Textarea, Badge, Modal, ModalFooter } from '@/components/ui';
+import { Card, CardContent, Button, Input, Textarea, Badge, Modal, ModalFooter, useConfirm } from '@/components/ui';
 import {
     Plus,
     Trash2,
@@ -43,6 +43,7 @@ interface Props {
 }
 
 export default function EnvironmentVariables({ environment, variables: propVariables = [], inheritedVariables = [] }: Props) {
+    const confirm = useConfirm();
     const [variables, setVariables] = useState<EnvironmentVariable[]>(propVariables);
     const [searchQuery, setSearchQuery] = useState('');
     const [showImportModal, setShowImportModal] = useState(false);
@@ -110,8 +111,14 @@ export default function EnvironmentVariables({ environment, variables: propVaria
         setNewGroup('');
     };
 
-    const handleDeleteVariable = (id: string) => {
-        if (confirm('Are you sure you want to delete this variable?')) {
+    const handleDeleteVariable = async (id: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Variable',
+            description: 'Are you sure you want to delete this variable?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setVariables(variables.filter(v => v.id !== id));
             const newMasked = new Set(maskedValues);
             newMasked.delete(id);

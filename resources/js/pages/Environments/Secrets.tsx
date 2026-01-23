@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Badge, Modal, ModalFooter, Textarea } from '@/components/ui';
+import { Card, CardContent, Button, Input, Badge, Modal, ModalFooter, Textarea, useConfirm } from '@/components/ui';
 import {
     Plus,
     Trash2,
@@ -55,6 +55,7 @@ interface Props {
 }
 
 export default function EnvironmentSecrets({ environment, secrets: propSecrets = [], auditLogs = [] }: Props) {
+    const confirm = useConfirm();
     const [secrets, setSecrets] = useState<Secret[]>(propSecrets);
     const [maskedValues, setMaskedValues] = useState<Set<string>>(new Set(secrets.map(s => s.id)));
     const [showAddModal, setShowAddModal] = useState(false);
@@ -102,8 +103,14 @@ export default function EnvironmentSecrets({ environment, secrets: propSecrets =
         setShowAddModal(false);
     };
 
-    const handleDeleteSecret = (id: string, key: string) => {
-        if (confirm(`Are you sure you want to delete the secret "${key}"? This action cannot be undone.`)) {
+    const handleDeleteSecret = async (id: string, key: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Secret',
+            description: `Are you sure you want to delete the secret "${key}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             setSecrets(secrets.filter(s => s.id !== id));
             const newMasked = new Set(maskedValues);
             newMasked.delete(id);

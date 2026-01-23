@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     Plus, Clock, Play, Pause, Trash2, MoreVertical,
     CheckCircle, XCircle, AlertCircle, Calendar
@@ -13,6 +13,7 @@ interface Props {
 }
 
 export default function CronJobsIndex({ cronJobs = [] }: Props) {
+    const confirm = useConfirm();
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | CronJob['status']>('all');
 
@@ -36,8 +37,14 @@ export default function CronJobsIndex({ cronJobs = [] }: Props) {
         router.post(`/cron-jobs/${uuid}/run`);
     };
 
-    const handleDelete = (uuid: string) => {
-        if (confirm('Are you sure you want to delete this cron job?')) {
+    const handleDelete = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Cron Job',
+            description: 'Are you sure you want to delete this cron job?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/cron-jobs/${uuid}`);
         }
     };

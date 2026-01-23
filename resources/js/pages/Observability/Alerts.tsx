@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, Checkbox } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, Checkbox, useConfirm } from '@/components/ui';
 import { Bell, Plus, Trash2, Edit, Check, X, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
 
 interface Alert {
@@ -58,6 +58,7 @@ const notificationChannels = [
 ];
 
 export default function ObservabilityAlerts({ alerts: propAlerts = [], history = [] }: Props) {
+    const confirm = useConfirm();
     const [alerts, setAlerts] = useState<Alert[]>(propAlerts);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -154,8 +155,14 @@ export default function ObservabilityAlerts({ alerts: propAlerts = [], history =
         });
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this alert?')) {
+    const handleDelete = async (id: number) => {
+        const confirmed = await confirm({
+            title: 'Delete Alert',
+            description: 'Are you sure you want to delete this alert?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/observability/alerts/${id}`);
         }
     };
