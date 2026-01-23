@@ -45,6 +45,8 @@ class InstanceSettings extends Model
         // Auto-provisioning
         'auto_provision_enabled' => 'boolean',
         'auto_provision_api_key' => 'encrypted',
+        'auto_provision_max_servers_per_day' => 'integer',
+        'auto_provision_cooldown_minutes' => 'integer',
     ];
 
     protected static function booted(): void

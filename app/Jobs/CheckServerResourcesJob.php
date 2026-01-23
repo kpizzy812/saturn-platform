@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\AutoProvisioningEvent;
 use App\Models\InstanceSettings;
 use App\Models\Server;
 use App\Notifications\Server\HighCpuUsage;
@@ -23,6 +24,13 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
     public $tries = 1;
 
     public $timeout = 120;
+
+    // Track current metrics for auto-provisioning trigger
+    private ?float $currentCpuUsage = null;
+
+    private ?float $currentMemoryUsage = null;
+
+    private ?int $currentDiskUsage = null;
 
     public function middleware(): array
     {
@@ -47,13 +55,18 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             // Check CPU usage
-            $this->checkCpuUsage($settings);
+            $cpuCritical = $this->checkCpuUsage($settings);
 
             // Check Memory usage
-            $this->checkMemoryUsage($settings);
+            $memoryCritical = $this->checkMemoryUsage($settings);
 
             // Check Disk usage (with instance settings thresholds)
             $this->checkDiskUsage($settings);
+
+            // Trigger auto-provisioning if critical thresholds exceeded
+            if ($cpuCritical || $memoryCritical) {
+                $this->triggerAutoProvisioning($settings, $cpuCritical ? 'cpu_critical' : 'memory_critical');
+            }
 
         } catch (\Throwable $e) {
             ray($e->getMessage());
@@ -62,27 +75,32 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
 
     /**
      * Check CPU usage and send notifications if thresholds exceeded.
+     *
+     * @return bool True if critical threshold exceeded
      */
-    private function checkCpuUsage(InstanceSettings $settings): void
+    private function checkCpuUsage(InstanceSettings $settings): bool
     {
         if (! $this->server->isMetricsEnabled()) {
-            return;
+            return false;
         }
 
         try {
             $cpuMetrics = $this->server->getCpuMetrics(1);
             if (empty($cpuMetrics)) {
-                return;
+                return false;
             }
 
             // Get the latest CPU value
             $latestCpu = collect($cpuMetrics)->last();
             $cpuUsage = $latestCpu[1] ?? 0;
+            $this->currentCpuUsage = $cpuUsage;
 
             $cacheKey = "server-cpu-alert-{$this->server->uuid}";
+            $isCritical = false;
 
             // Check critical threshold first
             if ($cpuUsage >= $settings->resource_critical_cpu_threshold) {
+                $isCritical = true;
                 if (! Cache::has($cacheKey.'-critical')) {
                     $this->server->team?->notify(new HighCpuUsage(
                         $this->server,
@@ -107,34 +125,42 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
                     Cache::put($cacheKey.'-warning', true, now()->addMinutes(30));
                 }
             }
+
+            return $isCritical;
         } catch (\Throwable $e) {
             // Sentinel might not be running
+            return false;
         }
     }
 
     /**
      * Check Memory usage and send notifications if thresholds exceeded.
+     *
+     * @return bool True if critical threshold exceeded
      */
-    private function checkMemoryUsage(InstanceSettings $settings): void
+    private function checkMemoryUsage(InstanceSettings $settings): bool
     {
         if (! $this->server->isMetricsEnabled()) {
-            return;
+            return false;
         }
 
         try {
             $memoryMetrics = $this->server->getMemoryMetrics(1);
             if (empty($memoryMetrics)) {
-                return;
+                return false;
             }
 
             // Get the latest memory value
             $latestMemory = collect($memoryMetrics)->last();
             $memoryUsage = $latestMemory[1] ?? 0;
+            $this->currentMemoryUsage = $memoryUsage;
 
             $cacheKey = "server-memory-alert-{$this->server->uuid}";
+            $isCritical = false;
 
             // Check critical threshold first
             if ($memoryUsage >= $settings->resource_critical_memory_threshold) {
+                $isCritical = true;
                 if (! Cache::has($cacheKey.'-critical')) {
                     $this->server->team?->notify(new HighMemoryUsage(
                         $this->server,
@@ -159,8 +185,11 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
                     Cache::put($cacheKey.'-warning', true, now()->addMinutes(30));
                 }
             }
+
+            return $isCritical;
         } catch (\Throwable $e) {
             // Sentinel might not be running
+            return false;
         }
     }
 
@@ -205,5 +234,63 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
         } catch (\Throwable $e) {
             // SSH might not be available
         }
+    }
+
+    /**
+     * Trigger auto-provisioning if enabled and conditions are met.
+     */
+    private function triggerAutoProvisioning(InstanceSettings $settings, string $triggerReason): void
+    {
+        // Check if auto-provisioning is enabled
+        if (! $settings->auto_provision_enabled) {
+            return;
+        }
+
+        // Check cooldown to prevent rapid provisioning
+        $cooldownKey = "auto-provision-triggered-{$this->server->uuid}";
+        if (Cache::has($cooldownKey)) {
+            return;
+        }
+
+        // Check daily limit
+        $provisionedToday = AutoProvisioningEvent::countProvisionedToday();
+        if ($provisionedToday >= $settings->auto_provision_max_servers_per_day) {
+            ray('Daily auto-provisioning limit reached, skipping trigger');
+
+            return;
+        }
+
+        // Check if there's already an active provisioning
+        if (AutoProvisioningEvent::hasActiveProvisioning()) {
+            return;
+        }
+
+        // Collect current metrics
+        $triggerMetrics = [];
+        if ($this->currentCpuUsage !== null) {
+            $triggerMetrics['cpu'] = $this->currentCpuUsage;
+        }
+        if ($this->currentMemoryUsage !== null) {
+            $triggerMetrics['memory'] = $this->currentMemoryUsage;
+        }
+        if ($this->currentDiskUsage !== null) {
+            $triggerMetrics['disk'] = $this->currentDiskUsage;
+        }
+
+        // Set cooldown to prevent rapid triggering (6 hours)
+        Cache::put($cooldownKey, true, now()->addHours(6));
+
+        // Dispatch auto-provisioning job
+        AutoProvisionServerJob::dispatch(
+            $this->server,
+            $triggerReason,
+            $triggerMetrics
+        );
+
+        ray('Auto-provisioning triggered', [
+            'server' => $this->server->name,
+            'reason' => $triggerReason,
+            'metrics' => $triggerMetrics,
+        ]);
     }
 }
