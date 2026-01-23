@@ -533,20 +533,20 @@ export default function ProjectShow({ project }: Props) {
 
     // Canvas zoom controls
     const handleZoomIn = useCallback(() => {
-        if ((window as any).__projectCanvasZoomIn) {
-            (window as any).__projectCanvasZoomIn();
+        if (window.__projectCanvasZoomIn) {
+            window.__projectCanvasZoomIn();
         }
     }, []);
 
     const handleZoomOut = useCallback(() => {
-        if ((window as any).__projectCanvasZoomOut) {
-            (window as any).__projectCanvasZoomOut();
+        if (window.__projectCanvasZoomOut) {
+            window.__projectCanvasZoomOut();
         }
     }, []);
 
     const handleFitView = useCallback(() => {
-        if ((window as any).__projectCanvasFitView) {
-            (window as any).__projectCanvasFitView();
+        if (window.__projectCanvasFitView) {
+            window.__projectCanvasFitView();
         }
     }, []);
 

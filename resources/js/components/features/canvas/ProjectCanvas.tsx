@@ -161,14 +161,14 @@ function ProjectCanvasInner({
         const handleZoomOut = () => reactFlowInstance.zoomOut();
         const handleFitView = () => reactFlowInstance.fitView({ padding: 0.4 });
 
-        (window as any).__projectCanvasZoomIn = handleZoomIn;
-        (window as any).__projectCanvasZoomOut = handleZoomOut;
-        (window as any).__projectCanvasFitView = handleFitView;
+        window.__projectCanvasZoomIn = handleZoomIn;
+        window.__projectCanvasZoomOut = handleZoomOut;
+        window.__projectCanvasFitView = handleFitView;
 
         return () => {
-            delete (window as any).__projectCanvasZoomIn;
-            delete (window as any).__projectCanvasZoomOut;
-            delete (window as any).__projectCanvasFitView;
+            delete window.__projectCanvasZoomIn;
+            delete window.__projectCanvasZoomOut;
+            delete window.__projectCanvasFitView;
         };
     }, [reactFlowInstance]);
 

@@ -11,14 +11,29 @@ import {
     Clock,
     RotateCw,
     Download,
-    Trash2,
     TrendingUp,
     Server,
     Zap,
-    AlertCircle
+    type LucideIcon
 } from 'lucide-react';
-import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
+import { useDatabaseMetrics, type DatabaseMetrics } from '@/hooks';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
+
+/**
+ * Helper to safely access metrics properties across different database types.
+ * Returns the value if the property exists, otherwise returns the fallback.
+ */
+function getMetricValue<T>(
+    metrics: DatabaseMetrics | null,
+    key: string,
+    fallback: T
+): T {
+    if (!metrics || !(key in metrics)) {
+        return fallback;
+    }
+    const metricsObj = metrics as unknown as Record<string, unknown>;
+    return (metricsObj[key] as T) ?? fallback;
+}
 
 interface Props {
     database: StandaloneDatabase;
@@ -48,20 +63,25 @@ export default function DatabaseOverview({ database }: Props) {
         refreshInterval: 30000,
     });
 
-    // Format metrics for display
+    // Format metrics for display using type-safe helper
+    const activeConns = getMetricValue<number | null>(dbMetrics, 'activeConnections', 0) ?? 0;
+    const maxConns = getMetricValue<number>(dbMetrics, 'maxConnections', 100);
+    const qps = getMetricValue<number | null>(dbMetrics, 'queriesPerSec', 0) ?? 0;
+    const dbSize = getMetricValue<string>(dbMetrics, 'databaseSize', 'N/A');
+
     const metrics = {
         storageUsed: {
-            value: isLoading ? '...' : ((dbMetrics as any)?.databaseSize || 'N/A'),
+            value: isLoading ? '...' : dbSize,
             total: 'N/A',
             percentage: 0,
         },
         activeConnections: {
-            value: isLoading ? 0 : ((dbMetrics as any)?.activeConnections ?? 0),
-            max: (dbMetrics as any)?.maxConnections || 100,
-            percentage: isLoading ? 0 : Math.round(((dbMetrics as any)?.activeConnections || 0) / ((dbMetrics as any)?.maxConnections || 100) * 100),
+            value: isLoading ? 0 : activeConns,
+            max: maxConns,
+            percentage: isLoading ? 0 : Math.round((activeConns / maxConns) * 100),
         },
         queriesPerSec: {
-            value: isLoading ? 0 : ((dbMetrics as any)?.queriesPerSec ?? 0),
+            value: isLoading ? 0 : qps,
             change: 'N/A',
         },
         avgResponseTime: { value: 'N/A', change: 'N/A' },
@@ -293,7 +313,7 @@ function ConnectionStatusBadge({ status }: { status: string }) {
 }
 
 interface StatCardProps {
-    icon: any;
+    icon: LucideIcon;
     label: string;
     value: string;
     subtext: string;
@@ -375,7 +395,7 @@ function MetricRow({ label, value, progress }: MetricRowProps) {
 }
 
 interface ActionCardProps {
-    icon: any;
+    icon: LucideIcon;
     title: string;
     description: string;
     href: string;

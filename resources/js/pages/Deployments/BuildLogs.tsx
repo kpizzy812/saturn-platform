@@ -403,7 +403,7 @@ export default function BuildLogsView({ deploymentUuid, deployment }: Props) {
                             <Filter className="h-4 w-4 text-foreground-muted" />
                             <select
                                 value={logLevel}
-                                onChange={(e) => setLogLevel(e.target.value as any)}
+                                onChange={(e) => setLogLevel(e.target.value as 'all' | 'info' | 'warn' | 'error')}
                                 className="rounded-md border border-border bg-background-secondary px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                             >
                                 <option value="all">All Levels</option>
