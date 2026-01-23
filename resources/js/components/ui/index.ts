@@ -7,6 +7,7 @@ export { Spinner } from './Spinner';
 export { Select } from './Select';
 export { Checkbox } from './Checkbox';
 export { Modal, ModalFooter } from './Modal';
+export { ConfirmationModal, ConfirmationProvider, useConfirmation, useConfirm } from './ConfirmationModal';
 export {
     Dropdown,
     DropdownTrigger,

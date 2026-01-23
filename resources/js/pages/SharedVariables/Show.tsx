@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, useConfirm } from '@/components/ui';
 import {
     Lock, Unlock, ArrowLeft, Edit, Trash2, Save, X,
     Building2, FolderKanban, Layers, Eye, EyeOff, AlertCircle
@@ -36,6 +36,7 @@ export default function SharedVariableShow({ variable: initialVariable }: Props)
         value: variable.value,
         is_secret: variable.is_secret,
     });
+    const confirm = useConfirm();
 
     const handleUpdate = () => {
         router.put(`/shared-variables/${variable.uuid}`, formData, {
@@ -47,8 +48,14 @@ export default function SharedVariableShow({ variable: initialVariable }: Props)
         });
     };
 
-    const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this variable? This action cannot be undone.')) {
+    const handleDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Variable',
+            description: 'Are you sure you want to delete this variable? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/shared-variables/${variable.uuid}`);
         }
     };

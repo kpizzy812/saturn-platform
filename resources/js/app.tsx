@@ -5,6 +5,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { initializeEcho } from '@/lib/echo';
 import { initializeSentry, setUser } from '@/lib/sentry';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ConfirmationProvider } from '@/components/ui';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Saturn Platform';
 
@@ -31,7 +32,9 @@ createInertiaApp({
         const root = createRoot(el);
         root.render(
             <ErrorBoundary>
-                <App {...props} />
+                <ConfirmationProvider>
+                    <App {...props} />
+                </ConfirmationProvider>
             </ErrorBoundary>
         );
     },

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Save, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import type { Service } from '@/types';
@@ -17,6 +17,7 @@ export function SettingsTab({ service }: Props) {
     const [isSavingCompose, setIsSavingCompose] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { addToast } = useToast();
+    const confirm = useConfirm();
 
     const handleSaveGeneral = () => {
         setIsSavingGeneral(true);
@@ -55,13 +56,22 @@ export function SettingsTab({ service }: Props) {
         });
     };
 
-    const handleDelete = () => {
-        if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
-            return;
-        }
-        if (!confirm('Please confirm again. All data, deployments, and configurations will be permanently deleted!')) {
-            return;
-        }
+    const handleDelete = async () => {
+        const firstConfirm = await confirm({
+            title: 'Delete Service',
+            description: 'Are you sure you want to delete this service? This action cannot be undone.',
+            confirmText: 'Continue',
+            variant: 'danger',
+        });
+        if (!firstConfirm) return;
+
+        const secondConfirm = await confirm({
+            title: 'Final Confirmation',
+            description: 'Please confirm again. All data, deployments, and configurations will be permanently deleted!',
+            confirmText: 'Delete Forever',
+            variant: 'danger',
+        });
+        if (!secondConfirm) return;
 
         setIsDeleting(true);
         router.delete(`/api/v1/services/${service.uuid}`, {
