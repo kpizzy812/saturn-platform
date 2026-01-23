@@ -256,10 +256,16 @@
   - Строки: 15 (`mockWorkspace`), 22-34 (`timezones`), 36-40 (`environments`)
   - Проблема: Захардкоженные данные workspace, timezones и environments
 
-- [ ] **Mock данные в Settings/Team/Index.tsx**
+- [x] **Mock данные в Settings/Team/Index.tsx** ✅ ИСПРАВЛЕНО
   - Файл: `resources/js/pages/Settings/Team/Index.tsx`
   - Строки: 47-51 (`mockTeam`), 53-94 (`mockMembers` - 5 фейковых членов команды)
   - Проблема: Данные команды и участников должны приходить с API
+  - Решение:
+    - Обновлён route `/settings/team/index` в `routes/web.php` для передачи реальных данных через Inertia
+    - Добавлен `withTimestamps()` к relation `members()` в `app/Models/Team.php` для получения `joinedAt`
+    - `lastActive` берётся из таблицы `sessions.last_activity` (или `user.updated_at` как fallback)
+    - Удалены mock данные и fallback из frontend компонента
+    - Props сделаны обязательными (убраны `?`)
 
 - [ ] **Mock данные в Settings/Team/Activity.tsx**
   - Файл: `resources/js/pages/Settings/Team/Activity.tsx`

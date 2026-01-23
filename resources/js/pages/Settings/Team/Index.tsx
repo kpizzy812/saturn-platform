@@ -40,62 +40,12 @@ interface Team {
 }
 
 interface Props {
-    team?: Team;
-    members?: TeamMember[];
+    team: Team;
+    members: TeamMember[];
 }
 
-const mockTeam: Team = {
-    id: 1,
-    name: 'Acme Corporation',
-    memberCount: 8,
-};
-
-const mockMembers: TeamMember[] = [
-    {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@acme.com',
-        role: 'owner',
-        joinedAt: '2024-01-15',
-        lastActive: '2024-03-28T14:30:00Z'
-    },
-    {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane@acme.com',
-        role: 'admin',
-        joinedAt: '2024-02-20',
-        lastActive: '2024-03-28T12:15:00Z'
-    },
-    {
-        id: 3,
-        name: 'Bob Johnson',
-        email: 'bob@acme.com',
-        role: 'member',
-        joinedAt: '2024-03-10',
-        lastActive: '2024-03-27T16:45:00Z'
-    },
-    {
-        id: 4,
-        name: 'Alice Williams',
-        email: 'alice@acme.com',
-        role: 'member',
-        joinedAt: '2024-03-15',
-        lastActive: '2024-03-28T09:20:00Z'
-    },
-    {
-        id: 5,
-        name: 'Charlie Brown',
-        email: 'charlie@acme.com',
-        role: 'viewer',
-        joinedAt: '2024-03-20',
-        lastActive: '2024-03-26T11:30:00Z'
-    },
-];
-
-export default function TeamIndex({ team: propTeam, members: propMembers }: Props) {
-    const team = propTeam || mockTeam;
-    const [members, setMembers] = React.useState<TeamMember[]>(propMembers || mockMembers);
+export default function TeamIndex({ team, members: initialMembers }: Props) {
+    const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);

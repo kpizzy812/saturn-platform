@@ -4107,7 +4107,37 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('settings.team.activity');
 
     Route::get('/settings/team/index', function () {
-        return \Inertia\Inertia::render('Settings/Team/Index');
+        $team = currentTeam();
+
+        $members = $team->members->map(function ($user) {
+            // Get last activity from sessions table
+            $lastSession = \Illuminate\Support\Facades\DB::table('sessions')
+                ->where('user_id', $user->id)
+                ->orderByDesc('last_activity')
+                ->first();
+
+            $lastActive = $lastSession
+                ? \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->toISOString()
+                : $user->updated_at->toISOString();
+
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->pivot->role ?? 'member',
+                'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
+                'lastActive' => $lastActive,
+            ];
+        });
+
+        return \Inertia\Inertia::render('Settings/Team/Index', [
+            'team' => [
+                'id' => $team->id,
+                'name' => $team->name,
+                'memberCount' => $members->count(),
+            ],
+            'members' => $members,
+        ]);
     })->name('settings.team.team-index');
 
     Route::get('/settings/team/invite', function () {
