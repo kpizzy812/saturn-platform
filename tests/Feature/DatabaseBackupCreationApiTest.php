@@ -13,8 +13,11 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->team->members()->attach($this->user->id, ['role' => 'owner']);
 
+    // Set current team context
+    session(['currentTeam' => $this->team]);
+
     // Create an API token for the user
-    $this->token = $this->user->createToken('test-token', ['*'], $this->team->id);
+    $this->token = $this->user->createToken('test-token', ['*']);
     $this->bearerToken = $this->token->plainTextToken;
 
     // Mock a database - we'll use Mockery to avoid needing actual database setup

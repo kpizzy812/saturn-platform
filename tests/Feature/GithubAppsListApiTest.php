@@ -14,8 +14,11 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->team->members()->attach($this->user->id, ['role' => 'owner']);
 
+    // Set current team context
+    session(['currentTeam' => $this->team]);
+
     // Create an API token for the user
-    $this->token = $this->user->createToken('test-token', ['*'], $this->team->id);
+    $this->token = $this->user->createToken('test-token', ['*']);
     $this->bearerToken = $this->token->plainTextToken;
 
     // Create a private key for the team
@@ -118,7 +121,8 @@ describe('GET /api/v1/github-apps', function () {
         $otherTeam = Team::factory()->create();
         $otherUser = User::factory()->create();
         $otherTeam->members()->attach($otherUser->id, ['role' => 'owner']);
-        $otherToken = $otherUser->createToken('other-token', ['*'], $otherTeam->id);
+        session(['currentTeam' => $otherTeam]);
+        $otherToken = $otherUser->createToken('other-token', ['*']);
 
         // System-wide apps should be visible to other teams
         $response = $this->withHeaders([
