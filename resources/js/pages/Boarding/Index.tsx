@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router, Link } from '@inertiajs/react';
-import { Card, CardContent, Button, Input, Select } from '@/components/ui';
+import { Card, CardContent, Button, Input, Select, Textarea, useConfirm } from '@/components/ui';
 import {
     Check,
     ChevronRight,
@@ -11,13 +11,12 @@ import {
     Sparkles,
     Github,
     Key,
-    Globe,
-    Database,
-    Package,
     Plus,
     ExternalLink,
     AlertCircle,
 } from 'lucide-react';
+import { validateIPAddress, validatePort, validateSSHKey } from '@/lib/validation';
+import type { PrivateKey } from '@/types';
 
 interface GithubApp {
     id: number;
@@ -28,19 +27,25 @@ interface GithubApp {
 
 interface Props {
     userName?: string;
-    existingServers?: any[];
+    existingServers?: Array<{ id: number; name: string; ip: string }>;
+    privateKeys?: PrivateKey[];
     githubApps?: GithubApp[];
 }
 
 type Step = 'welcome' | 'server' | 'git' | 'deploy' | 'complete';
 
-export default function BoardingIndex({ userName, existingServers = [], githubApps = [] }: Props) {
+type KeyMode = 'existing' | 'new';
+
+export default function BoardingIndex({ userName, existingServers = [], privateKeys = [], githubApps = [] }: Props) {
     // Check if localhost server exists (id=0 or name='localhost')
     const localhostServer = existingServers.find(s => s.id === 0 || s.name === 'localhost');
     const hasLocalhost = !!localhostServer;
 
+    const confirm = useConfirm();
+
     const [currentStep, setCurrentStep] = useState<Step>('welcome');
     const [completedSteps, setCompletedSteps] = useState<Set<Step>>(new Set());
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Server form state
     const [serverName, setServerName] = useState('');
@@ -49,6 +54,16 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
     const [serverUser, setServerUser] = useState('root');
     const [useExistingServer, setUseExistingServer] = useState(hasLocalhost);
     const [selectedServerId, setSelectedServerId] = useState(localhostServer?.id?.toString() || '');
+
+    // SSH Key state
+    const [keyMode, setKeyMode] = useState<KeyMode>(privateKeys.length > 0 ? 'existing' : 'new');
+    const [selectedKeyId, setSelectedKeyId] = useState<number | null>(privateKeys[0]?.id ?? null);
+    const [privateKeyContent, setPrivateKeyContent] = useState('');
+
+    // Validation errors
+    const [ipError, setIpError] = useState<string>();
+    const [portError, setPortError] = useState<string>();
+    const [privateKeyError, setPrivateKeyError] = useState<string>();
 
     // Git source form state
     const [selectedGithubAppId, setSelectedGithubAppId] = useState(
@@ -60,7 +75,6 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
     const [appName, setAppName] = useState('');
     const [gitRepository, setGitRepository] = useState('');
     const [gitBranch, setGitBranch] = useState('main');
-    const [deployType, setDeployType] = useState<'simple' | 'custom'>('simple');
 
     const steps: { id: Step; title: string; description: string }[] = [
         { id: 'welcome', title: 'Welcome', description: 'Get started with Saturn Platform' },
@@ -70,8 +84,6 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
         { id: 'complete', title: 'Complete', description: 'You are all set!' },
     ];
 
-    const currentStepIndex = steps.findIndex(s => s.id === currentStep);
-
     const markStepComplete = (step: Step) => {
         setCompletedSteps(prev => new Set([...prev, step]));
     };
@@ -80,7 +92,37 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
         router.post('/boarding/skip');
     };
 
-    const handleServerSubmit = () => {
+    const handleIpChange = (value: string) => {
+        setServerIp(value);
+        if (value.trim()) {
+            const { valid, error } = validateIPAddress(value);
+            setIpError(valid ? undefined : error);
+        } else {
+            setIpError(undefined);
+        }
+    };
+
+    const handlePortChange = (value: string) => {
+        setServerPort(value);
+        if (value.trim()) {
+            const { valid, error } = validatePort(value);
+            setPortError(valid ? undefined : error);
+        } else {
+            setPortError(undefined);
+        }
+    };
+
+    const handlePrivateKeyChange = (value: string) => {
+        setPrivateKeyContent(value);
+        if (value.trim()) {
+            const { valid, error } = validateSSHKey(value);
+            setPrivateKeyError(valid ? undefined : error);
+        } else {
+            setPrivateKeyError(undefined);
+        }
+    };
+
+    const handleServerSubmit = async () => {
         if (useExistingServer && selectedServerId) {
             markStepComplete('server');
             setCurrentStep('git');
@@ -88,20 +130,61 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
         }
 
         if (!serverName || !serverIp) {
-            alert('Please fill in all required fields');
+            await confirm({
+                title: 'Missing Required Fields',
+                description: 'Please fill in server name and IP address.',
+                confirmText: 'OK',
+                cancelText: '',
+                variant: 'default',
+            });
             return;
         }
 
-        // TODO: Create server via API
-        router.post('/servers', {
+        // Validate SSH key
+        const hasValidKey = keyMode === 'existing' ? !!selectedKeyId : (!!privateKeyContent && !privateKeyError);
+        if (!hasValidKey) {
+            await confirm({
+                title: 'SSH Key Required',
+                description: 'Please select an existing SSH key or provide a new one.',
+                confirmText: 'OK',
+                cancelText: '',
+                variant: 'default',
+            });
+            return;
+        }
+
+        // Validate IP and port
+        if (ipError || portError) {
+            await confirm({
+                title: 'Validation Error',
+                description: 'Please fix the validation errors before continuing.',
+                confirmText: 'OK',
+                cancelText: '',
+                variant: 'default',
+            });
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        const payload = {
             name: serverName,
             ip: serverIp,
-            port: serverPort,
+            port: parseInt(serverPort, 10),
             user: serverUser,
-        }, {
+            ...(keyMode === 'existing' && selectedKeyId
+                ? { private_key_id: selectedKeyId }
+                : { private_key: privateKeyContent }),
+        };
+
+        router.post('/servers', payload, {
             onSuccess: () => {
                 markStepComplete('server');
                 setCurrentStep('git');
+                setIsSubmitting(false);
+            },
+            onError: () => {
+                setIsSubmitting(false);
             },
             preserveScroll: true,
         });
@@ -118,14 +201,26 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
         router.visit('/sources/github/create');
     };
 
-    const handleDeploySubmit = () => {
+    const handleDeploySubmit = async () => {
         if (!appName || !gitRepository) {
-            alert('Please fill in all required fields');
+            await confirm({
+                title: 'Missing Required Fields',
+                description: 'Please fill in the application name and git repository URL.',
+                confirmText: 'OK',
+                cancelText: '',
+                variant: 'default',
+            });
             return;
         }
 
         if (!selectedServerId) {
-            alert('No server selected. Please go back and select a server.');
+            await confirm({
+                title: 'No Server Selected',
+                description: 'Please go back and select a server for deployment.',
+                confirmText: 'OK',
+                cancelText: '',
+                variant: 'default',
+            });
             return;
         }
 
@@ -216,9 +311,11 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
                         serverName={serverName}
                         setServerName={setServerName}
                         serverIp={serverIp}
-                        setServerIp={setServerIp}
+                        onIpChange={handleIpChange}
+                        ipError={ipError}
                         serverPort={serverPort}
-                        setServerPort={setServerPort}
+                        onPortChange={handlePortChange}
+                        portError={portError}
                         serverUser={serverUser}
                         setServerUser={setServerUser}
                         useExisting={useExistingServer}
@@ -226,9 +323,18 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
                         selectedServerId={selectedServerId}
                         setSelectedServerId={setSelectedServerId}
                         existingServers={existingServers}
+                        privateKeys={privateKeys}
+                        keyMode={keyMode}
+                        setKeyMode={setKeyMode}
+                        selectedKeyId={selectedKeyId}
+                        setSelectedKeyId={setSelectedKeyId}
+                        privateKeyContent={privateKeyContent}
+                        onPrivateKeyChange={handlePrivateKeyChange}
+                        privateKeyError={privateKeyError}
                         onNext={handleServerSubmit}
                         onBack={() => setCurrentStep('welcome')}
                         onSkip={handleSkip}
+                        isSubmitting={isSubmitting}
                     />
                 )}
 
@@ -251,8 +357,6 @@ export default function BoardingIndex({ userName, existingServers = [], githubAp
                         setGitRepository={setGitRepository}
                         gitBranch={gitBranch}
                         setGitBranch={setGitBranch}
-                        deployType={deployType}
-                        setDeployType={setDeployType}
                         onNext={handleDeploySubmit}
                         onBack={() => setCurrentStep('git')}
                         onSkip={handleSkip}
@@ -313,25 +417,41 @@ interface ServerStepProps {
     serverName: string;
     setServerName: (value: string) => void;
     serverIp: string;
-    setServerIp: (value: string) => void;
+    onIpChange: (value: string) => void;
+    ipError?: string;
     serverPort: string;
-    setServerPort: (value: string) => void;
+    onPortChange: (value: string) => void;
+    portError?: string;
     serverUser: string;
     setServerUser: (value: string) => void;
     useExisting: boolean;
     setUseExisting: (value: boolean) => void;
     selectedServerId: string;
     setSelectedServerId: (value: string) => void;
-    existingServers: any[];
+    existingServers: Array<{ id: number; name: string; ip: string }>;
+    // SSH Key props
+    privateKeys: PrivateKey[];
+    keyMode: KeyMode;
+    setKeyMode: (value: KeyMode) => void;
+    selectedKeyId: number | null;
+    setSelectedKeyId: (value: number | null) => void;
+    privateKeyContent: string;
+    onPrivateKeyChange: (value: string) => void;
+    privateKeyError?: string;
+    // Actions
     onNext: () => void;
     onBack: () => void;
     onSkip: () => void;
+    isSubmitting: boolean;
 }
 
 function ServerStep({
-    serverName, setServerName, serverIp, setServerIp, serverPort, setServerPort,
-    serverUser, setServerUser, useExisting, setUseExisting, selectedServerId, setSelectedServerId,
-    existingServers, onNext, onBack, onSkip
+    serverName, setServerName, serverIp, onIpChange, ipError,
+    serverPort, onPortChange, portError, serverUser, setServerUser,
+    useExisting, setUseExisting, selectedServerId, setSelectedServerId,
+    existingServers, privateKeys, keyMode, setKeyMode, selectedKeyId, setSelectedKeyId,
+    privateKeyContent, onPrivateKeyChange, privateKeyError,
+    onNext, onBack, onSkip, isSubmitting
 }: ServerStepProps) {
     return (
         <Card>
@@ -394,7 +514,8 @@ function ServerStep({
                                 <Input
                                     placeholder="e.g. 192.168.1.1"
                                     value={serverIp}
-                                    onChange={(e) => setServerIp(e.target.value)}
+                                    onChange={(e) => onIpChange(e.target.value)}
+                                    error={ipError}
                                 />
                             </div>
                             <div>
@@ -404,7 +525,9 @@ function ServerStep({
                                 <Input
                                     placeholder="22"
                                     value={serverPort}
-                                    onChange={(e) => setServerPort(e.target.value)}
+                                    onChange={(e) => onPortChange(e.target.value)}
+                                    type="number"
+                                    error={portError}
                                 />
                             </div>
                         </div>
@@ -418,6 +541,63 @@ function ServerStep({
                                 onChange={(e) => setServerUser(e.target.value)}
                             />
                         </div>
+
+                        {/* SSH Key Selection */}
+                        <div className="space-y-3">
+                            <label className="block text-sm font-medium text-foreground">
+                                SSH Key
+                            </label>
+                            {privateKeys.length > 0 && (
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant={keyMode === 'existing' ? 'default' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => setKeyMode('existing')}
+                                    >
+                                        <Key className="mr-2 h-4 w-4" />
+                                        Use Existing Key
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={keyMode === 'new' ? 'default' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => setKeyMode('new')}
+                                    >
+                                        Add New Key
+                                    </Button>
+                                </div>
+                            )}
+
+                            {keyMode === 'existing' && privateKeys.length > 0 ? (
+                                <Select
+                                    value={selectedKeyId?.toString() ?? ''}
+                                    onChange={(e) => setSelectedKeyId(parseInt(e.target.value))}
+                                >
+                                    {privateKeys.map((key) => (
+                                        <option key={key.id} value={key.id}>
+                                            {key.name}
+                                        </option>
+                                    ))}
+                                </Select>
+                            ) : (
+                                <Textarea
+                                    placeholder="-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----"
+                                    value={privateKeyContent}
+                                    onChange={(e) => onPrivateKeyChange(e.target.value)}
+                                    rows={6}
+                                    error={privateKeyError}
+                                    className="font-mono text-sm"
+                                />
+                            )}
+                            <p className="text-xs text-foreground-muted">
+                                {keyMode === 'existing'
+                                    ? 'Select an SSH key from your team\'s key storage.'
+                                    : 'Paste your private SSH key for server authentication.'}
+                            </p>
+                        </div>
                     </div>
                 )}
 
@@ -428,9 +608,9 @@ function ServerStep({
                     </Button>
                     <div className="flex gap-3">
                         <Button variant="outline" onClick={onSkip}>Skip</Button>
-                        <Button onClick={onNext}>
-                            Continue
-                            <ChevronRight className="ml-2 h-4 w-4" />
+                        <Button onClick={onNext} disabled={isSubmitting}>
+                            {isSubmitting ? 'Creating...' : 'Continue'}
+                            {!isSubmitting && <ChevronRight className="ml-2 h-4 w-4" />}
                         </Button>
                     </div>
                 </div>
@@ -561,8 +741,6 @@ interface DeployStepProps {
     setGitRepository: (value: string) => void;
     gitBranch: string;
     setGitBranch: (value: string) => void;
-    deployType: 'simple' | 'custom';
-    setDeployType: (value: 'simple' | 'custom') => void;
     onNext: () => void;
     onBack: () => void;
     onSkip: () => void;
@@ -570,7 +748,7 @@ interface DeployStepProps {
 
 function DeployStep({
     appName, setAppName, gitRepository, setGitRepository, gitBranch, setGitBranch,
-    deployType, setDeployType, onNext, onBack, onSkip
+    onNext, onBack, onSkip
 }: DeployStepProps) {
     return (
         <Card>

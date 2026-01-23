@@ -4058,6 +4058,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Boarding route
     Route::get('/boarding', function () {
         $servers = \App\Models\Server::ownedByCurrentTeam()->get(['id', 'name', 'ip']);
+        $privateKeys = \App\Models\PrivateKey::ownedByCurrentTeam()->get(['id', 'name']);
 
         // Get GitHub Apps for current team
         $githubApps = \App\Models\GithubApp::where(function ($query) {
@@ -4068,6 +4069,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         return \Inertia\Inertia::render('Boarding/Index', [
             'userName' => auth()->user()->name,
             'existingServers' => $servers,
+            'privateKeys' => $privateKeys,
             'githubApps' => $githubApps->map(fn ($app) => [
                 'id' => $app->id,
                 'uuid' => $app->uuid,
