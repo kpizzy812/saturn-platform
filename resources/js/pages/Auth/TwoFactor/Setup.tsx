@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useForm, Link } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
 import { Input, Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
@@ -16,6 +16,18 @@ export default function Setup({ qrCode, manualEntryCode, backupCodes: propBackup
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedBackup, setCopiedBackup] = useState(false);
     const [backupCodes, setBackupCodes] = useState<string[]>(propBackupCodes || []);
+
+    // Refs for timeout cleanup to prevent memory leaks
+    const copyCodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const copyBackupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (copyCodeTimeoutRef.current) clearTimeout(copyCodeTimeoutRef.current);
+            if (copyBackupTimeoutRef.current) clearTimeout(copyBackupTimeoutRef.current);
+        };
+    }, []);
 
     const { data, setData, post, processing, errors } = useForm({
         code: '',
@@ -47,13 +59,17 @@ export default function Setup({ qrCode, manualEntryCode, backupCodes: propBackup
     const handleCopyCode = () => {
         navigator.clipboard.writeText(manualEntryCode);
         setCopiedCode(true);
-        setTimeout(() => setCopiedCode(false), 2000);
+        // Clear existing timeout if user clicks again
+        if (copyCodeTimeoutRef.current) clearTimeout(copyCodeTimeoutRef.current);
+        copyCodeTimeoutRef.current = setTimeout(() => setCopiedCode(false), 2000);
     };
 
     const handleCopyBackupCodes = () => {
         navigator.clipboard.writeText(backupCodes.join('\n'));
         setCopiedBackup(true);
-        setTimeout(() => setCopiedBackup(false), 2000);
+        // Clear existing timeout if user clicks again
+        if (copyBackupTimeoutRef.current) clearTimeout(copyBackupTimeoutRef.current);
+        copyBackupTimeoutRef.current = setTimeout(() => setCopiedBackup(false), 2000);
     };
 
     if (showBackupCodes) {
