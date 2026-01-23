@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Save, Trash2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Save, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import type { Service } from '@/types';
 
 interface Props {
@@ -12,18 +13,74 @@ export function SettingsTab({ service }: Props) {
     const [name, setName] = useState(service.name);
     const [description, setDescription] = useState(service.description || '');
     const [dockerCompose, setDockerCompose] = useState(service.docker_compose_raw || '');
+    const [isSavingGeneral, setIsSavingGeneral] = useState(false);
+    const [isSavingCompose, setIsSavingCompose] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const { addToast } = useToast();
 
-    const handleSave = () => {
-        // Implementation would save to backend
-        addToast('success', 'Settings saved!');
+    const handleSaveGeneral = () => {
+        setIsSavingGeneral(true);
+        router.patch(`/api/v1/services/${service.uuid}`, {
+            name,
+            description,
+        }, {
+            onSuccess: () => {
+                addToast('success', 'General settings saved successfully');
+            },
+            onError: () => {
+                addToast('error', 'Failed to save general settings');
+            },
+            onFinish: () => {
+                setIsSavingGeneral(false);
+            },
+        });
+    };
+
+    const handleSaveDockerCompose = () => {
+        setIsSavingCompose(true);
+        // API requires docker_compose_raw to be base64 encoded
+        const encodedCompose = btoa(dockerCompose);
+        router.patch(`/api/v1/services/${service.uuid}`, {
+            docker_compose_raw: encodedCompose,
+        }, {
+            onSuccess: () => {
+                addToast('success', 'Docker Compose configuration saved successfully');
+            },
+            onError: () => {
+                addToast('error', 'Failed to save Docker Compose configuration');
+            },
+            onFinish: () => {
+                setIsSavingCompose(false);
+            },
+        });
     };
 
     const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
-            // Implementation would delete the service
-            addToast('success', 'Service deleted!');
+        if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+            return;
         }
+        if (!confirm('Please confirm again. All data, deployments, and configurations will be permanently deleted!')) {
+            return;
+        }
+
+        setIsDeleting(true);
+        router.delete(`/api/v1/services/${service.uuid}`, {
+            data: {
+                delete_volumes: true,
+                delete_connected_networks: true,
+                delete_configurations: true,
+                docker_cleanup: true,
+            },
+            onSuccess: () => {
+                addToast('success', 'Service deletion request queued');
+                // Navigate to services list
+                router.visit('/services');
+            },
+            onError: () => {
+                addToast('error', 'Failed to delete service');
+                setIsDeleting(false);
+            },
+        });
     };
 
     return (
@@ -67,9 +124,13 @@ export function SettingsTab({ service }: Props) {
                     </div>
 
                     <div className="flex justify-end">
-                        <Button onClick={handleSave}>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Changes
+                        <Button onClick={handleSaveGeneral} disabled={isSavingGeneral}>
+                            {isSavingGeneral ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            {isSavingGeneral ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>
                 </CardContent>
@@ -97,9 +158,13 @@ export function SettingsTab({ service }: Props) {
                     </div>
 
                     <div className="flex justify-end">
-                        <Button onClick={handleSave}>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Configuration
+                        <Button onClick={handleSaveDockerCompose} disabled={isSavingCompose}>
+                            {isSavingCompose ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            {isSavingCompose ? 'Saving...' : 'Save Configuration'}
                         </Button>
                     </div>
                 </CardContent>
@@ -167,7 +232,8 @@ export function SettingsTab({ service }: Props) {
                     </div>
 
                     <div className="flex justify-end">
-                        <Button onClick={handleSave}>
+                        {/* TODO: Resource limits API not implemented yet in ServicesController */}
+                        <Button disabled title="Resource limits API not yet implemented">
                             <Save className="mr-2 h-4 w-4" />
                             Save Limits
                         </Button>
@@ -227,9 +293,14 @@ export function SettingsTab({ service }: Props) {
                             size="sm"
                             className="mt-3"
                             onClick={handleDelete}
+                            disabled={isDeleting}
                         >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Service
+                            {isDeleting ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="mr-2 h-4 w-4" />
+                            )}
+                            {isDeleting ? 'Deleting...' : 'Delete Service'}
                         </Button>
                     </div>
                 </CardContent>
