@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\GithubController;
 use App\Http\Controllers\Api\HetznerController;
 use App\Http\Controllers\Api\OtherController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ResourceLinkController;
 use App\Http\Controllers\Api\ResourcesController;
 use App\Http\Controllers\Api\SecurityController;
 use App\Http\Controllers\Api\ServersController;
@@ -57,6 +58,12 @@ Route::group([
     Route::post('/projects', [ProjectController::class, 'create_project'])->middleware(['api.ability:read']);
     Route::patch('/projects/{uuid}', [ProjectController::class, 'update_project'])->middleware(['api.ability:write']);
     Route::delete('/projects/{uuid}', [ProjectController::class, 'delete_project'])->middleware(['api.ability:write']);
+
+    // Resource Links (App <-> Database connections)
+    Route::get('/environments/{environment_uuid}/links', [ResourceLinkController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/environments/{environment_uuid}/links', [ResourceLinkController::class, 'store'])->middleware(['api.ability:write']);
+    Route::patch('/environments/{environment_uuid}/links/{link_id}', [ResourceLinkController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/environments/{environment_uuid}/links/{link_id}', [ResourceLinkController::class, 'destroy'])->middleware(['api.ability:write']);
 
     Route::get('/security/keys', [SecurityController::class, 'keys'])->middleware(['api.ability:read']);
     Route::post('/security/keys', [SecurityController::class, 'create_key'])->middleware(['api.ability:write']);

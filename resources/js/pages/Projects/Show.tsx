@@ -864,6 +864,7 @@ export default function ProjectShow({ project }: Props) {
                                 applications={selectedEnv.applications || []}
                                 databases={selectedEnv.databases || []}
                                 services={selectedEnv.services || []}
+                                environmentUuid={selectedEnv.uuid}
                                 onNodeClick={handleNodeClick}
                                 onNodeContextMenu={handleNodeContextMenu}
                                 onViewportChange={handleViewportChange}

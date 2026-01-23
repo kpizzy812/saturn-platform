@@ -1,0 +1,327 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Application;
+use App\Models\Environment;
+use App\Models\ResourceLink;
+use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
+
+class ResourceLinkController extends Controller
+{
+    private array $allowedTargetTypes = [
+        'postgresql' => \App\Models\StandalonePostgresql::class,
+        'mysql' => \App\Models\StandaloneMysql::class,
+        'mariadb' => \App\Models\StandaloneMariadb::class,
+        'redis' => \App\Models\StandaloneRedis::class,
+        'keydb' => \App\Models\StandaloneKeydb::class,
+        'dragonfly' => \App\Models\StandaloneDragonfly::class,
+        'mongodb' => \App\Models\StandaloneMongodb::class,
+        'clickhouse' => \App\Models\StandaloneClickhouse::class,
+    ];
+
+    #[OA\Get(
+        summary: 'List Resource Links',
+        description: 'List all resource links for an environment.',
+        path: '/environments/{environment_uuid}/links',
+        operationId: 'list-resource-links',
+        security: [['bearerAuth' => []]],
+        tags: ['Resource Links'],
+        parameters: [
+            new OA\Parameter(name: 'environment_uuid', in: 'path', required: true, description: 'Environment UUID', schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'List of resource links'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, description: 'Environment not found.'),
+        ]
+    )]
+    public function index(string $environment_uuid)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = Environment::whereUuid($environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+
+        if (! $environment) {
+            return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
+        $links = ResourceLink::where('environment_id', $environment->id)
+            ->with(['source', 'target'])
+            ->get()
+            ->map(fn ($link) => $this->formatLink($link));
+
+        return response()->json($links);
+    }
+
+    #[OA\Post(
+        summary: 'Create Resource Link',
+        description: 'Create a new resource link between an application and a database.',
+        path: '/environments/{environment_uuid}/links',
+        operationId: 'create-resource-link',
+        security: [['bearerAuth' => []]],
+        tags: ['Resource Links'],
+        parameters: [
+            new OA\Parameter(name: 'environment_uuid', in: 'path', required: true, description: 'Environment UUID', schema: new OA\Schema(type: 'string')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['source_id', 'target_type', 'target_id'],
+                properties: [
+                    new OA\Property(property: 'source_id', type: 'integer', description: 'Application ID'),
+                    new OA\Property(property: 'target_type', type: 'string', description: 'Database type (postgresql, mysql, redis, etc.)'),
+                    new OA\Property(property: 'target_id', type: 'integer', description: 'Database ID'),
+                    new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
+                    new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Resource link created'),
+            new OA\Response(response: 400, description: 'Validation error'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, description: 'Environment, application, or database not found.'),
+        ]
+    )]
+    public function store(Request $request, string $environment_uuid)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = Environment::whereUuid($environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+
+        if (! $environment) {
+            return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'source_id' => 'required|integer',
+            'target_type' => 'required|string|in:'.implode(',', array_keys($this->allowedTargetTypes)),
+            'target_id' => 'required|integer',
+            'inject_as' => 'nullable|string|max:255',
+            'auto_inject' => 'boolean',
+        ]);
+
+        // Verify application exists in this environment
+        $application = Application::where('id', $validated['source_id'])
+            ->where('environment_id', $environment->id)
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found in this environment.'], 404);
+        }
+
+        // Verify database exists in this environment
+        $targetClass = $this->allowedTargetTypes[$validated['target_type']];
+        $database = $targetClass::where('id', $validated['target_id'])
+            ->where('environment_id', $environment->id)
+            ->first();
+
+        if (! $database) {
+            return response()->json(['message' => 'Database not found in this environment.'], 404);
+        }
+
+        // Check if link already exists
+        $existingLink = ResourceLink::where('source_type', Application::class)
+            ->where('source_id', $application->id)
+            ->where('target_type', $targetClass)
+            ->where('target_id', $database->id)
+            ->first();
+
+        if ($existingLink) {
+            return response()->json(['message' => 'Link already exists.', 'link' => $this->formatLink($existingLink)], 200);
+        }
+
+        // Create the link
+        $link = ResourceLink::create([
+            'environment_id' => $environment->id,
+            'source_type' => Application::class,
+            'source_id' => $application->id,
+            'target_type' => $targetClass,
+            'target_id' => $database->id,
+            'inject_as' => $validated['inject_as'] ?? null,
+            'auto_inject' => $validated['auto_inject'] ?? true,
+        ]);
+
+        // Immediately inject if auto_inject is enabled
+        if ($link->auto_inject) {
+            $application->autoInjectDatabaseUrl();
+        }
+
+        return response()->json($this->formatLink($link->load(['source', 'target'])), 201);
+    }
+
+    #[OA\Delete(
+        summary: 'Delete Resource Link',
+        description: 'Delete a resource link and optionally remove the injected environment variable.',
+        path: '/environments/{environment_uuid}/links/{link_id}',
+        operationId: 'delete-resource-link',
+        security: [['bearerAuth' => []]],
+        tags: ['Resource Links'],
+        parameters: [
+            new OA\Parameter(name: 'environment_uuid', in: 'path', required: true, description: 'Environment UUID', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'link_id', in: 'path', required: true, description: 'Link ID', schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'remove_env_var', in: 'query', required: false, description: 'Remove the injected env variable', schema: new OA\Schema(type: 'boolean', default: true)),
+        ],
+        responses: [
+            new OA\Response(response: 204, description: 'Link deleted'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, description: 'Link not found.'),
+        ]
+    )]
+    public function destroy(Request $request, string $environment_uuid, int $link_id)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = Environment::whereUuid($environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+
+        if (! $environment) {
+            return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
+        $link = ResourceLink::where('id', $link_id)
+            ->where('environment_id', $environment->id)
+            ->first();
+
+        if (! $link) {
+            return response()->json(['message' => 'Link not found.'], 404);
+        }
+
+        // Remove injected env variable if requested (default: true)
+        $removeEnvVar = $request->boolean('remove_env_var', true);
+        if ($removeEnvVar && $link->source instanceof Application) {
+            $envKey = $link->getEnvKey();
+            $link->source->environment_variables()
+                ->where('key', $envKey)
+                ->delete();
+        }
+
+        $link->delete();
+
+        return response()->noContent();
+    }
+
+    #[OA\Patch(
+        summary: 'Update Resource Link',
+        description: 'Update a resource link settings.',
+        path: '/environments/{environment_uuid}/links/{link_id}',
+        operationId: 'update-resource-link',
+        security: [['bearerAuth' => []]],
+        tags: ['Resource Links'],
+        parameters: [
+            new OA\Parameter(name: 'environment_uuid', in: 'path', required: true, description: 'Environment UUID', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'link_id', in: 'path', required: true, description: 'Link ID', schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
+                    new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Link updated'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, description: 'Link not found.'),
+        ]
+    )]
+    public function update(Request $request, string $environment_uuid, int $link_id)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = Environment::whereUuid($environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+
+        if (! $environment) {
+            return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
+        $link = ResourceLink::where('id', $link_id)
+            ->where('environment_id', $environment->id)
+            ->first();
+
+        if (! $link) {
+            return response()->json(['message' => 'Link not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'inject_as' => 'nullable|string|max:255',
+            'auto_inject' => 'boolean',
+        ]);
+
+        // If inject_as is changing, remove old env var and add new one
+        $oldEnvKey = $link->getEnvKey();
+        $link->update($validated);
+        $newEnvKey = $link->getEnvKey();
+
+        if ($oldEnvKey !== $newEnvKey && $link->source instanceof Application) {
+            // Remove old env var
+            $link->source->environment_variables()
+                ->where('key', $oldEnvKey)
+                ->delete();
+
+            // Inject new one if auto_inject is enabled
+            if ($link->auto_inject) {
+                $link->source->autoInjectDatabaseUrl();
+            }
+        }
+
+        return response()->json($this->formatLink($link->load(['source', 'target'])));
+    }
+
+    /**
+     * Format link for API response.
+     */
+    private function formatLink(ResourceLink $link): array
+    {
+        $targetType = match ($link->target_type) {
+            \App\Models\StandalonePostgresql::class => 'postgresql',
+            \App\Models\StandaloneMysql::class => 'mysql',
+            \App\Models\StandaloneMariadb::class => 'mariadb',
+            \App\Models\StandaloneRedis::class => 'redis',
+            \App\Models\StandaloneKeydb::class => 'keydb',
+            \App\Models\StandaloneDragonfly::class => 'dragonfly',
+            \App\Models\StandaloneMongodb::class => 'mongodb',
+            \App\Models\StandaloneClickhouse::class => 'clickhouse',
+            default => 'unknown',
+        };
+
+        return [
+            'id' => $link->id,
+            'environment_id' => $link->environment_id,
+            'source_type' => 'application',
+            'source_id' => $link->source_id,
+            'source_name' => $link->source?->name,
+            'target_type' => $targetType,
+            'target_id' => $link->target_id,
+            'target_name' => $link->target?->name,
+            'inject_as' => $link->inject_as,
+            'env_key' => $link->getEnvKey(),
+            'auto_inject' => $link->auto_inject,
+            'created_at' => $link->created_at?->toIso8601String(),
+            'updated_at' => $link->updated_at?->toIso8601String(),
+        ];
+    }
+}

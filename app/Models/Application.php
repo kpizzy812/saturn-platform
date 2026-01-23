@@ -2068,4 +2068,51 @@ class Application extends BaseModel
             throw new \Exception('Failed to update application settings');
         }
     }
+
+    /**
+     * Get resource links where this application is the source.
+     */
+    public function resourceLinks()
+    {
+        return $this->morphMany(ResourceLink::class, 'source');
+    }
+
+    /**
+     * Auto-inject DATABASE_URL and other connection strings from linked databases.
+     * This method checks for ResourceLinks and injects the appropriate env variables.
+     */
+    public function autoInjectDatabaseUrl(): void
+    {
+        if (! $this->auto_inject_database_url) {
+            return;
+        }
+
+        // Get links where this application is the source and auto_inject is enabled
+        $links = ResourceLink::where('source_type', self::class)
+            ->where('source_id', $this->id)
+            ->where('auto_inject', true)
+            ->with('target')
+            ->get();
+
+        foreach ($links as $link) {
+            $db = $link->target;
+
+            // Skip if target doesn't exist or doesn't have internal_db_url
+            if (! $db || ! isset($db->internal_db_url)) {
+                continue;
+            }
+
+            $envKey = $link->getEnvKey();
+
+            // Create or update the environment variable
+            $this->environment_variables()->updateOrCreate(
+                ['key' => $envKey, 'is_preview' => false],
+                [
+                    'value' => $db->internal_db_url,
+                    'is_buildtime' => false,
+                    'is_runtime' => true,
+                ]
+            );
+        }
+    }
 }

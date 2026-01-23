@@ -7976,6 +7976,243 @@
                 ]
             }
         },
+        "\/environments\/{environment_uuid}\/links": {
+            "get": {
+                "tags": [
+                    "Resource Links"
+                ],
+                "summary": "List Resource Links",
+                "description": "List all resource links for an environment.",
+                "operationId": "list-resource-links",
+                "parameters": [
+                    {
+                        "name": "environment_uuid",
+                        "in": "path",
+                        "description": "Environment UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of resource links"
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "description": "Environment not found."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Resource Links"
+                ],
+                "summary": "Create Resource Link",
+                "description": "Create a new resource link between an application and a database.",
+                "operationId": "create-resource-link",
+                "parameters": [
+                    {
+                        "name": "environment_uuid",
+                        "in": "path",
+                        "description": "Environment UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "source_id",
+                                    "target_type",
+                                    "target_id"
+                                ],
+                                "properties": {
+                                    "source_id": {
+                                        "description": "Application ID",
+                                        "type": "integer"
+                                    },
+                                    "target_type": {
+                                        "description": "Database type (postgresql, mysql, redis, etc.)",
+                                        "type": "string"
+                                    },
+                                    "target_id": {
+                                        "description": "Database ID",
+                                        "type": "integer"
+                                    },
+                                    "inject_as": {
+                                        "description": "Custom env variable name",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "auto_inject": {
+                                        "description": "Auto-inject on deploy",
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Resource link created"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "description": "Environment, application, or database not found."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/environments\/{environment_uuid}\/links\/{link_id}": {
+            "delete": {
+                "tags": [
+                    "Resource Links"
+                ],
+                "summary": "Delete Resource Link",
+                "description": "Delete a resource link and optionally remove the injected environment variable.",
+                "operationId": "delete-resource-link",
+                "parameters": [
+                    {
+                        "name": "environment_uuid",
+                        "in": "path",
+                        "description": "Environment UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "link_id",
+                        "in": "path",
+                        "description": "Link ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "remove_env_var",
+                        "in": "query",
+                        "description": "Remove the injected env variable",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Link deleted"
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "description": "Link not found."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Resource Links"
+                ],
+                "summary": "Update Resource Link",
+                "description": "Update a resource link settings.",
+                "operationId": "update-resource-link",
+                "parameters": [
+                    {
+                        "name": "environment_uuid",
+                        "in": "path",
+                        "description": "Environment UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "link_id",
+                        "in": "path",
+                        "description": "Link ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "inject_as": {
+                                        "description": "Custom env variable name",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "auto_inject": {
+                                        "description": "Auto-inject on deploy",
+                                        "type": "boolean"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Link updated"
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "description": "Link not found."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/resources": {
             "get": {
                 "tags": [
@@ -11252,6 +11489,10 @@
         {
             "name": "Projects",
             "description": "Projects"
+        },
+        {
+            "name": "Resource Links",
+            "description": "Resource Links"
         },
         {
             "name": "Resources",

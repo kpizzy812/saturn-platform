@@ -1645,6 +1645,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function save_buildtime_environment_variables()
     {
+        // Auto-inject DATABASE_URL from linked databases before generating env vars
+        $this->injectLinkedDatabaseUrls();
+
         // Generate build-time environment variables locally
         $environment_variables = $this->generate_buildtime_environment_variables();
 
@@ -1674,6 +1677,37 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ]
             );
         }
+    }
+
+    /**
+     * Inject DATABASE_URL and other connection strings from linked databases.
+     * This uses ResourceLinks to determine which databases to connect.
+     */
+    private function injectLinkedDatabaseUrls(): void
+    {
+        if (! $this->application->auto_inject_database_url) {
+            return;
+        }
+
+        // Get count of linked databases for this application
+        $linksCount = \App\Models\ResourceLink::where('source_type', \App\Models\Application::class)
+            ->where('source_id', $this->application->id)
+            ->where('auto_inject', true)
+            ->count();
+
+        if ($linksCount === 0) {
+            return;
+        }
+
+        $this->application_deployment_queue->addLogEntry("Auto-injecting connection URLs from {$linksCount} linked database(s)...");
+
+        // Call the model method which handles the actual injection
+        $this->application->autoInjectDatabaseUrl();
+
+        // Refresh the application to ensure we have the latest env vars
+        $this->application->refresh();
+
+        $this->application_deployment_queue->addLogEntry('Database connection URLs injected successfully.');
     }
 
     private function elixir_finetunes()

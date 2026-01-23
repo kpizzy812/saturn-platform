@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
     ReactFlow,
     Background,
@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 import { ServiceNode } from './nodes/ServiceNode';
 import { DatabaseNode } from './nodes/DatabaseNode';
 import type { Application, StandaloneDatabase, Service } from '@/types';
+import axios from 'axios';
 
 // Custom node types
 const nodeTypes = {
@@ -25,10 +26,26 @@ const nodeTypes = {
     database: DatabaseNode,
 };
 
+// Resource Link from API
+interface ResourceLink {
+    id: number;
+    environment_id: number;
+    source_type: string;
+    source_id: number;
+    source_name?: string;
+    target_type: string;
+    target_id: number;
+    target_name?: string;
+    inject_as: string | null;
+    env_key: string;
+    auto_inject: boolean;
+}
+
 interface ProjectCanvasProps {
     applications: Application[];
     databases: StandaloneDatabase[];
     services: Service[];
+    environmentUuid?: string;
     onNodeClick?: (id: string, type: string) => void;
     onNodeContextMenu?: (id: string, type: string, x: number, y: number) => void;
     onEdgeDelete?: (edgeId: string) => void;
@@ -36,15 +53,34 @@ interface ProjectCanvasProps {
     onZoomOut?: () => void;
     onFitView?: () => void;
     onViewportChange?: (zoom: number) => void;
+    onLinkCreated?: (link: ResourceLink) => void;
+    onLinkDeleted?: (linkId: number) => void;
+}
+
+// Map database_type to API target_type
+function getDatabaseTargetType(databaseType: string): string {
+    const typeMap: Record<string, string> = {
+        'standalone-postgresql': 'postgresql',
+        'standalone-mysql': 'mysql',
+        'standalone-mariadb': 'mariadb',
+        'standalone-redis': 'redis',
+        'standalone-keydb': 'keydb',
+        'standalone-dragonfly': 'dragonfly',
+        'standalone-mongodb': 'mongodb',
+        'standalone-clickhouse': 'clickhouse',
+    };
+    return typeMap[databaseType] || 'postgresql';
 }
 
 // Edge context menu component
 function EdgeContextMenu({
     position,
+    link,
     onDelete,
     onClose,
 }: {
     position: { x: number; y: number } | null;
+    link: ResourceLink | null;
     onDelete: () => void;
     onClose: () => void;
 }) {
@@ -59,10 +95,16 @@ function EdgeContextMenu({
 
     return (
         <div
-            className="fixed z-50 min-w-[140px] rounded-lg border border-white/10 bg-[#1a1a2e]/95 py-1 shadow-xl backdrop-blur-sm"
+            className="fixed z-50 min-w-[200px] rounded-lg border border-white/10 bg-[#1a1a2e]/95 py-1 shadow-xl backdrop-blur-sm"
             style={{ left: position.x, top: position.y }}
             onClick={(e) => e.stopPropagation()}
         >
+            {link && (
+                <div className="border-b border-white/10 px-3 py-2">
+                    <div className="text-xs text-gray-400">Injects</div>
+                    <div className="font-mono text-sm text-green-400">{link.env_key}</div>
+                </div>
+            )}
             <button
                 onClick={onDelete}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5"
@@ -80,6 +122,7 @@ function ProjectCanvasInner({
     applications,
     databases,
     services,
+    environmentUuid,
     onNodeClick,
     onNodeContextMenu,
     onEdgeDelete,
@@ -87,23 +130,42 @@ function ProjectCanvasInner({
     onZoomOut,
     onFitView,
     onViewportChange,
+    onLinkCreated,
+    onLinkDeleted,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
+    const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const linksLoadedRef = useRef(false);
+
+    // Load resource links from API
+    useEffect(() => {
+        if (!environmentUuid || linksLoadedRef.current) return;
+
+        const loadLinks = async () => {
+            try {
+                const response = await axios.get(`/api/v1/environments/${environmentUuid}/links`);
+                setResourceLinks(response.data);
+                linksLoadedRef.current = true;
+            } catch (error) {
+                console.error('Failed to load resource links:', error);
+            }
+        };
+
+        loadLinks();
+    }, [environmentUuid]);
 
     // Expose zoom controls to parent component via callbacks
     useEffect(() => {
-        // Create wrapper functions that call ReactFlow methods
         const handleZoomIn = () => reactFlowInstance.zoomIn();
         const handleZoomOut = () => reactFlowInstance.zoomOut();
         const handleFitView = () => reactFlowInstance.fitView({ padding: 0.4 });
 
-        // Store references on window for parent to access
         (window as any).__projectCanvasZoomIn = handleZoomIn;
         (window as any).__projectCanvasZoomOut = handleZoomOut;
         (window as any).__projectCanvasFitView = handleFitView;
 
         return () => {
-            // Cleanup
             delete (window as any).__projectCanvasZoomIn;
             delete (window as any).__projectCanvasZoomOut;
             delete (window as any).__projectCanvasFitView;
@@ -111,9 +173,8 @@ function ProjectCanvasInner({
     }, [reactFlowInstance]);
 
     // Convert data to nodes
-    const { initialNodes, initialEdges } = useMemo(() => {
+    const initialNodes = useMemo(() => {
         const nodes: Node[] = [];
-        const edges: Edge[] = [];
         const horizontalSpacing = 280;
         const verticalSpacing = 180;
         const startX = 100;
@@ -137,9 +198,8 @@ function ProjectCanvasInner({
 
         // Database nodes - below applications
         databases.forEach((db, index) => {
-            const nodeId = `db-${db.id}`;
             nodes.push({
-                id: nodeId,
+                id: `db-${db.id}`,
                 type: 'database',
                 position: { x: startX + index * horizontalSpacing, y: startY + verticalSpacing },
                 data: {
@@ -150,78 +210,152 @@ function ProjectCanvasInner({
                     volume: `${db.name.toLowerCase().replace(/\s+/g, '-')}-volume`,
                 },
             });
-
-            // Create edge from first app to this database (simulate connection)
-            if (applications.length > 0 && index < applications.length) {
-                edges.push({
-                    id: `edge-app-${applications[index]?.id || applications[0].id}-db-${db.id}`,
-                    source: `app-${applications[index]?.id || applications[0].id}`,
-                    target: nodeId,
-                    type: 'smoothstep',
-                    animated: false,
-                    style: {
-                        stroke: '#4a4a5e',
-                        strokeWidth: 2,
-                        strokeDasharray: '5,5',
-                    },
-                    markerEnd: {
-                        type: MarkerType.ArrowClosed,
-                        color: '#4a4a5e',
-                        width: 15,
-                        height: 15,
-                    },
-                });
-            }
         });
 
-        return { initialNodes: nodes, initialEdges: edges };
+        return nodes;
     }, [applications, databases]);
 
+    // Convert resource links to edges
+    const linkedEdges = useMemo(() => {
+        return resourceLinks.map((link) => ({
+            id: `link-${link.id}`,
+            source: `app-${link.source_id}`,
+            target: `db-${link.target_id}`,
+            type: 'smoothstep',
+            animated: link.auto_inject,
+            data: { linkId: link.id, link },
+            style: {
+                stroke: link.auto_inject ? '#22c55e' : '#4a4a5e',
+                strokeWidth: 2,
+                strokeDasharray: link.auto_inject ? undefined : '5,5',
+            },
+            markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: link.auto_inject ? '#22c55e' : '#4a4a5e',
+                width: 15,
+                height: 15,
+            },
+            label: link.env_key,
+            labelStyle: { fill: '#9ca3af', fontSize: 10 },
+            labelBgStyle: { fill: '#1a1a2e', fillOpacity: 0.9 },
+            labelBgPadding: [4, 4] as [number, number],
+            labelBgBorderRadius: 4,
+        }));
+    }, [resourceLinks]);
+
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(linkedEdges);
+
+    // Update edges when resourceLinks change
+    useEffect(() => {
+        setEdges(linkedEdges);
+    }, [linkedEdges, setEdges]);
 
     // Edge selection and context menu state
     const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-    const [edgeContextMenu, setEdgeContextMenu] = useState<{ x: number; y: number; edgeId: string } | null>(null);
+    const [edgeContextMenu, setEdgeContextMenu] = useState<{ x: number; y: number; edgeId: string; link: ResourceLink | null } | null>(null);
 
+    // Create new link via API
     const onConnect = useCallback(
-        (params: Connection) => setEdges((eds) => addEdge({
-            ...params,
-            type: 'smoothstep',
-            animated: false,
-            style: { stroke: '#4a4a5e', strokeWidth: 2, strokeDasharray: '5,5' },
-            markerEnd: {
-                type: MarkerType.ArrowClosed,
-                color: '#4a4a5e',
-            },
-        }, eds)),
-        [setEdges]
+        async (params: Connection) => {
+            if (!environmentUuid || !params.source || !params.target) return;
+
+            // Parse source (app) and target (db) IDs
+            const sourceMatch = params.source.match(/^app-(\d+)$/);
+            const targetMatch = params.target.match(/^db-(\d+)$/);
+
+            if (!sourceMatch || !targetMatch) {
+                console.error('Invalid connection: must be from app to db');
+                return;
+            }
+
+            const sourceId = parseInt(sourceMatch[1]);
+            const targetId = parseInt(targetMatch[1]);
+
+            // Find the database to get its type
+            const database = databases.find((db) => db.id === targetId);
+            if (!database) {
+                console.error('Database not found');
+                return;
+            }
+
+            setIsLoading(true);
+
+            try {
+                const response = await axios.post(`/api/v1/environments/${environmentUuid}/links`, {
+                    source_id: sourceId,
+                    target_type: getDatabaseTargetType(database.database_type),
+                    target_id: targetId,
+                    auto_inject: true,
+                });
+
+                const newLink: ResourceLink = response.data;
+
+                // Add to local state
+                setResourceLinks((prev) => [...prev, newLink]);
+
+                // Notify parent
+                onLinkCreated?.(newLink);
+
+                // Show success notification (if toast is available)
+                console.log(`Connected! ${newLink.env_key} will be injected on next deploy.`);
+            } catch (error: any) {
+                console.error('Failed to create link:', error);
+                if (error.response?.data?.message) {
+                    console.error(error.response.data.message);
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [environmentUuid, databases, onLinkCreated]
     );
 
     // Handle edge click for selection
-    const handleEdgeClick = useCallback(
-        (_: React.MouseEvent, edge: Edge) => {
-            setSelectedEdge(edge.id);
-        },
-        []
-    );
+    const handleEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
+        setSelectedEdge(edge.id);
+    }, []);
 
     // Handle edge context menu (right-click)
     const handleEdgeContextMenu = useCallback(
         (event: React.MouseEvent, edge: Edge) => {
             event.preventDefault();
-            setEdgeContextMenu({ x: event.clientX, y: event.clientY, edgeId: edge.id });
+            const link = edge.data?.link as ResourceLink | undefined;
+            setEdgeContextMenu({ x: event.clientX, y: event.clientY, edgeId: edge.id, link: link || null });
         },
         []
     );
 
-    // Delete edge
-    const handleDeleteEdge = useCallback((edgeId: string) => {
-        setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-        setEdgeContextMenu(null);
-        setSelectedEdge(null);
-        onEdgeDelete?.(edgeId);
-    }, [setEdges, onEdgeDelete]);
+    // Delete edge/link
+    const handleDeleteEdge = useCallback(
+        async (edgeId: string) => {
+            const edge = edges.find((e) => e.id === edgeId);
+            const linkId = edge?.data?.linkId as number | undefined;
+
+            setEdgeContextMenu(null);
+            setSelectedEdge(null);
+
+            if (linkId && environmentUuid) {
+                try {
+                    await axios.delete(`/api/v1/environments/${environmentUuid}/links/${linkId}`);
+
+                    // Remove from local state
+                    setResourceLinks((prev) => prev.filter((l) => l.id !== linkId));
+
+                    // Notify parent
+                    onLinkDeleted?.(linkId);
+                    onEdgeDelete?.(edgeId);
+                } catch (error) {
+                    console.error('Failed to delete link:', error);
+                }
+            } else {
+                // For non-persisted edges, just remove from UI
+                setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+                onEdgeDelete?.(edgeId);
+            }
+        },
+        [edges, environmentUuid, setEdges, onEdgeDelete, onLinkDeleted]
+    );
 
     // Keyboard handler for delete
     useEffect(() => {
@@ -239,21 +373,22 @@ function ProjectCanvasInner({
     }, [selectedEdge, handleDeleteEdge]);
 
     // Update edge styles when selected
-    const styledEdges = useMemo(() =>
-        edges.map((edge) => ({
-            ...edge,
-            style: {
-                ...edge.style,
-                stroke: edge.id === selectedEdge ? '#7c3aed' : '#4a4a5e',
-                strokeWidth: edge.id === selectedEdge ? 3 : 2,
-            },
-        })),
+    const styledEdges = useMemo(
+        () =>
+            edges.map((edge) => ({
+                ...edge,
+                style: {
+                    ...edge.style,
+                    stroke: edge.id === selectedEdge ? '#7c3aed' : (edge.style?.stroke || '#4a4a5e'),
+                    strokeWidth: edge.id === selectedEdge ? 3 : 2,
+                },
+            })),
         [edges, selectedEdge]
     );
 
     const handleNodeClick = useCallback(
         (_: React.MouseEvent, node: Node) => {
-            setSelectedEdge(null); // Deselect edge when node clicked
+            setSelectedEdge(null);
             const [type, id] = node.id.split('-');
             onNodeClick?.(id, type);
         },
@@ -309,17 +444,13 @@ function ProjectCanvasInner({
                     style: { stroke: '#4a4a5e', strokeWidth: 2, strokeDasharray: '5,5' },
                 }}
             >
-                <Background
-                    variant={BackgroundVariant.Dots}
-                    gap={20}
-                    size={1}
-                    color="#1a1a2e"
-                />
+                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a2e" />
             </ReactFlow>
 
             {/* Edge context menu */}
             <EdgeContextMenu
                 position={edgeContextMenu ? { x: edgeContextMenu.x, y: edgeContextMenu.y } : null}
+                link={edgeContextMenu?.link || null}
                 onDelete={() => edgeContextMenu && handleDeleteEdge(edgeContextMenu.edgeId)}
                 onClose={() => setEdgeContextMenu(null)}
             />
@@ -327,9 +458,32 @@ function ProjectCanvasInner({
             {/* Selected edge hint */}
             {selectedEdge && (
                 <div className="absolute bottom-4 left-4 z-10 rounded-lg bg-[#1a1a2e]/90 px-3 py-2 text-xs text-gray-300 backdrop-blur-sm">
-                    Press <kbd className="rounded bg-white/10 px-1.5 py-0.5">Delete</kbd> or <kbd className="rounded bg-white/10 px-1.5 py-0.5">Backspace</kbd> to remove connection
+                    Press <kbd className="rounded bg-white/10 px-1.5 py-0.5">Delete</kbd> or{' '}
+                    <kbd className="rounded bg-white/10 px-1.5 py-0.5">Backspace</kbd> to remove connection
                 </div>
             )}
+
+            {/* Loading indicator */}
+            {isLoading && (
+                <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg bg-[#1a1a2e]/90 px-3 py-2 text-xs text-gray-300 backdrop-blur-sm">
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-500 border-t-white"></div>
+                    Saving...
+                </div>
+            )}
+
+            {/* Legend */}
+            <div className="absolute bottom-4 right-4 z-10 rounded-lg bg-[#1a1a2e]/90 px-3 py-2 text-xs backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                        <div className="h-0.5 w-4 bg-green-500"></div>
+                        <span className="text-gray-400">Auto-inject active</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="h-0.5 w-4 border-t-2 border-dashed border-gray-500"></div>
+                        <span className="text-gray-400">No connection</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
