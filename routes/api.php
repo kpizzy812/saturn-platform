@@ -47,6 +47,7 @@ Route::group([
     Route::get('/teams', [TeamController::class, 'teams'])->middleware(['api.ability:read']);
     Route::get('/teams/current', [TeamController::class, 'current_team'])->middleware(['api.ability:read']);
     Route::get('/teams/current/members', [TeamController::class, 'current_team_members'])->middleware(['api.ability:read']);
+    Route::get('/teams/current/activities', [TeamController::class, 'current_team_activities'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}', [TeamController::class, 'team_by_id'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}/members', [TeamController::class, 'members_by_id'])->middleware(['api.ability:read']);
 
@@ -396,6 +397,10 @@ Route::group([
     Route::match(['get', 'post'], '/services/{uuid}/start', [ServicesController::class, 'action_deploy'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/services/{uuid}/restart', [ServicesController::class, 'action_restart'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/services/{uuid}/stop', [ServicesController::class, 'action_stop'])->middleware(['api.ability:write']);
+
+    // Healthcheck endpoints
+    Route::get('/services/{uuid}/healthcheck', [ServicesController::class, 'get_healthcheck'])->middleware(['api.ability:read']);
+    Route::patch('/services/{uuid}/healthcheck', [ServicesController::class, 'update_healthcheck'])->middleware(['api.ability:write']);
 
     // Billing Routes
     Route::get('/billing/info', function () {

@@ -6671,6 +6671,120 @@ paths:
       security:
         -
           bearerAuth: []
+  '/services/{uuid}/healthcheck':
+    get:
+      tags:
+        - Services
+      summary: 'Get Healthcheck'
+      description: 'Get healthcheck configuration for a service.'
+      operationId: get-service-healthcheck
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'Healthcheck configuration.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  enabled: { type: boolean, description: 'Whether healthcheck is enabled.' }
+                  type: { type: string, description: 'Healthcheck type (http or tcp).' }
+                  test: { type: string, description: 'Healthcheck test command.' }
+                  interval: { type: integer, description: 'Healthcheck interval in seconds.' }
+                  timeout: { type: integer, description: 'Healthcheck timeout in seconds.' }
+                  retries: { type: integer, description: 'Number of retries before unhealthy.' }
+                  start_period: { type: integer, description: 'Start period in seconds.' }
+                  service_name: { type: string, nullable: true, description: 'Name of the docker service.' }
+                  status: { type: string, description: 'Current service status.' }
+                  services_status: { type: object, description: 'Healthcheck status per service.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+    patch:
+      tags:
+        - Services
+      summary: 'Update Healthcheck'
+      description: 'Update healthcheck configuration for a service.'
+      operationId: update-service-healthcheck
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the service.'
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: 'Healthcheck configuration.'
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                enabled:
+                  type: boolean
+                  description: 'Whether healthcheck is enabled.'
+                type:
+                  type: string
+                  enum: [http, tcp]
+                  description: 'Healthcheck type.'
+                test:
+                  type: string
+                  description: 'Healthcheck test command.'
+                interval:
+                  type: integer
+                  minimum: 1
+                  description: 'Healthcheck interval in seconds.'
+                timeout:
+                  type: integer
+                  minimum: 1
+                  description: 'Healthcheck timeout in seconds.'
+                retries:
+                  type: integer
+                  minimum: 1
+                  description: 'Number of retries before unhealthy.'
+                start_period:
+                  type: integer
+                  minimum: 0
+                  description: 'Start period in seconds.'
+                service_name:
+                  type: string
+                  nullable: true
+                  description: 'Target docker service name.'
+              type: object
+      responses:
+        '200':
+          description: 'Healthcheck configuration updated.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Healthcheck configuration updated.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
   /teams:
     get:
       tags:
@@ -6795,6 +6909,66 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+      security:
+        -
+          bearerAuth: []
+  /teams/current/activities:
+    get:
+      tags:
+        - Teams
+      summary: 'Authenticated Team Activities'
+      description: 'Get activity log for currently authenticated team.'
+      operationId: get-current-team-activities
+      parameters:
+        -
+          name: action
+          in: query
+          description: 'Filter by action type'
+          required: false
+          schema:
+            type: string
+        -
+          name: member
+          in: query
+          description: 'Filter by member email'
+          required: false
+          schema:
+            type: string
+        -
+          name: date_range
+          in: query
+          description: 'Filter by date range (today, yesterday, week, month)'
+          required: false
+          schema:
+            type: string
+        -
+          name: search
+          in: query
+          description: 'Search in activity descriptions'
+          required: false
+          schema:
+            type: string
+        -
+          name: per_page
+          in: query
+          description: 'Number of items per page (default: 50)'
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 'Team activity log.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  data: { type: array, items: { properties: { id: { type: string }, action: { type: string }, description: { type: string }, user: { properties: { name: { type: string }, email: { type: string }, avatar: { type: [string, 'null'] } }, type: object }, resource: { properties: { type: { type: string }, name: { type: string }, id: { type: string } }, type: [object, 'null'] }, timestamp: { type: string, format: date-time } }, type: object } }
+                  meta: { type: object }
+                type: object
         '401':
           $ref: '#/components/responses/401'
         '400':
