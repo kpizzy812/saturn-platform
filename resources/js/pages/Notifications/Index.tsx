@@ -32,8 +32,13 @@ export default function NotificationsIndex({ notifications: propNotifications }:
 
     const [filter, setFilter] = React.useState<FilterType>('all');
     const [soundEnabled, setSoundEnabled] = React.useState(() => {
-        const saved = localStorage.getItem('notifications-sound-enabled');
-        return saved ? JSON.parse(saved) : true;
+        try {
+            const saved = localStorage.getItem('notifications-sound-enabled');
+            return saved ? JSON.parse(saved) === true : true;
+        } catch {
+            // Invalid JSON in localStorage, fallback to enabled
+            return true;
+        }
     });
     const [desktopNotificationsEnabled, setDesktopNotificationsEnabled] = React.useState(() => {
         return Notification.permission === 'granted';

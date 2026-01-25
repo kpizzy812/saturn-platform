@@ -46,6 +46,8 @@ interface ProjectCanvasProps {
     databases: StandaloneDatabase[];
     services: Service[];
     environmentUuid?: string;
+    /** Initial resource links for testing purposes */
+    initialResourceLinks?: ResourceLink[];
     onNodeClick?: (id: string, type: string) => void;
     onNodeContextMenu?: (id: string, type: string, x: number, y: number) => void;
     onEdgeDelete?: (edgeId: string) => void;
@@ -123,6 +125,7 @@ function ProjectCanvasInner({
     databases,
     services,
     environmentUuid,
+    initialResourceLinks = [],
     onNodeClick,
     onNodeContextMenu,
     onEdgeDelete,
@@ -134,7 +137,7 @@ function ProjectCanvasInner({
     onLinkDeleted,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
-    const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
+    const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>(initialResourceLinks);
     const [isLoading, setIsLoading] = useState(false);
     const linksLoadedRef = useRef(false);
 

@@ -529,9 +529,9 @@
 
 ### Роутинг проблемы
 
-- [ ] **Небезопасный javascript: protocol в href (2 файла)**
-  - `pages/Errors/404.tsx:47` - `href="javascript:history.back()"` - ОПАСНО!
-  - `pages/Errors/403.tsx:93` - `href="javascript:history.back()"` - ОПАСНО!
+- [x] **Небезопасный javascript: protocol в href (2 файла)** ✅ ИСПРАВЛЕНО
+  - `pages/Errors/404.tsx:47` - заменён на onClick handler
+  - `pages/Errors/403.tsx:93` - заменён на onClick handler
 
 - [ ] **window.location.href вместо router.visit() (9 мест)**
   - `pages/Auth/Onboarding/Index.tsx:350`
@@ -742,7 +742,7 @@
 
 ### Этап 11: Роутинг
 
-46. [ ] Заменить `javascript:history.back()` на onClick handler в 404.tsx и 403.tsx
+46. [x] Заменить `javascript:history.back()` на onClick handler в 404.tsx и 403.tsx ✅
 47. [ ] Заменить window.location.href на router.visit (5 файлов)
 48. [ ] Исправить legacy path /project/ на /projects/ в Rollback/Show.tsx
 49. [ ] Исправить API пути в useDatabaseMetrics.ts, useDatabaseMetricsHistory.ts и Tokens.tsx

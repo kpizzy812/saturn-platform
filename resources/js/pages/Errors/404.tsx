@@ -44,12 +44,14 @@ export default function NotFound() {
                                     Go to Dashboard
                                 </Button>
                             </Link>
-                            <Link href="javascript:history.back()">
-                                <Button variant="secondary" className="w-full gap-2 sm:w-auto">
-                                    <ArrowLeft className="h-4 w-4" />
-                                    Go Back
-                                </Button>
-                            </Link>
+                            <Button
+                                variant="secondary"
+                                className="w-full gap-2 sm:w-auto"
+                                onClick={() => window.history.back()}
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                                Go Back
+                            </Button>
                         </div>
 
                         {/* Search suggestion */}

@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '../../../utils/test-utils';
 import type { Application, StandaloneDatabase } from '@/types';
@@ -78,10 +79,12 @@ vi.mock('@xyflow/react', () => ({
         ArrowClosed: 'arrowclosed',
     },
     useNodesState: (initialNodes: any) => {
-        return [initialNodes, mockSetNodes, mockOnNodesChange];
+        const [nodes, setNodes] = React.useState(initialNodes);
+        return [nodes, setNodes, mockOnNodesChange];
     },
     useEdgesState: (initialEdges: any) => {
-        return [initialEdges, mockSetEdges, mockOnEdgesChange];
+        const [edges, setEdges] = React.useState(initialEdges);
+        return [edges, setEdges, mockOnEdgesChange];
     },
     addEdge: (params: any, edges: any) => [...edges, { ...params, id: `edge-${Date.now()}` }],
     useReactFlow: () => ({
@@ -263,7 +266,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -280,7 +283,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -296,7 +299,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={[]}
+                    initialResourceLinks={[]}
                 />
             );
 
@@ -318,7 +321,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -340,7 +343,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -360,7 +363,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -385,7 +388,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -411,7 +414,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -430,7 +433,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 
@@ -459,7 +462,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
@@ -487,7 +490,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
@@ -513,7 +516,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
@@ -539,7 +542,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                     onEdgeDelete={onEdgeDelete}
                 />
             );
@@ -556,7 +559,7 @@ describe('ProjectCanvas', () => {
                     applications={mockApplications}
                     databases={mockDatabases}
                     services={[]}
-                    resourceLinks={mockResourceLinks}
+                    initialResourceLinks={mockResourceLinks}
                 />
             );
 

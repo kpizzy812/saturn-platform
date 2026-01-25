@@ -89,13 +89,14 @@ export default function Forbidden({ resource, reason }: ForbiddenProps) {
 
                         {/* Alternative action */}
                         <div className="mt-6">
-                            <Link
-                                href="javascript:history.back()"
+                            <button
+                                type="button"
+                                onClick={() => window.history.back()}
                                 className="inline-flex items-center gap-2 text-sm text-foreground-subtle transition-colors hover:text-foreground"
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Go Back
-                            </Link>
+                            </button>
                         </div>
                     </div>
                 </div>

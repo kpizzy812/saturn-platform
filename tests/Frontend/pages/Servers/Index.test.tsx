@@ -271,7 +271,7 @@ describe('Servers Index Page', () => {
             }
         });
 
-        it('should show confirmation dialog when Delete Server is clicked', async () => {
+        it('should show confirmation modal when Delete Server is clicked', async () => {
             const { user } = render(<ServersIndex servers={mockServers} />);
 
             const dropdownButtons = screen.getAllByRole('button');
@@ -290,9 +290,11 @@ describe('Servers Index Page', () => {
                 const deleteButton = screen.getByText('Delete Server');
                 await user.click(deleteButton);
 
-                expect(global.confirm).toHaveBeenCalledWith(
-                    expect.stringContaining('production-server')
-                );
+                // Confirmation modal should appear with Delete and Cancel buttons
+                await waitFor(() => {
+                    // Modal should have Cancel button
+                    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+                });
             }
         });
 
@@ -315,12 +317,24 @@ describe('Servers Index Page', () => {
                 const deleteButton = screen.getByText('Delete Server');
                 await user.click(deleteButton);
 
-                expect(router.delete).toHaveBeenCalledWith('/servers/server-uuid-1');
+                // Wait for confirmation modal (look for Cancel button which appears in modal)
+                await waitFor(() => {
+                    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+                });
+
+                // Click confirm button in modal - it will have "Delete" text
+                const confirmButtons = screen.getAllByRole('button', { name: /delete/i });
+                // Get the last one which is the confirm button in the modal
+                const confirmButton = confirmButtons[confirmButtons.length - 1];
+                await user.click(confirmButton);
+
+                await waitFor(() => {
+                    expect(router.delete).toHaveBeenCalledWith('/servers/server-uuid-1');
+                });
             }
         });
 
         it('should not delete when user cancels', async () => {
-            global.confirm = vi.fn(() => false);
             const { user } = render(<ServersIndex servers={mockServers} />);
 
             const dropdownButtons = screen.getAllByRole('button');
@@ -338,6 +352,15 @@ describe('Servers Index Page', () => {
 
                 const deleteButton = screen.getByText('Delete Server');
                 await user.click(deleteButton);
+
+                // Wait for confirmation modal
+                await waitFor(() => {
+                    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+                });
+
+                // Click cancel button in modal
+                const cancelButton = screen.getByRole('button', { name: /cancel/i });
+                await user.click(cancelButton);
 
                 expect(router.delete).not.toHaveBeenCalled();
             }
