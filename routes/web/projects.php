@@ -131,6 +131,21 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    // Count resources for delete warning
+    $resourcesCount = [
+        'applications' => $project->applications()->count(),
+        'services' => $project->services()->count(),
+        'databases' => $project->postgresqls()->count() +
+            $project->mysqls()->count() +
+            $project->mariadbs()->count() +
+            $project->mongodbs()->count() +
+            $project->redis()->count() +
+            $project->keydbs()->count() +
+            $project->dragonflies()->count() +
+            $project->clickhouses()->count(),
+    ];
+    $totalResources = array_sum($resourcesCount);
+
     return Inertia::render('Projects/Settings', [
         'project' => [
             'id' => $project->id,
@@ -139,6 +154,9 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
             'description' => $project->description,
             'created_at' => $project->created_at,
             'updated_at' => $project->updated_at,
+            'is_empty' => $project->isEmpty(),
+            'resources_count' => $resourcesCount,
+            'total_resources' => $totalResources,
         ],
     ]);
 })->name('projects.settings');

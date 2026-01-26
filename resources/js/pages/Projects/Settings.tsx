@@ -4,6 +4,12 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Input } from '@/components/ui';
 import { ArrowLeft, Save, Trash2, AlertTriangle } from 'lucide-react';
 
+interface ResourcesCount {
+    applications: number;
+    services: number;
+    databases: number;
+}
+
 interface Project {
     id: number;
     uuid: string;
@@ -11,6 +17,9 @@ interface Project {
     description: string | null;
     created_at: string;
     updated_at: string;
+    is_empty: boolean;
+    resources_count: ResourcesCount;
+    total_resources: number;
 }
 
 interface Props {
@@ -167,6 +176,34 @@ export default function ProjectSettings({ project }: Props) {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
+                        {/* Show warning if project has resources */}
+                        {!project.is_empty && (
+                            <div className="mb-4 rounded-lg border border-warning/50 bg-warning/5 p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="mt-0.5 h-5 w-5 text-warning" />
+                                    <div>
+                                        <p className="font-medium text-warning">
+                                            Project cannot be deleted
+                                        </p>
+                                        <p className="mt-1 text-sm text-foreground-muted">
+                                            This project contains {project.total_resources} resource(s) that must be removed first:
+                                        </p>
+                                        <ul className="mt-2 list-inside list-disc text-sm text-foreground-muted">
+                                            {project.resources_count.applications > 0 && (
+                                                <li>{project.resources_count.applications} application(s)</li>
+                                            )}
+                                            {project.resources_count.services > 0 && (
+                                                <li>{project.resources_count.services} service(s)</li>
+                                            )}
+                                            {project.resources_count.databases > 0 && (
+                                                <li>{project.resources_count.databases} database(s)</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {!showDeleteConfirm ? (
                             <div className="flex items-center justify-between">
                                 <div>
@@ -178,6 +215,7 @@ export default function ProjectSettings({ project }: Props) {
                                 <Button
                                     variant="danger"
                                     onClick={() => setShowDeleteConfirm(true)}
+                                    disabled={!project.is_empty}
                                 >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete Project
@@ -192,8 +230,7 @@ export default function ProjectSettings({ project }: Props) {
                                             Are you sure you want to delete this project?
                                         </p>
                                         <p className="mt-1 text-sm text-foreground-muted">
-                                            This action cannot be undone. All environments, applications,
-                                            and databases in this project will be permanently deleted.
+                                            This action cannot be undone. All environments will be permanently deleted.
                                         </p>
                                         <p className="mt-3 text-sm text-foreground">
                                             Type <span className="font-mono font-bold">{project.name}</span> to confirm:

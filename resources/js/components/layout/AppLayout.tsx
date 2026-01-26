@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { FlashMessages } from './FlashMessages';
 import { ToastProvider } from '@/components/ui/Toast';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
 import { SidebarProvider } from '@/contexts/SidebarContext';
@@ -61,6 +62,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
     return (
         <SidebarProvider>
             <ToastProvider>
+                <FlashMessages />
                 <Head title={title ? `${title} | Saturn` : 'Saturn'} />
                 <div className="flex h-screen bg-background">
                     {/* Sidebar */}
