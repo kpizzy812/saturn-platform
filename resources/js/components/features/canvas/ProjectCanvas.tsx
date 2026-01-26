@@ -97,19 +97,19 @@ function EdgeContextMenu({
 
     return (
         <div
-            className="fixed z-50 min-w-[200px] rounded-lg border border-white/10 bg-[#1a1a2e]/95 py-1 shadow-xl backdrop-blur-sm"
+            className="fixed z-50 min-w-[200px] rounded-lg border border-border bg-background-secondary/95 py-1 shadow-xl backdrop-blur-sm"
             style={{ left: position.x, top: position.y }}
             onClick={(e) => e.stopPropagation()}
         >
             {link && (
-                <div className="border-b border-white/10 px-3 py-2">
-                    <div className="text-xs text-gray-400">Injects</div>
-                    <div className="font-mono text-sm text-green-400">{link.env_key}</div>
+                <div className="border-b border-border px-3 py-2">
+                    <div className="text-xs text-foreground-muted">Injects</div>
+                    <div className="font-mono text-sm text-green-500">{link.env_key}</div>
                 </div>
             )}
             <button
                 onClick={onDelete}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-white/5"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-background-tertiary"
             >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
@@ -239,8 +239,9 @@ function ProjectCanvasInner({
                 height: 15,
             },
             label: link.env_key,
-            labelStyle: { fill: '#9ca3af', fontSize: 10 },
-            labelBgStyle: { fill: '#1a1a2e', fillOpacity: 0.9 },
+            labelStyle: { fontSize: 10 },
+            labelBgStyle: { fillOpacity: 0.9 },
+            labelShowBg: true,
             labelBgPadding: [4, 4] as [number, number],
             labelBgBorderRadius: 4,
         }));
@@ -420,7 +421,7 @@ function ProjectCanvasInner({
     );
 
     return (
-        <div className="h-full w-full bg-[#0f0f1a]">
+        <div className="h-full w-full bg-background-secondary dark:bg-[#0f0f1a]">
             <ReactFlow
                 nodes={nodes}
                 edges={styledEdges}
@@ -436,7 +437,7 @@ function ProjectCanvasInner({
                 nodeTypes={nodeTypes}
                 fitView
                 fitViewOptions={{ padding: 0.4 }}
-                className="bg-[#0f0f1a]"
+                className="bg-background-secondary dark:bg-[#0f0f1a]"
                 proOptions={{ hideAttribution: true }}
                 minZoom={0.3}
                 maxZoom={2}
@@ -444,7 +445,7 @@ function ProjectCanvasInner({
                 defaultEdgeOptions={{
                     type: 'smoothstep',
                     animated: false,
-                    style: { stroke: '#4a4a5e', strokeWidth: 2, strokeDasharray: '5,5' },
+                    style: { strokeWidth: 2, strokeDasharray: '5,5' },
                 }}
             >
                 {/* Dot grid background - similar to Figma/Miro style */}
@@ -453,14 +454,14 @@ function ProjectCanvasInner({
                     variant={BackgroundVariant.Dots}
                     gap={20}
                     size={1}
-                    color="#2d2d42"
+                    className="[&>pattern>circle]:fill-foreground-disabled dark:[&>pattern>circle]:fill-[#2d2d42]"
                 />
                 <Background
                     id="dots-large"
                     variant={BackgroundVariant.Dots}
                     gap={100}
                     size={2}
-                    color="#3d3d52"
+                    className="[&>pattern>circle]:fill-foreground-subtle dark:[&>pattern>circle]:fill-[#3d3d52]"
                 />
             </ReactFlow>
 
@@ -474,30 +475,30 @@ function ProjectCanvasInner({
 
             {/* Selected edge hint */}
             {selectedEdge && (
-                <div className="absolute bottom-4 left-4 z-10 rounded-lg bg-[#1a1a2e]/90 px-3 py-2 text-xs text-gray-300 backdrop-blur-sm">
-                    Press <kbd className="rounded bg-white/10 px-1.5 py-0.5">Delete</kbd> or{' '}
-                    <kbd className="rounded bg-white/10 px-1.5 py-0.5">Backspace</kbd> to remove connection
+                <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs text-foreground-muted backdrop-blur-sm">
+                    Press <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Delete</kbd> or{' '}
+                    <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Backspace</kbd> to remove connection
                 </div>
             )}
 
             {/* Loading indicator */}
             {isLoading && (
-                <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg bg-[#1a1a2e]/90 px-3 py-2 text-xs text-gray-300 backdrop-blur-sm">
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-500 border-t-white"></div>
+                <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs text-foreground-muted backdrop-blur-sm">
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-foreground-subtle border-t-foreground"></div>
                     Saving...
                 </div>
             )}
 
             {/* Legend */}
-            <div className="absolute bottom-4 right-4 z-10 rounded-lg bg-[#1a1a2e]/90 px-3 py-2 text-xs backdrop-blur-sm">
+            <div className="absolute bottom-4 right-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
-                        <div className="h-0.5 w-4 bg-green-500"></div>
-                        <span className="text-gray-400">Auto-inject active</span>
+                        <div className="h-0.5 w-4 bg-success"></div>
+                        <span className="text-foreground-muted">Auto-inject active</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="h-0.5 w-4 border-t-2 border-dashed border-gray-500"></div>
-                        <span className="text-gray-400">No connection</span>
+                        <div className="h-0.5 w-4 border-t-2 border-dashed border-foreground-subtle"></div>
+                        <span className="text-foreground-muted">No connection</span>
                     </div>
                 </div>
             </div>

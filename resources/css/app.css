@@ -50,6 +50,13 @@
     --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-card-hover: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
     --shadow-railway: 0 0 30px hsla(0, 0%, 70%, 0.15);
+
+    /* Canvas colors */
+    --color-canvas-bg: #f8fafc;
+    --color-canvas-dots: #cbd5e1;
+    --color-canvas-dots-large: #94a3b8;
+    --color-canvas-panel: rgba(255, 255, 255, 0.95);
+    --color-canvas-panel-border: rgba(0, 0, 0, 0.1);
 }
 
 /* ===== DARK THEME ===== */
@@ -89,6 +96,13 @@
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
     --shadow-card-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.4), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
     --shadow-railway: 0 0 30px hsla(0, 0%, 30%, 0.25);
+
+    /* Canvas colors */
+    --color-canvas-bg: #0f0f1a;
+    --color-canvas-dots: #2d2d42;
+    --color-canvas-dots-large: #3d3d52;
+    --color-canvas-panel: rgba(26, 26, 46, 0.95);
+    --color-canvas-panel-border: rgba(255, 255, 255, 0.1);
 }
 
 @theme {

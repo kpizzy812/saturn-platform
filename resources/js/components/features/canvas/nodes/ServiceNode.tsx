@@ -35,26 +35,26 @@ export const ServiceNode = memo(({ data, selected }: NodeProps<ServiceNodeData>)
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-transparent !border-2 !border-white/[0.12] hover:!border-primary !-left-1.5 transition-colors duration-200"
+                className="!w-3 !h-3 !bg-transparent !border-2 !border-border hover:!border-primary !-left-1.5 transition-colors duration-200"
             />
             <div
                 className={cn(
                     'w-[220px] rounded-lg border transition-all duration-200 cursor-pointer',
-                    'bg-background-secondary/80 backdrop-blur-xl hover:bg-background-tertiary/80',
+                    'bg-background-secondary/95 backdrop-blur-xl hover:bg-background-tertiary/95',
                     'hover:-translate-y-0.5 hover:shadow-lg',
                     selected
                         ? 'border-primary shadow-glow-primary'
-                        : 'border-white/[0.06] hover:border-white/[0.08]'
+                        : 'border-border hover:border-border-hover'
                 )}
             >
                 {/* Header with Logo */}
                 <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-background border border-white/[0.06] flex items-center justify-center text-white transition-all duration-200 hover:border-white/[0.12]">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center text-foreground transition-all duration-200 hover:border-border-hover">
                             <GitHubLogo />
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
-                            <h3 className="font-medium text-white text-sm truncate">{data.label}</h3>
+                            <h3 className="font-medium text-foreground text-sm truncate">{data.label}</h3>
                             {data.fqdn && (
                                 <p className="text-xs text-foreground-muted truncate mt-0.5">{data.fqdn}</p>
                             )}
@@ -73,7 +73,7 @@ export const ServiceNode = memo(({ data, selected }: NodeProps<ServiceNodeData>)
                         )} />
                         <span className={cn(
                             'text-sm transition-colors duration-200',
-                            isOnline && 'text-emerald-500',
+                            isOnline && 'text-success',
                             isDeploying && 'text-primary',
                             !isOnline && !isDeploying && 'text-foreground-muted'
                         )}>
@@ -85,7 +85,7 @@ export const ServiceNode = memo(({ data, selected }: NodeProps<ServiceNodeData>)
             <Handle
                 type="source"
                 position={Position.Right}
-                className="!w-3 !h-3 !bg-transparent !border-2 !border-white/[0.12] hover:!border-primary !-right-1.5 transition-colors duration-200"
+                className="!w-3 !h-3 !bg-transparent !border-2 !border-border hover:!border-primary !-right-1.5 transition-colors duration-200"
             />
         </>
     );

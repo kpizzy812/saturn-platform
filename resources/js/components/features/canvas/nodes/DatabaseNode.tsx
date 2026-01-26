@@ -135,15 +135,15 @@ export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData
             <Handle
                 type="target"
                 position={Position.Left}
-                className="!w-3 !h-3 !bg-transparent !border-2 !border-gray-600 hover:!border-cyan-500 !-left-1.5"
+                className="!w-3 !h-3 !bg-transparent !border-2 !border-border hover:!border-info !-left-1.5"
             />
             <div
                 className={cn(
                     'w-[220px] rounded-lg border transition-all duration-200 cursor-pointer',
-                    'bg-[#1a1a2e] hover:bg-[#1f1f35]',
+                    'bg-background-secondary/95 hover:bg-background-tertiary/95',
                     selected
-                        ? 'border-cyan-500 shadow-[0_0_0_1px_rgba(6,182,212,0.3),0_0_20px_rgba(6,182,212,0.15)]'
-                        : 'border-[#2a2a3e] hover:border-[#3a3a4e]'
+                        ? 'border-info shadow-glow-info'
+                        : 'border-border hover:border-border-hover'
                 )}
             >
                 {/* Header with Logo */}
@@ -156,7 +156,7 @@ export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData
                             {getDbLogo(data.databaseType)}
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
-                            <h3 className="font-medium text-white text-sm truncate">{data.label}</h3>
+                            <h3 className="font-medium text-foreground text-sm truncate">{data.label}</h3>
                         </div>
                     </div>
                 </div>
@@ -166,11 +166,11 @@ export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData
                     <div className="flex items-center gap-2">
                         <div className={cn(
                             'w-2 h-2 rounded-full',
-                            isOnline ? 'bg-emerald-500' : 'bg-gray-500'
+                            isOnline ? 'bg-success' : 'bg-foreground-subtle'
                         )} />
                         <span className={cn(
                             'text-sm',
-                            isOnline ? 'text-emerald-500' : 'text-gray-400'
+                            isOnline ? 'text-success' : 'text-foreground-muted'
                         )}>
                             {isOnline ? 'Online' : data.status}
                         </span>
@@ -179,8 +179,8 @@ export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData
 
                 {/* Volume Info */}
                 {data.volume && (
-                    <div className="border-t border-[#2a2a3e] px-4 py-2.5">
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <div className="border-t border-border px-4 py-2.5">
+                        <div className="flex items-center gap-2 text-xs text-foreground-muted">
                             <HardDrive className="h-3.5 w-3.5" />
                             <span>{data.volume}</span>
                         </div>
@@ -190,7 +190,7 @@ export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData
             <Handle
                 type="source"
                 position={Position.Right}
-                className="!w-3 !h-3 !bg-transparent !border-2 !border-gray-600 hover:!border-cyan-500 !-right-1.5"
+                className="!w-3 !h-3 !bg-transparent !border-2 !border-border hover:!border-info !-right-1.5"
             />
         </>
     );
