@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input, Select, StatusBadge, useConfirm, useToast } from '@/components/ui';
+import { Button, Badge, Input, Select, StatusBadge, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     Plus,
@@ -185,31 +185,35 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
     };
 
     return (
-        <Link href={`/applications/${application.uuid}`}>
-            <Card className="transition-all hover:border-primary/50 hover:shadow-lg">
-                <CardContent className="p-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                                <Rocket className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <h3 className="font-medium text-foreground truncate">{application.name}</h3>
-                                <p className="text-sm text-foreground-muted truncate">
-                                    {application.project_name} / {application.environment_name}
-                                </p>
-                            </div>
-                        </div>
-                        <Dropdown>
-                            <DropdownTrigger>
-                                <button
-                                    className="rounded-md p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
-                                    onClick={(e) => e.preventDefault()}
-                                >
-                                    <MoreVertical className="h-4 w-4" />
-                                </button>
-                            </DropdownTrigger>
+        <Link
+            href={`/applications/${application.uuid}`}
+            className="group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20"
+        >
+            {/* Subtle gradient overlay on hover */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+            {/* Header */}
+            <div className="relative flex items-start justify-between">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
+                        <Rocket className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-foreground truncate transition-colors group-hover:text-white">{application.name}</h3>
+                        <p className="text-sm text-foreground-muted truncate">
+                            {application.project_name} / {application.environment_name}
+                        </p>
+                    </div>
+                </div>
+                <Dropdown>
+                    <DropdownTrigger>
+                        <button
+                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-white/10 group-hover:opacity-100"
+                            onClick={(e) => e.preventDefault()}
+                        >
+                            <MoreVertical className="h-4 w-4 text-foreground-muted" />
+                        </button>
+                    </DropdownTrigger>
                             <DropdownContent align="right">
                                 <DropdownItem
                                     icon={<Rocket className="h-4 w-4" />}
@@ -260,85 +264,83 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
                         </Dropdown>
                     </div>
 
-                    {/* Status & Info */}
-                    <div className="mt-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                            <StatusBadge status={currentStatus} />
-                            {application.fqdn && (
-                                <a
-                                    href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline flex items-center gap-1 min-w-0 flex-1"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <Globe className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
-                                </a>
-                            )}
-                        </div>
+            {/* Status & Info */}
+            <div className="relative mt-4 space-y-2">
+                <div className="flex items-center gap-2">
+                    <StatusBadge status={currentStatus} />
+                    {application.fqdn && (
+                        <a
+                            href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1 min-w-0 flex-1"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Globe className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
+                        </a>
+                    )}
+                </div>
 
-                        {/* Repository Info */}
-                        {application.git_repository && (
-                            <div className="flex items-center gap-2 text-xs text-foreground-muted">
-                                <FolderGit2 className="h-3 w-3" />
-                                <span className="truncate">{application.git_repository}</span>
-                            </div>
-                        )}
-
-                        {/* Branch */}
-                        {application.git_branch && (
-                            <div className="flex items-center gap-2 text-xs text-foreground-muted">
-                                <GitBranch className="h-3 w-3" />
-                                <span>{application.git_branch}</span>
-                                <span className="mx-1">•</span>
-                                <Badge variant="outline" className="text-xs">
-                                    {application.build_pack}
-                                </Badge>
-                            </div>
-                        )}
+                {/* Repository Info */}
+                {application.git_repository && (
+                    <div className="flex items-center gap-2 text-xs text-foreground-muted">
+                        <FolderGit2 className="h-3 w-3" />
+                        <span className="truncate">{application.git_repository}</span>
                     </div>
+                )}
 
-                    {/* Last updated */}
-                    <p className="mt-4 text-xs text-foreground-subtle">
-                        Updated {new Date(application.updated_at).toLocaleDateString()}
-                    </p>
-                </CardContent>
-            </Card>
+                {/* Branch */}
+                {application.git_branch && (
+                    <div className="flex items-center gap-2 text-xs text-foreground-muted">
+                        <GitBranch className="h-3 w-3" />
+                        <span>{application.git_branch}</span>
+                        <span className="mx-1">•</span>
+                        <Badge variant="outline" className="text-xs">
+                            {application.build_pack}
+                        </Badge>
+                    </div>
+                )}
+            </div>
+
+            {/* Last updated */}
+            <p className="relative mt-4 text-xs text-foreground-subtle">
+                Updated {new Date(application.updated_at).toLocaleDateString()}
+            </p>
         </Link>
     );
 }
 
 function EmptyState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
                 <Rocket className="h-8 w-8 text-foreground-muted" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">No applications yet</h3>
-            <p className="mt-2 text-foreground-muted">
+            <p className="mt-1 text-sm text-foreground-muted">
                 Deploy your first application from Git or Docker image.
             </p>
-            <Link href="/applications/create" className="mt-6 inline-block">
+            <Link href="/applications/create" className="mt-6">
                 <Button>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Application
                 </Button>
             </Link>
-        </Card>
+        </div>
     );
 }
 
 function NoResults() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
                 <Filter className="h-8 w-8 text-foreground-muted" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">No applications found</h3>
-            <p className="mt-2 text-foreground-muted">
+            <p className="mt-1 text-sm text-foreground-muted">
                 Try adjusting your filters or search query.
             </p>
-        </Card>
+        </div>
     );
 }

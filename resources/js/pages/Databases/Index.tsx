@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, Button } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { Plus, Database as DatabaseIcon } from 'lucide-react';
 import { DatabaseCard } from '@/components/features/DatabaseCard';
 import type { StandaloneDatabase } from '@/types';
@@ -47,20 +47,20 @@ export default function DatabasesIndex({ databases = [] }: Props) {
 
 function EmptyState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
                 <DatabaseIcon className="h-8 w-8 text-foreground-muted" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">No databases yet</h3>
-            <p className="mt-2 text-foreground-muted">
+            <p className="mt-1 text-sm text-foreground-muted">
                 Create your first database to get started with PostgreSQL, MySQL, MongoDB, or Redis.
             </p>
-            <Link href="/databases/create" className="mt-6 inline-block">
+            <Link href="/databases/create" className="mt-6">
                 <Button>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Database
                 </Button>
             </Link>
-        </Card>
+        </div>
     );
 }

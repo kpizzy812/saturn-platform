@@ -97,92 +97,94 @@ function ProjectCard({ project }: { project: Project }) {
     };
 
     return (
-        <Link href={`/projects/${project.uuid}`}>
-            <Card className="transition-colors hover:border-primary/50">
-                <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                <FolderKanban className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-foreground">{project.name}</h3>
-                                <p className="text-sm text-foreground-muted">
-                                    {serviceCount} service{serviceCount !== 1 ? 's' : ''}
-                                </p>
-                            </div>
-                        </div>
-                        <Dropdown>
-                            <DropdownTrigger>
-                                <button
-                                    className="rounded-md p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
-                                    onClick={(e) => e.preventDefault()}
-                                >
-                                    <MoreVertical className="h-4 w-4" />
-                                </button>
-                            </DropdownTrigger>
-                            <DropdownContent align="right">
-                                <DropdownItem
-                                    icon={<Settings className="h-4 w-4" />}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        router.visit(`/projects/${project.uuid}/settings`);
-                                    }}
-                                >
-                                    Project Settings
-                                </DropdownItem>
-                                <DropdownDivider />
-                                <DropdownItem
-                                    icon={<Trash2 className="h-4 w-4" />}
-                                    onClick={handleDelete}
-                                    danger
-                                >
-                                    Delete Project
-                                </DropdownItem>
-                            </DropdownContent>
-                        </Dropdown>
-                    </div>
+        <Link
+            href={`/projects/${project.uuid}`}
+            className="group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20"
+        >
+            {/* Subtle gradient overlay on hover */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                    {/* Environments */}
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        {project.environments?.slice(0, 3).map((env) => (
-                            <Badge key={env.id} variant="default">
-                                {env.name}
-                            </Badge>
-                        ))}
-                        {(project.environments?.length || 0) > 3 && (
-                            <Badge variant="default">
-                                +{(project.environments?.length || 0) - 3} more
-                            </Badge>
-                        )}
+            <div className="relative flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
+                        <FolderKanban className="h-5 w-5 text-primary" />
                     </div>
+                    <div>
+                        <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{project.name}</h3>
+                        <p className="text-sm text-foreground-muted">
+                            {serviceCount} service{serviceCount !== 1 ? 's' : ''}
+                        </p>
+                    </div>
+                </div>
+                <Dropdown>
+                    <DropdownTrigger>
+                        <button
+                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-white/10 group-hover:opacity-100"
+                            onClick={(e) => e.preventDefault()}
+                        >
+                            <MoreVertical className="h-4 w-4 text-foreground-muted" />
+                        </button>
+                    </DropdownTrigger>
+                    <DropdownContent align="right">
+                        <DropdownItem
+                            icon={<Settings className="h-4 w-4" />}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                router.visit(`/projects/${project.uuid}/settings`);
+                            }}
+                        >
+                            Project Settings
+                        </DropdownItem>
+                        <DropdownDivider />
+                        <DropdownItem
+                            icon={<Trash2 className="h-4 w-4" />}
+                            onClick={handleDelete}
+                            danger
+                        >
+                            Delete Project
+                        </DropdownItem>
+                    </DropdownContent>
+                </Dropdown>
+            </div>
 
-                    {/* Last updated */}
-                    <p className="mt-4 text-xs text-foreground-subtle">
-                        Updated {new Date(project.updated_at).toLocaleDateString()}
-                    </p>
-                </CardContent>
-            </Card>
+            {/* Environments */}
+            <div className="relative mt-4 flex flex-wrap gap-2">
+                {project.environments?.slice(0, 3).map((env) => (
+                    <Badge key={env.id} variant="default">
+                        {env.name}
+                    </Badge>
+                ))}
+                {(project.environments?.length || 0) > 3 && (
+                    <Badge variant="default">
+                        +{(project.environments?.length || 0) - 3} more
+                    </Badge>
+                )}
+            </div>
+
+            {/* Last updated */}
+            <p className="relative mt-4 text-xs text-foreground-subtle">
+                Updated {new Date(project.updated_at).toLocaleDateString()}
+            </p>
         </Link>
     );
 }
 
 function EmptyState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
                 <FolderKanban className="h-8 w-8 text-foreground-muted" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
-            <p className="mt-2 text-foreground-muted">
+            <p className="mt-1 text-sm text-foreground-muted">
                 Create your first project to start deploying applications.
             </p>
-            <Link href="/projects/create" className="mt-6 inline-block">
+            <Link href="/projects/create" className="mt-6">
                 <Button>
                     <Plus className="mr-2 h-4 w-4" />
                     Create Project
                 </Button>
             </Link>
-        </Card>
+        </div>
     );
 }

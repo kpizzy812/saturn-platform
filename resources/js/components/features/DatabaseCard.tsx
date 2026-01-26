@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { Card, CardContent, Badge, useConfirm } from '@/components/ui';
+import { useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Database, MoreVertical, Settings, Trash2, RotateCw } from 'lucide-react';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
@@ -129,77 +129,79 @@ export function DatabaseCard({ database }: DatabaseCardProps) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
 
     return (
-        <Link href={`/databases/${database.uuid}`}>
-            <Card className="transition-colors hover:border-primary/50">
-                <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${config.bgColor} ${config.color}`}>
-                                {getDbLogo(database.database_type)}
-                            </div>
-                            <div>
-                                <h3 className="font-medium text-foreground">{database.name}</h3>
-                                <p className="text-sm text-foreground-muted">
-                                    {formatDatabaseType(database.database_type)}
-                                </p>
-                            </div>
-                        </div>
-                        <Dropdown>
-                            <DropdownTrigger>
-                                <button
-                                    className="rounded-md p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
-                                    onClick={(e) => e.preventDefault()}
-                                >
-                                    <MoreVertical className="h-4 w-4" />
-                                </button>
-                            </DropdownTrigger>
-                            <DropdownContent align="right">
-                                <DropdownItem onClick={(e) => {
-                                    e.preventDefault();
-                                    router.visit(`/databases/${database.uuid}/settings`);
-                                }}>
-                                    <Settings className="h-4 w-4" />
-                                    Database Settings
-                                </DropdownItem>
-                                <DropdownItem onClick={(e) => {
-                                    e.preventDefault();
-                                    router.post(`/databases/${database.uuid}/restart`);
-                                }}>
-                                    <RotateCw className="h-4 w-4" />
-                                    Restart
-                                </DropdownItem>
-                                <DropdownDivider />
-                                <DropdownItem onClick={async (e) => {
-                                    e.preventDefault();
-                                    const confirmed = await confirm({
-                                        title: 'Delete Database',
-                                        description: `Are you sure you want to delete "${database.name}"? This action cannot be undone.`,
-                                        confirmText: 'Delete',
-                                        variant: 'danger',
-                                    });
-                                    if (confirmed) {
-                                        router.delete(`/databases/${database.uuid}`);
-                                    }
-                                }} danger>
-                                    <Trash2 className="h-4 w-4" />
-                                    Delete Database
-                                </DropdownItem>
-                            </DropdownContent>
-                        </Dropdown>
-                    </div>
+        <Link
+            href={`/databases/${database.uuid}`}
+            className="group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20"
+        >
+            {/* Subtle gradient overlay on hover */}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-                    {/* Status */}
-                    <div className="mt-4 flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${getStatusColor(database.status)}`} />
-                        <span className="text-sm capitalize text-foreground-muted">{database.status}</span>
+            <div className="relative flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${config.bgColor} ${config.color}`}>
+                        {getDbLogo(database.database_type)}
                     </div>
+                    <div>
+                        <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{database.name}</h3>
+                        <p className="text-sm text-foreground-muted">
+                            {formatDatabaseType(database.database_type)}
+                        </p>
+                    </div>
+                </div>
+                <Dropdown>
+                    <DropdownTrigger>
+                        <button
+                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-white/10 group-hover:opacity-100"
+                            onClick={(e) => e.preventDefault()}
+                        >
+                            <MoreVertical className="h-4 w-4 text-foreground-muted" />
+                        </button>
+                    </DropdownTrigger>
+                    <DropdownContent align="right">
+                        <DropdownItem onClick={(e) => {
+                            e.preventDefault();
+                            router.visit(`/databases/${database.uuid}/settings`);
+                        }}>
+                            <Settings className="h-4 w-4" />
+                            Database Settings
+                        </DropdownItem>
+                        <DropdownItem onClick={(e) => {
+                            e.preventDefault();
+                            router.post(`/databases/${database.uuid}/restart`);
+                        }}>
+                            <RotateCw className="h-4 w-4" />
+                            Restart
+                        </DropdownItem>
+                        <DropdownDivider />
+                        <DropdownItem onClick={async (e) => {
+                            e.preventDefault();
+                            const confirmed = await confirm({
+                                title: 'Delete Database',
+                                description: `Are you sure you want to delete "${database.name}"? This action cannot be undone.`,
+                                confirmText: 'Delete',
+                                variant: 'danger',
+                            });
+                            if (confirmed) {
+                                router.delete(`/databases/${database.uuid}`);
+                            }
+                        }} danger>
+                            <Trash2 className="h-4 w-4" />
+                            Delete Database
+                        </DropdownItem>
+                    </DropdownContent>
+                </Dropdown>
+            </div>
 
-                    {/* Last updated */}
-                    <p className="mt-4 text-xs text-foreground-subtle">
-                        Updated {new Date(database.updated_at).toLocaleDateString()}
-                    </p>
-                </CardContent>
-            </Card>
+            {/* Status */}
+            <div className="relative mt-4 flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${getStatusColor(database.status)}`} />
+                <span className="text-sm capitalize text-foreground-muted">{database.status}</span>
+            </div>
+
+            {/* Last updated */}
+            <p className="relative mt-4 text-xs text-foreground-subtle">
+                Updated {new Date(database.updated_at).toLocaleDateString()}
+            </p>
         </Link>
     );
 }
