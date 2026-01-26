@@ -75,10 +75,7 @@ Route::post('/projects', function (Request $request) {
         'team_id' => currentTeam()->id,
     ]);
 
-    // Create default environment
-    $project->environments()->create([
-        'name' => 'production',
-    ]);
+    // Note: default 'production' environment is auto-created in Project::booted()
 
     // Return JSON for XHR requests (used by Create Application flow)
     if ($request->wantsJson() || $request->ajax()) {
