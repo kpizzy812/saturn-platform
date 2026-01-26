@@ -215,7 +215,7 @@ post('/settings/notifications/email', { ... });
 - [x] **Deployments/Show.tsx:154** - debug log удалён ✅
 
 ### console.error в catch блоках (нужен proper error handling)
-- [ ] **Projects/Show.tsx** (6 мест) - заменить на toast notifications
+- [x] **Projects/Show.tsx** (6 мест) - заменить на toast notifications ✅
 - [ ] **Applications/Rollback/*.tsx** (4 места) - заменить на toast notifications
 - [ ] **Settings/Account.tsx** (4 места) - заменить на toast notifications
 - [ ] **Settings/Workspace.tsx** (2 места) - заменить на toast notifications

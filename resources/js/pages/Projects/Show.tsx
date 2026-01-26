@@ -8,7 +8,7 @@ import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
 import { LogsViewer } from '@/components/features/LogsViewer';
-import { ToastProvider } from '@/components/ui/Toast';
+import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 
 // Extracted components
@@ -40,6 +40,9 @@ export default function ProjectShow({ project }: Props) {
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'extensions' | 'settings'>('connect');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs' | 'settings'>('architecture');
     const [hasStagedChanges, setHasStagedChanges] = useState(false);
+
+    // Toast notifications hook - must be called before early return
+    const { addToast } = useToast();
 
     // Show loading state if project is not available
     if (!project) {
@@ -269,10 +272,9 @@ export default function ProjectShow({ project }: Props) {
 
             router.reload();
         } catch (err) {
-            console.error('Deploy error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to deploy application');
+            addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy application');
         }
-    }, [contextMenuNode]);
+    }, [contextMenuNode, addToast]);
 
     const handleRestart = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
@@ -299,10 +301,9 @@ export default function ProjectShow({ project }: Props) {
 
             router.reload();
         } catch (err) {
-            console.error('Restart error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to restart');
+            addToast('error', 'Restart failed', err instanceof Error ? err.message : 'Failed to restart service');
         }
-    }, [contextMenuNode]);
+    }, [contextMenuNode, addToast]);
 
     const handleStop = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
@@ -329,10 +330,9 @@ export default function ProjectShow({ project }: Props) {
 
             router.reload();
         } catch (err) {
-            console.error('Stop error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to stop');
+            addToast('error', 'Stop failed', err instanceof Error ? err.message : 'Failed to stop service');
         }
-    }, [contextMenuNode]);
+    }, [contextMenuNode, addToast]);
 
     const handleDelete = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
@@ -364,10 +364,9 @@ export default function ProjectShow({ project }: Props) {
             setContextMenuNode(null);
             router.reload();
         } catch (err) {
-            console.error('Delete error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to delete');
+            addToast('error', 'Delete failed', err instanceof Error ? err.message : 'Failed to delete resource');
         }
-    }, [contextMenuNode]);
+    }, [contextMenuNode, addToast]);
 
     // Deploy all staged changes
     const handleDeployChanges = useCallback(async () => {
@@ -394,10 +393,9 @@ export default function ProjectShow({ project }: Props) {
             setHasStagedChanges(false);
             router.reload();
         } catch (err) {
-            console.error('Deploy changes error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to deploy changes');
+            addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy changes');
         }
-    }, [project.environments]);
+    }, [project.environments, addToast]);
 
     // Database backup handlers
     const handleCreateBackup = useCallback(async (_nodeId: string) => {
@@ -419,13 +417,12 @@ export default function ProjectShow({ project }: Props) {
                 throw new Error(error.message || 'Failed to create backup');
             }
 
-            alert('Backup started successfully');
+            addToast('success', 'Backup started', 'Database backup process has been initiated.');
             router.reload();
         } catch (err) {
-            console.error('Create backup error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to create backup');
+            addToast('error', 'Backup failed', err instanceof Error ? err.message : 'Failed to create backup');
         }
-    }, [contextMenuNode]);
+    }, [contextMenuNode, addToast]);
 
     const handleRestoreBackup = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
@@ -470,7 +467,7 @@ export default function ProjectShow({ project }: Props) {
     // Command palette handlers
     const handlePaletteDeploy = useCallback(async () => {
         if (!selectedService || selectedService.type !== 'app') {
-            alert('Please select an application first');
+            addToast('warning', 'No application selected', 'Please select an application first');
             return;
         }
         try {
@@ -482,13 +479,13 @@ export default function ProjectShow({ project }: Props) {
             if (!response.ok) throw new Error('Failed to deploy');
             router.reload();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to deploy');
+            addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy application');
         }
-    }, [selectedService]);
+    }, [selectedService, addToast]);
 
     const handlePaletteRestart = useCallback(async () => {
         if (!selectedService) {
-            alert('Please select a service first');
+            addToast('warning', 'No service selected', 'Please select a service first');
             return;
         }
         const endpoint = selectedService.type === 'app'
@@ -503,20 +500,20 @@ export default function ProjectShow({ project }: Props) {
             if (!response.ok) throw new Error('Failed to restart');
             router.reload();
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to restart');
+            addToast('error', 'Restart failed', err instanceof Error ? err.message : 'Failed to restart service');
         }
-    }, [selectedService]);
+    }, [selectedService, addToast]);
 
     const handlePaletteViewLogs = useCallback(() => {
         if (!selectedService) {
-            alert('Please select a service first');
+            addToast('warning', 'No service selected', 'Please select a service first');
             return;
         }
         setLogsViewerService(selectedService.name);
         setLogsViewerServiceUuid(selectedService.uuid);
         setLogsViewerServiceType(selectedService.type === 'db' ? 'database' : 'application');
         setLogsViewerOpen(true);
-    }, [selectedService]);
+    }, [selectedService, addToast]);
 
     // Prepare services for command palette
     const commandPaletteServices = [
@@ -927,7 +924,7 @@ export default function ProjectShow({ project }: Props) {
                                             onClick={() => {
                                                 const domain = selectedService.fqdn?.replace(/^https?:\/\//, '') || '';
                                                 navigator.clipboard.writeText(domain);
-                                                alert('URL copied to clipboard');
+                                                addToast('success', 'Copied', 'URL copied to clipboard');
                                             }}
                                             className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
                                             title="Copy URL"
