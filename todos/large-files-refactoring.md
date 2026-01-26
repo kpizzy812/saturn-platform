@@ -48,19 +48,24 @@
 
 ## 🟠 ВЫСОКИЕ (3000-4000 строк)
 
-### 3. ApplicationsController.php — 3,648 строк
-API контроллер приложений, слишком много методов.
+### 3. ApplicationsController.php — ✅ ГОТОВО (было 3,648 → стало 841 строк, -77%)
+API контроллер приложений разделён на специализированные контроллеры и Action классы.
 
-- [ ] Выделить CRUD операции в отдельные Action классы:
-  - [ ] `Actions/Application/CreateApplicationAction.php`
-  - [ ] `Actions/Application/UpdateApplicationAction.php`
-  - [ ] `Actions/Application/DeleteApplicationAction.php`
-- [ ] Выделить специфичные операции:
-  - [ ] `Actions/Application/DeployApplicationAction.php`
-  - [ ] `Actions/Application/RestartApplicationAction.php`
-  - [ ] `Actions/Application/GetLogsAction.php`
-- [ ] Использовать Form Requests для валидации
-- [ ] Убрать дублирование кода между методами
+- [x] Выделены контроллеры:
+  - [x] `ApplicationEnvsController.php` — ENV методы (745 строк)
+  - [x] `ApplicationActionsController.php` — start/stop/restart (287 строк)
+  - [x] `ApplicationDeploymentsController.php` — deployments/rollback (167 строк)
+  - [x] `ApplicationCreateController.php` — создание приложений (300 строк)
+- [x] Выделены Action классы в `app/Actions/Application/`:
+  - [x] `CreatePublicApplication.php` — публичный репозиторий (138 строк)
+  - [x] `CreatePrivateGhAppApplication.php` — GitHub App (189 строк)
+  - [x] `CreatePrivateDeployKeyApplication.php` — Deploy Key (170 строк)
+  - [x] `CreateDockerfileApplication.php` — Dockerfile (117 строк)
+  - [x] `CreateDockerImageApplication.php` — Docker Image (122 строк)
+  - [x] `CreateDockerComposeApplication.php` — Docker Compose (137 строк)
+  - [x] `Concerns/CreatesApplication.php` — общая логика (266 строк)
+- [x] Маршруты обновлены в `routes/api.php`
+- [x] Код прошёл Pint валидацию
 
 ### 4. bootstrap/helpers/shared.php — 3,401 строк
 Глобальные хелперы, смешанная ответственность.
@@ -165,7 +170,7 @@ API контроллер приложений, слишком много мет�
 |------|--------|------|
 | routes/web.php | ✅ Готово | 2026-01-25 |
 | ApplicationDeploymentJob.php | ✅ Готово | 2026-01-26 |
-| ApplicationsController.php | ⏳ Не начато | - |
+| ApplicationsController.php | ✅ Готово | 2026-01-26 |
 | shared.php | ⏳ Не начато | - |
 | Projects/Show.tsx | ⏳ Не начато | - |
 | DatabasesController.php | ⏳ Не начато | - |

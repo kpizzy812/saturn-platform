@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\ApplicationActionsController;
+use App\Http\Controllers\Api\ApplicationCreateController;
+use App\Http\Controllers\Api\ApplicationDeploymentsController;
+use App\Http\Controllers\Api\ApplicationEnvsController;
 use App\Http\Controllers\Api\ApplicationsController;
 use App\Http\Controllers\Api\CloudProviderTokensController;
 use App\Http\Controllers\Api\DatabasesController;
@@ -164,32 +168,32 @@ Route::group([
     Route::get('/resources', [ResourcesController::class, 'resources'])->middleware(['api.ability:read']);
 
     Route::get('/applications', [ApplicationsController::class, 'applications'])->middleware(['api.ability:read']);
-    Route::post('/applications/public', [ApplicationsController::class, 'create_public_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/private-github-app', [ApplicationsController::class, 'create_private_gh_app_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/private-deploy-key', [ApplicationsController::class, 'create_private_deploy_key_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/dockerfile', [ApplicationsController::class, 'create_dockerfile_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/dockerimage', [ApplicationsController::class, 'create_dockerimage_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/dockercompose', [ApplicationsController::class, 'create_dockercompose_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/public', [ApplicationCreateController::class, 'create_public_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/private-github-app', [ApplicationCreateController::class, 'create_private_gh_app_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/private-deploy-key', [ApplicationCreateController::class, 'create_private_deploy_key_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/dockerfile', [ApplicationCreateController::class, 'create_dockerfile_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/dockerimage', [ApplicationCreateController::class, 'create_dockerimage_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/dockercompose', [ApplicationCreateController::class, 'create_dockercompose_application'])->middleware(['api.ability:write']);
 
     Route::get('/applications/{uuid}', [ApplicationsController::class, 'application_by_uuid'])->middleware(['api.ability:read']);
     Route::patch('/applications/{uuid}', [ApplicationsController::class, 'update_by_uuid'])->middleware(['api.ability:write']);
     Route::delete('/applications/{uuid}', [ApplicationsController::class, 'delete_by_uuid'])->middleware(['api.ability:write']);
 
-    Route::get('/applications/{uuid}/envs', [ApplicationsController::class, 'envs'])->middleware(['api.ability:read']);
-    Route::post('/applications/{uuid}/envs', [ApplicationsController::class, 'create_env'])->middleware(['api.ability:write']);
-    Route::patch('/applications/{uuid}/envs/bulk', [ApplicationsController::class, 'create_bulk_envs'])->middleware(['api.ability:write']);
-    Route::patch('/applications/{uuid}/envs', [ApplicationsController::class, 'update_env_by_uuid'])->middleware(['api.ability:write']);
-    Route::delete('/applications/{uuid}/envs/{env_uuid}', [ApplicationsController::class, 'delete_env_by_uuid'])->middleware(['api.ability:write']);
+    Route::get('/applications/{uuid}/envs', [ApplicationEnvsController::class, 'envs'])->middleware(['api.ability:read']);
+    Route::post('/applications/{uuid}/envs', [ApplicationEnvsController::class, 'create_env'])->middleware(['api.ability:write']);
+    Route::patch('/applications/{uuid}/envs/bulk', [ApplicationEnvsController::class, 'create_bulk_envs'])->middleware(['api.ability:write']);
+    Route::patch('/applications/{uuid}/envs', [ApplicationEnvsController::class, 'update_env_by_uuid'])->middleware(['api.ability:write']);
+    Route::delete('/applications/{uuid}/envs/{env_uuid}', [ApplicationEnvsController::class, 'delete_env_by_uuid'])->middleware(['api.ability:write']);
     Route::get('/applications/{uuid}/logs', [ApplicationsController::class, 'logs_by_uuid'])->middleware(['api.ability:read']);
 
-    Route::match(['get', 'post'], '/applications/{uuid}/start', [ApplicationsController::class, 'action_deploy'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/applications/{uuid}/restart', [ApplicationsController::class, 'action_restart'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/applications/{uuid}/stop', [ApplicationsController::class, 'action_stop'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/applications/{uuid}/start', [ApplicationActionsController::class, 'action_deploy'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/applications/{uuid}/restart', [ApplicationActionsController::class, 'action_restart'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/applications/{uuid}/stop', [ApplicationActionsController::class, 'action_stop'])->middleware(['api.ability:write']);
 
     // Application Rollback Routes
-    Route::get('/applications/{uuid}/deployments', [ApplicationsController::class, 'get_deployments'])->middleware(['api.ability:read']);
-    Route::get('/applications/{uuid}/rollback-events', [ApplicationsController::class, 'get_rollback_events'])->middleware(['api.ability:read']);
-    Route::post('/applications/{uuid}/rollback/{deploymentUuid}', [ApplicationsController::class, 'execute_rollback'])->middleware(['api.ability:deploy']);
+    Route::get('/applications/{uuid}/deployments', [ApplicationDeploymentsController::class, 'get_deployments'])->middleware(['api.ability:read']);
+    Route::get('/applications/{uuid}/rollback-events', [ApplicationDeploymentsController::class, 'get_rollback_events'])->middleware(['api.ability:read']);
+    Route::post('/applications/{uuid}/rollback/{deploymentUuid}', [ApplicationDeploymentsController::class, 'execute_rollback'])->middleware(['api.ability:deploy']);
 
     // Application Preview Deployment Routes
     Route::get('/applications/{uuid}/previews', function (string $uuid) {
