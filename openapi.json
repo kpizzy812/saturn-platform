@@ -9581,6 +9581,782 @@
                 ]
             }
         },
+        "\/services\/{uuid}\/start": {
+            "get": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Start",
+                "description": "Start service. `Post` request is also accepted.",
+                "operationId": "start-service-by-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Start service.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Service starting request queued."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/stop": {
+            "get": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Stop",
+                "description": "Stop service. `Post` request is also accepted.",
+                "operationId": "stop-service-by-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stop service.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Service stopping request queued."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/restart": {
+            "get": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Restart",
+                "description": "Restart service. `Post` request is also accepted.",
+                "operationId": "restart-service-by-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "latest",
+                        "in": "query",
+                        "description": "Pull latest images.",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Restart service.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Service restaring request queued."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/envs": {
+            "get": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "List Envs",
+                "description": "List all envs by service UUID.",
+                "operationId": "list-envs-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All environment variables by service UUID.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#\/components\/schemas\/EnvironmentVariable"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Create Env",
+                "description": "Create env by service UUID.",
+                "operationId": "create-env-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Env created.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "key": {
+                                        "type": "string",
+                                        "description": "The key of the environment variable."
+                                    },
+                                    "value": {
+                                        "type": "string",
+                                        "description": "The value of the environment variable."
+                                    },
+                                    "is_preview": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                    },
+                                    "is_literal": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                    },
+                                    "is_multiline": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is multiline."
+                                    },
+                                    "is_shown_once": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Environment variable created.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "uuid": {
+                                            "type": "string",
+                                            "example": "nc0k04gk8g0cgsk440g0koko"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Update Env",
+                "description": "Update env by service UUID.",
+                "operationId": "update-env-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Env updated.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "key",
+                                    "value"
+                                ],
+                                "properties": {
+                                    "key": {
+                                        "type": "string",
+                                        "description": "The key of the environment variable."
+                                    },
+                                    "value": {
+                                        "type": "string",
+                                        "description": "The value of the environment variable."
+                                    },
+                                    "is_preview": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                    },
+                                    "is_literal": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                    },
+                                    "is_multiline": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable is multiline."
+                                    },
+                                    "is_shown_once": {
+                                        "type": "boolean",
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Environment variable updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Environment variable updated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/envs\/bulk": {
+            "patch": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Update Envs (Bulk)",
+                "description": "Update multiple envs by service UUID.",
+                "operationId": "update-envs-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Bulk envs updated.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "data"
+                                ],
+                                "properties": {
+                                    "data": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "key": {
+                                                    "type": "string",
+                                                    "description": "The key of the environment variable."
+                                                },
+                                                "value": {
+                                                    "type": "string",
+                                                    "description": "The value of the environment variable."
+                                                },
+                                                "is_preview": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                                },
+                                                "is_literal": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                                },
+                                                "is_multiline": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable is multiline."
+                                                },
+                                                "is_shown_once": {
+                                                    "type": "boolean",
+                                                    "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Environment variables updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Environment variables updated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/envs\/{env_uuid}": {
+            "delete": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Delete Env",
+                "description": "Delete env by UUID.",
+                "operationId": "delete-env-by-service-uuid",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "env_uuid",
+                        "in": "path",
+                        "description": "UUID of the environment variable.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Environment variable deleted.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Environment variable deleted."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/services\/{uuid}\/healthcheck": {
+            "get": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Get Healthcheck",
+                "description": "Get healthcheck configuration for a service.",
+                "operationId": "get-service-healthcheck",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Healthcheck configuration.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "enabled": {
+                                            "type": "boolean",
+                                            "description": "Whether healthcheck is enabled."
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "description": "Healthcheck type (http or tcp)."
+                                        },
+                                        "test": {
+                                            "type": "string",
+                                            "description": "Healthcheck test command."
+                                        },
+                                        "interval": {
+                                            "type": "integer",
+                                            "description": "Healthcheck interval in seconds."
+                                        },
+                                        "timeout": {
+                                            "type": "integer",
+                                            "description": "Healthcheck timeout in seconds."
+                                        },
+                                        "retries": {
+                                            "type": "integer",
+                                            "description": "Number of retries before unhealthy."
+                                        },
+                                        "start_period": {
+                                            "type": "integer",
+                                            "description": "Start period in seconds."
+                                        },
+                                        "service_name": {
+                                            "type": "string",
+                                            "nullable": true,
+                                            "description": "Name of the docker service."
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "description": "Current service status."
+                                        },
+                                        "services_status": {
+                                            "type": "object",
+                                            "description": "Healthcheck status per service."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Update Healthcheck",
+                "description": "Update healthcheck configuration for a service.",
+                "operationId": "update-service-healthcheck",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "UUID of the service.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Healthcheck configuration.",
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "enabled": {
+                                        "type": "boolean",
+                                        "description": "Whether healthcheck is enabled."
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "http",
+                                            "tcp"
+                                        ],
+                                        "description": "Healthcheck type."
+                                    },
+                                    "test": {
+                                        "type": "string",
+                                        "description": "Healthcheck test command."
+                                    },
+                                    "interval": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "description": "Healthcheck interval in seconds."
+                                    },
+                                    "timeout": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "description": "Healthcheck timeout in seconds."
+                                    },
+                                    "retries": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "description": "Number of retries before unhealthy."
+                                    },
+                                    "start_period": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "description": "Start period in seconds."
+                                    },
+                                    "service_name": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "description": "Target docker service name."
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Healthcheck configuration updated.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Healthcheck configuration updated."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "400": {
+                        "$ref": "#\/components\/responses\/400"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "422": {
+                        "$ref": "#\/components\/responses\/422"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/services": {
             "get": {
                 "tags": [
@@ -10069,782 +10845,6 @@
                                                 "type": "string"
                                             },
                                             "description": "Service domains."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    },
-                    "422": {
-                        "$ref": "#\/components\/responses\/422"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/envs": {
-            "get": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "List Envs",
-                "description": "List all envs by service UUID.",
-                "operationId": "list-envs-by-service-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "All environment variables by service UUID.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#\/components\/schemas\/EnvironmentVariable"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Create Env",
-                "description": "Create env by service UUID.",
-                "operationId": "create-env-by-service-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Env created.",
-                    "required": true,
-                    "content": {
-                        "application\/json": {
-                            "schema": {
-                                "properties": {
-                                    "key": {
-                                        "type": "string",
-                                        "description": "The key of the environment variable."
-                                    },
-                                    "value": {
-                                        "type": "string",
-                                        "description": "The value of the environment variable."
-                                    },
-                                    "is_preview": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
-                                    },
-                                    "is_literal": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
-                                    },
-                                    "is_multiline": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is multiline."
-                                    },
-                                    "is_shown_once": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Environment variable created.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "uuid": {
-                                            "type": "string",
-                                            "example": "nc0k04gk8g0cgsk440g0koko"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    },
-                    "422": {
-                        "$ref": "#\/components\/responses\/422"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "patch": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Update Env",
-                "description": "Update env by service UUID.",
-                "operationId": "update-env-by-service-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Env updated.",
-                    "required": true,
-                    "content": {
-                        "application\/json": {
-                            "schema": {
-                                "required": [
-                                    "key",
-                                    "value"
-                                ],
-                                "properties": {
-                                    "key": {
-                                        "type": "string",
-                                        "description": "The key of the environment variable."
-                                    },
-                                    "value": {
-                                        "type": "string",
-                                        "description": "The value of the environment variable."
-                                    },
-                                    "is_preview": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
-                                    },
-                                    "is_literal": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
-                                    },
-                                    "is_multiline": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is multiline."
-                                    },
-                                    "is_shown_once": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Environment variable updated.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Environment variable updated."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    },
-                    "422": {
-                        "$ref": "#\/components\/responses\/422"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/envs\/bulk": {
-            "patch": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Update Envs (Bulk)",
-                "description": "Update multiple envs by service UUID.",
-                "operationId": "update-envs-by-service-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Bulk envs updated.",
-                    "required": true,
-                    "content": {
-                        "application\/json": {
-                            "schema": {
-                                "required": [
-                                    "data"
-                                ],
-                                "properties": {
-                                    "data": {
-                                        "type": "array",
-                                        "items": {
-                                            "properties": {
-                                                "key": {
-                                                    "type": "string",
-                                                    "description": "The key of the environment variable."
-                                                },
-                                                "value": {
-                                                    "type": "string",
-                                                    "description": "The value of the environment variable."
-                                                },
-                                                "is_preview": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable is used in preview deployments."
-                                                },
-                                                "is_literal": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
-                                                },
-                                                "is_multiline": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable is multiline."
-                                                },
-                                                "is_shown_once": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable's value is shown on the UI."
-                                                }
-                                            },
-                                            "type": "object"
-                                        }
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "Environment variables updated.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Environment variables updated."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    },
-                    "422": {
-                        "$ref": "#\/components\/responses\/422"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/envs\/{env_uuid}": {
-            "delete": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Delete Env",
-                "description": "Delete env by UUID.",
-                "operationId": "delete-env-by-service-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    },
-                    {
-                        "name": "env_uuid",
-                        "in": "path",
-                        "description": "UUID of the environment variable.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Environment variable deleted.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Environment variable deleted."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/start": {
-            "get": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Start",
-                "description": "Start service. `Post` request is also accepted.",
-                "operationId": "start-service-by-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Start service.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Service starting request queued."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/stop": {
-            "get": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Stop",
-                "description": "Stop service. `Post` request is also accepted.",
-                "operationId": "stop-service-by-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Stop service.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Service stopping request queued."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/restart": {
-            "get": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Restart",
-                "description": "Restart service. `Post` request is also accepted.",
-                "operationId": "restart-service-by-uuid",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    },
-                    {
-                        "name": "latest",
-                        "in": "query",
-                        "description": "Pull latest images.",
-                        "schema": {
-                            "type": "boolean",
-                            "default": false
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Restart service.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Service restaring request queued."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "400": {
-                        "$ref": "#\/components\/responses\/400"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "\/services\/{uuid}\/healthcheck": {
-            "get": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Get Healthcheck",
-                "description": "Get healthcheck configuration for a service.",
-                "operationId": "get-service-healthcheck",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Healthcheck configuration.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "enabled": {
-                                            "type": "boolean",
-                                            "description": "Whether healthcheck is enabled."
-                                        },
-                                        "type": {
-                                            "type": "string",
-                                            "description": "Healthcheck type (http or tcp)."
-                                        },
-                                        "test": {
-                                            "type": "string",
-                                            "description": "Healthcheck test command."
-                                        },
-                                        "interval": {
-                                            "type": "integer",
-                                            "description": "Healthcheck interval in seconds."
-                                        },
-                                        "timeout": {
-                                            "type": "integer",
-                                            "description": "Healthcheck timeout in seconds."
-                                        },
-                                        "retries": {
-                                            "type": "integer",
-                                            "description": "Number of retries before unhealthy."
-                                        },
-                                        "start_period": {
-                                            "type": "integer",
-                                            "description": "Start period in seconds."
-                                        },
-                                        "service_name": {
-                                            "type": "string",
-                                            "nullable": true,
-                                            "description": "Name of the docker service."
-                                        },
-                                        "status": {
-                                            "type": "string",
-                                            "description": "Current service status."
-                                        },
-                                        "services_status": {
-                                            "type": "object",
-                                            "description": "Healthcheck status per service."
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#\/components\/responses\/401"
-                    },
-                    "404": {
-                        "$ref": "#\/components\/responses\/404"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "patch": {
-                "tags": [
-                    "Services"
-                ],
-                "summary": "Update Healthcheck",
-                "description": "Update healthcheck configuration for a service.",
-                "operationId": "update-service-healthcheck",
-                "parameters": [
-                    {
-                        "name": "uuid",
-                        "in": "path",
-                        "description": "UUID of the service.",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Healthcheck configuration.",
-                    "required": true,
-                    "content": {
-                        "application\/json": {
-                            "schema": {
-                                "properties": {
-                                    "enabled": {
-                                        "type": "boolean",
-                                        "description": "Whether healthcheck is enabled."
-                                    },
-                                    "type": {
-                                        "type": "string",
-                                        "enum": [
-                                            "http",
-                                            "tcp"
-                                        ],
-                                        "description": "Healthcheck type."
-                                    },
-                                    "test": {
-                                        "type": "string",
-                                        "description": "Healthcheck test command."
-                                    },
-                                    "interval": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "description": "Healthcheck interval in seconds."
-                                    },
-                                    "timeout": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "description": "Healthcheck timeout in seconds."
-                                    },
-                                    "retries": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "description": "Number of retries before unhealthy."
-                                    },
-                                    "start_period": {
-                                        "type": "integer",
-                                        "minimum": 0,
-                                        "description": "Start period in seconds."
-                                    },
-                                    "service_name": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Target docker service name."
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Healthcheck configuration updated.",
-                        "content": {
-                            "application\/json": {
-                                "schema": {
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Healthcheck configuration updated."
                                         }
                                     },
                                     "type": "object"
