@@ -4,6 +4,22 @@
 with-contenv
 cd /var/www/html
 foreground {
+    mkdir
+    -p
+    /var/www/html/storage/app/ssh/keys
+}
+foreground {
+    mkdir
+    -p
+    /var/www/html/storage/app/ssh/mux
+}
+foreground {
+    chmod
+    -R
+    700
+    /var/www/html/storage/app/ssh
+}
+foreground {
     composer
     install
 }

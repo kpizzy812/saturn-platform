@@ -223,22 +223,35 @@ class PrivateKey extends BaseModel
 
     protected function ensureStorageDirectoryExists()
     {
-        $disk = Storage::disk('ssh-keys');
-        $directoryPath = '';
+        $storagePath = storage_path('app/ssh/keys');
 
-        if (! $disk->exists($directoryPath)) {
-            $success = $disk->makeDirectory($directoryPath);
-            if (! $success) {
-                throw new \Exception('Failed to create SSH keys storage directory');
+        // Create directory using PHP if it doesn't exist
+        if (! is_dir($storagePath)) {
+            $created = @mkdir($storagePath, 0700, true);
+            if (! $created && ! is_dir($storagePath)) {
+                throw new \Exception("Failed to create SSH keys storage directory: {$storagePath}");
             }
         }
 
-        // Check if directory is writable by attempting a test file
+        // Ensure correct permissions (700 = owner read/write/execute only)
+        if (is_dir($storagePath)) {
+            @chmod($storagePath, 0700);
+        }
+
+        // Check if directory is writable
+        if (! is_writable($storagePath)) {
+            $perms = is_dir($storagePath) ? substr(sprintf('%o', fileperms($storagePath)), -4) : 'N/A';
+            $owner = function_exists('posix_getpwuid') ? (posix_getpwuid(fileowner($storagePath))['name'] ?? 'unknown') : 'unknown';
+            throw new \Exception("SSH keys storage directory is not writable: {$storagePath} (perms: {$perms}, owner: {$owner})");
+        }
+
+        // Verify write capability with test file
+        $disk = Storage::disk('ssh-keys');
         $testFilename = '.test_write_'.uniqid();
         $testSuccess = $disk->put($testFilename, 'test');
 
         if (! $testSuccess) {
-            throw new \Exception('SSH keys storage directory is not writable');
+            throw new \Exception("SSH keys storage directory write test failed: {$storagePath}");
         }
 
         // Clean up test file
