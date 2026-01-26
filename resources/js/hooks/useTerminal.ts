@@ -10,15 +10,6 @@ interface TerminalDataEvent {
     data: string;
 }
 
-/**
- * Terminal resize event
- */
-interface TerminalResizeEvent {
-    serverId: number;
-    cols: number;
-    rows: number;
-}
-
 interface UseTerminalOptions {
     /**
      * Server ID to connect terminal to
@@ -151,9 +142,11 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     const [error, setError] = React.useState<Error | null>(null);
     const [reconnectAttempt, setReconnectAttempt] = React.useState(0);
 
-    const reconnectTimeoutRef = React.useRef<NodeJS.Timeout>();
+    const reconnectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const manualReconnectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
     const channelRef = React.useRef<any>(null);
     const shouldReconnectRef = React.useRef(true);
+    const isMountedRef = React.useRef(true);
 
     /**
      * Send data to terminal
@@ -291,10 +284,14 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     const disconnect = React.useCallback(() => {
         shouldReconnectRef.current = false;
 
-        // Clear reconnection timeout
+        // Clear all reconnection timeouts
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = undefined;
+            reconnectTimeoutRef.current = null;
+        }
+        if (manualReconnectTimeoutRef.current) {
+            clearTimeout(manualReconnectTimeoutRef.current);
+            manualReconnectTimeoutRef.current = null;
         }
 
         // Leave WebSocket channel
@@ -329,6 +326,10 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
      * Schedule reconnection attempt
      */
     const scheduleReconnect = React.useCallback(() => {
+        if (!isMountedRef.current) {
+            return;
+        }
+
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
         }
@@ -336,8 +337,10 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
         setReconnectAttempt(prev => prev + 1);
 
         reconnectTimeoutRef.current = setTimeout(() => {
-            console.debug(`Reconnecting terminal (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
-            connect();
+            if (isMountedRef.current) {
+                console.debug(`Reconnecting terminal (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
+                connect();
+            }
         }, reconnectDelay);
     }, [reconnectAttempt, maxReconnectAttempts, reconnectDelay, connect]);
 
@@ -349,9 +352,16 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
         shouldReconnectRef.current = true;
         setReconnectAttempt(0);
 
-        // Wait a bit before reconnecting
-        setTimeout(() => {
-            connect();
+        // Clear any existing manual reconnect timeout
+        if (manualReconnectTimeoutRef.current) {
+            clearTimeout(manualReconnectTimeoutRef.current);
+        }
+
+        // Wait a bit before reconnecting - save ref for cleanup
+        manualReconnectTimeoutRef.current = setTimeout(() => {
+            if (isMountedRef.current) {
+                connect();
+            }
         }, 100);
     }, [disconnect, connect]);
 
@@ -359,11 +369,13 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
      * Auto-connect on mount
      */
     React.useEffect(() => {
+        isMountedRef.current = true;
         shouldReconnectRef.current = true;
         connect();
 
         // Cleanup on unmount
         return () => {
+            isMountedRef.current = false;
             disconnect();
         };
     }, [serverId]); // Reconnect when server changes

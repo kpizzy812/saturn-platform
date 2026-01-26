@@ -157,7 +157,9 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
     const [isPolling, setIsPolling] = React.useState(false);
     const [reconnectAttempts, setReconnectAttempts] = React.useState(0);
 
-    const pollingIntervalRef = React.useRef<NodeJS.Timeout>();
+    const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+    const reconnectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const isMountedRef = React.useRef(true);
     const maxReconnectAttempts = 3;
 
     /**
@@ -284,6 +286,10 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
      * Reconnect to WebSocket
      */
     const reconnect = React.useCallback(() => {
+        if (!isMountedRef.current) {
+            return;
+        }
+
         if (reconnectAttempts >= maxReconnectAttempts) {
             console.warn('Max reconnection attempts reached, falling back to polling');
             startPolling();
@@ -294,10 +300,17 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
         const connected = connectWebSocket();
 
         if (!connected) {
-            // Try again after delay
-            setTimeout(() => {
-                reconnect();
-            }, 2000 * (reconnectAttempts + 1)); // Exponential backoff
+            // Clear any existing reconnect timeout
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+
+            // Try again after delay with exponential backoff
+            reconnectTimeoutRef.current = setTimeout(() => {
+                if (isMountedRef.current) {
+                    reconnect();
+                }
+            }, 2000 * (reconnectAttempts + 1));
         }
     }, [reconnectAttempts, connectWebSocket, startPolling]);
 
@@ -305,6 +318,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
      * Initialize connection on mount
      */
     React.useEffect(() => {
+        isMountedRef.current = true;
         const connected = connectWebSocket();
 
         if (!connected && enableWebSocket) {
@@ -317,8 +331,17 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
 
         // Cleanup on unmount
         return () => {
+            isMountedRef.current = false;
+
+            // Clear reconnect timeout to prevent setState on unmounted component
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
+
             if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
             }
 
             const echo = getEcho();

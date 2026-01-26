@@ -217,8 +217,8 @@ post('/settings/notifications/email', { ... });
 ### React баги / Memory leaks
 - [x] **setTimeout без cleanup в TwoFactor/Setup.tsx** ✅
 - [x] **terminal.js** - setTimeout без cleanup, рекурсивный focusWhenReady, window.onresize без cleanup ✅ (добавлен полный cleanup: scheduleTimeout helper, boundHandleResize/boundHandleVisibilityChange с removeEventListener, maxFocusAttempts/maxResizeRetries лимиты, pendingTimeouts tracking)
-- [ ] **useTerminal.ts** - потенциальный infinite loop в scheduleReconnect
-- [ ] **useRealtimeStatus.ts** - рекурсивный reconnect без гарантии остановки
+- [x] **useTerminal.ts** - потенциальный infinite loop в scheduleReconnect ✅ (добавлен isMountedRef, manualReconnectTimeoutRef с cleanup, проверки isMounted в scheduleReconnect и reconnect)
+- [x] **useRealtimeStatus.ts** - рекурсивный reconnect без гарантии остановки ✅ (добавлен isMountedRef, reconnectTimeoutRef с cleanup в useEffect, проверки isMounted перед setState)
 - [ ] **CommandPalette.tsx / Terminal.tsx** - SSR unsafe (нет проверки `typeof window`)
 
 ### Заглушки с console.log вместо реального функционала (требуют реализации API)
@@ -301,13 +301,13 @@ post('/settings/notifications/email', { ... });
 | Критические (безопасность) | 6 | 5 | 1 |
 | Критические (mock данные) | 7 | 6 | 1 |
 | Высокие (кнопки без API) | 8 | 7 | 1 |
-| Высокие (memory leaks) | 5 | 2 | 3 |
+| Высокие (memory leaks) | 5 | 4 | 1 |
 | Высокие (console.log) | 8 | 8 | 0 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~47 исправлено ✅ | ~34 осталось**
+**Прогресс: ~49 исправлено ✅ | ~32 осталось**
 
 ---
 
@@ -340,5 +340,7 @@ post('/settings/notifications/email', { ... });
 14. [x] Observability/Metrics.tsx - реальный экспорт метрик в CSV + refresh ✅
 15. [x] Services/Rollbacks.tsx - реальный API redeploy с pull latest ✅
 16. [x] Исправить memory leaks в terminal.js ✅ (полный cleanup таймеров, event listeners, retry лимиты)
-17. [ ] Добавить SSR проверки
-18. [ ] Рефакторинг дублирования (5 компонентов)
+17. [x] Исправить memory leaks в useTerminal.ts ✅ (isMountedRef, manualReconnectTimeoutRef с cleanup)
+18. [x] Исправить memory leaks в useRealtimeStatus.ts ✅ (isMountedRef, reconnectTimeoutRef с cleanup)
+19. [ ] Добавить SSR проверки
+20. [ ] Рефакторинг дублирования (5 компонентов)
