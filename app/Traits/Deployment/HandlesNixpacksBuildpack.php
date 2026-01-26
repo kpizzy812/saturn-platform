@@ -169,13 +169,17 @@ trait HandlesNixpacksBuildpack
         $this->nixpacks_type = $this->saved_outputs->get('nixpacks_type', '');
 
         // For Node.js apps, try to auto-detect version before generating plan
+        // Auto-detection from .nvmrc/package.json has priority over default env var
         $autoDetectedNodeVersion = null;
         if ($this->nixpacks_type === 'node') {
-            $hasExplicitNodeVersion = $this->hasExplicitNodeVersion();
-            if (! $hasExplicitNodeVersion) {
-                $autoDetectedNodeVersion = $this->autoDetectNodeVersion();
-                if ($autoDetectedNodeVersion) {
-                    $this->application_deployment_queue->addLogEntry("Auto-detected Node.js version: {$autoDetectedNodeVersion}");
+            $autoDetectedNodeVersion = $this->autoDetectNodeVersion();
+            if ($autoDetectedNodeVersion) {
+                $this->application_deployment_queue->addLogEntry("Auto-detected Node.js version from project: {$autoDetectedNodeVersion}");
+            } else {
+                // Check if user has explicitly set a version
+                $explicitVersion = $this->getExplicitNodeVersion();
+                if ($explicitVersion) {
+                    $this->application_deployment_queue->addLogEntry("Using NIXPACKS_NODE_VERSION from environment: {$explicitVersion}");
                 }
             }
         }
@@ -309,9 +313,11 @@ trait HandlesNixpacksBuildpack
     }
 
     /**
-     * Check if NIXPACKS_NODE_VERSION is explicitly set in environment variables.
+     * Get explicitly set NIXPACKS_NODE_VERSION from environment variables.
+     *
+     * @return string|null The version if set, null otherwise
      */
-    private function hasExplicitNodeVersion(): bool
+    private function getExplicitNodeVersion(): ?string
     {
         if ($this->pull_request_id === 0) {
             $envVars = $this->application->nixpacks_environment_variables;
@@ -321,11 +327,11 @@ trait HandlesNixpacksBuildpack
 
         foreach ($envVars as $env) {
             if ($env->key === 'NIXPACKS_NODE_VERSION' && ! is_null($env->real_value) && $env->real_value !== '') {
-                return true;
+                return $env->real_value;
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
