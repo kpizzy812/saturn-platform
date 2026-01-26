@@ -50,6 +50,11 @@ class PrivateKey extends BaseModel
     protected static function booted()
     {
         static::saving(function ($key) {
+            if (empty($key->private_key)) {
+                throw ValidationException::withMessages([
+                    'private_key' => ['The private key is required.'],
+                ]);
+            }
             $key->private_key = formatPrivateKey($key->private_key);
 
             if (! self::validatePrivateKey($key->private_key)) {
