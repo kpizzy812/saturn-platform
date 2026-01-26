@@ -10,6 +10,7 @@ import {
     CheckCircle, XCircle, AlertCircle, ArrowLeft
 } from 'lucide-react';
 import type { Service } from '@/types';
+import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import { DeploymentsTab } from './Deployments';
 import { LogsTab } from './Logs';
 import { VariablesTab } from './Variables';
@@ -303,8 +304,8 @@ function OverviewTab({ service }: { service: Service }) {
                                             </div>
                                         </div>
                                     </div>
-                                    <Badge variant={deployment.status === 'finished' ? 'success' : deployment.status === 'failed' ? 'danger' : 'warning'}>
-                                        {deployment.status}
+                                    <Badge variant={getStatusVariant(deployment.status)}>
+                                        {getStatusLabel(deployment.status)}
                                     </Badge>
                                 </div>
                             </Link>

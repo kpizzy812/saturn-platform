@@ -1,6 +1,6 @@
 import { GitCommit } from 'lucide-react';
 import { Badge } from '@/components/ui';
-import { getStatusIcon, getStatusVariant, type BadgeVariant } from '@/lib/statusUtils';
+import { getStatusIcon, getStatusLabel, getStatusVariant, type BadgeVariant } from '@/lib/statusUtils';
 
 // Timeline-specific mapping from variant to node styles
 const variantToTimelineClass: Record<BadgeVariant, { normal: string; active: string }> = {
@@ -129,7 +129,7 @@ export function RollbackTimeline({
                                             </p>
                                             <div className="mt-2 flex items-center gap-2">
                                                 <Badge variant={getStatusVariant(deployment.status)} className="text-xs">
-                                                    {deployment.status}
+                                                    {getStatusLabel(deployment.status)}
                                                 </Badge>
                                                 {deployment.rollback && (
                                                     <Badge variant="warning" className="text-xs">

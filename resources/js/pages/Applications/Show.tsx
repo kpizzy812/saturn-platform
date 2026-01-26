@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
+import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import type { Application, ApplicationStatus, Deployment, Environment, Project } from '@/types';
 
 interface ApplicationWithRelations extends Application {
@@ -469,8 +470,8 @@ function DeploymentItem({ deployment, applicationUuid }: DeploymentItemProps) {
                     </p>
                 </div>
             </div>
-            <Badge variant={deployment.status === 'finished' ? 'success' : deployment.status === 'failed' ? 'destructive' : 'default'}>
-                {deployment.status}
+            <Badge variant={getStatusVariant(deployment.status)}>
+                {getStatusLabel(deployment.status)}
             </Badge>
         </Link>
     );

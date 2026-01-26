@@ -8,6 +8,7 @@ import {
     Calendar, GitBranch, CheckCircle, XCircle, Loader2, Eye
 } from 'lucide-react';
 import type { Application } from '@/types';
+import { getStatusLabel } from '@/lib/statusUtils';
 
 interface Props {
     application: Application;
@@ -192,7 +193,7 @@ export default function ApplicationRollbackShow({
                                                 Failed
                                             </Badge>
                                         ) : (
-                                            <Badge variant="warning">{deployment.status}</Badge>
+                                            <Badge variant="warning">{getStatusLabel(deployment.status)}</Badge>
                                         )}
                                     </div>
                                     <p className="mt-2 text-foreground-muted">
