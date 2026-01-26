@@ -161,18 +161,33 @@ trait HandlesNixpacksBuildpack
      */
     private function generate_nixpacks_confs()
     {
-        $nixpacks_command = $this->nixpacks_build_cmd();
+        // First, detect application type to know if we need Node.js version auto-detection
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "nixpacks detect {$this->workdir}"), 'save' => 'nixpacks_type', 'hidden' => true],
+        );
+
+        $this->nixpacks_type = $this->saved_outputs->get('nixpacks_type', '');
+
+        // For Node.js apps, try to auto-detect version before generating plan
+        $autoDetectedNodeVersion = null;
+        if ($this->nixpacks_type === 'node') {
+            $hasExplicitNodeVersion = $this->hasExplicitNodeVersion();
+            if (! $hasExplicitNodeVersion) {
+                $autoDetectedNodeVersion = $this->autoDetectNodeVersion();
+                if ($autoDetectedNodeVersion) {
+                    $this->application_deployment_queue->addLogEntry("Auto-detected Node.js version: {$autoDetectedNodeVersion}");
+                }
+            }
+        }
+
+        $nixpacks_command = $this->nixpacks_build_cmd($autoDetectedNodeVersion);
         $this->application_deployment_queue->addLogEntry("Generating nixpacks configuration with: $nixpacks_command");
 
         $this->execute_remote_command(
             [executeInDocker($this->deployment_uuid, $nixpacks_command), 'save' => 'nixpacks_plan', 'hidden' => true],
-            [executeInDocker($this->deployment_uuid, "nixpacks detect {$this->workdir}"), 'save' => 'nixpacks_type', 'hidden' => true],
         );
-        if ($this->saved_outputs->get('nixpacks_type')) {
-            $this->nixpacks_type = $this->saved_outputs->get('nixpacks_type');
-            if (str($this->nixpacks_type)->isEmpty()) {
-                throw new DeploymentException('Nixpacks failed to detect the application type. Please check the documentation of Nixpacks: https://nixpacks.com/docs/providers');
-            }
+        if (str($this->nixpacks_type)->isEmpty()) {
+            throw new DeploymentException('Nixpacks failed to detect the application type. Please check the documentation of Nixpacks: https://nixpacks.com/docs/providers');
         }
 
         if ($this->saved_outputs->get('nixpacks_plan')) {
@@ -210,20 +225,13 @@ trait HandlesNixpacksBuildpack
                     $this->elixir_finetunes();
                 }
                 if ($this->nixpacks_type === 'node') {
-                    // Check if NIXPACKS_NODE_VERSION is set, if not - auto-detect from .nvmrc or package.json
+                    // Check if NIXPACKS_NODE_VERSION is set (either explicitly or auto-detected)
                     $variables = data_get($parsed, 'variables', []);
                     if (! isset($variables['NIXPACKS_NODE_VERSION'])) {
-                        $detectedVersion = $this->autoDetectNodeVersion();
-                        if ($detectedVersion) {
-                            $this->application_deployment_queue->addLogEntry("Auto-detected Node.js version: {$detectedVersion}");
-                            data_set($parsed, 'variables.NIXPACKS_NODE_VERSION', $detectedVersion);
-                            $merged_envs->put('NIXPACKS_NODE_VERSION', $detectedVersion);
-                        } else {
-                            $this->application_deployment_queue->addLogEntry('----------------------------------------');
-                            $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set and could not auto-detect from .nvmrc or package.json.');
-                            $this->application_deployment_queue->addLogEntry('Nixpacks will use Node.js 18 by default, which is EOL.');
-                            $this->application_deployment_queue->addLogEntry('You can specify version by: 1) Adding .nvmrc file, 2) Setting engines.node in package.json, or 3) Setting NIXPACKS_NODE_VERSION environment variable.');
-                        }
+                        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+                        $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set and could not auto-detect from .nvmrc or package.json.');
+                        $this->application_deployment_queue->addLogEntry('Nixpacks will use Node.js 18 by default, which is EOL.');
+                        $this->application_deployment_queue->addLogEntry('You can specify version by: 1) Adding .nvmrc file, 2) Setting engines.node in package.json, or 3) Setting NIXPACKS_NODE_VERSION environment variable.');
                     }
                 }
                 $this->nixpacks_plan = json_encode($parsed, JSON_PRETTY_PRINT);
@@ -240,11 +248,20 @@ trait HandlesNixpacksBuildpack
 
     /**
      * Build the Nixpacks command with options.
+     *
+     * @param  string|null  $autoDetectedNodeVersion  Auto-detected Node.js version to inject
      */
-    private function nixpacks_build_cmd()
+    private function nixpacks_build_cmd(?string $autoDetectedNodeVersion = null)
     {
         $this->generate_nixpacks_env_variables();
-        $nixpacks_command = "nixpacks plan -f json {$this->env_nixpacks_args}";
+
+        // Add auto-detected Node version if provided
+        $extraEnv = '';
+        if ($autoDetectedNodeVersion) {
+            $extraEnv = "--env NIXPACKS_NODE_VERSION={$autoDetectedNodeVersion} ";
+        }
+
+        $nixpacks_command = "nixpacks plan -f json {$extraEnv}{$this->env_nixpacks_args}";
         if ($this->application->build_command) {
             $nixpacks_command .= " --build-cmd \"{$this->application->build_command}\"";
         }
@@ -289,6 +306,26 @@ trait HandlesNixpacksBuildpack
         });
 
         $this->env_nixpacks_args = $this->env_nixpacks_args->implode(' ');
+    }
+
+    /**
+     * Check if NIXPACKS_NODE_VERSION is explicitly set in environment variables.
+     */
+    private function hasExplicitNodeVersion(): bool
+    {
+        if ($this->pull_request_id === 0) {
+            $envVars = $this->application->nixpacks_environment_variables;
+        } else {
+            $envVars = $this->application->nixpacks_environment_variables_preview;
+        }
+
+        foreach ($envVars as $env) {
+            if ($env->key === 'NIXPACKS_NODE_VERSION' && ! is_null($env->real_value) && $env->real_value !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
