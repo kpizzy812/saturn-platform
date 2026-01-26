@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ResourceLinkController;
 use App\Http\Controllers\Api\ResourcesController;
 use App\Http\Controllers\Api\SecurityController;
+use App\Http\Controllers\Api\SentinelMetricsController;
 use App\Http\Controllers\Api\ServersController;
 use App\Http\Controllers\Api\ServiceActionsController;
 use App\Http\Controllers\Api\ServiceEnvsController;
@@ -158,6 +159,7 @@ Route::group([
     Route::get('/servers/{uuid}/resources', [ServersController::class, 'resources_by_server'])->middleware(['api.ability:read']);
 
     Route::get('/servers/{uuid}/validate', [ServersController::class, 'validate_server'])->middleware(['api.ability:read']);
+    Route::get('/servers/{uuid}/sentinel/metrics', [SentinelMetricsController::class, 'metrics'])->middleware(['api.ability:read']);
 
     Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:read']);
     Route::patch('/servers/{uuid}', [ServersController::class, 'update_server'])->middleware(['api.ability:write']);

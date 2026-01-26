@@ -7514,6 +7514,120 @@
                 ]
             }
         },
+        "\/servers\/{uuid}\/sentinel\/metrics": {
+            "get": {
+                "tags": [
+                    "Servers"
+                ],
+                "summary": "Get Sentinel Metrics",
+                "description": "Get server metrics from Sentinel agent including CPU, memory, disk usage and optional process\/container data.",
+                "operationId": "get-sentinel-metrics",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Server UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "timeRange",
+                        "in": "query",
+                        "description": "Time range for historical data",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "default": "24h",
+                            "enum": [
+                                "1h",
+                                "24h",
+                                "7d",
+                                "30d"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "includeProcesses",
+                        "in": "query",
+                        "description": "Include process list",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "includeContainers",
+                        "in": "query",
+                        "description": "Include container stats",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Server metrics data",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "metrics": {
+                                            "description": "Current server metrics",
+                                            "type": "object"
+                                        },
+                                        "historicalData": {
+                                            "description": "Historical metrics data for charts",
+                                            "type": "object"
+                                        },
+                                        "alerts": {
+                                            "description": "Active alerts",
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "processes": {
+                                            "description": "Process list (if requested)",
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "containers": {
+                                            "description": "Container stats (if requested)",
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    },
+                    "503": {
+                        "description": "Sentinel not available"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/servers": {
             "get": {
                 "tags": [
