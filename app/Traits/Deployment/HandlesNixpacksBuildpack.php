@@ -554,5 +554,64 @@ BASH;
             $this->application_deployment_queue->addLogEntry('Or set a custom Start Command in the application settings.', type: 'stderr');
             $this->application_deployment_queue->addLogEntry('----------------------------------------');
         }
+
+        // Check for monorepo and warn about common issues
+        $this->checkMonorepoIssues($parsed);
+    }
+
+    /**
+     * Detect monorepo and warn about common deployment issues.
+     */
+    private function checkMonorepoIssues(array $packageJson): void
+    {
+        // Check for monorepo indicators
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "ls -la {$this->workdir}/turbo.json {$this->workdir}/pnpm-workspace.yaml {$this->workdir}/lerna.json {$this->workdir}/nx.json 2>/dev/null || true"), 'save' => 'monorepo_check', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $monorepoFiles = $this->saved_outputs->get('monorepo_check', '');
+        $isMonorepo = str_contains($monorepoFiles, 'turbo.json') ||
+                      str_contains($monorepoFiles, 'pnpm-workspace') ||
+                      str_contains($monorepoFiles, 'lerna.json') ||
+                      str_contains($monorepoFiles, 'nx.json');
+
+        if (! $isMonorepo) {
+            return;
+        }
+
+        // Check if .gitignore contains dist
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.gitignore 2>/dev/null || echo ''"), 'save' => 'gitignore', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $gitignore = $this->saved_outputs->get('gitignore', '');
+        $distInGitignore = preg_match('/^dist$/m', $gitignore) || preg_match('/^\/dist$/m', $gitignore);
+
+        // Check for nixpacks.toml
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "test -f {$this->workdir}/nixpacks.toml && echo 'exists' || echo 'missing'"), 'save' => 'nixpacks_toml', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $hasNixpacksToml = str_contains($this->saved_outputs->get('nixpacks_toml', ''), 'exists');
+
+        // Warn about monorepo issues
+        if ($distInGitignore && ! $hasNixpacksToml) {
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+            $this->application_deployment_queue->addLogEntry('⚠️ MONOREPO DETECTED with potential deployment issue!', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Problem: "dist" is in .gitignore, but no nixpacks.toml found.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Nixpacks may overwrite build artifacts after compilation.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Solution: Create nixpacks.toml in your project root:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('[start]', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('cmd = "node apps/your-app/dist/main.js"', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('runImage = "node:22-slim"', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('onlyIncludeFiles = ["apps/your-app/dist", "node_modules", "package.json"]', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('This ensures build artifacts are preserved in the final image.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Docs: https://nixpacks.com/docs/configuration/file', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        }
     }
 }

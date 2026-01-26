@@ -211,8 +211,8 @@ trait HandlesHealthCheck
         if ($isRestarting || $status === 'restarting') {
             $this->newVersionIsHealthy = false;
             $this->application_deployment_queue->addLogEntry('⚠️ Container is restarting/crash-looping!', type: 'error');
-            $this->application_deployment_queue->addLogEntry('This usually means the start command failed or is missing.', type: 'error');
             $this->query_logs();
+            $this->analyzeContainerFailure();
 
             throw new DeploymentException('Container is crash-looping. Check the logs above for details.');
         }
@@ -221,6 +221,7 @@ trait HandlesHealthCheck
             $this->newVersionIsHealthy = false;
             $this->application_deployment_queue->addLogEntry("⚠️ Container is not running (status: {$status})!", type: 'error');
             $this->query_logs();
+            $this->analyzeContainerFailure();
 
             throw new DeploymentException("Container failed to start (status: {$status}). Check the logs above for details.");
         }
@@ -228,5 +229,77 @@ trait HandlesHealthCheck
         $this->newVersionIsHealthy = true;
         $this->application->update(['status' => 'running']);
         $this->application_deployment_queue->addLogEntry('Container is running stably.');
+    }
+
+    /**
+     * Analyze container logs and provide helpful error messages.
+     */
+    private function analyzeContainerFailure(): void
+    {
+        // Get container logs for analysis
+        $this->execute_remote_command(
+            [
+                "docker logs {$this->container_name} 2>&1 | tail -50",
+                'hidden' => true,
+                'save' => 'failure_logs',
+                'ignore_errors' => true,
+            ],
+        );
+
+        $logs = $this->saved_outputs->get('failure_logs', '');
+
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        $this->application_deployment_queue->addLogEntry('🔍 DIAGNOSIS:', type: 'stderr');
+
+        // Check for common Node.js errors
+        if (str_contains($logs, 'MODULE_NOT_FOUND') || str_contains($logs, 'Cannot find module')) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: Module/file not found', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Common causes:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('1. Build artifacts (dist/) not created or overwritten', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('2. dist/ is in .gitignore and Nixpacks overwrites it', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('3. Wrong path in start command', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Solution for monorepos: Create nixpacks.toml with onlyIncludeFiles', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('to preserve build artifacts. See: https://nixpacks.com/docs/configuration/file', type: 'stderr');
+        } elseif (str_contains($logs, '-c: option requires an argument') || str_contains($logs, 'bash: -c:')) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: No start command found', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('The container has no command to run.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Solutions:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('1. Add "start" script to package.json: "start": "node dist/main.js"', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('2. Or set Start Command in Saturn application settings', type: 'stderr');
+        } elseif (str_contains($logs, 'ECONNREFUSED') || str_contains($logs, 'connection refused')) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: Connection refused to database/service', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('The application cannot connect to a required service.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Check that database/redis/etc are running and accessible.', type: 'stderr');
+        } elseif (str_contains($logs, 'ENOENT') || str_contains($logs, 'no such file')) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: File or directory not found', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('A required file is missing in the container.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Check your build process and file paths.', type: 'stderr');
+        } elseif (str_contains($logs, 'permission denied') || str_contains($logs, 'Permission denied')) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: Permission denied', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('The application lacks permission to access a resource.', type: 'stderr');
+        } else {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ The container failed to start. Review the logs above.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Common issues:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Missing environment variables', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Database connection errors', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Missing dependencies', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Incorrect start command', type: 'stderr');
+        }
+
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
     }
 }
