@@ -6,7 +6,6 @@ import { initializeEcho } from '@/lib/echo';
 import { initializeSentry, setUser } from '@/lib/sentry';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ConfirmationProvider, ToastProvider } from '@/components/ui';
-import { FlashMessages } from '@/components/layout/FlashMessages';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Saturn Platform';
 
@@ -35,7 +34,6 @@ createInertiaApp({
             <ErrorBoundary>
                 <ToastProvider>
                     <ConfirmationProvider>
-                        <FlashMessages />
                         <App {...props} />
                     </ConfirmationProvider>
                 </ToastProvider>

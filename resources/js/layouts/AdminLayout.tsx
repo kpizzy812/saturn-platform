@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
+import { FlashMessages } from '@/components/layout/FlashMessages';
 import {
     LayoutDashboard,
     Users,
@@ -161,6 +162,7 @@ export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) 
     return (
         <>
             <Head title={title ? `${title} | Admin` : 'Admin Panel'} />
+            <FlashMessages />
             <div className="flex h-screen bg-background">
                 <AdminSidebar />
                 <div className="flex flex-1 flex-col overflow-hidden">

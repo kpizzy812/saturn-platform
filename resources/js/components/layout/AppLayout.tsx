@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import { FlashMessages } from './FlashMessages';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { ChevronRight } from 'lucide-react';
@@ -60,6 +61,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
     return (
         <SidebarProvider>
             <Head title={title ? `${title} | Saturn` : 'Saturn'} />
+            <FlashMessages />
             <div className="flex h-screen bg-background">
                 {/* Sidebar */}
                 <Sidebar />
