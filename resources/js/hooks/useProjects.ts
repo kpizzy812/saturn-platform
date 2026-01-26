@@ -86,11 +86,13 @@ export function useProjects({
 
     const createProject = React.useCallback(async (data: CreateProjectData): Promise<Project> => {
         try {
-            const response = await fetch('/api/v1/projects', {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch('/projects', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
                 body: JSON.stringify(data),

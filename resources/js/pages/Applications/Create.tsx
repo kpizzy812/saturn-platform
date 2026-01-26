@@ -60,12 +60,15 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
             return;
         }
         setIsCreatingProject(true);
+        setErrors({});
         try {
-            const response = await fetch('/api/v1/projects', {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch('/projects', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 body: JSON.stringify({ name: newProjectName }),
             });
@@ -80,7 +83,8 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                 setShowCreateProject(false);
                 setNewProjectName('');
             } else {
-                setErrors({ newProjectName: 'Failed to create project' });
+                const errorData = await response.json().catch(() => ({}));
+                setErrors({ newProjectName: errorData.message || 'Failed to create project' });
             }
         } catch {
             setErrors({ newProjectName: 'Failed to create project' });

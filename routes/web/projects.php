@@ -80,6 +80,13 @@ Route::post('/projects', function (Request $request) {
         'name' => 'production',
     ]);
 
+    // Return JSON for XHR requests (used by Create Application flow)
+    if ($request->wantsJson() || $request->ajax()) {
+        $project->load('environments');
+
+        return response()->json($project);
+    }
+
     return redirect()->route('projects.show', $project->uuid);
 })->name('projects.store');
 

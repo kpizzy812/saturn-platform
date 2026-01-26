@@ -7,6 +7,14 @@ import type { Project, Environment } from '@/types';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// Mock CSRF token for web routes
+vi.spyOn(document, 'querySelector').mockImplementation((selector: string) => {
+    if (selector === 'meta[name="csrf-token"]') {
+        return { content: 'test-csrf-token' } as HTMLMetaElement;
+    }
+    return null;
+});
+
 describe('useProjects', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -220,11 +228,12 @@ describe('useProjects', () => {
             });
 
             expect(createdProject).toEqual(newProject);
-            expect(mockFetch).toHaveBeenCalledWith('/api/v1/projects', {
+            expect(mockFetch).toHaveBeenCalledWith('/projects', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
                 body: JSON.stringify({
