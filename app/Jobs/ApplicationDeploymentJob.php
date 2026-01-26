@@ -327,7 +327,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             // Check custom port
-            ['repository' => $this->customRepository, 'port' => $this->customPort] = $this->application->customRepository();
+            ['git_repository' => $this->customRepository, 'git_port' => $this->customPort] = $this->application->customRepository();
 
             if (data_get($this->application, 'settings.is_build_server_enabled')) {
                 $teamId = data_get($this->application, 'environment.project.team.id');
