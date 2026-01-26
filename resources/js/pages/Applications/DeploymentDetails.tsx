@@ -189,7 +189,11 @@ export default function DeploymentDetails({
     };
 
     const handleRedeploy = () => {
-        router.post(`/applications/${application.uuid}/deploy`);
+        router.post(`/applications/${application.uuid}/deploy`, {}, {
+            onSuccess: () => {
+                router.visit(`/applications/${application.uuid}`);
+            },
+        });
     };
 
     const formatDuration = (seconds: number | null) => {
