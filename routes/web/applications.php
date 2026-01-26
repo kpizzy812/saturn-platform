@@ -478,6 +478,50 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
     ]);
 })->name('applications.settings');
 
+// Update application settings (web route for session auth)
+Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminate\Http\Request $request) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->first();
+
+    if (! $application) {
+        return back()->with('error', 'Application not found.');
+    }
+
+    $validated = $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'description' => 'sometimes|nullable|string',
+        'base_directory' => 'sometimes|nullable|string|max:255',
+        'build_command' => 'sometimes|nullable|string',
+        'install_command' => 'sometimes|nullable|string',
+        'start_command' => 'sometimes|nullable|string',
+        'health_check_path' => 'sometimes|nullable|string|max:255',
+        'health_check_interval' => 'sometimes|integer|min:10|max:300',
+        'build_pack' => 'sometimes|string|in:nixpacks,dockerfile,dockercompose,dockerimage',
+        'deploy_on_push' => 'sometimes|boolean',
+        'cpu_limit' => 'sometimes|nullable|string',
+        'memory_limit' => 'sometimes|nullable|string',
+    ]);
+
+    // Map frontend field names to model field names
+    $mappings = [
+        'cpu_limit' => 'limits_cpus',
+        'memory_limit' => 'limits_memory',
+        'deploy_on_push' => 'is_auto_deploy_enabled',
+    ];
+
+    foreach ($mappings as $frontendKey => $modelKey) {
+        if (isset($validated[$frontendKey])) {
+            $validated[$modelKey] = $validated[$frontendKey];
+            unset($validated[$frontendKey]);
+        }
+    }
+
+    $application->update($validated);
+
+    return back()->with('success', 'Settings saved successfully.');
+})->name('applications.settings.update');
+
 Route::get('/applications/{uuid}/settings/domains', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)

@@ -15,6 +15,7 @@ export default function ApplicationSettings({ application, projectUuid, environm
     const [settings, setSettings] = React.useState({
         name: application.name || '',
         description: application.description || '',
+        base_directory: application.base_directory || '/',
         build_command: application.build_command || '',
         install_command: application.install_command || '',
         start_command: application.start_command || '',
@@ -28,20 +29,17 @@ export default function ApplicationSettings({ application, projectUuid, environm
     });
     const [isSaving, setIsSaving] = React.useState(false);
 
-    const handleSave = async () => {
+    const handleSave = () => {
         setIsSaving(true);
-        try {
-            router.patch(`/api/v1/applications/${application.uuid}/settings`, settings, {
-                onSuccess: () => {
-                    // Success notification would be shown here
-                },
-                onFinish: () => {
-                    setIsSaving(false);
-                },
-            });
-        } catch (error) {
-            setIsSaving(false);
-        }
+        router.patch(`/applications/${application.uuid}/settings`, settings, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsSaving(false);
+            },
+            onError: () => {
+                setIsSaving(false);
+            },
+        });
     };
 
     const breadcrumbs = [
@@ -119,6 +117,19 @@ export default function ApplicationSettings({ application, projectUuid, environm
                                         <option value="dockercompose">Docker Compose</option>
                                         <option value="dockerimage">Docker Image</option>
                                     </Select>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-2 block">
+                                        Base Directory
+                                    </label>
+                                    <Input
+                                        value={settings.base_directory}
+                                        onChange={(e) => setSettings({ ...settings, base_directory: e.target.value })}
+                                        placeholder="/"
+                                    />
+                                    <p className="text-xs text-foreground-muted mt-1">
+                                        Root directory relative to repository root. For monorepos, use e.g. <code className="bg-muted px-1 rounded">apps/api</code>
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium text-foreground mb-2 block">
