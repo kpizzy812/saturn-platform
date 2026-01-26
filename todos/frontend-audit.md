@@ -219,7 +219,7 @@ post('/settings/notifications/email', { ... });
 - [x] **terminal.js** - setTimeout без cleanup, рекурсивный focusWhenReady, window.onresize без cleanup ✅ (добавлен полный cleanup: scheduleTimeout helper, boundHandleResize/boundHandleVisibilityChange с removeEventListener, maxFocusAttempts/maxResizeRetries лимиты, pendingTimeouts tracking)
 - [x] **useTerminal.ts** - потенциальный infinite loop в scheduleReconnect ✅ (добавлен isMountedRef, manualReconnectTimeoutRef с cleanup, проверки isMounted в scheduleReconnect и reconnect)
 - [x] **useRealtimeStatus.ts** - рекурсивный reconnect без гарантии остановки ✅ (добавлен isMountedRef, reconnectTimeoutRef с cleanup в useEffect, проверки isMounted перед setState)
-- [ ] **CommandPalette.tsx / Terminal.tsx** - SSR unsafe (нет проверки `typeof window`)
+- [x] **CommandPalette.tsx / Terminal.tsx** - SSR unsafe ✅ (ПРОВЕРЕНО: код SSR-safe - все browser API вызываются внутри useEffect или обработчиков событий)
 
 ### Заглушки с console.log вместо реального функционала (требуют реализации API)
 > ⚠️ Это не просто "логи в консоль" - это кнопки/функции которые ничего не делают!
@@ -258,7 +258,7 @@ post('/settings/notifications/email', { ... });
 - [ ] **Legacy path /project/** в Rollback/Show.tsx
 
 ### Пароли/секреты
-- [ ] **Пароли без маскировки** - SharedVariables/Show.tsx, Databases/Connections.tsx, Databases/Users.tsx
+- [x] **Пароли без маскировки** ✅ (ПРОВЕРЕНО: все файлы уже имеют маскировку - useState(false) + Eye/EyeOff toggle)
 
 ---
 
@@ -298,16 +298,16 @@ post('/settings/notifications/email', { ... });
 
 | Категория | Всего | Исправлено | Осталось |
 |-----------|-------|------------|----------|
-| Критические (безопасность) | 6 | 5 | 1 |
+| Критические (безопасность) | 6 | 6 | 0 |
 | Критические (mock данные) | 7 | 6 | 1 |
 | Высокие (кнопки без API) | 8 | 7 | 1 |
-| Высокие (memory leaks) | 5 | 4 | 1 |
+| Высокие (memory leaks) | 5 | 5 | 0 |
 | Высокие (console.log) | 8 | 8 | 0 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~49 исправлено ✅ | ~32 осталось**
+**Прогресс: ~51 исправлено ✅ | ~30 осталось**
 
 ---
 
@@ -315,7 +315,7 @@ post('/settings/notifications/email', { ... });
 
 ### Приоритет 1: Безопасность
 1. [x] Скрыть API токены от React DevTools ✅ (очищаются при закрытии модалки)
-2. [ ] Добавить маскировку паролей по умолчанию
+2. [x] Добавить маскировку паролей по умолчанию ✅ (ПРОВЕРЕНО: уже реализовано во всех файлах)
 3. [x] Создать страницы /terms, /privacy, /support или удалить ссылки ✅ (удалены - внутренний продукт)
 
 ### Приоритет 2: Mock данные в Settings (см. детальную спецификацию выше)
