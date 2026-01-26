@@ -15,6 +15,8 @@ Saturn - это внутренний проект компании, исполь
 
 Обязательно проверяй код линтером и/или билдом, а так же покрывай функционал тестами!
 
+Сервер ssh saturn там база данных, логи и так далее
+
 ## Project Overview
 
 Saturn Platform is a self-hosted PaaS (Platform as a Service) - an open-source alternative to Heroku/Netlify/Vercel. It manages servers, applications, and databases via SSH connections, supporting Docker-based deployments.

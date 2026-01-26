@@ -178,7 +178,7 @@ class ApplicationController extends Controller
     /**
      * Deploy the application.
      */
-    public function deploy(string $uuid): RedirectResponse
+    public function deploy(Request $request, string $uuid): RedirectResponse
     {
         $application = Application::ownedByCurrentTeam()
             ->where('uuid', $uuid)
@@ -187,11 +187,12 @@ class ApplicationController extends Controller
         $this->authorize('deploy', $application);
 
         $deployment_uuid = new Cuid2;
+        $force_rebuild = $request->boolean('force_rebuild', false);
 
         $result = queue_application_deployment(
             application: $application,
             deployment_uuid: $deployment_uuid,
-            force_rebuild: false,
+            force_rebuild: $force_rebuild,
             is_api: false,
         );
 
@@ -199,7 +200,9 @@ class ApplicationController extends Controller
             return redirect()->back()->with('info', $result['message']);
         }
 
-        return redirect()->back()->with('success', 'Deployment started');
+        $message = $force_rebuild ? 'Force rebuild started' : 'Deployment started';
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**

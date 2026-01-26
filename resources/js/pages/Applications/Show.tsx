@@ -102,6 +102,12 @@ export default function ApplicationShow({ application: initialApplication }: Pro
         });
     };
 
+    const handleForceRebuild = () => {
+        router.post(`/applications/${application.uuid}/deploy`, { force_rebuild: true }, {
+            preserveScroll: true,
+        });
+    };
+
     const recentDeployments = application.recent_deployments || [];
     const hasDeployments = recentDeployments.length > 0;
 
@@ -154,6 +160,10 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                 <DropdownItem onClick={() => handleAction('restart')}>
                                     <RotateCw className="h-4 w-4" />
                                     Restart
+                                </DropdownItem>
+                                <DropdownItem onClick={handleForceRebuild}>
+                                    <Rocket className="h-4 w-4" />
+                                    Force Rebuild
                                 </DropdownItem>
                                 <DropdownDivider />
                                 {application.status === 'running' ? (

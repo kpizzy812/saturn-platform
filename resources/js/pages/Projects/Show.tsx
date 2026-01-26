@@ -8,7 +8,7 @@ import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
 import { LogsViewer } from '@/components/features/LogsViewer';
-import { ToastProvider, useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 
 // Extracted components
@@ -530,7 +530,7 @@ export default function ProjectShow({ project }: Props) {
     ];
 
     return (
-        <ToastProvider>
+        <>
             <Head title={`${project.name} | Saturn`} />
             <CommandPalette
                 services={commandPaletteServices}
@@ -1104,6 +1104,6 @@ export default function ProjectShow({ project }: Props) {
                 serviceUuid={logsViewerServiceUuid}
                 serviceType={logsViewerServiceType}
             />
-        </ToastProvider>
+        </>
     );
 }

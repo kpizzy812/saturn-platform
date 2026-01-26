@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { ToastProvider } from '@/components/ui/Toast';
 import {
     LayoutDashboard,
     Users,
@@ -160,7 +159,7 @@ function AdminBreadcrumbs({ items }: { items: AdminBreadcrumb[] }) {
 
 export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) {
     return (
-        <ToastProvider>
+        <>
             <Head title={title ? `${title} | Admin` : 'Admin Panel'} />
             <div className="flex h-screen bg-background">
                 <AdminSidebar />
@@ -171,6 +170,6 @@ export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) 
                     </main>
                 </div>
             </div>
-        </ToastProvider>
+        </>
     );
 }
