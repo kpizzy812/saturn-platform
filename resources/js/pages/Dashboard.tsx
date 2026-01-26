@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Link, router } from '@inertiajs/react';
 import { Plus, MoreHorizontal, Settings, Trash2, FolderOpen } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, Button } from '@/components/ui';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Project as BaseProject } from '@/types';
 
@@ -207,15 +207,12 @@ export default function Dashboard({ projects = [] }: Props) {
                             {projects.length} projects · {activeCount} active
                         </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="/projects/create"
-                            className="flex items-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-lg shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-foreground/90 hover:shadow-xl"
-                        >
-                            <Plus className="h-4 w-4" />
+                    <Link href="/projects/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
                             New Project
-                        </Link>
-                    </div>
+                        </Button>
+                    </Link>
                 </div>
 
                 {/* Projects Grid */}
