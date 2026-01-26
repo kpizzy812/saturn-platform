@@ -20,18 +20,159 @@
 
 ### Mock данные (требуют исправления)
 
-- [ ] **Settings/Workspace.tsx** - захардкоженные workspace, timezones, environments
 - [x] **Settings/Team/Activity.tsx** - 9 записей активности ✅
-- [ ] **Settings/Integrations.tsx** - GitHub, GitLab, Slack, Discord интеграции
 - [x] **Settings/AuditLog.tsx** - использует реальный API /api/v1/teams/current/activities ✅
 
-### Mock данные в Notifications Settings (6 файлов)
-- [ ] **Event options захардкожены** в Email, Telegram, Discord, Slack, Pushover, Webhook
+---
 
-### Mock данные в Database Panels (5 файлов)
-- [ ] **ClickHousePanel.tsx** - queries, replication, logs
-- [ ] **PostgreSQLPanel.tsx** - extensions, users, logs
-- [ ] **MySQLPanel.tsx, MongoDBPanel.tsx, RedisPanel.tsx** - аналогичные данные
+## 📋 ДЕТАЛЬНАЯ СПЕЦИФИКАЦИЯ МОКОВ
+
+### 1. Settings/Workspace.tsx
+**Файл:** `resources/js/pages/Settings/Workspace.tsx`
+
+**Захардкоженные данные:**
+```typescript
+// Строки 15-20: Mock workspace data
+const mockWorkspace: WorkspaceData = {
+    name: 'My Workspace',
+    slug: 'my-workspace',
+    defaultEnvironment: 'production',
+    timezone: 'UTC',
+};
+
+// Строки 22-34: Статический список таймзон
+const timezones = ['UTC', 'America/New_York', ...];
+
+// Строки 36-40: Статические environments
+const environments = [
+    { value: 'production', label: 'Production' },
+    { value: 'staging', label: 'Staging' },
+    { value: 'development', label: 'Development' },
+];
+```
+
+**Что нужно:**
+1. Передавать `workspace` данные из backend через Inertia props (Team модель)
+2. Получить timezones через API: `DateTimeZone::listIdentifiers()` в PHP
+3. Получить environments из базы: `/api/v1/teams/current/environments`
+
+---
+
+### 2. Settings/Integrations.tsx
+**Файл:** `resources/js/pages/Settings/Integrations.tsx`
+
+**Захардкоженные данные:**
+```typescript
+// Строки 19-56: Полностью моковые интеграции
+const mockIntegrations: Integration[] = [
+    { id: 'github', name: 'GitHub', connected: true, config: { account: 'your-username', ... } },
+    { id: 'gitlab', name: 'GitLab', connected: false },
+    { id: 'slack', name: 'Slack', connected: true, config: { account: '#deployments', ... } },
+    { id: 'discord', name: 'Discord', connected: false },
+];
+
+// Строки 82-108: Connect использует setTimeout вместо API
+const handleConnect = (e: React.FormEvent) => {
+    setTimeout(() => { ... }, 1000); // ← ЗАГЛУШКА!
+};
+
+// Строки 110-125: Disconnect только меняет локальный state
+const handleDisconnect = () => { ... }; // ← НЕТ API!
+```
+
+**Что нужно:**
+1. **Backend модель** `TeamIntegration` для хранения подключений
+2. **API endpoints:**
+   - `GET /api/v1/teams/current/integrations` - список интеграций
+   - `POST /api/v1/teams/current/integrations/{type}/connect` - подключение
+   - `DELETE /api/v1/teams/current/integrations/{type}` - отключение
+3. **OAuth flow** для GitHub/GitLab (или Personal Access Token)
+4. **Webhook URL storage** для Slack/Discord
+
+---
+
+### 3. Database Panels (5 файлов)
+**Файлы:** `resources/js/components/features/databases/*.tsx`
+
+#### PostgreSQLPanel.tsx
+```typescript
+// Строки 176-183: Захардкоженные расширения
+const [extensions] = useState([
+    { name: 'pg_stat_statements', version: '1.10', enabled: true, ... },
+    { name: 'pgcrypto', version: '1.3', enabled: true, ... },
+    // ...
+]);
+
+// Строки 234-238: Захардкоженные пользователи
+const [users] = useState([
+    { name: 'postgres', role: 'Superuser', connections: 5 },
+    { name: 'app_user', role: 'Standard', connections: 12 },
+]);
+
+// Строки 363-368: Захардкоженные логи
+const [logs] = useState([...]);
+```
+
+#### ClickHousePanel.tsx
+```typescript
+// Строки 187-209: Захардкоженный лог запросов
+const [queries] = useState([
+    { query: 'SELECT count() FROM events...', duration: '0.234s', ... },
+]);
+
+// Строки 246-252: Захардкоженная репликация
+const [replication] = useState({
+    enabled: true,
+    replicas: [{ host: 'ch-replica1.example.com', status: 'Healthy', ... }],
+});
+
+// Строки 166-179: Захардкоженный Merge Status
+// Active Merges: 3, Parts Count: 142, Merge Rate: 12/min
+
+// Строки 332-337: Захардкоженные логи
+const [logs] = useState([...]);
+```
+
+#### MySQLPanel.tsx, MongoDBPanel.tsx, RedisPanel.tsx
+Аналогичные моки: users, databases, logs, settings
+
+**Что нужно:**
+1. **Backend API для выполнения SQL через SSH:**
+   - PostgreSQL: `SELECT * FROM pg_extension`, `SELECT * FROM pg_user`, logs из pg_log
+   - ClickHouse: `SELECT * FROM system.query_log`, `SELECT * FROM system.replicas`
+   - MySQL: `SHOW DATABASES`, `SELECT * FROM mysql.user`
+   - MongoDB: `db.runCommand({listDatabases: 1})`, `db.getUsers()`
+   - Redis: `INFO`, `CLIENT LIST`
+
+2. **API endpoints:**
+   - `GET /databases/{uuid}/extensions` - PostgreSQL extensions
+   - `GET /databases/{uuid}/users` - database users
+   - `GET /databases/{uuid}/logs` - последние логи
+   - `GET /databases/{uuid}/queries` - ClickHouse query log
+   - `GET /databases/{uuid}/replication` - ClickHouse replication status
+
+3. **SSH execution** через существующий механизм remote commands
+
+---
+
+### ✅ Notifications Settings - НЕ МОКИ!
+**Файлы:** `resources/js/pages/Settings/Notifications/*.tsx`
+
+> ⚠️ Эти файлы используют РЕАЛЬНЫЙ API через Inertia!
+
+```typescript
+// Email.tsx, Telegram.tsx, Discord.tsx и др.
+const { data, setData, post, processing, errors, isDirty } = useForm(settings);
+
+// Данные приходят из backend как props:
+export default function EmailNotifications({ settings, lastTestAt, lastTestStatus }: Props) { ... }
+
+// Save отправляет данные на backend:
+post('/settings/notifications/email', { ... });
+```
+
+`eventOptions` - это UI mapping для checkbox'ов, а не моковые данные.
+Настройки хранятся в модели `Team` (notification_settings)
 
 ### Прочие критические
 - [ ] **API tokens видимы в React DevTools** - Settings/Tokens.tsx
@@ -137,15 +278,15 @@
 | Категория | Всего | Исправлено | Осталось |
 |-----------|-------|------------|----------|
 | Критические (безопасность) | 6 | 3 | 3 |
-| Критические (mock данные) | 18 | 8 | 10 |
+| Критические (mock данные) | 7 | 2 | 5 |
 | Высокие (кнопки без API) | 8 | 4 | 4 |
 | Высокие (memory leaks) | 5 | 1 | 4 |
-| Высокие (console.log) | 22 | 0 | 22 |
+| Высокие (console.log) | 8 | 4 | 4 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~33 исправлено ✅ | ~77 осталось**
+**Прогресс: ~31 исправлено ✅ | ~50 осталось**
 
 ---
 
@@ -155,24 +296,26 @@
 1. [ ] Скрыть API токены от React DevTools
 2. [ ] Добавить маскировку паролей по умолчанию
 3. [ ] Создать страницы /terms, /privacy, /support или удалить ссылки
-4. [ ] Исправить API пути в useDatabaseMetrics*
 
-### Приоритет 2: Mock данные в Settings
-5. [ ] Settings/Workspace - API для workspace данных
-6. [x] Settings/Team/Activity - API для истории активности ✅
-7. [ ] Settings/Integrations - API для интеграций
-8. [ ] Settings/AuditLog - использовать spatie/laravel-activitylog
+### Приоритет 2: Mock данные в Settings (см. детальную спецификацию выше)
+4. [ ] **Settings/Workspace.tsx** - получать workspace данные из Team модели через Inertia props
+5. [x] Settings/Team/Activity - API для истории активности ✅
+6. [ ] **Settings/Integrations.tsx** - создать модель TeamIntegration + OAuth/API token flow
+7. [x] Settings/AuditLog - реальный API ✅
 
-### Приоритет 3: Database Panels
-9. [ ] Реализовать API для получения реальных данных из БД че��ез SSH
+### Приоритет 3: Database Panels (см. детальную спецификацию выше)
+8. [ ] **PostgreSQLPanel** - API для extensions, users, logs через SSH
+9. [ ] **ClickHousePanel** - API для queries, replication, merge status через SSH
+10. [ ] **MySQLPanel, MongoDBPanel, RedisPanel** - аналогичные API
 
 ### Приоритет 4: Кнопки без API
-10. [ ] Templates/Submit - API для шаблонов
-11. [ ] Databases/Query - API для SQL через SSH
-12. [ ] Errors/Maintenance - API для подписки
+11. [ ] Templates/Submit - API для шаблонов
+12. [ ] Databases/Query - API для SQL через SSH
+13. [ ] Errors/Maintenance - API для подписки
 
 ### Приоритет 5: Качество кода
-13. [ ] Удалить console.log (22 файла)
-14. [ ] Исправить memory leaks в terminal.js
-15. [ ] Добавить SSR проверки
-16. [ ] Рефакторинг дублирования (5 компонентов)
+14. [ ] Observability/Metrics.tsx - реальный экспорт метрик
+15. [ ] Services/Rollbacks.tsx - реальный API rollback
+16. [ ] Исправить memory leaks в terminal.js
+17. [ ] Добавить SSR проверки
+18. [ ] Рефакторинг дублирования (5 компонентов)
