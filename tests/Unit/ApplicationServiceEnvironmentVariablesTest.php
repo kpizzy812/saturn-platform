@@ -7,13 +7,12 @@
  * This ensures consistency with Service behavior where BOTH URL and FQDN
  * pairs are always created together, regardless of which one is in the template.
  */
-it('ensures parsers.php creates both URL and FQDN pairs for applications', function () {
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+it('ensures ApplicationComposeParser creates both URL and FQDN pairs for applications', function () {
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
 
-    // Check that the fix is in place
-    expect($parsersFile)->toContain('ALWAYS create BOTH SERVICE_URL and SERVICE_FQDN pairs');
-    expect($parsersFile)->toContain('SERVICE_FQDN_{$serviceName}');
-    expect($parsersFile)->toContain('SERVICE_URL_{$serviceName}');
+    // Check that the fix is in place - both SERVICE_FQDN and SERVICE_URL are created
+    expect($parserFile)->toContain('SERVICE_FQDN_{$serviceNamePreserved}');
+    expect($parserFile)->toContain('SERVICE_URL_{$serviceNamePreserved}');
 });
 
 it('extracts service name with case preservation for applications', function () {
@@ -117,14 +116,14 @@ it('application should create pairs when template has only SERVICE_FQDN', functi
 });
 
 it('verifies application deletion nulls both URL and FQDN', function () {
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
 
     // Check that deletion handles both types
-    expect($parsersFile)->toContain('SERVICE_FQDN_{$serviceNameFormatted}');
-    expect($parsersFile)->toContain('SERVICE_URL_{$serviceNameFormatted}');
+    expect($parserFile)->toContain('SERVICE_FQDN_{$serviceNameFormatted}');
+    expect($parserFile)->toContain('SERVICE_URL_{$serviceNameFormatted}');
 
     // Both should be set to null when domain is empty
-    expect($parsersFile)->toContain('\'value\' => null');
+    expect($parserFile)->toContain('\'value\' => null');
 });
 
 it('handles abbreviated service names in applications', function () {
@@ -172,19 +171,15 @@ it('application compose parsing creates pairs regardless of template type', func
     }
 });
 
-it('verifies both application and service use same logic', function () {
-    $servicesFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/services.php');
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
-
-    // Both should have the same pattern of creating pairs
-    expect($servicesFile)->toContain('ALWAYS create base pair');
-    expect($parsersFile)->toContain('ALWAYS create BOTH');
+it('verifies both application and service parsers create URL and FQDN pairs', function () {
+    $applicationParserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
+    $serviceParserFile = file_get_contents(__DIR__.'/../../app/Parsers/ServiceComposeParser.php');
 
     // Both should create SERVICE_URL_
-    expect($servicesFile)->toContain('SERVICE_URL_{$serviceName}');
-    expect($parsersFile)->toContain('SERVICE_URL_{$serviceName}');
+    expect($applicationParserFile)->toContain('SERVICE_URL_{$serviceNamePreserved}');
+    expect($serviceParserFile)->toContain('SERVICE_URL_{$serviceName}');
 
     // Both should create SERVICE_FQDN_
-    expect($servicesFile)->toContain('SERVICE_FQDN_{$serviceName}');
-    expect($parsersFile)->toContain('SERVICE_FQDN_{$serviceName}');
+    expect($applicationParserFile)->toContain('SERVICE_FQDN_{$serviceNamePreserved}');
+    expect($serviceParserFile)->toContain('SERVICE_FQDN_{$serviceName}');
 });

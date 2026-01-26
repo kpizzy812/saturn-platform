@@ -12,33 +12,33 @@ use Symfony\Component\Yaml\Yaml;
  *
  * See: https://github.com/coollabsio/coolify/issues/7126
  */
-it('ensures parsers.php preserves empty strings in application parser', function () {
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+it('ensures ApplicationComposeParser preserves empty strings', function () {
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
 
-    // Find the applicationParser function's environment mapping logic
-    $hasApplicationParser = str_contains($parsersFile, 'function applicationParser(');
-    expect($hasApplicationParser)->toBeTrue('applicationParser function should exist');
+    // Find the ApplicationComposeParser class
+    $hasParser = str_contains($parserFile, 'class ApplicationComposeParser');
+    expect($hasParser)->toBeTrue('ApplicationComposeParser class should exist');
 
     // The code should distinguish between null and empty string
     // Check for the pattern where we explicitly check for null vs empty string
-    $hasNullCheck = str_contains($parsersFile, 'if ($value === null)');
-    $hasEmptyStringCheck = str_contains($parsersFile, "} elseif (\$value === '') {");
+    $hasNullCheck = str_contains($parserFile, 'if ($value === null)');
+    $hasEmptyStringCheck = str_contains($parserFile, "} elseif (\$value === '') {");
 
     expect($hasNullCheck)->toBeTrue('Should have explicit null check');
     expect($hasEmptyStringCheck)->toBeTrue('Should have explicit empty string check');
 });
 
-it('ensures parsers.php preserves empty strings in service parser', function () {
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+it('ensures ServiceComposeParser preserves empty strings', function () {
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ServiceComposeParser.php');
 
-    // Find the serviceParser function's environment mapping logic
-    $hasServiceParser = str_contains($parsersFile, 'function serviceParser(');
-    expect($hasServiceParser)->toBeTrue('serviceParser function should exist');
+    // Find the ServiceComposeParser class
+    $hasParser = str_contains($parserFile, 'class ServiceComposeParser');
+    expect($hasParser)->toBeTrue('ServiceComposeParser class should exist');
 
     // The code should distinguish between null and empty string
     // Same check as application parser
-    $hasNullCheck = str_contains($parsersFile, 'if ($value === null)');
-    $hasEmptyStringCheck = str_contains($parsersFile, "} elseif (\$value === '') {");
+    $hasNullCheck = str_contains($parserFile, 'if ($value === null)');
+    $hasEmptyStringCheck = str_contains($parserFile, "} elseif (\$value === '') {");
 
     expect($hasNullCheck)->toBeTrue('Should have explicit null check');
     expect($hasEmptyStringCheck)->toBeTrue('Should have explicit empty string check');

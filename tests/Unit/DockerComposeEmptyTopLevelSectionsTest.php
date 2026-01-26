@@ -9,11 +9,11 @@ use Symfony\Component\Yaml\Yaml;
  * Empty sections like "volumes: {  }" are not valid/clean YAML and should be omitted
  * when they contain no actual content.
  */
-it('ensures parsers.php filters empty top-level sections', function () {
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+it('ensures ApplicationComposeParser filters empty top-level sections', function () {
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
 
-    // Check that filtering logic exists
-    expect($parsersFile)
+    // Check that filtering logic exists in finalizeTopLevel method
+    expect($parserFile)
         ->toContain('Remove empty top-level sections')
         ->toContain('->filter(function ($value, $key)');
 });

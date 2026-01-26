@@ -7,16 +7,14 @@
  * These variables should include the port number in both the key name and the URL value.
  * Example: SERVICE_URL_UMAMI_3000 should be populated with http://domain.com:3000
  */
-it('ensures parsers.php populates port-specific SERVICE variables', function () {
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+it('ensures ApplicationComposeParser populates port-specific SERVICE variables', function () {
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
 
     // Check that the fix is in place
-    $hasPortSpecificComment = str_contains($parsersFile, 'For port-specific variables');
-    $usesFqdnWithPort = str_contains($parsersFile, '$fqdnWithPort');
-    $usesUrlWithPort = str_contains($parsersFile, '$urlWithPort');
+    $usesFqdnWithPort = str_contains($parserFile, '$fqdnValueForEnvWithPort');
+    $usesUrlWithPort = str_contains($parserFile, '$urlWithPort');
 
-    expect($hasPortSpecificComment)->toBeTrue('Should have comment about port-specific variables');
-    expect($usesFqdnWithPort)->toBeTrue('Should use $fqdnWithPort for port variables');
+    expect($usesFqdnWithPort)->toBeTrue('Should use $fqdnValueForEnvWithPort for port variables');
     expect($usesUrlWithPort)->toBeTrue('Should use $urlWithPort for port variables');
 });
 

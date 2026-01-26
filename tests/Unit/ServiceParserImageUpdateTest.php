@@ -8,23 +8,22 @@
  * docker-compose file would create a new service instead of updating the existing one.
  */
 it('ensures service parser does not include image in firstOrCreate query', function () {
-    // Read the serviceParser function from parsers.php
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+    // Read the ServiceComposeParser class
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ServiceComposeParser.php');
 
     // Check that firstOrCreate is called with only name and service_id
-    // and NOT with image parameter in the ServiceApplication presave loop
-    expect($parsersFile)
-        ->toContain("firstOrCreate([\n                'name' => \$serviceName,\n                'service_id' => \$resource->id,\n            ]);")
-        ->not->toContain("firstOrCreate([\n                'name' => \$serviceName,\n                'image' => \$image,\n                'service_id' => \$resource->id,\n            ]);");
+    // and NOT with image parameter
+    expect($parserFile)
+        ->toContain("firstOrCreate([\n                'name' => \$serviceName,\n                'service_id' => \$this->resource->id,\n            ]")
+        ->not->toContain("firstOrCreate([\n                'name' => \$serviceName,\n                'image' => \$image,\n                'service_id' => \$this->resource->id,\n            ]");
 });
 
 it('ensures service parser updates image after finding or creating service', function () {
-    // Read the serviceParser function from parsers.php
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+    // Read the ServiceComposeParser class
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ServiceComposeParser.php');
 
     // Check that image update logic exists after firstOrCreate
-    expect($parsersFile)
-        ->toContain('// Update image if it changed')
+    expect($parserFile)
         ->toContain('if ($savedService->image !== $image) {')
         ->toContain('$savedService->image = $image;')
         ->toContain('$savedService->save();');

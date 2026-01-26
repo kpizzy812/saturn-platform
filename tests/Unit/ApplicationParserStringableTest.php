@@ -170,13 +170,11 @@ it('prevents duplicate domain entries in collection', function () {
     expect($domains->has($serviceName))->toBeTrue();
 });
 
-it('verifies parsers.php has the ->value() calls', function () {
-    // Ensure the fix is actually in the code
-    $parsersFile = file_get_contents(__DIR__.'/../../bootstrap/helpers/parsers.php');
+it('verifies ApplicationComposeParser has the ->value() calls', function () {
+    // Ensure the fix is actually in the code (now in ApplicationComposeParser)
+    $parserFile = file_get_contents(__DIR__.'/../../app/Parsers/ApplicationComposeParser.php');
 
-    // Line 539: Check originalServiceName conversion
-    expect($parsersFile)->toContain("str(\$serviceName)->replace('_', '-')->value()");
-
-    // Line 541: Check serviceName normalization
-    expect($parsersFile)->toContain("str(\$serviceName)->replace('-', '_')->replace('.', '_')->value()");
+    // Check serviceName normalization patterns
+    expect($parserFile)->toContain("->replace('_', '-')->value()");
+    expect($parserFile)->toContain("->replace('-', '_')->replace('.', '_')->value()");
 });
