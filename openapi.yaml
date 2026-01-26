@@ -1358,25 +1358,105 @@ paths:
       security:
         -
           bearerAuth: []
-  /databases:
+  '/databases/{uuid}/start':
     get:
       tags:
         - Databases
-      summary: List
-      description: 'List all databases.'
-      operationId: list-databases
+      summary: Start
+      description: 'Start database. `Post` request is also accepted.'
+      operationId: start-database-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database.'
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
-          description: 'Get all databases'
+          description: 'Start database.'
           content:
             application/json:
               schema:
-                type: string
-              example: 'Content is very complex. Will be implemented later.'
+                properties:
+                  message: { type: string, example: 'Database starting request queued.' }
+                type: object
         '401':
           $ref: '#/components/responses/401'
         '400':
           $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/stop':
+    get:
+      tags:
+        - Databases
+      summary: Stop
+      description: 'Stop database. `Post` request is also accepted.'
+      operationId: stop-database-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database.'
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'Stop database.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Database stopping request queued.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/restart':
+    get:
+      tags:
+        - Databases
+      summary: Restart
+      description: 'Restart database. `Post` request is also accepted.'
+      operationId: restart-database-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database.'
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'Restart database.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Database restaring request queued.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
       security:
         -
           bearerAuth: []
@@ -1490,258 +1570,6 @@ paths:
                   uuid: { type: string, format: uuid, example: 550e8400-e29b-41d4-a716-446655440000 }
                   message: { type: string, example: 'Backup configuration created successfully.' }
                 type: object
-        '401':
-          $ref: '#/components/responses/401'
-        '400':
-          $ref: '#/components/responses/400'
-        '404':
-          $ref: '#/components/responses/404'
-        '422':
-          $ref: '#/components/responses/422'
-      security:
-        -
-          bearerAuth: []
-  '/databases/{uuid}':
-    get:
-      tags:
-        - Databases
-      summary: Get
-      description: 'Get database by UUID.'
-      operationId: get-database-by-uuid
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'UUID of the database.'
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: 'Get all databases'
-          content:
-            application/json:
-              schema:
-                type: string
-              example: 'Content is very complex. Will be implemented later.'
-        '401':
-          $ref: '#/components/responses/401'
-        '400':
-          $ref: '#/components/responses/400'
-        '404':
-          $ref: '#/components/responses/404'
-      security:
-        -
-          bearerAuth: []
-    delete:
-      tags:
-        - Databases
-      summary: Delete
-      description: 'Delete database by UUID.'
-      operationId: delete-database-by-uuid
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'UUID of the database.'
-          required: true
-          schema:
-            type: string
-            format: uuid
-        -
-          name: delete_configurations
-          in: query
-          description: 'Delete configurations.'
-          required: false
-          schema:
-            type: boolean
-            default: true
-        -
-          name: delete_volumes
-          in: query
-          description: 'Delete volumes.'
-          required: false
-          schema:
-            type: boolean
-            default: true
-        -
-          name: docker_cleanup
-          in: query
-          description: 'Run docker cleanup.'
-          required: false
-          schema:
-            type: boolean
-            default: true
-        -
-          name: delete_connected_networks
-          in: query
-          description: 'Delete connected networks.'
-          required: false
-          schema:
-            type: boolean
-            default: true
-      responses:
-        '200':
-          description: 'Database deleted.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Database deleted.' }
-                type: object
-        '401':
-          $ref: '#/components/responses/401'
-        '400':
-          $ref: '#/components/responses/400'
-        '404':
-          $ref: '#/components/responses/404'
-      security:
-        -
-          bearerAuth: []
-    patch:
-      tags:
-        - Databases
-      summary: Update
-      description: 'Update database by UUID.'
-      operationId: update-database-by-uuid
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'UUID of the database.'
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        description: 'Database data'
-        required: true
-        content:
-          application/json:
-            schema:
-              properties:
-                name:
-                  type: string
-                  description: 'Name of the database'
-                description:
-                  type: string
-                  description: 'Description of the database'
-                image:
-                  type: string
-                  description: 'Docker Image of the database'
-                is_public:
-                  type: boolean
-                  description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                postgres_user:
-                  type: string
-                  description: 'PostgreSQL user'
-                postgres_password:
-                  type: string
-                  description: 'PostgreSQL password'
-                postgres_db:
-                  type: string
-                  description: 'PostgreSQL database'
-                postgres_initdb_args:
-                  type: string
-                  description: 'PostgreSQL initdb args'
-                postgres_host_auth_method:
-                  type: string
-                  description: 'PostgreSQL host auth method'
-                postgres_conf:
-                  type: string
-                  description: 'PostgreSQL conf'
-                clickhouse_admin_user:
-                  type: string
-                  description: 'Clickhouse admin user'
-                clickhouse_admin_password:
-                  type: string
-                  description: 'Clickhouse admin password'
-                dragonfly_password:
-                  type: string
-                  description: 'DragonFly password'
-                redis_password:
-                  type: string
-                  description: 'Redis password'
-                redis_conf:
-                  type: string
-                  description: 'Redis conf'
-                keydb_password:
-                  type: string
-                  description: 'KeyDB password'
-                keydb_conf:
-                  type: string
-                  description: 'KeyDB conf'
-                mariadb_conf:
-                  type: string
-                  description: 'MariaDB conf'
-                mariadb_root_password:
-                  type: string
-                  description: 'MariaDB root password'
-                mariadb_user:
-                  type: string
-                  description: 'MariaDB user'
-                mariadb_password:
-                  type: string
-                  description: 'MariaDB password'
-                mariadb_database:
-                  type: string
-                  description: 'MariaDB database'
-                mongo_conf:
-                  type: string
-                  description: 'Mongo conf'
-                mongo_initdb_root_username:
-                  type: string
-                  description: 'Mongo initdb root username'
-                mongo_initdb_root_password:
-                  type: string
-                  description: 'Mongo initdb root password'
-                mongo_initdb_database:
-                  type: string
-                  description: 'Mongo initdb init database'
-                mysql_root_password:
-                  type: string
-                  description: 'MySQL root password'
-                mysql_password:
-                  type: string
-                  description: 'MySQL password'
-                mysql_user:
-                  type: string
-                  description: 'MySQL user'
-                mysql_database:
-                  type: string
-                  description: 'MySQL database'
-                mysql_conf:
-                  type: string
-                  description: 'MySQL conf'
-              type: object
-      responses:
-        '200':
-          description: 'Database updated'
         '401':
           $ref: '#/components/responses/401'
         '400':
@@ -1885,6 +1713,151 @@ paths:
           $ref: '#/components/responses/404'
         '422':
           $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/backups/{scheduled_backup_uuid}/executions':
+    get:
+      tags:
+        - Databases
+      summary: 'List backup executions'
+      description: 'Get all executions for a specific backup configuration.'
+      operationId: list-backup-executions
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database'
+          required: true
+          schema:
+            type: string
+        -
+          name: scheduled_backup_uuid
+          in: path
+          description: 'UUID of the backup configuration'
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'List of backup executions'
+          content:
+            application/json:
+              schema:
+                properties:
+                  executions: { type: array, items: { properties: { uuid: { type: string }, filename: { type: string }, size: { type: integer }, created_at: { type: string }, message: { type: string }, status: { type: string } }, type: object } }
+                type: object
+        '404':
+          description: 'Backup configuration not found.'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/backups/{scheduled_backup_uuid}/executions/{execution_uuid}':
+    delete:
+      tags:
+        - Databases
+      summary: 'Delete backup execution'
+      description: 'Deletes a specific backup execution.'
+      operationId: delete-backup-execution-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database'
+          required: true
+          schema:
+            type: string
+        -
+          name: scheduled_backup_uuid
+          in: path
+          description: 'UUID of the backup configuration'
+          required: true
+          schema:
+            type: string
+            format: uuid
+        -
+          name: execution_uuid
+          in: path
+          description: 'UUID of the backup execution to delete'
+          required: true
+          schema:
+            type: string
+            format: uuid
+        -
+          name: delete_s3
+          in: query
+          description: 'Whether to delete the backup from S3'
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: 'Backup execution deleted.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Backup execution deleted.' }
+                type: object
+        '404':
+          description: 'Backup execution not found.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Backup execution not found.' }
+                type: object
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/backups/{backup_uuid}/restore':
+    post:
+      tags:
+        - Databases
+      summary: 'Restore Backup'
+      description: 'Restore database from a backup execution.'
+      operationId: restore-database-backup
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Database UUID'
+          required: true
+          schema:
+            type: string
+        -
+          name: backup_uuid
+          in: path
+          description: 'Backup UUID'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: 'Restore options'
+        required: false
+        content:
+          application/json:
+            schema:
+              properties:
+                execution_uuid:
+                  type: string
+                  description: 'Specific backup execution UUID to restore from'
+              type: object
+      responses:
+        '200':
+          description: 'Database restore initiated.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string, example: 'Database restore initiated.' }
+                type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
       security:
         -
           bearerAuth: []
@@ -2651,126 +2624,116 @@ paths:
       security:
         -
           bearerAuth: []
-  '/databases/{uuid}/backups/{scheduled_backup_uuid}/executions/{execution_uuid}':
+  /databases:
+    get:
+      tags:
+        - Databases
+      summary: List
+      description: 'List all databases.'
+      operationId: list-databases
+      responses:
+        '200':
+          description: 'Get all databases'
+          content:
+            application/json:
+              schema:
+                type: string
+              example: 'Content is very complex. Will be implemented later.'
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}':
+    get:
+      tags:
+        - Databases
+      summary: Get
+      description: 'Get database by UUID.'
+      operationId: get-database-by-uuid
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'UUID of the database.'
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 'Get all databases'
+          content:
+            application/json:
+              schema:
+                type: string
+              example: 'Content is very complex. Will be implemented later.'
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
     delete:
       tags:
         - Databases
-      summary: 'Delete backup execution'
-      description: 'Deletes a specific backup execution.'
-      operationId: delete-backup-execution-by-uuid
+      summary: Delete
+      description: 'Delete database by UUID.'
+      operationId: delete-database-by-uuid
       parameters:
         -
           name: uuid
           in: path
-          description: 'UUID of the database'
-          required: true
-          schema:
-            type: string
-        -
-          name: scheduled_backup_uuid
-          in: path
-          description: 'UUID of the backup configuration'
+          description: 'UUID of the database.'
           required: true
           schema:
             type: string
             format: uuid
         -
-          name: execution_uuid
-          in: path
-          description: 'UUID of the backup execution to delete'
-          required: true
-          schema:
-            type: string
-            format: uuid
-        -
-          name: delete_s3
+          name: delete_configurations
           in: query
-          description: 'Whether to delete the backup from S3'
+          description: 'Delete configurations.'
           required: false
           schema:
             type: boolean
-            default: false
+            default: true
+        -
+          name: delete_volumes
+          in: query
+          description: 'Delete volumes.'
+          required: false
+          schema:
+            type: boolean
+            default: true
+        -
+          name: docker_cleanup
+          in: query
+          description: 'Run docker cleanup.'
+          required: false
+          schema:
+            type: boolean
+            default: true
+        -
+          name: delete_connected_networks
+          in: query
+          description: 'Delete connected networks.'
+          required: false
+          schema:
+            type: boolean
+            default: true
       responses:
         '200':
-          description: 'Backup execution deleted.'
+          description: 'Database deleted.'
           content:
             application/json:
               schema:
                 properties:
-                  message: { type: string, example: 'Backup execution deleted.' }
-                type: object
-        '404':
-          description: 'Backup execution not found.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Backup execution not found.' }
-                type: object
-      security:
-        -
-          bearerAuth: []
-  '/databases/{uuid}/backups/{scheduled_backup_uuid}/executions':
-    get:
-      tags:
-        - Databases
-      summary: 'List backup executions'
-      description: 'Get all executions for a specific backup configuration.'
-      operationId: list-backup-executions
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'UUID of the database'
-          required: true
-          schema:
-            type: string
-        -
-          name: scheduled_backup_uuid
-          in: path
-          description: 'UUID of the backup configuration'
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: 'List of backup executions'
-          content:
-            application/json:
-              schema:
-                properties:
-                  executions: { type: array, items: { properties: { uuid: { type: string }, filename: { type: string }, size: { type: integer }, created_at: { type: string }, message: { type: string }, status: { type: string } }, type: object } }
-                type: object
-        '404':
-          description: 'Backup configuration not found.'
-      security:
-        -
-          bearerAuth: []
-  '/databases/{uuid}/start':
-    get:
-      tags:
-        - Databases
-      summary: Start
-      description: 'Start database. `Post` request is also accepted.'
-      operationId: start-database-by-uuid
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'UUID of the database.'
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: 'Start database.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Database starting request queued.' }
+                  message: { type: string, example: 'Database deleted.' }
                 type: object
         '401':
           $ref: '#/components/responses/401'
@@ -2781,13 +2744,12 @@ paths:
       security:
         -
           bearerAuth: []
-  '/databases/{uuid}/stop':
-    get:
+    patch:
       tags:
         - Databases
-      summary: Stop
-      description: 'Stop database. `Post` request is also accepted.'
-      operationId: stop-database-by-uuid
+      summary: Update
+      description: 'Update database by UUID.'
+      operationId: update-database-by-uuid
       parameters:
         -
           name: uuid
@@ -2797,104 +2759,142 @@ paths:
           schema:
             type: string
             format: uuid
-      responses:
-        '200':
-          description: 'Stop database.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Database stopping request queued.' }
-                type: object
-        '401':
-          $ref: '#/components/responses/401'
-        '400':
-          $ref: '#/components/responses/400'
-        '404':
-          $ref: '#/components/responses/404'
-      security:
-        -
-          bearerAuth: []
-  '/databases/{uuid}/restart':
-    get:
-      tags:
-        - Databases
-      summary: Restart
-      description: 'Restart database. `Post` request is also accepted.'
-      operationId: restart-database-by-uuid
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'UUID of the database.'
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: 'Restart database.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Database restaring request queued.' }
-                type: object
-        '401':
-          $ref: '#/components/responses/401'
-        '400':
-          $ref: '#/components/responses/400'
-        '404':
-          $ref: '#/components/responses/404'
-      security:
-        -
-          bearerAuth: []
-  '/databases/{uuid}/backups/{backup_uuid}/restore':
-    post:
-      tags:
-        - Databases
-      summary: 'Restore Backup'
-      description: 'Restore database from a backup execution.'
-      operationId: restore-database-backup
-      parameters:
-        -
-          name: uuid
-          in: path
-          description: 'Database UUID'
-          required: true
-          schema:
-            type: string
-        -
-          name: backup_uuid
-          in: path
-          description: 'Backup UUID'
-          required: true
-          schema:
-            type: string
       requestBody:
-        description: 'Restore options'
-        required: false
+        description: 'Database data'
+        required: true
         content:
           application/json:
             schema:
               properties:
-                execution_uuid:
+                name:
                   type: string
-                  description: 'Specific backup execution UUID to restore from'
+                  description: 'Name of the database'
+                description:
+                  type: string
+                  description: 'Description of the database'
+                image:
+                  type: string
+                  description: 'Docker Image of the database'
+                is_public:
+                  type: boolean
+                  description: 'Is the database public?'
+                public_port:
+                  type: integer
+                  description: 'Public port of the database'
+                limits_memory:
+                  type: string
+                  description: 'Memory limit of the database'
+                limits_memory_swap:
+                  type: string
+                  description: 'Memory swap limit of the database'
+                limits_memory_swappiness:
+                  type: integer
+                  description: 'Memory swappiness of the database'
+                limits_memory_reservation:
+                  type: string
+                  description: 'Memory reservation of the database'
+                limits_cpus:
+                  type: string
+                  description: 'CPU limit of the database'
+                limits_cpuset:
+                  type: string
+                  description: 'CPU set of the database'
+                limits_cpu_shares:
+                  type: integer
+                  description: 'CPU shares of the database'
+                postgres_user:
+                  type: string
+                  description: 'PostgreSQL user'
+                postgres_password:
+                  type: string
+                  description: 'PostgreSQL password'
+                postgres_db:
+                  type: string
+                  description: 'PostgreSQL database'
+                postgres_initdb_args:
+                  type: string
+                  description: 'PostgreSQL initdb args'
+                postgres_host_auth_method:
+                  type: string
+                  description: 'PostgreSQL host auth method'
+                postgres_conf:
+                  type: string
+                  description: 'PostgreSQL conf'
+                clickhouse_admin_user:
+                  type: string
+                  description: 'Clickhouse admin user'
+                clickhouse_admin_password:
+                  type: string
+                  description: 'Clickhouse admin password'
+                dragonfly_password:
+                  type: string
+                  description: 'DragonFly password'
+                redis_password:
+                  type: string
+                  description: 'Redis password'
+                redis_conf:
+                  type: string
+                  description: 'Redis conf'
+                keydb_password:
+                  type: string
+                  description: 'KeyDB password'
+                keydb_conf:
+                  type: string
+                  description: 'KeyDB conf'
+                mariadb_conf:
+                  type: string
+                  description: 'MariaDB conf'
+                mariadb_root_password:
+                  type: string
+                  description: 'MariaDB root password'
+                mariadb_user:
+                  type: string
+                  description: 'MariaDB user'
+                mariadb_password:
+                  type: string
+                  description: 'MariaDB password'
+                mariadb_database:
+                  type: string
+                  description: 'MariaDB database'
+                mongo_conf:
+                  type: string
+                  description: 'Mongo conf'
+                mongo_initdb_root_username:
+                  type: string
+                  description: 'Mongo initdb root username'
+                mongo_initdb_root_password:
+                  type: string
+                  description: 'Mongo initdb root password'
+                mongo_initdb_database:
+                  type: string
+                  description: 'Mongo initdb init database'
+                mysql_root_password:
+                  type: string
+                  description: 'MySQL root password'
+                mysql_password:
+                  type: string
+                  description: 'MySQL password'
+                mysql_user:
+                  type: string
+                  description: 'MySQL user'
+                mysql_database:
+                  type: string
+                  description: 'MySQL database'
+                mysql_conf:
+                  type: string
+                  description: 'MySQL conf'
               type: object
       responses:
         '200':
-          description: 'Database restore initiated.'
-          content:
-            application/json:
-              schema:
-                properties:
-                  message: { type: string, example: 'Database restore initiated.' }
-                type: object
+          description: 'Database updated'
         '401':
           $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
         '404':
           $ref: '#/components/responses/404'
+        '422':
+          $ref: '#/components/responses/422'
       security:
         -
           bearerAuth: []

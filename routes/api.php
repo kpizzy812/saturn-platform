@@ -6,6 +6,9 @@ use App\Http\Controllers\Api\ApplicationDeploymentsController;
 use App\Http\Controllers\Api\ApplicationEnvsController;
 use App\Http\Controllers\Api\ApplicationsController;
 use App\Http\Controllers\Api\CloudProviderTokensController;
+use App\Http\Controllers\Api\DatabaseActionsController;
+use App\Http\Controllers\Api\DatabaseBackupsController;
+use App\Http\Controllers\Api\DatabaseCreateController;
 use App\Http\Controllers\Api\DatabasesController;
 use App\Http\Controllers\Api\DeployController;
 use App\Http\Controllers\Api\GithubController;
@@ -243,26 +246,30 @@ Route::group([
     Route::get('/github-apps/{github_app_id}/repositories', [GithubController::class, 'load_repositories'])->middleware(['api.ability:read']);
     Route::get('/github-apps/{github_app_id}/repositories/{owner}/{repo}/branches', [GithubController::class, 'load_branches'])->middleware(['api.ability:read']);
 
-    Route::get('/databases', [DatabasesController::class, 'databases'])->middleware(['api.ability:read']);
-    Route::post('/databases/postgresql', [DatabasesController::class, 'create_database_postgresql'])->middleware(['api.ability:write']);
-    Route::post('/databases/mysql', [DatabasesController::class, 'create_database_mysql'])->middleware(['api.ability:write']);
-    Route::post('/databases/mariadb', [DatabasesController::class, 'create_database_mariadb'])->middleware(['api.ability:write']);
-    Route::post('/databases/mongodb', [DatabasesController::class, 'create_database_mongodb'])->middleware(['api.ability:write']);
-    Route::post('/databases/redis', [DatabasesController::class, 'create_database_redis'])->middleware(['api.ability:write']);
-    Route::post('/databases/clickhouse', [DatabasesController::class, 'create_database_clickhouse'])->middleware(['api.ability:write']);
-    Route::post('/databases/dragonfly', [DatabasesController::class, 'create_database_dragonfly'])->middleware(['api.ability:write']);
-    Route::post('/databases/keydb', [DatabasesController::class, 'create_database_keydb'])->middleware(['api.ability:write']);
+    // Database CRUD routes
+    Route::get('/databases', [DatabasesController::class, 'index'])->middleware(['api.ability:read']);
+    Route::get('/databases/{uuid}', [DatabasesController::class, 'show'])->middleware(['api.ability:read']);
+    Route::patch('/databases/{uuid}', [DatabasesController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/databases/{uuid}', [DatabasesController::class, 'destroy'])->middleware(['api.ability:write']);
 
-    Route::get('/databases/{uuid}', [DatabasesController::class, 'database_by_uuid'])->middleware(['api.ability:read']);
-    Route::get('/databases/{uuid}/backups', [DatabasesController::class, 'database_backup_details_uuid'])->middleware(['api.ability:read']);
-    Route::get('/databases/{uuid}/backups/{scheduled_backup_uuid}/executions', [DatabasesController::class, 'list_backup_executions'])->middleware(['api.ability:read']);
-    Route::patch('/databases/{uuid}', [DatabasesController::class, 'update_by_uuid'])->middleware(['api.ability:write']);
-    Route::post('/databases/{uuid}/backups', [DatabasesController::class, 'create_backup'])->middleware(['api.ability:write']);
-    Route::patch('/databases/{uuid}/backups/{scheduled_backup_uuid}', [DatabasesController::class, 'update_backup'])->middleware(['api.ability:write']);
-    Route::delete('/databases/{uuid}', [DatabasesController::class, 'delete_by_uuid'])->middleware(['api.ability:write']);
-    Route::delete('/databases/{uuid}/backups/{scheduled_backup_uuid}', [DatabasesController::class, 'delete_backup_by_uuid'])->middleware(['api.ability:write']);
-    Route::delete('/databases/{uuid}/backups/{scheduled_backup_uuid}/executions/{execution_uuid}', [DatabasesController::class, 'delete_execution_by_uuid'])->middleware(['api.ability:write']);
-    Route::post('/databases/{uuid}/backups/{backup_uuid}/restore', [DatabasesController::class, 'restore_backup'])->middleware(['api.ability:write']);
+    // Database creation routes
+    Route::post('/databases/postgresql', [DatabaseCreateController::class, 'postgresql'])->middleware(['api.ability:write']);
+    Route::post('/databases/mysql', [DatabaseCreateController::class, 'mysql'])->middleware(['api.ability:write']);
+    Route::post('/databases/mariadb', [DatabaseCreateController::class, 'mariadb'])->middleware(['api.ability:write']);
+    Route::post('/databases/mongodb', [DatabaseCreateController::class, 'mongodb'])->middleware(['api.ability:write']);
+    Route::post('/databases/redis', [DatabaseCreateController::class, 'redis'])->middleware(['api.ability:write']);
+    Route::post('/databases/clickhouse', [DatabaseCreateController::class, 'clickhouse'])->middleware(['api.ability:write']);
+    Route::post('/databases/dragonfly', [DatabaseCreateController::class, 'dragonfly'])->middleware(['api.ability:write']);
+    Route::post('/databases/keydb', [DatabaseCreateController::class, 'keydb'])->middleware(['api.ability:write']);
+
+    // Database backup routes
+    Route::get('/databases/{uuid}/backups', [DatabaseBackupsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/databases/{uuid}/backups', [DatabaseBackupsController::class, 'store'])->middleware(['api.ability:write']);
+    Route::patch('/databases/{uuid}/backups/{scheduled_backup_uuid}', [DatabaseBackupsController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/databases/{uuid}/backups/{scheduled_backup_uuid}', [DatabaseBackupsController::class, 'destroy'])->middleware(['api.ability:write']);
+    Route::get('/databases/{uuid}/backups/{scheduled_backup_uuid}/executions', [DatabaseBackupsController::class, 'listExecutions'])->middleware(['api.ability:read']);
+    Route::delete('/databases/{uuid}/backups/{scheduled_backup_uuid}/executions/{execution_uuid}', [DatabaseBackupsController::class, 'destroyExecution'])->middleware(['api.ability:write']);
+    Route::post('/databases/{uuid}/backups/{backup_uuid}/restore', [DatabaseBackupsController::class, 'restore'])->middleware(['api.ability:write']);
 
     Route::get('/databases/{uuid}/logs', function ($uuid, \Illuminate\Http\Request $request) {
         $teamId = getTeamIdFromToken();
@@ -299,9 +306,10 @@ Route::group([
         ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
 
-    Route::match(['get', 'post'], '/databases/{uuid}/start', [DatabasesController::class, 'action_deploy'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/databases/{uuid}/restart', [DatabasesController::class, 'action_restart'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/databases/{uuid}/stop', [DatabasesController::class, 'action_stop'])->middleware(['api.ability:write']);
+    // Database action routes
+    Route::match(['get', 'post'], '/databases/{uuid}/start', [DatabaseActionsController::class, 'start'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/databases/{uuid}/restart', [DatabaseActionsController::class, 'restart'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/databases/{uuid}/stop', [DatabaseActionsController::class, 'stop'])->middleware(['api.ability:write']);
 
     Route::get('/services', [ServicesController::class, 'services'])->middleware(['api.ability:read']);
     Route::post('/services', [ServicesController::class, 'create_service'])->middleware(['api.ability:write']);
