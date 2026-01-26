@@ -398,8 +398,18 @@ trait HandlesNixpacksBuildpack
             return '22';
         }
 
-        // Extract first number sequence (major version)
-        if (preg_match('/(\d+)/', $versionString, $matches)) {
+        // Try to extract full semver version (e.g., 22.12.0)
+        if (preg_match('/^(\d+\.\d+\.\d+)/', $versionString, $matches)) {
+            return $matches[1];
+        }
+
+        // Try to extract major.minor version (e.g., 22.12)
+        if (preg_match('/^(\d+\.\d+)/', $versionString, $matches)) {
+            return $matches[1];
+        }
+
+        // Extract major version only (e.g., 22)
+        if (preg_match('/^(\d+)/', $versionString, $matches)) {
             return $matches[1];
         }
 
