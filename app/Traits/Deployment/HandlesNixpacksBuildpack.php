@@ -210,12 +210,20 @@ trait HandlesNixpacksBuildpack
                     $this->elixir_finetunes();
                 }
                 if ($this->nixpacks_type === 'node') {
-                    // Check if NIXPACKS_NODE_VERSION is set
+                    // Check if NIXPACKS_NODE_VERSION is set, if not - auto-detect from .nvmrc or package.json
                     $variables = data_get($parsed, 'variables', []);
                     if (! isset($variables['NIXPACKS_NODE_VERSION'])) {
-                        $this->application_deployment_queue->addLogEntry('----------------------------------------');
-                        $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set. Nixpacks will use Node.js 18 by default, which is EOL.');
-                        $this->application_deployment_queue->addLogEntry('You can override this by setting NIXPACKS_NODE_VERSION=22 in your environment variables.');
+                        $detectedVersion = $this->autoDetectNodeVersion();
+                        if ($detectedVersion) {
+                            $this->application_deployment_queue->addLogEntry("Auto-detected Node.js version: {$detectedVersion}");
+                            data_set($parsed, 'variables.NIXPACKS_NODE_VERSION', $detectedVersion);
+                            $merged_envs->put('NIXPACKS_NODE_VERSION', $detectedVersion);
+                        } else {
+                            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+                            $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set and could not auto-detect from .nvmrc or package.json.');
+                            $this->application_deployment_queue->addLogEntry('Nixpacks will use Node.js 18 by default, which is EOL.');
+                            $this->application_deployment_queue->addLogEntry('You can specify version by: 1) Adding .nvmrc file, 2) Setting engines.node in package.json, or 3) Setting NIXPACKS_NODE_VERSION environment variable.');
+                        }
                     }
                 }
                 $this->nixpacks_plan = json_encode($parsed, JSON_PRETTY_PRINT);
@@ -281,5 +289,76 @@ trait HandlesNixpacksBuildpack
         });
 
         $this->env_nixpacks_args = $this->env_nixpacks_args->implode(' ');
+    }
+
+    /**
+     * Auto-detect Node.js version from .nvmrc or package.json engines field.
+     *
+     * @return string|null The detected Node.js version (major only) or null if not found
+     */
+    private function autoDetectNodeVersion(): ?string
+    {
+        // First try .nvmrc
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nvmrc 2>/dev/null || echo ''"), 'save' => 'nvmrc_content', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $nvmrcContent = trim($this->saved_outputs->get('nvmrc_content', ''));
+        if (! empty($nvmrcContent)) {
+            $version = $this->parseNodeVersion($nvmrcContent);
+            if ($version) {
+                $this->application_deployment_queue->addLogEntry("Found Node.js version in .nvmrc: {$nvmrcContent}");
+
+                return $version;
+            }
+        }
+
+        // Try package.json engines.node
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "cat {$this->workdir}/package.json 2>/dev/null || echo '{}'"), 'save' => 'package_json', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $packageJson = $this->saved_outputs->get('package_json', '{}');
+        $parsed = json_decode($packageJson, true);
+
+        if ($parsed && isset($parsed['engines']['node'])) {
+            $enginesNode = $parsed['engines']['node'];
+            $version = $this->parseNodeVersion($enginesNode);
+            if ($version) {
+                $this->application_deployment_queue->addLogEntry("Found Node.js version in package.json engines: {$enginesNode}");
+
+                return $version;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Parse Node.js version string and extract major version number.
+     *
+     * Handles formats like: "20", "20.x", ">=18", "^20.0.0", "20.11.0", "lts/*", etc.
+     *
+     * @param  string  $versionString  The version string to parse
+     * @return string|null The major version number or null if unparseable
+     */
+    private function parseNodeVersion(string $versionString): ?string
+    {
+        $versionString = trim($versionString);
+
+        // Remove 'v' prefix if present
+        $versionString = ltrim($versionString, 'v');
+
+        // Handle special LTS cases - default to latest LTS (22 as of 2025)
+        if (str_contains(strtolower($versionString), 'lts')) {
+            return '22';
+        }
+
+        // Extract first number sequence (major version)
+        if (preg_match('/(\d+)/', $versionString, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
     }
 }
