@@ -1141,7 +1141,7 @@ class Application extends BaseModel
     public function generateGitLsRemoteCommands(string $deployment_uuid, bool $exec_in_docker = true)
     {
         $branch = $this->git_branch;
-        ['repository' => $customRepository, 'port' => $customPort] = $this->customRepository();
+        ['git_repository' => $customRepository, 'git_port' => $customPort] = $this->customRepository();
         $commands = collect([]);
         $base_command = 'git ls-remote';
 
@@ -1248,7 +1248,7 @@ class Application extends BaseModel
     public function generateGitImportCommands(string $deployment_uuid, int $pull_request_id = 0, ?string $git_type = null, bool $exec_in_docker = true, bool $only_checkout = false, ?string $custom_base_dir = null, ?string $commit = null)
     {
         $branch = $this->git_branch;
-        ['repository' => $customRepository, 'port' => $customPort] = $this->customRepository();
+        ['git_repository' => $customRepository, 'git_port' => $customPort] = $this->customRepository();
         $baseDir = $custom_base_dir ?? $this->generateBaseDir($deployment_uuid);
 
         // Escape shell arguments for safety to prevent command injection
