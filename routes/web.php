@@ -686,6 +686,41 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         }
     })->name('applications.logs.json');
 
+    // Application environment variables bulk update (web route for session auth)
+    Route::patch('/applications/{uuid}/envs/bulk', function (string $uuid, \Illuminate\Http\Request $request) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $application) {
+            return back()->with('error', 'Application not found.');
+        }
+
+        $variables = $request->input('variables', []);
+
+        // Delete all existing non-preview environment variables
+        $application->environment_variables()
+            ->where('is_preview', false)
+            ->delete();
+
+        // Create new environment variables
+        foreach ($variables as $item) {
+            if (empty($item['key'])) {
+                continue;
+            }
+
+            $application->environment_variables()->create([
+                'key' => $item['key'],
+                'value' => $item['value'] ?? '',
+                'is_preview' => false,
+                'is_buildtime' => $item['is_build_time'] ?? false,
+                'is_runtime' => true,
+            ]);
+        }
+
+        return back()->with('success', 'Environment variables saved successfully.');
+    })->name('applications.envs.bulk');
+
     // Activity routes
     Route::get('/activity', function () {
         return \Inertia\Inertia::render('Activity/Index');

@@ -70,10 +70,14 @@ export default function ApplicationVariables({ application, variables: propVaria
                     is_build_time: v.is_buildtime ?? false,
                 }));
 
-            router.patch(`/api/v1/applications/${application.uuid}/envs/bulk`, {
+            router.patch(`/applications/${application.uuid}/envs/bulk`, {
                 variables: validVariables,
             }, {
-                onFinish: () => {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsSaving(false);
+                },
+                onError: () => {
                     setIsSaving(false);
                 },
             });
