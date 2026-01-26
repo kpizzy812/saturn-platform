@@ -275,16 +275,18 @@ export default function ApplicationSettings({ application, projectUuid, environm
                         <CardContent className="p-6">
                             <h3 className="text-sm font-semibold text-foreground mb-3">Actions</h3>
                             <div className="space-y-2">
-                                <Button
+                                <button
                                     type="button"
-                                    variant="primary"
-                                    className="w-full"
-                                    onClick={handleSave}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50"
+                                    onClick={() => {
+                                        alert('Button clicked! Settings: ' + JSON.stringify(settings));
+                                        handleSave();
+                                    }}
                                     disabled={isSaving}
                                 >
-                                    <Save className="mr-2 h-4 w-4" />
+                                    <Save className="h-4 w-4" />
                                     {isSaving ? 'Saving...' : 'Save Settings'}
-                                </Button>
+                                </button>
                                 <Link href={`/applications/${application.uuid}`}>
                                     <Button variant="secondary" className="w-full">
                                         Cancel
