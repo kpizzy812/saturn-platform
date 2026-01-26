@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, useConfirm } from '@/components/ui';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     Rocket,
     GitCommit,
@@ -20,6 +21,7 @@ import {
     Loader2,
     Ban,
     ArrowLeft,
+    MoreVertical,
 } from 'lucide-react';
 import { getEcho } from '@/lib/echo';
 import { cn } from '@/lib/utils';
@@ -196,6 +198,14 @@ export default function DeploymentDetails({
         });
     };
 
+    const handleForceRebuild = () => {
+        router.post(`/applications/${application.uuid}/deploy`, { force_rebuild: true }, {
+            onSuccess: () => {
+                router.visit(`/applications/${application.uuid}`);
+            },
+        });
+    };
+
     const formatDuration = (seconds: number | null) => {
         if (!seconds) return 'N/A';
         const mins = Math.floor(seconds / 60);
@@ -321,10 +331,25 @@ export default function DeploymentDetails({
                                 </Button>
                             )}
                             {!isInProgress && (
-                                <Button variant="outline" size="sm" onClick={handleRedeploy}>
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Redeploy
-                                </Button>
+                                <>
+                                    <Button variant="outline" size="sm" onClick={handleRedeploy}>
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Redeploy
+                                    </Button>
+                                    <Dropdown>
+                                        <DropdownTrigger>
+                                            <Button variant="outline" size="sm">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownTrigger>
+                                        <DropdownContent align="right">
+                                            <DropdownItem onClick={handleForceRebuild}>
+                                                <Rocket className="h-4 w-4" />
+                                                Force Rebuild
+                                            </DropdownItem>
+                                        </DropdownContent>
+                                    </Dropdown>
+                                </>
                             )}
                         </div>
                     </div>
