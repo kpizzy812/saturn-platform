@@ -157,7 +157,7 @@ function convertToKeyValueCollection($environment)
  */
 function getHelperVersion(): string
 {
-    return config('constants.saturn.version', '0.0.0');
+    return config('constants.saturn.helper_version', '1.0.12');
 }
 
 /**
