@@ -23,8 +23,8 @@ class ServerReachabilityChanged implements ShouldBroadcast
     {
         return [
             'serverId' => $this->server->id,
-            'isReachable' => $this->server->isReachable(),
-            'isUsable' => $this->server->isUsable(),
+            'isReachable' => $this->server->is_reachable,
+            'isUsable' => $this->server->is_usable,
         ];
     }
 

@@ -43,7 +43,7 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
                 }
                 $deploymentQueueId = explode(':', $deploymentQueueId)[1];
                 $deploymentQueue = ApplicationDeploymentQueue::find($deploymentQueueId);
-                $deploymentQueue->update([
+                $deploymentQueue?->update([
                     'horizon_job_id' => $id,
                 ]);
             }
