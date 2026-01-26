@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\DatabaseBackupsController;
 use App\Http\Controllers\Api\DatabaseCreateController;
 use App\Http\Controllers\Api\DatabasesController;
 use App\Http\Controllers\Api\DeployController;
+use App\Http\Controllers\Api\GitController;
 use App\Http\Controllers\Api\GithubController;
 use App\Http\Controllers\Api\HetznerController;
 use App\Http\Controllers\Api\NotificationsController;
@@ -246,6 +247,9 @@ Route::group([
     Route::delete('/github-apps/{github_app_id}', [GithubController::class, 'delete_github_app'])->middleware(['api.ability:write']);
     Route::get('/github-apps/{github_app_id}/repositories', [GithubController::class, 'load_repositories'])->middleware(['api.ability:read']);
     Route::get('/github-apps/{github_app_id}/repositories/{owner}/{repo}/branches', [GithubController::class, 'load_branches'])->middleware(['api.ability:read']);
+
+    // Git operations for public repositories
+    Route::get('/git/branches', [GitController::class, 'branches'])->middleware(['api.ability:read']);
 
     // Database CRUD routes
     Route::get('/databases', [DatabasesController::class, 'index'])->middleware(['api.ability:read']);

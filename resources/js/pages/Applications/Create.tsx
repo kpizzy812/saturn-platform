@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge, BranchSelector } from '@/components/ui';
 import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle } from 'lucide-react';
+import { useGitBranches } from '@/hooks/useGitBranches';
 import type { Project, Environment, Server } from '@/types';
 
 interface Props {
@@ -56,6 +57,29 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Git branches fetching
+    const {
+        branches,
+        defaultBranch,
+        isLoading: isBranchesLoading,
+        error: branchesError,
+        fetchBranches,
+    } = useGitBranches({ debounceMs: 600 });
+
+    // Fetch branches when repository URL changes
+    useEffect(() => {
+        if (formData.git_repository && formData.source_type !== 'docker') {
+            fetchBranches(formData.git_repository);
+        }
+    }, [formData.git_repository, formData.source_type, fetchBranches]);
+
+    // Set default branch when branches are loaded
+    useEffect(() => {
+        if (defaultBranch && branches.length > 0) {
+            setFormData(prev => ({ ...prev, git_branch: defaultBranch }));
+        }
+    }, [defaultBranch, branches.length]);
 
     const handleCreateProject = async () => {
         if (!newProjectName.trim()) {
@@ -306,9 +330,12 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                             <label className="block text-sm font-medium text-foreground mb-2">
                                                 Branch
                                             </label>
-                                            <Input
+                                            <BranchSelector
                                                 value={formData.git_branch}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, git_branch: e.target.value }))}
+                                                onChange={(value) => setFormData(prev => ({ ...prev, git_branch: value }))}
+                                                branches={branches}
+                                                isLoading={isBranchesLoading}
+                                                error={branchesError}
                                                 placeholder="main"
                                             />
                                         </div>

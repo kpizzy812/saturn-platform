@@ -3099,6 +3099,39 @@ paths:
       security:
         -
           bearerAuth: []
+  /git/branches:
+    get:
+      tags:
+        - Git
+      summary: 'Get Repository Branches'
+      description: 'Fetch branches from a public git repository (GitHub, GitLab, or Bitbucket).'
+      operationId: getGitBranches
+      parameters:
+        -
+          name: repository_url
+          in: query
+          description: 'The full repository URL (e.g., https://github.com/owner/repo)'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'List of branches'
+          content:
+            application/json:
+              schema:
+                properties:
+                  branches: { type: array, items: { properties: { name: { type: string }, is_default: { type: boolean } }, type: object } }
+                  default_branch: { type: string }
+                  platform: { type: string }
+                type: object
+        '400':
+          description: 'Invalid repository URL'
+        '404':
+          description: 'Repository not found'
+      security:
+        -
+          bearerAuth: []
   /github-apps:
     get:
       tags:
@@ -7210,6 +7243,9 @@ tags:
   -
     name: Deployments
     description: Deployments
+  -
+    name: Git
+    description: Git
   -
     name: 'GitHub Apps'
     description: 'GitHub Apps'

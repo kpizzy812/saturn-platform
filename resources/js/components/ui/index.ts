@@ -1,4 +1,5 @@
 export { Alert } from './Alert';
+export { BranchSelector } from './BranchSelector';
 export { Button } from './Button';
 export { Input, Textarea } from './Input';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
