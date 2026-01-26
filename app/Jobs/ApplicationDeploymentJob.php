@@ -1166,5 +1166,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 }
             }
         }
+
+        // Update container status to reflect the failed deployment state
+        try {
+            GetContainersStatus::dispatch($this->server);
+        } catch (\Exception $e) {
+            Log::warning('Failed to dispatch GetContainersStatus on failed deployment: '.$e->getMessage());
+        }
     }
 }
