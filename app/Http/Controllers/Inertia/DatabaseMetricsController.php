@@ -869,6 +869,269 @@ class DatabaseMetricsController extends Controller
     }
 
     /**
+     * Get ClickHouse query log.
+     */
+    public function getClickhouseQueryLog(Request $request, string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'clickhouse') {
+            return response()->json(['available' => false, 'error' => 'ClickHouse database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->clickhouse_admin_password ?? '';
+            $authFlag = $password ? "--password '{$password}'" : '';
+            $limit = min((int) $request->input('limit', 50), 100);
+
+            // Get recent queries from system.query_log
+            $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT query, query_duration_ms/1000 as duration_sec, read_rows, formatReadableSize(read_bytes) as read_size, event_time, user FROM system.query_log WHERE type = 'QueryFinish' AND query NOT LIKE '%system.%' ORDER BY event_time DESC LIMIT {$limit} FORMAT JSONEachRow\" 2>/dev/null || echo ''";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            $queries = [];
+            if ($result) {
+                foreach (explode("\n", $result) as $line) {
+                    $line = trim($line);
+                    if (empty($line)) {
+                        continue;
+                    }
+                    $row = json_decode($line, true);
+                    if ($row) {
+                        $queries[] = [
+                            'query' => mb_substr($row['query'] ?? '', 0, 200),
+                            'duration' => round($row['duration_sec'] ?? 0, 3).'s',
+                            'rows' => number_format($row['read_rows'] ?? 0),
+                            'timestamp' => $row['event_time'] ?? '',
+                            'user' => $row['user'] ?? 'default',
+                        ];
+                    }
+                }
+            }
+
+            return response()->json([
+                'available' => true,
+                'queries' => $queries,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch query log: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get ClickHouse merge status.
+     */
+    public function getClickhouseMergeStatus(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'clickhouse') {
+            return response()->json(['available' => false, 'error' => 'ClickHouse database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->clickhouse_admin_password ?? '';
+            $authFlag = $password ? "--password '{$password}'" : '';
+
+            // Get active merges count
+            $mergesCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT count() FROM system.merges\" 2>/dev/null || echo '0'";
+            $activeMerges = (int) trim(instant_remote_process([$mergesCommand], $server, false) ?? '0');
+
+            // Get parts count
+            $partsCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT count() FROM system.parts WHERE active = 1\" 2>/dev/null || echo '0'";
+            $partsCount = (int) trim(instant_remote_process([$partsCommand], $server, false) ?? '0');
+
+            // Get merge rate (merges in last minute from system.part_log)
+            $rateCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT count() FROM system.part_log WHERE event_type = 'MergeParts' AND event_time > now() - INTERVAL 1 MINUTE\" 2>/dev/null || echo '0'";
+            $mergeRate = (int) trim(instant_remote_process([$rateCommand], $server, false) ?? '0');
+
+            return response()->json([
+                'available' => true,
+                'activeMerges' => $activeMerges,
+                'partsCount' => $partsCount,
+                'mergeRate' => $mergeRate,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch merge status: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get ClickHouse replication status.
+     */
+    public function getClickhouseReplicationStatus(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'clickhouse') {
+            return response()->json(['available' => false, 'error' => 'ClickHouse database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->clickhouse_admin_password ?? '';
+            $authFlag = $password ? "--password '{$password}'" : '';
+
+            // Check if replication is configured by querying system.replicas
+            $replicasCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT database, table, replica_name, replica_path, is_leader, is_readonly, absolute_delay, last_queue_update FROM system.replicas FORMAT JSONEachRow\" 2>/dev/null || echo ''";
+            $result = trim(instant_remote_process([$replicasCommand], $server, false) ?? '');
+
+            $replicas = [];
+            $enabled = false;
+
+            if ($result && ! str_contains($result, 'DB::Exception')) {
+                foreach (explode("\n", $result) as $line) {
+                    $line = trim($line);
+                    if (empty($line)) {
+                        continue;
+                    }
+                    $row = json_decode($line, true);
+                    if ($row) {
+                        $enabled = true;
+                        $status = 'Healthy';
+                        if ($row['is_readonly'] ?? false) {
+                            $status = 'Read-only';
+                        }
+                        $delay = ($row['absolute_delay'] ?? 0);
+                        if ($delay > 60) {
+                            $status = 'Delayed';
+                        }
+
+                        $replicas[] = [
+                            'host' => $row['replica_name'] ?? 'unknown',
+                            'database' => $row['database'] ?? '',
+                            'table' => $row['table'] ?? '',
+                            'status' => $status,
+                            'delay' => $delay > 0 ? $delay.'s' : '0ms',
+                            'isLeader' => (bool) ($row['is_leader'] ?? false),
+                        ];
+                    }
+                }
+            }
+
+            return response()->json([
+                'available' => true,
+                'enabled' => $enabled,
+                'replicas' => $replicas,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch replication status: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get ClickHouse settings.
+     */
+    public function getClickhouseSettings(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'clickhouse') {
+            return response()->json(['available' => false, 'error' => 'ClickHouse database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->clickhouse_admin_password ?? '';
+            $authFlag = $password ? "--password '{$password}'" : '';
+
+            // Get important performance settings
+            $settingsToFetch = [
+                'max_threads',
+                'max_memory_usage',
+                'max_concurrent_queries',
+                'max_parts_in_total',
+                'background_pool_size',
+            ];
+            $settingsQuery = implode("','", $settingsToFetch);
+
+            $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT name, value FROM system.settings WHERE name IN ('{$settingsQuery}') FORMAT JSONEachRow\" 2>/dev/null || echo ''";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            $settings = [
+                'maxThreads' => null,
+                'maxMemoryUsage' => null,
+                'maxConcurrentQueries' => null,
+                'maxPartsInTotal' => null,
+                'backgroundPoolSize' => null,
+                'compressionMethod' => 'LZ4', // Default
+            ];
+
+            if ($result) {
+                foreach (explode("\n", $result) as $line) {
+                    $line = trim($line);
+                    if (empty($line)) {
+                        continue;
+                    }
+                    $row = json_decode($line, true);
+                    if ($row) {
+                        $name = $row['name'] ?? '';
+                        $value = $row['value'] ?? '';
+
+                        match ($name) {
+                            'max_threads' => $settings['maxThreads'] = (int) $value,
+                            'max_memory_usage' => $settings['maxMemoryUsage'] = $this->formatBytes((int) $value),
+                            'max_concurrent_queries' => $settings['maxConcurrentQueries'] = (int) $value,
+                            'max_parts_in_total' => $settings['maxPartsInTotal'] = (int) $value,
+                            'background_pool_size' => $settings['backgroundPoolSize'] = (int) $value,
+                            default => null,
+                        };
+                    }
+                }
+            }
+
+            // Get compression method
+            $compressionCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT value FROM system.settings WHERE name = 'network_compression_method'\" 2>/dev/null || echo 'LZ4'";
+            $compression = trim(instant_remote_process([$compressionCommand], $server, false) ?? 'LZ4');
+            $settings['compressionMethod'] = $compression ?: 'LZ4';
+
+            return response()->json([
+                'available' => true,
+                'settings' => $settings,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch settings: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Toggle PostgreSQL extension.
      */
     public function toggleExtension(Request $request, string $uuid): JsonResponse

@@ -1,8 +1,16 @@
 import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
-import { useToast } from '@/components/ui/Toast';
 import { RefreshCw, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
-import { useDatabaseMetrics, useDatabaseLogs, formatMetricValue, type ClickhouseMetrics } from '@/hooks';
+import {
+    useDatabaseMetrics,
+    useDatabaseLogs,
+    formatMetricValue,
+    useClickhouseQueries,
+    useClickhouseMergeStatus,
+    useClickhouseReplication,
+    useClickhouseSettings,
+    type ClickhouseMetrics,
+} from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -26,6 +34,13 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 
     // Fetch real-time metrics from backend
     const { metrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    // Fetch merge status from backend
+    const { mergeStatus, isLoading: isMergeLoading } = useClickhouseMergeStatus({
         uuid: database.uuid,
         autoRefresh: true,
         refreshInterval: 30000,
@@ -163,20 +178,33 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
             <Card>
                 <CardContent className="p-6">
                     <h3 className="mb-4 text-lg font-medium text-foreground">Merge Status</h3>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                            <p className="text-sm text-foreground-muted">Active Merges</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">3</p>
+                    {isMergeLoading && !mergeStatus ? (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading...</span>
                         </div>
-                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                            <p className="text-sm text-foreground-muted">Parts Count</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">142</p>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                <p className="text-sm text-foreground-muted">Active Merges</p>
+                                <p className="mt-1 text-xl font-bold text-foreground">
+                                    {mergeStatus?.activeMerges ?? 0}
+                                </p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                <p className="text-sm text-foreground-muted">Parts Count</p>
+                                <p className="mt-1 text-xl font-bold text-foreground">
+                                    {mergeStatus?.partsCount ?? 0}
+                                </p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                <p className="text-sm text-foreground-muted">Merge Rate</p>
+                                <p className="mt-1 text-xl font-bold text-foreground">
+                                    {mergeStatus?.mergeRate ?? 0}/min
+                                </p>
+                            </div>
                         </div>
-                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                            <p className="text-sm text-foreground-muted">Merge Rate</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">12/min</p>
-                        </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
@@ -184,79 +212,96 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function QueryLogTab({ database }: { database: StandaloneDatabase }) {
-    const [queries] = useState([
-        {
-            query: 'SELECT count() FROM events WHERE date = today()',
-            duration: '0.234s',
-            rows: '1,234,567',
-            timestamp: '2024-01-03 10:26:45',
-            user: 'default'
-        },
-        {
-            query: 'SELECT user_id, count() FROM clicks GROUP BY user_id',
-            duration: '1.567s',
-            rows: '45,234',
-            timestamp: '2024-01-03 10:25:33',
-            user: 'analytics'
-        },
-        {
-            query: 'INSERT INTO events SELECT * FROM s3(...)',
-            duration: '12.345s',
-            rows: '5,000,000',
-            timestamp: '2024-01-03 10:24:12',
-            user: 'etl_user'
-        },
-    ]);
+    const { queries, isLoading, refetch } = useClickhouseQueries({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
 
     return (
         <Card>
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Recent Queries</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="space-y-3">
-                    {queries.map((query, index) => (
-                        <div
-                            key={index}
-                            className="rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="mb-2 flex items-start justify-between">
-                                <code className="flex-1 font-mono text-sm text-foreground">{query.query}</code>
+                {isLoading && queries.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading query log...</span>
+                    </div>
+                ) : queries.length === 0 ? (
+                    <div className="rounded-lg border border-border bg-background-secondary p-6 text-center">
+                        <p className="text-foreground-muted">No recent queries found</p>
+                        <p className="mt-1 text-sm text-foreground-muted">
+                            Query log may be empty or disabled in ClickHouse configuration
+                        </p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {queries.map((query, index) => (
+                            <div
+                                key={index}
+                                className="rounded-lg border border-border bg-background-secondary p-4"
+                            >
+                                <div className="mb-2 flex items-start justify-between">
+                                    <code className="flex-1 font-mono text-sm text-foreground break-all">
+                                        {query.query}
+                                    </code>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-foreground-muted">
+                                    <span>{query.timestamp}</span>
+                                    <Badge variant="secondary">{query.user}</Badge>
+                                    <span>Duration: {query.duration}</span>
+                                    <span>Rows: {query.rows}</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-foreground-muted">
-                                <span>{query.timestamp}</span>
-                                <Badge variant="secondary">{query.user}</Badge>
-                                <span>Duration: {query.duration}</span>
-                                <span>Rows: {query.rows}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
 }
 
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
-    const { addToast } = useToast();
-    const [replication] = useState({
-        enabled: true,
-        replicas: [
-            { host: 'ch-replica1.example.com', status: 'Healthy', delay: '0ms' },
-            { host: 'ch-replica2.example.com', status: 'Healthy', delay: '2ms' },
-        ],
+    // Fetch replication status from backend
+    const { replication, isLoading: isReplicationLoading } = useClickhouseReplication({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
     });
+
+    // Fetch settings from backend
+    const { settings, isLoading: isSettingsLoading } = useClickhouseSettings({
+        uuid: database.uuid,
+    });
+
+    const getStatusVariant = (status: string): 'default' | 'secondary' | 'danger' => {
+        switch (status) {
+            case 'Healthy':
+                return 'default';
+            case 'Delayed':
+            case 'Read-only':
+                return 'secondary';
+            default:
+                return 'secondary';
+        }
+    };
 
     return (
         <div className="space-y-6">
             <Card>
                 <CardContent className="p-6">
                     <h3 className="mb-4 text-lg font-medium text-foreground">Replication Status</h3>
-                    {replication.enabled ? (
+                    {isReplicationLoading && !replication ? (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading...</span>
+                        </div>
+                    ) : replication?.enabled && replication.replicas.length > 0 ? (
                         <div className="space-y-3">
                             {replication.replicas.map((replica, i) => (
                                 <div
@@ -264,10 +309,17 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                                     className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
                                 >
                                     <div className="flex-1">
-                                        <code className="font-mono text-sm text-foreground">{replica.host}</code>
-                                        <p className="mt-1 text-sm text-foreground-muted">Replication delay: {replica.delay}</p>
+                                        <div className="flex items-center gap-2">
+                                            <code className="font-mono text-sm text-foreground">{replica.host}</code>
+                                            {replica.isLeader && (
+                                                <Badge variant="default">Leader</Badge>
+                                            )}
+                                        </div>
+                                        <p className="mt-1 text-sm text-foreground-muted">
+                                            {replica.database}.{replica.table} • Delay: {replica.delay}
+                                        </p>
                                     </div>
-                                    <Badge variant={replica.status === 'Healthy' ? 'default' : 'secondary'}>
+                                    <Badge variant={getStatusVariant(replica.status)}>
                                         {replica.status}
                                     </Badge>
                                 </div>
@@ -276,6 +328,9 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                     ) : (
                         <div className="rounded-lg border border-border bg-background-secondary p-6 text-center">
                             <p className="text-sm text-foreground-muted">Replication not configured</p>
+                            <p className="mt-1 text-xs text-foreground-muted">
+                                Use ReplicatedMergeTree engine to enable replication
+                            </p>
                         </div>
                     )}
                 </CardContent>
@@ -284,44 +339,56 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
             <Card>
                 <CardContent className="p-6">
                     <h3 className="mb-4 text-lg font-medium text-foreground">Performance Settings</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Threads</label>
-                            <p className="text-sm text-foreground">16</p>
+                    {isSettingsLoading && !settings ? (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading...</span>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Memory Usage</label>
-                            <p className="text-sm text-foreground">10 GB</p>
+                    ) : (
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Threads</label>
+                                <p className="text-sm text-foreground">{settings?.maxThreads ?? 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Memory Usage</label>
+                                <p className="text-sm text-foreground">{settings?.maxMemoryUsage ?? 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Concurrent Queries</label>
+                                <p className="text-sm text-foreground">{settings?.maxConcurrentQueries ?? 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Compression Method</label>
+                                <p className="text-sm text-foreground">{settings?.compressionMethod ?? 'LZ4'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Concurrent Queries</label>
-                            <p className="text-sm text-foreground">100</p>
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Compression Method</label>
-                            <p className="text-sm text-foreground">LZ4</p>
-                        </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
 
             <Card>
                 <CardContent className="p-6">
                     <h3 className="mb-4 text-lg font-medium text-foreground">Merge Settings</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Parts to Merge</label>
-                            <p className="text-sm text-foreground">100</p>
+                    {isSettingsLoading && !settings ? (
+                        <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading...</span>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Background Pool Size</label>
-                            <p className="text-sm text-foreground">16</p>
+                    ) : (
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Parts In Total</label>
+                                <p className="text-sm text-foreground">
+                                    {settings?.maxPartsInTotal?.toLocaleString() ?? 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Background Pool Size</label>
+                                <p className="text-sm text-foreground">{settings?.backgroundPoolSize ?? 'N/A'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Merge Tree Settings</label>
-                            <p className="text-sm text-foreground">Replicated</p>
-                        </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

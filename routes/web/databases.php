@@ -307,6 +307,19 @@ Route::get('/api/databases/{uuid}/logs', [\App\Http\Controllers\Inertia\Database
 Route::post('/api/databases/{uuid}/query', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'executeQuery'])
     ->name('databases.query.api');
 
+// ClickHouse specific endpoints
+Route::get('/api/databases/{uuid}/clickhouse/queries', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseQueryLog'])
+    ->name('databases.clickhouse.queries.api');
+
+Route::get('/api/databases/{uuid}/clickhouse/merge-status', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseMergeStatus'])
+    ->name('databases.clickhouse.merge-status.api');
+
+Route::get('/api/databases/{uuid}/clickhouse/replication', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseReplicationStatus'])
+    ->name('databases.clickhouse.replication.api');
+
+Route::get('/api/databases/{uuid}/clickhouse/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseSettings'])
+    ->name('databases.clickhouse.settings.api');
+
 Route::get('/databases/{uuid}/settings', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 

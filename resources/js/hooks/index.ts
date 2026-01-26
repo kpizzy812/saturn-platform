@@ -82,3 +82,17 @@ export type {
     UsageDetails,
     ServiceUsage,
 } from './useBilling';
+
+export {
+    useClickhouseQueries,
+    useClickhouseMergeStatus,
+    useClickhouseReplication,
+    useClickhouseSettings,
+} from './useClickhouseExtended';
+export type {
+    ClickhouseQuery,
+    ClickhouseMergeStatus,
+    ClickhouseReplica,
+    ClickhouseReplicationStatus,
+    ClickhouseSettings,
+} from './useClickhouseExtended';

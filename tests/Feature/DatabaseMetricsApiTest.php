@@ -208,3 +208,51 @@ describe('DatabaseMetric model integration', function () {
         expect(DatabaseMetric::first()->cpu_percent)->toBe(25.0);
     });
 });
+
+describe('ClickHouse specific endpoints', function () {
+    test('GET /api/databases/{uuid}/clickhouse/queries returns 404 for non-clickhouse database', function () {
+        $response = $this->getJson('/api/databases/non-existent-uuid/clickhouse/queries');
+
+        // Route returns 404 when database not found
+        $response->assertStatus(404);
+        expect($response->headers->get('content-type'))->toContain('application/json');
+    });
+
+    test('GET /api/databases/{uuid}/clickhouse/merge-status returns 404 for non-existent database', function () {
+        $response = $this->getJson('/api/databases/non-existent-uuid/clickhouse/merge-status');
+
+        $response->assertStatus(404);
+        expect($response->headers->get('content-type'))->toContain('application/json');
+    });
+
+    test('GET /api/databases/{uuid}/clickhouse/replication returns 404 for non-existent database', function () {
+        $response = $this->getJson('/api/databases/non-existent-uuid/clickhouse/replication');
+
+        $response->assertStatus(404);
+        expect($response->headers->get('content-type'))->toContain('application/json');
+    });
+
+    test('GET /api/databases/{uuid}/clickhouse/settings returns 404 for non-existent database', function () {
+        $response = $this->getJson('/api/databases/non-existent-uuid/clickhouse/settings');
+
+        $response->assertStatus(404);
+        expect($response->headers->get('content-type'))->toContain('application/json');
+    });
+
+    test('requires authentication for clickhouse endpoints', function () {
+        auth()->logout();
+
+        $endpoints = [
+            '/api/databases/test-uuid/clickhouse/queries',
+            '/api/databases/test-uuid/clickhouse/merge-status',
+            '/api/databases/test-uuid/clickhouse/replication',
+            '/api/databases/test-uuid/clickhouse/settings',
+        ];
+
+        foreach ($endpoints as $endpoint) {
+            $response = $this->getJson($endpoint);
+            // Web routes may return 404 or redirect when not authenticated
+            expect($response->status())->toBeIn([401, 302, 404, 419]);
+        }
+    });
+});

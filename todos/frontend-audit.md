@@ -113,24 +113,14 @@ const [users] = useState([
 const [logs] = useState([...]);
 ```
 
-#### ClickHousePanel.tsx
+#### ClickHousePanel.tsx ✅ ИСПРАВЛЕНО
 ```typescript
-// Строки 187-209: Захардкоженный лог запросов
-const [queries] = useState([
-    { query: 'SELECT count() FROM events...', duration: '0.234s', ... },
-]);
-
-// Строки 246-252: Захардкоженная репликация
-const [replication] = useState({
-    enabled: true,
-    replicas: [{ host: 'ch-replica1.example.com', status: 'Healthy', ... }],
-});
-
-// Строки 166-179: Захардкоженный Merge Status
-// Active Merges: 3, Parts Count: 142, Merge Rate: 12/min
-
-// Строки 332-337: Захардкоженные логи
-const [logs] = useState([...]);
+// Теперь использует реальные API:
+// - useClickhouseQueries() для query log из system.query_log
+// - useClickhouseMergeStatus() для merge status из system.merges/parts
+// - useClickhouseReplication() для replication из system.replicas
+// - useClickhouseSettings() для settings из system.settings
+// - useDatabaseLogs() для логов (уже было ранее)
 ```
 
 #### MySQLPanel.tsx, MongoDBPanel.tsx, RedisPanel.tsx
@@ -280,7 +270,7 @@ post('/settings/notifications/email', { ... });
 | Категория | Всего | Исправлено | Осталось |
 |-----------|-------|------------|----------|
 | Критические (безопасность) | 6 | 3 | 3 |
-| Критические (mock данные) | 7 | 5 | 2 |
+| Критические (mock данные) | 7 | 6 | 1 |
 | Высокие (кнопки без API) | 8 | 7 | 1 |
 | Высокие (memory leaks) | 5 | 1 | 4 |
 | Высокие (console.log) | 8 | 8 | 0 |
@@ -288,7 +278,7 @@ post('/settings/notifications/email', { ... });
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~43 исправлено ✅ | ~38 осталось**
+**Прогресс: ~44 исправлено ✅ | ~37 осталось**
 
 ---
 
@@ -307,7 +297,7 @@ post('/settings/notifications/email', { ... });
 
 ### Приоритет 3: Database Panels (см. детальную спецификацию выше)
 8. [x] **PostgreSQLPanel** - API для extensions, users, logs через SSH ✅
-9. [ ] **ClickHousePanel** - API для queries, replication, merge status через SSH (логи готовы ✅)
+9. [x] **ClickHousePanel** - API для queries, replication, merge status, settings через SSH ✅
 10. [x] **MySQLPanel, MongoDBPanel, RedisPanel** - API для users и logs ✅
 
 ### Приоритет 4: Кнопки без API
