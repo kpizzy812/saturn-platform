@@ -624,6 +624,54 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         ]);
     })->name('deployments.logs.json');
 
+    // JSON endpoint for application container logs (for XHR requests)
+    Route::get('/applications/{uuid}/logs/json', function (string $uuid) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        $server = $application->destination->server;
+        if (! $server) {
+            return response()->json(['message' => 'Server not found.'], 404);
+        }
+
+        // Get container logs
+        try {
+            $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
+
+            if (empty($containers)) {
+                return response()->json([
+                    'container_logs' => 'No containers found for this application.',
+                    'containers' => [],
+                ]);
+            }
+
+            // Get logs from first container
+            $containerName = $containers[0]['Names'] ?? null;
+            if ($containerName) {
+                $logs = instant_remote_process(["docker logs -n 200 {$containerName} 2>&1"], $server);
+
+                return response()->json([
+                    'container_logs' => $logs,
+                    'containers' => $containers,
+                ]);
+            }
+
+            return response()->json([
+                'container_logs' => 'Container not found.',
+                'containers' => $containers,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch logs: '.$e->getMessage(),
+            ], 500);
+        }
+    })->name('applications.logs.json');
+
     // Activity routes
     Route::get('/activity', function () {
         return \Inertia\Inertia::render('Activity/Index');
