@@ -58,6 +58,7 @@ Route::group([
     Route::get('/teams/current', [TeamController::class, 'current_team'])->middleware(['api.ability:read']);
     Route::get('/teams/current/members', [TeamController::class, 'current_team_members'])->middleware(['api.ability:read']);
     Route::get('/teams/current/activities', [TeamController::class, 'current_team_activities'])->middleware(['api.ability:read']);
+    Route::get('/teams/current/activities/export', [TeamController::class, 'export_team_activities'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}', [TeamController::class, 'team_by_id'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}/members', [TeamController::class, 'members_by_id'])->middleware(['api.ability:read']);
 

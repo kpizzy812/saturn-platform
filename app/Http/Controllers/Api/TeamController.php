@@ -564,4 +564,157 @@ class TeamController extends Controller
             default => 'settings_updated',
         };
     }
+
+    /**
+     * Export team activities to CSV or JSON
+     *
+     * @operationId export-team-activities
+     *
+     * @group Teams
+     *
+     * @authenticated
+     *
+     * @queryParam format string Export format: csv or json. Defaults to csv. Example: csv
+     * @queryParam action string Filter by action type. Example: deployed
+     * @queryParam member string Filter by member email. Example: john@example.com
+     * @queryParam date_from string Filter from date (ISO 8601). Example: 2024-01-01
+     * @queryParam date_to string Filter to date (ISO 8601). Example: 2024-12-31
+     *
+     * @response 200 scenario="CSV Export" File download with Content-Type: text/csv
+     * @response 200 scenario="JSON Export" {"data": [...activities]}
+     */
+    #[OA\Get(
+        summary: 'Export Team Activities',
+        description: 'Export all team activities to CSV or JSON format with optional filters.',
+        path: '/teams/current/activities/export',
+        operationId: 'export-team-activities',
+        security: [['bearerAuth' => ['read']]],
+        tags: ['Teams'],
+        parameters: [
+            new OA\Parameter(name: 'format', in: 'query', description: 'Export format: csv or json', schema: new OA\Schema(type: 'string', enum: ['csv', 'json'], default: 'csv')),
+            new OA\Parameter(name: 'action', in: 'query', description: 'Filter by action type', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'member', in: 'query', description: 'Filter by member email', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'date_from', in: 'query', description: 'Filter from date', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'date_to', in: 'query', description: 'Filter to date', schema: new OA\Schema(type: 'string', format: 'date')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Activities exported successfully'),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+        ]
+    )]
+    public function export_team_activities(Request $request)
+    {
+        $team = auth()->user()->currentTeam();
+        $memberIds = $team->members->pluck('id')->toArray();
+
+        $query = Activity::query()
+            ->where('causer_type', 'App\\Models\\User')
+            ->whereIn('causer_id', $memberIds)
+            ->with('causer', 'subject')
+            ->orderBy('created_at', 'desc');
+
+        // Filter by action/event type
+        if ($request->has('action') && $request->action !== 'all') {
+            $query->where('event', $request->action);
+        }
+
+        // Filter by member
+        if ($request->has('member') && $request->member !== 'all') {
+            $memberUser = $team->members->firstWhere('email', $request->member);
+            if ($memberUser) {
+                $query->where('causer_id', $memberUser->id);
+            }
+        }
+
+        // Filter by date range
+        if ($request->has('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->has('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // Limit to 10000 records for export
+        $activities = $query->limit(10000)->get();
+
+        // Transform activities
+        $data = $activities->map(function ($activity) {
+            $causer = $activity->causer;
+            $subject = $activity->subject;
+
+            $resourceType = null;
+            $resourceName = null;
+
+            if ($subject) {
+                $resourceType = match (class_basename($subject)) {
+                    'Application' => 'application',
+                    'Service' => 'service',
+                    'StandalonePostgresql', 'StandaloneMysql', 'StandaloneMongodb', 'StandaloneRedis',
+                    'StandaloneMariadb', 'StandaloneKeydb', 'StandaloneDragonfly', 'StandaloneClickhouse' => 'database',
+                    'Server' => 'server',
+                    'Team' => 'team',
+                    'Project' => 'project',
+                    'Environment' => 'environment',
+                    default => strtolower(class_basename($subject)),
+                };
+                $resourceName = $subject->name ?? $subject->uuid ?? 'Unknown';
+            }
+
+            $action = $activity->event ?? $activity->log_name ?? 'unknown';
+
+            return [
+                'id' => $activity->id,
+                'timestamp' => $activity->created_at->toIso8601String(),
+                'user_name' => $causer?->name ?? 'System',
+                'user_email' => $causer?->email ?? 'system@saturn.local',
+                'action' => $action,
+                'description' => $activity->description,
+                'resource_type' => $resourceType,
+                'resource_name' => $resourceName,
+                'properties' => json_encode($activity->properties ?? []),
+            ];
+        });
+
+        $format = $request->get('format', 'csv');
+
+        if ($format === 'json') {
+            return response()->json(['data' => $data])
+                ->header('Content-Disposition', 'attachment; filename="audit-log-'.now()->format('Y-m-d').'.json"');
+        }
+
+        // CSV export
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="audit-log-'.now()->format('Y-m-d').'.csv"',
+        ];
+
+        $callback = function () use ($data) {
+            $file = fopen('php://output', 'w');
+
+            // BOM for UTF-8
+            fwrite($file, "\xEF\xBB\xBF");
+
+            // Headers
+            fputcsv($file, ['ID', 'Timestamp', 'User Name', 'User Email', 'Action', 'Description', 'Resource Type', 'Resource Name', 'Properties']);
+
+            // Data rows
+            foreach ($data as $row) {
+                fputcsv($file, [
+                    $row['id'],
+                    $row['timestamp'],
+                    $row['user_name'],
+                    $row['user_email'],
+                    $row['action'],
+                    $row['description'],
+                    $row['resource_type'],
+                    $row['resource_name'],
+                    $row['properties'],
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }

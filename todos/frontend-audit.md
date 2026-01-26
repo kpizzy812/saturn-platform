@@ -23,7 +23,7 @@
 - [ ] **Settings/Workspace.tsx** - захардкоженные workspace, timezones, environments
 - [x] **Settings/Team/Activity.tsx** - 9 записей активности ✅
 - [ ] **Settings/Integrations.tsx** - GitHub, GitLab, Slack, Discord интеграции
-- [ ] **Settings/AuditLog.tsx** - 8 записей аудита
+- [x] **Settings/AuditLog.tsx** - использует реальный API /api/v1/teams/current/activities ✅
 
 ### Mock данные в Notifications Settings (6 файлов)
 - [ ] **Event options захардкожены** в Email, Telegram, Discord, Slack, Pushover, Webhook
@@ -36,7 +36,7 @@
 ### Прочие критические
 - [ ] **API tokens видимы в React DevTools** - Settings/Tokens.tsx
 - [ ] **Broken links** - /terms, /privacy, /support не существуют
-- [ ] **Неправильные API пути** - useDatabaseMetrics.ts, useDatabaseMetricsHistory.ts используют `/api/databases/` вместо `/api/v1/databases/`
+- [x] **~~Неправильные API пути~~** - useDatabaseMetrics.ts - НЕАКТУАЛЬНО: пути корректны, используют web routes с сессионной аутентификацией ✅
 
 ---
 
@@ -61,8 +61,25 @@
 - [ ] **useRealtimeStatus.ts** - рекурсивный reconnect без гарантии остановки
 - [ ] **CommandPalette.tsx / Terminal.tsx** - SSR unsafe (нет проверки `typeof window`)
 
-### console.log в продакшн коде (22 файла)
-- [ ] Deployments/Show.tsx, Projects/Show.tsx, Settings/AuditLog.tsx, Settings/Tokens.tsx, Settings/Account.tsx, Settings/Workspace.tsx, Settings/Team/Index.tsx, ScheduledTasks/History.tsx, Observability/Metrics.tsx, Observability/Logs.tsx, Environments/Secrets.tsx, Services/Rollbacks.tsx, Services/Networking.tsx, Services/Scaling.tsx, Applications/DeploymentDetails.tsx, Applications/Index.tsx, Applications/Rollback/*, Boarding/Index.tsx, Onboarding/ConnectRepo.tsx
+### Заглушки с console.log вместо реального функционала (требуют реализации API)
+> ⚠️ Это не просто "логи в консоль" - это кнопки/функции которые ничего не делают!
+
+- [x] **Settings/AuditLog.tsx** - `console.log('Exporting audit logs...')` → реализован реальный API экспорт в CSV/JSON ✅
+- [ ] **Observability/Metrics.tsx:158,163** - Export/Refresh metrics → нужен реальный экспорт метрик
+- [ ] **Observability/Logs.tsx:144,148** - Download/Share logs → нужен реальный download логов
+- [ ] **ScheduledTasks/History.tsx:96** - Export history → нужен реальный экспорт истории
+- [ ] **Services/Rollbacks.tsx:130** - Rollback confirmation → нужен реальный API rollback
+- [ ] **Services/Networking.tsx:67** - Save network config → нужен реальный API сохранения
+- [ ] **Environments/Secrets.tsx:74** - Secret viewed logging → можно удалить или заменить на audit log
+- [ ] **Deployments/Show.tsx:154** - New deployment log → можно удалить (debug log)
+
+### console.error в catch блоках (нужен proper error handling)
+- [ ] **Projects/Show.tsx** (6 мест) - заменить на toast notifications
+- [ ] **Applications/Rollback/*.tsx** (4 места) - заменить на toast notifications
+- [ ] **Settings/Account.tsx** (4 места) - заменить на toast notifications
+- [ ] **Settings/Workspace.tsx** (2 места) - заменить на toast notifications
+- [ ] **Settings/Team/Index.tsx** (2 места) - заменить на toast notifications
+- [ ] **Settings/Tokens.tsx, Applications/Index.tsx, Boarding/Index.tsx, Services/Scaling.tsx, Onboarding/ConnectRepo.tsx** - заменить на toast notifications
 
 ### Формы без proper обработки
 - [ ] **Без disabled state при submit** - Servers/Create, Databases/Create, Settings/Team/Invite, CronJobs/Create, Auth/ForgotPassword
@@ -95,7 +112,7 @@
 ### TypeScript (требует исправления)
 - [ ] **`: any` в параметрах** - lib/api.ts, hooks/useLogStream.ts, hooks/useTerminal.ts, ProjectCanvas.tsx, Servers/Proxy/Settings.tsx, Activity/Timeline.tsx
 - [ ] **`: any` в интерфейсах** - Observability/Index.tsx, Observability/Metrics.tsx
-- [ ] **`Record<string, any>`** - hooks/useDatabases.ts, Observability/Logs.tsx, Admin/Logs/Index.tsx, Settings/AuditLog.tsx, Databases/Query.tsx
+- [ ] **`Record<string, any>`** - hooks/useDatabases.ts, Observability/Logs.tsx, Admin/Logs/Index.tsx, Databases/Query.tsx
 
 ### Дублирование кода (~3500 строк)
 - [x] **Status utilities** ✅ (создана statusUtils.ts)

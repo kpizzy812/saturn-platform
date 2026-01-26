@@ -6021,6 +6021,59 @@ paths:
       security:
         -
           bearerAuth: []
+  /teams/current/activities/export:
+    get:
+      tags:
+        - Teams
+      summary: 'Export Team Activities'
+      description: 'Export all team activities to CSV or JSON format with optional filters.'
+      operationId: export-team-activities
+      parameters:
+        -
+          name: format
+          in: query
+          description: 'Export format: csv or json'
+          schema:
+            type: string
+            default: csv
+            enum:
+              - csv
+              - json
+        -
+          name: action
+          in: query
+          description: 'Filter by action type'
+          schema:
+            type: string
+        -
+          name: member
+          in: query
+          description: 'Filter by member email'
+          schema:
+            type: string
+        -
+          name: date_from
+          in: query
+          description: 'Filter from date'
+          schema:
+            type: string
+            format: date
+        -
+          name: date_to
+          in: query
+          description: 'Filter to date'
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 'Activities exported successfully'
+        '401':
+          $ref: '#/components/responses/401'
+      security:
+        -
+          bearerAuth:
+            - read
   /webhooks:
     get:
       tags:
