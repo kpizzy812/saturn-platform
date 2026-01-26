@@ -13,6 +13,84 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ===== LIGHT THEME (default) ===== */
+:root {
+    --color-background: #ffffff;
+    --color-background-secondary: #f8fafc;
+    --color-background-tertiary: #f1f5f9;
+    --color-background-elevated: #e2e8f0;
+
+    --color-glass-bg: rgba(0, 0, 0, 0.02);
+    --color-glass-border: rgba(0, 0, 0, 0.08);
+    --color-glass-highlight: rgba(0, 0, 0, 0.05);
+
+    --color-foreground: #0f172a;
+    --color-foreground-muted: #475569;
+    --color-foreground-subtle: #64748b;
+    --color-foreground-disabled: #94a3b8;
+
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-border-hover: rgba(0, 0, 0, 0.2);
+    --color-border-active: rgba(99, 102, 241, 0.5);
+
+    --color-base: #f8fafc;
+    --color-coolgray-100: #f1f5f9;
+    --color-coolgray-200: #e2e8f0;
+    --color-coolgray-300: #cbd5e1;
+    --color-coolgray-400: #94a3b8;
+    --color-coolgray-500: #64748b;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-card-hover: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-railway: 0 0 30px hsla(0, 0%, 70%, 0.15);
+}
+
+/* ===== DARK THEME ===== */
+.dark {
+    --color-background: #08080d;
+    --color-background-secondary: #0f0f18;
+    --color-background-tertiary: #161621;
+    --color-background-elevated: #1c1c2a;
+
+    --color-glass-bg: rgba(255, 255, 255, 0.03);
+    --color-glass-border: rgba(255, 255, 255, 0.06);
+    --color-glass-highlight: rgba(255, 255, 255, 0.08);
+
+    --color-foreground: #f8fafc;
+    --color-foreground-muted: #94a3b8;
+    --color-foreground-subtle: #64748b;
+    --color-foreground-disabled: #475569;
+
+    --color-border: rgba(255, 255, 255, 0.06);
+    --color-border-hover: rgba(255, 255, 255, 0.12);
+    --color-border-active: rgba(99, 102, 241, 0.5);
+
+    --color-base: #101010;
+    --color-coolgray-100: #181818;
+    --color-coolgray-200: #202020;
+    --color-coolgray-300: #242424;
+    --color-coolgray-400: #282828;
+    --color-coolgray-500: #323232;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3);
+    --shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.5), 0 12px 24px rgba(0, 0, 0, 0.4);
+
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-card-hover: 0 8px 16px -2px rgba(0, 0, 0, 0.4), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
+    --shadow-railway: 0 0 30px hsla(0, 0%, 30%, 0.25);
+}
+
 @theme {
     --font-sans: Inter, sans-serif;
 
@@ -363,15 +441,15 @@
 
     /* Glassmorphism utilities */
     .glass {
-        background: rgba(255, 255, 255, 0.03);
+        background: var(--color-glass-bg);
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--color-glass-border);
     }
 
     .glass-strong {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--color-glass-highlight);
         backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--color-glass-border);
     }
 
     /* Glow utilities */
@@ -398,7 +476,7 @@
 
     .hover-lift:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        box-shadow: var(--shadow-lg);
     }
 
     /* Saturn brand gradient text */
@@ -419,16 +497,17 @@
 */
 html,
 body {
-    @apply w-full min-h-full bg-gray-50 dark:bg-base dark:text-neutral-400;
+    @apply w-full min-h-full bg-background text-foreground-muted;
 }
 
 body {
     @apply min-h-screen text-sm antialiased scrollbar;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 option {
-    @apply dark:text-white dark:bg-coolgray-100;
+    @apply text-foreground bg-background-secondary;
 }
 
 button[isError]:not(:disabled) {
@@ -440,36 +519,36 @@ button[isHighlighted]:not(:disabled) {
 }
 
 h1 {
-    @apply text-3xl font-bold dark:text-white;
+    @apply text-3xl font-bold text-foreground;
 }
 
 h2 {
-    @apply text-xl font-bold dark:text-white;
+    @apply text-xl font-bold text-foreground;
 }
 
 h3 {
-    @apply text-lg font-bold dark:text-white;
+    @apply text-lg font-bold text-foreground;
 }
 
 h4 {
-    @apply text-base font-bold dark:text-white;
+    @apply text-base font-bold text-foreground;
 }
 
 a {
-    @apply hover:text-black dark:hover:text-white;
+    @apply hover:text-foreground;
 }
 
 button:focus-visible,
 a:focus-visible {
-    @apply outline-none ring-2 ring-saturn dark:ring-warning ring-offset-2 dark:ring-offset-coolgray-100;
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
 }
 
 label {
-    @apply dark:text-neutral-400;
+    @apply text-foreground-muted;
 }
 
 table {
-    @apply min-w-full divide-y dark:divide-coolgray-200 divide-neutral-300;
+    @apply min-w-full divide-y divide-border;
 }
 
 thead {
@@ -477,15 +556,15 @@ thead {
 }
 
 tbody {
-    @apply divide-y dark:divide-coolgray-200 divide-neutral-300;
+    @apply divide-y divide-border;
 }
 
 tr {
-    @apply text-black dark:text-neutral-400 dark:hover:bg-black hover:bg-neutral-200;
+    @apply text-foreground-muted hover:bg-background-elevated;
 }
 
 tr th {
-    @apply px-3 py-3.5 text-left text-black dark:text-white;
+    @apply px-3 py-3.5 text-left text-foreground;
 }
 
 tr th:first-child {
