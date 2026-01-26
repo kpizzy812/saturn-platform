@@ -228,47 +228,46 @@ function getStyledContent(content: string, level?: LogLine['level']): React.Reac
 /**
  * Single log line component
  */
-const LogLineItem = React.memo(function LogLineItem({
-    log,
-    index,
-    showLineNumbers,
-    style,
-}: {
-    log: LogLine;
-    index: number;
-    showLineNumbers: boolean;
-    style: React.CSSProperties;
-}) {
-    const level = log.level || detectLogLevel(log.content);
-    const isError = level === 'error' || level === 'stderr';
+const LogLineItem = React.memo(
+    React.forwardRef<HTMLDivElement, {
+        log: LogLine;
+        index: number;
+        showLineNumbers: boolean;
+        style: React.CSSProperties;
+    }>(function LogLineItem({ log, index, showLineNumbers, style }, ref) {
+        const level = log.level || detectLogLevel(log.content);
+        const isError = level === 'error' || level === 'stderr';
 
-    return (
-        <div
-            style={style}
-            className={cn(
-                'flex items-start gap-2 px-3 py-0.5 font-mono text-sm leading-relaxed hover:bg-white/5',
-                isError && 'bg-red-500/10'
-            )}
-        >
-            {showLineNumbers && (
-                <span className="select-none text-gray-600 w-10 shrink-0 text-right tabular-nums">
-                    {index + 1}
+        return (
+            <div
+                ref={ref}
+                data-index={index}
+                style={style}
+                className={cn(
+                    'flex items-start gap-2 px-3 py-0.5 font-mono text-sm leading-relaxed hover:bg-white/5',
+                    isError && 'bg-red-500/10'
+                )}
+            >
+                {showLineNumbers && (
+                    <span className="select-none text-gray-600 w-10 shrink-0 text-right tabular-nums">
+                        {index + 1}
+                    </span>
+                )}
+                {log.timestamp && (
+                    <span className="text-gray-500 shrink-0 text-xs">
+                        {log.timestamp}
+                    </span>
+                )}
+                <span className={cn('shrink-0', getLevelColor(level))}>
+                    {getLevelIcon(level)}
                 </span>
-            )}
-            {log.timestamp && (
-                <span className="text-gray-500 shrink-0 text-xs">
-                    {log.timestamp}
+                <span className="break-all whitespace-pre-wrap flex-1">
+                    {getStyledContent(log.content, level)}
                 </span>
-            )}
-            <span className={cn('shrink-0', getLevelColor(level))}>
-                {getLevelIcon(level)}
-            </span>
-            <span className="break-all whitespace-pre-wrap flex-1">
-                {getStyledContent(log.content, level)}
-            </span>
-        </div>
-    );
-});
+            </div>
+        );
+    })
+);
 
 /**
  * LogsContainer - A high-performance, feature-rich logs viewer component
@@ -366,12 +365,19 @@ export function LogsContainer({
         return filtered;
     }, [logs, levelFilter, searchQuery]);
 
-    // Virtual scrolling
+    // Virtual scrolling with dynamic height measurement
     const virtualizer = useVirtualizer({
         count: filteredLogs.length,
         getScrollElement: () => containerRef.current,
         estimateSize: () => estimatedLineHeight,
         overscan: 20,
+        measureElement: (element) => {
+            // Measure actual element height for variable-size rows
+            if (element) {
+                return element.getBoundingClientRect().height;
+            }
+            return estimatedLineHeight;
+        },
     });
 
     // Notify autoscroll hook when new logs arrive
@@ -602,6 +608,7 @@ export function LogsContainer({
                                 return (
                                     <LogLineItem
                                         key={log.id}
+                                        ref={virtualizer.measureElement}
                                         log={log}
                                         index={virtualRow.index}
                                         showLineNumbers={showLineNumbers}
