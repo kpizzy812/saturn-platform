@@ -194,6 +194,9 @@ trait HandlesNixpacksBuildpack
                     $this->application_deployment_queue->addLogEntry("Using NIXPACKS_NODE_VERSION from environment: {$explicitVersion}");
                 }
             }
+
+            // Warn if no start script found in package.json
+            $this->warnIfNoStartScript();
         }
 
         $nixpacks_command = $this->nixpacks_build_cmd($autoDetectedNodeVersion);
@@ -524,5 +527,32 @@ BASH;
         }
 
         return null;
+    }
+
+    /**
+     * Warn user if no start script is found in package.json.
+     * This prevents "successful" deployments that actually fail at runtime.
+     */
+    private function warnIfNoStartScript(): void
+    {
+        $packageJson = $this->saved_outputs->get('package_json', '{}');
+        $parsed = json_decode($packageJson, true);
+
+        if (! $parsed || ! is_array($parsed)) {
+            return;
+        }
+
+        $scripts = $parsed['scripts'] ?? [];
+        $hasStartScript = isset($scripts['start']) || isset($scripts['start:prod']);
+
+        if (! $hasStartScript) {
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+            $this->application_deployment_queue->addLogEntry('⚠️ WARNING: No "start" script found in package.json!', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('The container may fail to start after deployment.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Please add a "start" script to your package.json, for example:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('  "scripts": { "start": "node dist/main.js" }', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Or set a custom Start Command in the application settings.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        }
     }
 }

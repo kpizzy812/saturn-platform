@@ -86,7 +86,8 @@ trait HandlesHealthCheck
                 // Implement healthcheck for swarm
             } else {
                 if ($this->application->isHealthcheckDisabled() && $this->application->custom_healthcheck_found === false) {
-                    $this->newVersionIsHealthy = true;
+                    // Even without healthcheck, verify container is not crashing
+                    $this->verify_container_stability();
 
                     return;
                 }
@@ -173,5 +174,59 @@ trait HandlesHealthCheck
             ],
         );
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
+    }
+
+    /**
+     * Verify container is stable and not crash-looping.
+     * This is a lightweight check for when healthcheck is disabled.
+     */
+    private function verify_container_stability(): void
+    {
+        if (! $this->container_name) {
+            $this->newVersionIsHealthy = true;
+
+            return;
+        }
+
+        $this->application_deployment_queue->addLogEntry('Verifying container stability (healthcheck disabled)...');
+
+        // Wait a few seconds for container to potentially crash
+        Sleep::for(5)->seconds();
+
+        // Check container state
+        $this->execute_remote_command(
+            [
+                "docker inspect --format='{{.State.Status}} {{.State.Restarting}}' {$this->container_name}",
+                'hidden' => true,
+                'save' => 'container_state',
+                'ignore_errors' => true,
+            ],
+        );
+
+        $state = trim($this->saved_outputs->get('container_state', ''));
+        $parts = explode(' ', $state);
+        $status = $parts[0] ?? '';
+        $isRestarting = ($parts[1] ?? '') === 'true';
+
+        if ($isRestarting || $status === 'restarting') {
+            $this->newVersionIsHealthy = false;
+            $this->application_deployment_queue->addLogEntry('⚠️ Container is restarting/crash-looping!', type: 'error');
+            $this->application_deployment_queue->addLogEntry('This usually means the start command failed or is missing.', type: 'error');
+            $this->query_logs();
+
+            throw new DeploymentException('Container is crash-looping. Check the logs above for details.');
+        }
+
+        if ($status !== 'running') {
+            $this->newVersionIsHealthy = false;
+            $this->application_deployment_queue->addLogEntry("⚠️ Container is not running (status: {$status})!", type: 'error');
+            $this->query_logs();
+
+            throw new DeploymentException("Container failed to start (status: {$status}). Check the logs above for details.");
+        }
+
+        $this->newVersionIsHealthy = true;
+        $this->application->update(['status' => 'running']);
+        $this->application_deployment_queue->addLogEntry('Container is running stably.');
     }
 }
