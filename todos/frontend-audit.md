@@ -192,7 +192,7 @@ post('/settings/notifications/email', { ... });
 ### Кнопки без API (требуют исправления)
 - [x] **Templates/Submit.tsx** - Submit использует `setTimeout` вместо API ✅ (подключён к router.post)
 - [x] **Settings/Integrations.tsx** - Connect не сохраняет токены ✅ (использует реальный API GithubApp/GitlabApp)
-- [ ] **Databases/Query.tsx** - SQL запросы возвращают hardcoded результаты
+- [x] **Databases/Query.tsx** - SQL запросы через SSH API для PostgreSQL/MySQL/ClickHouse ✅
 - [ ] **Errors/Maintenance.tsx** - Subscribe не сохраняет email (оставлено как demo UI)
 
 ### React баги / Memory leaks
@@ -206,10 +206,10 @@ post('/settings/notifications/email', { ... });
 > ⚠️ Это не просто "логи в консоль" - это кнопки/функции которые ничего не делают!
 
 - [x] **Settings/AuditLog.tsx** - `console.log('Exporting audit logs...')` → реализован реальный API экспорт в CSV/JSON ✅
-- [ ] **Observability/Metrics.tsx:158,163** - Export/Refresh metrics → нужен реальный экспорт метрик
+- [x] **Observability/Metrics.tsx** - Export/Refresh metrics → реальный CSV экспорт и refresh метрик ✅
 - [x] **Observability/Logs.tsx** - полностью переписан: реальный API для логов ресурсов, download/copy функционал ✅
 - [x] **ScheduledTasks/History.tsx** - Export history → реализован клиентский экспорт в CSV/JSON ✅
-- [ ] **Services/Rollbacks.tsx:130** - Rollback confirmation → нужен реальный API rollback
+- [x] **Services/Rollbacks.tsx** - Rollback/Redeploy → реальный API restart с опцией pull latest ✅
 - [x] **Services/Networking.tsx** - Save network config → добавлен toast UI feedback ✅
 - [x] **Environments/Secrets.tsx** - Secret viewed logging → удалён debug log ✅
 - [x] **Deployments/Show.tsx:154** - debug log удалён ✅
@@ -281,14 +281,14 @@ post('/settings/notifications/email', { ... });
 |-----------|-------|------------|----------|
 | Критические (безопасность) | 6 | 3 | 3 |
 | Критические (mock данные) | 7 | 5 | 2 |
-| Высокие (кнопки без API) | 8 | 6 | 2 |
+| Высокие (кнопки без API) | 8 | 7 | 1 |
 | Высокие (memory leaks) | 5 | 1 | 4 |
 | Высокие (console.log) | 8 | 8 | 0 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~40 исправлено ✅ | ~41 осталось**
+**Прогресс: ~43 исправлено ✅ | ~38 осталось**
 
 ---
 
@@ -312,12 +312,12 @@ post('/settings/notifications/email', { ... });
 
 ### Приоритет 4: Кнопки без API
 11. [x] Templates/Submit - API для шаблонов ✅
-12. [ ] Databases/Query - API для SQL через SSH
+12. [x] Databases/Query - API для SQL через SSH (PostgreSQL/MySQL/ClickHouse) ✅
 13. [ ] Errors/Maintenance - API для подписки (оставлено как demo UI)
 
 ### Приоритет 5: Качество кода
-14. [ ] Observability/Metrics.tsx - реальный экспорт метрик
-15. [ ] Services/Rollbacks.tsx - реальный API rollback
+14. [x] Observability/Metrics.tsx - реальный экспорт метрик в CSV + refresh ✅
+15. [x] Services/Rollbacks.tsx - реальный API redeploy с pull latest ✅
 16. [ ] Исправить memory leaks в terminal.js
 17. [ ] Добавить SSR проверки
 18. [ ] Рефакторинг дублирования (5 компонентов)
