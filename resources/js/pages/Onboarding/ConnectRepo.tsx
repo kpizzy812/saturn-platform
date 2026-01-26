@@ -199,7 +199,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
     const needsGithubApp = selectedProvider === 'github' && githubApps.length === 0;
 
     return (
-        <AuthLayout>
+        <AuthLayout title="Connect Repository">
             <div className="min-h-screen bg-background py-12">
                 <div className="mx-auto max-w-4xl px-4">
                     {/* Header */}

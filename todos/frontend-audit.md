@@ -190,10 +190,10 @@ post('/settings/notifications/email', { ... });
 - [x] **Database Restart** ✅
 
 ### Кнопки без API (требуют исправления)
-- [ ] **Templates/Submit.tsx** - Submit использует `setTimeout` вместо API
-- [ ] **Settings/Integrations.tsx** - Connect не сохраняет токены
+- [x] **Templates/Submit.tsx** - Submit использует `setTimeout` вместо API ✅ (подключён к router.post)
+- [x] **Settings/Integrations.tsx** - Connect не сохраняет токены ✅ (использует реальный API GithubApp/GitlabApp)
 - [ ] **Databases/Query.tsx** - SQL запросы возвращают hardcoded результаты
-- [ ] **Errors/Maintenance.tsx** - Subscribe не сохраняет email
+- [ ] **Errors/Maintenance.tsx** - Subscribe не сохраняет email (оставлено как demo UI)
 
 ### React баги / Memory leaks
 - [x] **setTimeout без cleanup в TwoFactor/Setup.tsx** ✅
@@ -216,13 +216,13 @@ post('/settings/notifications/email', { ... });
 
 ### console.error в catch блоках (нужен proper error handling)
 - [x] **Projects/Show.tsx** (6 мест) - заменить на toast notifications ✅
-- [ ] **Applications/Rollback/*.tsx** (4 места) - заменить на toast notifications
+- [x] **Applications/Rollback/*.tsx** (4 места) - заменить на toast notifications ✅
 - [x] **Settings/Account.tsx** (4 места) - заменить на toast notifications ✅
 - [x] **Settings/Workspace.tsx** (2 места) - уже использует toast notifications ✅
 - [x] **Settings/Team/Index.tsx** (2 места) - заменить на toast notifications ✅
 - [x] **Settings/Tokens.tsx** - заменить на toast notifications ✅
 - [x] **Applications/Index.tsx** - заменить на toast notifications ✅
-- [ ] **Boarding/Index.tsx, Services/Scaling.tsx, Onboarding/ConnectRepo.tsx** - заменить на toast notifications
+- [x] **Boarding/Index.tsx, Services/Scaling.tsx, Onboarding/ConnectRepo.tsx** - заменить на toast notifications ✅
 
 ### Формы без proper обработки
 - [ ] **Без disabled state при submit** - Servers/Create, Databases/Create, Settings/Team/Invite, CronJobs/Create, Auth/ForgotPassword
@@ -280,15 +280,15 @@ post('/settings/notifications/email', { ... });
 | Категория | Всего | Исправлено | Осталось |
 |-----------|-------|------------|----------|
 | Критические (безопасность) | 6 | 3 | 3 |
-| Критические (mock данные) | 7 | 2 | 5 |
-| Высокие (кнопки без API) | 8 | 4 | 4 |
+| Критические (mock данные) | 7 | 5 | 2 |
+| Высокие (кнопки без API) | 8 | 6 | 2 |
 | Высокие (memory leaks) | 5 | 1 | 4 |
-| Высокие (console.log) | 8 | 5 | 3 |
+| Высокие (console.log) | 8 | 8 | 0 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~32 исправлено ✅ | ~49 осталось**
+**Прогресс: ~40 исправлено ✅ | ~41 осталось**
 
 ---
 
@@ -302,18 +302,18 @@ post('/settings/notifications/email', { ... });
 ### Приоритет 2: Mock данные в Settings (см. детальную спецификацию выше)
 4. [x] **Settings/Workspace.tsx** - получать workspace данные из Team модели через Inertia props ✅
 5. [x] Settings/Team/Activity - API для истории активности ✅
-6. [ ] **Settings/Integrations.tsx** - создать модель TeamIntegration + OAuth/API token flow
+6. [x] **Settings/Integrations.tsx** - использует реальный API GithubApp/GitlabApp + notification statuses ✅
 7. [x] Settings/AuditLog - реальный API ✅
 
 ### Приоритет 3: Database Panels (см. детальную спецификацию выше)
-8. [ ] **PostgreSQLPanel** - API для extensions, users, logs через SSH
-9. [ ] **ClickHousePanel** - API для queries, replication, merge status через SSH
-10. [ ] **MySQLPanel, MongoDBPanel, RedisPanel** - аналогичные API
+8. [x] **PostgreSQLPanel** - API для extensions, users, logs через SSH ✅
+9. [ ] **ClickHousePanel** - API для queries, replication, merge status через SSH (логи готовы ✅)
+10. [x] **MySQLPanel, MongoDBPanel, RedisPanel** - API для users и logs ✅
 
 ### Приоритет 4: Кнопки без API
-11. [ ] Templates/Submit - API для шаблонов
+11. [x] Templates/Submit - API для шаблонов ✅
 12. [ ] Databases/Query - API для SQL через SSH
-13. [ ] Errors/Maintenance - API для подписки
+13. [ ] Errors/Maintenance - API для подписки (оставлено как demo UI)
 
 ### Приоритет 5: Качество кода
 14. [ ] Observability/Metrics.tsx - реальный экспорт метрик
