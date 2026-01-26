@@ -154,10 +154,27 @@ export default function DeploymentDetails({
     };
 
     const copyLogs = async () => {
-        const logText = logs.map((log) => log.output).join('\n');
-        await navigator.clipboard.writeText(logText);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        try {
+            const logText = (logs || []).map((log) => log.output).join('\n');
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(logText);
+            } else {
+                // Fallback for non-secure contexts (HTTP)
+                const textArea = document.createElement('textarea');
+                textArea.value = logText;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy logs:', err);
+        }
     };
 
     const handleCancel = async () => {

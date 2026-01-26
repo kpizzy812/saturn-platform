@@ -574,14 +574,24 @@ Route::get('/applications/{uuid}/deployments', function (string $uuid) {
     $deployments = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
         ->where('pull_request_id', 0)
         ->orderBy('created_at', 'desc')
-        ->paginate(20)
-        ->through(function ($deployment) {
+        ->limit(50)
+        ->get()
+        ->map(function ($deployment) {
+            // Calculate duration if deployment finished
+            $duration = null;
+            if ($deployment->started_at && $deployment->finished_at) {
+                $duration = \Carbon\Carbon::parse($deployment->finished_at)
+                    ->diffInSeconds(\Carbon\Carbon::parse($deployment->started_at));
+            }
+
             return [
                 'id' => $deployment->id,
                 'deployment_uuid' => $deployment->deployment_uuid,
                 'status' => $deployment->status,
                 'commit' => $deployment->commit,
                 'commit_message' => $deployment->commitMessage(),
+                'trigger' => $deployment->is_webhook ? 'push' : ($deployment->rollback ? 'rollback' : 'manual'),
+                'duration' => $duration,
                 'created_at' => $deployment->created_at,
                 'updated_at' => $deployment->updated_at,
                 'started_at' => $deployment->started_at,
