@@ -8,6 +8,11 @@ const buttonVariants = {
             'hover:bg-primary-hover hover:shadow-glow-primary',
             'active:scale-[0.98]',
         ].join(' '),
+        primary: [
+            'bg-primary text-white',
+            'hover:bg-primary-hover hover:shadow-glow-primary',
+            'active:scale-[0.98]',
+        ].join(' '),
         secondary: [
             'bg-background-secondary/80 text-foreground border border-white/[0.06]',
             'backdrop-blur-sm',

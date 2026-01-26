@@ -675,20 +675,20 @@ export default function ProjectShow({ project }: Props) {
                 {/* Main Content Area */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Left Toolbar - Premium Style */}
-                    <div className="flex w-14 flex-col items-center gap-1 border-r border-white/[0.06] bg-[#0d0d15] py-3">
+                    <div className="flex w-14 flex-col items-center gap-1 border-r border-border bg-background-secondary py-3">
                         {/* Add Service Button */}
                         <button
                             onClick={handleAddService}
-                            className="group relative rounded-xl p-2.5 text-gray-400 transition-all duration-200 hover:bg-white/[0.06] hover:text-white hover:shadow-lg"
+                            className="group relative rounded-xl p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-tertiary hover:text-foreground hover:shadow-lg"
                             title="Add Service"
                         >
                             <Plus className="h-5 w-5" />
-                            <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow-xl group-hover:block">
+                            <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded-lg bg-background-tertiary px-2 py-1 text-xs text-foreground shadow-xl group-hover:block">
                                 Add Service
                             </span>
                         </button>
 
-                        <div className="my-2 h-px w-8 bg-white/[0.06]" />
+                        <div className="my-2 h-px w-8 bg-border" />
 
                         {/* Toggle Grid */}
                         <button
@@ -696,7 +696,7 @@ export default function ProjectShow({ project }: Props) {
                             className={`group relative rounded-xl p-2.5 transition-all duration-200 ${
                                 showGrid
                                     ? 'bg-primary/20 text-primary shadow-lg shadow-primary/20'
-                                    : 'text-gray-400 hover:bg-white/[0.06] hover:text-white'
+                                    : 'text-foreground-muted hover:bg-background-tertiary hover:text-foreground'
                             }`}
                             title="Toggle Grid"
                         >
@@ -706,21 +706,21 @@ export default function ProjectShow({ project }: Props) {
                         {/* Zoom In */}
                         <button
                             onClick={handleZoomIn}
-                            className="group relative rounded-xl p-2.5 text-gray-400 transition-all duration-200 hover:bg-white/[0.06] hover:text-white"
+                            className="group relative rounded-xl p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-tertiary hover:text-foreground"
                             title="Zoom In"
                         >
                             <ZoomIn className="h-5 w-5" />
                         </button>
 
                         {/* Zoom Level Indicator */}
-                        <div className="text-xs font-medium text-gray-500">
+                        <div className="text-xs font-medium text-foreground-subtle">
                             {Math.round(zoomLevel * 100)}%
                         </div>
 
                         {/* Zoom Out */}
                         <button
                             onClick={handleZoomOut}
-                            className="group relative rounded-xl p-2.5 text-gray-400 transition-all duration-200 hover:bg-white/[0.06] hover:text-white"
+                            className="group relative rounded-xl p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-tertiary hover:text-foreground"
                             title="Zoom Out"
                         >
                             <ZoomOut className="h-5 w-5" />
@@ -740,20 +740,20 @@ export default function ProjectShow({ project }: Props) {
                             className={`group relative rounded-xl p-2.5 transition-all duration-200 ${
                                 isFullscreen
                                     ? 'bg-primary/20 text-primary shadow-lg shadow-primary/20'
-                                    : 'text-gray-400 hover:bg-white/[0.06] hover:text-white'
+                                    : 'text-foreground-muted hover:bg-background-tertiary hover:text-foreground'
                             }`}
                             title="Fullscreen"
                         >
                             <Maximize2 className="h-5 w-5" />
                         </button>
 
-                        <div className="my-2 h-px w-8 bg-white/[0.06]" />
+                        <div className="my-2 h-px w-8 bg-border" />
 
                         {/* Undo */}
                         <button
                             onClick={handleUndo}
                             disabled={!canUndo}
-                            className="group relative rounded-xl p-2.5 text-gray-500 transition-all duration-200 hover:bg-white/[0.06] hover:text-gray-300"
+                            className="group relative rounded-xl p-2.5 text-foreground-subtle transition-all duration-200 hover:bg-background-tertiary hover:text-foreground-muted disabled:opacity-50"
                             title="Undo"
                         >
                             <Undo2 className="h-5 w-5" />
@@ -763,7 +763,7 @@ export default function ProjectShow({ project }: Props) {
                         <button
                             onClick={handleRedo}
                             disabled={!canRedo}
-                            className="group relative rounded-xl p-2.5 text-gray-500 transition-all duration-200 hover:bg-white/[0.06] hover:text-gray-300"
+                            className="group relative rounded-xl p-2.5 text-foreground-subtle transition-all duration-200 hover:bg-background-tertiary hover:text-foreground-muted disabled:opacity-50"
                             title="Redo"
                         >
                             <Redo2 className="h-5 w-5" />

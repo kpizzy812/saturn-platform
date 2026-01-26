@@ -68,12 +68,16 @@ export function useGitBranches({
             setIsLoading(true);
             setError(null);
 
+            // Get CSRF token for web route
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
             const response = await fetch(
-                `/api/v1/git/branches?repository_url=${encodeURIComponent(repositoryUrl)}`,
+                `/web-api/git/branches?repository_url=${encodeURIComponent(repositoryUrl)}`,
                 {
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     credentials: 'include',
                     signal: abortControllerRef.current.signal,

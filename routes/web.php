@@ -978,6 +978,162 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         ]);
     })->name('web-api.github-apps.branches');
 
+    // Public git repository branches (session auth)
+    Route::get('/web-api/git/branches', function (\Illuminate\Http\Request $request) {
+        $repositoryUrl = $request->query('repository_url');
+
+        if (empty($repositoryUrl)) {
+            return response()->json([
+                'message' => 'Repository URL is required',
+            ], 400);
+        }
+
+        // Parse repository URL
+        $url = preg_replace('/\.git$/', '', $repositoryUrl);
+        $parsed = null;
+
+        // GitHub
+        if (preg_match('#^https?://github\.com/([^/]+)/([^/]+)#', $url, $matches)) {
+            $parsed = ['platform' => 'github', 'owner' => $matches[1], 'repo' => $matches[2]];
+        }
+        // GitLab
+        elseif (preg_match('#^https?://gitlab\.com/([^/]+)/([^/]+)#', $url, $matches)) {
+            $parsed = ['platform' => 'gitlab', 'owner' => $matches[1], 'repo' => $matches[2]];
+        }
+        // Bitbucket
+        elseif (preg_match('#^https?://bitbucket\.org/([^/]+)/([^/]+)#', $url, $matches)) {
+            $parsed = ['platform' => 'bitbucket', 'owner' => $matches[1], 'repo' => $matches[2]];
+        }
+
+        if (! $parsed) {
+            return response()->json([
+                'message' => 'Invalid repository URL. Supported platforms: GitHub, GitLab, Bitbucket',
+            ], 400);
+        }
+
+        // Cache key
+        $cacheKey = 'git_branches_'.md5($repositoryUrl);
+        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        if ($cached) {
+            return response()->json($cached);
+        }
+
+        $owner = $parsed['owner'];
+        $repo = $parsed['repo'];
+        $result = null;
+
+        // Fetch branches based on platform
+        if ($parsed['platform'] === 'github') {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Accept' => 'application/vnd.github.v3+json',
+                'User-Agent' => 'Saturn-Platform',
+            ])->timeout(15)->retry(2, 100, throw: false)
+                ->get("https://api.github.com/repos/{$owner}/{$repo}/branches", ['per_page' => 100]);
+
+            if ($response->failed()) {
+                $status = $response->status();
+                if ($status === 404) {
+                    return response()->json(['message' => 'Repository not found or is private'], 404);
+                }
+
+                return response()->json(['message' => $response->json('message', 'Failed to fetch branches')], $status);
+            }
+
+            $branches = collect($response->json())->map(fn ($b) => ['name' => $b['name'], 'is_default' => false])->toArray();
+
+            // Get default branch
+            $repoResponse = \Illuminate\Support\Facades\Http::withHeaders([
+                'Accept' => 'application/vnd.github.v3+json',
+                'User-Agent' => 'Saturn-Platform',
+            ])->timeout(10)->get("https://api.github.com/repos/{$owner}/{$repo}");
+
+            $defaultBranch = $repoResponse->json('default_branch', 'main');
+            foreach ($branches as &$branch) {
+                if ($branch['name'] === $defaultBranch) {
+                    $branch['is_default'] = true;
+                }
+            }
+
+            $result = ['branches' => $branches, 'default_branch' => $defaultBranch];
+        } elseif ($parsed['platform'] === 'gitlab') {
+            $projectPath = urlencode("{$owner}/{$repo}");
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['User-Agent' => 'Saturn-Platform'])
+                ->timeout(15)->retry(2, 100, throw: false)
+                ->get("https://gitlab.com/api/v4/projects/{$projectPath}/repository/branches", ['per_page' => 100]);
+
+            if ($response->failed()) {
+                $status = $response->status();
+                if ($status === 404) {
+                    return response()->json(['message' => 'Repository not found or is private'], 404);
+                }
+
+                return response()->json(['message' => $response->json('message', 'Failed to fetch branches')], $status);
+            }
+
+            $projectResponse = \Illuminate\Support\Facades\Http::withHeaders(['User-Agent' => 'Saturn-Platform'])
+                ->timeout(10)->get("https://gitlab.com/api/v4/projects/{$projectPath}");
+            $defaultBranch = $projectResponse->json('default_branch', 'main');
+
+            $branches = collect($response->json())->map(fn ($b) => [
+                'name' => $b['name'],
+                'is_default' => $b['name'] === $defaultBranch,
+            ])->toArray();
+
+            $result = ['branches' => $branches, 'default_branch' => $defaultBranch];
+        } elseif ($parsed['platform'] === 'bitbucket') {
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['User-Agent' => 'Saturn-Platform'])
+                ->timeout(15)->retry(2, 100, throw: false)
+                ->get("https://api.bitbucket.org/2.0/repositories/{$owner}/{$repo}/refs/branches", ['pagelen' => 100]);
+
+            if ($response->failed()) {
+                $status = $response->status();
+                if ($status === 404) {
+                    return response()->json(['message' => 'Repository not found or is private'], 404);
+                }
+
+                return response()->json(['message' => $response->json('error.message', 'Failed to fetch branches')], $status);
+            }
+
+            $repoResponse = \Illuminate\Support\Facades\Http::withHeaders(['User-Agent' => 'Saturn-Platform'])
+                ->timeout(10)->get("https://api.bitbucket.org/2.0/repositories/{$owner}/{$repo}");
+            $defaultBranch = $repoResponse->json('mainbranch.name', 'main');
+
+            $branches = collect($response->json('values', []))->map(fn ($b) => [
+                'name' => $b['name'],
+                'is_default' => $b['name'] === $defaultBranch,
+            ])->toArray();
+
+            $result = ['branches' => $branches, 'default_branch' => $defaultBranch];
+        }
+
+        if (! $result) {
+            return response()->json(['message' => 'Unsupported platform'], 400);
+        }
+
+        // Sort: default first, then alphabetically
+        usort($result['branches'], function ($a, $b) {
+            if ($a['is_default'] && ! $b['is_default']) {
+                return -1;
+            }
+            if (! $a['is_default'] && $b['is_default']) {
+                return 1;
+            }
+
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        $responseData = [
+            'branches' => $result['branches'],
+            'default_branch' => $result['default_branch'],
+            'platform' => $parsed['platform'],
+        ];
+
+        // Cache for 5 minutes
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $responseData, 300);
+
+        return response()->json($responseData);
+    })->name('web-api.git.branches');
+
     // Support routes
     Route::get('/support', function () {
         return \Inertia\Inertia::render('Support/Index');
