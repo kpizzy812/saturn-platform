@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Database, FileText, Settings, RefreshCw, Eye, EyeOff, Copy, Layers, TrendingUp } from 'lucide-react';
-import { useDatabaseMetrics, formatMetricValue, type MongoMetrics } from '@/hooks';
+import { RefreshCw, Eye, EyeOff, Copy, Layers, TrendingUp, Loader2 } from 'lucide-react';
+import { useDatabaseMetrics, useDatabaseLogs, formatMetricValue, type MongoMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -337,39 +337,60 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function LogsTab({ database }: { database: StandaloneDatabase }) {
-    const [logs] = useState([
-        { timestamp: '2024-01-03 10:23:45', level: 'INFO', message: 'Database started successfully' },
-        { timestamp: '2024-01-03 10:24:12', level: 'INFO', message: 'Replica set election completed' },
-        { timestamp: '2024-01-03 10:25:33', level: 'WARNING', message: 'Slow query detected: db.users.find() (1.2s)' },
-        { timestamp: '2024-01-03 10:26:01', level: 'INFO', message: 'Index build completed: users.email_1' },
-    ]);
+    // Fetch logs from API
+    const { logs, isLoading, refetch } = useDatabaseLogs({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const getLevelVariant = (level: string): 'default' | 'secondary' | 'danger' => {
+        switch (level.toUpperCase()) {
+            case 'ERROR':
+            case 'FATAL':
+                return 'danger';
+            case 'WARNING':
+                return 'default';
+            default:
+                return 'secondary';
+        }
+    };
 
     return (
         <Card>
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Recent Logs</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="space-y-2">
-                    {logs.map((log, index) => (
-                        <div
-                            key={index}
-                            className="rounded-lg border border-border bg-background-secondary p-3 font-mono text-sm"
-                        >
-                            <div className="flex items-start gap-3">
-                                <span className="text-foreground-muted">{log.timestamp}</span>
-                                <Badge variant={log.level === 'WARNING' ? 'default' : 'secondary'}>
-                                    {log.level}
-                                </Badge>
-                                <span className="flex-1 text-foreground">{log.message}</span>
+                {isLoading && logs.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading logs...</span>
+                    </div>
+                ) : logs.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No logs available</p>
+                ) : (
+                    <div className="space-y-2">
+                        {logs.map((log, index) => (
+                            <div
+                                key={index}
+                                className="rounded-lg border border-border bg-background-secondary p-3 font-mono text-sm"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <span className="text-foreground-muted">{log.timestamp}</span>
+                                    <Badge variant={getLevelVariant(log.level)}>
+                                        {log.level}
+                                    </Badge>
+                                    <span className="flex-1 text-foreground">{log.message}</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

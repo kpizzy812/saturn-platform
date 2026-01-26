@@ -79,8 +79,9 @@ Route::get('/settings/tokens', function () {
     ]);
 })->name('settings.tokens');
 
-Route::get('/settings/integrations', function () {
-    return Inertia::render('Settings/Integrations');
+// Legacy route redirects to the new integrations page
+Route::get('/settings/integrations-legacy', function () {
+    return redirect()->route('settings.integrations');
 })->name('settings.integrations.legacy');
 
 Route::get('/settings/security', function () {
@@ -766,7 +767,57 @@ Route::get('/settings/usage', function () {
 })->name('settings.usage');
 
 Route::get('/settings/integrations', function () {
-    return Inertia::render('Settings/Integrations');
+    $team = currentTeam();
+
+    // Get GitHub Apps
+    $githubApps = \App\Models\GithubApp::where(function ($query) use ($team) {
+        $query->where('team_id', $team->id)
+            ->orWhere('is_system_wide', true);
+    })->get()->map(fn ($app) => [
+        'id' => $app->id,
+        'uuid' => $app->uuid,
+        'name' => $app->name,
+        'organization' => $app->organization,
+        'type' => 'github',
+        'connected' => true,
+        'lastSync' => $app->updated_at?->toISOString(),
+        'applicationsCount' => $app->applications()->count(),
+    ]);
+
+    // Get GitLab Apps
+    $gitlabApps = \App\Models\GitlabApp::where('team_id', $team->id)
+        ->get()->map(fn ($app) => [
+            'id' => $app->id,
+            'uuid' => $app->uuid ?? $app->id,
+            'name' => $app->name,
+            'organization' => $app->deploy_key_id ? 'Deploy Key' : 'OAuth',
+            'type' => 'gitlab',
+            'connected' => true,
+            'lastSync' => $app->updated_at?->toISOString(),
+            'applicationsCount' => $app->applications()->count(),
+        ]);
+
+    // Combine all sources
+    $sources = $githubApps->merge($gitlabApps);
+
+    // Get notification channel statuses
+    $notificationChannels = [
+        'slack' => [
+            'enabled' => $team->slackNotificationSettings?->slack_enabled ?? false,
+            'configured' => ! empty($team->slackNotificationSettings?->slack_webhook_url),
+            'channel' => $team->slackNotificationSettings?->slack_webhook_url ? 'Webhook configured' : null,
+        ],
+        'discord' => [
+            'enabled' => $team->discordNotificationSettings?->discord_enabled ?? false,
+            'configured' => ! empty($team->discordNotificationSettings?->discord_webhook_url),
+            'channel' => $team->discordNotificationSettings?->discord_webhook_url ? 'Webhook configured' : null,
+        ],
+    ];
+
+    return Inertia::render('Settings/Integrations', [
+        'sources' => $sources,
+        'notificationChannels' => $notificationChannels,
+    ]);
 })->name('settings.integrations');
 
 Route::get('/settings/members/{id}', function (string $id) {

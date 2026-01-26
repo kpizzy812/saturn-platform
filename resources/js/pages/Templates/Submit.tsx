@@ -52,10 +52,25 @@ export default function TemplateSubmit() {
 
         setIsSubmitting(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            router.visit('/templates');
-        }, 2000);
+        router.post('/templates/submit', {
+            name,
+            description,
+            github_url: githubUrl,
+            docker_compose: dockerCompose,
+            category,
+            environment_variables: envVars,
+        }, {
+            onSuccess: () => {
+                addToast('success', 'Template submitted successfully for review');
+            },
+            onError: (errors) => {
+                addToast('error', 'Failed to submit template');
+                setIsSubmitting(false);
+            },
+            onFinish: () => {
+                setIsSubmitting(false);
+            },
+        });
     };
 
     const isFormValid =

@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Database, Users, Settings, FileText, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
-import { useDatabaseMetrics, formatMetricValue, type PostgresMetrics } from '@/hooks';
+import { Users, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
+import {
+    useDatabaseMetrics,
+    useDatabaseExtensions,
+    useDatabaseUsers,
+    useDatabaseLogs,
+    formatMetricValue,
+    type PostgresMetrics,
+} from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -26,7 +33,7 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
     // Fetch real-time metrics from backend
-    const { metrics, isLoading, isAvailable } = useDatabaseMetrics({
+    const { metrics, isLoading } = useDatabaseMetrics({
         uuid: database.uuid,
         autoRefresh: true,
         refreshInterval: 30000,
@@ -173,18 +180,27 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 
 function ExtensionsTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
-    const [extensions] = useState([
-        { name: 'pg_stat_statements', version: '1.10', enabled: true, description: 'Track execution statistics of SQL statements' },
-        { name: 'pgcrypto', version: '1.3', enabled: true, description: 'Cryptographic functions' },
-        { name: 'uuid-ossp', version: '1.1', enabled: true, description: 'Generate universally unique identifiers (UUIDs)' },
-        { name: 'hstore', version: '1.8', enabled: false, description: 'Store sets of key/value pairs' },
-        { name: 'pg_trgm', version: '1.6', enabled: false, description: 'Text similarity measurement and index searching' },
-        { name: 'postgis', version: '3.3', enabled: false, description: 'PostGIS geometry and geography spatial types' },
-    ]);
+    const [togglingExtension, setTogglingExtension] = useState<string | null>(null);
 
-    const handleToggleExtension = (extensionName: string, currentlyEnabled: boolean) => {
+    // Fetch extensions from API
+    const { extensions, isLoading, refetch, toggleExtension } = useDatabaseExtensions({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
+
+    const handleToggleExtension = async (extensionName: string, currentlyEnabled: boolean) => {
+        setTogglingExtension(extensionName);
         addToast('info', `${currentlyEnabled ? 'Disabling' : 'Enabling'} ${extensionName}...`);
-        // In real app, make API call here
+
+        const success = await toggleExtension(extensionName, !currentlyEnabled);
+
+        if (success) {
+            addToast('success', `${extensionName} ${currentlyEnabled ? 'disabled' : 'enabled'} successfully`);
+        } else {
+            addToast('error', `Failed to ${currentlyEnabled ? 'disable' : 'enable'} ${extensionName}`);
+        }
+
+        setTogglingExtension(null);
     };
 
     return (
@@ -192,37 +208,55 @@ function ExtensionsTab({ database }: { database: StandaloneDatabase }) {
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">PostgreSQL Extensions</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="space-y-3">
-                    {extensions.map((ext) => (
-                        <div
-                            key={ext.name}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <p className="font-medium text-foreground">{ext.name}</p>
-                                    <Badge variant={ext.enabled ? 'default' : 'secondary'}>
-                                        {ext.enabled ? 'Enabled' : 'Disabled'}
-                                    </Badge>
-                                    <span className="text-sm text-foreground-muted">v{ext.version}</span>
-                                </div>
-                                <p className="mt-1 text-sm text-foreground-muted">{ext.description}</p>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant={ext.enabled ? 'secondary' : 'default'}
-                                onClick={() => handleToggleExtension(ext.name, ext.enabled)}
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading extensions...</span>
+                    </div>
+                ) : extensions.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No extensions found</p>
+                ) : (
+                    <div className="space-y-3">
+                        {extensions.map((ext) => (
+                            <div
+                                key={ext.name}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
                             >
-                                {ext.enabled ? 'Disable' : 'Enable'}
-                            </Button>
-                        </div>
-                    ))}
-                </div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-foreground">{ext.name}</p>
+                                        <Badge variant={ext.enabled ? 'default' : 'secondary'}>
+                                            {ext.enabled ? 'Enabled' : 'Disabled'}
+                                        </Badge>
+                                        <span className="text-sm text-foreground-muted">v{ext.version}</span>
+                                    </div>
+                                    {ext.description && (
+                                        <p className="mt-1 text-sm text-foreground-muted">{ext.description}</p>
+                                    )}
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant={ext.enabled ? 'secondary' : 'default'}
+                                    onClick={() => handleToggleExtension(ext.name, ext.enabled)}
+                                    disabled={togglingExtension === ext.name}
+                                >
+                                    {togglingExtension === ext.name ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : ext.enabled ? (
+                                        'Disable'
+                                    ) : (
+                                        'Enable'
+                                    )}
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -231,11 +265,12 @@ function ExtensionsTab({ database }: { database: StandaloneDatabase }) {
 function UsersTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
     const confirm = useConfirm();
-    const [users] = useState([
-        { name: 'postgres', role: 'Superuser', connections: 5 },
-        { name: 'app_user', role: 'Standard', connections: 12 },
-        { name: 'readonly', role: 'Read-only', connections: 3 },
-    ]);
+
+    // Fetch users from API
+    const { users, isLoading, refetch } = useDatabaseUsers({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
 
     const handleCreateUser = () => {
         addToast('info', 'Create user functionality coming soon');
@@ -249,7 +284,7 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('info', `Deleting user ${username}...`);
+            addToast('info', `Deleting user ${username}... (not implemented)`);
         }
     };
 
@@ -258,38 +293,53 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Database Users</h3>
-                    <Button size="sm" onClick={handleCreateUser}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Create User
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                        <Button size="sm" onClick={handleCreateUser}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Create User
+                        </Button>
+                    </div>
                 </div>
-                <div className="space-y-3">
-                    {users.map((user) => (
-                        <div
-                            key={user.name}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <p className="font-medium text-foreground">{user.name}</p>
-                                    <Badge variant="secondary">{user.role}</Badge>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading users...</span>
+                    </div>
+                ) : users.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No users found</p>
+                ) : (
+                    <div className="space-y-3">
+                        {users.map((user) => (
+                            <div
+                                key={user.name}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-foreground">{user.name}</p>
+                                        <Badge variant="secondary">{user.role}</Badge>
+                                    </div>
+                                    <p className="mt-1 text-sm text-foreground-muted">
+                                        {user.connections} active connection{user.connections !== 1 ? 's' : ''}
+                                    </p>
                                 </div>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    {user.connections} active connection{user.connections !== 1 ? 's' : ''}
-                                </p>
+                                {user.name !== 'postgres' && (
+                                    <Button
+                                        size="sm"
+                                        variant="danger"
+                                        onClick={() => handleDeleteUser(user.name)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
                             </div>
-                            {user.name !== 'postgres' && (
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    onClick={() => handleDeleteUser(user.name)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -360,39 +410,61 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function LogsTab({ database }: { database: StandaloneDatabase }) {
-    const [logs] = useState([
-        { timestamp: '2024-01-03 10:23:45', level: 'INFO', message: 'Database started successfully' },
-        { timestamp: '2024-01-03 10:24:12', level: 'INFO', message: 'Checkpoint completed' },
-        { timestamp: '2024-01-03 10:25:33', level: 'WARNING', message: 'Connection pool near capacity (18/20)' },
-        { timestamp: '2024-01-03 10:26:01', level: 'INFO', message: 'Query execution completed in 245ms' },
-    ]);
+    // Fetch logs from API
+    const { logs, isLoading, refetch } = useDatabaseLogs({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const getLevelVariant = (level: string): 'default' | 'secondary' | 'danger' => {
+        switch (level.toUpperCase()) {
+            case 'ERROR':
+            case 'FATAL':
+            case 'PANIC':
+                return 'danger';
+            case 'WARNING':
+                return 'default';
+            default:
+                return 'secondary';
+        }
+    };
 
     return (
         <Card>
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Recent Logs</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="space-y-2">
-                    {logs.map((log, index) => (
-                        <div
-                            key={index}
-                            className="rounded-lg border border-border bg-background-secondary p-3 font-mono text-sm"
-                        >
-                            <div className="flex items-start gap-3">
-                                <span className="text-foreground-muted">{log.timestamp}</span>
-                                <Badge variant={log.level === 'WARNING' ? 'default' : 'secondary'}>
-                                    {log.level}
-                                </Badge>
-                                <span className="flex-1 text-foreground">{log.message}</span>
+                {isLoading && logs.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading logs...</span>
+                    </div>
+                ) : logs.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No logs available</p>
+                ) : (
+                    <div className="space-y-2">
+                        {logs.map((log, index) => (
+                            <div
+                                key={index}
+                                className="rounded-lg border border-border bg-background-secondary p-3 font-mono text-sm"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <span className="text-foreground-muted">{log.timestamp}</span>
+                                    <Badge variant={getLevelVariant(log.level)}>
+                                        {log.level}
+                                    </Badge>
+                                    <span className="flex-1 text-foreground">{log.message}</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

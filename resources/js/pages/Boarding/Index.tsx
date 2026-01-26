@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router, Link } from '@inertiajs/react';
 import { Card, CardContent, Button, Input, Select, Textarea, useConfirm } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import {
     Check,
     ChevronRight,
@@ -42,6 +43,7 @@ export default function BoardingIndex({ userName, existingServers = [], privateK
     const hasLocalhost = !!localhostServer;
 
     const confirm = useConfirm();
+    const { addToast } = useToast();
 
     const [currentStep, setCurrentStep] = useState<Step>('welcome');
     const [completedSteps, setCompletedSteps] = useState<Set<Step>>(new Set());
@@ -235,8 +237,8 @@ export default function BoardingIndex({ userName, existingServers = [], privateK
                 markStepComplete('deploy');
                 setCurrentStep('complete');
             },
-            onError: (errors) => {
-                console.error('Deploy failed:', errors);
+            onError: () => {
+                addToast('error', 'Deploy failed. Please check your settings and try again.');
             },
             preserveScroll: true,
         });

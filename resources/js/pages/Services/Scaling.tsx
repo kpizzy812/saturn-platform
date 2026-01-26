@@ -101,8 +101,7 @@ export function ScalingTab({ service }: Props) {
                 });
                 setHasChanges(false);
             },
-            onError: (errors) => {
-                console.error('Failed to save scaling settings:', errors);
+            onError: () => {
                 addToast({
                     title: 'Failed to save resource limits',
                     description: 'Please check your inputs and try again.',

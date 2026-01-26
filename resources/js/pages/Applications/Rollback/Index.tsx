@@ -82,8 +82,7 @@ export default function ApplicationRollbackIndex({ application, projectUuid, env
                     const eventsData = await eventsRes.json();
                     setRollbackEvents(Array.isArray(eventsData) ? eventsData : []);
                 }
-            } catch (error) {
-                console.error('Failed to load rollback data:', error);
+            } catch {
                 addToast('error', 'Failed to load rollback data');
             } finally {
                 setIsLoading(false);
@@ -135,8 +134,7 @@ export default function ApplicationRollbackIndex({ application, projectUuid, env
                 const error = await response.json();
                 addToast('error', error.message || 'Failed to initiate rollback');
             }
-        } catch (error) {
-            console.error('Rollback failed:', error);
+        } catch {
             addToast('error', 'Failed to initiate rollback');
         } finally {
             setIsRollingBack(false);

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Database, Users, Settings, FileText, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft } from 'lucide-react';
-import { useDatabaseMetrics, formatMetricValue, type MysqlMetrics } from '@/hooks';
+import { Users, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft, Loader2 } from 'lucide-react';
+import { useDatabaseMetrics, useDatabaseUsers, useDatabaseLogs, formatMetricValue, type MysqlMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -166,27 +166,6 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
                     </div>
                 </CardContent>
             </Card>
-
-            {/* InnoDB Status */}
-            <Card>
-                <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">InnoDB Status</h3>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                            <p className="text-sm text-foreground-muted">Buffer Pool Size</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">128 MB</p>
-                        </div>
-                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                            <p className="text-sm text-foreground-muted">Buffer Pool Usage</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">89%</p>
-                        </div>
-                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                            <p className="text-sm text-foreground-muted">Page Reads/sec</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">234</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     );
 }
@@ -194,11 +173,12 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 function UsersTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
     const confirm = useConfirm();
-    const [users] = useState([
-        { name: 'root', host: 'localhost', privileges: 'ALL PRIVILEGES' },
-        { name: 'app_user', host: '%', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
-        { name: 'readonly', host: '%', privileges: 'SELECT' },
-    ]);
+
+    // Fetch users from API
+    const { users, isLoading, refetch } = useDatabaseUsers({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
 
     const handleCreateUser = () => {
         addToast('info', 'Create user functionality coming soon');
@@ -212,7 +192,7 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('info', `Deleting user ${username}...`);
+            addToast('info', `Deleting user ${username}... (not implemented)`);
         }
     };
 
@@ -221,37 +201,53 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Database Users</h3>
-                    <Button size="sm" onClick={handleCreateUser}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Create User
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                        <Button size="sm" onClick={handleCreateUser}>
+                            <Users className="mr-2 h-4 w-4" />
+                            Create User
+                        </Button>
+                    </div>
                 </div>
-                <div className="space-y-3">
-                    {users.map((user) => (
-                        <div
-                            key={`${user.name}@${user.host}`}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <p className="font-medium text-foreground">{user.name}@{user.host}</p>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading users...</span>
+                    </div>
+                ) : users.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No users found</p>
+                ) : (
+                    <div className="space-y-3">
+                        {users.map((user) => (
+                            <div
+                                key={user.name}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-foreground">{user.name}</p>
+                                        <Badge variant="secondary">{user.role}</Badge>
+                                    </div>
+                                    <p className="mt-1 text-sm text-foreground-muted">
+                                        {user.connections} active connection{user.connections !== 1 ? 's' : ''}
+                                    </p>
                                 </div>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    Privileges: {user.privileges}
-                                </p>
+                                {user.name !== 'root' && (
+                                    <Button
+                                        size="sm"
+                                        variant="danger"
+                                        onClick={() => handleDeleteUser(user.name)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )}
                             </div>
-                            {user.name !== 'root' && (
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    onClick={() => handleDeleteUser(user.name)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -334,39 +330,60 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function LogsTab({ database }: { database: StandaloneDatabase }) {
-    const [logs] = useState([
-        { timestamp: '2024-01-03 10:23:45', level: 'INFO', message: 'Server started successfully' },
-        { timestamp: '2024-01-03 10:24:12', level: 'INFO', message: 'InnoDB: Buffer pool(s) load completed' },
-        { timestamp: '2024-01-03 10:25:33', level: 'WARNING', message: 'Slow query detected: SELECT * FROM large_table (2.5s)' },
-        { timestamp: '2024-01-03 10:26:01', level: 'INFO', message: 'Binary log rotated' },
-    ]);
+    // Fetch logs from API
+    const { logs, isLoading, refetch } = useDatabaseLogs({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const getLevelVariant = (level: string): 'default' | 'secondary' | 'danger' => {
+        switch (level.toUpperCase()) {
+            case 'ERROR':
+            case 'FATAL':
+                return 'danger';
+            case 'WARNING':
+                return 'default';
+            default:
+                return 'secondary';
+        }
+    };
 
     return (
         <Card>
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Recent Logs</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="space-y-2">
-                    {logs.map((log, index) => (
-                        <div
-                            key={index}
-                            className="rounded-lg border border-border bg-background-secondary p-3 font-mono text-sm"
-                        >
-                            <div className="flex items-start gap-3">
-                                <span className="text-foreground-muted">{log.timestamp}</span>
-                                <Badge variant={log.level === 'WARNING' ? 'default' : 'secondary'}>
-                                    {log.level}
-                                </Badge>
-                                <span className="flex-1 text-foreground">{log.message}</span>
+                {isLoading && logs.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading logs...</span>
+                    </div>
+                ) : logs.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No logs available</p>
+                ) : (
+                    <div className="space-y-2">
+                        {logs.map((log, index) => (
+                            <div
+                                key={index}
+                                className="rounded-lg border border-border bg-background-secondary p-3 font-mono text-sm"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <span className="text-foreground-muted">{log.timestamp}</span>
+                                    <Badge variant={getLevelVariant(log.level)}>
+                                        {log.level}
+                                    </Badge>
+                                    <span className="flex-1 text-foreground">{log.message}</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

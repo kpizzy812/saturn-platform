@@ -287,6 +287,22 @@ Route::get('/api/databases/{uuid}/metrics', [\App\Http\Controllers\Inertia\Datab
 Route::get('/api/databases/{uuid}/metrics/history', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getHistoricalMetrics'])
     ->name('databases.metrics.history.api');
 
+// API endpoint for database extensions (PostgreSQL)
+Route::get('/api/databases/{uuid}/extensions', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getExtensions'])
+    ->name('databases.extensions.api');
+
+// API endpoint for toggling database extensions (PostgreSQL)
+Route::post('/api/databases/{uuid}/extensions/toggle', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'toggleExtension'])
+    ->name('databases.extensions.toggle.api');
+
+// API endpoint for database users
+Route::get('/api/databases/{uuid}/users', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getUsers'])
+    ->name('databases.users.api');
+
+// API endpoint for database logs
+Route::get('/api/databases/{uuid}/logs', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getLogs'])
+    ->name('databases.logs.api');
+
 Route::get('/databases/{uuid}/settings', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 

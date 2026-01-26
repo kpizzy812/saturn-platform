@@ -66,8 +66,7 @@ export default function ApplicationRollbackShow({
                         setCurrentDeployment(deploymentsData[0]);
                     }
                 }
-            } catch (error) {
-                console.error('Failed to load deployment details:', error);
+            } catch {
                 addToast('error', 'Failed to load deployment details');
             } finally {
                 setIsLoading(false);
@@ -108,8 +107,7 @@ export default function ApplicationRollbackShow({
                 const error = await response.json();
                 addToast('error', error.message || 'Failed to initiate rollback');
             }
-        } catch (error) {
-            console.error('Rollback failed:', error);
+        } catch {
             addToast('error', 'Failed to initiate rollback');
         } finally {
             setIsRollingBack(false);

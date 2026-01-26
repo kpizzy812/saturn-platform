@@ -38,6 +38,17 @@ export { useDatabaseMetricsHistory } from './useDatabaseMetricsHistory';
 export type { DatabaseMetricsHistory } from './useDatabaseMetricsHistory';
 
 export {
+    useDatabaseExtensions,
+    useDatabaseUsers,
+    useDatabaseLogs,
+} from './useDatabaseDetails';
+export type {
+    DatabaseExtension,
+    DatabaseUser,
+    DatabaseLog,
+} from './useDatabaseDetails';
+
+export {
     useServices,
     useService,
     useServiceEnvs,

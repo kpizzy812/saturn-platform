@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Select } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import {
     Github,
     Gitlab,
@@ -47,6 +48,7 @@ interface Branch {
 }
 
 export default function OnboardingConnectRepo({ provider = 'github', githubApps = [] }: Props) {
+    const { addToast } = useToast();
     const [selectedProvider, setSelectedProvider] = useState(provider);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
@@ -139,8 +141,8 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
             if (selectedRepo.default_branch) {
                 setSelectedBranch(selectedRepo.default_branch);
             }
-        } catch (err) {
-            console.error('Failed to load branches:', err);
+        } catch {
+            addToast('error', 'Failed to load branches');
         } finally {
             setIsLoadingBranches(false);
         }
