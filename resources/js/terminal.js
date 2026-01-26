@@ -33,9 +33,21 @@ export function initializeTerminalComponent() {
             // Resize handling
             resizeObserver: null,
             resizeTimeout: null,
+            resizeRetryTimeout: null,
+            resizeRetryCount: 0,
+            maxResizeRetries: 5,
+            // Focus handling
+            focusTimeoutId: null,
+            focusAttempts: 0,
+            maxFocusAttempts: 50, // 5 seconds max (50 * 100ms)
             // Visibility handling - prevent disconnects when tab loses focus
             isDocumentVisible: true,
             wasConnectedBeforeHidden: false,
+            // Event listener references for cleanup
+            boundHandleResize: null,
+            boundHandleVisibilityChange: null,
+            // Pending timeouts for cleanup
+            pendingTimeouts: [],
 
             init() {
                 this.setupTerminal();
@@ -52,15 +64,9 @@ export function initializeTerminalComponent() {
                 });
 
                 this.$wire.on('terminal-should-focus', () => {
-                    // Wait for terminal to be ready, then focus
-                    const focusWhenReady = () => {
-                        if (this.terminalActive && this.term) {
-                            this.term.focus();
-                        } else {
-                            setTimeout(focusWhenReady, 100);
-                        }
-                    };
-                    focusWhenReady();
+                    // Wait for terminal to be ready, then focus with max attempts
+                    this.focusAttempts = 0;
+                    this.scheduleFocus();
                 });
 
                 this.keepAliveInterval = setInterval(this.keepAlive.bind(this), 30000);
@@ -96,13 +102,14 @@ export function initializeTerminalComponent() {
                 });
 
                 // Handle visibility changes to prevent disconnects when tab loses focus
-                document.addEventListener('visibilitychange', () => {
-                    this.handleVisibilityChange();
-                });
+                this.boundHandleVisibilityChange = this.handleVisibilityChange.bind(this);
+                document.addEventListener('visibilitychange', this.boundHandleVisibilityChange);
 
-                window.onresize = () => {
-                    this.resizeTerminal()
+                // Handle window resize with proper cleanup
+                this.boundHandleResize = () => {
+                    this.resizeTerminal();
                 };
+                window.addEventListener('resize', this.boundHandleResize);
 
                 // Set up ResizeObserver for more reliable terminal resizing
                 if (window.ResizeObserver) {
@@ -130,20 +137,48 @@ export function initializeTerminalComponent() {
                     this.resizeObserver = null;
                 }
 
-                // Clear resize timeout
-                if (this.resizeTimeout) {
-                    clearTimeout(this.resizeTimeout);
+                // Clean up event listeners
+                if (this.boundHandleResize) {
+                    window.removeEventListener('resize', this.boundHandleResize);
+                    this.boundHandleResize = null;
                 }
+
+                if (this.boundHandleVisibilityChange) {
+                    document.removeEventListener('visibilitychange', this.boundHandleVisibilityChange);
+                    this.boundHandleVisibilityChange = null;
+                }
+
+                // Clear all pending timeouts
+                this.pendingTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+                this.pendingTimeouts = [];
+
+                // Reset retry counters
+                this.resizeRetryCount = 0;
+                this.focusAttempts = 0;
             },
 
             clearAllTimers() {
-                [this.keepAliveInterval, this.reconnectInterval, this.connectionTimeoutId, this.pingTimeoutId, this.resizeTimeout]
-                    .forEach(timer => timer && clearInterval(timer));
+                [
+                    this.keepAliveInterval,
+                    this.reconnectInterval,
+                    this.connectionTimeoutId,
+                    this.pingTimeoutId,
+                    this.resizeTimeout,
+                    this.resizeRetryTimeout,
+                    this.focusTimeoutId
+                ].forEach(timer => {
+                    if (timer) {
+                        clearTimeout(timer);
+                        clearInterval(timer);
+                    }
+                });
                 this.keepAliveInterval = null;
                 this.reconnectInterval = null;
                 this.connectionTimeoutId = null;
                 this.pingTimeoutId = null;
                 this.resizeTimeout = null;
+                this.resizeRetryTimeout = null;
+                this.focusTimeoutId = null;
             },
 
             resetTerminal() {
@@ -369,17 +404,17 @@ export function initializeTerminalComponent() {
                     this.resizeTerminal();
 
                     // Additional resize after a short delay to ensure proper sizing
-                    setTimeout(() => {
+                    this.scheduleTimeout(() => {
                         this.resizeTerminal();
                     }, 200);
 
                     // Ensure terminal gets focus after connection with multiple attempts
-                    setTimeout(() => {
-                        this.term.focus();
+                    this.scheduleTimeout(() => {
+                        if (this.term) this.term.focus();
                     }, 100);
-                    
-                    setTimeout(() => {
-                        this.term.focus();
+
+                    this.scheduleTimeout(() => {
+                        if (this.term) this.term.focus();
                     }, 500);
 
                     // Notify parent component that terminal is connected
@@ -501,6 +536,44 @@ export function initializeTerminalComponent() {
                 }
             },
 
+            // Schedule focus with max attempts to prevent infinite loop
+            scheduleFocus() {
+                if (this.focusTimeoutId) {
+                    clearTimeout(this.focusTimeoutId);
+                }
+
+                if (this.terminalActive && this.term) {
+                    this.term.focus();
+                    this.focusAttempts = 0;
+                    return;
+                }
+
+                this.focusAttempts++;
+                if (this.focusAttempts >= this.maxFocusAttempts) {
+                    console.warn('[Terminal] Max focus attempts reached, giving up');
+                    this.focusAttempts = 0;
+                    return;
+                }
+
+                this.focusTimeoutId = setTimeout(() => {
+                    this.scheduleFocus();
+                }, 100);
+            },
+
+            // Helper to track timeouts for cleanup
+            scheduleTimeout(callback, delay) {
+                const timeoutId = setTimeout(() => {
+                    // Remove from pending list after execution
+                    const index = this.pendingTimeouts.indexOf(timeoutId);
+                    if (index > -1) {
+                        this.pendingTimeouts.splice(index, 1);
+                    }
+                    callback();
+                }, delay);
+                this.pendingTimeouts.push(timeoutId);
+                return timeoutId;
+            },
+
             resetPingTimeout() {
                 if (this.pingTimeoutId) {
                     clearTimeout(this.pingTimeoutId);
@@ -528,14 +601,19 @@ export function initializeTerminalComponent() {
                     this.$refs.terminalWrapper.offsetHeight;
 
                     // Add a small delay to ensure CSS transitions complete
-                    setTimeout(() => {
+                    this.scheduleTimeout(() => {
                         this.resizeTerminal();
                     }, 100);
                 });
             },
 
-            resizeTerminal() {
+            resizeTerminal(isRetry = false) {
                 if (!this.terminalActive || !this.term || !this.fitAddon) return;
+
+                // Reset retry counter if this is not a retry call
+                if (!isRetry) {
+                    this.resizeRetryCount = 0;
+                }
 
                 try {
                     // Force a refresh of the fit addon dimensions
@@ -553,8 +631,16 @@ export function initializeTerminalComponent() {
 
                     // Check if dimensions are valid
                     if (height <= 0 || width <= 0) {
-                        console.warn('[Terminal] Invalid wrapper dimensions, retrying...', { height, width });
-                        setTimeout(() => this.resizeTerminal(), 100);
+                        this.resizeRetryCount++;
+                        if (this.resizeRetryCount < this.maxResizeRetries) {
+                            console.warn('[Terminal] Invalid wrapper dimensions, retrying...', { height, width, attempt: this.resizeRetryCount });
+                            if (this.resizeRetryTimeout) {
+                                clearTimeout(this.resizeRetryTimeout);
+                            }
+                            this.resizeRetryTimeout = setTimeout(() => this.resizeTerminal(true), 100);
+                        } else {
+                            console.error('[Terminal] Max resize retries reached for invalid dimensions');
+                        }
                         return;
                     }
 
@@ -562,8 +648,16 @@ export function initializeTerminalComponent() {
 
                     if (!charSize.height || !charSize.width) {
                         // Fallback values if char size not available yet
-                        console.warn('[Terminal] Character size not available, retrying...');
-                        setTimeout(() => this.resizeTerminal(), 100);
+                        this.resizeRetryCount++;
+                        if (this.resizeRetryCount < this.maxResizeRetries) {
+                            console.warn('[Terminal] Character size not available, retrying...', { attempt: this.resizeRetryCount });
+                            if (this.resizeRetryTimeout) {
+                                clearTimeout(this.resizeRetryTimeout);
+                            }
+                            this.resizeRetryTimeout = setTimeout(() => this.resizeTerminal(true), 100);
+                        } else {
+                            console.error('[Terminal] Max resize retries reached for char size');
+                        }
                         return;
                     }
 

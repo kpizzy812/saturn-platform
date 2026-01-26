@@ -216,7 +216,7 @@ post('/settings/notifications/email', { ... });
 
 ### React баги / Memory leaks
 - [x] **setTimeout без cleanup в TwoFactor/Setup.tsx** ✅
-- [ ] **terminal.js** - setTimeout без cleanup, рекурсивный focusWhenReady, window.onresize без cleanup
+- [x] **terminal.js** - setTimeout без cleanup, рекурсивный focusWhenReady, window.onresize без cleanup ✅ (добавлен полный cleanup: scheduleTimeout helper, boundHandleResize/boundHandleVisibilityChange с removeEventListener, maxFocusAttempts/maxResizeRetries лимиты, pendingTimeouts tracking)
 - [ ] **useTerminal.ts** - потенциальный infinite loop в scheduleReconnect
 - [ ] **useRealtimeStatus.ts** - рекурсивный reconnect без гарантии остановки
 - [ ] **CommandPalette.tsx / Terminal.tsx** - SSR unsafe (нет проверки `typeof window`)
@@ -301,13 +301,13 @@ post('/settings/notifications/email', { ... });
 | Критические (безопасность) | 6 | 5 | 1 |
 | Критические (mock данные) | 7 | 6 | 1 |
 | Высокие (кнопки без API) | 8 | 7 | 1 |
-| Высокие (memory leaks) | 5 | 1 | 4 |
+| Высокие (memory leaks) | 5 | 2 | 3 |
 | Высокие (console.log) | 8 | 8 | 0 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~46 исправлено ✅ | ~35 осталось**
+**Прогресс: ~47 исправлено ✅ | ~34 осталось**
 
 ---
 
@@ -339,6 +339,6 @@ post('/settings/notifications/email', { ... });
 ### Приоритет 5: Качество кода
 14. [x] Observability/Metrics.tsx - реальный экспорт метрик в CSV + refresh ✅
 15. [x] Services/Rollbacks.tsx - реальный API redeploy с pull latest ✅
-16. [ ] Исправить memory leaks в terminal.js
+16. [x] Исправить memory leaks в terminal.js ✅ (полный cleanup таймеров, event listeners, retry лимиты)
 17. [ ] Добавить SSR проверки
 18. [ ] Рефакторинг дублирования (5 компонентов)
