@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Link, usePage } from '@inertiajs/react';
-import { HelpCircle, Bell, ChevronDown, Settings, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Link, usePage, router } from '@inertiajs/react';
+import { HelpCircle, Bell, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useSidebar } from '@/contexts/SidebarContext';
 
@@ -132,10 +132,16 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                             <p className="text-xs text-foreground-muted">{user?.email || 'user@example.com'}</p>
                         </div>
                         <DropdownDivider />
-                        <DropdownItem icon={<Settings className="h-4 w-4" />}>
+                        <DropdownItem
+                            onClick={() => router.visit('/settings/account')}
+                            icon={<Settings className="h-4 w-4" />}
+                        >
                             Account Settings
                         </DropdownItem>
-                        <DropdownItem icon={<Settings className="h-4 w-4" />}>
+                        <DropdownItem
+                            onClick={() => router.visit('/settings/workspace')}
+                            icon={<Users className="h-4 w-4" />}
+                        >
                             Workspace Settings
                         </DropdownItem>
                         <DropdownDivider />
@@ -146,7 +152,10 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                             {isDark ? 'Light Theme' : 'Dark Theme'}
                         </DropdownItem>
                         <DropdownDivider />
-                        <DropdownItem icon={<LogOut className="h-4 w-4" />}>
+                        <DropdownItem
+                            onClick={() => router.post('/logout')}
+                            icon={<LogOut className="h-4 w-4" />}
+                        >
                             Logout
                         </DropdownItem>
                     </DropdownContent>
