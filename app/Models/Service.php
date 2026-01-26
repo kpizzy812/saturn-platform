@@ -1553,4 +1553,222 @@ class Service extends BaseModel
             $this->limits_memory_swap !== '0' ||
             $this->limits_memory_reservation !== '0';
     }
+
+    /**
+     * Get healthcheck configuration from docker_compose_raw.
+     *
+     * Returns healthcheck config from the first service that has one defined,
+     * or default values if no healthcheck is configured.
+     *
+     * @return array{
+     *     enabled: bool,
+     *     type: string,
+     *     test: string,
+     *     interval: int,
+     *     timeout: int,
+     *     retries: int,
+     *     start_period: int,
+     *     service_name: string|null
+     * }
+     */
+    public function getHealthcheckConfig(): array
+    {
+        $defaults = [
+            'enabled' => true,
+            'type' => 'http',
+            'test' => 'curl -f http://localhost/ || exit 1',
+            'interval' => 30,
+            'timeout' => 10,
+            'retries' => 3,
+            'start_period' => 30,
+            'service_name' => null,
+        ];
+
+        if (empty($this->docker_compose_raw)) {
+            return $defaults;
+        }
+
+        try {
+            $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($this->docker_compose_raw);
+            $services = data_get($dockerCompose, 'services', []);
+
+            foreach ($services as $serviceName => $serviceConfig) {
+                $healthcheck = data_get($serviceConfig, 'healthcheck');
+
+                if ($healthcheck) {
+                    // Check if healthcheck is disabled
+                    if (data_get($healthcheck, 'disable', false) === true) {
+                        return array_merge($defaults, [
+                            'enabled' => false,
+                            'service_name' => $serviceName,
+                        ]);
+                    }
+
+                    $test = data_get($healthcheck, 'test', []);
+                    if (is_array($test)) {
+                        // Remove CMD or CMD-SHELL prefix
+                        if (! empty($test) && in_array($test[0], ['CMD', 'CMD-SHELL'])) {
+                            array_shift($test);
+                        }
+                        $test = implode(' ', $test);
+                    }
+
+                    // Detect type from test command
+                    $type = 'http';
+                    if (str_contains(strtolower($test), 'curl') || str_contains(strtolower($test), 'wget')) {
+                        $type = 'http';
+                    } elseif (str_contains(strtolower($test), 'nc ') || str_contains(strtolower($test), 'netcat')) {
+                        $type = 'tcp';
+                    }
+
+                    return [
+                        'enabled' => true,
+                        'type' => $type,
+                        'test' => $test,
+                        'interval' => $this->parseDockerDuration(data_get($healthcheck, 'interval', '30s')),
+                        'timeout' => $this->parseDockerDuration(data_get($healthcheck, 'timeout', '10s')),
+                        'retries' => (int) data_get($healthcheck, 'retries', 3),
+                        'start_period' => $this->parseDockerDuration(data_get($healthcheck, 'start_period', '30s')),
+                        'service_name' => $serviceName,
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // If parsing fails, return defaults
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * Update healthcheck configuration in docker_compose_raw.
+     *
+     * @param  array{
+     *     enabled?: bool,
+     *     type?: string,
+     *     test?: string,
+     *     interval?: int,
+     *     timeout?: int,
+     *     retries?: int,
+     *     start_period?: int,
+     *     service_name?: string|null
+     * }  $config
+     */
+    public function setHealthcheckConfig(array $config): bool
+    {
+        if (empty($this->docker_compose_raw)) {
+            return false;
+        }
+
+        try {
+            $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($this->docker_compose_raw);
+            $services = data_get($dockerCompose, 'services', []);
+
+            if (empty($services)) {
+                return false;
+            }
+
+            // Find target service - either specified or first service
+            $targetService = $config['service_name'] ?? array_key_first($services);
+
+            if (! isset($services[$targetService])) {
+                return false;
+            }
+
+            // Build healthcheck config
+            if (isset($config['enabled']) && $config['enabled'] === false) {
+                // Disable healthcheck
+                $services[$targetService]['healthcheck'] = ['disable' => true];
+            } else {
+                // Build test command
+                $test = $config['test'] ?? 'curl -f http://localhost/ || exit 1';
+
+                $healthcheck = [
+                    'test' => ['CMD-SHELL', $test],
+                    'interval' => ($config['interval'] ?? 30).'s',
+                    'timeout' => ($config['timeout'] ?? 10).'s',
+                    'retries' => $config['retries'] ?? 3,
+                    'start_period' => ($config['start_period'] ?? 30).'s',
+                ];
+
+                $services[$targetService]['healthcheck'] = $healthcheck;
+            }
+
+            $dockerCompose['services'] = $services;
+            $this->docker_compose_raw = \Symfony\Component\Yaml\Yaml::dump(
+                $dockerCompose,
+                10,
+                2,
+                \Symfony\Component\Yaml\Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK
+            );
+            $this->save();
+
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Parse Docker duration string (e.g., "30s", "1m", "1h") to seconds.
+     */
+    private function parseDockerDuration(string|int $duration): int
+    {
+        if (is_int($duration)) {
+            return $duration;
+        }
+
+        // If it's just a number, treat as seconds
+        if (is_numeric($duration)) {
+            return (int) $duration;
+        }
+
+        $matches = [];
+        if (preg_match('/^(\d+)(s|m|h|ms|us|ns)?$/', $duration, $matches)) {
+            $value = (int) $matches[1];
+            $unit = $matches[2] ?? 's';
+
+            return match ($unit) {
+                'h' => $value * 3600,
+                'm' => $value * 60,
+                's' => $value,
+                'ms' => max(1, (int) ($value / 1000)),
+                'us', 'ns' => 1, // Minimum 1 second
+                default => $value,
+            };
+        }
+
+        return 30; // Default fallback
+    }
+
+    /**
+     * Get all services with their healthcheck status from docker_compose_raw.
+     *
+     * @return array<string, array{has_healthcheck: bool, healthcheck: array|null}>
+     */
+    public function getServicesHealthcheckStatus(): array
+    {
+        $result = [];
+
+        if (empty($this->docker_compose_raw)) {
+            return $result;
+        }
+
+        try {
+            $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($this->docker_compose_raw);
+            $services = data_get($dockerCompose, 'services', []);
+
+            foreach ($services as $serviceName => $serviceConfig) {
+                $healthcheck = data_get($serviceConfig, 'healthcheck');
+                $result[$serviceName] = [
+                    'has_healthcheck' => ! empty($healthcheck) && ! data_get($healthcheck, 'disable', false),
+                    'healthcheck' => $healthcheck,
+                ];
+            }
+        } catch (\Exception $e) {
+            // Parsing failed
+        }
+
+        return $result;
+    }
 }

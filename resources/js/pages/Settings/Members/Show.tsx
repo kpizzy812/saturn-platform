@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { ActivityTimeline } from '@/components/ui/ActivityTimeline';
-import { Link } from '@inertiajs/react';
-import type { ActivityLog, Project } from '@/types';
+import { Link, router } from '@inertiajs/react';
+import { useToast } from '@/components/ui/Toast';
+import type { ActivityLog } from '@/types';
 import {
     ArrowLeft,
     Mail,
@@ -19,14 +20,15 @@ import {
     UserX,
     UserCog,
     GitBranch,
-    Activity
+    Activity,
+    Loader2
 } from 'lucide-react';
 
 interface TeamMember {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
+    avatar?: string | null;
     role: 'owner' | 'admin' | 'member' | 'viewer';
     joinedAt: string;
     lastActive: string;
@@ -40,97 +42,18 @@ interface MemberProject {
 }
 
 interface Props {
-    member?: TeamMember;
-    projects?: MemberProject[];
-    activities?: ActivityLog[];
+    member: TeamMember;
+    projects: MemberProject[];
+    activities: ActivityLog[];
 }
 
-const mockMember: TeamMember = {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane@acme.com',
-    role: 'admin',
-    joinedAt: '2024-02-20',
-    lastActive: '2024-03-28T12:15:00Z'
-};
-
-const mockProjects: MemberProject[] = [
-    { id: 1, name: 'Production', role: 'admin', lastAccessed: '2024-03-28T12:15:00Z' },
-    { id: 2, name: 'Staging', role: 'admin', lastAccessed: '2024-03-27T14:30:00Z' },
-    { id: 3, name: 'Development', role: 'member', lastAccessed: '2024-03-26T09:20:00Z' },
-];
-
-const mockActivities: ActivityLog[] = [
-    {
-        id: '1',
-        action: 'deployment_completed',
-        description: 'deployed',
-        user: {
-            name: 'Jane Smith',
-            email: 'jane@acme.com',
-        },
-        resource: {
-            type: 'application',
-            name: 'api-service',
-            id: '12'
-        },
-        timestamp: '2024-03-28T12:15:00Z'
-    },
-    {
-        id: '2',
-        action: 'server_connected',
-        description: 'connected',
-        user: {
-            name: 'Jane Smith',
-            email: 'jane@acme.com',
-        },
-        resource: {
-            type: 'server',
-            name: 'prod-server-01',
-            id: '3'
-        },
-        timestamp: '2024-03-26T15:45:00Z'
-    },
-    {
-        id: '3',
-        action: 'application_restarted',
-        description: 'restarted',
-        user: {
-            name: 'Jane Smith',
-            email: 'jane@acme.com',
-        },
-        resource: {
-            type: 'application',
-            name: 'worker-service',
-            id: '15'
-        },
-        timestamp: '2024-03-25T18:20:00Z'
-    },
-    {
-        id: '4',
-        action: 'settings_updated',
-        description: 'updated settings',
-        user: {
-            name: 'Jane Smith',
-            email: 'jane@acme.com',
-        },
-        resource: {
-            type: 'application',
-            name: 'web-app',
-            id: '8'
-        },
-        timestamp: '2024-03-24T10:30:00Z'
-    },
-];
-
-export default function MemberShow({ member: propMember, projects: propProjects, activities: propActivities }: Props) {
-    const member = propMember || mockMember;
-    const projects = propProjects || mockProjects;
-    const activities = propActivities || mockActivities;
-
+export default function MemberShow({ member, projects, activities }: Props) {
+    const { toast } = useToast();
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [selectedRole, setSelectedRole] = React.useState(member.role);
+    const [isUpdatingRole, setIsUpdatingRole] = React.useState(false);
+    const [isRemoving, setIsRemoving] = React.useState(false);
 
     const getRoleIcon = (role: string) => {
         switch (role) {
@@ -184,14 +107,60 @@ export default function MemberShow({ member: propMember, projects: propProjects,
     };
 
     const handleRemoveMember = () => {
-        console.log('Remove member:', member.id);
-        setShowRemoveModal(false);
-        // Redirect to team page
+        setIsRemoving(true);
+        router.delete(`/settings/team/members/${member.id}`, {
+            onSuccess: () => {
+                toast({
+                    title: 'Member removed',
+                    description: `${member.name} has been removed from the team.`,
+                    variant: 'success',
+                });
+                setShowRemoveModal(false);
+                router.visit('/settings/team/index');
+            },
+            onError: (errors) => {
+                toast({
+                    title: 'Error',
+                    description: Object.values(errors).flat().join(', ') || 'Failed to remove member',
+                    variant: 'destructive',
+                });
+                setIsRemoving(false);
+            },
+            onFinish: () => {
+                setIsRemoving(false);
+            },
+        });
     };
 
     const handleChangeRole = () => {
-        console.log('Change role to:', selectedRole);
-        setShowRoleModal(false);
+        if (selectedRole === member.role) {
+            setShowRoleModal(false);
+            return;
+        }
+
+        setIsUpdatingRole(true);
+        router.post(`/settings/team/members/${member.id}/role`, {
+            role: selectedRole,
+        }, {
+            onSuccess: () => {
+                toast({
+                    title: 'Role updated',
+                    description: `${member.name}'s role has been changed to ${selectedRole}.`,
+                    variant: 'success',
+                });
+                setShowRoleModal(false);
+            },
+            onError: (errors) => {
+                toast({
+                    title: 'Error',
+                    description: Object.values(errors).flat().join(', ') || 'Failed to update role',
+                    variant: 'destructive',
+                });
+            },
+            onFinish: () => {
+                setIsUpdatingRole(false);
+            },
+        });
     };
 
     return (
@@ -435,11 +404,18 @@ export default function MemberShow({ member: propMember, projects: propProjects,
                 </div>
 
                 <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowRoleModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowRoleModal(false)} disabled={isUpdatingRole}>
                         Cancel
                     </Button>
-                    <Button onClick={handleChangeRole} disabled={selectedRole === member.role}>
-                        Update Role
+                    <Button onClick={handleChangeRole} disabled={selectedRole === member.role || isUpdatingRole}>
+                        {isUpdatingRole ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Updating...
+                            </>
+                        ) : (
+                            'Update Role'
+                        )}
                     </Button>
                 </ModalFooter>
             </Modal>
@@ -447,16 +423,23 @@ export default function MemberShow({ member: propMember, projects: propProjects,
             {/* Remove Member Modal */}
             <Modal
                 isOpen={showRemoveModal}
-                onClose={() => setShowRemoveModal(false)}
+                onClose={() => !isRemoving && setShowRemoveModal(false)}
                 title="Remove Team Member"
                 description={`Are you sure you want to remove ${member.name} from the team? They will lose access to all team resources.`}
             >
                 <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)} disabled={isRemoving}>
                         Cancel
                     </Button>
-                    <Button variant="danger" onClick={handleRemoveMember}>
-                        Remove Member
+                    <Button variant="danger" onClick={handleRemoveMember} disabled={isRemoving}>
+                        {isRemoving ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Removing...
+                            </>
+                        ) : (
+                            'Remove Member'
+                        )}
                     </Button>
                 </ModalFooter>
             </Modal>

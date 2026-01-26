@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\ResourceLinkController;
 use App\Http\Controllers\Api\ResourcesController;
 use App\Http\Controllers\Api\SecurityController;
 use App\Http\Controllers\Api\ServersController;
+use App\Http\Controllers\Api\ServiceActionsController;
+use App\Http\Controllers\Api\ServiceEnvsController;
+use App\Http\Controllers\Api\ServiceHealthcheckController;
 use App\Http\Controllers\Api\ServicesController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamWebhooksController;
@@ -303,11 +306,11 @@ Route::group([
     Route::patch('/services/{uuid}', [ServicesController::class, 'update_by_uuid'])->middleware(['api.ability:write']);
     Route::delete('/services/{uuid}', [ServicesController::class, 'delete_by_uuid'])->middleware(['api.ability:write']);
 
-    Route::get('/services/{uuid}/envs', [ServicesController::class, 'envs'])->middleware(['api.ability:read']);
-    Route::post('/services/{uuid}/envs', [ServicesController::class, 'create_env'])->middleware(['api.ability:write']);
-    Route::patch('/services/{uuid}/envs/bulk', [ServicesController::class, 'create_bulk_envs'])->middleware(['api.ability:write']);
-    Route::patch('/services/{uuid}/envs', [ServicesController::class, 'update_env_by_uuid'])->middleware(['api.ability:write']);
-    Route::delete('/services/{uuid}/envs/{env_uuid}', [ServicesController::class, 'delete_env_by_uuid'])->middleware(['api.ability:write']);
+    Route::get('/services/{uuid}/envs', [ServiceEnvsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/services/{uuid}/envs', [ServiceEnvsController::class, 'store'])->middleware(['api.ability:write']);
+    Route::patch('/services/{uuid}/envs/bulk', [ServiceEnvsController::class, 'bulkUpdate'])->middleware(['api.ability:write']);
+    Route::patch('/services/{uuid}/envs', [ServiceEnvsController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/services/{uuid}/envs/{env_uuid}', [ServiceEnvsController::class, 'destroy'])->middleware(['api.ability:write']);
 
     Route::get('/services/{uuid}/logs', function ($uuid, \Illuminate\Http\Request $request) {
         $teamId = getTeamIdFromToken();
@@ -394,13 +397,13 @@ Route::group([
         ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
 
-    Route::match(['get', 'post'], '/services/{uuid}/start', [ServicesController::class, 'action_deploy'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/services/{uuid}/restart', [ServicesController::class, 'action_restart'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/services/{uuid}/stop', [ServicesController::class, 'action_stop'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/services/{uuid}/start', [ServiceActionsController::class, 'start'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/services/{uuid}/restart', [ServiceActionsController::class, 'restart'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/services/{uuid}/stop', [ServiceActionsController::class, 'stop'])->middleware(['api.ability:write']);
 
     // Healthcheck endpoints
-    Route::get('/services/{uuid}/healthcheck', [ServicesController::class, 'get_healthcheck'])->middleware(['api.ability:read']);
-    Route::patch('/services/{uuid}/healthcheck', [ServicesController::class, 'update_healthcheck'])->middleware(['api.ability:write']);
+    Route::get('/services/{uuid}/healthcheck', [ServiceHealthcheckController::class, 'show'])->middleware(['api.ability:read']);
+    Route::patch('/services/{uuid}/healthcheck', [ServiceHealthcheckController::class, 'update'])->middleware(['api.ability:write']);
 
     // Billing Routes
     Route::get('/billing/info', function () {

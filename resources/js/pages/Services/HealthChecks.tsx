@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Select } from '@/components/ui';
-import { Activity, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { router } from '@inertiajs/react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, Badge, Button, Input } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
+import { Activity, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import type { Service } from '@/types';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 
@@ -9,61 +11,158 @@ interface Props {
 }
 
 type HealthCheckType = 'http' | 'tcp';
-type ProbeType = 'startup' | 'liveness' | 'readiness';
-type HealthStatus = 'healthy' | 'unhealthy' | 'degraded';
 
-interface HealthCheckHistory {
-    timestamp: string;
-    status: HealthStatus;
-    responseTime: number;
+interface HealthcheckConfig {
+    enabled: boolean;
+    type: HealthCheckType;
+    test: string;
+    interval: number;
+    timeout: number;
+    retries: number;
+    start_period: number;
+    service_name: string | null;
+    status?: string;
+    services_status?: Record<string, { has_healthcheck: boolean; healthcheck: unknown }>;
 }
 
-// Mock health check history data
-const mockHealthHistory: HealthCheckHistory[] = [
-    { timestamp: '2 minutes ago', status: 'healthy', responseTime: 45 },
-    { timestamp: '5 minutes ago', status: 'healthy', responseTime: 52 },
-    { timestamp: '8 minutes ago', status: 'healthy', responseTime: 48 },
-    { timestamp: '11 minutes ago', status: 'degraded', responseTime: 890 },
-    { timestamp: '14 minutes ago', status: 'healthy', responseTime: 43 },
-    { timestamp: '17 minutes ago', status: 'healthy', responseTime: 51 },
-    { timestamp: '20 minutes ago', status: 'unhealthy', responseTime: 0 },
-    { timestamp: '23 minutes ago', status: 'healthy', responseTime: 47 },
-];
-
 export function HealthChecksTab({ service }: Props) {
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+
     // Health check configuration
+    const [enabled, setEnabled] = useState(true);
     const [checkType, setCheckType] = useState<HealthCheckType>('http');
-    const [httpPath, setHttpPath] = useState('/health');
-    const [httpPort, setHttpPort] = useState('3000');
-    const [tcpPort, setTcpPort] = useState('3000');
-    const [interval, setInterval] = useState(30); // seconds
-    const [timeout, setTimeout] = useState(5); // seconds
-    const [successThreshold, setSuccessThreshold] = useState(1);
-    const [failureThreshold, setFailureThreshold] = useState(3);
+    const [testCommand, setTestCommand] = useState('curl -f http://localhost/ || exit 1');
+    const [interval, setInterval] = useState(30);
+    const [timeout, setTimeout] = useState(10);
+    const [retries, setRetries] = useState(3);
+    const [startPeriod, setStartPeriod] = useState(30);
+    const [serviceName, setServiceName] = useState<string | null>(null);
+    const [currentStatus, setCurrentStatus] = useState<string>('unknown');
+    const [servicesStatus, setServicesStatus] = useState<Record<string, { has_healthcheck: boolean }>>({});
 
-    // Probe configuration
-    const [startupProbeEnabled, setStartupProbeEnabled] = useState(true);
-    const [livenessProbeEnabled, setLivenessProbeEnabled] = useState(true);
-    const [readinessProbeEnabled, setReadinessProbeEnabled] = useState(true);
+    // Load healthcheck configuration
+    useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const response = await fetch(`/api/v1/services/${service.uuid}/healthcheck`, {
+                    credentials: 'include',
+                });
 
-    // Current health status (mock)
-    const currentStatus: HealthStatus = 'healthy';
+                if (!response.ok) {
+                    throw new Error('Failed to load healthcheck configuration');
+                }
 
-    const handleSaveConfiguration = () => {
-        console.log('Saving health check configuration:', {
-            checkType,
-            httpPath,
-            httpPort,
-            tcpPort,
-            interval,
-            timeout,
-            successThreshold,
-            failureThreshold,
-            startupProbeEnabled,
-            livenessProbeEnabled,
-            readinessProbeEnabled,
-        });
+                const config: HealthcheckConfig = await response.json();
+
+                setEnabled(config.enabled);
+                setCheckType(config.type);
+                setTestCommand(config.test);
+                setInterval(config.interval);
+                setTimeout(config.timeout);
+                setRetries(config.retries);
+                setStartPeriod(config.start_period);
+                setServiceName(config.service_name);
+                setCurrentStatus(config.status || 'unknown');
+                setServicesStatus(config.services_status || {});
+            } catch {
+                toast({
+                    title: 'Error',
+                    description: 'Failed to load healthcheck configuration',
+                    variant: 'destructive',
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadConfig();
+    }, [service.uuid, toast]);
+
+    // Generate test command based on type
+    const generateTestCommand = (type: HealthCheckType, path = '/', port = '80') => {
+        if (type === 'http') {
+            return `curl -f http://localhost:${port}${path} || exit 1`;
+        } else {
+            return `nc -z localhost ${port} || exit 1`;
+        }
     };
+
+    const handleTypeChange = (type: HealthCheckType) => {
+        setCheckType(type);
+        // Update test command based on type
+        if (type === 'http' && testCommand.includes('nc ')) {
+            setTestCommand(generateTestCommand('http'));
+        } else if (type === 'tcp' && testCommand.includes('curl')) {
+            setTestCommand(generateTestCommand('tcp'));
+        }
+    };
+
+    const handleSaveConfiguration = async () => {
+        setIsSaving(true);
+
+        try {
+            const response = await fetch(`/api/v1/services/${service.uuid}/healthcheck`, {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    enabled,
+                    type: checkType,
+                    test: testCommand,
+                    interval,
+                    timeout,
+                    retries,
+                    start_period: startPeriod,
+                    service_name: serviceName,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to save configuration');
+            }
+
+            toast({
+                title: 'Configuration saved',
+                description: 'Health check configuration has been updated. Restart the service to apply changes.',
+                variant: 'success',
+            });
+
+            // Refresh page data
+            router.reload();
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: error instanceof Error ? error.message : 'Failed to save configuration',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Parse status for display
+    const parseStatus = (status: string) => {
+        const parts = status.split(':');
+        const runState = parts[0] || 'unknown';
+        const health = parts[1] || 'unknown';
+        return { runState, health };
+    };
+
+    const { runState, health } = parseStatus(currentStatus);
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-foreground-muted" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -73,28 +172,35 @@ export function HealthChecksTab({ service }: Props) {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className={`flex h-16 w-16 items-center justify-center rounded-xl ${
-                                currentStatus === 'healthy' ? 'bg-primary/10' :
-                                currentStatus === 'degraded' ? 'bg-warning/10' : 'bg-danger/10'
+                                health === 'healthy' ? 'bg-primary/10' :
+                                health === 'unhealthy' ? 'bg-danger/10' : 'bg-warning/10'
                             }`}>
                                 <Activity className={`h-8 w-8 ${
-                                    currentStatus === 'healthy' ? 'text-primary' :
-                                    currentStatus === 'degraded' ? 'text-warning' : 'text-danger'
+                                    health === 'healthy' ? 'text-primary' :
+                                    health === 'unhealthy' ? 'text-danger' : 'text-warning'
                                 }`} />
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-foreground">Current Health Status</h3>
                                 <div className="mt-1 flex items-center gap-2">
-                                    <Badge variant={getStatusVariant(currentStatus)} className="capitalize">
-                                        {currentStatus}
+                                    <Badge variant={getStatusVariant(runState)} className="capitalize">
+                                        {runState}
                                     </Badge>
-                                    <span className="text-sm text-foreground-muted">Last checked 2 minutes ago</span>
+                                    {health !== 'unknown' && (
+                                        <Badge variant={getStatusVariant(health)} className="capitalize">
+                                            {health}
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                        <div className="text-right">
-                            <div className="text-2xl font-bold text-foreground">45ms</div>
-                            <div className="text-sm text-foreground-muted">Avg response time</div>
-                        </div>
+                        <Button
+                            variant="secondary"
+                            onClick={() => router.reload()}
+                        >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Refresh
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -103,235 +209,172 @@ export function HealthChecksTab({ service }: Props) {
             <Card>
                 <CardHeader>
                     <CardTitle>Health Check Configuration</CardTitle>
+                    <CardDescription>
+                        Configure how Docker monitors the health of your service containers
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-6">
-                        {/* Check Type */}
-                        <div>
-                            <label className="text-sm font-medium text-foreground">Health Check Type</label>
-                            <div className="mt-2 flex gap-2">
-                                <button
-                                    onClick={() => setCheckType('http')}
-                                    className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
-                                        checkType === 'http'
-                                            ? 'border-primary bg-primary/10 text-primary'
-                                            : 'border-border bg-background-secondary text-foreground hover:border-border/80'
-                                    }`}
-                                >
-                                    HTTP Health Check
-                                </button>
-                                <button
-                                    onClick={() => setCheckType('tcp')}
-                                    className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
-                                        checkType === 'tcp'
-                                            ? 'border-primary bg-primary/10 text-primary'
-                                            : 'border-border bg-background-secondary text-foreground hover:border-border/80'
-                                    }`}
-                                >
-                                    TCP Health Check
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* HTTP Configuration */}
-                        {checkType === 'http' && (
-                            <div className="space-y-4 rounded-lg border border-border bg-background-tertiary p-4">
-                                <Input
-                                    label="Health Check Path"
-                                    value={httpPath}
-                                    onChange={(e) => setHttpPath(e.target.value)}
-                                    placeholder="/health"
-                                    hint="The endpoint to check for health status"
-                                />
-                                <Input
-                                    label="Port"
-                                    type="number"
-                                    value={httpPort}
-                                    onChange={(e) => setHttpPort(e.target.value)}
-                                    placeholder="3000"
-                                />
-                            </div>
-                        )}
-
-                        {/* TCP Configuration */}
-                        {checkType === 'tcp' && (
-                            <div className="space-y-4 rounded-lg border border-border bg-background-tertiary p-4">
-                                <Input
-                                    label="Port"
-                                    type="number"
-                                    value={tcpPort}
-                                    onChange={(e) => setTcpPort(e.target.value)}
-                                    placeholder="3000"
-                                    hint="The TCP port to check for connectivity"
-                                />
-                            </div>
-                        )}
-
-                        {/* Common Settings */}
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <Input
-                                label="Interval (seconds)"
-                                type="number"
-                                value={interval}
-                                onChange={(e) => setInterval(Number(e.target.value))}
-                                min="5"
-                                hint="How often to perform the check"
-                            />
-                            <Input
-                                label="Timeout (seconds)"
-                                type="number"
-                                value={timeout}
-                                onChange={(e) => setTimeout(Number(e.target.value))}
-                                min="1"
-                                hint="Maximum time to wait for response"
-                            />
-                            <Input
-                                label="Success Threshold"
-                                type="number"
-                                value={successThreshold}
-                                onChange={(e) => setSuccessThreshold(Number(e.target.value))}
-                                min="1"
-                                hint="Consecutive successes to mark healthy"
-                            />
-                            <Input
-                                label="Failure Threshold"
-                                type="number"
-                                value={failureThreshold}
-                                onChange={(e) => setFailureThreshold(Number(e.target.value))}
-                                min="1"
-                                hint="Consecutive failures to mark unhealthy"
-                            />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Probe Configuration */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Kubernetes Probes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        {/* Startup Probe */}
-                        <div className="flex items-start justify-between rounded-lg border border-border bg-background-tertiary p-4">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="startup-probe"
-                                        checked={startupProbeEnabled}
-                                        onChange={(e) => setStartupProbeEnabled(e.target.checked)}
-                                        className="h-4 w-4 rounded border-border bg-background-secondary text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                                    />
-                                    <label htmlFor="startup-probe" className="font-medium text-foreground">
-                                        Startup Probe
-                                    </label>
-                                </div>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    Checks if the application has started successfully. Useful for slow-starting containers.
+                        {/* Enable/Disable Toggle */}
+                        <div className="flex items-center justify-between rounded-lg border border-border bg-background-tertiary p-4">
+                            <div>
+                                <label className="text-sm font-medium text-foreground">Enable Health Check</label>
+                                <p className="text-sm text-foreground-muted">
+                                    Docker will periodically check if your container is healthy
                                 </p>
                             </div>
-                            <Badge variant={startupProbeEnabled ? 'success' : 'default'}>
-                                {startupProbeEnabled ? 'Enabled' : 'Disabled'}
-                            </Badge>
+                            <label className="relative inline-flex cursor-pointer items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={enabled}
+                                    onChange={(e) => setEnabled(e.target.checked)}
+                                    className="peer sr-only"
+                                />
+                                <div className="peer h-6 w-11 rounded-full bg-background-secondary after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-border after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary"></div>
+                            </label>
                         </div>
 
-                        {/* Liveness Probe */}
-                        <div className="flex items-start justify-between rounded-lg border border-border bg-background-tertiary p-4">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="liveness-probe"
-                                        checked={livenessProbeEnabled}
-                                        onChange={(e) => setLivenessProbeEnabled(e.target.checked)}
-                                        className="h-4 w-4 rounded border-border bg-background-secondary text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                                    />
-                                    <label htmlFor="liveness-probe" className="font-medium text-foreground">
-                                        Liveness Probe
-                                    </label>
-                                </div>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    Checks if the application is running. Failed checks will restart the container.
-                                </p>
-                            </div>
-                            <Badge variant={livenessProbeEnabled ? 'success' : 'default'}>
-                                {livenessProbeEnabled ? 'Enabled' : 'Disabled'}
-                            </Badge>
-                        </div>
-
-                        {/* Readiness Probe */}
-                        <div className="flex items-start justify-between rounded-lg border border-border bg-background-tertiary p-4">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="readiness-probe"
-                                        checked={readinessProbeEnabled}
-                                        onChange={(e) => setReadinessProbeEnabled(e.target.checked)}
-                                        className="h-4 w-4 rounded border-border bg-background-secondary text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                                    />
-                                    <label htmlFor="readiness-probe" className="font-medium text-foreground">
-                                        Readiness Probe
-                                    </label>
-                                </div>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    Checks if the application is ready to accept traffic. Failed checks remove it from load balancer.
-                                </p>
-                            </div>
-                            <Badge variant={readinessProbeEnabled ? 'success' : 'default'}>
-                                {readinessProbeEnabled ? 'Enabled' : 'Disabled'}
-                            </Badge>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Health Status History */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Health Status History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
-                        {mockHealthHistory.map((check, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center justify-between rounded-lg border border-border bg-background-tertiary p-3"
-                            >
-                                <div className="flex items-center gap-3">
-                                    {getStatusIcon(check.status)}
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium capitalize text-foreground">
-                                                {check.status}
-                                            </span>
-                                            {check.status === 'healthy' && (
-                                                <span className="text-xs text-foreground-muted">
-                                                    {check.responseTime}ms
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="mt-0.5 flex items-center gap-1 text-xs text-foreground-muted">
-                                            <Clock className="h-3 w-3" />
-                                            <span>{check.timestamp}</span>
-                                        </div>
+                        {enabled && (
+                            <>
+                                {/* Check Type */}
+                                <div>
+                                    <label className="text-sm font-medium text-foreground">Health Check Type</label>
+                                    <div className="mt-2 flex gap-2">
+                                        <button
+                                            onClick={() => handleTypeChange('http')}
+                                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
+                                                checkType === 'http'
+                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                    : 'border-border bg-background-secondary text-foreground hover:border-border/80'
+                                            }`}
+                                        >
+                                            HTTP Health Check
+                                        </button>
+                                        <button
+                                            onClick={() => handleTypeChange('tcp')}
+                                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
+                                                checkType === 'tcp'
+                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                    : 'border-border bg-background-secondary text-foreground hover:border-border/80'
+                                            }`}
+                                        >
+                                            TCP Health Check
+                                        </button>
                                     </div>
                                 </div>
-                                <Badge variant={getStatusVariant(check.status)} className="capitalize">
-                                    {check.status}
-                                </Badge>
-                            </div>
-                        ))}
+
+                                {/* Test Command */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-foreground">Test Command</label>
+                                    <Input
+                                        value={testCommand}
+                                        onChange={(e) => setTestCommand(e.target.value)}
+                                        placeholder="curl -f http://localhost/ || exit 1"
+                                    />
+                                    <p className="text-xs text-foreground-muted">
+                                        The command Docker runs to check container health. Exit code 0 = healthy, non-zero = unhealthy.
+                                    </p>
+                                </div>
+
+                                {/* Timing Settings */}
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <Input
+                                        label="Interval (seconds)"
+                                        type="number"
+                                        value={interval}
+                                        onChange={(e) => setInterval(Number(e.target.value))}
+                                        min={1}
+                                        hint="How often to perform the check"
+                                    />
+                                    <Input
+                                        label="Timeout (seconds)"
+                                        type="number"
+                                        value={timeout}
+                                        onChange={(e) => setTimeout(Number(e.target.value))}
+                                        min={1}
+                                        hint="Maximum time to wait for response"
+                                    />
+                                    <Input
+                                        label="Retries"
+                                        type="number"
+                                        value={retries}
+                                        onChange={(e) => setRetries(Number(e.target.value))}
+                                        min={1}
+                                        hint="Consecutive failures to mark unhealthy"
+                                    />
+                                    <Input
+                                        label="Start Period (seconds)"
+                                        type="number"
+                                        value={startPeriod}
+                                        onChange={(e) => setStartPeriod(Number(e.target.value))}
+                                        min={0}
+                                        hint="Grace period for container startup"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Services Healthcheck Status */}
+            {Object.keys(servicesStatus).length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Container Health Status</CardTitle>
+                        <CardDescription>
+                            Health check status for each container in this service
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {Object.entries(servicesStatus).map(([name, status]) => (
+                                <div
+                                    key={name}
+                                    className="flex items-center justify-between rounded-lg border border-border bg-background-tertiary p-3"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {getStatusIcon(status.has_healthcheck ? 'healthy' : 'unknown')}
+                                        <span className="font-medium text-foreground">{name}</span>
+                                    </div>
+                                    <Badge variant={status.has_healthcheck ? 'success' : 'default'}>
+                                        {status.has_healthcheck ? 'Configured' : 'No Healthcheck'}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Info Card */}
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle className="h-5 w-5 flex-shrink-0 text-warning" />
+                        <div className="text-sm text-foreground-muted">
+                            <p className="font-medium text-foreground">Important Notes</p>
+                            <ul className="mt-1 list-disc space-y-1 pl-4">
+                                <li>Changes require a service restart to take effect</li>
+                                <li>Health checks modify your docker-compose configuration</li>
+                                <li>Ensure your application has a health endpoint before enabling HTTP checks</li>
+                            </ul>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Save Button */}
             <div className="flex justify-end">
-                <Button onClick={handleSaveConfiguration} size="lg">
-                    Save Configuration
+                <Button onClick={handleSaveConfiguration} size="lg" disabled={isSaving}>
+                    {isSaving ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        'Save Configuration'
+                    )}
                 </Button>
             </div>
         </div>
