@@ -2,20 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LogsContainer, type LogLine } from '../LogsContainer';
 
-// Mock @tanstack/react-virtual to bypass virtualization in tests
-vi.mock('@tanstack/react-virtual', () => ({
-    useVirtualizer: ({ count, getScrollElement }: { count: number; getScrollElement: () => any }) => ({
-        getTotalSize: () => count * 24,
-        getVirtualItems: () =>
-            Array.from({ length: count }, (_, index) => ({
-                index,
-                start: index * 24,
-                size: 24,
-                key: index,
-            })),
-    }),
-}));
-
 // Mock localStorage
 const localStorageMock = (() => {
     let store: Record<string, string> = {};
@@ -41,6 +27,9 @@ Object.assign(navigator, {
         writeText: vi.fn().mockResolvedValue(undefined),
     },
 });
+
+// Mock isSecureContext so clipboard API is used
+Object.defineProperty(window, 'isSecureContext', { value: true });
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
 global.URL.createObjectURL = vi.fn(() => 'mock-url');

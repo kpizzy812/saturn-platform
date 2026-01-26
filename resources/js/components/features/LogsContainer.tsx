@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -46,11 +45,6 @@ export interface LogsContainerProps {
      * Height of the logs container (default: 500px)
      */
     height?: number | string;
-
-    /**
-     * Estimated height of each log line for virtualization (default: 24)
-     */
-    estimatedLineHeight?: number;
 
     /**
      * Whether the logs are currently streaming (shows live indicator)
@@ -228,46 +222,44 @@ function getStyledContent(content: string, level?: LogLine['level']): React.Reac
 /**
  * Single log line component
  */
-const LogLineItem = React.memo(
-    React.forwardRef<HTMLDivElement, {
-        log: LogLine;
-        index: number;
-        showLineNumbers: boolean;
-        style: React.CSSProperties;
-    }>(function LogLineItem({ log, index, showLineNumbers, style }, ref) {
-        const level = log.level || detectLogLevel(log.content);
-        const isError = level === 'error' || level === 'stderr';
+const LogLineItem = React.memo(function LogLineItem({
+    log,
+    index,
+    showLineNumbers,
+}: {
+    log: LogLine;
+    index: number;
+    showLineNumbers: boolean;
+}) {
+    const level = log.level || detectLogLevel(log.content);
+    const isError = level === 'error' || level === 'stderr';
 
-        return (
-            <div
-                ref={ref}
-                data-index={index}
-                style={style}
-                className={cn(
-                    'flex items-start gap-2 px-3 py-0.5 font-mono text-sm leading-relaxed hover:bg-white/5',
-                    isError && 'bg-red-500/10'
-                )}
-            >
-                {showLineNumbers && (
-                    <span className="select-none text-gray-600 w-10 shrink-0 text-right tabular-nums">
-                        {index + 1}
-                    </span>
-                )}
-                {log.timestamp && (
-                    <span className="text-gray-500 shrink-0 text-xs">
-                        {log.timestamp}
-                    </span>
-                )}
-                <span className={cn('shrink-0', getLevelColor(level))}>
-                    {getLevelIcon(level)}
+    return (
+        <div
+            className={cn(
+                'flex items-start gap-2 px-3 py-0.5 font-mono text-sm leading-relaxed hover:bg-white/5',
+                isError && 'bg-red-500/10'
+            )}
+        >
+            {showLineNumbers && (
+                <span className="select-none text-gray-600 w-10 shrink-0 text-right tabular-nums">
+                    {index + 1}
                 </span>
-                <span className="break-all whitespace-pre-wrap flex-1">
-                    {getStyledContent(log.content, level)}
+            )}
+            {log.timestamp && (
+                <span className="text-gray-500 shrink-0 text-xs">
+                    {log.timestamp}
                 </span>
-            </div>
-        );
-    })
-);
+            )}
+            <span className={cn('shrink-0', getLevelColor(level))}>
+                {getLevelIcon(level)}
+            </span>
+            <span className="break-all whitespace-pre-wrap flex-1">
+                {getStyledContent(log.content, level)}
+            </span>
+        </div>
+    );
+});
 
 /**
  * LogsContainer - A high-performance, feature-rich logs viewer component
@@ -299,7 +291,6 @@ export function LogsContainer({
     logs,
     storageKey = 'logs',
     height = 500,
-    estimatedLineHeight = 24,
     isStreaming = false,
     isConnected = false,
     title,
@@ -364,21 +355,6 @@ export function LogsContainer({
 
         return filtered;
     }, [logs, levelFilter, searchQuery]);
-
-    // Virtual scrolling with dynamic height measurement
-    const virtualizer = useVirtualizer({
-        count: filteredLogs.length,
-        getScrollElement: () => containerRef.current,
-        estimateSize: () => estimatedLineHeight,
-        overscan: 20,
-        measureElement: (element) => {
-            // Measure actual element height for variable-size rows
-            if (element) {
-                return element.getBoundingClientRect().height;
-            }
-            return estimatedLineHeight;
-        },
-    });
 
     // Notify autoscroll hook when new logs arrive
     React.useEffect(() => {
@@ -623,32 +599,15 @@ export function LogsContainer({
                             )}
                         </div>
                     ) : (
-                        <div
-                            style={{
-                                height: `${virtualizer.getTotalSize()}px`,
-                                width: '100%',
-                                position: 'relative',
-                            }}
-                        >
-                            {virtualizer.getVirtualItems().map((virtualRow) => {
-                                const log = filteredLogs[virtualRow.index];
-                                return (
-                                    <LogLineItem
-                                        key={log.id}
-                                        ref={virtualizer.measureElement}
-                                        log={log}
-                                        index={virtualRow.index}
-                                        showLineNumbers={showLineNumbers}
-                                        style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            transform: `translateY(${virtualRow.start}px)`,
-                                        }}
-                                    />
-                                );
-                            })}
+                        <div>
+                            {filteredLogs.map((log, index) => (
+                                <LogLineItem
+                                    key={log.id}
+                                    log={log}
+                                    index={index}
+                                    showLineNumbers={showLineNumbers}
+                                />
+                            ))}
                         </div>
                     )}
                     <div ref={bottomRef} style={{ height: 1 }} />
