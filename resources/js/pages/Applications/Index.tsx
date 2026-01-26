@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input, Select, StatusBadge, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input, Select, StatusBadge, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     Plus,
@@ -14,7 +14,6 @@ import {
     MoreVertical,
     GitBranch,
     Globe,
-    Server as ServerIcon,
     FolderGit2,
     Settings,
     Trash2
@@ -145,6 +144,7 @@ interface ApplicationCardProps {
 
 function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
     const confirm = useConfirm();
+    const { toast } = useToast();
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -158,8 +158,12 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
         if (confirmed) {
             router.delete(`/applications/${application.uuid}`, {
                 preserveScroll: true,
-                onError: (errors) => {
-                    console.error('Delete failed:', errors);
+                onError: () => {
+                    toast({
+                        title: 'Failed to delete application',
+                        description: 'An error occurred while deleting the application.',
+                        variant: 'error',
+                    });
                 },
             });
         }

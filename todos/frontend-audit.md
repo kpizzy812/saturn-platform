@@ -218,9 +218,11 @@ post('/settings/notifications/email', { ... });
 - [x] **Projects/Show.tsx** (6 мест) - заменить на toast notifications ✅
 - [ ] **Applications/Rollback/*.tsx** (4 места) - заменить на toast notifications
 - [x] **Settings/Account.tsx** (4 места) - заменить на toast notifications ✅
-- [ ] **Settings/Workspace.tsx** (2 места) - заменить на toast notifications
-- [ ] **Settings/Team/Index.tsx** (2 места) - заменить на toast notifications
-- [ ] **Settings/Tokens.tsx, Applications/Index.tsx, Boarding/Index.tsx, Services/Scaling.tsx, Onboarding/ConnectRepo.tsx** - заменить на toast notifications
+- [x] **Settings/Workspace.tsx** (2 места) - уже использует toast notifications ✅
+- [x] **Settings/Team/Index.tsx** (2 места) - заменить на toast notifications ✅
+- [x] **Settings/Tokens.tsx** - заменить на toast notifications ✅
+- [x] **Applications/Index.tsx** - заменить на toast notifications ✅
+- [ ] **Boarding/Index.tsx, Services/Scaling.tsx, Onboarding/ConnectRepo.tsx** - заменить на toast notifications
 
 ### Формы без proper обработки
 - [ ] **Без disabled state при submit** - Servers/Create, Databases/Create, Settings/Team/Invite, CronJobs/Create, Auth/ForgotPassword

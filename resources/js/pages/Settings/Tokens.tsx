@@ -27,7 +27,7 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
     const [newlyCreatedToken, setNewlyCreatedToken] = React.useState('');
     const [isCreating, setIsCreating] = React.useState(false);
     const [isRevoking, setIsRevoking] = React.useState(false);
-    const { addToast } = useToast();
+    const { toast } = useToast();
 
     const handleCreateToken = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,15 +66,15 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
             setNewTokenName('');
             setShowCreateModal(false);
             setShowNewTokenModal(true);
-            addToast({
+            toast({
                 title: 'Token created',
                 description: 'Your API token has been created successfully.',
             });
         } catch (error) {
-            addToast({
+            toast({
                 title: 'Failed to create token',
                 description: error instanceof Error ? error.message : 'An error occurred while creating the API token.',
-                variant: 'danger',
+                variant: 'error',
             });
         } finally {
             setIsCreating(false);
@@ -88,20 +88,19 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
             router.delete(`/settings/tokens/${tokenToRevoke.id}`, {
                 onSuccess: () => {
                     setTokens(tokens.filter((t) => t.id !== tokenToRevoke.id));
-                    addToast({
+                    toast({
                         title: 'Token revoked',
                         description: 'The API token has been revoked successfully.',
                     });
                     setTokenToRevoke(null);
                     setShowRevokeModal(false);
                 },
-                onError: (errors) => {
-                    addToast({
+                onError: () => {
+                    toast({
                         title: 'Failed to revoke token',
                         description: 'An error occurred while revoking the API token.',
-                        variant: 'danger',
+                        variant: 'error',
                     });
-                    console.error(errors);
                 },
                 onFinish: () => {
                     setIsRevoking(false);
@@ -112,7 +111,7 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
 
     const handleCopyToken = (token: string) => {
         navigator.clipboard.writeText(token);
-        addToast({
+        toast({
             title: 'Copied to clipboard',
             description: 'API token copied to clipboard.',
         });

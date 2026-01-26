@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { Link, router } from '@inertiajs/react';
 import {
-    Users,
     Mail,
     UserX,
     Crown,
@@ -52,7 +50,7 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
     const [newRole, setNewRole] = React.useState<TeamMember['role']>('member');
     const [isChangingRole, setIsChangingRole] = React.useState(false);
     const [isRemoving, setIsRemoving] = React.useState(false);
-    const { addToast } = useToast();
+    const { toast } = useToast();
 
     const getRoleIcon = (role: string) => {
         switch (role) {
@@ -105,20 +103,19 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                     setMembers(members.map(m =>
                         m.id === selectedMember.id ? { ...m, role: newRole } : m
                     ));
-                    addToast({
+                    toast({
                         title: 'Role updated',
                         description: `${selectedMember.name}'s role has been updated to ${newRole}.`,
                     });
                     setShowRoleModal(false);
                     setSelectedMember(null);
                 },
-                onError: (errors) => {
-                    addToast({
+                onError: () => {
+                    toast({
                         title: 'Failed to update role',
                         description: 'An error occurred while updating the member role.',
-                        variant: 'danger',
+                        variant: 'error',
                     });
-                    console.error(errors);
                 },
                 onFinish: () => {
                     setIsChangingRole(false);
@@ -134,20 +131,19 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
             router.delete(`/settings/team/members/${selectedMember.id}`, {
                 onSuccess: () => {
                     setMembers(members.filter(m => m.id !== selectedMember.id));
-                    addToast({
+                    toast({
                         title: 'Member removed',
                         description: `${selectedMember.name} has been removed from the team.`,
                     });
                     setShowRemoveModal(false);
                     setSelectedMember(null);
                 },
-                onError: (errors) => {
-                    addToast({
+                onError: () => {
+                    toast({
                         title: 'Failed to remove member',
                         description: 'An error occurred while removing the team member.',
-                        variant: 'danger',
+                        variant: 'error',
                     });
-                    console.error(errors);
                 },
                 onFinish: () => {
                     setIsRemoving(false);
