@@ -150,9 +150,6 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
         resourceType: 'deployment',
         resourceId: deployment.uuid,
         enableWebSocket: deployment.status === 'in_progress',
-        onLogEntry: (entry) => {
-            console.log('New deployment log:', entry.message);
-        },
     });
 
     // Use streamed logs if deployment is in progress and streaming is active,

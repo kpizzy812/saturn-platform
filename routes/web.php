@@ -453,7 +453,57 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('observability.metrics');
 
     Route::get('/observability/logs', function () {
-        return \Inertia\Inertia::render('Observability/Logs');
+        $team = auth()->user()->currentTeam();
+
+        // Get all resources from the team
+        $applications = \App\Models\Application::whereHas('environment.project.team', function ($query) use ($team) {
+            $query->where('id', $team->id);
+        })->select('uuid', 'name', 'status')->get()->map(fn ($app) => [
+            'uuid' => $app->uuid,
+            'name' => $app->name,
+            'type' => 'application',
+            'status' => $app->status,
+        ]);
+
+        $services = \App\Models\Service::whereHas('environment.project.team', function ($query) use ($team) {
+            $query->where('id', $team->id);
+        })->select('uuid', 'name')->get()->map(fn ($svc) => [
+            'uuid' => $svc->uuid,
+            'name' => $svc->name,
+            'type' => 'service',
+            'status' => 'running',
+        ]);
+
+        // Get all database types
+        $databaseModels = [
+            \App\Models\StandalonePostgresql::class,
+            \App\Models\StandaloneMysql::class,
+            \App\Models\StandaloneMongodb::class,
+            \App\Models\StandaloneRedis::class,
+            \App\Models\StandaloneMariadb::class,
+            \App\Models\StandaloneKeydb::class,
+            \App\Models\StandaloneDragonfly::class,
+            \App\Models\StandaloneClickhouse::class,
+        ];
+
+        $databases = collect();
+        foreach ($databaseModels as $model) {
+            $dbs = $model::whereHas('environment.project.team', function ($query) use ($team) {
+                $query->where('id', $team->id);
+            })->select('uuid', 'name', 'status')->get()->map(fn ($db) => [
+                'uuid' => $db->uuid,
+                'name' => $db->name,
+                'type' => 'database',
+                'status' => $db->status,
+            ]);
+            $databases = $databases->merge($dbs);
+        }
+
+        $resources = $applications->merge($services)->merge($databases)->values();
+
+        return \Inertia\Inertia::render('Observability/Logs', [
+            'resources' => $resources,
+        ]);
     })->name('observability.logs');
 
     Route::get('/observability/traces', function () {
