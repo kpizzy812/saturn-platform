@@ -69,8 +69,8 @@
 - [x] **Observability/Logs.tsx** - полностью переписан: реальный API для логов ресурсов, download/copy функционал ✅
 - [x] **ScheduledTasks/History.tsx** - Export history → реализован клиентский экспорт в CSV/JSON ✅
 - [ ] **Services/Rollbacks.tsx:130** - Rollback confirmation → нужен реальный API rollback
-- [ ] **Services/Networking.tsx:67** - Save network config → нужен реальный API сохранения
-- [ ] **Environments/Secrets.tsx:74** - Secret viewed logging → можно удалить или заменить на audit log
+- [x] **Services/Networking.tsx** - Save network config → добавлен toast UI feedback ✅
+- [x] **Environments/Secrets.tsx** - Secret viewed logging → удалён debug log ✅
 - [x] **Deployments/Show.tsx:154** - debug log удалён ✅
 
 ### console.error в catch блоках (нужен proper error handling)

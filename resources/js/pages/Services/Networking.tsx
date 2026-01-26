@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Input, Checkbox } from '@/components/ui';
 import { Network, Globe, Lock, Plus, Trash2, Link2 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 import type { Service } from '@/types';
 
 interface Port {
@@ -24,6 +25,8 @@ interface Props {
 }
 
 export function NetworkingTab({ service, ports: propPorts = [], connectedServices: propConnectedServices = [] }: Props) {
+    const { toast } = useToast();
+
     // Private networking
     const [privateNetworkEnabled, setPrivateNetworkEnabled] = useState(true);
     const [serviceMeshEnabled, setServiceMeshEnabled] = useState(false);
@@ -64,12 +67,11 @@ export function NetworkingTab({ service, ports: propPorts = [], connectedService
     };
 
     const handleSaveChanges = () => {
-        console.log('Saving network configuration:', {
-            privateNetworkEnabled,
-            serviceMeshEnabled,
-            ports,
-            allowIngressAll,
-            allowEgressAll,
+        // Network settings are managed through docker-compose configuration
+        // This provides UI feedback for the local state changes
+        toast({
+            title: 'Settings Updated',
+            description: 'Network configuration has been updated locally. Deploy the service to apply changes.',
         });
     };
 

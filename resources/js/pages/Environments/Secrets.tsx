@@ -69,10 +69,7 @@ export default function EnvironmentSecrets({ environment, secrets: propSecrets =
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [expandedAudit, setExpandedAudit] = useState(false);
 
-    const toggleMask = (id: string, key: string) => {
-        // Log the view action
-        console.log(`Secret ${key} viewed`);
-
+    const toggleMask = (id: string) => {
         const newMasked = new Set(maskedValues);
         if (newMasked.has(id)) {
             newMasked.delete(id);
@@ -267,7 +264,7 @@ export default function EnvironmentSecrets({ environment, secrets: propSecrets =
                                 {/* Actions */}
                                 <div className="flex shrink-0 gap-1">
                                     <button
-                                        onClick={() => toggleMask(secret.id, secret.key)}
+                                        onClick={() => toggleMask(secret.id)}
                                         className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
                                         title={maskedValues.has(secret.id) ? 'Show secret' : 'Hide secret'}
                                     >
