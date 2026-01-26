@@ -456,10 +456,17 @@ trait HandlesNixpacksBuildpack
         $originalDockerfile = $this->saved_outputs->get('original_dockerfile', '');
 
         // Create a patched Dockerfile that installs the correct Node version
-        // We add commands after the nix-env step to override the Node version
+        // We need to override the Nix-installed node by replacing it in PATH
+        // Nix puts node in ~/.nix-profile/bin which has priority, so we replace the symlinks
         $nodeInstallCommand = <<<BASH
 # Saturn: Installing exact Node.js version {$nodeVersion}
-RUN curl -fsSL https://nodejs.org/dist/v{$nodeVersion}/node-v{$nodeVersion}-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1 && \\
+RUN curl -fsSL https://nodejs.org/dist/v{$nodeVersion}/node-v{$nodeVersion}-linux-x64.tar.xz -o /tmp/node.tar.xz && \\
+    tar -xJf /tmp/node.tar.xz -C /tmp && \\
+    cp -f /tmp/node-v{$nodeVersion}-linux-x64/bin/node /root/.nix-profile/bin/node && \\
+    cp -rf /tmp/node-v{$nodeVersion}-linux-x64/lib/node_modules/npm /root/.nix-profile/lib/node_modules/ && \\
+    ln -sf /root/.nix-profile/lib/node_modules/npm/bin/npm-cli.js /root/.nix-profile/bin/npm && \\
+    ln -sf /root/.nix-profile/lib/node_modules/npm/bin/npx-cli.js /root/.nix-profile/bin/npx && \\
+    rm -rf /tmp/node.tar.xz /tmp/node-v{$nodeVersion}-linux-x64 && \\
     node --version && npm --version
 BASH;
 
