@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Log;
  *
  * State Priority (highest to lowest):
  * 1. Degraded (from sub-resources) → degraded:unhealthy
- * 2. Restarting → degraded:unhealthy (or restarting:unknown if preserveRestarting=true)
+ * 2. Restarting → degraded:unhealthy (or restarting:unknown if preserveRestarting=true AND restartCount < 3)
+ *    NOTE: If restartCount >= 3, always returns degraded:unhealthy (crash loop detection)
  * 3. Crash Loop (exited with restarts) → degraded:unhealthy
  * 4. Mixed (running + exited) → degraded:unhealthy
  * 5. Mixed (running + starting) → starting:unknown
@@ -238,7 +239,13 @@ class ContainerStatusAggregator
         // Priority 2: Restarting containers
         // When preserveRestarting is true (for individual sub-resources), keep as "restarting"
         // When false (for overall service status), mark as "degraded"
+        // EXCEPTION: If restart count is high (crash loop), always show as degraded
         if ($hasRestarting) {
+            // Crash loop detection: if container has restarted multiple times, it's degraded not just restarting
+            if ($maxRestartCount >= 3) {
+                return 'degraded:unhealthy';
+            }
+
             return $preserveRestarting ? 'restarting:unknown' : 'degraded:unhealthy';
         }
 
