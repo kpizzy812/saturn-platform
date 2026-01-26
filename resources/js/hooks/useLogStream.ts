@@ -222,20 +222,20 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
             setLoading(true);
             setError(null);
 
-            // Build API endpoint based on resource type
+            // Build endpoint based on resource type (use web routes with CSRF for session auth)
             let endpoint = '';
             switch (resourceType) {
                 case 'application':
-                    endpoint = `/api/v1/applications/${resourceId}/logs`;
+                    endpoint = `/applications/${resourceId}/logs/json`;
                     break;
                 case 'deployment':
-                    endpoint = `/api/v1/deployments/${resourceId}/logs`;
+                    endpoint = `/deployments/${resourceId}/logs/json`;
                     break;
                 case 'database':
-                    endpoint = `/api/v1/databases/${resourceId}/logs`;
+                    endpoint = `/databases/${resourceId}/logs/json`;
                     break;
                 case 'service':
-                    endpoint = `/api/v1/services/${resourceId}/logs`;
+                    endpoint = `/services/${resourceId}/logs/json`;
                     break;
             }
 

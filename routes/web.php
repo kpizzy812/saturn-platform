@@ -597,6 +597,33 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         return \Inertia\Inertia::render('Deployments/BuildLogs');
     })->name('deployments.logs');
 
+    // JSON endpoint for deployment logs (for XHR requests)
+    Route::get('/deployments/{uuid}/logs/json', function (string $uuid) {
+        $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        if (! $deployment) {
+            return response()->json(['message' => 'Deployment not found.'], 404);
+        }
+
+        // Verify the deployment belongs to the current team
+        $application = $deployment->application;
+        if (! $application || $application->team()?->id !== currentTeam()->id) {
+            return response()->json(['message' => 'Deployment not found.'], 404);
+        }
+
+        $logs = $deployment->logs;
+        $parsedLogs = [];
+
+        if ($logs) {
+            $parsedLogs = json_decode($logs, true) ?: [];
+        }
+
+        return response()->json([
+            'deployment_uuid' => $deployment->deployment_uuid,
+            'status' => $deployment->status,
+            'logs' => $parsedLogs,
+        ]);
+    })->name('deployments.logs.json');
+
     // Activity routes
     Route::get('/activity', function () {
         return \Inertia\Inertia::render('Activity/Index');
