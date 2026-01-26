@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import {
@@ -24,6 +24,7 @@ import {
     ChevronDown,
     ChevronUp,
 } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 import type { ScheduledTask } from '@/types';
 
 interface Props {
@@ -31,11 +32,13 @@ interface Props {
 }
 
 export default function ScheduledTasksHistory({ history = [] }: Props) {
+    const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'failed'>('all');
     const [dateRange, setDateRange] = useState('all');
     const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
     const [viewTaskId, setViewTaskId] = useState<number | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Filter history
     const filteredHistory = useMemo(() => {
@@ -91,10 +94,88 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
         });
     };
 
-    const handleExportHistory = () => {
-        // In real app, this would trigger a CSV/JSON download
-        console.log('Exporting history...');
-    };
+    const handleExportHistory = useCallback((format: 'csv' | 'json' = 'csv') => {
+        if (filteredHistory.length === 0) {
+            toast({
+                title: 'No Data',
+                description: 'No history entries to export',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        setIsExporting(true);
+
+        try {
+            const filename = `scheduled-tasks-history-${new Date().toISOString().split('T')[0]}.${format}`;
+
+            // Prepare data for export
+            const exportData = filteredHistory.map((task) => ({
+                id: task.id,
+                name: task.name,
+                description: task.description || '',
+                command: task.command,
+                status: task.status,
+                exit_code: task.exit_code,
+                duration_seconds: task.duration,
+                executed_at: task.executed_at || '',
+                scheduled_for: task.scheduled_for,
+                output: task.output || '',
+                error: task.error || '',
+            }));
+
+            let blob: Blob;
+
+            if (format === 'json') {
+                const jsonContent = JSON.stringify({ data: exportData }, null, 2);
+                blob = new Blob([jsonContent], { type: 'application/json' });
+            } else {
+                // CSV export with BOM for UTF-8
+                const headers = ['ID', 'Name', 'Description', 'Command', 'Status', 'Exit Code', 'Duration (s)', 'Executed At', 'Scheduled For', 'Output', 'Error'];
+                const csvRows = [
+                    headers.join(','),
+                    ...exportData.map((row) => [
+                        row.id,
+                        `"${(row.name || '').replace(/"/g, '""')}"`,
+                        `"${(row.description || '').replace(/"/g, '""')}"`,
+                        `"${(row.command || '').replace(/"/g, '""')}"`,
+                        row.status,
+                        row.exit_code ?? '',
+                        row.duration_seconds ?? '',
+                        row.executed_at,
+                        row.scheduled_for,
+                        `"${(row.output || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`,
+                        `"${(row.error || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`,
+                    ].join(','))
+                ];
+                const csvContent = '\uFEFF' + csvRows.join('\n');
+                blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+            }
+
+            // Download file
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            toast({
+                title: 'Export Successful',
+                description: `Exported ${filteredHistory.length} entries to ${filename}`,
+            });
+        } catch (err) {
+            toast({
+                title: 'Export Failed',
+                description: err instanceof Error ? err.message : 'Failed to export history',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsExporting(false);
+        }
+    }, [filteredHistory, toast]);
 
     const formatDuration = (seconds: number | null) => {
         if (!seconds) return 'N/A';
@@ -149,10 +230,22 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
                             View execution history of all scheduled tasks
                         </p>
                     </div>
-                    <Button onClick={handleExportHistory} variant="ghost">
-                        <Download className="mr-2 h-4 w-4" />
-                        Export
-                    </Button>
+                    <Select
+                        value=""
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                handleExportHistory(e.target.value as 'csv' | 'json');
+                            }
+                        }}
+                        disabled={isExporting || filteredHistory.length === 0}
+                        className="w-[140px]"
+                    >
+                        <option value="" disabled>
+                            {isExporting ? 'Exporting...' : 'Export'}
+                        </option>
+                        <option value="csv">Export CSV</option>
+                        <option value="json">Export JSON</option>
+                    </Select>
                 </div>
             </div>
 

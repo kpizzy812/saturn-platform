@@ -67,7 +67,7 @@
 - [x] **Settings/AuditLog.tsx** - `console.log('Exporting audit logs...')` → реализован реальный API экспорт в CSV/JSON ✅
 - [ ] **Observability/Metrics.tsx:158,163** - Export/Refresh metrics → нужен реальный экспорт метрик
 - [ ] **Observability/Logs.tsx:144,148** - Download/Share logs → нужен реальный download логов
-- [ ] **ScheduledTasks/History.tsx:96** - Export history → нужен реальный экспорт истории
+- [x] **ScheduledTasks/History.tsx** - Export history → реализован клиентский экспорт в CSV/JSON ✅
 - [ ] **Services/Rollbacks.tsx:130** - Rollback confirmation → нужен реальный API rollback
 - [ ] **Services/Networking.tsx:67** - Save network config → нужен реальный API сохранения
 - [ ] **Environments/Secrets.tsx:74** - Secret viewed logging → можно удалить или заменить на audit log
