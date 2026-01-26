@@ -216,3 +216,26 @@ Route::get('/projects/{uuid}/variables', function (string $uuid) {
         'project' => $project,
     ]);
 })->name('projects.variables');
+
+Route::post('/projects/{uuid}/environments', function (Request $request, string $uuid) {
+    $request->validate([
+        'name' => 'required|string|max:255',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    // Check if environment with this name already exists
+    if ($project->environments()->where('name', $request->name)->exists()) {
+        return response()->json([
+            'message' => 'Environment with this name already exists',
+        ], 422);
+    }
+
+    $environment = $project->environments()->create([
+        'name' => $request->name,
+    ]);
+
+    return response()->json($environment);
+})->name('projects.environments.store');

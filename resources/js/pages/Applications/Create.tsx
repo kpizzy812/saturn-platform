@@ -35,6 +35,9 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     const [showCreateProject, setShowCreateProject] = useState(needsProject);
     const [newProjectName, setNewProjectName] = useState('');
     const [isCreatingProject, setIsCreatingProject] = useState(false);
+    const [showCreateEnvironment, setShowCreateEnvironment] = useState(false);
+    const [newEnvironmentName, setNewEnvironmentName] = useState('');
+    const [isCreatingEnvironment, setIsCreatingEnvironment] = useState(false);
 
     // Default to localhost server (platform's master server)
     const defaultServerUuid = localhost?.uuid || userServers[0]?.uuid || '';
@@ -90,6 +93,56 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
             setErrors({ newProjectName: 'Failed to create project' });
         }
         setIsCreatingProject(false);
+    };
+
+    const handleCreateEnvironment = async () => {
+        if (!newEnvironmentName.trim()) {
+            setErrors({ newEnvironmentName: 'Environment name is required' });
+            return;
+        }
+        if (!formData.project_uuid) {
+            setErrors({ newEnvironmentName: 'Please select a project first' });
+            return;
+        }
+        setIsCreatingEnvironment(true);
+        setErrors({});
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch(`/projects/${formData.project_uuid}/environments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ name: newEnvironmentName }),
+            });
+            if (response.ok) {
+                const newEnvironment = await response.json();
+                // Update the project in projectList with new environment
+                setProjectList(prev => prev.map(p => {
+                    if (p.uuid === formData.project_uuid) {
+                        return {
+                            ...p,
+                            environments: [...(p.environments || []), newEnvironment],
+                        };
+                    }
+                    return p;
+                }));
+                setFormData(prev => ({
+                    ...prev,
+                    environment_uuid: newEnvironment.uuid,
+                }));
+                setShowCreateEnvironment(false);
+                setNewEnvironmentName('');
+            } else {
+                const errorData = await response.json().catch(() => ({}));
+                setErrors({ newEnvironmentName: errorData.message || 'Failed to create environment' });
+            }
+        } catch {
+            setErrors({ newEnvironmentName: 'Failed to create environment' });
+        }
+        setIsCreatingEnvironment(false);
     };
 
     const selectedProject = projectList.find(p => p.uuid === formData.project_uuid);
@@ -365,17 +418,69 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Environment *
                                         </label>
-                                        <Select
-                                            value={formData.environment_uuid}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, environment_uuid: e.target.value }))}
-                                            disabled={!formData.project_uuid}
-                                        >
-                                            {environments.map(env => (
-                                                <option key={env.uuid} value={env.uuid}>
-                                                    {env.name}
-                                                </option>
-                                            ))}
-                                        </Select>
+                                        {showCreateEnvironment ? (
+                                            <div className="space-y-2">
+                                                <Input
+                                                    value={newEnvironmentName}
+                                                    onChange={(e) => setNewEnvironmentName(e.target.value)}
+                                                    placeholder="e.g. development, staging"
+                                                    error={errors.newEnvironmentName}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleCreateEnvironment();
+                                                        }
+                                                    }}
+                                                />
+                                                {errors.newEnvironmentName && (
+                                                    <p className="text-sm text-destructive">{errors.newEnvironmentName}</p>
+                                                )}
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={handleCreateEnvironment}
+                                                        disabled={isCreatingEnvironment}
+                                                    >
+                                                        {isCreatingEnvironment ? 'Creating...' : 'Create Environment'}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setShowCreateEnvironment(false);
+                                                            setNewEnvironmentName('');
+                                                            setErrors({});
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <Select
+                                                    value={formData.environment_uuid}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, environment_uuid: e.target.value }))}
+                                                    disabled={!formData.project_uuid}
+                                                >
+                                                    {environments.map(env => (
+                                                        <option key={env.uuid} value={env.uuid}>
+                                                            {env.name}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCreateEnvironment(true)}
+                                                    disabled={!formData.project_uuid}
+                                                    className="text-sm text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    + Create new environment
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div>
