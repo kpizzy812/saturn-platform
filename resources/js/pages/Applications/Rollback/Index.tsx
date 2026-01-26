@@ -64,9 +64,16 @@ export default function ApplicationRollbackIndex({ application, projectUuid, env
         const loadData = async () => {
             try {
                 setIsLoading(true);
+                const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
                 // Fetch deployments
-                const deploymentsRes = await fetch(`/api/v1/applications/${application.uuid}/deployments?take=20`);
+                const deploymentsRes = await fetch(`/api/v1/applications/${application.uuid}/deployments?take=20`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    credentials: 'include',
+                });
                 if (deploymentsRes.ok) {
                     const deploymentsData = await deploymentsRes.json();
                     // Filter only successful deployments for rollback
@@ -77,7 +84,13 @@ export default function ApplicationRollbackIndex({ application, projectUuid, env
                 }
 
                 // Fetch rollback events
-                const eventsRes = await fetch(`/api/v1/applications/${application.uuid}/rollback-events?take=10`);
+                const eventsRes = await fetch(`/api/v1/applications/${application.uuid}/rollback-events?take=10`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    credentials: 'include',
+                });
                 if (eventsRes.ok) {
                     const eventsData = await eventsRes.json();
                     setRollbackEvents(Array.isArray(eventsData) ? eventsData : []);

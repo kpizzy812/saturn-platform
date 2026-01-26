@@ -31,6 +31,13 @@ interface UseDeploymentReturn {
 }
 
 /**
+ * Get CSRF token from meta tag
+ */
+function getCsrfToken(): string {
+    return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+}
+
+/**
  * Fetch deployments (all or filtered by application)
  */
 export function useDeployments({
@@ -55,6 +62,7 @@ export function useDeployments({
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });
@@ -79,6 +87,7 @@ export function useDeployments({
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -109,6 +118,7 @@ export function useDeployments({
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });
@@ -171,6 +181,7 @@ export function useDeployment({
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });
@@ -195,6 +206,7 @@ export function useDeployment({
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });

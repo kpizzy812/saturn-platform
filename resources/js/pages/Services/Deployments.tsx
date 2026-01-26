@@ -50,7 +50,14 @@ export function DeploymentsTab({ service, deployments: propDeployments = [] }: P
     // Fetch deployments if not provided
     useEffect(() => {
         if (propDeployments.length === 0 && service.uuid) {
-            fetch(`/api/v1/services/${service.uuid}/deployments`)
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            fetch(`/api/v1/services/${service.uuid}/deployments`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+            })
                 .then(res => res.ok ? res.json() : [])
                 .then(data => {
                     setDeployments(Array.isArray(data) ? data : data.data || []);

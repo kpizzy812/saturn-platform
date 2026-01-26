@@ -129,9 +129,14 @@ export function DeploymentsTab({ service }: DeploymentsTabProps) {
 
         setRollingBackId(deploymentUuid);
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${service.uuid}/rollback/${deploymentUuid}`, {
                 method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
                 credentials: 'include',
             });
 

@@ -52,15 +52,29 @@ export default function ApplicationRollbackShow({
             try {
                 setIsLoading(true);
 
+                const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
                 // Fetch the specific deployment
-                const deploymentRes = await fetch(`/api/v1/deployments/${deploymentUuid}`);
+                const deploymentRes = await fetch(`/api/v1/deployments/${deploymentUuid}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    credentials: 'include',
+                });
                 if (deploymentRes.ok) {
                     const deploymentData = await deploymentRes.json();
                     setDeployment(deploymentData);
                 }
 
                 // Fetch current (latest) deployment
-                const deploymentsRes = await fetch(`/api/v1/applications/${application.uuid}/deployments?take=1`);
+                const deploymentsRes = await fetch(`/api/v1/applications/${application.uuid}/deployments?take=1`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    credentials: 'include',
+                });
                 if (deploymentsRes.ok) {
                     const deploymentsData = await deploymentsRes.json();
                     if (Array.isArray(deploymentsData) && deploymentsData.length > 0) {
