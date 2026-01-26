@@ -67,17 +67,22 @@ API контроллер приложений разделён на специа
 - [x] Маршруты обновлены в `routes/api.php`
 - [x] Код прошёл Pint валидацию
 
-### 4. bootstrap/helpers/shared.php — 3,401 строк
-Глобальные хелперы, смешанная ответственность.
+### 4. bootstrap/helpers/shared.php — ✅ ГОТОВО (было 3,401 → стало 1,660 строк, -51%)
+Глобальные хелперы разделены по функциональности.
 
-- [ ] Разделить по функциональности:
-  - [ ] `helpers/ssh.php` — SSH операции
-  - [ ] `helpers/docker.php` — Docker команды (уже есть частично)
-  - [ ] `helpers/validation.php` — валидация данных
-  - [ ] `helpers/formatting.php` — форматирование строк
-  - [ ] `helpers/encryption.php` — шифрование
-- [ ] Перенести сложную логику в Service классы
-- [ ] Добавить PHPDoc комментарии
+- [x] Выделены хелперы в отдельные файлы:
+  - [x] `helpers/paths.php` — конфигурационные директории (60 строк)
+  - [x] `helpers/validation.php` — валидация и санитизация (198 строк)
+  - [x] `helpers/auth.php` — авторизация и сессии (168 строк)
+  - [x] `helpers/generators.php` — генерация имён, ключей, паролей (219 строк)
+  - [x] `helpers/network.php` — URL, IP, DNS (282 строки)
+  - [x] `helpers/resources.php` — ресурсы, сервисы, вебхуки (256 строк)
+  - [x] `helpers/formatting.php` — форматирование строк (238 строк)
+  - [x] `helpers/environment.php` — ENV переменные, Git (285 строк)
+- [x] Оставшиеся в shared.php функции:
+  - `getTopLevelNetworks()` — сложная работа с Docker networks
+  - `parseDockerComposeFile()` — главный парсер Docker Compose (~1500 строк)
+- [x] Код прошёл Pint и PHPStan валидацию
 
 ### 5. Projects/Show.tsx — 3,240 строк
 Главная страница проекта, много логики в одном компоненте.
@@ -171,7 +176,7 @@ API контроллер приложений разделён на специа
 | routes/web.php | ✅ Готово | 2026-01-25 |
 | ApplicationDeploymentJob.php | ✅ Готово | 2026-01-26 |
 | ApplicationsController.php | ✅ Готово | 2026-01-26 |
-| shared.php | ⏳ Не начато | - |
+| shared.php | ✅ Готово | 2026-01-26 |
 | Projects/Show.tsx | ⏳ Не начато | - |
 | DatabasesController.php | ⏳ Не начато | - |
 | parsers.php | ⏳ Не начато | - |
