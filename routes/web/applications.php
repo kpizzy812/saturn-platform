@@ -26,6 +26,23 @@ Route::get('/applications', function () {
         ->with(['environment.project'])
         ->get()
         ->map(function ($app) {
+            // Check for active deployments
+            $hasActiveDeployment = \App\Models\ApplicationDeploymentQueue::where('application_id', $app->id)
+                ->whereIn('status', ['in_progress', 'queued'])
+                ->exists();
+
+            // Determine display status
+            $containerStatus = str($app->status)->before(':')->toString();
+            if ($hasActiveDeployment) {
+                $displayStatus = 'building';
+            } elseif ($containerStatus === 'running') {
+                $displayStatus = 'running';
+            } elseif (in_array($containerStatus, ['exited', 'stopped', ''])) {
+                $displayStatus = 'stopped';
+            } else {
+                $displayStatus = $containerStatus ?: 'stopped';
+            }
+
             return [
                 'id' => $app->id,
                 'uuid' => $app->uuid,
@@ -35,7 +52,7 @@ Route::get('/applications', function () {
                 'git_repository' => $app->git_repository,
                 'git_branch' => $app->git_branch,
                 'build_pack' => $app->build_pack,
-                'status' => str($app->status)->before(':')->toString() ?: 'stopped',
+                'status' => $displayStatus,
                 'project_name' => $app->environment->project->name,
                 'environment_name' => $app->environment->name,
                 'created_at' => $app->created_at,
@@ -194,6 +211,20 @@ Route::get('/applications/{uuid}', function (string $uuid) {
         ->where('is_preview', false)
         ->count();
 
+    // Determine display status based on container status and active deployments
+    $containerStatus = str($application->status)->before(':')->toString();
+    $hasActiveDeployment = $recentDeployments->contains(fn ($d) => in_array($d['status'], ['in_progress', 'queued']));
+
+    if ($hasActiveDeployment) {
+        $displayStatus = 'building';
+    } elseif ($containerStatus === 'running') {
+        $displayStatus = 'running';
+    } elseif (in_array($containerStatus, ['exited', 'stopped', ''])) {
+        $displayStatus = 'stopped';
+    } else {
+        $displayStatus = $containerStatus ?: 'stopped';
+    }
+
     return Inertia::render('Applications/Show', [
         'application' => [
             'id' => $application->id,
@@ -204,7 +235,7 @@ Route::get('/applications/{uuid}', function (string $uuid) {
             'git_repository' => $application->git_repository,
             'git_branch' => $application->git_branch,
             'build_pack' => $application->build_pack,
-            'status' => str($application->status)->before(':')->toString() ?: 'stopped',
+            'status' => $displayStatus,
             'created_at' => $application->created_at,
             'updated_at' => $application->updated_at,
             'project' => $application->environment->project,
