@@ -4,7 +4,6 @@ import {
     Background,
     useNodesState,
     useEdgesState,
-    addEdge,
     Connection,
     Node,
     Edge,
@@ -12,6 +11,7 @@ import {
     MarkerType,
     useReactFlow,
     ReactFlowProvider,
+    type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -20,11 +20,11 @@ import { DatabaseNode } from './nodes/DatabaseNode';
 import type { Application, StandaloneDatabase, Service } from '@/types';
 import axios from 'axios';
 
-// Custom node types
-const nodeTypes = {
+// Custom node types - use type assertion for compatibility with @xyflow/react
+const nodeTypes: NodeTypes = {
     service: ServiceNode,
     database: DatabaseNode,
-};
+} as NodeTypes;
 
 // Resource Link from API
 interface ResourceLink {
