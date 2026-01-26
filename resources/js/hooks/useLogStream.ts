@@ -52,7 +52,8 @@ interface UseLogStreamOptions {
     maxLogEntries?: number;
 
     /**
-     * Auto-scroll to bottom on new logs (default: true)
+     * @deprecated Auto-scroll is now handled by LogsContainer component
+     * This option is kept for backward compatibility but has no effect
      */
     autoScroll?: boolean;
 
@@ -154,7 +155,6 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
         enableWebSocket = true,
         pollingInterval = 2000,
         maxLogEntries = 1000,
-        autoScroll = true,
         filterLevel = 'all',
         onLogEntry,
         onStreamStart,
@@ -199,19 +199,8 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
 
             lastLogIdRef.current = entry.id;
             onLogEntry?.(entry);
-
-            // Auto-scroll if enabled
-            if (autoScroll) {
-                // Scroll to bottom in next tick
-                setTimeout(() => {
-                    const logContainer = document.querySelector('[data-log-container]');
-                    if (logContainer) {
-                        logContainer.scrollTop = logContainer.scrollHeight;
-                    }
-                }, 0);
-            }
         },
-        [filterLevel, maxLogEntries, autoScroll, onLogEntry]
+        [filterLevel, maxLogEntries, onLogEntry]
     );
 
     /**

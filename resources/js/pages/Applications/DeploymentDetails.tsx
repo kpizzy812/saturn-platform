@@ -2,19 +2,16 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, useConfirm } from '@/components/ui';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '@/components/ui/Dropdown';
+import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import {
     Rocket,
     GitCommit,
     Clock,
     Server,
     GitBranch,
-    Copy,
-    Check,
     RefreshCw,
     XCircle,
-    ChevronDown,
-    ChevronUp,
     ExternalLink,
     AlertCircle,
     CheckCircle2,
@@ -78,11 +75,7 @@ export default function DeploymentDetails({
     const confirm = useConfirm();
     const [deployment, setDeployment] = React.useState(initialDeployment);
     const [logs, setLogs] = React.useState<LogEntry[]>(initialLogs);
-    const [autoScroll, setAutoScroll] = React.useState(true);
-    const [copied, setCopied] = React.useState(false);
     const [isConnected, setIsConnected] = React.useState(false);
-    const logsEndRef = React.useRef<HTMLDivElement>(null);
-    const logsContainerRef = React.useRef<HTMLDivElement>(null);
 
     const isInProgress = deployment.status === 'in_progress' || deployment.status === 'queued';
 
@@ -140,44 +133,15 @@ export default function DeploymentDetails({
         setLogs(initialLogs);
     }, [initialDeployment, initialLogs]);
 
-    // Auto-scroll to bottom
-    React.useEffect(() => {
-        if (autoScroll && logsEndRef.current) {
-            logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [logs, autoScroll]);
-
-    // Detect manual scroll
-    const handleScroll = () => {
-        if (!logsContainerRef.current) return;
-        const { scrollTop, scrollHeight, clientHeight } = logsContainerRef.current;
-        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-        setAutoScroll(isAtBottom);
-    };
-
-    const copyLogs = async () => {
-        try {
-            const logText = (logs || []).map((log) => log.output).join('\n');
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(logText);
-            } else {
-                // Fallback for non-secure contexts (HTTP)
-                const textArea = document.createElement('textarea');
-                textArea.value = logText;
-                textArea.style.position = 'fixed';
-                textArea.style.left = '-9999px';
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-            }
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy logs:', err);
-        }
-    };
+    // Transform logs to LogLine format for LogsContainer
+    const transformedLogs: LogLine[] = React.useMemo(() => {
+        return logs.map((log, index) => ({
+            id: `${log.order}-${index}`,
+            content: log.output,
+            timestamp: log.timestamp || undefined,
+            level: log.type === 'stderr' ? 'stderr' : 'stdout',
+        }));
+    }, [logs]);
 
     const handleCancel = async () => {
         const confirmed = await confirm({
@@ -359,70 +323,22 @@ export default function DeploymentDetails({
                     {/* Main content - Logs */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Logs Card */}
-                        <Card>
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <CardTitle>Build Logs</CardTitle>
-                                        {isInProgress && isConnected && (
-                                            <span className="flex items-center gap-1.5 text-xs text-success">
-                                                <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-                                                Live
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setAutoScroll(!autoScroll)}
-                                            className={autoScroll ? 'text-primary' : ''}
-                                        >
-                                            {autoScroll ? (
-                                                <ChevronDown className="mr-2 h-4 w-4" />
-                                            ) : (
-                                                <ChevronUp className="mr-2 h-4 w-4" />
-                                            )}
-                                            Auto-scroll
-                                        </Button>
-                                        <Button variant="outline" size="sm" onClick={copyLogs}>
-                                            {copied ? (
-                                                <Check className="mr-2 h-4 w-4 text-success" />
-                                            ) : (
-                                                <Copy className="mr-2 h-4 w-4" />
-                                            )}
-                                            {copied ? 'Copied!' : 'Copy'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div
-                                    ref={logsContainerRef}
-                                    onScroll={handleScroll}
-                                    className="h-[500px] overflow-y-auto rounded-lg bg-[#0d1117] p-4 font-mono text-sm"
-                                >
-                                    {logs.length === 0 ? (
-                                        <div className="flex h-full items-center justify-center text-foreground-muted">
-                                            {isInProgress ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                                    <span>Waiting for logs...</span>
-                                                </div>
-                                            ) : (
-                                                <span>No logs available</span>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-0.5">
-                                            {logs.map((log, index) => (
-                                                <LogLine key={`${log.order}-${index}`} log={log} />
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div ref={logsEndRef} />
-                                </div>
-                            </CardContent>
+                        <Card className="overflow-hidden">
+                            <LogsContainer
+                                logs={transformedLogs}
+                                storageKey={`deployment-${deployment.deployment_uuid}`}
+                                title="Build Logs"
+                                height={500}
+                                isStreaming={isInProgress}
+                                isConnected={isConnected}
+                                showSearch
+                                showLevelFilter
+                                showCopy
+                                showDownload
+                                showLineNumbers
+                                emptyMessage="No logs available"
+                                loadingMessage="Waiting for logs..."
+                            />
                         </Card>
                     </div>
 
@@ -573,63 +489,6 @@ export default function DeploymentDetails({
                 </div>
             </div>
         </AppLayout>
-    );
-}
-
-// Log line component with syntax highlighting
-interface LogLineProps {
-    log: LogEntry;
-}
-
-function LogLine({ log }: LogLineProps) {
-    const isError = log.type === 'stderr';
-    const output = log.output;
-
-    // Detect and style different log patterns
-    const getStyledOutput = () => {
-        // Header lines (╔, ═, ╚)
-        if (output.match(/^[╔═╚╗╝║]/)) {
-            return <span className="text-cyan-400">{output}</span>;
-        }
-
-        // Success messages
-        if (output.match(/✓|success|completed|done|finished/i)) {
-            return <span className="text-green-400">{output}</span>;
-        }
-
-        // Error messages
-        if (isError || output.match(/error|failed|fatal|exception/i)) {
-            return <span className="text-red-400">{output}</span>;
-        }
-
-        // Warning messages
-        if (output.match(/warning|warn|deprecated/i)) {
-            return <span className="text-yellow-400">{output}</span>;
-        }
-
-        // Step indicators
-        if (output.match(/^(Step|>>>|\[[\d/]+\])/i)) {
-            return <span className="text-blue-400">{output}</span>;
-        }
-
-        // Commands (starting with $, #, or common commands)
-        if (output.match(/^\s*[$#>]/)) {
-            return <span className="text-purple-400">{output}</span>;
-        }
-
-        // Default
-        return <span className="text-gray-300">{output}</span>;
-    };
-
-    return (
-        <div
-            className={cn(
-                'py-0.5 leading-relaxed break-all whitespace-pre-wrap',
-                isError && 'bg-red-500/10 px-2 -mx-2 rounded'
-            )}
-        >
-            {getStyledOutput()}
-        </div>
     );
 }
 

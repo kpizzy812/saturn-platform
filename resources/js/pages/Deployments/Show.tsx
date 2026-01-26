@@ -1,18 +1,18 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Tabs } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from '@/components/ui';
+import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { useLogStream } from '@/hooks/useLogStream';
-import type { Deployment, DeploymentStatus } from '@/types';
+import type { Deployment } from '@/types';
 import {
     GitCommit,
     Clock,
     Play,
     RotateCw,
     Terminal,
-    Download,
     ChevronLeft,
     GitBranch,
     Calendar,
@@ -21,7 +21,6 @@ import {
     FileText,
     Code,
     StopCircle,
-    ExternalLink,
 } from 'lucide-react';
 
 interface Props {
@@ -161,6 +160,21 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
     const deployLogs = isStreaming && streamedLogs.length > 0
         ? streamedLogs.filter(log => log.source === 'deploy').map(log => log.message)
         : (deployment.deploy_logs || []);
+
+    // Transform logs to LogLine format for LogsContainer
+    const buildLogsFormatted: LogLine[] = React.useMemo(() => {
+        return buildLogs.map((log, index) => ({
+            id: `build-${index}`,
+            content: log,
+        }));
+    }, [buildLogs]);
+
+    const deployLogsFormatted: LogLine[] = React.useMemo(() => {
+        return deployLogs.map((log, index) => ({
+            id: `deploy-${index}`,
+            content: log,
+        }));
+    }, [deployLogs]);
 
     const initials = deployment.author?.name
         .split(' ')
@@ -343,17 +357,31 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
 
                 <CardContent className="p-0">
                     {activeTab === 'build' && (
-                        <LogsView
-                            logs={buildLogs}
+                        <LogsContainer
+                            logs={buildLogsFormatted}
+                            storageKey={`deployment-${deployment.uuid}-build`}
                             title="Build Logs"
+                            height={600}
                             isStreaming={isStreaming && deployment.status === 'in_progress'}
+                            showSearch
+                            showLevelFilter
+                            showDownload
+                            showCopy
+                            showLineNumbers
                         />
                     )}
                     {activeTab === 'deploy' && (
-                        <LogsView
-                            logs={deployLogs}
+                        <LogsContainer
+                            logs={deployLogsFormatted}
+                            storageKey={`deployment-${deployment.uuid}-deploy`}
                             title="Deploy Logs"
+                            height={600}
                             isStreaming={isStreaming && deployment.status === 'in_progress'}
+                            showSearch
+                            showLevelFilter
+                            showDownload
+                            showCopy
+                            showLineNumbers
                         />
                     )}
                     {activeTab === 'environment' && (
@@ -391,127 +419,6 @@ function TabButton({
             {icon}
             {label}
         </button>
-    );
-}
-
-function LogsView({ logs, title, isStreaming = false }: { logs: string[]; title: string; isStreaming?: boolean }) {
-    const logsContainerRef = React.useRef<HTMLDivElement>(null);
-    const [autoScroll, setAutoScroll] = React.useState(true);
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [logLevel, setLogLevel] = React.useState<'all' | 'info' | 'warn' | 'error'>('all');
-
-    // Auto-scroll to bottom
-    React.useEffect(() => {
-        if (autoScroll && logsContainerRef.current) {
-            logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
-        }
-    }, [logs, autoScroll]);
-
-    const filteredLogs = React.useMemo(() => {
-        let filtered = logs;
-
-        // Filter by log level
-        if (logLevel !== 'all') {
-            filtered = filtered.filter(log => {
-                const lower = log.toLowerCase();
-                if (logLevel === 'error') return lower.includes('error') || lower.includes('failed');
-                if (logLevel === 'warn') return lower.includes('warn') || lower.includes('warning');
-                if (logLevel === 'info') return !lower.includes('error') && !lower.includes('warn');
-                return true;
-            });
-        }
-
-        // Filter by search
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(log => log.toLowerCase().includes(query));
-        }
-
-        return filtered;
-    }, [logs, logLevel, searchQuery]);
-
-    const handleDownload = () => {
-        const content = logs.join('\n');
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title.toLowerCase().replace(' ', '-')}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
-    return (
-        <div className="space-y-4 p-4">
-            {/* Controls */}
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="relative flex-1">
-                    <input
-                        type="text"
-                        placeholder="Search logs..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-md border border-border bg-background-secondary px-3 py-2 text-sm text-foreground placeholder-foreground-muted focus:border-primary focus:outline-none"
-                    />
-                </div>
-                <select
-                    value={logLevel}
-                    onChange={(e) => setLogLevel(e.target.value as 'all' | 'info' | 'warn' | 'error')}
-                    className="rounded-md border border-border bg-background-secondary px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                >
-                    <option value="all">All Levels</option>
-                    <option value="info">Info</option>
-                    <option value="warn">Warnings</option>
-                    <option value="error">Errors</option>
-                </select>
-                {isStreaming && (
-                    <Badge variant="success" className="flex items-center gap-1">
-                        <Activity className="h-3 w-3 animate-pulse" />
-                        Live
-                    </Badge>
-                )}
-                <Button variant="secondary" size="sm" onClick={handleDownload}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                </Button>
-            </div>
-
-            {/* Logs */}
-            <div
-                ref={logsContainerRef}
-                className="max-h-[600px] overflow-y-auto rounded-lg bg-black p-4 font-mono text-xs"
-            >
-                {filteredLogs.length === 0 ? (
-                    <div className="text-center text-foreground-muted">
-                        {searchQuery || logLevel !== 'all' ? 'No logs match your filters' : 'No logs available'}
-                    </div>
-                ) : (
-                    filteredLogs.map((log, index) => (
-                        <div key={index} className="text-green-400 hover:bg-green-400/10">
-                            <span className="select-none text-green-400/50">{index + 1} </span>
-                            {log}
-                        </div>
-                    ))
-                )}
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-foreground-muted">
-                <span>
-                    {filteredLogs.length} of {logs.length} lines
-                </span>
-                <label className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        checked={autoScroll}
-                        onChange={(e) => setAutoScroll(e.target.checked)}
-                        className="rounded"
-                    />
-                    Auto-scroll
-                </label>
-            </div>
-        </div>
     );
 }
 
