@@ -251,8 +251,21 @@ trait HandlesHealthCheck
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
         $this->application_deployment_queue->addLogEntry('🔍 DIAGNOSIS:', type: 'stderr');
 
-        // Check for common Node.js errors
-        if (str_contains($logs, 'MODULE_NOT_FOUND') || str_contains($logs, 'Cannot find module')) {
+        // Check for missing environment variables first (most common issue)
+        $missingEnvVars = $this->detectMissingEnvVars($logs);
+        if (! empty($missingEnvVars)) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: Missing required environment variables', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('The following variables must be configured:', type: 'stderr');
+            foreach ($missingEnvVars as $var) {
+                $this->application_deployment_queue->addLogEntry("  • {$var}", type: 'stderr');
+            }
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('➡️ Go to Application → Environment Variables and add them.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('   Then redeploy the application.', type: 'stderr');
+            // Check for common Node.js errors
+        } elseif (str_contains($logs, 'MODULE_NOT_FOUND') || str_contains($logs, 'Cannot find module')) {
             $this->application_deployment_queue->addLogEntry('');
             $this->application_deployment_queue->addLogEntry('❌ ERROR: Module/file not found', type: 'stderr');
             $this->application_deployment_queue->addLogEntry('');
@@ -301,5 +314,82 @@ trait HandlesHealthCheck
         }
 
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
+    }
+
+    /**
+     * Detect missing environment variables from error logs.
+     * Parses common error patterns from various frameworks.
+     *
+     * @return array<string> List of detected missing variable names
+     */
+    private function detectMissingEnvVars(string $logs): array
+    {
+        $missingVars = [];
+
+        // Pattern: "VAR_NAME must be defined" or "VAR_NAME and VAR2 must be defined"
+        if (preg_match_all('/([A-Z][A-Z0-9_]+(?:\s+and\s+[A-Z][A-Z0-9_]+)*)\s+must\s+be\s+(?:defined|set|provided)/i', $logs, $matches)) {
+            foreach ($matches[1] as $match) {
+                // Split "VAR1 and VAR2" into separate vars
+                $vars = preg_split('/\s+and\s+/i', $match);
+                foreach ($vars as $var) {
+                    $var = trim($var);
+                    if (! empty($var) && ! in_array($var, $missingVars)) {
+                        $missingVars[] = $var;
+                    }
+                }
+            }
+        }
+
+        // Pattern: "VAR_NAME is required" or "VAR_NAME is not set"
+        if (preg_match_all('/([A-Z][A-Z0-9_]+)\s+(?:is\s+)?(?:required|not\s+set|not\s+defined|missing|undefined)/i', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Pattern: "Missing environment variable: VAR_NAME" or "Missing required env var VAR_NAME"
+        if (preg_match_all('/[Mm]issing\s+(?:required\s+)?(?:environment\s+)?(?:variable|env\s+var)s?[:\s]+([A-Z][A-Z0-9_]+)/i', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Pattern: "process.env.VAR_NAME is undefined" (JavaScript)
+        if (preg_match_all('/process\.env\.([A-Z][A-Z0-9_]+)\s+is\s+undefined/i', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Pattern: "Config validation error: VAR_NAME should not be empty"
+        if (preg_match_all('/(?:Config|Configuration|Validation)\s+(?:validation\s+)?error[^:]*:\s*([A-Z][A-Z0-9_]+)\s+(?:should\s+not\s+be\s+empty|is\s+required)/i', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Pattern: Python/Django style "ImproperlyConfigured: Set the VAR_NAME environment variable"
+        if (preg_match_all('/Set\s+the\s+([A-Z][A-Z0-9_]+)\s+environment\s+variable/i', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        return $missingVars;
     }
 }

@@ -560,6 +560,83 @@ BASH;
     }
 
     /**
+     * After build, scan for the correct entry point and fix start command if needed.
+     * This handles cases like NestJS where main.js is at dist/src/main.js instead of dist/main.js.
+     */
+    private function autoFixEntryPoint(): void
+    {
+        // Get the current start command from nixpacks plan
+        $nixpacksPlan = $this->saved_outputs->get('nixpacks_plan', '');
+        if (empty($nixpacksPlan)) {
+            return;
+        }
+
+        $plan = json_decode($nixpacksPlan, true);
+        $startCmd = $plan['start']['cmd'] ?? '';
+
+        // Check if it's a node start command
+        if (! str_contains($startCmd, 'node ') || ! str_contains($startCmd, 'dist')) {
+            return;
+        }
+
+        // Extract the expected path from the command
+        preg_match('/node\s+([^\s]+)/', $startCmd, $matches);
+        $expectedPath = $matches[1] ?? '';
+
+        if (empty($expectedPath)) {
+            return;
+        }
+
+        // Check if the expected file exists
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "test -f {$this->workdir}/{$expectedPath} && echo 'exists' || echo 'missing'"), 'save' => 'entrypoint_check', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        if (str_contains($this->saved_outputs->get('entrypoint_check', ''), 'exists')) {
+            return; // Entry point exists, no fix needed
+        }
+
+        // Entry point doesn't exist, search for alternatives
+        $this->application_deployment_queue->addLogEntry("Entry point '{$expectedPath}' not found, searching for alternatives...");
+
+        // Common alternative paths for NestJS and other frameworks
+        $alternatives = [
+            str_replace('dist/main', 'dist/src/main', $expectedPath),
+            str_replace('dist/main.js', 'dist/src/main.js', $expectedPath),
+            str_replace('/main', '/src/main', $expectedPath),
+            str_replace('/main.js', '/index.js', $expectedPath),
+        ];
+
+        // Also search for any main.js in dist directory
+        $distDir = dirname($expectedPath);
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "find {$this->workdir}/{$distDir} -name 'main.js' -o -name 'index.js' 2>/dev/null | head -5"), 'save' => 'found_entries', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $foundEntries = array_filter(explode("\n", trim($this->saved_outputs->get('found_entries', ''))));
+
+        if (! empty($foundEntries)) {
+            // Use the first found entry
+            $correctPath = str_replace($this->workdir.'/', '', $foundEntries[0]);
+
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+            $this->application_deployment_queue->addLogEntry("✓ Found entry point at: {$correctPath}");
+            $this->application_deployment_queue->addLogEntry("Original path was: {$expectedPath}");
+            $this->application_deployment_queue->addLogEntry('Saturn will use the correct path automatically.');
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+
+            // Store the corrected path for later use
+            $this->saved_outputs->put('corrected_entrypoint', $correctPath);
+        } else {
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+            $this->application_deployment_queue->addLogEntry("⚠️ Could not find entry point '{$expectedPath}'", type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Searched for main.js and index.js in dist/ but found nothing.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Please check your build configuration.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        }
+    }
+
+    /**
      * Detect monorepo and warn about common deployment issues.
      */
     private function checkMonorepoIssues(array $packageJson): void

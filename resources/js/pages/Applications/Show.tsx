@@ -362,7 +362,7 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                     <p className="text-sm text-foreground-muted">
                                         {application.environment_variables_count || 0} variables configured
                                     </p>
-                                    <Link href={`/applications/${application.uuid}/environment-variables`}>
+                                    <Link href={`/applications/${application.uuid}/settings/variables`}>
                                         <Button variant="outline" size="sm">
                                             Manage
                                         </Button>

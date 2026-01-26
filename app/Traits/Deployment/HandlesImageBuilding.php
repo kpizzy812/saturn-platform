@@ -111,6 +111,9 @@ trait HandlesImageBuilding
             $this->patchDockerfileForNodeVersion("{$this->workdir}/.nixpacks/Dockerfile", $this->requiredNodeVersion);
         }
 
+        // Pre-pull base images to avoid rate limiting issues
+        $this->prePullBaseImages("{$this->workdir}/.nixpacks/Dockerfile");
+
         $build_command = $this->createNixpacksBuildCommand("{$this->workdir}/.nixpacks/Dockerfile", $this->build_image_name);
         $this->executeBuildCommand($build_command);
         $this->execute_remote_command([executeInDocker($this->deployment_uuid, 'rm '.self::NIXPACKS_PLAN_PATH), 'hidden' => true]);
@@ -235,9 +238,68 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
             $this->patchDockerfileForNodeVersion("{$this->workdir}/.nixpacks/Dockerfile", $this->requiredNodeVersion);
         }
 
+        // Pre-pull base images to avoid rate limiting issues
+        $this->prePullBaseImages("{$this->workdir}/.nixpacks/Dockerfile");
+
         $build_command = $this->createNixpacksBuildCommand("{$this->workdir}/.nixpacks/Dockerfile", $this->production_image_name);
         $this->executeBuildCommand($build_command);
         $this->execute_remote_command([executeInDocker($this->deployment_uuid, 'rm '.self::NIXPACKS_PLAN_PATH), 'hidden' => true]);
+    }
+
+    /**
+     * Pre-pull base images from Dockerfile to avoid rate limiting during build.
+     * This pulls images on the host before Docker build runs.
+     */
+    private function prePullBaseImages(string $dockerfilePath): void
+    {
+        // Read the Dockerfile to extract FROM instructions
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "cat {$dockerfilePath}"), 'save' => 'dockerfile_content', 'hidden' => true, 'ignore_errors' => true],
+        );
+
+        $dockerfile = $this->saved_outputs->get('dockerfile_content', '');
+        if (empty($dockerfile)) {
+            return;
+        }
+
+        // Extract all FROM instructions (handles multi-stage builds)
+        preg_match_all('/^FROM\s+([^\s]+)/m', $dockerfile, $matches);
+        $images = array_unique($matches[1] ?? []);
+
+        // Filter out stage references (like "0" or named stages) and local images
+        $imagesToPull = [];
+        foreach ($images as $image) {
+            // Skip numeric references (multi-stage build references)
+            if (is_numeric($image)) {
+                continue;
+            }
+            // Skip if it's a stage alias (no / and no :)
+            if (! str_contains($image, '/') && ! str_contains($image, ':') && ! in_array($image, ['alpine', 'ubuntu', 'debian', 'node', 'nginx', 'python', 'php', 'ruby', 'golang', 'rust'])) {
+                continue;
+            }
+            $imagesToPull[] = $image;
+        }
+
+        if (empty($imagesToPull)) {
+            return;
+        }
+
+        // Pre-pull each base image (run on host, not inside helper container)
+        foreach ($imagesToPull as $image) {
+            // Skip if image is already present locally
+            $this->execute_remote_command(
+                ["docker image inspect {$image} > /dev/null 2>&1 && echo 'exists' || echo 'missing'", 'save' => 'image_check', 'hidden' => true, 'ignore_errors' => true],
+            );
+
+            if (str_contains($this->saved_outputs->get('image_check', ''), 'exists')) {
+                continue;
+            }
+
+            $this->application_deployment_queue->addLogEntry("Pre-pulling base image: {$image}", hidden: true);
+            $this->execute_remote_command(
+                ["docker pull {$image}", 'hidden' => true, 'ignore_errors' => true],
+            );
+        }
     }
 
     /**
