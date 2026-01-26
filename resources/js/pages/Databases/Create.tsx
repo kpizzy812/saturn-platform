@@ -1,10 +1,32 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Select } from '@/components/ui';
-import { ArrowLeft, ChevronRight, Database, Check } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Database, Check, Settings2 } from 'lucide-react';
 import type { DatabaseType } from '@/types';
+
+interface Environment {
+    uuid: string;
+    name: string;
+}
+
+interface Project {
+    uuid: string;
+    name: string;
+    environments: Environment[];
+}
+
+interface Server {
+    uuid: string;
+    name: string;
+    is_reachable: boolean;
+}
+
+interface PageProps {
+    projects: Project[];
+    servers: Server[];
+}
 
 interface DatabaseTypeOption {
     type: DatabaseType;
@@ -61,13 +83,27 @@ const databaseTypes: DatabaseTypeOption[] = [
 type Step = 1 | 2 | 3;
 
 export default function DatabaseCreate() {
+    const { projects, servers } = usePage<{ props: PageProps }>().props as unknown as PageProps;
+
     const [step, setStep] = useState<Step>(1);
     const [selectedType, setSelectedType] = useState<DatabaseType | null>(null);
     const [name, setName] = useState('');
     const [version, setVersion] = useState('');
     const [description, setDescription] = useState('');
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [selectedProjectUuid, setSelectedProjectUuid] = useState('');
+    const [selectedEnvironmentUuid, setSelectedEnvironmentUuid] = useState('');
+    const [selectedServerUuid, setSelectedServerUuid] = useState('');
 
     const selectedDbType = databaseTypes.find(db => db.type === selectedType);
+
+    // Get environments for selected project
+    const selectedProject = useMemo(() =>
+        projects?.find(p => p.uuid === selectedProjectUuid),
+        [projects, selectedProjectUuid]
+    );
+
+    const availableEnvironments = selectedProject?.environments ?? [];
 
     const handleTypeSelect = (type: DatabaseType) => {
         setSelectedType(type);
@@ -79,12 +115,13 @@ export default function DatabaseCreate() {
     };
 
     const handleSubmit = () => {
-        // In a real app, this would submit to the backend
         router.post('/databases', {
             name,
             database_type: selectedType,
             version,
             description,
+            environment_uuid: selectedEnvironmentUuid || undefined,
+            server_uuid: selectedServerUuid || undefined,
         });
     };
 
@@ -191,6 +228,69 @@ export default function DatabaseCreate() {
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                         />
+
+                                        {/* Advanced Settings Toggle */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAdvanced(!showAdvanced)}
+                                            className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground transition-colors"
+                                        >
+                                            <Settings2 className="h-4 w-4" />
+                                            <span>{showAdvanced ? 'Hide' : 'Show'} Advanced Settings</span>
+                                        </button>
+
+                                        {/* Advanced Settings */}
+                                        {showAdvanced && (
+                                            <div className="space-y-4 rounded-lg border border-border bg-background-secondary p-4">
+                                                <p className="text-sm text-foreground-muted">
+                                                    Leave these empty to use defaults (first available project/server)
+                                                </p>
+
+                                                <Select
+                                                    label="Project"
+                                                    value={selectedProjectUuid}
+                                                    onChange={(e) => {
+                                                        setSelectedProjectUuid(e.target.value);
+                                                        setSelectedEnvironmentUuid('');
+                                                    }}
+                                                >
+                                                    <option value="">Default (first project)</option>
+                                                    {projects?.map((project) => (
+                                                        <option key={project.uuid} value={project.uuid}>
+                                                            {project.name}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+
+                                                {selectedProjectUuid && availableEnvironments.length > 0 && (
+                                                    <Select
+                                                        label="Environment"
+                                                        value={selectedEnvironmentUuid}
+                                                        onChange={(e) => setSelectedEnvironmentUuid(e.target.value)}
+                                                    >
+                                                        <option value="">Default (production)</option>
+                                                        {availableEnvironments.map((env) => (
+                                                            <option key={env.uuid} value={env.uuid}>
+                                                                {env.name}
+                                                            </option>
+                                                        ))}
+                                                    </Select>
+                                                )}
+
+                                                <Select
+                                                    label="Server"
+                                                    value={selectedServerUuid}
+                                                    onChange={(e) => setSelectedServerUuid(e.target.value)}
+                                                >
+                                                    <option value="">Default (first available server)</option>
+                                                    {servers?.map((server) => (
+                                                        <option key={server.uuid} value={server.uuid}>
+                                                            {server.name} {server.is_reachable ? '✓' : '(offline)'}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="mt-6 flex gap-3">

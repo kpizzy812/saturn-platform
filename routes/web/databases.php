@@ -154,33 +154,109 @@ Route::get('/databases', function () {
 })->name('databases.index');
 
 Route::get('/databases/create', function () {
-    return Inertia::render('Databases/Create');
+    // Get projects with environments for database creation
+    $projects = \App\Models\Project::ownedByCurrentTeam()
+        ->with('environments')
+        ->get()
+        ->map(fn ($project) => [
+            'uuid' => $project->uuid,
+            'name' => $project->name,
+            'environments' => $project->environments->map(fn ($env) => [
+                'uuid' => $env->uuid,
+                'name' => $env->name,
+            ]),
+        ]);
+
+    // Get available servers
+    $servers = \App\Models\Server::ownedByCurrentTeam()
+        ->with('settings')
+        ->get()
+        ->map(fn ($server) => [
+            'uuid' => $server->uuid,
+            'name' => $server->name,
+            'is_reachable' => $server->settings?->is_reachable ?? false,
+        ]);
+
+    return Inertia::render('Databases/Create', [
+        'projects' => $projects,
+        'servers' => $servers,
+    ]);
 })->name('databases.create');
 
 Route::post('/databases', function (Request $request) {
     $request->validate([
         'name' => 'required|string|max:255',
-        'database_type' => 'required|string|in:postgresql,mysql,mariadb,mongodb,redis',
+        'database_type' => 'required|string|in:postgresql,mysql,mariadb,mongodb,redis,keydb,dragonfly,clickhouse',
         'version' => 'required|string',
         'description' => 'nullable|string',
+        'environment_uuid' => 'nullable|string',
+        'server_uuid' => 'nullable|string',
     ]);
 
-    // Create the appropriate database type
-    // Note: This is simplified - real implementation would need to handle
-    // destination, environment, and other configuration
-    $dbClass = match ($request->database_type) {
-        'postgresql' => \App\Models\StandalonePostgresql::class,
-        'mysql' => \App\Models\StandaloneMysql::class,
-        'mariadb' => \App\Models\StandaloneMariadb::class,
-        'mongodb' => \App\Models\StandaloneMongodb::class,
-        'redis' => \App\Models\StandaloneRedis::class,
-    };
+    // Get environment - either from request or use default (first project's production env)
+    $environment = null;
+    if ($request->environment_uuid) {
+        $environment = \App\Models\Environment::whereHas('project', function ($query) {
+            $query->where('team_id', currentTeam()->id);
+        })->where('uuid', $request->environment_uuid)->first();
+    }
 
-    $database = $dbClass::create([
+    if (! $environment) {
+        // Use default: first project's production environment or first environment
+        $project = \App\Models\Project::ownedByCurrentTeam()->first();
+        if (! $project) {
+            // Create a default project if none exists
+            $project = \App\Models\Project::create([
+                'name' => 'Default Project',
+                'team_id' => currentTeam()->id,
+            ]);
+        }
+        $environment = $project->environments()->where('name', 'production')->first()
+            ?? $project->environments()->first();
+        if (! $environment) {
+            $environment = $project->environments()->create(['name' => 'production']);
+        }
+    }
+
+    // Get destination - either from request or use default server's destination
+    $destination = null;
+    if ($request->server_uuid) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $request->server_uuid)->first();
+        if ($server) {
+            $destination = $server->destinations()->first();
+        }
+    }
+
+    if (! $destination) {
+        // Use default: first functional server's destination
+        $server = \App\Models\Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true)->first()
+            ?? \App\Models\Server::ownedByCurrentTeam()->first();
+        if (! $server) {
+            return redirect()->back()->withErrors(['server' => 'No server available. Please add a server first.']);
+        }
+        $destination = $server->destinations()->first();
+        if (! $destination) {
+            return redirect()->back()->withErrors(['destination' => 'Server has no destination configured.']);
+        }
+    }
+
+    // Build extra data for database creation
+    $otherData = array_filter([
         'name' => $request->name,
         'description' => $request->description,
-        'team_id' => currentTeam()->id,
     ]);
+
+    // Create the appropriate database type using helper functions
+    $database = match ($request->database_type) {
+        'postgresql' => create_standalone_postgresql($environment->id, $destination->uuid, $otherData),
+        'mysql' => create_standalone_mysql($environment->id, $destination->uuid, $otherData),
+        'mariadb' => create_standalone_mariadb($environment->id, $destination->uuid, $otherData),
+        'mongodb' => create_standalone_mongodb($environment->id, $destination->uuid, $otherData),
+        'redis' => create_standalone_redis($environment->id, $destination->uuid, $otherData),
+        'keydb' => create_standalone_keydb($environment->id, $destination->uuid, $otherData),
+        'dragonfly' => create_standalone_dragonfly($environment->id, $destination->uuid, $otherData),
+        'clickhouse' => create_standalone_clickhouse($environment->id, $destination->uuid, $otherData),
+    };
 
     return redirect()->route('databases.show', $database->uuid);
 })->name('databases.store');
