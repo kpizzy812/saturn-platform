@@ -119,3 +119,16 @@ export type {
     RedisKey,
     RedisMemoryInfo,
 } from './useRedisExtended';
+
+export {
+    useMysqlSettings,
+    useRedisPersistence,
+    useMongoStorageSettings,
+    formatRdbSaveRules,
+} from './useDatabaseSettings';
+export type {
+    MysqlSettings,
+    RdbSaveRule,
+    RedisPersistence,
+    MongoStorageSettings,
+} from './useDatabaseSettings';

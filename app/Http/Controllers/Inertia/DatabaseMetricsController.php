@@ -1565,6 +1565,249 @@ class DatabaseMetricsController extends Controller
     }
 
     /**
+     * Get MySQL/MariaDB settings.
+     */
+    public function getMysqlSettings(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['mysql', 'mariadb'])) {
+            return response()->json(['available' => false, 'error' => 'MySQL/MariaDB database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+
+            $settings = [
+                'slowQueryLog' => false,
+                'binaryLogging' => false,
+                'maxConnections' => null,
+                'innodbBufferPoolSize' => null,
+                'queryCacheSize' => null,
+                'queryTimeout' => null,
+            ];
+
+            // Get slow_query_log status
+            $slowQueryCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'slow_query_log';\" 2>/dev/null | awk '{print \$2}'";
+            $slowQueryLog = trim(instant_remote_process([$slowQueryCmd], $server, false) ?? '');
+            $settings['slowQueryLog'] = strtoupper($slowQueryLog) === 'ON';
+
+            // Get log_bin status (binary logging)
+            $logBinCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'log_bin';\" 2>/dev/null | awk '{print \$2}'";
+            $logBin = trim(instant_remote_process([$logBinCmd], $server, false) ?? '');
+            $settings['binaryLogging'] = strtoupper($logBin) === 'ON';
+
+            // Get max_connections
+            $maxConnCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}'";
+            $maxConnections = trim(instant_remote_process([$maxConnCmd], $server, false) ?? '');
+            if (is_numeric($maxConnections)) {
+                $settings['maxConnections'] = (int) $maxConnections;
+            }
+
+            // Get innodb_buffer_pool_size
+            $bufferPoolCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'innodb_buffer_pool_size';\" 2>/dev/null | awk '{print \$2}'";
+            $bufferPoolSize = trim(instant_remote_process([$bufferPoolCmd], $server, false) ?? '');
+            if (is_numeric($bufferPoolSize)) {
+                $settings['innodbBufferPoolSize'] = $this->formatBytes((int) $bufferPoolSize);
+            }
+
+            // Get query_cache_size (deprecated in MySQL 8.0 but still available in MariaDB)
+            $queryCacheCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'query_cache_size';\" 2>/dev/null | awk '{print \$2}'";
+            $queryCacheSize = trim(instant_remote_process([$queryCacheCmd], $server, false) ?? '');
+            if (is_numeric($queryCacheSize)) {
+                $settings['queryCacheSize'] = $this->formatBytes((int) $queryCacheSize);
+            }
+
+            // Get wait_timeout (query timeout)
+            $timeoutCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'wait_timeout';\" 2>/dev/null | awk '{print \$2}'";
+            $timeout = trim(instant_remote_process([$timeoutCmd], $server, false) ?? '');
+            if (is_numeric($timeout)) {
+                $settings['queryTimeout'] = (int) $timeout;
+            }
+
+            return response()->json([
+                'available' => true,
+                'settings' => $settings,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch MySQL settings: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get Redis persistence settings.
+     */
+    public function getRedisPersistence(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['available' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? "-a '{$password}'" : '';
+
+            $persistence = [
+                'rdbEnabled' => false,
+                'rdbSaveRules' => [],
+                'aofEnabled' => false,
+                'aofFsync' => 'everysec',
+                'rdbLastSaveTime' => null,
+                'rdbLastBgsaveStatus' => 'N/A',
+            ];
+
+            // Get CONFIG for persistence settings
+            $configCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning CONFIG GET save 2>/dev/null";
+            $saveConfig = instant_remote_process([$configCmd], $server, false) ?? '';
+
+            // Parse RDB save rules
+            if (preg_match('/save\n(.+)$/m', $saveConfig, $matches)) {
+                $saveValue = trim($matches[1]);
+                if (! empty($saveValue) && $saveValue !== '""' && $saveValue !== "''") {
+                    $persistence['rdbEnabled'] = true;
+                    // Parse save rules (e.g., "900 1 300 10 60 10000")
+                    $rules = preg_split('/\s+/', $saveValue);
+                    $rdbRules = [];
+                    for ($i = 0; $i < count($rules) - 1; $i += 2) {
+                        if (is_numeric($rules[$i]) && is_numeric($rules[$i + 1])) {
+                            $rdbRules[] = [
+                                'seconds' => (int) $rules[$i],
+                                'changes' => (int) $rules[$i + 1],
+                            ];
+                        }
+                    }
+                    $persistence['rdbSaveRules'] = $rdbRules;
+                }
+            }
+
+            // Get AOF settings
+            $aofCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning CONFIG GET appendonly 2>/dev/null";
+            $aofConfig = instant_remote_process([$aofCmd], $server, false) ?? '';
+            if (preg_match('/appendonly\n(\w+)/m', $aofConfig, $matches)) {
+                $persistence['aofEnabled'] = strtolower(trim($matches[1])) === 'yes';
+            }
+
+            // Get AOF fsync policy
+            $fsyncCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning CONFIG GET appendfsync 2>/dev/null";
+            $fsyncConfig = instant_remote_process([$fsyncCmd], $server, false) ?? '';
+            if (preg_match('/appendfsync\n(\w+)/m', $fsyncConfig, $matches)) {
+                $persistence['aofFsync'] = trim($matches[1]);
+            }
+
+            // Get last save time from INFO
+            $infoCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning INFO persistence 2>/dev/null";
+            $info = instant_remote_process([$infoCmd], $server, false) ?? '';
+
+            if (preg_match('/rdb_last_save_time:(\d+)/', $info, $matches)) {
+                $timestamp = (int) $matches[1];
+                if ($timestamp > 0) {
+                    $persistence['rdbLastSaveTime'] = date('Y-m-d H:i:s', $timestamp);
+                }
+            }
+
+            if (preg_match('/rdb_last_bgsave_status:(\w+)/', $info, $matches)) {
+                $persistence['rdbLastBgsaveStatus'] = $matches[1];
+            }
+
+            return response()->json([
+                'available' => true,
+                'persistence' => $persistence,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch Redis persistence settings: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get MongoDB storage settings.
+     */
+    public function getMongoStorageSettings(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'mongodb') {
+            return response()->json(['available' => false, 'error' => 'MongoDB database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+
+            $settings = [
+                'storageEngine' => 'WiredTiger',
+                'cacheSize' => null,
+                'journalEnabled' => true,
+                'directoryPerDb' => false,
+            ];
+
+            // Get server status including storage engine info
+            $command = "docker exec {$containerName} mongosh --quiet --eval \"
+                const status = db.serverStatus();
+                const params = db.adminCommand({getParameter: '*'});
+                JSON.stringify({
+                    storageEngine: status.storageEngine?.name || 'WiredTiger',
+                    cacheSize: status.wiredTiger?.cache ? status.wiredTiger.cache['maximum bytes configured'] : null,
+                    journalEnabled: status.dur?.journalEnabled ?? true,
+                    directoryPerDb: params.directoryperdb ?? false
+                });
+            \" 2>/dev/null || echo '{}'";
+
+            $result = trim(instant_remote_process([$command], $server, false) ?? '{}');
+            $parsed = json_decode($result, true);
+
+            if ($parsed && is_array($parsed)) {
+                $settings['storageEngine'] = $parsed['storageEngine'] ?? 'WiredTiger';
+
+                if (isset($parsed['cacheSize']) && is_numeric($parsed['cacheSize'])) {
+                    $settings['cacheSize'] = $this->formatBytes((int) $parsed['cacheSize']);
+                } else {
+                    $settings['cacheSize'] = 'Default (50% RAM)';
+                }
+
+                $settings['journalEnabled'] = $parsed['journalEnabled'] ?? true;
+                $settings['directoryPerDb'] = $parsed['directoryPerDb'] ?? false;
+            }
+
+            return response()->json([
+                'available' => true,
+                'settings' => $settings,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch MongoDB storage settings: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Toggle PostgreSQL extension.
      */
     public function toggleExtension(Request $request, string $uuid): JsonResponse

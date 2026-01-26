@@ -344,6 +344,18 @@ Route::post('/api/databases/{uuid}/redis/flush', [\App\Http\Controllers\Inertia\
 Route::post('/api/databases/{uuid}/postgres/maintenance', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'postgresMaintenace'])
     ->name('databases.postgres.maintenance.api');
 
+// MySQL/MariaDB settings endpoint
+Route::get('/api/databases/{uuid}/mysql/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMysqlSettings'])
+    ->name('databases.mysql.settings.api');
+
+// Redis persistence settings endpoint
+Route::get('/api/databases/{uuid}/redis/persistence', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisPersistence'])
+    ->name('databases.redis.persistence.api');
+
+// MongoDB storage settings endpoint
+Route::get('/api/databases/{uuid}/mongodb/storage-settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoStorageSettings'])
+    ->name('databases.mongodb.storage-settings.api');
+
 Route::get('/databases/{uuid}/settings', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Users, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft, Loader2 } from 'lucide-react';
-import { useDatabaseMetrics, useDatabaseUsers, useDatabaseLogs, formatMetricValue, type MysqlMetrics } from '@/hooks';
+import { useDatabaseMetrics, useDatabaseUsers, useDatabaseLogs, useMysqlSettings, formatMetricValue, type MysqlMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -254,75 +254,80 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
-    const { addToast } = useToast();
-    const [slowQueryLog, setSlowQueryLog] = useState(false);
-    const [binaryLogging, setBinaryLogging] = useState(true);
-
-    const handleToggleSlowQuery = () => {
-        setSlowQueryLog(!slowQueryLog);
-        addToast('info', `Slow query log ${!slowQueryLog ? 'enabled' : 'disabled'}`);
-    };
-
-    const handleToggleBinaryLogging = () => {
-        setBinaryLogging(!binaryLogging);
-        addToast('info', `Binary logging ${!binaryLogging ? 'enabled' : 'disabled'}`);
-    };
+    // Fetch MySQL settings from API
+    const { settings, isLoading, refetch } = useMysqlSettings({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
 
     return (
         <div className="space-y-6">
             <Card>
                 <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Logging Settings</h3>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
-                            <div>
-                                <p className="font-medium text-foreground">Slow Query Log</p>
-                                <p className="text-sm text-foreground-muted">Log queries taking longer than 2 seconds</p>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant={slowQueryLog ? 'default' : 'secondary'}
-                                onClick={handleToggleSlowQuery}
-                            >
-                                <ToggleLeft className="mr-2 h-4 w-4" />
-                                {slowQueryLog ? 'Enabled' : 'Disabled'}
-                            </Button>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
-                            <div>
-                                <p className="font-medium text-foreground">Binary Logging</p>
-                                <p className="text-sm text-foreground-muted">Required for replication and point-in-time recovery</p>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant={binaryLogging ? 'default' : 'secondary'}
-                                onClick={handleToggleBinaryLogging}
-                            >
-                                <ToggleLeft className="mr-2 h-4 w-4" />
-                                {binaryLogging ? 'Enabled' : 'Disabled'}
-                            </Button>
-                        </div>
+                    <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-foreground">Logging Settings</h3>
+                        <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
                     </div>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading settings...</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
+                                <div>
+                                    <p className="font-medium text-foreground">Slow Query Log</p>
+                                    <p className="text-sm text-foreground-muted">Log queries taking longer than specified threshold</p>
+                                </div>
+                                <Badge variant={settings?.slowQueryLog ? 'success' : 'secondary'}>
+                                    {settings?.slowQueryLog ? 'Enabled' : 'Disabled'}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
+                                <div>
+                                    <p className="font-medium text-foreground">Binary Logging</p>
+                                    <p className="text-sm text-foreground-muted">Required for replication and point-in-time recovery</p>
+                                </div>
+                                <Badge variant={settings?.binaryLogging ? 'success' : 'secondary'}>
+                                    {settings?.binaryLogging ? 'Enabled' : 'Disabled'}
+                                </Badge>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
             <Card>
                 <CardContent className="p-6">
                     <h3 className="mb-4 text-lg font-medium text-foreground">Performance Settings</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Connections</label>
-                            <p className="text-sm text-foreground">150</p>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">InnoDB Buffer Pool Size</label>
-                            <p className="text-sm text-foreground">128 MB</p>
+                    ) : (
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Connections</label>
+                                <p className="text-sm text-foreground">{settings?.maxConnections ?? 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">InnoDB Buffer Pool Size</label>
+                                <p className="text-sm text-foreground">{settings?.innodbBufferPoolSize ?? 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Query Cache Size</label>
+                                <p className="text-sm text-foreground">{settings?.queryCacheSize ?? 'N/A (deprecated in MySQL 8.0)'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Query Timeout (wait_timeout)</label>
+                                <p className="text-sm text-foreground">{settings?.queryTimeout ? `${settings.queryTimeout}s` : 'N/A'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Query Cache Size</label>
-                            <p className="text-sm text-foreground">16 MB</p>
-                        </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

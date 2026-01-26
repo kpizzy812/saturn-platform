@@ -9,6 +9,8 @@ import {
     useRedisKeys,
     useRedisMemory,
     useRedisFlush,
+    useRedisPersistence,
+    formatRdbSaveRules,
     type RedisMetrics,
 } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
@@ -326,6 +328,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
     const confirm = useConfirm();
 
+    // Fetch persistence settings from API
+    const { persistence, isLoading: persistenceLoading, refetch: refetchPersistence } = useRedisPersistence({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
+
     // Fetch memory info for performance settings
     const { memory, isLoading: memoryLoading } = useRedisMemory({
         uuid: database.uuid,
@@ -373,17 +381,57 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
         <div className="space-y-6">
             <Card>
                 <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Persistence Settings</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">RDB Snapshots</label>
-                            <p className="text-sm text-foreground">Enabled (save 900 1, 300 10, 60 10000)</p>
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">AOF (Append-Only File)</label>
-                            <p className="text-sm text-foreground">Enabled (appendfsync: everysec)</p>
-                        </div>
+                    <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-foreground">Persistence Settings</h3>
+                        <Button size="sm" variant="secondary" onClick={refetchPersistence} disabled={persistenceLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${persistenceLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
                     </div>
+                    {persistenceLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading persistence settings...</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium text-foreground">RDB Snapshots</p>
+                                        <p className="text-sm text-foreground-muted">
+                                            {persistence?.rdbEnabled
+                                                ? `Save rules: ${formatRdbSaveRules(persistence.rdbSaveRules)}`
+                                                : 'Point-in-time snapshots disabled'}
+                                        </p>
+                                        {persistence?.rdbLastSaveTime && (
+                                            <p className="mt-1 text-xs text-foreground-muted">
+                                                Last save: {persistence.rdbLastSaveTime} ({persistence.rdbLastBgsaveStatus})
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Badge variant={persistence?.rdbEnabled ? 'success' : 'secondary'}>
+                                        {persistence?.rdbEnabled ? 'Enabled' : 'Disabled'}
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium text-foreground">AOF (Append-Only File)</p>
+                                        <p className="text-sm text-foreground-muted">
+                                            {persistence?.aofEnabled
+                                                ? `Fsync policy: ${persistence.aofFsync}`
+                                                : 'Write-ahead log disabled'}
+                                        </p>
+                                    </div>
+                                    <Badge variant={persistence?.aofEnabled ? 'success' : 'secondary'}>
+                                        {persistence?.aofEnabled ? 'Enabled' : 'Disabled'}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

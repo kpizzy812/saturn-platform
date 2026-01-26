@@ -9,6 +9,7 @@ import {
     useMongoCollections,
     useMongoIndexes,
     useMongoReplicaSet,
+    useMongoStorageSettings,
     type MongoMetrics,
 } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
@@ -295,10 +296,16 @@ function IndexesTab({ database }: { database: StandaloneDatabase }) {
 
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
     // Fetch replica set status from API
-    const { replicaSet, isLoading, refetch } = useMongoReplicaSet({
+    const { replicaSet, isLoading: replicaLoading, refetch: refetchReplica } = useMongoReplicaSet({
         uuid: database.uuid,
         autoRefresh: true,
         refreshInterval: 30000,
+    });
+
+    // Fetch storage settings from API
+    const { settings: storageSettings, isLoading: storageLoading, refetch: refetchStorage } = useMongoStorageSettings({
+        uuid: database.uuid,
+        autoRefresh: false,
     });
 
     return (
@@ -307,12 +314,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                 <CardContent className="p-6">
                     <div className="mb-4 flex items-center justify-between">
                         <h3 className="text-lg font-medium text-foreground">Replica Set Status</h3>
-                        <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
-                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        <Button size="sm" variant="secondary" onClick={refetchReplica} disabled={replicaLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${replicaLoading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
                     </div>
-                    {isLoading && !replicaSet ? (
+                    {replicaLoading && !replicaSet ? (
                         <div className="flex items-center justify-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
                             <span className="ml-2 text-foreground-muted">Loading replica set status...</span>
@@ -352,21 +359,54 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
 
             <Card>
                 <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Storage Settings</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Storage Engine</label>
-                            <p className="text-sm text-foreground">WiredTiger</p>
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Cache Size</label>
-                            <p className="text-sm text-foreground">Default (50% RAM)</p>
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Journal Enabled</label>
-                            <p className="text-sm text-foreground">Yes</p>
-                        </div>
+                    <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-foreground">Storage Settings</h3>
+                        <Button size="sm" variant="secondary" onClick={refetchStorage} disabled={storageLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${storageLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
                     </div>
+                    {storageLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading storage settings...</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
+                                <div>
+                                    <p className="font-medium text-foreground">Storage Engine</p>
+                                    <p className="text-sm text-foreground-muted">Document storage engine in use</p>
+                                </div>
+                                <Badge variant="secondary">{storageSettings?.storageEngine ?? 'WiredTiger'}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
+                                <div>
+                                    <p className="font-medium text-foreground">Cache Size</p>
+                                    <p className="text-sm text-foreground-muted">WiredTiger internal cache</p>
+                                </div>
+                                <span className="text-sm text-foreground">{storageSettings?.cacheSize ?? 'Default (50% RAM)'}</span>
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
+                                <div>
+                                    <p className="font-medium text-foreground">Journal</p>
+                                    <p className="text-sm text-foreground-muted">Write-ahead logging for durability</p>
+                                </div>
+                                <Badge variant={storageSettings?.journalEnabled ? 'success' : 'secondary'}>
+                                    {storageSettings?.journalEnabled ? 'Enabled' : 'Disabled'}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4">
+                                <div>
+                                    <p className="font-medium text-foreground">Directory Per DB</p>
+                                    <p className="text-sm text-foreground-muted">Separate data directories per database</p>
+                                </div>
+                                <Badge variant={storageSettings?.directoryPerDb ? 'success' : 'secondary'}>
+                                    {storageSettings?.directoryPerDb ? 'Enabled' : 'Disabled'}
+                                </Badge>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
