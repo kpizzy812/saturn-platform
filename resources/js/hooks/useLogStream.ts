@@ -175,6 +175,9 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     const pollingIntervalRef = React.useRef<NodeJS.Timeout>();
     const lastLogIdRef = React.useRef<string | null>(null);
     const isPausedRef = React.useRef(false);
+    const lastTimestampRef = React.useRef<number | null>(null);
+    const isInitialLoadRef = React.useRef(true);
+    const seenLogHashesRef = React.useRef<Set<string>>(new Set());
 
     /**
      * Add a new log entry
@@ -204,11 +207,14 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     );
 
     /**
-     * Fetch logs from API
+     * Fetch logs from API with incremental loading support
      */
     const fetchLogs = React.useCallback(async () => {
         try {
-            setLoading(true);
+            // Only show loading on initial load
+            if (isInitialLoadRef.current) {
+                setLoading(true);
+            }
             setError(null);
 
             // Build endpoint based on resource type (use web routes with CSRF for session auth)
@@ -229,8 +235,16 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
             }
 
             // Add query parameters for incremental fetching
-            if (lastLogIdRef.current) {
-                endpoint += `?after=${lastLogIdRef.current}`;
+            const params = new URLSearchParams();
+            if (resourceType === 'application' && lastTimestampRef.current && !isInitialLoadRef.current) {
+                // For container logs, use timestamp-based incremental fetching
+                params.append('since', lastTimestampRef.current.toString());
+            } else if (lastLogIdRef.current && resourceType === 'deployment') {
+                params.append('after', lastLogIdRef.current);
+            }
+
+            if (params.toString()) {
+                endpoint += `?${params.toString()}`;
             }
 
             const response = await fetch(endpoint, {
@@ -246,6 +260,11 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
             }
 
             const data = await response.json();
+
+            // Update timestamp for next incremental fetch
+            if (data.timestamp) {
+                lastTimestampRef.current = data.timestamp;
+            }
 
             // Handle deployment logs format (has logs array)
             if (data.logs && Array.isArray(data.logs)) {
@@ -272,15 +291,51 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
             // Handle container logs format (has container_logs string or containers array)
             if (data.container_logs) {
                 const lines = data.container_logs.split('\n').filter(Boolean);
-                lines.forEach((line: string, index: number) => {
-                    addLogEntry({
-                        id: `${resourceType}-${Date.now()}-${index}`,
-                        timestamp: new Date().toISOString(),
-                        message: line,
-                        level: line.toLowerCase().includes('error') ? 'error' : 'info',
-                        source: resourceType,
+
+                // Only process if there are new logs
+                if (lines.length > 0) {
+                    const newEntries: LogEntry[] = [];
+
+                    lines.forEach((line: string) => {
+                        // Create a hash of the line to detect duplicates
+                        const logHash = line.trim();
+                        if (seenLogHashesRef.current.has(logHash)) {
+                            return; // Skip duplicate
+                        }
+                        seenLogHashesRef.current.add(logHash);
+
+                        // Parse timestamp from docker logs --timestamps format
+                        // Format: 2024-01-26T17:30:00.123456789Z log message
+                        const timestampMatch = line.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+(.*)$/);
+                        let timestamp = new Date().toISOString();
+                        let message = line;
+
+                        if (timestampMatch) {
+                            timestamp = timestampMatch[1];
+                            message = timestampMatch[2];
+                        }
+
+                        newEntries.push({
+                            id: `${resourceType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            timestamp,
+                            message,
+                            level: message.toLowerCase().includes('error') ? 'error' : 'info',
+                            source: resourceType,
+                        });
                     });
-                });
+
+                    // Only update state if we have new entries
+                    if (newEntries.length > 0) {
+                        setLogs((prevLogs) => {
+                            const combined = [...prevLogs, ...newEntries];
+                            // Limit to maxLogEntries
+                            if (combined.length > maxLogEntries) {
+                                return combined.slice(-maxLogEntries);
+                            }
+                            return combined;
+                        });
+                    }
+                }
             }
 
             // Handle service logs format (has containers array)
@@ -289,6 +344,12 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
                     if (container.logs) {
                         const lines = container.logs.split('\n').filter(Boolean);
                         lines.forEach((line: string, index: number) => {
+                            const logHash = `${container.name}:${line.trim()}`;
+                            if (seenLogHashesRef.current.has(logHash)) {
+                                return;
+                            }
+                            seenLogHashesRef.current.add(logHash);
+
                             addLogEntry({
                                 id: `${container.name}-${Date.now()}-${index}`,
                                 timestamp: new Date().toISOString(),
@@ -300,13 +361,15 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
                     }
                 });
             }
+
+            isInitialLoadRef.current = false;
         } catch (err) {
             console.error('Failed to fetch logs:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch logs'));
         } finally {
             setLoading(false);
         }
-    }, [resourceType, resourceId, addLogEntry]);
+    }, [resourceType, resourceId, addLogEntry, maxLogEntries]);
 
     /**
      * Connect to WebSocket for log streaming
@@ -431,6 +494,9 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     const clearLogs = React.useCallback(() => {
         setLogs([]);
         lastLogIdRef.current = null;
+        lastTimestampRef.current = null;
+        seenLogHashesRef.current.clear();
+        isInitialLoadRef.current = true;
     }, []);
 
     /**
