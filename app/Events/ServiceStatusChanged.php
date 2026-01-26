@@ -8,34 +8,27 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Notification event to signal that something changed in the team.
+ * Frontend should refetch data when receiving this event.
+ */
 class ServiceStatusChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public int $serviceId,
-        public string $status,
-        public ?int $teamId = null
-    ) {
-        if (is_null($this->teamId) && auth()->check() && auth()->user()->currentTeam()) {
-            $this->teamId = auth()->user()->currentTeam()->id;
-        }
-    }
+        public int $teamId
+    ) {}
 
     public function broadcastWith(): array
     {
         return [
-            'serviceId' => $this->serviceId,
-            'status' => $this->status,
+            'timestamp' => now()->toIso8601String(),
         ];
     }
 
     public function broadcastOn(): array
     {
-        if (is_null($this->teamId)) {
-            return [];
-        }
-
         return [
             new PrivateChannel("team.{$this->teamId}"),
         ];
