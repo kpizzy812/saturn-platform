@@ -84,20 +84,27 @@ API контроллер приложений разделён на специа
   - `parseDockerComposeFile()` — главный парсер Docker Compose (~1500 строк)
 - [x] Код прошёл Pint и PHPStan валидацию
 
-### 5. Projects/Show.tsx — 3,240 строк
-Главная страница проекта, много логики в одном компоненте.
+### 5. Projects/Show.tsx — ✅ ГОТОВО (было 3,240 → стало 1,112 строк, -66%)
+Главная страница проекта разделена на модули.
 
-- [ ] Выделить подкомпоненты:
-  - [ ] `components/Projects/ProjectHeader.tsx`
-  - [ ] `components/Projects/ProjectCanvas.tsx` (если не выделен)
-  - [ ] `components/Projects/ProjectSidebar.tsx`
-  - [ ] `components/Projects/ResourceList.tsx`
-  - [ ] `components/Projects/DeploymentPanel.tsx`
-- [ ] Выделить хуки:
-  - [ ] `hooks/useProjectState.ts`
-  - [ ] `hooks/useProjectActions.ts`
-- [ ] Использовать React.memo для оптимизации
-- [ ] Проверить производительность после рефакторинга
+- [x] Выделены компоненты в `components/features/Projects/`:
+  - [x] `DatabaseLogos.tsx` — SVG логотипы баз данных и утилиты (97 строк)
+  - [x] `ActivityPanel.tsx` — панель активности (147 строк)
+  - [x] `types.ts` — общий тип SelectedService (9 строк)
+  - [x] `index.ts` — экспорты модуля (28 строк)
+- [x] Выделены Application Tabs в `components/features/Projects/Tabs/Application/`:
+  - [x] `DeploymentsTab.tsx` — деплойменты и управление (290 строк)
+  - [x] `VariablesTab.tsx` — переменные окружения (162 строки)
+  - [x] `MetricsTab.tsx` — метрики ресурсов (178 строк)
+  - [x] `AppSettingsTab.tsx` — настройки приложения (350 строк)
+- [x] Выделены Database Tabs в `components/features/Projects/Tabs/Database/`:
+  - [x] `DatabaseDataTab.tsx` — просмотр данных (54 строки)
+  - [x] `DatabaseConnectTab.tsx` — подключение к БД (143 строки)
+  - [x] `DatabaseCredentialsTab.tsx` — учётные данные (186 строк)
+  - [x] `DatabaseBackupsTab.tsx` — бэкапы БД (181 строка)
+  - [x] `DatabaseExtensionsTab.tsx` — расширения PostgreSQL (114 строк)
+  - [x] `DatabaseSettingsTab.tsx` — настройки БД (60 строк)
+- [x] Код прошёл билд без ошибок
 
 ---
 
@@ -177,7 +184,7 @@ API контроллер приложений разделён на специа
 | ApplicationDeploymentJob.php | ✅ Готово | 2026-01-26 |
 | ApplicationsController.php | ✅ Готово | 2026-01-26 |
 | shared.php | ✅ Готово | 2026-01-26 |
-| Projects/Show.tsx | ⏳ Не начато | - |
+| Projects/Show.tsx | ✅ Готово | 2026-01-26 |
 | DatabasesController.php | ⏳ Не начато | - |
 | parsers.php | ⏳ Не начато | - |
 | Application.php | ⏳ Не начато | - |
