@@ -637,3 +637,129 @@ Route::get('/applications/{uuid}/deployments/{deploymentUuid}', function (string
         'environmentUuid' => $environment->uuid,
     ]);
 })->name('applications.deployment.show');
+
+// Application Metrics API Route (Saturn)
+Route::get('/applications/{uuid}/metrics', function (string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $server = $application->destination->server;
+
+    if (! $server->isFunctional()) {
+        return response()->json([
+            'error' => 'Server is not functional',
+            'metrics' => null,
+        ]);
+    }
+
+    try {
+        // Get container stats using docker stats
+        $containerName = $application->uuid;
+        $command = "docker stats {$containerName} --no-stream --format '{{json .}}' 2>/dev/null || echo '{}'";
+        $output = trim(instant_remote_process([$command], $server, false) ?? '{}');
+
+        if (empty($output) || $output === '{}') {
+            return response()->json([
+                'error' => 'Container not running',
+                'metrics' => null,
+            ]);
+        }
+
+        $stats = json_decode($output, true);
+        if (! $stats) {
+            return response()->json([
+                'error' => 'Failed to parse stats',
+                'metrics' => null,
+            ]);
+        }
+
+        // Parse CPU percentage
+        $cpuPercent = (float) str_replace('%', '', $stats['CPUPerc'] ?? '0%');
+
+        // Parse memory usage (format: "512MiB / 2GiB")
+        $memUsage = $stats['MemUsage'] ?? '0B / 0B';
+        $memParts = explode('/', $memUsage);
+        $memUsed = trim($memParts[0] ?? '0B');
+        $memLimit = trim($memParts[1] ?? '0B');
+
+        // Convert memory to bytes for calculations
+        $memUsedBytes = parseMemoryValue($memUsed);
+        $memLimitBytes = parseMemoryValue($memLimit);
+        $memPercent = $memLimitBytes > 0 ? round(($memUsedBytes / $memLimitBytes) * 100, 1) : 0;
+
+        // Parse network IO (format: "1.2MB / 500KB")
+        $netIO = $stats['NetIO'] ?? '0B / 0B';
+        $netParts = explode('/', $netIO);
+        $netRx = trim($netParts[0] ?? '0B');
+        $netTx = trim($netParts[1] ?? '0B');
+
+        // Parse block IO (format: "100MB / 50MB")
+        $blockIO = $stats['BlockIO'] ?? '0B / 0B';
+        $blockParts = explode('/', $blockIO);
+        $blockRead = trim($blockParts[0] ?? '0B');
+        $blockWrite = trim($blockParts[1] ?? '0B');
+
+        return response()->json([
+            'metrics' => [
+                'cpu' => [
+                    'percent' => $cpuPercent,
+                    'formatted' => $stats['CPUPerc'] ?? '0%',
+                ],
+                'memory' => [
+                    'used' => $memUsed,
+                    'limit' => $memLimit,
+                    'percent' => $memPercent,
+                    'used_bytes' => $memUsedBytes,
+                    'limit_bytes' => $memLimitBytes,
+                ],
+                'network' => [
+                    'rx' => $netRx,
+                    'tx' => $netTx,
+                ],
+                'disk' => [
+                    'read' => $blockRead,
+                    'write' => $blockWrite,
+                ],
+                'pids' => $stats['PIDs'] ?? '0',
+                'container_id' => $stats['ID'] ?? '',
+                'container_name' => $stats['Name'] ?? $containerName,
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'metrics' => null,
+        ]);
+    }
+})->name('applications.metrics');
+
+/**
+ * Helper function to parse memory values like "512MiB", "2GiB", "100MB"
+ */
+if (! function_exists('parseMemoryValue')) {
+    function parseMemoryValue(string $value): int
+    {
+        $value = trim($value);
+        if (preg_match('/^([\d.]+)\s*(B|KB|KiB|MB|MiB|GB|GiB|TB|TiB)$/i', $value, $matches)) {
+            $num = (float) $matches[1];
+            $unit = strtoupper($matches[2]);
+
+            return (int) match ($unit) {
+                'B' => $num,
+                'KB' => $num * 1000,
+                'KIB' => $num * 1024,
+                'MB' => $num * 1000 * 1000,
+                'MIB' => $num * 1024 * 1024,
+                'GB' => $num * 1000 * 1000 * 1000,
+                'GIB' => $num * 1024 * 1024 * 1024,
+                'TB' => $num * 1000 * 1000 * 1000 * 1000,
+                'TIB' => $num * 1024 * 1024 * 1024 * 1024,
+                default => $num,
+            };
+        }
+
+        return 0;
+    }
+}

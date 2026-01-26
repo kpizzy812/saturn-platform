@@ -27,6 +27,7 @@ import {
     Loader2,
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
+import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
 import type { Application, ApplicationStatus, Deployment, Environment, Project } from '@/types';
 
 interface ApplicationWithRelations extends Application {
@@ -43,6 +44,15 @@ interface Props {
 export default function ApplicationShow({ application: initialApplication }: Props) {
     const [application, setApplication] = useState<ApplicationWithRelations>(initialApplication);
     const [showEnvVars, setShowEnvVars] = useState(false);
+
+    // Fetch real-time container metrics
+    const isRunning = application.status === 'running';
+    const { metrics, isLoading: metricsLoading, error: metricsError } = useApplicationMetrics({
+        applicationUuid: application.uuid,
+        autoRefresh: isRunning,
+        refreshInterval: 10000, // 10 seconds
+        enabled: isRunning,
+    });
 
     // Real-time status updates via WebSocket
     useRealtimeStatus({
@@ -357,15 +367,66 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                             </CardContent>
                         </Card>
 
-                        {/* Resource Usage (Placeholder) */}
+                        {/* Resource Usage */}
                         <Card>
                             <CardHeader>
-                                <CardTitle>Resource Usage</CardTitle>
+                                <CardTitle className="flex items-center gap-2">
+                                    Resource Usage
+                                    {metricsLoading && isRunning && (
+                                        <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />
+                                    )}
+                                </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <ResourceBar label="CPU" value={45} max={100} unit="%" />
-                                <ResourceBar label="Memory" value={512} max={1024} unit="MB" />
-                                <ResourceBar label="Disk" value={2.3} max={10} unit="GB" />
+                                {!isRunning ? (
+                                    <div className="text-center py-4 text-foreground-muted">
+                                        <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">Container is not running</p>
+                                    </div>
+                                ) : metricsError ? (
+                                    <div className="text-center py-4 text-foreground-muted">
+                                        <XCircle className="h-8 w-8 mx-auto mb-2 text-danger opacity-50" />
+                                        <p className="text-sm">{metricsError}</p>
+                                    </div>
+                                ) : metrics ? (
+                                    <>
+                                        <ResourceBarWithPercent
+                                            label="CPU"
+                                            percent={metrics.cpu.percent}
+                                            formatted={metrics.cpu.formatted}
+                                        />
+                                        <ResourceBarWithPercent
+                                            label="Memory"
+                                            percent={metrics.memory.percent}
+                                            formatted={`${metrics.memory.used} / ${metrics.memory.limit}`}
+                                        />
+                                        <div className="pt-2 border-t border-border">
+                                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                                <div>
+                                                    <span className="text-foreground-muted">Network In:</span>
+                                                    <span className="ml-2 font-medium">{metrics.network.rx}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-foreground-muted">Network Out:</span>
+                                                    <span className="ml-2 font-medium">{metrics.network.tx}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-foreground-muted">Disk Read:</span>
+                                                    <span className="ml-2 font-medium">{metrics.disk.read}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-foreground-muted">Disk Write:</span>
+                                                    <span className="ml-2 font-medium">{metrics.disk.write}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-4 text-foreground-muted">
+                                        <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin opacity-50" />
+                                        <p className="text-sm">Loading metrics...</p>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
@@ -475,6 +536,36 @@ function ResourceBar({ label, value, max, unit }: ResourceBarProps) {
                 <div
                     className="h-full rounded-full bg-primary transition-all"
                     style={{ width: `${percentage}%` }}
+                />
+            </div>
+        </div>
+    );
+}
+
+interface ResourceBarWithPercentProps {
+    label: string;
+    percent: number;
+    formatted: string;
+}
+
+function ResourceBarWithPercent({ label, percent, formatted }: ResourceBarWithPercentProps) {
+    // Color based on usage level
+    const getBarColor = (pct: number) => {
+        if (pct >= 90) return 'bg-danger';
+        if (pct >= 70) return 'bg-warning';
+        return 'bg-primary';
+    };
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-foreground-muted">{label}</span>
+                <span className="text-sm font-medium text-foreground">{formatted}</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-background-tertiary overflow-hidden">
+                <div
+                    className={`h-full rounded-full transition-all ${getBarColor(percent)}`}
+                    style={{ width: `${Math.min(percent, 100)}%` }}
                 />
             </div>
         </div>
