@@ -1,57 +1,55 @@
 import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Select, Modal, ModalFooter, useToast } from '@/components/ui';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Building2, Upload, Trash2, Globe } from 'lucide-react';
 
 interface WorkspaceData {
+    id: number;
     name: string;
     slug: string;
-    avatar?: string;
-    defaultEnvironment: string;
+    description?: string;
     timezone: string;
+    defaultEnvironment: string;
+    personalTeam: boolean;
 }
 
-const mockWorkspace: WorkspaceData = {
-    name: 'My Workspace',
-    slug: 'my-workspace',
-    defaultEnvironment: 'production',
-    timezone: 'UTC',
-};
+interface EnvironmentOption {
+    value: string;
+    label: string;
+}
 
-const timezones = [
-    'UTC',
-    'America/New_York',
-    'America/Chicago',
-    'America/Denver',
-    'America/Los_Angeles',
-    'Europe/London',
-    'Europe/Paris',
-    'Europe/Berlin',
-    'Asia/Tokyo',
-    'Asia/Shanghai',
-    'Australia/Sydney',
-];
-
-const environments = [
-    { value: 'production', label: 'Production' },
-    { value: 'staging', label: 'Staging' },
-    { value: 'development', label: 'Development' },
-];
+interface PageProps {
+    workspace: WorkspaceData;
+    timezones: string[];
+    environmentOptions: EnvironmentOption[];
+}
 
 export default function WorkspaceSettings() {
-    const [workspace, setWorkspace] = React.useState<WorkspaceData>(mockWorkspace);
+    const { workspace: initialWorkspace, timezones, environmentOptions } = usePage<PageProps>().props;
+
+    const [workspace, setWorkspace] = React.useState<WorkspaceData>(initialWorkspace);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const { addToast } = useToast();
 
+    // Update local state when props change (e.g., after successful save)
+    React.useEffect(() => {
+        setWorkspace(initialWorkspace);
+    }, [initialWorkspace]);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
 
-        router.post('/settings/workspace', workspace, {
+        router.post('/settings/workspace', {
+            name: workspace.name,
+            description: workspace.description,
+            timezone: workspace.timezone,
+            defaultEnvironment: workspace.defaultEnvironment,
+        }, {
             onSuccess: () => {
                 addToast({
                     title: 'Workspace updated',
@@ -59,12 +57,12 @@ export default function WorkspaceSettings() {
                 });
             },
             onError: (errors) => {
+                const errorMessage = Object.values(errors).flat().join(', ') || 'An error occurred while saving your workspace settings.';
                 addToast({
                     title: 'Failed to save workspace',
-                    description: 'An error occurred while saving your workspace settings.',
+                    description: errorMessage,
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsSaving(false);
@@ -87,12 +85,12 @@ export default function WorkspaceSettings() {
                     // User will likely be redirected by the backend
                 },
                 onError: (errors) => {
+                    const errorMessage = Object.values(errors).flat().join(', ') || 'An error occurred while deleting your workspace.';
                     addToast({
                         title: 'Failed to delete workspace',
-                        description: 'An error occurred while deleting your workspace.',
+                        description: errorMessage,
                         variant: 'danger',
                     });
-                    console.error(errors);
                 },
                 onFinish: () => {
                     setIsDeleting(false);
@@ -194,7 +192,7 @@ export default function WorkspaceSettings() {
                                 value={workspace.defaultEnvironment}
                                 onChange={(e) => setWorkspace({ ...workspace, defaultEnvironment: e.target.value })}
                             >
-                                {environments.map((env) => (
+                                {environmentOptions.map((env) => (
                                     <option key={env.value} value={env.value}>
                                         {env.label}
                                     </option>
@@ -240,33 +238,35 @@ export default function WorkspaceSettings() {
                     </CardContent>
                 </Card>
 
-                {/* Danger Zone */}
-                <Card className="border-danger/50">
-                    <CardHeader>
-                        <CardTitle className="text-danger">Danger Zone</CardTitle>
-                        <CardDescription>
-                            Irreversible actions that affect your workspace
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-danger/10">
-                                    <Trash2 className="h-5 w-5 text-danger" />
+                {/* Danger Zone - Only show if not personal team */}
+                {!workspace.personalTeam && (
+                    <Card className="border-danger/50">
+                        <CardHeader>
+                            <CardTitle className="text-danger">Danger Zone</CardTitle>
+                            <CardDescription>
+                                Irreversible actions that affect your workspace
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-danger/10">
+                                        <Trash2 className="h-5 w-5 text-danger" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">Delete Workspace</p>
+                                        <p className="text-xs text-foreground-muted">
+                                            Permanently delete this workspace and all projects
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium text-foreground">Delete Workspace</p>
-                                    <p className="text-xs text-foreground-muted">
-                                        Permanently delete this workspace and all projects
-                                    </p>
-                                </div>
+                                <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+                                    Delete Workspace
+                                </Button>
                             </div>
-                            <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
-                                Delete Workspace
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
 
             {/* Delete Confirmation Modal */}

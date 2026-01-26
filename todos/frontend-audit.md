@@ -298,7 +298,7 @@ post('/settings/notifications/email', { ... });
 3. [ ] Создать страницы /terms, /privacy, /support или удалить ссылки
 
 ### Приоритет 2: Mock данные в Settings (см. детальную спецификацию выше)
-4. [ ] **Settings/Workspace.tsx** - получать workspace данные из Team модели через Inertia props
+4. [x] **Settings/Workspace.tsx** - получать workspace данные из Team модели через Inertia props ✅
 5. [x] Settings/Team/Activity - API для истории активности ✅
 6. [ ] **Settings/Integrations.tsx** - создать модель TeamIntegration + OAuth/API token flow
 7. [x] Settings/AuditLog - реальный API ✅

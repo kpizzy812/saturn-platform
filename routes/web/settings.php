@@ -138,7 +138,34 @@ Route::get('/settings/security', function () {
 })->name('settings.security');
 
 Route::get('/settings/workspace', function () {
-    return Inertia::render('Settings/Workspace');
+    $team = currentTeam();
+
+    // Generate slug from team name
+    $slug = \Illuminate\Support\Str::slug($team->name);
+
+    // Get list of all timezones
+    $timezones = \DateTimeZone::listIdentifiers(\DateTimeZone::ALL);
+
+    // Default environment options
+    $environmentOptions = [
+        ['value' => 'production', 'label' => 'Production'],
+        ['value' => 'staging', 'label' => 'Staging'],
+        ['value' => 'development', 'label' => 'Development'],
+    ];
+
+    return Inertia::render('Settings/Workspace', [
+        'workspace' => [
+            'id' => $team->id,
+            'name' => $team->name,
+            'slug' => $slug,
+            'description' => $team->description,
+            'timezone' => $team->timezone ?? 'UTC',
+            'defaultEnvironment' => $team->default_environment ?? 'production',
+            'personalTeam' => $team->personal_team,
+        ],
+        'timezones' => $timezones,
+        'environmentOptions' => $environmentOptions,
+    ]);
 })->name('settings.workspace');
 
 // Notification Settings
@@ -539,9 +566,14 @@ Route::delete('/settings/tokens/{id}', function (string $id) {
 
 // Workspace POST/DELETE routes
 Route::post('/settings/workspace', function (Request $request) {
+    $validTimezones = \DateTimeZone::listIdentifiers(\DateTimeZone::ALL);
+    $validEnvironments = ['production', 'staging', 'development'];
+
     $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
+        'timezone' => ['nullable', 'string', \Illuminate\Validation\Rule::in($validTimezones)],
+        'defaultEnvironment' => ['nullable', 'string', \Illuminate\Validation\Rule::in($validEnvironments)],
     ]);
 
     $team = currentTeam();
@@ -556,6 +588,8 @@ Route::post('/settings/workspace', function (Request $request) {
     $team->update([
         'name' => $request->name,
         'description' => $request->description,
+        'timezone' => $request->timezone ?? 'UTC',
+        'default_environment' => $request->defaultEnvironment ?? 'production',
     ]);
 
     return redirect()->back()->with('success', 'Workspace updated successfully');
