@@ -1,8 +1,8 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
+import { Card, CardContent, Badge, Button, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { Plus, FolderKanban, MoreVertical, Globe, GitBranch, Settings, Trash2 } from 'lucide-react';
+import { Plus, FolderKanban, MoreVertical, Settings, Trash2 } from 'lucide-react';
 import type { Project } from '@/types';
 
 interface Props {
@@ -47,9 +47,27 @@ export default function ProjectsIndex({ projects = [] }: Props) {
 
 function ProjectCard({ project }: { project: Project }) {
     const confirm = useConfirm();
+    const { toast } = useToast();
+
+    const serviceCount = project.environments?.reduce(
+        (acc, env) => acc + (env.applications?.length || 0) + (env.databases?.length || 0),
+        0
+    ) || 0;
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
+
+        // Check if project has resources
+        if (serviceCount > 0) {
+            toast({
+                title: 'Cannot delete project',
+                description: `This project has ${serviceCount} resource(s). Delete all applications and databases first.`,
+                variant: 'error',
+            });
+            return;
+        }
+
         const confirmed = await confirm({
             title: 'Delete Project',
             description: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
@@ -57,14 +75,18 @@ function ProjectCard({ project }: { project: Project }) {
             variant: 'danger',
         });
         if (confirmed) {
-            router.delete(`/projects/${project.uuid}`);
+            router.delete(`/projects/${project.uuid}`, {
+                preserveScroll: true,
+                onError: () => {
+                    toast({
+                        title: 'Failed to delete project',
+                        description: 'Project may have resources that need to be deleted first.',
+                        variant: 'error',
+                    });
+                },
+            });
         }
     };
-
-    const serviceCount = project.environments?.reduce(
-        (acc, env) => acc + (env.applications?.length || 0) + (env.databases?.length || 0),
-        0
-    ) || 0;
 
     return (
         <Link href={`/projects/${project.uuid}`}>
