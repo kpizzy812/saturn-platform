@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Database, RefreshCw, Eye, EyeOff, Copy, Trash2, Key, HardDrive, Zap, Loader2 } from 'lucide-react';
-import { useDatabaseMetrics, useDatabaseLogs, formatMetricValue, type RedisMetrics } from '@/hooks';
+import {
+    useDatabaseMetrics,
+    useDatabaseLogs,
+    formatMetricValue,
+    useRedisKeys,
+    useRedisMemory,
+    useRedisFlush,
+    type RedisMetrics,
+} from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -159,41 +167,72 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
                 </CardContent>
             </Card>
 
-            {/* Memory Info */}
-            <Card>
-                <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Memory Usage</h3>
+            {/* Memory Info - from extended API */}
+            <MemoryInfoCard database={database} />
+        </div>
+    );
+}
+
+function MemoryInfoCard({ database }: { database: StandaloneDatabase }) {
+    const { memory, isLoading, refetch } = useRedisMemory({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    return (
+        <Card>
+            <CardContent className="p-6">
+                <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-foreground">Memory Usage</h3>
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                </div>
+                {isLoading && !memory ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading memory info...</span>
+                    </div>
+                ) : (
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className="rounded-lg border border-border bg-background-secondary p-4">
                             <p className="text-sm text-foreground-muted">Used Memory</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">245 MB</p>
+                            <p className="mt-1 text-xl font-bold text-foreground">{memory?.usedMemory || 'N/A'}</p>
                         </div>
                         <div className="rounded-lg border border-border bg-background-secondary p-4">
                             <p className="text-sm text-foreground-muted">Peak Memory</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">312 MB</p>
+                            <p className="mt-1 text-xl font-bold text-foreground">{memory?.peakMemory || 'N/A'}</p>
                         </div>
                         <div className="rounded-lg border border-border bg-background-secondary p-4">
                             <p className="text-sm text-foreground-muted">Fragmentation Ratio</p>
-                            <p className="mt-1 text-xl font-bold text-foreground">1.12</p>
+                            <p className="mt-1 text-xl font-bold text-foreground">{memory?.fragmentationRatio || 'N/A'}</p>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
-        </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
 function KeysTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
     const confirm = useConfirm();
-    const [keys] = useState([
-        { name: 'user:1234:session', type: 'string', ttl: '1h 23m', size: '2.4 KB' },
-        { name: 'cache:posts:trending', type: 'list', ttl: '15m', size: '145 KB' },
-        { name: 'queue:jobs', type: 'list', ttl: 'none', size: '89 KB' },
-        { name: 'rate_limit:api:192.168.1.1', type: 'string', ttl: '5m', size: '64 B' },
-        { name: 'leaderboard:global', type: 'zset', ttl: 'none', size: '234 KB' },
-        { name: 'user:5678:profile', type: 'hash', ttl: 'none', size: '1.2 KB' },
-    ]);
+    const [pattern, setPattern] = useState('*');
+    const [searchInput, setSearchInput] = useState('');
+
+    // Fetch keys from API
+    const { keys, isLoading, refetch } = useRedisKeys({
+        uuid: database.uuid,
+        pattern,
+        limit: 100,
+        autoRefresh: false,
+    });
+
+    const handleSearch = () => {
+        setPattern(searchInput || '*');
+    };
 
     const handleViewKey = (name: string) => {
         addToast('info', `Viewing key: ${name}`);
@@ -207,7 +246,7 @@ function KeysTab({ database }: { database: StandaloneDatabase }) {
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('info', `Deleting key: ${name}`);
+            addToast('info', `Delete key functionality coming soon`);
         }
     };
 
@@ -216,53 +255,68 @@ function KeysTab({ database }: { database: StandaloneDatabase }) {
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Key Browser</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="mb-4">
+                <div className="mb-4 flex gap-2">
                     <input
                         type="text"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         placeholder="Search keys (e.g., user:* or cache:*)"
-                        className="w-full rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
+                        className="flex-1 rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none"
                     />
+                    <Button size="sm" onClick={handleSearch}>
+                        Search
+                    </Button>
                 </div>
-                <div className="space-y-2">
-                    {keys.map((key) => (
-                        <div
-                            key={key.name}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <code className="font-mono text-sm font-medium text-foreground">{key.name}</code>
-                                    <Badge variant="secondary">{key.type}</Badge>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading keys...</span>
+                    </div>
+                ) : keys.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No keys found matching pattern: {pattern}</p>
+                ) : (
+                    <div className="space-y-2">
+                        {keys.map((key) => (
+                            <div
+                                key={key.name}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <code className="font-mono text-sm font-medium text-foreground">{key.name}</code>
+                                        <Badge variant="secondary">{key.type}</Badge>
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
+                                        <span>TTL: {key.ttl}</span>
+                                        <span>Size: {key.size}</span>
+                                    </div>
                                 </div>
-                                <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
-                                    <span>TTL: {key.ttl}</span>
-                                    <span>Size: {key.size}</span>
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => handleViewKey(key.name)}
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="danger"
+                                        onClick={() => handleDeleteKey(key.name)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => handleViewKey(key.name)}
-                                >
-                                    <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    onClick={() => handleDeleteKey(key.name)}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -272,6 +326,15 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
     const confirm = useConfirm();
 
+    // Fetch memory info for performance settings
+    const { memory, isLoading: memoryLoading } = useRedisMemory({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
+
+    // Flush operations
+    const { flush, isLoading: flushLoading } = useRedisFlush(database.uuid);
+
     const handleFlushDB = async () => {
         const confirmed = await confirm({
             title: 'Flush Current Database',
@@ -280,7 +343,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('warning', 'Flushing current database...');
+            const success = await flush('db');
+            if (success) {
+                addToast('success', 'Database flushed successfully');
+            } else {
+                addToast('error', 'Failed to flush database');
+            }
         }
     };
 
@@ -292,7 +360,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('warning', 'Flushing all databases...');
+            const success = await flush('all');
+            if (success) {
+                addToast('success', 'All databases flushed successfully');
+            } else {
+                addToast('error', 'Failed to flush databases');
+            }
         }
     };
 
@@ -310,10 +383,6 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                             <label className="mb-1 block text-sm font-medium text-foreground-muted">AOF (Append-Only File)</label>
                             <p className="text-sm text-foreground">Enabled (appendfsync: everysec)</p>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Last Save</label>
-                            <p className="text-sm text-foreground">2024-01-03 10:15:23 (45 minutes ago)</p>
-                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -321,20 +390,23 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
             <Card>
                 <CardContent className="p-6">
                     <h3 className="mb-4 text-lg font-medium text-foreground">Performance Settings</h3>
-                    <div className="space-y-3">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Memory</label>
-                            <p className="text-sm text-foreground">512 MB</p>
+                    {memoryLoading ? (
+                        <div className="flex items-center py-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-sm text-foreground-muted">Loading settings...</span>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Eviction Policy</label>
-                            <p className="text-sm text-foreground">allkeys-lru</p>
+                    ) : (
+                        <div className="space-y-3">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Memory</label>
+                                <p className="text-sm text-foreground">{memory?.maxMemory || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Eviction Policy</label>
+                                <p className="text-sm text-foreground">{memory?.evictionPolicy || 'N/A'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Connections</label>
-                            <p className="text-sm text-foreground">10000</p>
-                        </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -347,8 +419,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                                 <p className="font-medium text-foreground">Flush Current Database</p>
                                 <p className="text-sm text-foreground-muted">Delete all keys in the current database (DB 0)</p>
                             </div>
-                            <Button variant="danger" size="sm" onClick={handleFlushDB}>
-                                <Trash2 className="mr-2 h-4 w-4" />
+                            <Button variant="danger" size="sm" onClick={handleFlushDB} disabled={flushLoading}>
+                                {flushLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                )}
                                 FLUSHDB
                             </Button>
                         </div>
@@ -357,8 +433,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                                 <p className="font-medium text-foreground">Flush All Databases</p>
                                 <p className="text-sm text-foreground-muted">Delete all keys in ALL databases</p>
                             </div>
-                            <Button variant="danger" size="sm" onClick={handleFlushAll}>
-                                <Trash2 className="mr-2 h-4 w-4" />
+                            <Button variant="danger" size="sm" onClick={handleFlushAll} disabled={flushLoading}>
+                                {flushLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                )}
                                 FLUSHALL
                             </Button>
                         </div>

@@ -96,3 +96,26 @@ export type {
     ClickhouseReplicationStatus,
     ClickhouseSettings,
 } from './useClickhouseExtended';
+
+export {
+    useMongoCollections,
+    useMongoIndexes,
+    useMongoReplicaSet,
+} from './useMongodbExtended';
+export type {
+    MongoCollection,
+    MongoIndex,
+    MongoReplicaMember,
+    MongoReplicaSet,
+} from './useMongodbExtended';
+
+export {
+    useRedisKeys,
+    useRedisMemory,
+    useRedisFlush,
+    usePostgresMaintenance,
+} from './useRedisExtended';
+export type {
+    RedisKey,
+    RedisMemoryInfo,
+} from './useRedisExtended';

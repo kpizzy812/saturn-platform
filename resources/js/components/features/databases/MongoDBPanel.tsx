@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { RefreshCw, Eye, EyeOff, Copy, Layers, TrendingUp, Loader2 } from 'lucide-react';
-import { useDatabaseMetrics, useDatabaseLogs, formatMetricValue, type MongoMetrics } from '@/hooks';
+import {
+    useDatabaseMetrics,
+    useDatabaseLogs,
+    formatMetricValue,
+    useMongoCollections,
+    useMongoIndexes,
+    useMongoReplicaSet,
+    type MongoMetrics,
+} from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -158,12 +166,12 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 
 function CollectionsTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
-    const [collections] = useState([
-        { name: 'users', documentCount: 12453, size: '1.2 GB', avgDocSize: '96 KB' },
-        { name: 'posts', documentCount: 8932, size: '845 MB', avgDocSize: '94 KB' },
-        { name: 'comments', documentCount: 23549, size: '654 MB', avgDocSize: '28 KB' },
-        { name: 'sessions', documentCount: 300, size: '24 MB', avgDocSize: '80 KB' },
-    ]);
+
+    // Fetch collections from API
+    const { collections, isLoading, refetch } = useMongoCollections({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
 
     const handleViewCollection = (name: string) => {
         addToast('info', `Opening collection: ${name}`);
@@ -174,41 +182,50 @@ function CollectionsTab({ database }: { database: StandaloneDatabase }) {
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Collections Browser</h3>
-                    <Button size="sm" variant="secondary">
-                        <RefreshCw className="mr-2 h-4 w-4" />
+                    <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
                 </div>
-                <div className="space-y-3">
-                    {collections.map((collection) => (
-                        <div
-                            key={collection.name}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-                                    <Layers className="h-5 w-5 text-success" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-medium text-foreground">{collection.name}</p>
-                                    <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
-                                        <span>{collection.documentCount.toLocaleString()} docs</span>
-                                        <span>{collection.size}</span>
-                                        <span>Avg: {collection.avgDocSize}</span>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading collections...</span>
+                    </div>
+                ) : collections.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No collections found</p>
+                ) : (
+                    <div className="space-y-3">
+                        {collections.map((collection) => (
+                            <div
+                                key={collection.name}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                                        <Layers className="h-5 w-5 text-success" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-medium text-foreground">{collection.name}</p>
+                                        <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
+                                            <span>{collection.documentCount.toLocaleString()} docs</span>
+                                            <span>{collection.size}</span>
+                                            <span>Avg: {collection.avgDocSize}</span>
+                                        </div>
                                     </div>
                                 </div>
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => handleViewCollection(collection.name)}
+                                >
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View
+                                </Button>
                             </div>
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => handleViewCollection(collection.name)}
-                            >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                            </Button>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -216,14 +233,12 @@ function CollectionsTab({ database }: { database: StandaloneDatabase }) {
 
 function IndexesTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
-    const [indexes] = useState([
-        { collection: 'users', name: '_id_', fields: ['_id'], unique: true, size: '124 MB' },
-        { collection: 'users', name: 'email_1', fields: ['email'], unique: true, size: '89 MB' },
-        { collection: 'posts', name: '_id_', fields: ['_id'], unique: true, size: '98 MB' },
-        { collection: 'posts', name: 'user_id_1', fields: ['user_id'], unique: false, size: '45 MB' },
-        { collection: 'comments', name: '_id_', fields: ['_id'], unique: true, size: '67 MB' },
-        { collection: 'comments', name: 'post_id_1', fields: ['post_id'], unique: false, size: '34 MB' },
-    ]);
+
+    // Fetch indexes from API
+    const { indexes, isLoading, refetch } = useMongoIndexes({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
 
     const handleCreateIndex = () => {
         addToast('info', 'Create index functionality coming soon');
@@ -234,59 +249,81 @@ function IndexesTab({ database }: { database: StandaloneDatabase }) {
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">Index Management</h3>
-                    <Button size="sm" onClick={handleCreateIndex}>
-                        <TrendingUp className="mr-2 h-4 w-4" />
-                        Create Index
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                        <Button size="sm" onClick={handleCreateIndex}>
+                            <TrendingUp className="mr-2 h-4 w-4" />
+                            Create Index
+                        </Button>
+                    </div>
                 </div>
-                <div className="space-y-3">
-                    {indexes.map((index, i) => (
-                        <div
-                            key={i}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
-                        >
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <p className="font-medium text-foreground">{index.collection}.{index.name}</p>
-                                    {index.unique && <Badge variant="default">Unique</Badge>}
-                                </div>
-                                <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
-                                    <span>Fields: {index.fields.join(', ')}</span>
-                                    <span>Size: {index.size}</span>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                        <span className="ml-2 text-foreground-muted">Loading indexes...</span>
+                    </div>
+                ) : indexes.length === 0 ? (
+                    <p className="py-4 text-center text-foreground-muted">No indexes found</p>
+                ) : (
+                    <div className="space-y-3">
+                        {indexes.map((index, i) => (
+                            <div
+                                key={i}
+                                className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-4"
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-foreground">{index.collection}.{index.name}</p>
+                                        {index.unique && <Badge variant="default">Unique</Badge>}
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
+                                        <span>Fields: {index.fields.join(', ')}</span>
+                                        <span>Size: {index.size}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
 }
 
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
-    const { addToast } = useToast();
-    const [replicaSet] = useState({
-        enabled: true,
-        name: 'rs0',
-        members: [
-            { host: 'mongo1.example.com:27017', state: 'PRIMARY' },
-            { host: 'mongo2.example.com:27017', state: 'SECONDARY' },
-            { host: 'mongo3.example.com:27017', state: 'SECONDARY' },
-        ],
+    // Fetch replica set status from API
+    const { replicaSet, isLoading, refetch } = useMongoReplicaSet({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
     });
 
     return (
         <div className="space-y-6">
             <Card>
                 <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Replica Set Status</h3>
-                    {replicaSet.enabled ? (
+                    <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-foreground">Replica Set Status</h3>
+                        <Button size="sm" variant="secondary" onClick={refetch} disabled={isLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                    </div>
+                    {isLoading && !replicaSet ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
+                            <span className="ml-2 text-foreground-muted">Loading replica set status...</span>
+                        </div>
+                    ) : replicaSet?.enabled ? (
                         <div>
                             <div className="mb-4">
                                 <label className="mb-1 block text-sm font-medium text-foreground-muted">
                                     Replica Set Name
                                 </label>
-                                <p className="text-sm text-foreground">{replicaSet.name}</p>
+                                <p className="text-sm text-foreground">{replicaSet.name || 'N/A'}</p>
                             </div>
                             <div className="space-y-2">
                                 <label className="mb-2 block text-sm font-medium text-foreground-muted">
@@ -323,7 +360,7 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-foreground-muted">Cache Size</label>
-                            <p className="text-sm text-foreground">1 GB</p>
+                            <p className="text-sm text-foreground">Default (50% RAM)</p>
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-foreground-muted">Journal Enabled</label>

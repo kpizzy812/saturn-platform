@@ -123,8 +123,34 @@ const [logs] = useState([...]);
 // - useDatabaseLogs() для логов (уже было ранее)
 ```
 
-#### MySQLPanel.tsx, MongoDBPanel.tsx, RedisPanel.tsx
-Аналогичные моки: users, databases, logs, settings
+#### MySQLPanel.tsx ✅ ИСПРАВЛЕНО
+```typescript
+// Теперь использует реальные API:
+// - useDatabaseMetrics() для метрик (connections, slow queries)
+// - useDatabaseUsers() для пользователей
+// - useDatabaseLogs() для логов
+```
+
+#### MongoDBPanel.tsx ✅ ИСПРАВЛЕНО
+```typescript
+// Теперь использует реальные API:
+// - useDatabaseMetrics() для метрик (collections, documents, size)
+// - useMongoCollections() для списка коллекций с статистикой
+// - useMongoIndexes() для списка индексов
+// - useMongoReplicaSet() для статуса replica set
+// - useDatabaseUsers() для пользователей
+// - useDatabaseLogs() для логов
+```
+
+#### RedisPanel.tsx ✅ ИСПРАВЛЕНО
+```typescript
+// Теперь использует реальные API:
+// - useDatabaseMetrics() для метрик (keys, memory, ops/sec, hit rate)
+// - useRedisKeys() для списка ключей с TTL и size
+// - useRedisMemory() для детальной информации о памяти
+// - useRedisFlush() для FLUSHDB/FLUSHALL команд
+// - useDatabaseLogs() для логов
+```
 
 **Что нужно:**
 1. **Backend API для выполнения SQL через SSH:**
@@ -296,9 +322,11 @@ post('/settings/notifications/email', { ... });
 7. [x] Settings/AuditLog - реальный API ✅
 
 ### Приоритет 3: Database Panels (см. детальную спецификацию выше)
-8. [x] **PostgreSQLPanel** - API для extensions, users, logs через SSH ✅
+8. [x] **PostgreSQLPanel** - API для extensions, users, logs, VACUUM/ANALYZE через SSH ✅
 9. [x] **ClickHousePanel** - API для queries, replication, merge status, settings через SSH ✅
-10. [x] **MySQLPanel, MongoDBPanel, RedisPanel** - API для users и logs ✅
+10. [x] **MySQLPanel** - API для users, logs, metrics через SSH ✅
+11. [x] **MongoDBPanel** - API для collections, indexes, replica set, users, logs через SSH ✅
+12. [x] **RedisPanel** - API для keys, memory info, flush commands через SSH ✅
 
 ### Приоритет 4: Кнопки без API
 11. [x] Templates/Submit - API для шаблонов ✅

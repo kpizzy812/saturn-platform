@@ -1132,6 +1132,439 @@ class DatabaseMetricsController extends Controller
     }
 
     /**
+     * Get MongoDB collections with statistics.
+     */
+    public function getMongoCollections(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'mongodb') {
+            return response()->json(['available' => false, 'error' => 'MongoDB database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $dbName = $database->mongo_initdb_database ?? 'admin';
+
+            // Get collections with stats
+            $command = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.getCollectionInfos().map(c => { const stats = db.getCollection(c.name).stats(); return { name: c.name, documentCount: stats.count || 0, size: stats.size || 0, avgObjSize: stats.avgObjSize || 0 }; }))\" {$dbName} 2>/dev/null || echo '[]'";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '[]');
+
+            $collections = [];
+            $parsed = json_decode($result, true);
+
+            if (is_array($parsed)) {
+                foreach ($parsed as $c) {
+                    $collections[] = [
+                        'name' => $c['name'] ?? 'unknown',
+                        'documentCount' => $c['documentCount'] ?? 0,
+                        'size' => $this->formatBytes($c['size'] ?? 0),
+                        'avgDocSize' => $this->formatBytes($c['avgObjSize'] ?? 0),
+                    ];
+                }
+            }
+
+            return response()->json([
+                'available' => true,
+                'collections' => $collections,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch collections: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get MongoDB indexes.
+     */
+    public function getMongoIndexes(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'mongodb') {
+            return response()->json(['available' => false, 'error' => 'MongoDB database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $dbName = $database->mongo_initdb_database ?? 'admin';
+
+            // Get indexes for all collections
+            $command = "docker exec {$containerName} mongosh --quiet --eval \"
+                const indexes = [];
+                db.getCollectionNames().forEach(collName => {
+                    db.getCollection(collName).getIndexes().forEach(idx => {
+                        indexes.push({
+                            collection: collName,
+                            name: idx.name,
+                            fields: Object.keys(idx.key),
+                            unique: idx.unique || false,
+                            size: 0
+                        });
+                    });
+                });
+                JSON.stringify(indexes);
+            \" {$dbName} 2>/dev/null || echo '[]'";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '[]');
+
+            $indexes = [];
+            $parsed = json_decode($result, true);
+
+            if (is_array($parsed)) {
+                foreach ($parsed as $idx) {
+                    $indexes[] = [
+                        'collection' => $idx['collection'] ?? 'unknown',
+                        'name' => $idx['name'] ?? '',
+                        'fields' => $idx['fields'] ?? [],
+                        'unique' => $idx['unique'] ?? false,
+                        'size' => 'N/A',
+                    ];
+                }
+            }
+
+            return response()->json([
+                'available' => true,
+                'indexes' => $indexes,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch indexes: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get MongoDB replica set status.
+     */
+    public function getMongoReplicaSet(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'mongodb') {
+            return response()->json(['available' => false, 'error' => 'MongoDB database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+
+            // Check replica set status
+            $command = "docker exec {$containerName} mongosh --quiet --eval \"
+                try {
+                    const status = rs.status();
+                    JSON.stringify({
+                        enabled: true,
+                        name: status.set,
+                        members: status.members.map(m => ({
+                            host: m.name,
+                            state: m.stateStr,
+                            health: m.health
+                        }))
+                    });
+                } catch (e) {
+                    JSON.stringify({ enabled: false, name: null, members: [] });
+                }
+            \" 2>/dev/null || echo '{\"enabled\": false}'";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '{"enabled": false}');
+
+            $replicaSet = json_decode($result, true) ?? ['enabled' => false, 'name' => null, 'members' => []];
+
+            return response()->json([
+                'available' => true,
+                'replicaSet' => $replicaSet,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch replica set status: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get Redis keys with details.
+     */
+    public function getRedisKeys(Request $request, string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['available' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? "-a '{$password}'" : '';
+            $pattern = $request->input('pattern', '*');
+            $limit = min((int) $request->input('limit', 100), 500);
+
+            // Get keys matching pattern
+            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning KEYS '{$pattern}' 2>/dev/null | head -n {$limit}";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            $keys = [];
+            if ($result) {
+                $keyNames = array_filter(explode("\n", $result), fn ($k) => ! empty(trim($k)));
+
+                foreach (array_slice($keyNames, 0, $limit) as $keyName) {
+                    $keyName = trim($keyName);
+                    if (empty($keyName)) {
+                        continue;
+                    }
+
+                    // Get key type
+                    $typeCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TYPE '{$keyName}' 2>/dev/null";
+                    $keyType = trim(instant_remote_process([$typeCmd], $server, false) ?? 'unknown');
+
+                    // Get TTL
+                    $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TTL '{$keyName}' 2>/dev/null";
+                    $ttl = (int) trim(instant_remote_process([$ttlCmd], $server, false) ?? '-1');
+                    $ttlDisplay = $ttl === -1 ? 'none' : ($ttl === -2 ? 'expired' : $this->formatSeconds($ttl));
+
+                    // Get memory usage
+                    $memCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning MEMORY USAGE '{$keyName}' 2>/dev/null";
+                    $memUsage = trim(instant_remote_process([$memCmd], $server, false) ?? '0');
+                    $size = is_numeric($memUsage) ? $this->formatBytes((int) $memUsage) : 'N/A';
+
+                    $keys[] = [
+                        'name' => $keyName,
+                        'type' => $keyType,
+                        'ttl' => $ttlDisplay,
+                        'size' => $size,
+                    ];
+                }
+            }
+
+            return response()->json([
+                'available' => true,
+                'keys' => $keys,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch keys: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get Redis extended memory info.
+     */
+    public function getRedisMemory(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['available' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? "-a '{$password}'" : '';
+
+            // Get memory info
+            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning INFO memory 2>/dev/null";
+            $result = instant_remote_process([$command], $server, false) ?? '';
+
+            $memory = [
+                'usedMemory' => 'N/A',
+                'peakMemory' => 'N/A',
+                'fragmentationRatio' => 'N/A',
+                'maxMemory' => 'N/A',
+                'evictionPolicy' => 'N/A',
+            ];
+
+            if (preg_match('/used_memory_human:(\S+)/', $result, $matches)) {
+                $memory['usedMemory'] = $matches[1];
+            }
+            if (preg_match('/used_memory_peak_human:(\S+)/', $result, $matches)) {
+                $memory['peakMemory'] = $matches[1];
+            }
+            if (preg_match('/mem_fragmentation_ratio:(\S+)/', $result, $matches)) {
+                $memory['fragmentationRatio'] = $matches[1];
+            }
+
+            // Get max memory and eviction policy
+            $configCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning CONFIG GET maxmemory maxmemory-policy 2>/dev/null";
+            $configResult = instant_remote_process([$configCmd], $server, false) ?? '';
+
+            if (preg_match('/maxmemory\n(\d+)/', $configResult, $matches)) {
+                $maxMem = (int) $matches[1];
+                $memory['maxMemory'] = $maxMem > 0 ? $this->formatBytes($maxMem) : 'No limit';
+            }
+            if (preg_match('/maxmemory-policy\n(\S+)/', $configResult, $matches)) {
+                $memory['evictionPolicy'] = $matches[1];
+            }
+
+            return response()->json([
+                'available' => true,
+                'memory' => $memory,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch memory info: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Execute Redis FLUSHDB or FLUSHALL command.
+     */
+    public function redisFlush(Request $request, string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['success' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        $flushType = $request->input('type', 'db'); // 'db' or 'all'
+
+        if (! in_array($flushType, ['db', 'all'])) {
+            return response()->json(['success' => false, 'error' => 'Invalid flush type']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? "-a '{$password}'" : '';
+
+            $flushCommand = $flushType === 'all' ? 'FLUSHALL' : 'FLUSHDB';
+            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning {$flushCommand} 2>&1";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            if (stripos($result, 'OK') !== false) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $flushType === 'all' ? 'All databases flushed' : 'Current database flushed',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => $result ?: 'Flush command failed',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to flush: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Execute PostgreSQL VACUUM or ANALYZE command.
+     */
+    public function postgresMaintenace(Request $request, string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'postgresql') {
+            return response()->json(['success' => false, 'error' => 'PostgreSQL database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        $operation = $request->input('operation', 'vacuum'); // 'vacuum' or 'analyze'
+
+        if (! in_array($operation, ['vacuum', 'analyze'])) {
+            return response()->json(['success' => false, 'error' => 'Invalid operation']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $user = $database->postgres_user ?? 'postgres';
+            $dbName = $database->postgres_db ?? 'postgres';
+
+            $sql = strtoupper($operation);
+            $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$sql};\" 2>&1";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            if (stripos($result, 'ERROR') !== false) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$sql} completed successfully",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to run maintenance: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Format seconds to human readable string.
+     */
+    protected function formatSeconds(int $seconds): string
+    {
+        if ($seconds < 60) {
+            return $seconds.'s';
+        }
+        if ($seconds < 3600) {
+            $minutes = floor($seconds / 60);
+            $secs = $seconds % 60;
+
+            return $secs > 0 ? "{$minutes}m {$secs}s" : "{$minutes}m";
+        }
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+
+        return $minutes > 0 ? "{$hours}h {$minutes}m" : "{$hours}h";
+    }
+
+    /**
      * Toggle PostgreSQL extension.
      */
     public function toggleExtension(Request $request, string $uuid): JsonResponse

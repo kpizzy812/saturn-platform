@@ -7,6 +7,7 @@ import {
     useDatabaseExtensions,
     useDatabaseUsers,
     useDatabaseLogs,
+    usePostgresMaintenance,
     formatMetricValue,
     type PostgresMetrics,
 } from '@/hooks';
@@ -348,12 +349,34 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
 function SettingsTab({ database }: { database: StandaloneDatabase }) {
     const { addToast } = useToast();
 
-    const handleVacuum = () => {
+    // Real-time metrics contain max_connections
+    const { metrics } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: false,
+    });
+    const pgMetrics = metrics as PostgresMetrics | null;
+
+    // Maintenance operations
+    const { runMaintenance, isLoading: maintenanceLoading } = usePostgresMaintenance(database.uuid);
+
+    const handleVacuum = async () => {
         addToast('info', 'Running VACUUM...');
+        const success = await runMaintenance('vacuum');
+        if (success) {
+            addToast('success', 'VACUUM completed successfully');
+        } else {
+            addToast('error', 'VACUUM failed');
+        }
     };
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         addToast('info', 'Running ANALYZE...');
+        const success = await runMaintenance('analyze');
+        if (success) {
+            addToast('success', 'ANALYZE completed successfully');
+        } else {
+            addToast('error', 'ANALYZE failed');
+        }
     };
 
     return (
@@ -367,8 +390,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                                 <p className="font-medium text-foreground">VACUUM Database</p>
                                 <p className="text-sm text-foreground-muted">Reclaim storage and update statistics</p>
                             </div>
-                            <Button size="sm" variant="secondary" onClick={handleVacuum}>
-                                <Play className="mr-2 h-4 w-4" />
+                            <Button size="sm" variant="secondary" onClick={handleVacuum} disabled={maintenanceLoading}>
+                                {maintenanceLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Play className="mr-2 h-4 w-4" />
+                                )}
                                 Run VACUUM
                             </Button>
                         </div>
@@ -377,8 +404,12 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
                                 <p className="font-medium text-foreground">ANALYZE Database</p>
                                 <p className="text-sm text-foreground-muted">Update query planner statistics</p>
                             </div>
-                            <Button size="sm" variant="secondary" onClick={handleAnalyze}>
-                                <Play className="mr-2 h-4 w-4" />
+                            <Button size="sm" variant="secondary" onClick={handleAnalyze} disabled={maintenanceLoading}>
+                                {maintenanceLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Play className="mr-2 h-4 w-4" />
+                                )}
                                 Run ANALYZE
                             </Button>
                         </div>
@@ -388,19 +419,19 @@ function SettingsTab({ database }: { database: StandaloneDatabase }) {
 
             <Card>
                 <CardContent className="p-6">
-                    <h3 className="mb-4 text-lg font-medium text-foreground">Connection Pooling</h3>
+                    <h3 className="mb-4 text-lg font-medium text-foreground">Connection Settings</h3>
                     <div className="space-y-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-foreground-muted">Max Connections</label>
-                            <p className="text-sm text-foreground">100</p>
+                            <p className="text-sm text-foreground">{pgMetrics?.maxConnections || 'N/A'}</p>
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Pool Size</label>
-                            <p className="text-sm text-foreground">20</p>
+                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Active Connections</label>
+                            <p className="text-sm text-foreground">{formatMetricValue(pgMetrics?.activeConnections)}</p>
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Idle Timeout</label>
-                            <p className="text-sm text-foreground">10 minutes</p>
+                            <label className="mb-1 block text-sm font-medium text-foreground-muted">Database Size</label>
+                            <p className="text-sm text-foreground">{pgMetrics?.databaseSize || 'N/A'}</p>
                         </div>
                     </div>
                 </CardContent>

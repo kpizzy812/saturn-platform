@@ -320,6 +320,30 @@ Route::get('/api/databases/{uuid}/clickhouse/replication', [\App\Http\Controller
 Route::get('/api/databases/{uuid}/clickhouse/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseSettings'])
     ->name('databases.clickhouse.settings.api');
 
+// MongoDB specific endpoints
+Route::get('/api/databases/{uuid}/mongodb/collections', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoCollections'])
+    ->name('databases.mongodb.collections.api');
+
+Route::get('/api/databases/{uuid}/mongodb/indexes', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoIndexes'])
+    ->name('databases.mongodb.indexes.api');
+
+Route::get('/api/databases/{uuid}/mongodb/replica-set', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoReplicaSet'])
+    ->name('databases.mongodb.replica-set.api');
+
+// Redis specific endpoints
+Route::get('/api/databases/{uuid}/redis/keys', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisKeys'])
+    ->name('databases.redis.keys.api');
+
+Route::get('/api/databases/{uuid}/redis/memory', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisMemory'])
+    ->name('databases.redis.memory.api');
+
+Route::post('/api/databases/{uuid}/redis/flush', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'redisFlush'])
+    ->name('databases.redis.flush.api');
+
+// PostgreSQL maintenance endpoints
+Route::post('/api/databases/{uuid}/postgres/maintenance', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'postgresMaintenace'])
+    ->name('databases.postgres.maintenance.api');
+
 Route::get('/databases/{uuid}/settings', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 
