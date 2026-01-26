@@ -129,6 +129,7 @@ const [logs] = useState([...]);
 // - useDatabaseMetrics() для метрик (connections, slow queries)
 // - useDatabaseUsers() для пользователей
 // - useDatabaseLogs() для логов
+// - useMysqlSettings() для настроек (slow_query_log, binary logging, max_connections, buffer pool, query cache, timeout)
 ```
 
 #### MongoDBPanel.tsx ✅ ИСПРАВЛЕНО
@@ -140,6 +141,7 @@ const [logs] = useState([...]);
 // - useMongoReplicaSet() для статуса replica set
 // - useDatabaseUsers() для пользователей
 // - useDatabaseLogs() для логов
+// - useMongoStorageSettings() для настроек хранения (storage engine, cache size, journal, directoryPerDb)
 ```
 
 #### RedisPanel.tsx ✅ ИСПРАВЛЕНО
@@ -150,6 +152,7 @@ const [logs] = useState([...]);
 // - useRedisMemory() для детальной информации о памяти
 // - useRedisFlush() для FLUSHDB/FLUSHALL команд
 // - useDatabaseLogs() для логов
+// - useRedisPersistence() для настроек персистентности (RDB snapshots, AOF, fsync policy)
 ```
 
 **Что нужно:**
