@@ -90,18 +90,6 @@ export default function Register() {
                 </div>
             </form>
 
-            {/* Terms */}
-            <p className="mt-6 text-center text-xs text-foreground-subtle">
-                By creating an account, you agree to our{' '}
-                <Link href="/terms" className="text-foreground-muted hover:text-foreground">
-                    Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link href="/privacy" className="text-foreground-muted hover:text-foreground">
-                    Privacy Policy
-                </Link>
-            </p>
-
             {/* Login Link */}
             <p className="mt-4 text-center text-sm text-foreground-muted">
                 Already have an account?{' '}

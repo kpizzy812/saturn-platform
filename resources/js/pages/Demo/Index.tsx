@@ -21,7 +21,6 @@ import {
     Clock,
     BarChart3,
     Rocket,
-    HelpCircle,
     AlertTriangle,
 } from 'lucide-react';
 
@@ -165,13 +164,6 @@ const categories: PageCategory[] = [
         pages: [
             { name: 'Welcome', path: '/onboarding/welcome', description: 'Onboarding welcome' },
             { name: 'Connect Repo', path: '/onboarding/connect-repo', description: 'Repository connection' },
-        ],
-    },
-    {
-        name: 'Support',
-        icon: <HelpCircle className="h-5 w-5" />,
-        pages: [
-            { name: 'Help Center', path: '/support', description: 'Support & FAQ' },
         ],
     },
     {

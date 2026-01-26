@@ -134,15 +134,6 @@ export default function VerifyEmail({ status = 'pending', email }: Props) {
                     </Link>
                 </div>
 
-                {/* Support Info */}
-                <div className="text-center">
-                    <p className="text-xs text-foreground-subtle">
-                        Having trouble?{' '}
-                        <Link href="/support" className="text-primary hover:underline">
-                            Contact support
-                        </Link>
-                    </p>
-                </div>
             </div>
         </AuthLayout>
     );

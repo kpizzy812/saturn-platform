@@ -263,7 +263,11 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
             {/* New Token Created Modal */}
             <Modal
                 isOpen={showNewTokenModal}
-                onClose={() => setShowNewTokenModal(false)}
+                onClose={() => {
+                    setShowNewTokenModal(false);
+                    // Clear token from memory for security (prevents visibility in React DevTools)
+                    setNewlyCreatedToken('');
+                }}
                 title="Token Created Successfully"
                 description="Make sure to copy your token now. You won't be able to see it again!"
             >
@@ -282,7 +286,11 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                 </div>
 
                 <ModalFooter>
-                    <Button onClick={() => setShowNewTokenModal(false)}>Done</Button>
+                    <Button onClick={() => {
+                        setShowNewTokenModal(false);
+                        // Clear token from memory for security
+                        setNewlyCreatedToken('');
+                    }}>Done</Button>
                 </ModalFooter>
             </Modal>
 

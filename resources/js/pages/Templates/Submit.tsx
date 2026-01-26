@@ -342,7 +342,7 @@ services:
                         )}
                     </div>
 
-                    {/* Terms */}
+                    {/* Confirmation */}
                     <div className="rounded-xl border border-border/50 bg-background-secondary p-6">
                         <div className="flex items-start gap-3">
                             <Checkbox
@@ -350,15 +350,7 @@ services:
                                 onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
                             />
                             <label className="text-sm text-foreground">
-                                I agree to the{' '}
-                                <Link href="/terms" className="text-primary hover:underline">
-                                    Terms of Service
-                                </Link>{' '}
-                                and{' '}
-                                <Link href="/privacy" className="text-primary hover:underline">
-                                    Privacy Policy
-                                </Link>
-                                . I confirm that this template is my own work or I have permission to share it.
+                                I confirm that this template is my own work or I have permission to share it.
                             </label>
                         </div>
                     </div>
