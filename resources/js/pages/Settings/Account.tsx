@@ -6,6 +6,14 @@ import { Shield, Trash2, Upload, AlertCircle } from 'lucide-react';
 import { validatePassword, validatePasswordMatch } from '@/lib/validation';
 import type { AuthUser } from '@/types/inertia';
 
+/**
+ * Extract first error message from Inertia errors object
+ */
+function getFirstErrorMessage(errors: Record<string, string>): string {
+    const firstKey = Object.keys(errors)[0];
+    return firstKey ? errors[firstKey] : 'An unexpected error occurred.';
+}
+
 export default function AccountSettings() {
     const { props } = usePage<{ auth: AuthUser | null }>();
     const currentUser = props.auth;
@@ -82,10 +90,9 @@ export default function AccountSettings() {
             onError: (errors) => {
                 addToast({
                     title: 'Failed to save profile',
-                    description: 'An error occurred while saving your profile.',
+                    description: getFirstErrorMessage(errors),
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsSavingProfile(false);
@@ -108,10 +115,9 @@ export default function AccountSettings() {
             onError: (errors) => {
                 addToast({
                     title: 'Failed to update password',
-                    description: 'An error occurred while updating your password.',
+                    description: getFirstErrorMessage(errors),
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsSavingPassword(false);
@@ -136,10 +142,9 @@ export default function AccountSettings() {
             onError: (errors) => {
                 addToast({
                     title: 'Failed to update 2FA',
-                    description: 'An error occurred while updating two-factor authentication.',
+                    description: getFirstErrorMessage(errors),
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsToggling2FA(false);
@@ -162,10 +167,9 @@ export default function AccountSettings() {
             onError: (errors) => {
                 addToast({
                     title: 'Failed to delete account',
-                    description: 'An error occurred while deleting your account.',
+                    description: getFirstErrorMessage(errors),
                     variant: 'danger',
                 });
-                console.error(errors);
             },
             onFinish: () => {
                 setIsDeletingAccount(false);

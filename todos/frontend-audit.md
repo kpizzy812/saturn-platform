@@ -217,7 +217,7 @@ post('/settings/notifications/email', { ... });
 ### console.error в catch блоках (нужен proper error handling)
 - [x] **Projects/Show.tsx** (6 мест) - заменить на toast notifications ✅
 - [ ] **Applications/Rollback/*.tsx** (4 места) - заменить на toast notifications
-- [ ] **Settings/Account.tsx** (4 места) - заменить на toast notifications
+- [x] **Settings/Account.tsx** (4 места) - заменить на toast notifications ✅
 - [ ] **Settings/Workspace.tsx** (2 места) - заменить на toast notifications
 - [ ] **Settings/Team/Index.tsx** (2 места) - заменить на toast notifications
 - [ ] **Settings/Tokens.tsx, Applications/Index.tsx, Boarding/Index.tsx, Services/Scaling.tsx, Onboarding/ConnectRepo.tsx** - заменить на toast notifications
@@ -281,12 +281,12 @@ post('/settings/notifications/email', { ... });
 | Критические (mock данные) | 7 | 2 | 5 |
 | Высокие (кнопки без API) | 8 | 4 | 4 |
 | Высокие (memory leaks) | 5 | 1 | 4 |
-| Высокие (console.log) | 8 | 4 | 4 |
+| Высокие (console.log) | 8 | 5 | 3 |
 | Высокие (формы/a11y/routing) | ~25 | 1 | ~24 |
 | Средние (TypeScript) | ~20 | 15 | ~5 |
 | Средние (дублирование) | 6 | 1 | 5 |
 
-**Прогресс: ~31 исправлено ✅ | ~50 осталось**
+**Прогресс: ~32 исправлено ✅ | ~49 осталось**
 
 ---
 
