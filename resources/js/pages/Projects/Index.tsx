@@ -77,6 +77,14 @@ function ProjectCard({ project }: { project: Project }) {
         if (confirmed) {
             router.delete(`/projects/${project.uuid}`, {
                 preserveScroll: true,
+                preserveState: false, // Force refresh data after delete
+                onSuccess: () => {
+                    toast({
+                        title: 'Project deleted',
+                        description: 'The project has been removed successfully.',
+                        variant: 'success',
+                    });
+                },
                 onError: () => {
                     toast({
                         title: 'Failed to delete project',

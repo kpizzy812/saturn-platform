@@ -158,6 +158,14 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
         if (confirmed) {
             router.delete(`/applications/${application.uuid}`, {
                 preserveScroll: true,
+                preserveState: false, // Force refresh data after delete
+                onSuccess: () => {
+                    toast({
+                        title: 'Application deletion queued',
+                        description: 'The application will be removed shortly.',
+                        variant: 'success',
+                    });
+                },
                 onError: () => {
                     toast({
                         title: 'Failed to delete application',
