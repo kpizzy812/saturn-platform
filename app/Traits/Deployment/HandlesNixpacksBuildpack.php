@@ -259,13 +259,14 @@ trait HandlesNixpacksBuildpack
     {
         $this->generate_nixpacks_env_variables();
 
-        // Add auto-detected Node version if provided
+        // Add auto-detected Node version LAST so it takes priority over any env var
+        // This ensures .nvmrc/package.json versions override NIXPACKS_NODE_VERSION env var
         $extraEnv = '';
         if ($autoDetectedNodeVersion) {
-            $extraEnv = "--env NIXPACKS_NODE_VERSION={$autoDetectedNodeVersion} ";
+            $extraEnv = " --env NIXPACKS_NODE_VERSION={$autoDetectedNodeVersion}";
         }
 
-        $nixpacks_command = "nixpacks plan -f json {$extraEnv}{$this->env_nixpacks_args}";
+        $nixpacks_command = "nixpacks plan -f json {$this->env_nixpacks_args}{$extraEnv}";
         if ($this->application->build_command) {
             $nixpacks_command .= " --build-cmd \"{$this->application->build_command}\"";
         }
