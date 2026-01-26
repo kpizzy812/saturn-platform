@@ -20,18 +20,29 @@
 - [x] Подключены через `require __DIR__.'/web/filename.php'`
 - [x] Все 557 маршрутов работают после рефакторинга
 
-### 2. ApplicationDeploymentJob.php — 4,191 строк
-Главный Job деплоя, содержит всю логику в одном файле.
+### 2. ApplicationDeploymentJob.php — ✅ ГОТОВО (было 4,191 → стало 1,168 строк, -72%)
+Главный Job деплоя разделён на 17 traits по функциональности.
 
-- [ ] Выделить этапы деплоя в отдельные классы (Strategy/Pipeline):
-  - [ ] `DeploymentSteps/GitCloneStep.php`
-  - [ ] `DeploymentSteps/DockerBuildStep.php`
-  - [ ] `DeploymentSteps/ContainerStartStep.php`
-  - [ ] `DeploymentSteps/HealthCheckStep.php`
-  - [ ] `DeploymentSteps/CleanupStep.php`
-- [ ] Создать `DeploymentPipeline.php` для оркестрации шагов
-- [ ] Выделить хелперы в отдельные traits или сервисы
-- [ ] Добавить unit-тесты для каждого шага
+- [x] Выделены traits в `app/Traits/Deployment/`:
+  - [x] `HandlesBuildSecrets.php` — управление Docker build secrets (172 строки)
+  - [x] `HandlesBuildtimeEnvGeneration.php` — генерация build-time переменных (234 строки)
+  - [x] `HandlesComposeFileGeneration.php` — генерация docker-compose (268 строк)
+  - [x] `HandlesContainerOperations.php` — операции с контейнерами (126 строк)
+  - [x] `HandlesDeploymentCommands.php` — pre/post deployment команды (90 строк)
+  - [x] `HandlesDeploymentConfiguration.php` — BuildKit detection, config writing (158 строк)
+  - [x] `HandlesDeploymentStatus.php` — управление статусом деплоя (142 строки)
+  - [x] `HandlesDockerComposeBuildpack.php` — Docker Compose buildpack (286 строк)
+  - [x] `HandlesDockerfileModification.php` — модификация Dockerfile (421 строка)
+  - [x] `HandlesGitOperations.php` — git clone/checkout (174 строки)
+  - [x] `HandlesHealthCheck.php` — health check и rolling update (177 строк)
+  - [x] `HandlesImageBuilding.php` — сборка Docker образов (315 строк)
+  - [x] `HandlesImageRegistry.php` — push/pull образов (150 строк)
+  - [x] `HandlesNixpacksBuildpack.php` — Nixpacks buildpack (285 строк)
+  - [x] `HandlesRuntimeEnvGeneration.php` — runtime переменные (327 строк)
+  - [x] `HandlesSaturnEnvVariables.php` — Saturn платформенные переменные (171 строка)
+  - [x] `HandlesStaticBuildpack.php` — Static buildpack (86 строк)
+- [x] Основной класс содержит только оркестрацию и свойства
+- [x] Код прошёл Pint и PHPStan валидацию
 
 ---
 
@@ -153,7 +164,7 @@ API контроллер приложений, слишком много мет�
 | Файл | Статус | Дата |
 |------|--------|------|
 | routes/web.php | ✅ Готово | 2026-01-25 |
-| ApplicationDeploymentJob.php | ⏳ Не начато | - |
+| ApplicationDeploymentJob.php | ✅ Готово | 2026-01-26 |
 | ApplicationsController.php | ⏳ Не начато | - |
 | shared.php | ⏳ Не начато | - |
 | Projects/Show.tsx | ⏳ Не начато | - |
