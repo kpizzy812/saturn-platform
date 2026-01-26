@@ -220,22 +220,22 @@ function convertGitUrl(string $gitRepository, string $deploymentType, ?GithubApp
     $git_port = 22;
     $git_base_url = 'github.com';
 
-    if ($deploymentType === 'deploy_key' || $deploymentType === 'dockerfile') {
-        // If the git repository starts with http, it's an HTTP-based repository
-        if (str($gitRepository)->startsWith('http://') || str($gitRepository)->startsWith('https://')) {
-            $url = parse_url($gitRepository);
-            $git_base_url = $url['host'];
-            if (isset($url['port'])) {
-                $git_port = $url['port'];
-            }
-            if (isset($url['path'])) {
-                $git_repository = ltrim($url['path'], '/');
-            }
-            if (str($git_repository)->endsWith('.git')) {
-                $git_repository = str($git_repository)->beforeLast('.git')->value();
-            }
-        } elseif (str($gitRepository)->contains(':')) {
-            // It's an SSH-based repository
+    // Extract repository path from full URLs for all deployment types
+    if (str($gitRepository)->startsWith('http://') || str($gitRepository)->startsWith('https://')) {
+        $url = parse_url($gitRepository);
+        $git_base_url = $url['host'] ?? $git_base_url;
+        if (isset($url['port'])) {
+            $git_port = $url['port'];
+        }
+        if (isset($url['path'])) {
+            $git_repository = ltrim($url['path'], '/');
+        }
+        if (str($git_repository)->endsWith('.git')) {
+            $git_repository = str($git_repository)->beforeLast('.git')->value();
+        }
+    } elseif ($deploymentType === 'deploy_key' || $deploymentType === 'dockerfile') {
+        // Handle SSH-based repositories for deploy_key/dockerfile types
+        if (str($gitRepository)->contains(':')) {
             $git_base_url = str($gitRepository)->before(':')->value();
             if (str($git_base_url)->contains('@')) {
                 $git_base_url = str($git_base_url)->after('@')->value();
