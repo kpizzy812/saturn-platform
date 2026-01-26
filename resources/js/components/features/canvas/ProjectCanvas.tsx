@@ -447,7 +447,21 @@ function ProjectCanvasInner({
                     style: { stroke: '#4a4a5e', strokeWidth: 2, strokeDasharray: '5,5' },
                 }}
             >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1a1a2e" />
+                {/* Dot grid background - similar to Figma/Miro style */}
+                <Background
+                    id="dots-small"
+                    variant={BackgroundVariant.Dots}
+                    gap={20}
+                    size={1}
+                    color="#2d2d42"
+                />
+                <Background
+                    id="dots-large"
+                    variant={BackgroundVariant.Dots}
+                    gap={100}
+                    size={2}
+                    color="#3d3d52"
+                />
             </ReactFlow>
 
             {/* Edge context menu */}
