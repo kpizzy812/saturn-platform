@@ -106,6 +106,11 @@ trait HandlesImageBuilding
             ]);
         }
 
+        // Patch Dockerfile for specific Node.js version if needed
+        if (property_exists($this, 'requiredNodeVersion') && $this->requiredNodeVersion) {
+            $this->patchDockerfileForNodeVersion("{$this->workdir}/.nixpacks/Dockerfile", $this->requiredNodeVersion);
+        }
+
         $build_command = $this->createNixpacksBuildCommand("{$this->workdir}/.nixpacks/Dockerfile", $this->build_image_name);
         $this->executeBuildCommand($build_command);
         $this->execute_remote_command([executeInDocker($this->deployment_uuid, 'rm '.self::NIXPACKS_PLAN_PATH), 'hidden' => true]);
@@ -223,6 +228,11 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
                 executeInDocker($this->deployment_uuid, "cat {$this->workdir}/.nixpacks/Dockerfile"),
                 'hidden' => true,
             ]);
+        }
+
+        // Patch Dockerfile for specific Node.js version if needed
+        if (property_exists($this, 'requiredNodeVersion') && $this->requiredNodeVersion) {
+            $this->patchDockerfileForNodeVersion("{$this->workdir}/.nixpacks/Dockerfile", $this->requiredNodeVersion);
         }
 
         $build_command = $this->createNixpacksBuildCommand("{$this->workdir}/.nixpacks/Dockerfile", $this->production_image_name);

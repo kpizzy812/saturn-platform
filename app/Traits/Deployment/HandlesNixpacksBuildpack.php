@@ -171,10 +171,22 @@ trait HandlesNixpacksBuildpack
         // For Node.js apps, try to auto-detect version before generating plan
         // Auto-detection from .nvmrc/package.json has priority over default env var
         $autoDetectedNodeVersion = null;
+        $this->requiredNodeVersion = null; // Store for later Dockerfile patching
         if ($this->nixpacks_type === 'node') {
             $autoDetectedNodeVersion = $this->autoDetectNodeVersion();
             if ($autoDetectedNodeVersion) {
                 $this->application_deployment_queue->addLogEntry("Auto-detected Node.js version from project: {$autoDetectedNodeVersion}");
+
+                // Check if this version needs custom handling
+                $customVersion = $this->needsCustomNodeVersion($autoDetectedNodeVersion);
+                if ($customVersion) {
+                    $this->requiredNodeVersion = $customVersion;
+                    $this->application_deployment_queue->addLogEntry("Note: Nixpacks provides an older Node.js version than required ({$customVersion}).");
+                    $this->application_deployment_queue->addLogEntry("Saturn will automatically install Node.js {$customVersion} in the container.");
+                    // Use major version for Nixpacks, we'll patch the Dockerfile later
+                    preg_match('/^(\d+)/', $autoDetectedNodeVersion, $matches);
+                    $autoDetectedNodeVersion = $matches[1] ?? $autoDetectedNodeVersion;
+                }
             } else {
                 // Check if user has explicitly set a version
                 $explicitVersion = $this->getExplicitNodeVersion();
@@ -386,6 +398,97 @@ trait HandlesNixpacksBuildpack
      * @param  string  $versionString  The version string to parse
      * @return string|null The major version number or null if unparseable
      */
+    /**
+     * Known Nixpacks Node.js versions (from Nix packages, may lag behind official releases).
+     * Updated: January 2026
+     */
+    private const NIXPACKS_NODE_VERSIONS = [
+        '18' => '18.20.4',
+        '20' => '20.18.1',
+        '22' => '22.11.0',
+        '23' => '23.3.0',
+    ];
+
+    /**
+     * Check if the required Node.js version needs a custom Dockerfile.
+     * Returns the exact version needed if Nixpacks can't provide it, null otherwise.
+     */
+    private function needsCustomNodeVersion(string $requiredVersion): ?string
+    {
+        // If only major version specified, Nixpacks can handle it
+        if (preg_match('/^\d+$/', $requiredVersion)) {
+            return null;
+        }
+
+        // Extract major version
+        preg_match('/^(\d+)/', $requiredVersion, $matches);
+        $majorVersion = $matches[1] ?? null;
+
+        if (! $majorVersion || ! isset(self::NIXPACKS_NODE_VERSIONS[$majorVersion])) {
+            return null;
+        }
+
+        $nixpacksVersion = self::NIXPACKS_NODE_VERSIONS[$majorVersion];
+
+        // Compare versions - if required is higher than what Nixpacks provides, need custom
+        if (version_compare($requiredVersion, $nixpacksVersion, '>')) {
+            return $requiredVersion;
+        }
+
+        return null;
+    }
+
+    /**
+     * Patch the generated Nixpacks Dockerfile to use a specific Node.js version.
+     * This adds a multi-stage build that installs the exact Node version needed.
+     */
+    private function patchDockerfileForNodeVersion(string $dockerfilePath, string $nodeVersion): void
+    {
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        $this->application_deployment_queue->addLogEntry("⚠️ Required Node.js {$nodeVersion} is newer than Nixpacks provides.");
+        $this->application_deployment_queue->addLogEntry("Patching Dockerfile to install Node.js {$nodeVersion} via official binaries...");
+
+        // Read the current Dockerfile
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "cat {$dockerfilePath}"), 'save' => 'original_dockerfile', 'hidden' => true],
+        );
+
+        $originalDockerfile = $this->saved_outputs->get('original_dockerfile', '');
+
+        // Create a patched Dockerfile that installs the correct Node version
+        // We add commands after the nix-env step to override the Node version
+        $nodeInstallCommand = <<<BASH
+# Saturn: Installing exact Node.js version {$nodeVersion}
+RUN curl -fsSL https://nodejs.org/dist/v{$nodeVersion}/node-v{$nodeVersion}-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1 && \\
+    node --version && npm --version
+BASH;
+
+        // Find the line after nix-env installation and add our Node override
+        $patchedDockerfile = preg_replace(
+            '/(RUN nix-env.*?nix-collect-garbage.*?\n)/s',
+            "$1\n{$nodeInstallCommand}\n",
+            $originalDockerfile
+        );
+
+        // If patch didn't work (pattern not found), try alternative approach
+        if ($patchedDockerfile === $originalDockerfile) {
+            // Add after WORKDIR /app/
+            $patchedDockerfile = preg_replace(
+                '/(WORKDIR \/app\/\n)/s',
+                "$1\n{$nodeInstallCommand}\n",
+                $originalDockerfile
+            );
+        }
+
+        // Write patched Dockerfile
+        $patchedDockerfileBase64 = base64_encode($patchedDockerfile);
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "echo '{$patchedDockerfileBase64}' | base64 -d > {$dockerfilePath}"), 'hidden' => true],
+        );
+
+        $this->application_deployment_queue->addLogEntry("✅ Dockerfile patched successfully. Using Node.js {$nodeVersion}");
+    }
+
     private function parseNodeVersion(string $versionString): ?string
     {
         $versionString = trim($versionString);

@@ -144,6 +144,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private ?string $nixpacks_type = null;
 
+    private ?string $requiredNodeVersion = null;
+
     private string $dockerfile_location = '/Dockerfile';
 
     private string $docker_compose_location = '/docker-compose.yaml';
