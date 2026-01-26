@@ -18,10 +18,7 @@
             <a href="{{ route('dashboard') }}" {{ wireNavigate() }}>
                 <x-forms.button>Dashboard</x-forms.button>
             </a>
-            <a target="_blank" class="text-xs" href="{{ config('constants.urls.contact') }}">Contact
-                support
-                <x-external-link />
-            </a>
+            <a target="_blank" class="text-xs hover:underline" href="{{ config('constants.urls.contact') }}">Contact support ↗</a>
         </div>
     </div>
 </div>
