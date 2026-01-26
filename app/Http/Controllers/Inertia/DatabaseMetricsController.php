@@ -661,6 +661,214 @@ class DatabaseMetricsController extends Controller
     }
 
     /**
+     * Execute SQL query on database.
+     * Supports PostgreSQL, MySQL/MariaDB, ClickHouse.
+     * MongoDB and Redis are not supported for raw SQL queries.
+     */
+    public function executeQuery(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'query' => 'required|string|max:10000',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        // Only allow SQL-capable databases
+        $supportedTypes = ['postgresql', 'mysql', 'mariadb', 'clickhouse'];
+        if (! in_array($type, $supportedTypes)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Query execution is only supported for PostgreSQL, MySQL, MariaDB, and ClickHouse databases',
+            ], 400);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        $query = trim($request->input('query'));
+
+        // Basic security checks - block dangerous operations
+        $dangerousPatterns = [
+            '/^\s*(DROP\s+DATABASE|DROP\s+USER|DROP\s+ROLE|TRUNCATE\s+ALL)/i',
+            '/;\s*(DROP|TRUNCATE)/i',
+        ];
+
+        foreach ($dangerousPatterns as $pattern) {
+            if (preg_match($pattern, $query)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This query contains potentially dangerous operations and has been blocked',
+                ], 400);
+            }
+        }
+
+        try {
+            $startTime = microtime(true);
+            $result = match ($type) {
+                'postgresql' => $this->executePostgresQuery($server, $database, $query),
+                'mysql', 'mariadb' => $this->executeMysqlQuery($server, $database, $query),
+                'clickhouse' => $this->executeClickhouseQuery($server, $database, $query),
+                default => ['error' => 'Unsupported database type'],
+            };
+            $executionTime = round(microtime(true) - $startTime, 3);
+
+            if (isset($result['error'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'],
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'columns' => $result['columns'] ?? [],
+                'rows' => $result['rows'] ?? [],
+                'rowCount' => $result['rowCount'] ?? 0,
+                'executionTime' => $executionTime,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Query execution failed: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Execute PostgreSQL query.
+     */
+    protected function executePostgresQuery(mixed $server, mixed $database, string $query): array
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Escape single quotes in query for shell
+        $escapedQuery = str_replace("'", "'\"'\"'", $query);
+
+        // Execute query with pipe-delimited output format
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c '{$escapedQuery}' 2>&1";
+        $result = instant_remote_process([$command], $server, false, false, 30);
+
+        if ($result === null) {
+            return ['error' => 'No response from database'];
+        }
+
+        // Check for errors
+        if (stripos($result, 'ERROR:') !== false || stripos($result, 'FATAL:') !== false) {
+            return ['error' => trim($result)];
+        }
+
+        return $this->parseDelimitedResult($result, '|');
+    }
+
+    /**
+     * Execute MySQL/MariaDB query.
+     */
+    protected function executeMysqlQuery(mixed $server, mixed $database, string $query): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+
+        // Escape single quotes in query for shell
+        $escapedQuery = str_replace("'", "'\"'\"'", $query);
+
+        // Execute query with tab-delimited output
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -B -e '{$escapedQuery}' 2>&1";
+        $result = instant_remote_process([$command], $server, false, false, 30);
+
+        if ($result === null) {
+            return ['error' => 'No response from database'];
+        }
+
+        // Check for errors
+        if (stripos($result, 'ERROR') !== false) {
+            return ['error' => trim($result)];
+        }
+
+        return $this->parseDelimitedResult($result, "\t");
+    }
+
+    /**
+     * Execute ClickHouse query.
+     */
+    protected function executeClickhouseQuery(mixed $server, mixed $database, string $query): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->clickhouse_admin_password ?? '';
+
+        // Escape single quotes in query for shell
+        $escapedQuery = str_replace("'", "'\"'\"'", $query);
+        $authFlag = $password ? "--password '{$password}'" : '';
+
+        // Execute query with TabSeparated format
+        $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q '{$escapedQuery}' 2>&1";
+        $result = instant_remote_process([$command], $server, false, false, 30);
+
+        if ($result === null) {
+            return ['error' => 'No response from database'];
+        }
+
+        // Check for errors
+        if (stripos($result, 'Exception') !== false || stripos($result, 'DB::Exception') !== false) {
+            return ['error' => trim($result)];
+        }
+
+        return $this->parseDelimitedResult($result, "\t");
+    }
+
+    /**
+     * Parse delimiter-separated query result into columns and rows.
+     */
+    protected function parseDelimitedResult(string $result, string $delimiter): array
+    {
+        $lines = array_filter(explode("\n", trim($result)), fn ($line) => trim($line) !== '');
+
+        if (empty($lines)) {
+            return ['columns' => [], 'rows' => [], 'rowCount' => 0];
+        }
+
+        $rows = [];
+        $columns = [];
+
+        foreach ($lines as $index => $line) {
+            $values = explode($delimiter, $line);
+
+            // First row determines column count, use generic column names
+            if ($index === 0 && empty($columns)) {
+                $columns = array_map(fn ($i) => "column_{$i}", range(0, count($values) - 1));
+            }
+
+            // Build row as associative array
+            $row = [];
+            foreach ($values as $i => $value) {
+                $colName = $columns[$i] ?? "column_{$i}";
+                $row[$colName] = $value;
+            }
+            $rows[] = $row;
+        }
+
+        // Limit results to prevent memory issues
+        $maxRows = 1000;
+        if (count($rows) > $maxRows) {
+            $rows = array_slice($rows, 0, $maxRows);
+        }
+
+        return [
+            'columns' => $columns,
+            'rows' => $rows,
+            'rowCount' => count($rows),
+        ];
+    }
+
+    /**
      * Toggle PostgreSQL extension.
      */
     public function toggleExtension(Request $request, string $uuid): JsonResponse

@@ -303,6 +303,10 @@ Route::get('/api/databases/{uuid}/users', [\App\Http\Controllers\Inertia\Databas
 Route::get('/api/databases/{uuid}/logs', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getLogs'])
     ->name('databases.logs.api');
 
+// API endpoint for executing SQL queries
+Route::post('/api/databases/{uuid}/query', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'executeQuery'])
+    ->name('databases.query.api');
+
 Route::get('/databases/{uuid}/settings', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 

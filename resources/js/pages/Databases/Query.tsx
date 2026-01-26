@@ -1,15 +1,15 @@
 import { AppLayout } from '@/components/layout';
-import { Button, Card } from '@/components/ui';
+import { Button, Card, useToast } from '@/components/ui';
 import { SqlEditor } from '@/components/ui/SqlEditor';
-import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { Link, router } from '@inertiajs/react';
+import { useState, useCallback, useEffect } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StandaloneDatabase } from '@/types';
 
 interface QueryResult {
     columns: string[];
-    rows: Record<string, any>[];
+    rows: Record<string, string>[];
     executionTime: number;
     rowCount: number;
 }
@@ -20,6 +20,7 @@ interface QueryHistory {
     timestamp: string;
     status: 'success' | 'error';
     rowCount?: number;
+    error?: string;
 }
 
 interface SavedQuery {
@@ -36,36 +37,105 @@ interface Props {
     savedQueries?: SavedQuery[];
 }
 
-export default function DatabaseQuery({ database, databases = [], queryHistory = [], savedQueries = [] }: Props) {
-    const [currentQuery, setCurrentQuery] = useState('SELECT * FROM users LIMIT 10;');
+// Local storage key for query history
+const HISTORY_KEY = 'saturn_query_history';
+
+export default function DatabaseQuery({ database, databases = [], queryHistory: initialHistory = [], savedQueries = [] }: Props) {
+    const { addToast } = useToast();
+    const [currentQuery, setCurrentQuery] = useState('SELECT 1;');
     const [isExecuting, setIsExecuting] = useState(false);
     const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showHistory, setShowHistory] = useState(false);
     const [showSaved, setShowSaved] = useState(false);
     const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
+    const [localHistory, setLocalHistory] = useState<QueryHistory[]>([]);
+
+    // Load history from localStorage on mount
+    useEffect(() => {
+        try {
+            const stored = localStorage.getItem(`${HISTORY_KEY}_${database.uuid}`);
+            if (stored) {
+                setLocalHistory(JSON.parse(stored));
+            }
+        } catch {
+            // Ignore parse errors
+        }
+    }, [database.uuid]);
+
+    // Add query to local history
+    const addToHistory = useCallback((query: string, status: 'success' | 'error', rowCount?: number, errorMsg?: string) => {
+        const newEntry: QueryHistory = {
+            id: Date.now().toString(),
+            query,
+            timestamp: new Date().toLocaleTimeString(),
+            status,
+            rowCount,
+            error: errorMsg,
+        };
+
+        setLocalHistory(prev => {
+            const updated = [newEntry, ...prev].slice(0, 50); // Keep last 50
+            try {
+                localStorage.setItem(`${HISTORY_KEY}_${database.uuid}`, JSON.stringify(updated));
+            } catch {
+                // Ignore storage errors
+            }
+            return updated;
+        });
+    }, [database.uuid]);
 
     const executeQuery = async () => {
         if (!currentQuery.trim()) return;
 
         setIsExecuting(true);
         setError(null);
+        setQueryResult(null);
 
-        // Simulate API call
-        setTimeout(() => {
-            // Mock successful result
-            setQueryResult({
-                columns: ['id', 'name', 'email', 'created_at'],
-                rows: [
-                    { id: 1, name: 'John Doe', email: 'john@example.com', created_at: '2024-01-15 10:30:00' },
-                    { id: 2, name: 'Jane Smith', email: 'jane@example.com', created_at: '2024-01-14 15:45:00' },
-                    { id: 3, name: 'Bob Wilson', email: 'bob@example.com', created_at: '2024-01-13 09:20:00' },
-                ],
-                executionTime: 0.042,
-                rowCount: 3,
+        try {
+            const response = await fetch(`/api/databases/${database.uuid}/query`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ query: currentQuery }),
             });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                const errorMessage = data.error || 'Query execution failed';
+                setError(errorMessage);
+                addToHistory(currentQuery, 'error', undefined, errorMessage);
+                addToast({ type: 'error', message: `Query failed: ${errorMessage}` });
+            } else {
+                setQueryResult({
+                    columns: data.columns || [],
+                    rows: data.rows || [],
+                    executionTime: data.executionTime || 0,
+                    rowCount: data.rowCount || 0,
+                });
+                addToHistory(currentQuery, 'success', data.rowCount);
+                addToast({ type: 'success', message: `Query executed: ${data.rowCount} rows returned in ${data.executionTime}s` });
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Network error';
+            setError(errorMessage);
+            addToHistory(currentQuery, 'error', undefined, errorMessage);
+            addToast({ type: 'error', message: `Query failed: ${errorMessage}` });
+        } finally {
             setIsExecuting(false);
-        }, 1000);
+        }
+    };
+
+    // Handle database change
+    const handleDatabaseChange = (uuid: string) => {
+        if (uuid !== database.uuid) {
+            router.visit(`/databases/${uuid}/query`);
+        }
     };
 
     const exportResults = () => {
@@ -116,10 +186,11 @@ export default function DatabaseQuery({ database, databases = [], queryHistory =
                         <select
                             className="h-10 rounded-lg border border-border bg-background-secondary px-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                             value={database.uuid}
+                            onChange={(e) => handleDatabaseChange(e.target.value)}
                         >
                             {databases.map((db) => (
                                 <option key={db.uuid} value={db.uuid}>
-                                    {db.name}
+                                    {db.name} ({db.database_type})
                                 </option>
                             ))}
                         </select>
@@ -281,14 +352,15 @@ export default function DatabaseQuery({ database, databases = [], queryHistory =
                             </button>
                             {showHistory && (
                                 <div className="space-y-2">
-                                    {queryHistory.length === 0 ? (
+                                    {localHistory.length === 0 ? (
                                         <p className="py-4 text-center text-xs text-foreground-muted">No query history yet</p>
                                     ) : (
-                                        queryHistory.map((item) => (
+                                        localHistory.map((item) => (
                                             <button
                                                 key={item.id}
                                                 onClick={() => setCurrentQuery(item.query)}
                                                 className="w-full rounded-lg border border-border/50 bg-background-secondary/50 p-2 text-left transition-colors hover:bg-background-secondary"
+                                                title={item.status === 'error' ? item.error : undefined}
                                             >
                                                 <div className="mb-1 flex items-center justify-between">
                                                     <span

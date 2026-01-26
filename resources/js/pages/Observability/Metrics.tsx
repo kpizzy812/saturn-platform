@@ -1,6 +1,6 @@
 import { AppLayout } from '@/components/layout';
-import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { useState, useCallback, useRef } from 'react';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useToast } from '@/components/ui';
 import { LineChart, BarChart } from '@/components/ui/Chart';
 import {
     Download,
@@ -10,6 +10,7 @@ import {
     Network,
     MemoryStick,
     ChevronDown,
+    Loader2,
 } from 'lucide-react';
 
 interface MetricData {
@@ -148,20 +149,112 @@ function MetricChartCard({ chart }: { chart: MetricChart }) {
 }
 
 export default function ObservabilityMetrics() {
+    const { addToast } = useToast();
     const [selectedService, setSelectedService] = useState('all');
     const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
     const [selectedAggregation, setSelectedAggregation] = useState('avg');
     const [customQuery, setCustomQuery] = useState('');
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [metricsData, setMetricsData] = useState(metricCharts);
+    const [requestMetrics, setRequestMetrics] = useState({
+        requestsPerSec: generateMetricData(7, 1000, 3000),
+        errorRate: generateMetricData(7, 5, 25),
+    });
+    const addToastRef = useRef(addToast);
+    addToastRef.current = addToast;
 
-    const handleExport = () => {
-        // Mock export functionality
-        console.log('Exporting metrics data...');
-    };
+    const handleExport = useCallback(() => {
+        setIsExporting(true);
 
-    const handleRefresh = () => {
-        // Mock refresh functionality
-        console.log('Refreshing metrics...');
-    };
+        try {
+            // Prepare metrics data for export
+            const exportData = {
+                exportedAt: new Date().toISOString(),
+                timeRange: selectedTimeRange,
+                service: selectedService,
+                aggregation: selectedAggregation,
+                metrics: metricsData.map(chart => ({
+                    title: chart.title,
+                    type: chart.type,
+                    unit: chart.unit,
+                    current: chart.current,
+                    avg: chart.avg,
+                    max: chart.max,
+                    data: chart.data,
+                })),
+                requestMetrics: {
+                    requestsPerSec: requestMetrics.requestsPerSec,
+                    errorRate: requestMetrics.errorRate,
+                },
+            };
+
+            // Generate CSV format
+            const csvLines: string[] = [
+                '# Saturn Metrics Export',
+                `# Exported: ${exportData.exportedAt}`,
+                `# Time Range: ${selectedTimeRange}`,
+                `# Service: ${selectedService}`,
+                '',
+                'Metric,Type,Unit,Current,Average,Max',
+            ];
+
+            metricsData.forEach(chart => {
+                csvLines.push(`${chart.title},${chart.type},${chart.unit},${chart.current},${chart.avg},${chart.max}`);
+            });
+
+            csvLines.push('');
+            csvLines.push('# Time Series Data');
+            csvLines.push('Metric,Time,Value');
+
+            metricsData.forEach(chart => {
+                chart.data.forEach(point => {
+                    csvLines.push(`${chart.title},${point.label},${point.value}`);
+                });
+            });
+
+            const csv = csvLines.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `saturn-metrics-${selectedTimeRange}-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            addToastRef.current({ type: 'success', message: 'Metrics exported: Metrics data has been exported to CSV' });
+        } catch (error) {
+            addToastRef.current({ type: 'error', message: `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}` });
+        } finally {
+            setIsExporting(false);
+        }
+    }, [metricsData, requestMetrics, selectedTimeRange, selectedService, selectedAggregation]);
+
+    const handleRefresh = useCallback(() => {
+        setIsRefreshing(true);
+
+        // Regenerate metrics data with new random values
+        setTimeout(() => {
+            setMetricsData(prev => prev.map(chart => ({
+                ...chart,
+                data: generateMetricData(7,
+                    chart.type === 'cpu' || chart.type === 'disk' ? 20 : chart.type === 'memory' ? 2 : 10,
+                    chart.type === 'cpu' ? 85 : chart.type === 'memory' ? 8 : chart.type === 'disk' ? 75 : 150
+                ),
+                current: `${Math.floor(Math.random() * 50 + 30)}${chart.unit === '%' ? '%' : chart.unit === 'GB' ? ' GB' : ' MB/s'}`,
+            })));
+
+            setRequestMetrics({
+                requestsPerSec: generateMetricData(7, 1000, 3000),
+                errorRate: generateMetricData(7, 5, 25),
+            });
+
+            setIsRefreshing(false);
+            addToastRef.current({ type: 'success', message: 'Metrics refreshed: All metrics have been updated' });
+        }, 500);
+    }, []);
 
     return (
         <AppLayout
@@ -176,13 +269,21 @@ export default function ObservabilityMetrics() {
                         <p className="text-foreground-muted">Monitor system performance and resource utilization</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="secondary" size="sm" onClick={handleRefresh}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Refresh
+                        <Button variant="secondary" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
+                            {isRefreshing ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                            )}
+                            {isRefreshing ? 'Refreshing...' : 'Refresh'}
                         </Button>
-                        <Button variant="secondary" size="sm" onClick={handleExport}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Export Data
+                        <Button variant="secondary" size="sm" onClick={handleExport} disabled={isExporting}>
+                            {isExporting ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="mr-2 h-4 w-4" />
+                            )}
+                            {isExporting ? 'Exporting...' : 'Export Data'}
                         </Button>
                     </div>
                 </div>
@@ -266,7 +367,7 @@ export default function ObservabilityMetrics() {
 
                 {/* Metric Charts */}
                 <div className="grid gap-6 md:grid-cols-2">
-                    {metricCharts.map((chart) => (
+                    {metricsData.map((chart) => (
                         <MetricChartCard key={chart.id} chart={chart} />
                     ))}
                 </div>
@@ -283,10 +384,12 @@ export default function ObservabilityMetrics() {
                                     <span className="text-sm font-medium text-foreground">
                                         Requests per Second
                                     </span>
-                                    <span className="text-sm text-foreground-muted">~2.5k req/s</span>
+                                    <span className="text-sm text-foreground-muted">
+                                        ~{Math.round(requestMetrics.requestsPerSec.reduce((a, b) => a + b.value, 0) / requestMetrics.requestsPerSec.length)} req/s
+                                    </span>
                                 </div>
                                 <BarChart
-                                    data={generateMetricData(7, 1000, 3000)}
+                                    data={requestMetrics.requestsPerSec}
                                     height={150}
                                     color="rgb(52, 211, 153)"
                                 />
@@ -296,10 +399,12 @@ export default function ObservabilityMetrics() {
                                     <span className="text-sm font-medium text-foreground">
                                         Error Rate
                                     </span>
-                                    <span className="text-sm text-foreground-muted">0.23%</span>
+                                    <span className="text-sm text-foreground-muted">
+                                        {(requestMetrics.errorRate.reduce((a, b) => a + b.value, 0) / requestMetrics.errorRate.length / 100).toFixed(2)}%
+                                    </span>
                                 </div>
                                 <BarChart
-                                    data={generateMetricData(7, 5, 25)}
+                                    data={requestMetrics.errorRate}
                                     height={150}
                                     color="rgb(248, 113, 113)"
                                 />

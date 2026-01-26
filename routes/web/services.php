@@ -214,12 +214,64 @@ Route::get('/services/{uuid}/scaling', function (string $uuid) {
 Route::get('/services/{uuid}/rollbacks', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with(['applications', 'databases'])
         ->firstOrFail();
+
+    // Get container info for deployments history
+    $server = $service->server;
+    $containers = [];
+
+    if ($server && $server->isFunctional()) {
+        try {
+            // Get docker container info for this service
+            $containersJson = instant_remote_process(
+                ["docker ps -a --filter 'label=coolify.serviceId={$service->id}' --format '{{json .}}'"],
+                $server,
+                false
+            );
+
+            if ($containersJson) {
+                $lines = array_filter(explode("\n", trim($containersJson)));
+                foreach ($lines as $line) {
+                    $container = json_decode($line, true);
+                    if ($container) {
+                        $containers[] = [
+                            'id' => $container['ID'] ?? substr($container['Names'] ?? '', 0, 12),
+                            'name' => $container['Names'] ?? 'Unknown',
+                            'image' => $container['Image'] ?? 'Unknown',
+                            'status' => $container['Status'] ?? 'Unknown',
+                            'state' => $container['State'] ?? 'Unknown',
+                            'created' => $container['CreatedAt'] ?? now()->toISOString(),
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently fail - containers info is optional
+        }
+    }
 
     return Inertia::render('Services/Rollbacks', [
         'service' => $service,
+        'containers' => $containers,
     ]);
 })->name('services.rollbacks');
+
+// API endpoint for service redeploy (restart with pull latest)
+Route::post('/api/services/{uuid}/redeploy', function (string $uuid, Request $request) {
+    $service = \App\Models\Service::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $pullLatest = $request->boolean('pull_latest', true);
+
+    RestartService::dispatch($service, $pullLatest);
+
+    return response()->json([
+        'success' => true,
+        'message' => $pullLatest ? 'Service redeploy with latest images initiated' : 'Service restart initiated',
+    ]);
+})->name('services.redeploy.api');
 
 Route::get('/services/{uuid}/settings', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
