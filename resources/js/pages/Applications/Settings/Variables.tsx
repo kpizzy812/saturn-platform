@@ -2,8 +2,9 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input } from '@/components/ui';
-import { Key, Plus, Trash2, Eye, EyeOff, Download, Upload, Save } from 'lucide-react';
+import { Key, Plus, Trash2, Eye, EyeOff, Download, Upload, Save, FileSearch } from 'lucide-react';
 import type { Application } from '@/types';
+import axios from 'axios';
 
 interface Props {
     application: Application;
@@ -21,6 +22,8 @@ interface EnvironmentVariable {
     is_literal?: boolean;
     is_runtime?: boolean;
     is_buildtime?: boolean;
+    is_required?: boolean;
+    source_template?: string | null;
     created_at?: string;
 }
 
@@ -28,6 +31,8 @@ export default function ApplicationVariables({ application, variables: propVaria
     const [variables, setVariables] = React.useState<EnvironmentVariable[]>(propVariables || []);
     const [revealedVars, setRevealedVars] = React.useState<Set<string | number>>(new Set());
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isScanning, setIsScanning] = React.useState(false);
+    const [scanResult, setScanResult] = React.useState<string | null>(null);
 
     const handleAddVariable = () => {
         const newVar: EnvironmentVariable = {
@@ -141,6 +146,39 @@ export default function ApplicationVariables({ application, variables: propVaria
         input.click();
     };
 
+    const handleScanEnvExample = async () => {
+        setIsScanning(true);
+        setScanResult(null);
+        try {
+            const response = await axios.post(`/web-api/applications/${application.uuid}/scan-env-example`);
+            const data = response.data;
+            const created = data.created?.length || 0;
+            const skipped = data.skipped?.length || 0;
+            const required = data.required?.length || 0;
+            const framework = data.framework;
+
+            if (created === 0 && skipped === 0) {
+                setScanResult('No .env.example file found in the repository.');
+            } else {
+                const parts = [];
+                if (created > 0) parts.push(`${created} new variable${created > 1 ? 's' : ''} imported`);
+                if (skipped > 0) parts.push(`${skipped} skipped (already defined)`);
+                if (required > 0) parts.push(`${required} require${required > 1 ? '' : 's'} a value`);
+                if (framework) parts.push(`framework: ${framework}`);
+                setScanResult(parts.join(', '));
+
+                // Reload the page to show new variables
+                if (created > 0) {
+                    router.reload({ only: ['variables'] });
+                }
+            }
+        } catch {
+            setScanResult('Failed to scan repository. Check server connection.');
+        } finally {
+            setIsScanning(false);
+        }
+    };
+
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
         ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
@@ -164,6 +202,15 @@ export default function ApplicationVariables({ application, variables: propVaria
                         </p>
                     </div>
                     <div className="flex gap-2">
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={handleScanEnvExample}
+                            disabled={isScanning}
+                        >
+                            <FileSearch className="mr-2 h-4 w-4" />
+                            {isScanning ? 'Scanning...' : 'Scan .env.example'}
+                        </Button>
                         <Button
                             size="sm"
                             variant="secondary"
@@ -191,6 +238,16 @@ export default function ApplicationVariables({ application, variables: propVaria
                     </div>
                 </div>
             </div>
+
+            {/* Scan Result */}
+            {scanResult && (
+                <div className="mb-4 rounded-lg border border-info/50 bg-info/5 p-3 text-sm text-foreground-muted">
+                    <div className="flex items-center gap-2">
+                        <FileSearch className="h-4 w-4 text-info" />
+                        {scanResult}
+                    </div>
+                </div>
+            )}
 
             {/* Variables List */}
             <Card>
@@ -223,6 +280,18 @@ export default function ApplicationVariables({ application, variables: propVaria
                                         placeholder="VARIABLE_NAME"
                                         className="font-mono text-sm"
                                     />
+                                    <div className="mt-1 flex gap-1">
+                                        {variable.source_template && (
+                                            <span className="inline-flex items-center rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-medium text-info">
+                                                .env.example
+                                            </span>
+                                        )}
+                                        {variable.is_required && !variable.value && (
+                                            <span className="inline-flex items-center rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+                                                required
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="col-span-5">
                                     <div className="relative">

@@ -39,6 +39,7 @@ interface ResourceLink {
     inject_as: string | null;
     env_key: string;
     auto_inject: boolean;
+    use_external_url?: boolean;
 }
 
 interface ProjectCanvasProps {
@@ -222,31 +223,41 @@ function ProjectCanvasInner({
 
     // Convert resource links to edges
     const linkedEdges = useMemo(() => {
-        return resourceLinks.map((link) => ({
-            id: `link-${link.id}`,
-            source: `app-${link.source_id}`,
-            target: `db-${link.target_id}`,
-            type: 'smoothstep',
-            animated: link.auto_inject,
-            data: { linkId: link.id, link },
-            style: {
-                stroke: link.auto_inject ? '#22c55e' : '#4a4a5e',
-                strokeWidth: 2,
-                strokeDasharray: link.auto_inject ? undefined : '5,5',
-            },
-            markerEnd: {
-                type: MarkerType.ArrowClosed,
-                color: link.auto_inject ? '#22c55e' : '#4a4a5e',
-                width: 15,
-                height: 15,
-            },
-            label: link.env_key,
-            labelStyle: { fontSize: 10 },
-            labelBgStyle: { fillOpacity: 0.9 },
-            labelShowBg: true,
-            labelBgPadding: [4, 4] as [number, number],
-            labelBgBorderRadius: 4,
-        }));
+        return resourceLinks.map((link) => {
+            const isAppTarget = link.target_type === 'application';
+            const targetNodeId = isAppTarget ? `app-${link.target_id}` : `db-${link.target_id}`;
+
+            // Green for db auto-inject, purple for app-to-app, gray for inactive
+            const edgeColor = isAppTarget
+                ? '#7c3aed'
+                : link.auto_inject ? '#22c55e' : '#4a4a5e';
+
+            return {
+                id: `link-${link.id}`,
+                source: `app-${link.source_id}`,
+                target: targetNodeId,
+                type: 'smoothstep',
+                animated: link.auto_inject,
+                data: { linkId: link.id, link },
+                style: {
+                    stroke: edgeColor,
+                    strokeWidth: 2,
+                    strokeDasharray: link.auto_inject ? undefined : '5,5',
+                },
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    color: edgeColor,
+                    width: 15,
+                    height: 15,
+                },
+                label: link.env_key,
+                labelStyle: { fontSize: 10 },
+                labelBgStyle: { fillOpacity: 0.9 },
+                labelShowBg: true,
+                labelBgPadding: [4, 4] as [number, number],
+                labelBgBorderRadius: 4,
+            };
+        });
     }, [resourceLinks]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -266,23 +277,42 @@ function ProjectCanvasInner({
         async (params: Connection) => {
             if (!environmentUuid || !params.source || !params.target) return;
 
-            // Parse source (app) and target (db) IDs
+            // Parse source (must be app)
             const sourceMatch = params.source.match(/^app-(\d+)$/);
-            const targetMatch = params.target.match(/^db-(\d+)$/);
+            if (!sourceMatch) {
+                console.error('Invalid connection: source must be an application');
+                return;
+            }
+            const sourceId = parseInt(sourceMatch[1]);
 
-            if (!sourceMatch || !targetMatch) {
-                console.error('Invalid connection: must be from app to db');
+            // Parse target (app or db)
+            const dbTargetMatch = params.target.match(/^db-(\d+)$/);
+            const appTargetMatch = params.target.match(/^app-(\d+)$/);
+
+            if (!dbTargetMatch && !appTargetMatch) {
+                console.error('Invalid connection: target must be a database or application');
                 return;
             }
 
-            const sourceId = parseInt(sourceMatch[1]);
-            const targetId = parseInt(targetMatch[1]);
+            let targetType: string;
+            let targetId: number;
 
-            // Find the database to get its type
-            const database = databases.find((db) => db.id === targetId);
-            if (!database) {
-                console.error('Database not found');
-                return;
+            if (dbTargetMatch) {
+                targetId = parseInt(dbTargetMatch[1]);
+                const database = databases.find((db) => db.id === targetId);
+                if (!database) {
+                    console.error('Database not found');
+                    return;
+                }
+                targetType = getDatabaseTargetType(database.database_type);
+            } else {
+                targetId = parseInt(appTargetMatch![1]);
+                // Prevent self-linking
+                if (sourceId === targetId) {
+                    console.error('Cannot link an application to itself');
+                    return;
+                }
+                targetType = 'application';
             }
 
             setIsLoading(true);
@@ -290,7 +320,7 @@ function ProjectCanvasInner({
             try {
                 const response = await axios.post(`/api/v1/environments/${environmentUuid}/links`, {
                     source_id: sourceId,
-                    target_type: getDatabaseTargetType(database.database_type),
+                    target_type: targetType,
                     target_id: targetId,
                     auto_inject: true,
                 });
@@ -303,7 +333,6 @@ function ProjectCanvasInner({
                 // Notify parent
                 onLinkCreated?.(newLink);
 
-                // Show success notification (if toast is available)
                 console.log(`Connected! ${newLink.env_key} will be injected on next deploy.`);
             } catch (error: any) {
                 console.error('Failed to create link:', error);
@@ -500,11 +529,15 @@ function ProjectCanvasInner({
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                         <div className="h-0.5 w-4 bg-success"></div>
-                        <span className="text-foreground-muted">Auto-inject active</span>
+                        <span className="text-foreground-muted">DB connection</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <div className="h-0.5 w-4 bg-[#7c3aed]"></div>
+                        <span className="text-foreground-muted">App connection</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <div className="h-0.5 w-4 border-t-2 border-dashed border-foreground-subtle"></div>
-                        <span className="text-foreground-muted">No connection</span>
+                        <span className="text-foreground-muted">Inactive</span>
                     </div>
                 </div>
             </div>

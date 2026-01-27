@@ -1469,6 +1469,25 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         return back()->with('success', 'Environment variables saved successfully.');
     })->name('applications.envs.bulk');
 
+    // Scan .env.example from application repository
+    Route::post('/web-api/applications/{uuid}/scan-env-example', function (string $uuid) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        try {
+            $result = (new \App\Actions\Application\ScanEnvExample)->handle($application);
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to scan: '.$e->getMessage()], 500);
+        }
+    })->name('web-api.applications.scan-env-example');
+
     // Activity routes
     Route::get('/activity', function () {
         $activities = \App\Http\Controllers\Inertia\ActivityHelper::getTeamActivities(50);

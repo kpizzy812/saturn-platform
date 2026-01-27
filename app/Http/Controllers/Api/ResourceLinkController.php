@@ -20,6 +20,7 @@ class ResourceLinkController extends Controller
         'dragonfly' => \App\Models\StandaloneDragonfly::class,
         'mongodb' => \App\Models\StandaloneMongodb::class,
         'clickhouse' => \App\Models\StandaloneClickhouse::class,
+        'application' => \App\Models\Application::class,
     ];
 
     #[OA\Get(
@@ -63,7 +64,7 @@ class ResourceLinkController extends Controller
 
     #[OA\Post(
         summary: 'Create Resource Link',
-        description: 'Create a new resource link between an application and a database.',
+        description: 'Create a new resource link between an application and a database or another application.',
         path: '/environments/{environment_uuid}/links',
         operationId: 'create-resource-link',
         security: [['bearerAuth' => []]],
@@ -76,11 +77,12 @@ class ResourceLinkController extends Controller
             content: new OA\JsonContent(
                 required: ['source_id', 'target_type', 'target_id'],
                 properties: [
-                    new OA\Property(property: 'source_id', type: 'integer', description: 'Application ID'),
-                    new OA\Property(property: 'target_type', type: 'string', description: 'Database type (postgresql, mysql, redis, etc.)'),
-                    new OA\Property(property: 'target_id', type: 'integer', description: 'Database ID'),
+                    new OA\Property(property: 'source_id', type: 'integer', description: 'Source Application ID'),
+                    new OA\Property(property: 'target_type', type: 'string', description: 'Target type (postgresql, mysql, redis, application, etc.)'),
+                    new OA\Property(property: 'target_id', type: 'integer', description: 'Target resource ID'),
                     new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
                     new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
+                    new OA\Property(property: 'use_external_url', type: 'boolean', description: 'Use external FQDN instead of internal Docker URL (app-to-app only)'),
                 ]
             )
         ),
@@ -88,7 +90,7 @@ class ResourceLinkController extends Controller
             new OA\Response(response: 201, description: 'Resource link created'),
             new OA\Response(response: 400, description: 'Validation error'),
             new OA\Response(response: 401, ref: '#/components/responses/401'),
-            new OA\Response(response: 404, description: 'Environment, application, or database not found.'),
+            new OA\Response(response: 404, description: 'Environment, application, or target not found.'),
         ]
     )]
     public function store(Request $request, string $environment_uuid)
@@ -112,9 +114,10 @@ class ResourceLinkController extends Controller
             'target_id' => 'required|integer',
             'inject_as' => 'nullable|string|max:255',
             'auto_inject' => 'boolean',
+            'use_external_url' => 'boolean',
         ]);
 
-        // Verify application exists in this environment
+        // Verify source application exists in this environment
         $application = Application::where('id', $validated['source_id'])
             ->where('environment_id', $environment->id)
             ->first();
@@ -123,21 +126,29 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => 'Application not found in this environment.'], 404);
         }
 
-        // Verify database exists in this environment
         $targetClass = $this->allowedTargetTypes[$validated['target_type']];
-        $database = $targetClass::where('id', $validated['target_id'])
+
+        // Prevent self-linking for application targets
+        if ($targetClass === Application::class && $validated['source_id'] === $validated['target_id']) {
+            return response()->json(['message' => 'Cannot link an application to itself.'], 400);
+        }
+
+        // Verify target exists in this environment
+        $target = $targetClass::where('id', $validated['target_id'])
             ->where('environment_id', $environment->id)
             ->first();
 
-        if (! $database) {
-            return response()->json(['message' => 'Database not found in this environment.'], 404);
+        if (! $target) {
+            $targetLabel = $targetClass === Application::class ? 'Application' : 'Database';
+
+            return response()->json(['message' => "{$targetLabel} not found in this environment."], 404);
         }
 
         // Check if link already exists
         $existingLink = ResourceLink::where('source_type', Application::class)
             ->where('source_id', $application->id)
             ->where('target_type', $targetClass)
-            ->where('target_id', $database->id)
+            ->where('target_id', $target->id)
             ->first();
 
         if ($existingLink) {
@@ -150,9 +161,10 @@ class ResourceLinkController extends Controller
             'source_type' => Application::class,
             'source_id' => $application->id,
             'target_type' => $targetClass,
-            'target_id' => $database->id,
+            'target_id' => $target->id,
             'inject_as' => $validated['inject_as'] ?? null,
             'auto_inject' => $validated['auto_inject'] ?? true,
+            'use_external_url' => $validated['use_external_url'] ?? false,
         ]);
 
         // Immediately inject if auto_inject is enabled
@@ -207,7 +219,10 @@ class ResourceLinkController extends Controller
         // Remove injected env variable if requested (default: true)
         $removeEnvVar = $request->boolean('remove_env_var', true);
         if ($removeEnvVar && $link->source instanceof Application) {
-            $envKey = $link->getEnvKey();
+            // Determine the correct env key based on target type
+            $envKey = $link->target_type === Application::class
+                ? $link->getSmartAppEnvKey()
+                : $link->getEnvKey();
             $link->source->environment_variables()
                 ->where('key', $envKey)
                 ->delete();
@@ -234,6 +249,7 @@ class ResourceLinkController extends Controller
                 properties: [
                     new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
                     new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
+                    new OA\Property(property: 'use_external_url', type: 'boolean', description: 'Use external FQDN instead of internal Docker URL'),
                 ]
             )
         ),
@@ -269,12 +285,20 @@ class ResourceLinkController extends Controller
         $validated = $request->validate([
             'inject_as' => 'nullable|string|max:255',
             'auto_inject' => 'boolean',
+            'use_external_url' => 'boolean',
         ]);
 
-        // If inject_as is changing, remove old env var and add new one
-        $oldEnvKey = $link->getEnvKey();
+        // Determine old env key before update
+        $oldEnvKey = $link->target_type === Application::class
+            ? $link->getSmartAppEnvKey()
+            : $link->getEnvKey();
+
         $link->update($validated);
-        $newEnvKey = $link->getEnvKey();
+
+        // Determine new env key after update
+        $newEnvKey = $link->target_type === Application::class
+            ? $link->getSmartAppEnvKey()
+            : $link->getEnvKey();
 
         if ($oldEnvKey !== $newEnvKey && $link->source instanceof Application) {
             // Remove old env var
@@ -305,8 +329,14 @@ class ResourceLinkController extends Controller
             \App\Models\StandaloneDragonfly::class => 'dragonfly',
             \App\Models\StandaloneMongodb::class => 'mongodb',
             \App\Models\StandaloneClickhouse::class => 'clickhouse',
+            \App\Models\Application::class => 'application',
             default => 'unknown',
         };
+
+        // Use smart env key for application targets
+        $envKey = $link->target_type === Application::class
+            ? $link->getSmartAppEnvKey()
+            : $link->getEnvKey();
 
         return [
             'id' => $link->id,
@@ -318,8 +348,9 @@ class ResourceLinkController extends Controller
             'target_id' => $link->target_id,
             'target_name' => $link->target?->name,
             'inject_as' => $link->inject_as,
-            'env_key' => $link->getEnvKey(),
+            'env_key' => $envKey,
             'auto_inject' => $link->auto_inject,
+            'use_external_url' => $link->use_external_url,
             'created_at' => $link->created_at?->toIso8601String(),
             'updated_at' => $link->updated_at?->toIso8601String(),
         ];

@@ -143,6 +143,9 @@ trait HandlesGitOperations
                 ['commit_message' => $commit_message->value()]
             );
         }
+
+        // Detect and import environment variables from .env.example
+        $this->detectAndImportEnvExample();
     }
 
     /**

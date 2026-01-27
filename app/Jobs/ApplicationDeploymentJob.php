@@ -24,6 +24,7 @@ use App\Traits\Deployment\HandlesDeploymentConfiguration;
 use App\Traits\Deployment\HandlesDeploymentStatus;
 use App\Traits\Deployment\HandlesDockerComposeBuildpack;
 use App\Traits\Deployment\HandlesDockerfileModification;
+use App\Traits\Deployment\HandlesEnvExampleDetection;
 use App\Traits\Deployment\HandlesGitOperations;
 use App\Traits\Deployment\HandlesHealthCheck;
 use App\Traits\Deployment\HandlesImageBuilding;
@@ -49,7 +50,7 @@ use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
-    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
 
     public const BUILD_TIME_ENV_PATH = '/artifacts/build-time.env';
 

@@ -24,6 +24,7 @@ use OpenApi\Attributes as OA;
         'key' => ['type' => 'string'],
         'value' => ['type' => 'string'],
         'real_value' => ['type' => 'string'],
+        'source_template' => ['type' => 'string', 'nullable' => true, 'description' => 'Source template file (env_example, env_sample, env_template)'],
         'version' => ['type' => 'string'],
         'created_at' => ['type' => 'string'],
         'updated_at' => ['type' => 'string'],
