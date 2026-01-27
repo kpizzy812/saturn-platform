@@ -2,7 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStatusLabel, getStatusDotClass } from '@/lib/statusUtils';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
-import { Button, useConfirm } from '@/components/ui';
+import { Button, Input, useConfirm } from '@/components/ui';
+import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
 import type { Project, Environment } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
@@ -36,13 +37,16 @@ interface Props {
 }
 
 export default function ProjectShow({ project }: Props) {
-    const [selectedEnv] = useState<Environment | null>(project?.environments?.[0] || null);
+    const [selectedEnv, setSelectedEnv] = useState<Environment | null>(project?.environments?.[0] || null);
     const [selectedService, setSelectedService] = useState<SelectedService | null>(null);
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'extensions' | 'settings'>('connect');
-    const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs' | 'settings'>('architecture');
+    const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs'>('architecture');
     const [hasStagedChanges, setHasStagedChanges] = useState(false);
     const [showLocalSetup, setShowLocalSetup] = useState(false);
+    const [showNewEnvModal, setShowNewEnvModal] = useState(false);
+    const [newEnvName, setNewEnvName] = useState('');
+    const [creatingEnv, setCreatingEnv] = useState(false);
 
     // Hooks - must be called before early return
     const { addToast } = useToast();
@@ -82,6 +86,41 @@ export default function ProjectShow({ project }: Props) {
     });
     const [canUndo, setCanUndo] = useState(false);
     const [canRedo, setCanRedo] = useState(false);
+
+    // Switch environment handler
+    const handleSwitchEnv = (env: Environment) => {
+        setSelectedEnv(env);
+        setSelectedService(null);
+    };
+
+    // Create new environment handler
+    const handleCreateEnv = async () => {
+        if (!newEnvName.trim()) return;
+        setCreatingEnv(true);
+        try {
+            const res = await fetch(`/projects/${project.uuid}/environments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ name: newEnvName.trim() }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                addToast('error', 'Error', err.message || 'Failed to create environment');
+                return;
+            }
+            addToast('success', 'Created', `Environment "${newEnvName.trim()}" created`);
+            setNewEnvName('');
+            setShowNewEnvModal(false);
+            router.reload();
+        } catch {
+            addToast('error', 'Error', 'Failed to create environment');
+        } finally {
+            setCreatingEnv(false);
+        }
+    };
 
     // Add Service handler - navigate to service creation page
     const handleAddService = () => {
@@ -638,10 +677,21 @@ export default function ProjectShow({ project }: Props) {
                             </DropdownTrigger>
                             <DropdownContent align="right">
                                 {project.environments?.map((env) => (
-                                    <DropdownItem key={env.id}>{env.name}</DropdownItem>
+                                    <DropdownItem
+                                        key={env.id}
+                                        onClick={() => handleSwitchEnv(env)}
+                                    >
+                                        {env.name}
+                                        {env.id === selectedEnv?.id && (
+                                            <span className="ml-2 text-primary">✓</span>
+                                        )}
+                                    </DropdownItem>
                                 ))}
                                 <DropdownDivider />
-                                <DropdownItem>New Environment</DropdownItem>
+                                <DropdownItem onClick={() => setShowNewEnvModal(true)}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    New Environment
+                                </DropdownItem>
                             </DropdownContent>
                         </Dropdown>
                         <Link href={`/projects/${project.uuid}/settings`}>
@@ -684,16 +734,12 @@ export default function ProjectShow({ project }: Props) {
                     >
                         Logs
                     </button>
-                    <button
-                        onClick={() => setActiveView('settings')}
-                        className={`py-3 text-sm font-medium transition-colors ${
-                            activeView === 'settings'
-                                ? 'border-b-2 border-primary text-foreground'
-                                : 'text-foreground-muted hover:text-foreground'
-                        }`}
+                    <Link
+                        href={`/projects/${project.uuid}/settings`}
+                        className="py-3 text-sm font-medium text-foreground-muted transition-colors hover:text-foreground"
                     >
                         Settings
-                    </button>
+                    </Link>
                 </div>
 
                 {/* Staged Changes Banner */}
@@ -1095,49 +1141,6 @@ export default function ProjectShow({ project }: Props) {
                         </div>
                     )}
 
-                    {activeView === 'settings' && (
-                        <div className="flex-1 overflow-auto p-6">
-                            <div className="mx-auto max-w-3xl space-y-6">
-                                <div>
-                                    <h2 className="text-lg font-semibold text-foreground">Project Settings</h2>
-                                    <p className="mt-1 text-sm text-foreground-muted">Manage project configuration and environment settings.</p>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="rounded-lg border border-border bg-background-secondary p-4">
-                                        <label className="block text-sm font-medium text-foreground">Project Name</label>
-                                        <p className="mt-1 text-sm text-foreground-muted">{project.name}</p>
-                                    </div>
-                                    {project.description && (
-                                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                                            <label className="block text-sm font-medium text-foreground">Description</label>
-                                            <p className="mt-1 text-sm text-foreground-muted">{project.description}</p>
-                                        </div>
-                                    )}
-                                    <div className="rounded-lg border border-border bg-background-secondary p-4">
-                                        <label className="block text-sm font-medium text-foreground">Environments</label>
-                                        <div className="mt-2 space-y-2">
-                                            {project.environments?.map((env) => (
-                                                <div key={env.id} className="flex items-center justify-between rounded-md bg-background px-3 py-2 text-sm">
-                                                    <span className="text-foreground">{env.name}</span>
-                                                    <span className="text-xs text-foreground-muted">
-                                                        {(env.applications?.length || 0)} apps, {(env.databases?.length || 0)} databases
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <Link
-                                        href={`/projects/${project.uuid}/settings`}
-                                        className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
-                                    >
-                                        <Settings className="h-4 w-4" />
-                                        Full Settings Page
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Right Panel - Service Details */}
                     {selectedService && (
                         <div className="flex w-[560px] flex-col border-l border-border bg-background">
@@ -1372,6 +1375,47 @@ export default function ProjectShow({ project }: Props) {
                 serviceUuid={logsViewerServiceUuid}
                 serviceType={logsViewerServiceType}
             />
+
+            {/* New Environment Modal */}
+            <Modal
+                isOpen={showNewEnvModal}
+                onClose={() => { setShowNewEnvModal(false); setNewEnvName(''); }}
+                title="New Environment"
+                description="Create a new environment for this project."
+                size="sm"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="env-name" className="block text-sm font-medium text-foreground">
+                            Environment Name
+                        </label>
+                        <Input
+                            id="env-name"
+                            value={newEnvName}
+                            onChange={(e) => setNewEnvName(e.target.value)}
+                            placeholder="e.g. staging, development"
+                            className="mt-1"
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateEnv()}
+                            autoFocus
+                        />
+                    </div>
+                </div>
+                <ModalFooter>
+                    <Button
+                        variant="secondary"
+                        onClick={() => { setShowNewEnvModal(false); setNewEnvName(''); }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleCreateEnv}
+                        disabled={!newEnvName.trim() || creatingEnv}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {creatingEnv ? 'Creating...' : 'Create Environment'}
+                    </Button>
+                </ModalFooter>
+            </Modal>
         </>
     );
 }

@@ -47,7 +47,7 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'd
                     >
                         <DialogPanel
                             className={cn(
-                                'w-full rounded-lg border border-border bg-background-secondary p-6 shadow-xl',
+                                'w-full max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-background-secondary p-6 shadow-xl',
                                 sizeClasses[size]
                             )}
                         >
