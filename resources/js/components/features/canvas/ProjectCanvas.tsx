@@ -277,17 +277,32 @@ function ProjectCanvasInner({
         async (params: Connection) => {
             if (!environmentUuid || !params.source || !params.target) return;
 
-            // Parse source (must be app)
-            const sourceMatch = params.source.match(/^app-(\d+)$/);
-            if (!sourceMatch) {
-                console.error('Invalid connection: source must be an application');
+            // Normalize direction: ReactFlow may swap source/target depending on
+            // which handle the user drags from. We need to identify app and db nodes
+            // regardless of handle direction.
+            let sourceNode = params.source;
+            let targetNode = params.target;
+
+            const sourceIsApp = /^app-\d+$/.test(sourceNode);
+            const sourceIsDb = /^db-\d+$/.test(sourceNode);
+            const targetIsApp = /^app-\d+$/.test(targetNode);
+            const targetIsDb = /^db-\d+$/.test(targetNode);
+
+            // For app-to-db: always make app the source
+            if (sourceIsDb && targetIsApp) {
+                [sourceNode, targetNode] = [targetNode, sourceNode];
+            }
+
+            // Re-parse after normalization
+            const appSourceMatch = sourceNode.match(/^app-(\d+)$/);
+            if (!appSourceMatch) {
+                console.error('Invalid connection: one side must be an application');
                 return;
             }
-            const sourceId = parseInt(sourceMatch[1]);
+            const sourceId = parseInt(appSourceMatch[1]);
 
-            // Parse target (app or db)
-            const dbTargetMatch = params.target.match(/^db-(\d+)$/);
-            const appTargetMatch = params.target.match(/^app-(\d+)$/);
+            const dbTargetMatch = targetNode.match(/^db-(\d+)$/);
+            const appTargetMatch = targetNode.match(/^app-(\d+)$/);
 
             if (!dbTargetMatch && !appTargetMatch) {
                 console.error('Invalid connection: target must be a database or application');
@@ -325,15 +340,18 @@ function ProjectCanvasInner({
                     auto_inject: true,
                 });
 
-                const newLink: ResourceLink = response.data;
+                // Backend returns array for bidirectional app-to-app links, single object for db links
+                const data = response.data;
+                const newLinks: ResourceLink[] = Array.isArray(data) ? data : [data];
 
                 // Add to local state
-                setResourceLinks((prev) => [...prev, newLink]);
+                setResourceLinks((prev) => [...prev, ...newLinks]);
 
                 // Notify parent
-                onLinkCreated?.(newLink);
+                newLinks.forEach((link) => onLinkCreated?.(link));
 
-                console.log(`Connected! ${newLink.env_key} will be injected on next deploy.`);
+                const keys = newLinks.map((l) => l.env_key).join(', ');
+                console.log(`Connected! ${keys} will be injected on next deploy.`);
             } catch (error: any) {
                 console.error('Failed to create link:', error);
                 if (error.response?.data?.message) {

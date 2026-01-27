@@ -172,7 +172,7 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => 'Link already exists.', 'link' => $this->formatLink($existingLink)], 200);
         }
 
-        // Create the link
+        // Create the forward link
         $link = ResourceLink::create([
             'environment_id' => $environment->id,
             'source_type' => Application::class,
@@ -189,7 +189,45 @@ class ResourceLinkController extends Controller
             $application->autoInjectDatabaseUrl();
         }
 
-        return response()->json($this->formatLink($link->load(['source', 'target'])), 201);
+        // For app-to-app links, auto-create reverse link (bidirectional)
+        $reverseLink = null;
+        if ($targetClass === Application::class) {
+            $existingReverse = ResourceLink::where('source_type', Application::class)
+                ->where('source_id', $target->id)
+                ->where('target_type', Application::class)
+                ->where('target_id', $application->id)
+                ->first();
+
+            if (! $existingReverse) {
+                $reverseLink = ResourceLink::create([
+                    'environment_id' => $environment->id,
+                    'source_type' => Application::class,
+                    'source_id' => $target->id,
+                    'target_type' => Application::class,
+                    'target_id' => $application->id,
+                    'inject_as' => null,
+                    'auto_inject' => $validated['auto_inject'] ?? true,
+                    'use_external_url' => $useExternalUrl,
+                ]);
+
+                if ($reverseLink->auto_inject) {
+                    $target->autoInjectDatabaseUrl();
+                }
+            }
+        }
+
+        // Return array for app-to-app (both directions), single object for db links
+        $link->load(['source', 'target']);
+        if ($reverseLink) {
+            $reverseLink->load(['source', 'target']);
+
+            return response()->json([
+                $this->formatLink($link),
+                $this->formatLink($reverseLink),
+            ], 201);
+        }
+
+        return response()->json($this->formatLink($link), 201);
     }
 
     #[OA\Delete(
@@ -243,6 +281,26 @@ class ResourceLinkController extends Controller
             $link->source->environment_variables()
                 ->where('key', $envKey)
                 ->delete();
+        }
+
+        // For app-to-app links, also delete the reverse link (bidirectional)
+        if ($link->target_type === Application::class && $link->source_type === Application::class) {
+            $reverseLink = ResourceLink::where('source_type', Application::class)
+                ->where('source_id', $link->target_id)
+                ->where('target_type', Application::class)
+                ->where('target_id', $link->source_id)
+                ->where('environment_id', $environment->id)
+                ->first();
+
+            if ($reverseLink) {
+                if ($removeEnvVar && $reverseLink->source instanceof Application) {
+                    $reverseEnvKey = $reverseLink->getSmartAppEnvKey();
+                    $reverseLink->source->environment_variables()
+                        ->where('key', $reverseEnvKey)
+                        ->delete();
+                }
+                $reverseLink->delete();
+            }
         }
 
         $link->delete();
