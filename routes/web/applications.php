@@ -503,18 +503,25 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'memory_limit' => 'sometimes|nullable|string',
     ]);
 
-    // Map frontend field names to model field names
-    $mappings = [
+    // Map frontend field names to application model field names
+    $appMappings = [
         'cpu_limit' => 'limits_cpus',
         'memory_limit' => 'limits_memory',
-        'deploy_on_push' => 'is_auto_deploy_enabled',
     ];
 
-    foreach ($mappings as $frontendKey => $modelKey) {
+    foreach ($appMappings as $frontendKey => $modelKey) {
         if (isset($validated[$frontendKey])) {
             $validated[$modelKey] = $validated[$frontendKey];
             unset($validated[$frontendKey]);
         }
+    }
+
+    // Handle settings fields (stored in application_settings table)
+    if (isset($validated['deploy_on_push'])) {
+        $application->settings->update([
+            'is_auto_deploy_enabled' => $validated['deploy_on_push'],
+        ]);
+        unset($validated['deploy_on_push']);
     }
 
     $application->update($validated);

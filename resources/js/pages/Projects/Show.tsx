@@ -680,6 +680,8 @@ export default function ProjectShow({ project }: Props) {
 
                 {/* Main Content Area */}
                 <div className="flex flex-1 overflow-hidden">
+                    {activeView === 'architecture' && (
+                        <>
                     {/* Left Toolbar - Premium Style */}
                     <div className="flex w-14 flex-col items-center gap-1 border-r border-border bg-background-secondary py-3">
                         {/* Add Service Button */}
@@ -890,6 +892,191 @@ export default function ProjectShow({ project }: Props) {
                         {/* Activity Panel */}
                         <ActivityPanel />
                     </div>
+                        </>
+                    )}
+
+                    {activeView === 'observability' && (
+                        <div className="flex-1 overflow-auto p-6">
+                            <div className="mx-auto max-w-5xl space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-foreground">Observability</h2>
+                                    <p className="mt-1 text-sm text-foreground-muted">Monitor health, performance and resource usage across all services.</p>
+                                </div>
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    {(selectedEnv?.applications || []).map((app) => (
+                                        <div key={app.id} className="rounded-lg border border-border bg-background-secondary p-4">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium text-foreground">{app.name}</span>
+                                                <div className={`h-2 w-2 rounded-full ${app.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                            </div>
+                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{app.status || 'unknown'}</p>
+                                            <div className="mt-3 flex items-center gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setLogsViewerService(app.name);
+                                                        setLogsViewerServiceUuid(app.uuid);
+                                                        setLogsViewerServiceType('application');
+                                                        setLogsViewerOpen(true);
+                                                    }}
+                                                    className="text-xs text-primary hover:underline"
+                                                >
+                                                    View Logs
+                                                </button>
+                                                <span className="text-foreground-subtle">·</span>
+                                                <Link href={`/applications/${app.uuid}`} className="text-xs text-primary hover:underline">
+                                                    Details
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(selectedEnv?.databases || []).map((db) => (
+                                        <div key={db.id} className="rounded-lg border border-border bg-background-secondary p-4">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium text-foreground">{db.name}</span>
+                                                <div className={`h-2 w-2 rounded-full ${db.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                            </div>
+                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{db.status || 'unknown'}</p>
+                                            <div className="mt-3">
+                                                <button
+                                                    onClick={() => {
+                                                        setLogsViewerService(db.name);
+                                                        setLogsViewerServiceUuid(db.uuid);
+                                                        setLogsViewerServiceType('database');
+                                                        setLogsViewerOpen(true);
+                                                    }}
+                                                    className="text-xs text-primary hover:underline"
+                                                >
+                                                    View Logs
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {!(selectedEnv?.applications?.length || selectedEnv?.databases?.length) && (
+                                    <div className="flex flex-col items-center justify-center py-16 text-foreground-muted">
+                                        <Activity className="h-10 w-10 mb-3 opacity-50" />
+                                        <p className="text-sm">No services to monitor yet.</p>
+                                        <p className="mt-1 text-xs">Add applications or databases to get started.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeView === 'logs' && (
+                        <div className="flex-1 overflow-auto p-6">
+                            <div className="mx-auto max-w-5xl space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-foreground">Logs</h2>
+                                    <p className="mt-1 text-sm text-foreground-muted">View logs for all services in this environment.</p>
+                                </div>
+                                <div className="space-y-3">
+                                    {(selectedEnv?.applications || []).map((app) => (
+                                        <button
+                                            key={app.id}
+                                            onClick={() => {
+                                                setLogsViewerService(app.name);
+                                                setLogsViewerServiceUuid(app.uuid);
+                                                setLogsViewerServiceType('application');
+                                                setLogsViewerOpen(true);
+                                            }}
+                                            className="flex w-full items-center justify-between rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:border-primary/50 hover:bg-background-tertiary"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
+                                                    <Box className="h-4 w-4" />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="font-medium text-foreground">{app.name}</p>
+                                                    <p className="text-xs text-foreground-muted">Application</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`h-2 w-2 rounded-full ${app.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <FileText className="h-4 w-4 text-foreground-muted" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {(selectedEnv?.databases || []).map((db) => (
+                                        <button
+                                            key={db.id}
+                                            onClick={() => {
+                                                setLogsViewerService(db.name);
+                                                setLogsViewerServiceUuid(db.uuid);
+                                                setLogsViewerServiceType('database');
+                                                setLogsViewerOpen(true);
+                                            }}
+                                            className="flex w-full items-center justify-between rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:border-primary/50 hover:bg-background-tertiary"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${getDbBgColor(db.database_type)}`}>
+                                                    {getDbLogo(db.database_type)}
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="font-medium text-foreground">{db.name}</p>
+                                                    <p className="text-xs text-foreground-muted">Database</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`h-2 w-2 rounded-full ${db.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <FileText className="h-4 w-4 text-foreground-muted" />
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                {!(selectedEnv?.applications?.length || selectedEnv?.databases?.length) && (
+                                    <div className="flex flex-col items-center justify-center py-16 text-foreground-muted">
+                                        <FileText className="h-10 w-10 mb-3 opacity-50" />
+                                        <p className="text-sm">No services to view logs for.</p>
+                                        <p className="mt-1 text-xs">Add applications or databases to get started.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeView === 'settings' && (
+                        <div className="flex-1 overflow-auto p-6">
+                            <div className="mx-auto max-w-3xl space-y-6">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-foreground">Project Settings</h2>
+                                    <p className="mt-1 text-sm text-foreground-muted">Manage project configuration and environment settings.</p>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                        <label className="block text-sm font-medium text-foreground">Project Name</label>
+                                        <p className="mt-1 text-sm text-foreground-muted">{project.name}</p>
+                                    </div>
+                                    {project.description && (
+                                        <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                            <label className="block text-sm font-medium text-foreground">Description</label>
+                                            <p className="mt-1 text-sm text-foreground-muted">{project.description}</p>
+                                        </div>
+                                    )}
+                                    <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                        <label className="block text-sm font-medium text-foreground">Environments</label>
+                                        <div className="mt-2 space-y-2">
+                                            {project.environments?.map((env) => (
+                                                <div key={env.id} className="flex items-center justify-between rounded-md bg-background px-3 py-2 text-sm">
+                                                    <span className="text-foreground">{env.name}</span>
+                                                    <span className="text-xs text-foreground-muted">
+                                                        {(env.applications?.length || 0)} apps, {(env.databases?.length || 0)} databases
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href={`/projects/${project.uuid}/settings`}
+                                        className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                        Full Settings Page
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Right Panel - Service Details */}
                     {selectedService && (
