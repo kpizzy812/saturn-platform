@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function ProxyIndex({ server, proxy }: Props) {
-    const isRunning = proxy.status === 'running';
+    const isRunning = proxy.status?.startsWith('running') ?? false;
 
     const handleRestart = () => {
         router.post(`/servers/${server.uuid}/proxy/restart`);

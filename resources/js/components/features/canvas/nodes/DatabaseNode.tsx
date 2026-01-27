@@ -127,7 +127,8 @@ const getDbBgColor = (dbType?: string) => {
 };
 
 export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData>) => {
-    const isOnline = data.status === 'running';
+    const statusBase = (data.status || '').split(':')[0];
+    const isOnline = statusBase === 'running';
     const bgColor = getDbBgColor(data.databaseType);
 
     return (
@@ -172,7 +173,7 @@ export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData
                             'text-sm',
                             isOnline ? 'text-success' : 'text-foreground-muted'
                         )}>
-                            {isOnline ? 'Online' : data.status}
+                            {isOnline ? 'Online' : statusBase || 'unknown'}
                         </span>
                     </div>
                 </div>

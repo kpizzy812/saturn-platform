@@ -27,8 +27,9 @@ const DockerLogo = () => (
 );
 
 export const ServiceNode = memo(({ data, selected }: NodeProps<ServiceNodeData>) => {
-    const isOnline = data.status === 'running';
-    const isDeploying = data.status === 'deploying' || data.status === 'restarting';
+    const statusBase = (data.status || '').split(':')[0];
+    const isOnline = statusBase === 'running';
+    const isDeploying = statusBase === 'deploying' || statusBase === 'restarting';
 
     return (
         <>
@@ -77,7 +78,7 @@ export const ServiceNode = memo(({ data, selected }: NodeProps<ServiceNodeData>)
                             isDeploying && 'text-primary',
                             !isOnline && !isDeploying && 'text-foreground-muted'
                         )}>
-                            {isOnline ? 'Online' : data.status}
+                            {isOnline ? 'Online' : statusBase || 'unknown'}
                         </span>
                     </div>
                 </div>

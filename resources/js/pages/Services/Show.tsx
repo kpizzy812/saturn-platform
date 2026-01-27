@@ -137,16 +137,16 @@ export default function ServiceShow({ service }: Props) {
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${
-                        status === 'running' ? 'bg-primary/10' : 'bg-danger/10'
+                        status?.startsWith('running') ? 'bg-primary/10' : 'bg-danger/10'
                     }`}>
-                        <Activity className={`h-7 w-7 ${status === 'running' ? 'text-primary' : 'text-danger'}`} />
+                        <Activity className={`h-7 w-7 ${status?.startsWith('running') ? 'text-primary' : 'text-danger'}`} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold text-foreground">{service.name}</h1>
-                            {status === 'running' ? (
+                            {status?.startsWith('running') ? (
                                 <Badge variant="success">Running</Badge>
-                            ) : status === 'deploying' ? (
+                            ) : status?.startsWith('deploying') ? (
                                 <Badge variant="warning">Deploying</Badge>
                             ) : (
                                 <Badge variant="danger">Stopped</Badge>

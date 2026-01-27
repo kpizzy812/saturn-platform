@@ -142,9 +142,9 @@ export default function AdminDatabasesIndex({ databases }: Props) {
         return matchesSearch && matchesType && matchesStatus;
     });
 
-    const runningCount = items.filter((d) => d.status === 'running').length;
-    const stoppedCount = items.filter((d) => d.status === 'stopped' || d.status === 'exited').length;
-    const errorCount = items.filter((d) => d.status === 'error').length;
+    const runningCount = items.filter((d) => d.status?.startsWith('running')).length;
+    const stoppedCount = items.filter((d) => d.status?.startsWith('stopped') || d.status?.startsWith('exited')).length;
+    const errorCount = items.filter((d) => d.status?.startsWith('error') || d.status?.startsWith('degraded')).length;
 
     const typeCount: Record<string, number> = {};
     for (const db of items) {

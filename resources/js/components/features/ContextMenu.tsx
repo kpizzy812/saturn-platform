@@ -99,7 +99,7 @@ export function ContextMenu({
     if (!position || !node) return null;
 
     const isApp = node.type === 'app';
-    const isRunning = node.status === 'running';
+    const isRunning = node.status?.startsWith('running') ?? false;
 
     // Build actions based on node type
     const appActions: ContextMenuAction[] = [

@@ -45,9 +45,13 @@ interface Props {
 export default function ApplicationShow({ application: initialApplication }: Props) {
     const [application, setApplication] = useState<ApplicationWithRelations>(initialApplication);
     const [showEnvVars, setShowEnvVars] = useState(false);
+    const [envVars, setEnvVars] = useState<Array<{ id: number; key: string; value: string; is_build_time: boolean }>>([]);
+    const [envVarsLoading, setEnvVarsLoading] = useState(false);
+    const [envVarsLoaded, setEnvVarsLoaded] = useState(false);
+    const [revealedVarIds, setRevealedVarIds] = useState<Set<number>>(new Set());
 
     // Fetch real-time container metrics
-    const isRunning = application.status === 'running';
+    const isRunning = application.status?.startsWith('running') ?? false;
     const { metrics, isLoading: metricsLoading, error: metricsError } = useApplicationMetrics({
         applicationUuid: application.uuid,
         autoRefresh: isRunning,
@@ -95,6 +99,38 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     useEffect(() => {
         setApplication(initialApplication);
     }, [initialApplication]);
+
+    const handleToggleEnvVars = async () => {
+        if (!showEnvVars && !envVarsLoaded) {
+            setEnvVarsLoading(true);
+            try {
+                const response = await fetch(`/applications/${application.uuid}/envs/json`, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setEnvVars(data);
+                    setEnvVarsLoaded(true);
+                }
+            } catch {
+                // Silently fail - user can retry
+            } finally {
+                setEnvVarsLoading(false);
+            }
+        }
+        setShowEnvVars(!showEnvVars);
+    };
+
+    const handleToggleRevealVar = (id: number) => {
+        setRevealedVarIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const maskValue = (value: string) => '•'.repeat(Math.min(value.length || 8, 24));
 
     const handleAction = (action: 'start' | 'stop' | 'restart' | 'deploy') => {
         router.post(`/applications/${application.uuid}/${action}`, {}, {
@@ -166,7 +202,7 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                     Force Rebuild
                                 </DropdownItem>
                                 <DropdownDivider />
-                                {application.status === 'running' ? (
+                                {application.status?.startsWith('running') ? (
                                     <DropdownItem onClick={() => handleAction('stop')}>
                                         <Square className="h-4 w-4" />
                                         Stop
@@ -346,10 +382,13 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                 <div className="flex items-center justify-between">
                                     <CardTitle>Environment Variables</CardTitle>
                                     <button
-                                        onClick={() => setShowEnvVars(!showEnvVars)}
-                                        className="text-sm text-primary hover:underline"
+                                        onClick={handleToggleEnvVars}
+                                        className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                        title={showEnvVars ? 'Hide variables' : 'Show variables'}
                                     >
-                                        {showEnvVars ? (
+                                        {envVarsLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : showEnvVars ? (
                                             <EyeOff className="h-4 w-4" />
                                         ) : (
                                             <Eye className="h-4 w-4" />
@@ -368,11 +407,42 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                         </Button>
                                     </Link>
                                 </div>
-                                {showEnvVars && (
-                                    <div className="mt-4 rounded-lg bg-background-secondary p-3">
-                                        <p className="text-xs text-foreground-muted">
-                                            Click "Manage" to view and edit environment variables
-                                        </p>
+                                {showEnvVars && envVarsLoaded && (
+                                    <div className="mt-4 space-y-1.5">
+                                        {envVars.length === 0 ? (
+                                            <p className="text-xs text-foreground-muted py-2">No variables configured</p>
+                                        ) : (
+                                            envVars.map((v) => (
+                                                <div
+                                                    key={v.id}
+                                                    className="flex items-center gap-2 rounded-md bg-background-secondary px-3 py-2 font-mono text-xs"
+                                                >
+                                                    <span className="font-semibold text-foreground shrink-0">{v.key}</span>
+                                                    <span className="text-foreground-muted">=</span>
+                                                    <span className="text-foreground-muted truncate min-w-0 flex-1">
+                                                        {revealedVarIds.has(v.id) ? v.value : maskValue(v.value)}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleToggleRevealVar(v.id)}
+                                                        className="shrink-0 rounded p-1 text-foreground-muted transition-colors hover:text-foreground"
+                                                        title={revealedVarIds.has(v.id) ? 'Hide value' : 'Show value'}
+                                                    >
+                                                        {revealedVarIds.has(v.id) ? (
+                                                            <EyeOff className="h-3.5 w-3.5" />
+                                                        ) : (
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => navigator.clipboard.writeText(v.value)}
+                                                        className="shrink-0 rounded p-1 text-foreground-muted transition-colors hover:text-foreground"
+                                                        title="Copy value"
+                                                    >
+                                                        <Copy className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 )}
                             </CardContent>

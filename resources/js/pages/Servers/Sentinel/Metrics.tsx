@@ -447,9 +447,9 @@ export default function SentinelMetrics({ server }: Props) {
                                                 <td className="py-3">
                                                     <Badge
                                                         variant={
-                                                            container.status === 'running'
+                                                            container.status?.startsWith('running')
                                                                 ? 'success'
-                                                                : container.status === 'stopped'
+                                                                : container.status?.startsWith('stopped')
                                                                 ? 'secondary'
                                                                 : 'warning'
                                                         }

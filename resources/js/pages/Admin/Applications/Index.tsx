@@ -117,9 +117,9 @@ export default function AdminApplicationsIndex({ applications: appsData }: Props
         return matchesSearch && matchesStatus;
     });
 
-    const runningCount = items.filter((a) => a.status === 'running').length;
-    const errorCount = items.filter((a) => a.status === 'error' || a.status === 'exited').length;
-    const deployingCount = items.filter((a) => a.status === 'deploying').length;
+    const runningCount = items.filter((a) => a.status?.startsWith('running')).length;
+    const errorCount = items.filter((a) => a.status?.startsWith('error') || a.status?.startsWith('exited') || a.status?.startsWith('degraded')).length;
+    const deployingCount = items.filter((a) => a.status?.startsWith('deploying')).length;
 
     return (
         <AdminLayout

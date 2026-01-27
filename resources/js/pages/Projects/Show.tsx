@@ -789,6 +789,7 @@ export default function ProjectShow({ project }: Props) {
                                 onNodeClick={handleNodeClick}
                                 onNodeContextMenu={handleNodeContextMenu}
                                 onViewportChange={handleViewportChange}
+                                showGrid={showGrid}
                             />
                         )}
 
@@ -907,7 +908,7 @@ export default function ProjectShow({ project }: Props) {
                                         <div key={app.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{app.name}</span>
-                                                <div className={`h-2 w-2 rounded-full ${app.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${app.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
                                             </div>
                                             <p className="mt-1 text-xs capitalize text-foreground-muted">{app.status || 'unknown'}</p>
                                             <div className="mt-3 flex items-center gap-2">
@@ -933,7 +934,7 @@ export default function ProjectShow({ project }: Props) {
                                         <div key={db.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{db.name}</span>
-                                                <div className={`h-2 w-2 rounded-full ${db.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${db.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
                                             </div>
                                             <p className="mt-1 text-xs capitalize text-foreground-muted">{db.status || 'unknown'}</p>
                                             <div className="mt-3">
@@ -992,7 +993,7 @@ export default function ProjectShow({ project }: Props) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${app.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${app.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
                                                 <FileText className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </button>
@@ -1018,7 +1019,7 @@ export default function ProjectShow({ project }: Props) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${db.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${db.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
                                                 <FileText className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </button>
@@ -1098,7 +1099,7 @@ export default function ProjectShow({ project }: Props) {
                                         <div>
                                             <span className="font-medium text-foreground">{selectedService.name}</span>
                                             <div className="flex items-center gap-1.5 text-xs text-foreground-muted">
-                                                <div className={`h-1.5 w-1.5 rounded-full ${selectedService.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-1.5 w-1.5 rounded-full ${selectedService.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
                                                 <span className="capitalize">{selectedService.status}</span>
                                             </div>
                                         </div>

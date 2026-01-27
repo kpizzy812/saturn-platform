@@ -111,9 +111,9 @@ export default function AdminServicesIndex({ services: servicesData }: Props) {
         return matchesSearch && matchesStatus;
     });
 
-    const runningCount = items.filter((s) => s.status === 'running').length;
-    const stoppedCount = items.filter((s) => s.status === 'stopped' || s.status === 'exited').length;
-    const errorCount = items.filter((s) => s.status === 'error').length;
+    const runningCount = items.filter((s) => s.status?.startsWith('running')).length;
+    const stoppedCount = items.filter((s) => s.status?.startsWith('stopped') || s.status?.startsWith('exited')).length;
+    const errorCount = items.filter((s) => s.status?.startsWith('error') || s.status?.startsWith('degraded')).length;
 
     return (
         <AdminLayout

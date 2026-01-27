@@ -56,6 +56,7 @@ interface ProjectCanvasProps {
     onFitView?: () => void;
     onViewportChange?: (zoom: number) => void;
     onLinkCreated?: (link: ResourceLink) => void;
+    showGrid?: boolean;
     onLinkDeleted?: (linkId: number) => void;
 }
 
@@ -135,6 +136,7 @@ function ProjectCanvasInner({
     onViewportChange,
     onLinkCreated,
     onLinkDeleted,
+    showGrid = true,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
     const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>(initialResourceLinks);
@@ -449,20 +451,24 @@ function ProjectCanvasInner({
                 }}
             >
                 {/* Dot grid background - similar to Figma/Miro style */}
-                <Background
-                    id="dots-small"
-                    variant={BackgroundVariant.Dots}
-                    gap={20}
-                    size={1}
-                    className="[&>pattern>circle]:fill-foreground-disabled dark:[&>pattern>circle]:fill-[#2d2d42]"
-                />
-                <Background
-                    id="dots-large"
-                    variant={BackgroundVariant.Dots}
-                    gap={100}
-                    size={2}
-                    className="[&>pattern>circle]:fill-foreground-subtle dark:[&>pattern>circle]:fill-[#3d3d52]"
-                />
+                {showGrid && (
+                    <>
+                        <Background
+                            id="dots-small"
+                            variant={BackgroundVariant.Dots}
+                            gap={20}
+                            size={1}
+                            className="[&>pattern>circle]:fill-foreground-disabled dark:[&>pattern>circle]:fill-[#2d2d42]"
+                        />
+                        <Background
+                            id="dots-large"
+                            variant={BackgroundVariant.Dots}
+                            gap={100}
+                            size={2}
+                            className="[&>pattern>circle]:fill-foreground-subtle dark:[&>pattern>circle]:fill-[#3d3d52]"
+                        />
+                    </>
+                )}
             </ReactFlow>
 
             {/* Edge context menu */}

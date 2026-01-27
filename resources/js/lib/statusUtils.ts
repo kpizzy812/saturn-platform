@@ -355,11 +355,18 @@ const defaultStatusConfig: StatusConfig = {
 // === CORE FUNCTIONS ===
 
 /**
- * Get full status configuration
+ * Get full status configuration.
+ * Handles Coolify's colon-separated status format (e.g., "running:healthy", "degraded:unhealthy").
+ * Tries exact match first, then falls back to the base state (before colon).
  */
 export function getStatusConfig(status: string): StatusConfig {
     const normalizedStatus = status.toLowerCase();
-    return statusRegistry[normalizedStatus] ?? defaultStatusConfig;
+    if (statusRegistry[normalizedStatus]) {
+        return statusRegistry[normalizedStatus];
+    }
+    // Handle colon-separated format: "running:unknown" -> try "running"
+    const baseStatus = normalizedStatus.split(':')[0];
+    return statusRegistry[baseStatus] ?? defaultStatusConfig;
 }
 
 /**
@@ -447,21 +454,24 @@ const loadingStatuses = new Set([
  * Check if status is considered "positive" (success state)
  */
 export function isPositiveStatus(status: string): boolean {
-    return positiveStatuses.has(status.toLowerCase());
+    const s = status.toLowerCase();
+    return positiveStatuses.has(s) || positiveStatuses.has(s.split(':')[0]);
 }
 
 /**
  * Check if status is considered "negative" (error state)
  */
 export function isNegativeStatus(status: string): boolean {
-    return negativeStatuses.has(status.toLowerCase());
+    const s = status.toLowerCase();
+    return negativeStatuses.has(s) || negativeStatuses.has(s.split(':')[0]);
 }
 
 /**
  * Check if status is considered "in progress" (loading state)
  */
 export function isLoadingStatus(status: string): boolean {
-    return loadingStatuses.has(status.toLowerCase());
+    const s = status.toLowerCase();
+    return loadingStatuses.has(s) || loadingStatuses.has(s.split(':')[0]);
 }
 
 /**
