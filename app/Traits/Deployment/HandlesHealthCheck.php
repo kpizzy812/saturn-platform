@@ -326,6 +326,27 @@ trait HandlesHealthCheck
     {
         $missingVars = [];
 
+        // Pattern: Pydantic ValidationError (Python)
+        // Format: "ValidationError: N validation error(s) for ClassName\nVAR_NAME\n  Field required [type=missing, ...]"
+        if (preg_match_all('/^([A-Z][A-Z0-9_]+)\s*\n\s*Field\s+required/m', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Pattern: Pydantic v2 inline format - "VAR_NAME  Field required [type=missing"
+        if (preg_match_all('/^([A-Z][A-Z0-9_]+)\s{2,}Field\s+required/m', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
         // Pattern: "VAR_NAME must be defined" or "VAR_NAME and VAR2 must be defined"
         if (preg_match_all('/([A-Z][A-Z0-9_]+(?:\s+and\s+[A-Z][A-Z0-9_]+)*)\s+must\s+be\s+(?:defined|set|provided)/i', $logs, $matches)) {
             foreach ($matches[1] as $match) {
@@ -389,6 +410,11 @@ trait HandlesHealthCheck
                 }
             }
         }
+
+        // Filter out false positives — generic words that match [A-Z][A-Z0-9_]+ with /i flag
+        // e.g. "Field required" from Pydantic logs matches the generic "VAR is required" pattern
+        $falsePositives = ['Field', 'This', 'Error', 'Value', 'Input', 'Type', 'String', 'Integer', 'Boolean'];
+        $missingVars = array_values(array_filter($missingVars, fn ($var) => ! in_array($var, $falsePositives)));
 
         return $missingVars;
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
-import { Plus, RefreshCw, Eye, EyeOff, Copy } from 'lucide-react';
+import { Plus, RefreshCw, Eye, EyeOff, Copy, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import type { SelectedService } from '../../types';
 
@@ -27,6 +27,7 @@ export function VariablesTab({ service }: VariablesTabProps) {
     const [newValue, setNewValue] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
     // Fetch environment variables
     useEffect(() => {
@@ -100,6 +101,33 @@ export function VariablesTab({ service }: VariablesTabProps) {
             else next.add(id);
             return next;
         });
+    };
+
+    const handleDeleteVariable = async (envUuid: string, key: string) => {
+        if (!confirm(`Delete variable "${key}"?`)) return;
+        try {
+            setDeletingIds(prev => new Set(prev).add(envUuid));
+            const response = await fetch(`/api/v1/applications/${service.uuid}/envs/${envUuid}`, {
+                method: 'DELETE',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include',
+            });
+            if (response.ok) {
+                setVariables(prev => prev.filter(v => v.uuid !== envUuid));
+                toast({ title: `Deleted ${key}` });
+            } else {
+                const error = await response.json();
+                toast({ title: error.message || 'Failed to delete variable', variant: 'error' });
+            }
+        } catch {
+            toast({ title: 'Failed to delete variable', variant: 'error' });
+        } finally {
+            setDeletingIds(prev => {
+                const next = new Set(prev);
+                next.delete(envUuid);
+                return next;
+            });
+        }
     };
 
     const maskValue = (value: string) => '•'.repeat(Math.min(value.length, 12));
@@ -179,6 +207,14 @@ export function VariablesTab({ service }: VariablesTabProps) {
                                     title="Copy to clipboard"
                                 >
                                     <Copy className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteVariable(v.uuid, v.key)}
+                                    disabled={deletingIds.has(v.uuid)}
+                                    className="rounded p-1 text-foreground-muted hover:bg-red-500/10 hover:text-red-500 disabled:opacity-50"
+                                    title="Delete variable"
+                                >
+                                    <Trash2 className="h-4 w-4" />
                                 </button>
                             </div>
                         </div>
