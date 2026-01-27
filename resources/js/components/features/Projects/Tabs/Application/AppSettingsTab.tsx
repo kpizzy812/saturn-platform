@@ -166,7 +166,10 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
         try {
             const response = await fetch(`/api/v1/applications/${service.uuid}`, {
                 method: 'DELETE',
-                headers: { 'Accept': 'application/json' },
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
                 credentials: 'include',
             });
             if (!response.ok) throw new Error('Failed to delete application');
