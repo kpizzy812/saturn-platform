@@ -25,11 +25,18 @@ export default defineConfig(({ mode }) => {
                 output: {
                     manualChunks(id) {
                         if (id.includes('node_modules')) {
-                            // React core - keep react, react-dom and scheduler together
-                            if (id.includes('react-dom') || id.includes('scheduler') || id.includes('/react/') || id.includes('react/jsx')) {
+                            // React core only - react, react-dom, scheduler
+                            if (
+                                id.includes('node_modules/react-dom/') ||
+                                id.includes('node_modules/scheduler/') ||
+                                id.includes('node_modules/react/')
+                            ) {
                                 return 'vendor-react';
                             }
-                            // Split other heavy libraries into separate chunks
+                            // React ecosystem (react-aria, react-stately, react-types)
+                            if (id.includes('@react-aria') || id.includes('@react-stately') || id.includes('@react-types')) {
+                                return 'vendor-react-aria';
+                            }
                             if (id.includes('@xyflow')) {
                                 return 'vendor-reactflow';
                             }
@@ -48,7 +55,6 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('d3-') || id.includes('/d3/')) {
                                 return 'vendor-d3';
                             }
-                            // Group remaining large modules
                             if (id.includes('monaco') || id.includes('codemirror')) {
                                 return 'vendor-editor';
                             }

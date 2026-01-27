@@ -11,6 +11,8 @@ import {
     Users,
     Activity,
     Terminal,
+    Layers,
+    Box,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -28,6 +30,8 @@ const commands: CommandItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: <FolderKanban className="h-4 w-4" />, href: '/dashboard', group: 'navigation' },
     { id: 'projects', name: 'Projects', icon: <FolderKanban className="h-4 w-4" />, href: '/projects', group: 'navigation' },
     { id: 'servers', name: 'Servers', icon: <Server className="h-4 w-4" />, href: '/servers', group: 'navigation' },
+    { id: 'applications', name: 'Applications', icon: <Layers className="h-4 w-4" />, href: '/applications', group: 'navigation' },
+    { id: 'services', name: 'Services', icon: <Box className="h-4 w-4" />, href: '/services', group: 'navigation' },
     { id: 'databases', name: 'Databases', icon: <Database className="h-4 w-4" />, href: '/databases', group: 'navigation' },
     { id: 'activity', name: 'Activity', icon: <Activity className="h-4 w-4" />, href: '/activity', group: 'navigation' },
 

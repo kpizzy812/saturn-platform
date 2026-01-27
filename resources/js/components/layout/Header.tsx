@@ -1,8 +1,7 @@
 import * as React from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { HelpCircle, Bell, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { HelpCircle, Bell, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { useSidebar } from '@/contexts/SidebarContext';
 
 interface HeaderProps {
     showNewProject?: boolean;
@@ -12,8 +11,6 @@ interface HeaderProps {
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
     const user = (props as any).auth as { name?: string; email?: string } | undefined;
-    const { isExpanded, toggleSidebar } = useSidebar();
-
     // Theme state with persistence
     const [isDark, setIsDark] = React.useState(() => {
         if (typeof window !== 'undefined') {
@@ -40,21 +37,8 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
 
     return (
         <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4">
-            {/* Left: Sidebar toggle + Search */}
+            {/* Left: Search */}
             <div className="flex items-center gap-2">
-                {/* Sidebar Toggle */}
-                <button
-                    onClick={toggleSidebar}
-                    className="rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground"
-                    title={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-                >
-                    {isExpanded ? (
-                        <PanelLeftClose className="h-5 w-5" />
-                    ) : (
-                        <PanelLeft className="h-5 w-5" />
-                    )}
-                </button>
-
                 {/* Command Palette Trigger */}
                 <button
                     onClick={onCommandPalette}

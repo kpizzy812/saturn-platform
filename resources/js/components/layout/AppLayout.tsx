@@ -1,10 +1,8 @@
 import * as React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { Header } from './Header';
-import { Sidebar } from './Sidebar';
 import { FlashMessages } from './FlashMessages';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
-import { SidebarProvider } from '@/contexts/SidebarContext';
 import { ChevronRight } from 'lucide-react';
 
 export interface Breadcrumb {
@@ -59,23 +57,17 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
     const commandPalette = useCommandPalette();
 
     return (
-        <SidebarProvider>
+        <>
             <Head title={title ? `${title} | Saturn` : 'Saturn'} />
             <FlashMessages />
-            <div className="flex h-screen bg-background">
-                {/* Sidebar */}
-                <Sidebar />
-
-                {/* Main content area */}
-                <div className="flex flex-1 flex-col overflow-hidden">
-                    <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
-                    {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
-                    <main className="flex-1 overflow-auto">
-                        {children}
-                    </main>
-                </div>
+            <div className="flex h-screen flex-col bg-background">
+                <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
+                {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
+                <main className="flex-1 overflow-auto">
+                    {children}
+                </main>
             </div>
             <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} />
-        </SidebarProvider>
+        </>
     );
 }

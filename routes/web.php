@@ -1395,7 +1395,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         try {
             $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
 
-            if (empty($containers)) {
+            if ($containers->isEmpty()) {
                 return response()->json([
                     'container_logs' => 'No containers found for this application.',
                     'containers' => [],
@@ -1404,7 +1404,8 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             }
 
             // Get logs from first container
-            $containerName = $containers[0]['Names'] ?? null;
+            $firstContainer = $containers->first();
+            $containerName = $firstContainer['Names'] ?? null;
             if ($containerName) {
                 // Use --since for incremental fetching, or -n 200 for initial load
                 if ($since) {

@@ -451,10 +451,16 @@ export default function ProjectShow({ project }: Props) {
     // Quick action handlers for canvas nodes
     const handleQuickDeploy = useCallback(async (uuid: string) => {
         try {
-            const response = await fetch(`/api/v1/applications/${uuid}/start`, {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch('/api/v1/deploy', {
                 method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
                 credentials: 'include',
+                body: JSON.stringify({ uuid }),
             });
             if (!response.ok) {
                 const error = await response.json();
