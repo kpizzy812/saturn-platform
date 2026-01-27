@@ -48,46 +48,19 @@ interface Props {
 }
 
 const defaultStats: SystemStats = {
-    totalUsers: 1247,
-    activeUsers: 823,
-    totalServers: 456,
-    totalDeployments: 12847,
-    failedDeployments: 23,
-    totalTeams: 189,
-    diskUsage: 67,
-    cpuUsage: 42,
+    totalUsers: 0,
+    activeUsers: 0,
+    totalServers: 0,
+    totalDeployments: 0,
+    failedDeployments: 0,
+    totalTeams: 0,
+    diskUsage: 0,
+    cpuUsage: 0,
 };
 
-const defaultActivity: RecentActivity[] = [
-    {
-        id: 1,
-        type: 'user_registered',
-        message: 'New user registered',
-        user: 'john.doe@example.com',
-        timestamp: '2 minutes ago',
-    },
-    {
-        id: 2,
-        type: 'deployment_failed',
-        message: 'Deployment failed for production-api',
-        user: 'jane.smith@example.com',
-        timestamp: '15 minutes ago',
-    },
-    {
-        id: 3,
-        type: 'server_added',
-        message: 'New server added',
-        user: 'admin@example.com',
-        timestamp: '1 hour ago',
-    },
-];
+const defaultActivity: RecentActivity[] = [];
 
-const defaultHealthChecks: HealthCheck[] = [
-    { service: 'PostgreSQL', status: 'healthy', lastCheck: '30s ago', responseTime: 12 },
-    { service: 'Redis', status: 'healthy', lastCheck: '30s ago', responseTime: 5 },
-    { service: 'Soketi', status: 'healthy', lastCheck: '30s ago', responseTime: 8 },
-    { service: 'Horizon', status: 'healthy', lastCheck: '1m ago', responseTime: 45 },
-];
+const defaultHealthChecks: HealthCheck[] = [];
 
 function StatCard({ title, value, subtitle, icon: Icon, trend }: {
     title: string;

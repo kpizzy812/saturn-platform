@@ -19,85 +19,6 @@ interface Props {
     environments?: Environment[];
 }
 
-// Mock data for demo
-const MOCK_PROJECT: Project = {
-    id: 1,
-    uuid: 'proj-1',
-    name: 'E-commerce Platform',
-    description: 'Main e-commerce platform',
-    team_id: 1,
-    environments: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-};
-
-const MOCK_ENVIRONMENTS: Environment[] = [
-    {
-        id: 1,
-        uuid: 'env-1',
-        name: 'production',
-        project_id: 1,
-        applications: [],
-        databases: [],
-        services: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-    {
-        id: 2,
-        uuid: 'env-2',
-        name: 'staging',
-        project_id: 1,
-        applications: [],
-        databases: [],
-        services: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    },
-];
-
-const MOCK_ACTIVITIES: ActivityLog[] = [
-    {
-        id: '1',
-        action: 'deployment_started',
-        description: 'Started deployment for production-api to production',
-        user: { name: 'John Doe', email: 'john@example.com' },
-        resource: { type: 'application', name: 'production-api', id: 'app-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    },
-    {
-        id: '2',
-        action: 'deployment_completed',
-        description: 'Deployment completed successfully',
-        user: { name: 'John Doe', email: 'john@example.com' },
-        resource: { type: 'application', name: 'production-api', id: 'app-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    },
-    {
-        id: '3',
-        action: 'settings_updated',
-        description: 'Updated environment variables',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'application', name: 'staging-frontend', id: 'app-2' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    },
-    {
-        id: '4',
-        action: 'database_created',
-        description: 'Created PostgreSQL database',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'database', name: 'postgres-prod', id: 'db-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    },
-    {
-        id: '5',
-        action: 'application_restarted',
-        description: 'Restarted application',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'application', name: 'analytics-service', id: 'app-3' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    },
-];
 
 type FilterType = 'all' | 'deployment' | 'settings' | 'database' | 'application';
 type EnvironmentFilter = 'all' | string;
@@ -107,9 +28,20 @@ export default function ProjectActivity({
     activities: propActivities,
     environments: propEnvironments,
 }: Props) {
-    const project = propProject || MOCK_PROJECT;
-    const activities = propActivities || MOCK_ACTIVITIES;
-    const environments = propEnvironments || MOCK_ENVIRONMENTS;
+    const project = propProject;
+    const activities = propActivities || [];
+    const environments = propEnvironments || [];
+
+    if (!project) {
+        return (
+            <AppLayout title="Project Activity" breadcrumbs={[{ label: 'Projects', href: '/projects' }, { label: 'Activity' }]}>
+                <div className="flex flex-col items-center justify-center py-16">
+                    <GitBranch className="h-12 w-12 text-foreground-muted" />
+                    <h3 className="mt-4 text-lg font-medium text-foreground">Project not found</h3>
+                </div>
+            </AppLayout>
+        );
+    }
 
     const [filterType, setFilterType] = React.useState<FilterType>('all');
     const [environmentFilter, setEnvironmentFilter] = React.useState<EnvironmentFilter>('all');

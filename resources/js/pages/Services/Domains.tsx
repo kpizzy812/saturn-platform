@@ -19,37 +19,9 @@ interface Domain {
     createdAt: string;
 }
 
-// Mock domains data
-const mockDomains: Domain[] = [
-    {
-        id: 1,
-        domain: 'api.example.com',
-        isPrimary: true,
-        sslStatus: 'active',
-        sslProvider: 'letsencrypt',
-        createdAt: '2024-01-15',
-    },
-    {
-        id: 2,
-        domain: 'api-staging.example.com',
-        isPrimary: false,
-        sslStatus: 'active',
-        sslProvider: 'letsencrypt',
-        createdAt: '2024-01-20',
-    },
-    {
-        id: 3,
-        domain: 'old-api.example.com',
-        isPrimary: false,
-        sslStatus: 'pending',
-        sslProvider: 'letsencrypt',
-        createdAt: '2024-02-01',
-    },
-];
-
 export function DomainsTab({ service }: Props) {
     const confirm = useConfirm();
-    const [domains, setDomains] = useState<Domain[]>(mockDomains);
+    const [domains, setDomains] = useState<Domain[]>([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newDomain, setNewDomain] = useState('');
     const [showDnsInstructions, setShowDnsInstructions] = useState<number | null>(null);

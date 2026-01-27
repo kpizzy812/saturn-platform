@@ -37,63 +37,7 @@ interface Props {
     perPage?: number;
 }
 
-const defaultLogs: LogEntry[] = [
-    {
-        id: 1,
-        timestamp: '2024-03-10 14:32:15',
-        level: 'info',
-        category: 'auth',
-        message: 'User login successful',
-        user: 'john.doe@example.com',
-        ip_address: '192.168.1.50',
-    },
-    {
-        id: 2,
-        timestamp: '2024-03-10 14:28:42',
-        level: 'error',
-        category: 'deployment',
-        message: 'Deployment failed: build error in production-api',
-        user: 'jane.smith@example.com',
-        ip_address: '192.168.1.51',
-        metadata: { application: 'production-api', error_code: 'BUILD_FAILED' },
-    },
-    {
-        id: 3,
-        timestamp: '2024-03-10 14:15:03',
-        level: 'warning',
-        category: 'server',
-        message: 'Server CPU usage above 80%',
-        metadata: { server: 'production-1', cpu_usage: 87 },
-    },
-    {
-        id: 4,
-        timestamp: '2024-03-10 14:05:21',
-        level: 'critical',
-        category: 'security',
-        message: 'Multiple failed login attempts detected',
-        user: 'unknown@example.com',
-        ip_address: '203.0.113.42',
-        metadata: { attempts: 5 },
-    },
-    {
-        id: 5,
-        timestamp: '2024-03-10 13:58:16',
-        level: 'info',
-        category: 'api',
-        message: 'API request rate limit exceeded',
-        user: 'api-client@example.com',
-        ip_address: '192.168.1.75',
-        metadata: { endpoint: '/api/v1/deployments' },
-    },
-    {
-        id: 6,
-        timestamp: '2024-03-10 13:45:30',
-        level: 'debug',
-        category: 'system',
-        message: 'Background job queue processed',
-        metadata: { jobs_processed: 142, duration: '2.3s' },
-    },
-];
+const defaultLogs: LogEntry[] = [];
 
 function LogRow({ log }: { log: LogEntry }) {
     const levelConfig = {

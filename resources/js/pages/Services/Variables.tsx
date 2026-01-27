@@ -14,19 +14,9 @@ interface Variable {
     isSecret: boolean;
 }
 
-// Mock variables data
-const mockVariables: Variable[] = [
-    { id: 1, key: 'DATABASE_URL', value: 'postgresql://user:pass@localhost:5432/db', isSecret: true },
-    { id: 2, key: 'NODE_ENV', value: 'production', isSecret: false },
-    { id: 3, key: 'PORT', value: '3000', isSecret: false },
-    { id: 4, key: 'API_KEY', value: 'sk_live_1234567890abcdef', isSecret: true },
-    { id: 5, key: 'REDIS_URL', value: 'redis://localhost:6379', isSecret: true },
-    { id: 6, key: 'LOG_LEVEL', value: 'info', isSecret: false },
-];
-
 export function VariablesTab({ service }: Props) {
     const confirm = useConfirm();
-    const [variables, setVariables] = useState<Variable[]>(mockVariables);
+    const [variables, setVariables] = useState<Variable[]>([]);
     const [showValues, setShowValues] = useState<Record<number, boolean>>({});
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);

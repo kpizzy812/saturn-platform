@@ -24,40 +24,7 @@ interface Props {
     snapshots?: VolumeSnapshot[];
 }
 
-// Mock snapshots
-const mockSnapshots: VolumeSnapshot[] = [
-    {
-        id: 1,
-        uuid: 'snap-1',
-        volume_id: 1,
-        name: 'Pre-migration backup',
-        size: '45 GB',
-        status: 'completed',
-        created_at: '2024-01-20T10:00:00Z',
-    },
-    {
-        id: 2,
-        uuid: 'snap-2',
-        volume_id: 1,
-        name: 'Daily snapshot',
-        size: '46 GB',
-        status: 'completed',
-        created_at: '2024-01-19T00:00:00Z',
-    },
-];
-
-// Mock usage data for the last 7 days
-const mockUsageData = [
-    { date: '2024-01-15', used: 60 },
-    { date: '2024-01-16', used: 62 },
-    { date: '2024-01-17', used: 63 },
-    { date: '2024-01-18', used: 64 },
-    { date: '2024-01-19', used: 65 },
-    { date: '2024-01-20', used: 66 },
-    { date: '2024-01-21', used: 67 },
-];
-
-export default function VolumeShow({ volume, snapshots = mockSnapshots }: Props) {
+export default function VolumeShow({ volume, snapshots = [] }: Props) {
     const [isResizeModalOpen, setIsResizeModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
@@ -79,10 +46,9 @@ export default function VolumeShow({ volume, snapshots = mockSnapshots }: Props)
         setSnapshotName('');
     };
 
-    const usagePercent = (volume.used / volume.size) * 100;
-    const growthRate = mockUsageData.length >= 2
-        ? ((mockUsageData[mockUsageData.length - 1].used - mockUsageData[0].used) / mockUsageData.length).toFixed(2)
-        : '0';
+    const usagePercent = volume.size > 0 ? (volume.used / volume.size) * 100 : 0;
+    const usageData: Array<{ date: string; used: number }> = [];
+    const growthRate = '0';
 
     return (
         <AppLayout
@@ -190,7 +156,7 @@ export default function VolumeShow({ volume, snapshots = mockSnapshots }: Props)
                             <Progress value={volume.used} max={volume.size} showLabel />
                             <div className="mt-6">
                                 <h3 className="text-sm font-medium text-foreground mb-3">Usage Trend (Last 7 Days)</h3>
-                                <UsageChart data={mockUsageData} maxSize={volume.size} />
+                                <UsageChart data={usageData} maxSize={volume.size} />
                             </div>
                         </CardContent>
                     </Card>
@@ -419,7 +385,7 @@ export default function VolumeShow({ volume, snapshots = mockSnapshots }: Props)
     );
 }
 
-function UsageChart({ data, maxSize }: { data: typeof mockUsageData; maxSize: number }) {
+function UsageChart({ data, maxSize }: { data: Array<{ date: string; used: number }>; maxSize: number }) {
     const maxUsed = Math.max(...data.map(d => d.used));
     const chartHeight = 120;
 

@@ -27,65 +27,6 @@ interface Props {
     activities?: ActivityLog[];
 }
 
-// Mock data for demo
-const MOCK_ACTIVITIES: ActivityLog[] = [
-    {
-        id: '1',
-        action: 'deployment_started',
-        description: 'Started deployment for production-api to production',
-        user: { name: 'John Doe', email: 'john@example.com' },
-        resource: { type: 'application', name: 'production-api', id: 'app-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    },
-    {
-        id: '2',
-        action: 'deployment_completed',
-        description: 'Deployment completed successfully',
-        user: { name: 'John Doe', email: 'john@example.com' },
-        resource: { type: 'application', name: 'production-api', id: 'app-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    },
-    {
-        id: '3',
-        action: 'settings_updated',
-        description: 'Updated environment variables',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'application', name: 'staging-frontend', id: 'app-2' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    },
-    {
-        id: '4',
-        action: 'team_member_added',
-        description: 'Added bob@example.com to the team',
-        user: { name: 'John Doe', email: 'john@example.com' },
-        resource: { type: 'team', name: 'Acme Corp', id: 'team-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-        id: '5',
-        action: 'database_created',
-        description: 'Created PostgreSQL database',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'database', name: 'postgres-prod', id: 'db-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    },
-    {
-        id: '6',
-        action: 'server_connected',
-        description: 'Connected new server to workspace',
-        user: { name: 'John Doe', email: 'john@example.com' },
-        resource: { type: 'server', name: 'prod-server-1', id: 'server-1' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-    {
-        id: '7',
-        action: 'application_restarted',
-        description: 'Restarted application',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'application', name: 'analytics-service', id: 'app-3' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    },
-];
 
 const actionIcons: Record<ActivityAction, React.ReactNode> = {
     deployment_started: <Rocket className="h-4 w-4 text-info" />,
@@ -108,7 +49,7 @@ type FilterAction = 'all' | 'deployment' | 'settings' | 'team' | 'database' | 's
 
 export default function ActivityIndex({ activities: propActivities }: Props) {
     const [activities, setActivities] = React.useState<ActivityLog[]>(
-        propActivities || MOCK_ACTIVITIES
+        propActivities || []
     );
     const [filterAction, setFilterAction] = React.useState<FilterAction>('all');
     const [searchQuery, setSearchQuery] = React.useState('');

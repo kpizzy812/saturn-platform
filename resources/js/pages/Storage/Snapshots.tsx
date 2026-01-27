@@ -17,40 +17,8 @@ interface Snapshot {
     created_at: string;
 }
 
-// Mock snapshots data
-const mockSnapshots: Snapshot[] = [
-    {
-        id: 1,
-        name: 'pre-deployment-snapshot',
-        size: '842 MB',
-        source_volume: 'app-data',
-        created_at: '2024-01-20T14:25:00Z',
-    },
-    {
-        id: 2,
-        name: 'weekly-snapshot-2024-01-15',
-        size: '835 MB',
-        source_volume: 'app-data',
-        created_at: '2024-01-15T00:00:00Z',
-    },
-    {
-        id: 3,
-        name: 'before-migration',
-        size: '820 MB',
-        source_volume: 'app-data',
-        created_at: '2024-01-10T09:30:00Z',
-    },
-    {
-        id: 4,
-        name: 'initial-snapshot',
-        size: '512 MB',
-        source_volume: 'app-data',
-        created_at: '2024-01-05T12:00:00Z',
-    },
-];
-
 export default function StorageSnapshots({ volumeId = 'vol_123', volumeName = 'app-data' }: Props) {
-    const [snapshots] = useState<Snapshot[]>(mockSnapshots);
+    const [snapshots] = useState<Snapshot[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRestoreModal, setShowRestoreModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);

@@ -18,48 +18,9 @@ interface Backup {
     created_at: string;
 }
 
-// Mock backups data
-const mockBackups: Backup[] = [
-    {
-        id: 1,
-        filename: 'volume-backup-2024-01-20-103045.tar.gz',
-        size: '1.2 GB',
-        status: 'completed',
-        created_at: '2024-01-20T10:30:45Z',
-    },
-    {
-        id: 2,
-        filename: 'volume-backup-2024-01-19-103012.tar.gz',
-        size: '1.15 GB',
-        status: 'completed',
-        created_at: '2024-01-19T10:30:12Z',
-    },
-    {
-        id: 3,
-        filename: 'volume-backup-2024-01-18-103008.tar.gz',
-        size: '1.18 GB',
-        status: 'completed',
-        created_at: '2024-01-18T10:30:08Z',
-    },
-    {
-        id: 4,
-        filename: 'volume-backup-2024-01-17-103000.tar.gz',
-        size: '0 MB',
-        status: 'failed',
-        created_at: '2024-01-17T10:30:00Z',
-    },
-    {
-        id: 5,
-        filename: 'volume-backup-2024-01-16-103034.tar.gz',
-        size: '1.12 GB',
-        status: 'completed',
-        created_at: '2024-01-16T10:30:34Z',
-    },
-];
-
 export default function StorageBackups({ volumeId = 'vol_123', volumeName = 'app-data' }: Props) {
     const confirm = useConfirm();
-    const [backups] = useState<Backup[]>(mockBackups);
+    const [backups] = useState<Backup[]>([]);
     const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
     const [backupFrequency, setBackupFrequency] = useState('daily');
     const [retentionDays, setRetentionDays] = useState('30');

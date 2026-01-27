@@ -37,41 +37,7 @@ interface Props {
     perPage?: number;
 }
 
-const defaultUsers: User[] = [
-    {
-        id: 1,
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        status: 'active',
-        is_root_user: false,
-        teams_count: 3,
-        servers_count: 5,
-        created_at: '2024-01-15',
-        last_login_at: '2024-03-10',
-    },
-    {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane.smith@example.com',
-        status: 'active',
-        is_root_user: false,
-        teams_count: 1,
-        servers_count: 2,
-        created_at: '2024-02-20',
-        last_login_at: '2024-03-09',
-    },
-    {
-        id: 3,
-        name: 'Bob Wilson',
-        email: 'bob.wilson@example.com',
-        status: 'suspended',
-        is_root_user: false,
-        teams_count: 2,
-        servers_count: 0,
-        created_at: '2024-01-10',
-        last_login_at: '2024-02-15',
-    },
-];
+const defaultUsers: User[] = [];
 
 function UserRow({ user }: { user: User }) {
     const confirm = useConfirm();

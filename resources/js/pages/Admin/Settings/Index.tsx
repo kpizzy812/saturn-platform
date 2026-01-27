@@ -45,9 +45,9 @@ interface Props {
 }
 
 const defaultSettings: SystemSettings = {
-    site_name: 'Saturn Platform Cloud',
-    site_url: 'https://example.com',
-    admin_email: 'admin@example.com',
+    site_name: '',
+    site_url: '',
+    admin_email: '',
     maintenance_mode: false,
     registration_enabled: true,
     email_verification_required: true,
@@ -58,11 +58,11 @@ const defaultSettings: SystemSettings = {
 };
 
 const defaultFeatureFlags: FeatureFlags = {
-    enable_oauth: true,
+    enable_oauth: false,
     enable_api: true,
     enable_webhooks: true,
-    enable_backups: true,
-    enable_monitoring: true,
+    enable_backups: false,
+    enable_monitoring: false,
 };
 
 export default function AdminSettingsIndex({

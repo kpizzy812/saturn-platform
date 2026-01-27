@@ -185,40 +185,20 @@ export default function ServiceShow({ service }: Props) {
 }
 
 function OverviewTab({ service }: { service: Service }) {
-    // Mock metrics data
     const metrics = {
-        cpu: '23%',
-        memory: '512 MB / 2 GB',
-        network: '1.2 MB/s',
+        cpu: '-',
+        memory: '-',
+        network: '-',
     };
 
-    // Mock recent deployments
-    const recentDeployments = [
-        {
-            id: 1,
-            commit: 'a1b2c3d',
-            message: 'Update API endpoints',
-            status: 'finished' as const,
-            time: '2 hours ago',
-            duration: '3m 45s',
-        },
-        {
-            id: 2,
-            commit: 'e4f5g6h',
-            message: 'Add authentication',
-            status: 'finished' as const,
-            time: '5 hours ago',
-            duration: '2m 30s',
-        },
-        {
-            id: 3,
-            commit: 'i7j8k9l',
-            message: 'Database migration',
-            status: 'failed' as const,
-            time: '1 day ago',
-            duration: '1m 15s',
-        },
-    ];
+    const recentDeployments: Array<{
+        id: number;
+        commit: string;
+        message: string;
+        status: 'finished' | 'failed' | 'in_progress';
+        time: string;
+        duration: string;
+    }> = [];
 
     return (
         <div className="space-y-6">

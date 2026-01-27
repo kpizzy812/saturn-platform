@@ -31,59 +31,6 @@ interface Props {
     relatedActivities?: ActivityLog[];
 }
 
-// Mock data for demo
-const MOCK_ACTIVITY: ActivityLog = {
-    id: '1',
-    action: 'settings_updated',
-    description: 'Updated environment variables',
-    user: {
-        name: 'Jane Smith',
-        email: 'jane@example.com',
-        avatar: undefined
-    },
-    resource: {
-        type: 'application',
-        name: 'staging-frontend',
-        id: 'app-2'
-    },
-    timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-};
-
-const MOCK_RELATED: ActivityLog[] = [
-    {
-        id: '2',
-        action: 'deployment_started',
-        description: 'Started deployment for staging-frontend',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'application', name: 'staging-frontend', id: 'app-2' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    },
-    {
-        id: '3',
-        action: 'deployment_completed',
-        description: 'Deployment completed successfully',
-        user: { name: 'Jane Smith', email: 'jane@example.com' },
-        resource: { type: 'application', name: 'staging-frontend', id: 'app-2' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 40).toISOString(),
-    },
-];
-
-// Mock before/after data for settings changes
-const MOCK_CHANGES = {
-    environment_variables: {
-        before: {
-            NODE_ENV: 'development',
-            API_URL: 'http://localhost:3000',
-            DEBUG: 'true',
-        },
-        after: {
-            NODE_ENV: 'production',
-            API_URL: 'https://api.example.com',
-            DEBUG: 'false',
-            NEW_FEATURE_FLAG: 'enabled',
-        },
-    },
-};
 
 const actionIcons: Record<ActivityAction, React.ReactNode> = {
     deployment_started: <Rocket className="h-5 w-5 text-info" />,
@@ -120,8 +67,25 @@ function getResourceIcon(type: ActivityLog['resource']['type']) {
 }
 
 export default function ActivityShow({ activity: propActivity, relatedActivities: propRelated }: Props) {
-    const activity = propActivity || MOCK_ACTIVITY;
-    const relatedActivities = propRelated || MOCK_RELATED;
+    const activity = propActivity;
+    const relatedActivities = propRelated || [];
+
+    if (!activity) {
+        return (
+            <AppLayout title="Activity Details" breadcrumbs={[{ label: 'Activity', href: '/activity' }, { label: 'Details' }]}>
+                <div className="flex flex-col items-center justify-center py-16">
+                    <Activity className="h-12 w-12 text-foreground-muted" />
+                    <h3 className="mt-4 text-lg font-medium text-foreground">Activity not found</h3>
+                    <Link href="/activity">
+                        <Button variant="secondary" size="sm" className="mt-4">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Activity
+                        </Button>
+                    </Link>
+                </div>
+            </AppLayout>
+        );
+    }
 
     const initials = activity.user.name
         .split(' ')
@@ -129,9 +93,6 @@ export default function ActivityShow({ activity: propActivity, relatedActivities
         .join('')
         .toUpperCase()
         .slice(0, 2);
-
-    // For settings changes, show before/after diff
-    const showDiff = activity.action === 'settings_updated' || activity.action === 'environment_variable_updated';
 
     return (
         <AppLayout
@@ -217,56 +178,6 @@ export default function ActivityShow({ activity: propActivity, relatedActivities
                         </CardContent>
                     </Card>
 
-                    {/* Changes Diff (for settings updates) */}
-                    {showDiff && (
-                        <Card>
-                            <CardContent>
-                                <h2 className="mb-4 text-lg font-semibold text-foreground">Changes</h2>
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    {/* Before */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary">Before</Badge>
-                                        </div>
-                                        <div className="rounded-lg border border-border bg-background-secondary p-4">
-                                            <pre className="text-sm text-foreground-muted">
-                                                {JSON.stringify(MOCK_CHANGES.environment_variables.before, null, 2)}
-                                            </pre>
-                                        </div>
-                                    </div>
-
-                                    {/* After */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="default">After</Badge>
-                                        </div>
-                                        <div className="rounded-lg border border-primary bg-primary/5 p-4">
-                                            <pre className="text-sm text-foreground">
-                                                {JSON.stringify(MOCK_CHANGES.environment_variables.after, null, 2)}
-                                            </pre>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Change Summary */}
-                                <div className="mt-4 space-y-2">
-                                    <h3 className="text-sm font-semibold text-foreground">Summary</h3>
-                                    <ul className="space-y-1 text-sm text-foreground-muted">
-                                        <li className="flex items-center gap-2">
-                                            <Badge variant="success" className="text-xs">Added</Badge>
-                                            <code className="rounded bg-background-secondary px-1 py-0.5">NEW_FEATURE_FLAG</code>
-                                        </li>
-                                        <li className="flex items-center gap-2">
-                                            <Badge variant="warning" className="text-xs">Modified</Badge>
-                                            <code className="rounded bg-background-secondary px-1 py-0.5">NODE_ENV</code>,
-                                            <code className="rounded bg-background-secondary px-1 py-0.5">API_URL</code>,
-                                            <code className="rounded bg-background-secondary px-1 py-0.5">DEBUG</code>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
                 </div>
 
                 {/* Sidebar */}
