@@ -234,18 +234,57 @@ function ProjectCanvasInner({
         return nodes;
     }, [applications, databases, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs]);
 
-    // Convert resource links to edges
+    // Convert resource links to edges, merging bidirectional app-to-app pairs into one edge
     const linkedEdges = useMemo(() => {
-        return resourceLinks.map((link) => {
-            const isAppTarget = link.target_type === 'application';
-            const targetNodeId = isAppTarget ? `app-${link.target_id}` : `db-${link.target_id}`;
+        const result: Edge[] = [];
+        const processedPairs = new Set<string>();
 
-            // Green for db auto-inject, purple for app-to-app, gray for inactive
+        for (const link of resourceLinks) {
+            const isAppTarget = link.target_type === 'application';
+
+            // For app-to-app links, check for reverse link (bidirectional pair)
+            if (isAppTarget) {
+                const pairKey = [Math.min(link.source_id, link.target_id), Math.max(link.source_id, link.target_id)].join('-');
+                if (processedPairs.has(pairKey)) continue;
+
+                const reverseLink = resourceLinks.find(
+                    (l) => l.target_type === 'application' && l.source_id === link.target_id && l.target_id === link.source_id
+                );
+
+                if (reverseLink) {
+                    // Bidirectional: merge into one edge with two-line label
+                    processedPairs.add(pairKey);
+                    const combinedLabel = `→ ${link.env_key}\n← ${reverseLink.env_key}`;
+                    result.push({
+                        id: `link-${link.id}`,
+                        source: `app-${link.source_id}`,
+                        target: `app-${link.target_id}`,
+                        type: 'smoothstep',
+                        animated: link.auto_inject || reverseLink.auto_inject,
+                        data: { linkId: link.id, link, reverseLinkId: reverseLink.id, reverseLink },
+                        style: {
+                            stroke: '#7c3aed',
+                            strokeWidth: 2,
+                            strokeDasharray: (link.auto_inject || reverseLink.auto_inject) ? undefined : '5,5',
+                        },
+                        label: combinedLabel,
+                        labelStyle: { fontSize: 10, whiteSpace: 'pre' as const },
+                        labelBgStyle: { fillOpacity: 0.9 },
+                        labelShowBg: true,
+                        labelBgPadding: [6, 6] as [number, number],
+                        labelBgBorderRadius: 4,
+                    });
+                    continue;
+                }
+            }
+
+            // Non-bidirectional (app→db or unpaired app→app)
+            const targetNodeId = isAppTarget ? `app-${link.target_id}` : `db-${link.target_id}`;
             const edgeColor = isAppTarget
                 ? '#7c3aed'
                 : link.auto_inject ? '#22c55e' : '#4a4a5e';
 
-            return {
+            result.push({
                 id: `link-${link.id}`,
                 source: `app-${link.source_id}`,
                 target: targetNodeId,
@@ -269,8 +308,10 @@ function ProjectCanvasInner({
                 labelShowBg: true,
                 labelBgPadding: [4, 4] as [number, number],
                 labelBgBorderRadius: 4,
-            };
-        });
+            });
+        }
+
+        return result;
     }, [resourceLinks]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -405,11 +446,14 @@ function ProjectCanvasInner({
                 try {
                     await axios.delete(`/api/v1/environments/${environmentUuid}/links/${linkId}`);
 
-                    // Remove from local state
-                    setResourceLinks((prev) => prev.filter((l) => l.id !== linkId));
+                    // For bidirectional edges, also remove the reverse link from local state
+                    const reverseLinkId = edge?.data?.reverseLinkId as number | undefined;
+                    const idsToRemove = new Set([linkId, ...(reverseLinkId ? [reverseLinkId] : [])]);
+                    setResourceLinks((prev) => prev.filter((l) => !idsToRemove.has(l.id)));
 
                     // Notify parent
                     onLinkDeleted?.(linkId);
+                    if (reverseLinkId) onLinkDeleted?.(reverseLinkId);
                     onEdgeDelete?.(edgeId);
                 } catch (error) {
                     console.error('Failed to delete link:', error);
