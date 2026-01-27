@@ -2120,7 +2120,18 @@ class Application extends BaseModel
 
             if ($target instanceof self) {
                 // Application-to-Application link
-                if ($link->use_external_url && $target->fqdn) {
+                $shouldUseExternal = $link->use_external_url;
+
+                // Auto-detect cross-server: internal Docker URL won't work
+                if (! $shouldUseExternal) {
+                    $sourceServer = $this->destination?->server;
+                    $targetServer = $target->destination?->server;
+                    if ($sourceServer && $targetServer && $sourceServer->id !== $targetServer->id) {
+                        $shouldUseExternal = true;
+                    }
+                }
+
+                if ($shouldUseExternal && $target->fqdn) {
                     $url = $target->fqdn;
                 } else {
                     $url = $target->internal_app_url;

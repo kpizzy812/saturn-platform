@@ -144,6 +144,23 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => "{$targetLabel} not found in this environment."], 404);
         }
 
+        // For app-to-app links, detect cross-server and auto-fallback to external URL
+        $useExternalUrl = $validated['use_external_url'] ?? false;
+        if ($targetClass === Application::class && ! $useExternalUrl) {
+            $sourceServer = $application->destination?->server;
+            $targetServer = $target->destination?->server;
+
+            if ($sourceServer && $targetServer && $sourceServer->id !== $targetServer->id) {
+                // Apps on different servers — internal Docker URL won't work
+                if (! $target->fqdn) {
+                    return response()->json([
+                        'message' => 'Cannot link to an application on a different server without a configured FQDN (domain). Set a domain on the target application first, or deploy both apps on the same server.',
+                    ], 400);
+                }
+                $useExternalUrl = true;
+            }
+        }
+
         // Check if link already exists
         $existingLink = ResourceLink::where('source_type', Application::class)
             ->where('source_id', $application->id)
@@ -164,7 +181,7 @@ class ResourceLinkController extends Controller
             'target_id' => $target->id,
             'inject_as' => $validated['inject_as'] ?? null,
             'auto_inject' => $validated['auto_inject'] ?? true,
-            'use_external_url' => $validated['use_external_url'] ?? false,
+            'use_external_url' => $useExternalUrl,
         ]);
 
         // Immediately inject if auto_inject is enabled
