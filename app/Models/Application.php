@@ -123,6 +123,7 @@ class Application extends BaseModel
         'http_basic_auth_password' => 'encrypted',
         'restart_count' => 'integer',
         'last_restart_at' => 'datetime',
+        'build_pack_explicitly_set' => 'boolean',
     ];
 
     protected static function booted()
@@ -132,6 +133,13 @@ class Application extends BaseModel
                 'additional_servers',
                 'additional_networks',
             ]);
+        });
+        // New applications start with auto-detection enabled (build_pack_explicitly_set = false)
+        // so Dockerfile auto-detect can switch from Nixpacks if a Dockerfile is found.
+        static::creating(function ($application) {
+            if (! isset($application->build_pack_explicitly_set)) {
+                $application->build_pack_explicitly_set = false;
+            }
         });
         static::saving(function ($application) {
             $payload = [];
@@ -774,6 +782,21 @@ class Application extends BaseModel
             get: fn () => is_null($this->ports_exposes)
                 ? []
                 : explode(',', $this->ports_exposes)
+        );
+    }
+
+    /**
+     * Internal Docker network URL for app-to-app connections.
+     * Uses container UUID as hostname (Docker DNS) and first exposed port.
+     */
+    protected function internalAppUrl(): Attribute
+    {
+        return new Attribute(
+            get: function () {
+                $port = $this->ports_exposes_array[0] ?? '80';
+
+                return "http://{$this->uuid}:{$port}";
+            }
         );
     }
 
@@ -2068,7 +2091,7 @@ class Application extends BaseModel
     }
 
     /**
-     * Auto-inject DATABASE_URL and other connection strings from linked databases.
+     * Auto-inject connection URLs from linked resources (databases and applications).
      * This method checks for ResourceLinks and injects the appropriate env variables.
      */
     public function autoInjectDatabaseUrl(): void
@@ -2085,20 +2108,39 @@ class Application extends BaseModel
             ->get();
 
         foreach ($links as $link) {
-            $db = $link->target;
+            $target = $link->target;
 
-            // Skip if target doesn't exist or doesn't have internal_db_url
-            if (! $db || ! isset($db->internal_db_url)) {
+            if (! $target) {
                 continue;
             }
 
-            $envKey = $link->getEnvKey();
+            // Determine the URL to inject based on target type
+            $url = null;
+            $envKey = null;
+
+            if ($target instanceof self) {
+                // Application-to-Application link
+                if ($link->use_external_url && $target->fqdn) {
+                    $url = $target->fqdn;
+                } else {
+                    $url = $target->internal_app_url;
+                }
+                $envKey = $link->getSmartAppEnvKey();
+            } elseif (isset($target->internal_db_url)) {
+                // Application-to-Database link
+                $url = $target->internal_db_url;
+                $envKey = $link->getEnvKey();
+            }
+
+            if (! $url || ! $envKey) {
+                continue;
+            }
 
             // Create or update the environment variable
             $this->environment_variables()->updateOrCreate(
                 ['key' => $envKey, 'is_preview' => false],
                 [
-                    'value' => $db->internal_db_url,
+                    'value' => $url,
                     'is_buildtime' => false,
                     'is_runtime' => true,
                 ]

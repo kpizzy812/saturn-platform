@@ -733,6 +733,12 @@ class ApplicationsController extends Controller
         if ($dockerComposeDomainsJson->count() > 0) {
             data_set($data, 'docker_compose_domains', json_encode($dockerComposeDomainsJson));
         }
+
+        // Mark build_pack as explicitly set when user changes it via API
+        if ($request->has('build_pack')) {
+            data_set($data, 'build_pack_explicitly_set', true);
+        }
+
         $application->fill($data);
         if ($application->settings->is_container_label_readonly_enabled && $requestHasDomains && $server->isProxyShouldRun()) {
             $application->custom_labels = str(implode('|saturn|', generateLabelsApplication($application)))->replace('|saturn|', "\n");

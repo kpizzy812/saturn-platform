@@ -47,6 +47,13 @@ trait HandlesNixpacksBuildpack
         }
         $this->clone_repository();
         $this->cleanup_git();
+
+        // Auto-detect Dockerfile: if one exists in workdir and user hasn't explicitly chosen a build pack,
+        // automatically switch to the dockerfile buildpack for a better deployment experience.
+        if ($this->autoDetectAndSwitchToDockerfile()) {
+            return;
+        }
+
         $this->generate_nixpacks_confs();
         $this->autoDetectPortFromNixpacks();
         $this->generate_compose_file();
@@ -825,5 +832,59 @@ BASH;
             $this->application_deployment_queue->addLogEntry('Docs: https://nixpacks.com/docs/configuration/file', type: 'stderr');
             $this->application_deployment_queue->addLogEntry('----------------------------------------');
         }
+    }
+
+    /**
+     * Auto-detect Dockerfile in workdir and switch to dockerfile buildpack if appropriate.
+     *
+     * Only switches when:
+     * - A Dockerfile exists in the workdir (respecting dockerfile_location)
+     * - The user has NOT explicitly set the build pack (build_pack_explicitly_set is false)
+     *
+     * Returns true if switched (caller should return early), false otherwise.
+     */
+    private function autoDetectAndSwitchToDockerfile(): bool
+    {
+        // Only auto-detect when the build pack was not explicitly chosen by the user
+        if ($this->application->build_pack_explicitly_set) {
+            return false;
+        }
+
+        $dockerfilePath = $this->workdir.$this->dockerfile_location;
+
+        $this->execute_remote_command(
+            [executeInDocker($this->deployment_uuid, "test -f {$dockerfilePath} && echo 'found' || echo 'not_found'"), 'save' => 'dockerfile_check', 'hidden' => true],
+        );
+
+        $result = trim($this->saved_outputs->get('dockerfile_check', 'not_found'));
+
+        if ($result !== 'found') {
+            return false;
+        }
+
+        // Dockerfile found — switch to dockerfile buildpack
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        $this->application_deployment_queue->addLogEntry('Dockerfile detected in the repository.');
+        $this->application_deployment_queue->addLogEntry('Automatically switching from Nixpacks to Dockerfile buildpack.');
+        $this->application_deployment_queue->addLogEntry('To use Nixpacks instead, change Build Pack in application settings.');
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+
+        // Update the application model so this persists for future deployments
+        $this->application->update([
+            'build_pack' => 'dockerfile',
+            'build_pack_explicitly_set' => true,
+        ]);
+
+        // Continue with dockerfile buildpack steps (repo is already cloned and cleaned)
+        $this->generate_compose_file();
+        $this->save_buildtime_environment_variables();
+        $this->generate_build_env_variables();
+        $this->add_build_env_variables_to_dockerfile();
+        $this->build_image();
+        $this->save_runtime_environment_variables();
+        $this->push_to_docker_registry();
+        $this->rolling_update();
+
+        return true;
     }
 }

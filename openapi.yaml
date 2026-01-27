@@ -4419,7 +4419,7 @@ paths:
       tags:
         - 'Resource Links'
       summary: 'Create Resource Link'
-      description: 'Create a new resource link between an application and a database.'
+      description: 'Create a new resource link between an application and a database or another application.'
       operationId: create-resource-link
       parameters:
         -
@@ -4440,19 +4440,22 @@ paths:
                 - target_id
               properties:
                 source_id:
-                  description: 'Application ID'
+                  description: 'Source Application ID'
                   type: integer
                 target_type:
-                  description: 'Database type (postgresql, mysql, redis, etc.)'
+                  description: 'Target type (postgresql, mysql, redis, application, etc.)'
                   type: string
                 target_id:
-                  description: 'Database ID'
+                  description: 'Target resource ID'
                   type: integer
                 inject_as:
                   description: 'Custom env variable name'
                   type: [string, 'null']
                 auto_inject:
                   description: 'Auto-inject on deploy'
+                  type: boolean
+                use_external_url:
+                  description: 'Use external FQDN instead of internal Docker URL (app-to-app only)'
                   type: boolean
               type: object
       responses:
@@ -4463,7 +4466,7 @@ paths:
         '401':
           $ref: '#/components/responses/401'
         '404':
-          description: 'Environment, application, or database not found.'
+          description: 'Environment, application, or target not found.'
       security:
         -
           bearerAuth: []
@@ -4538,6 +4541,9 @@ paths:
                   type: [string, 'null']
                 auto_inject:
                   description: 'Auto-inject on deploy'
+                  type: boolean
+                use_external_url:
+                  description: 'Use external FQDN instead of internal Docker URL'
                   type: boolean
               type: object
       responses:
@@ -6843,6 +6849,10 @@ components:
           type: string
         real_value:
           type: string
+        source_template:
+          type: string
+          nullable: true
+          description: 'Source template file (env_example, env_sample, env_template)'
         version:
           type: string
         created_at:

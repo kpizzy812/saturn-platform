@@ -524,6 +524,11 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         unset($validated['deploy_on_push']);
     }
 
+    // Mark build_pack as explicitly set when user changes it via settings
+    if (isset($validated['build_pack'])) {
+        $validated['build_pack_explicitly_set'] = true;
+    }
+
     $application->update($validated);
 
     return back()->with('success', 'Settings saved successfully.');
