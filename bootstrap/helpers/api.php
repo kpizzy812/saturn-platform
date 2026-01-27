@@ -9,9 +9,24 @@ use Illuminate\Validation\Rule;
 
 function getTeamIdFromToken()
 {
-    $token = auth()->user()->currentAccessToken();
+    $user = auth()->user();
+    if (! $user) {
+        return null;
+    }
 
-    return data_get($token, 'team_id');
+    // API token auth: get team_id from token
+    $token = $user->currentAccessToken();
+    if ($token && data_get($token, 'team_id')) {
+        return data_get($token, 'team_id');
+    }
+
+    // Session auth fallback (SPA): use current team
+    $currentTeam = $user->currentTeam();
+    if ($currentTeam) {
+        return $currentTeam->id;
+    }
+
+    return null;
 }
 function invalidTokenResponse()
 {

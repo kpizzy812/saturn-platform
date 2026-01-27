@@ -806,9 +806,20 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
     }
 
     try {
-        // Get container stats using docker stats
-        $containerName = $application->uuid;
-        $command = "docker stats {$containerName} --no-stream --format '{{json .}}' 2>/dev/null || echo '{}'";
+        // Find the running container by UUID prefix (container name may have a timestamp suffix)
+        $containerUuid = $application->uuid;
+        $findCommand = "docker ps -q --filter name=^{$containerUuid} 2>/dev/null | head -1";
+        $containerId = trim(instant_remote_process([$findCommand], $server, false) ?? '');
+
+        if (empty($containerId)) {
+            return response()->json([
+                'error' => 'Container not running',
+                'metrics' => null,
+            ]);
+        }
+
+        // Get container stats using the found container ID
+        $command = "docker stats {$containerId} --no-stream --format '{{json .}}' 2>/dev/null || echo '{}'";
         $output = trim(instant_remote_process([$command], $server, false) ?? '{}');
 
         if (empty($output) || $output === '{}') {
