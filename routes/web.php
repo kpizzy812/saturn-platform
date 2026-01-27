@@ -1393,16 +1393,20 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
         // Get container logs
         try {
-            $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
+            // For localhost/Saturn host, run Docker commands directly to avoid SSH issues
+            $isLocalhost = $server->isSaturnHost || $server->isLocalhost;
+
+            if ($isLocalhost) {
+                // Run Docker commands directly via Process::run()
+                $dockerPs = \Illuminate\Support\Facades\Process::run(
+                    "docker ps -a --filter='label=saturn.applicationId={$application->id}' --format '{{json .}}'"
+                );
+                $containers = format_docker_command_output_to_json(trim($dockerPs->output()));
+            } else {
+                $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
+            }
 
             if ($containers->isEmpty()) {
-                \Log::warning('Logs route: No containers found', [
-                    'app_id' => $application->id,
-                    'app_uuid' => $uuid,
-                    'server_id' => $server->id,
-                    'server_ip' => $server->ip,
-                ]);
-
                 return response()->json([
                     'container_logs' => 'No containers found for this application.',
                     'containers' => [],
@@ -1414,13 +1418,21 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             $firstContainer = $containers->first();
             $containerName = $firstContainer['Names'] ?? null;
             if ($containerName) {
-                // Use --since for incremental fetching, or -n 200 for initial load
-                if ($since) {
-                    // Fetch only new logs since the given timestamp
-                    $logs = instant_remote_process(["docker logs --since {$since} --timestamps {$containerName} 2>&1"], $server);
+                if ($isLocalhost) {
+                    // Run docker logs directly
+                    if ($since) {
+                        $process = \Illuminate\Support\Facades\Process::run("docker logs --since {$since} --timestamps {$containerName} 2>&1");
+                    } else {
+                        $process = \Illuminate\Support\Facades\Process::run("docker logs -n 200 --timestamps {$containerName} 2>&1");
+                    }
+                    $logs = trim($process->output());
                 } else {
-                    // Initial load - get last 200 lines with timestamps
-                    $logs = instant_remote_process(["docker logs -n 200 --timestamps {$containerName} 2>&1"], $server);
+                    // Use SSH for remote servers
+                    if ($since) {
+                        $logs = instant_remote_process(["docker logs --since {$since} --timestamps {$containerName} 2>&1"], $server);
+                    } else {
+                        $logs = instant_remote_process(["docker logs -n 200 --timestamps {$containerName} 2>&1"], $server);
+                    }
                 }
 
                 return response()->json([
