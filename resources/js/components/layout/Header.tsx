@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 import { HelpCircle, Bell, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { SaturnLogo } from '@/components/ui/SaturnLogo';
 
 interface HeaderProps {
     showNewProject?: boolean;
@@ -37,8 +38,14 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
 
     return (
         <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4">
-            {/* Left: Search */}
-            <div className="flex items-center gap-2">
+            {/* Left: Logo + Search */}
+            <div className="flex items-center gap-4">
+                {/* Logo */}
+                <Link href="/dashboard" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+                    <SaturnLogo size="sm" />
+                    <span className="text-lg font-semibold tracking-tight text-foreground">Saturn</span>
+                </Link>
+
                 {/* Command Palette Trigger */}
                 <button
                     onClick={onCommandPalette}
