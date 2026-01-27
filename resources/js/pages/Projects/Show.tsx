@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
-import { Badge, Button } from '@/components/ui';
+import { Button, useConfirm } from '@/components/ui';
 import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
 import type { Project, Environment } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
@@ -41,8 +41,9 @@ export default function ProjectShow({ project }: Props) {
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs' | 'settings'>('architecture');
     const [hasStagedChanges, setHasStagedChanges] = useState(false);
 
-    // Toast notifications hook - must be called before early return
+    // Hooks - must be called before early return
     const { addToast } = useToast();
+    const confirm = useConfirm();
 
     // Show loading state if project is not available
     if (!project) {
@@ -338,7 +339,12 @@ export default function ProjectShow({ project }: Props) {
         const node = contextMenuNode;
         if (!node) return;
 
-        const confirmed = window.confirm(`Are you sure you want to delete "${node.name}"? This action cannot be undone.`);
+        const confirmed = await confirm({
+            title: 'Delete Resource',
+            description: `Are you sure you want to delete "${node.name}"? This action cannot be undone.`,
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
         if (!confirmed) return;
 
         const endpoint = node.type === 'app'

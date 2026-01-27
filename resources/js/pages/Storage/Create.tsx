@@ -95,18 +95,30 @@ export default function StorageCreate() {
         setTestResult(null);
 
         try {
-            // In a real app, this would make an API call to test the connection
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Simulate success/failure
-            const success = Math.random() > 0.3;
-            setTestResult({
-                success,
-                message: success
-                    ? 'Connection successful! Storage is ready to use.'
-                    : 'Connection failed. Please check your credentials and try again.',
+            const xsrfToken = decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '');
+            const response = await fetch('/storage/test-connection', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': xsrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    key: accessKey,
+                    secret: secretKey,
+                    bucket,
+                    region,
+                    endpoint: endpoint || null,
+                }),
             });
-        } catch (error) {
+
+            const data = await response.json();
+            setTestResult({
+                success: data.success,
+                message: data.message,
+            });
+        } catch {
             setTestResult({
                 success: false,
                 message: 'An error occurred while testing the connection.',

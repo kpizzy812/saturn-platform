@@ -85,7 +85,6 @@ export default function DeploymentDetails({
 
         const echo = getEcho();
         if (!echo) {
-            console.warn('Echo not available for real-time logs');
             return;
         }
 

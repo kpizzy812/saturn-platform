@@ -45,7 +45,6 @@ export default function DatabaseBackups({ database, backups }: Props) {
     const confirm = useConfirm();
 
     const handleCreateBackup = () => {
-        // In a real app, this would trigger a backup
         router.post(`/databases/${database.uuid}/backups`);
     };
 
@@ -62,7 +61,6 @@ export default function DatabaseBackups({ database, backups }: Props) {
     };
 
     const handleDownload = (backupId: number) => {
-        // In a real app, this would download the backup
         window.location.href = `/databases/${database.uuid}/backups/${backupId}/download`;
     };
 

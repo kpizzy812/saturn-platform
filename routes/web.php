@@ -449,7 +449,15 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('observability.index');
 
     Route::get('/observability/metrics', function () {
-        return \Inertia\Inertia::render('Observability/Metrics');
+        $team = auth()->user()->currentTeam();
+        $servers = $team->servers()->select('id', 'uuid', 'name')->get();
+
+        return \Inertia\Inertia::render('Observability/Metrics', [
+            'servers' => $servers->map(fn ($s) => [
+                'uuid' => $s->uuid,
+                'name' => $s->name,
+            ])->values()->toArray(),
+        ]);
     })->name('observability.metrics');
 
     Route::get('/observability/logs', function () {
@@ -1304,8 +1312,68 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('storage.create');
 
     Route::post('/storage', function (\Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'key' => 'required|string',
+            'secret' => 'required|string',
+            'bucket' => 'required|string',
+            'region' => 'required|string',
+            'endpoint' => 'nullable|string',
+            'path' => 'nullable|string',
+        ]);
+
+        $team = auth()->user()->currentTeam();
+
+        \App\Models\S3Storage::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'key' => $validated['key'],
+            'secret' => $validated['secret'],
+            'bucket' => $validated['bucket'],
+            'region' => $validated['region'],
+            'endpoint' => $validated['endpoint'] ?? null,
+            'team_id' => $team->id,
+        ]);
+
         return redirect()->route('storage.index')->with('success', 'Storage created successfully');
     })->name('storage.store');
+
+    Route::post('/storage/test-connection', function (\Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'key' => 'required|string',
+            'secret' => 'required|string',
+            'bucket' => 'required|string',
+            'region' => 'required|string',
+            'endpoint' => 'nullable|string',
+        ]);
+
+        $team = auth()->user()->currentTeam();
+
+        // Create a temporary S3Storage to test
+        $storage = new \App\Models\S3Storage([
+            'key' => $validated['key'],
+            'secret' => $validated['secret'],
+            'bucket' => $validated['bucket'],
+            'region' => $validated['region'],
+            'endpoint' => $validated['endpoint'] ?? null,
+            'team_id' => $team->id,
+        ]);
+
+        try {
+            $result = $storage->testConnection();
+
+            return response()->json([
+                'success' => (bool) $result,
+                'message' => $result ? 'Connection successful! Storage is ready to use.' : 'Connection failed. Please check your credentials and try again.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Connection failed: '.$e->getMessage(),
+            ]);
+        }
+    })->name('storage.test-connection');
 
     Route::get('/storage/{uuid}', function (string $uuid) {
         return \Inertia\Inertia::render('Storage/Show', ['uuid' => $uuid]);
