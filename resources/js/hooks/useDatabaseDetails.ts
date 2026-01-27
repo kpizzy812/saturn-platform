@@ -64,7 +64,7 @@ export function useDatabaseExtensions({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/extensions`, {
+            const response = await fetch(`/_internal/databases/${uuid}/extensions`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -95,7 +95,7 @@ export function useDatabaseExtensions({
         if (!uuid) return false;
 
         try {
-            const response = await fetch(`/api/databases/${uuid}/extensions/toggle`, {
+            const response = await fetch(`/_internal/databases/${uuid}/extensions/toggle`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -159,7 +159,7 @@ export function useDatabaseUsers({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/users`, {
+            const response = await fetch(`/_internal/databases/${uuid}/users`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -222,7 +222,7 @@ export function useDatabaseLogs({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/logs?lines=100`, {
+            const response = await fetch(`/_internal/databases/${uuid}/logs?lines=100`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',

@@ -249,7 +249,7 @@ function KeysTab({ database }: { database: StandaloneDatabase }) {
         });
         if (confirmed) {
             try {
-                const response = await fetch(`/api/databases/${database.uuid}/redis/keys/delete`, {
+                const response = await fetch(`/_internal/databases/${database.uuid}/redis/keys/delete`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

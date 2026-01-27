@@ -93,7 +93,7 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
         setQueryResult(null);
 
         try {
-            const response = await fetch(`/api/databases/${database.uuid}/query`, {
+            const response = await fetch(`/_internal/databases/${database.uuid}/query`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -277,112 +277,112 @@ Route::get('/databases/{uuid}/metrics', function (string $uuid) {
 })->name('databases.metrics');
 
 // API endpoint for real-time database metrics (JSON)
-Route::get('/api/databases/{uuid}/metrics', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMetrics'])
+Route::get('/_internal/databases/{uuid}/metrics', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMetrics'])
     ->name('databases.metrics.api');
 
 // API endpoint for historical database metrics (JSON)
-Route::get('/api/databases/{uuid}/metrics/history', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getHistoricalMetrics'])
+Route::get('/_internal/databases/{uuid}/metrics/history', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getHistoricalMetrics'])
     ->name('databases.metrics.history.api');
 
 // API endpoint for database extensions (PostgreSQL)
-Route::get('/api/databases/{uuid}/extensions', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getExtensions'])
+Route::get('/_internal/databases/{uuid}/extensions', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getExtensions'])
     ->name('databases.extensions.api');
 
 // API endpoint for toggling database extensions (PostgreSQL)
-Route::post('/api/databases/{uuid}/extensions/toggle', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'toggleExtension'])
+Route::post('/_internal/databases/{uuid}/extensions/toggle', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'toggleExtension'])
     ->name('databases.extensions.toggle.api');
 
 // API endpoint for database users
-Route::get('/api/databases/{uuid}/users', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getUsers'])
+Route::get('/_internal/databases/{uuid}/users', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getUsers'])
     ->name('databases.users.api');
 
 // API endpoint for database logs
-Route::get('/api/databases/{uuid}/logs', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getLogs'])
+Route::get('/_internal/databases/{uuid}/logs', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getLogs'])
     ->name('databases.logs.api');
 
 // API endpoint for executing SQL queries
-Route::post('/api/databases/{uuid}/query', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'executeQuery'])
+Route::post('/_internal/databases/{uuid}/query', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'executeQuery'])
     ->name('databases.query.api');
 
 // ClickHouse specific endpoints
-Route::get('/api/databases/{uuid}/clickhouse/queries', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseQueryLog'])
+Route::get('/_internal/databases/{uuid}/clickhouse/queries', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseQueryLog'])
     ->name('databases.clickhouse.queries.api');
 
-Route::get('/api/databases/{uuid}/clickhouse/merge-status', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseMergeStatus'])
+Route::get('/_internal/databases/{uuid}/clickhouse/merge-status', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseMergeStatus'])
     ->name('databases.clickhouse.merge-status.api');
 
-Route::get('/api/databases/{uuid}/clickhouse/replication', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseReplicationStatus'])
+Route::get('/_internal/databases/{uuid}/clickhouse/replication', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseReplicationStatus'])
     ->name('databases.clickhouse.replication.api');
 
-Route::get('/api/databases/{uuid}/clickhouse/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseSettings'])
+Route::get('/_internal/databases/{uuid}/clickhouse/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getClickhouseSettings'])
     ->name('databases.clickhouse.settings.api');
 
 // MongoDB specific endpoints
-Route::get('/api/databases/{uuid}/mongodb/collections', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoCollections'])
+Route::get('/_internal/databases/{uuid}/mongodb/collections', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoCollections'])
     ->name('databases.mongodb.collections.api');
 
-Route::get('/api/databases/{uuid}/mongodb/indexes', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoIndexes'])
+Route::get('/_internal/databases/{uuid}/mongodb/indexes', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoIndexes'])
     ->name('databases.mongodb.indexes.api');
 
-Route::get('/api/databases/{uuid}/mongodb/replica-set', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoReplicaSet'])
+Route::get('/_internal/databases/{uuid}/mongodb/replica-set', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoReplicaSet'])
     ->name('databases.mongodb.replica-set.api');
 
 // Redis specific endpoints
-Route::get('/api/databases/{uuid}/redis/keys', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisKeys'])
+Route::get('/_internal/databases/{uuid}/redis/keys', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisKeys'])
     ->name('databases.redis.keys.api');
 
-Route::get('/api/databases/{uuid}/redis/memory', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisMemory'])
+Route::get('/_internal/databases/{uuid}/redis/memory', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisMemory'])
     ->name('databases.redis.memory.api');
 
-Route::post('/api/databases/{uuid}/redis/flush', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'redisFlush'])
+Route::post('/_internal/databases/{uuid}/redis/flush', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'redisFlush'])
     ->name('databases.redis.flush.api');
 
 // PostgreSQL maintenance endpoints
-Route::post('/api/databases/{uuid}/postgres/maintenance', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'postgresMaintenace'])
+Route::post('/_internal/databases/{uuid}/postgres/maintenance', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'postgresMaintenace'])
     ->name('databases.postgres.maintenance.api');
 
 // MySQL/MariaDB settings endpoint
-Route::get('/api/databases/{uuid}/mysql/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMysqlSettings'])
+Route::get('/_internal/databases/{uuid}/mysql/settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMysqlSettings'])
     ->name('databases.mysql.settings.api');
 
 // Redis persistence settings endpoint
-Route::get('/api/databases/{uuid}/redis/persistence', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisPersistence'])
+Route::get('/_internal/databases/{uuid}/redis/persistence', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisPersistence'])
     ->name('databases.redis.persistence.api');
 
 // MongoDB storage settings endpoint
-Route::get('/api/databases/{uuid}/mongodb/storage-settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoStorageSettings'])
+Route::get('/_internal/databases/{uuid}/mongodb/storage-settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoStorageSettings'])
     ->name('databases.mongodb.storage-settings.api');
 
 // Active connections endpoint
-Route::get('/api/databases/{uuid}/connections', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getActiveConnections'])
+Route::get('/_internal/databases/{uuid}/connections', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getActiveConnections'])
     ->name('databases.connections.api');
 
 // Kill connection endpoint
-Route::post('/api/databases/{uuid}/connections/kill', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'killConnection'])
+Route::post('/_internal/databases/{uuid}/connections/kill', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'killConnection'])
     ->name('databases.connections.kill.api');
 
 // Create user endpoint
-Route::post('/api/databases/{uuid}/users/create', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createUser'])
+Route::post('/_internal/databases/{uuid}/users/create', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createUser'])
     ->name('databases.users.create.api');
 
 // Delete user endpoint
-Route::post('/api/databases/{uuid}/users/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteUser'])
+Route::post('/_internal/databases/{uuid}/users/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteUser'])
     ->name('databases.users.delete.api');
 
 // MongoDB create index endpoint
-Route::post('/api/databases/{uuid}/mongodb/indexes/create', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createMongoIndex'])
+Route::post('/_internal/databases/{uuid}/mongodb/indexes/create', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createMongoIndex'])
     ->name('databases.mongodb.indexes.create.api');
 
 // Redis delete key endpoint
-Route::post('/api/databases/{uuid}/redis/keys/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteRedisKey'])
+Route::post('/_internal/databases/{uuid}/redis/keys/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteRedisKey'])
     ->name('databases.redis.keys.delete.api');
 
 // Database tables/collections list endpoint
-Route::get('/api/databases/{uuid}/tables', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTablesList'])
+Route::get('/_internal/databases/{uuid}/tables', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTablesList'])
     ->name('databases.tables.api');
 
 // S3 connection test endpoint
-Route::post('/api/databases/s3/test', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'testS3Connection'])
+Route::post('/_internal/databases/s3/test', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'testS3Connection'])
     ->name('databases.s3.test.api');
 
 Route::get('/databases/{uuid}/settings', function (string $uuid) {

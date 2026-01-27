@@ -296,7 +296,7 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
 
         setIsCreating(true);
         try {
-            const response = await fetch(`/api/databases/${database.uuid}/users/create`, {
+            const response = await fetch(`/_internal/databases/${database.uuid}/users/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -330,7 +330,7 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
         });
         if (confirmed) {
             try {
-                const response = await fetch(`/api/databases/${database.uuid}/users/delete`, {
+                const response = await fetch(`/_internal/databases/${database.uuid}/users/delete`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

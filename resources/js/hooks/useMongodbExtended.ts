@@ -50,7 +50,7 @@ export function useMongoCollections({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/mongodb/collections`, {
+            const response = await fetch(`/_internal/databases/${uuid}/mongodb/collections`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export function useMongoIndexes({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/mongodb/indexes`, {
+            const response = await fetch(`/_internal/databases/${uuid}/mongodb/indexes`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ export function useMongoReplicaSet({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/mongodb/replica-set`, {
+            const response = await fetch(`/_internal/databases/${uuid}/mongodb/replica-set`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',

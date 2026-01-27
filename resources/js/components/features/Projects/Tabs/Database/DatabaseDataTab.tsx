@@ -23,7 +23,7 @@ export function DatabaseDataTab({ service }: DatabaseDataTabProps) {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/api/databases/${service.uuid}/tables`);
+            const response = await fetch(`/_internal/databases/${service.uuid}/tables`);
             const data = await response.json();
             if (data.available && data.tables) {
                 setTables(data.tables);

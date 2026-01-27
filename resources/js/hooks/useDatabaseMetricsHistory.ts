@@ -100,7 +100,7 @@ export function useDatabaseMetricsHistory({
         try {
             setError(null);
 
-            const response = await fetch(`/api/databases/${uuid}/metrics/history?timeRange=${timeRange}`, {
+            const response = await fetch(`/_internal/databases/${uuid}/metrics/history?timeRange=${timeRange}`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',

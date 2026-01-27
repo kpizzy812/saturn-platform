@@ -50,7 +50,7 @@ export function useRedisKeys({
                 limit: limit.toString(),
             });
 
-            const response = await fetch(`/api/databases/${uuid}/redis/keys?${params}`, {
+            const response = await fetch(`/_internal/databases/${uuid}/redis/keys?${params}`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export function useRedisMemory({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/redis/memory`, {
+            const response = await fetch(`/_internal/databases/${uuid}/redis/memory`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ export function useRedisFlush(uuid: string) {
         setError(null);
 
         try {
-            const response = await fetch(`/api/databases/${uuid}/redis/flush`, {
+            const response = await fetch(`/_internal/databases/${uuid}/redis/flush`, {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',
@@ -205,7 +205,7 @@ export function usePostgresMaintenance(uuid: string) {
         setError(null);
 
         try {
-            const response = await fetch(`/api/databases/${uuid}/postgres/maintenance`, {
+            const response = await fetch(`/_internal/databases/${uuid}/postgres/maintenance`, {
                 method: 'POST',
                 headers: {
                     Accept: 'application/json',

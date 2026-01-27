@@ -27,7 +27,7 @@ export function RollbacksTab({ service, containers = [] }: Props) {
         setIsRedeploying(true);
 
         try {
-            const response = await fetch(`/api/services/${service.uuid}/redeploy`, {
+            const response = await fetch(`/_internal/services/${service.uuid}/redeploy`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

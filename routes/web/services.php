@@ -300,7 +300,7 @@ Route::get('/services/{uuid}/rollbacks', function (string $uuid) {
 })->name('services.rollbacks');
 
 // API endpoint for service redeploy (restart with pull latest)
-Route::post('/api/services/{uuid}/redeploy', function (string $uuid, Request $request) {
+Route::post('/_internal/services/{uuid}/redeploy', function (string $uuid, Request $request) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();

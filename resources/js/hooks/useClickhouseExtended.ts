@@ -60,7 +60,7 @@ export function useClickhouseQueries({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/clickhouse/queries`, {
+            const response = await fetch(`/_internal/databases/${uuid}/clickhouse/queries`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export function useClickhouseMergeStatus({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/clickhouse/merge-status`, {
+            const response = await fetch(`/_internal/databases/${uuid}/clickhouse/merge-status`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export function useClickhouseReplication({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/clickhouse/replication`, {
+            const response = await fetch(`/_internal/databases/${uuid}/clickhouse/replication`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -234,7 +234,7 @@ export function useClickhouseSettings({ uuid }: { uuid: string }) {
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/clickhouse/settings`, {
+            const response = await fetch(`/_internal/databases/${uuid}/clickhouse/settings`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',

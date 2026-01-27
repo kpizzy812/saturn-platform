@@ -78,7 +78,7 @@ export function useMysqlSettings({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/mysql/settings`, {
+            const response = await fetch(`/_internal/databases/${uuid}/mysql/settings`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -142,7 +142,7 @@ export function useRedisPersistence({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/redis/persistence`, {
+            const response = await fetch(`/_internal/databases/${uuid}/redis/persistence`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
@@ -206,7 +206,7 @@ export function useMongoStorageSettings({
 
         try {
             setError(null);
-            const response = await fetch(`/api/databases/${uuid}/mongodb/storage-settings`, {
+            const response = await fetch(`/_internal/databases/${uuid}/mongodb/storage-settings`, {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',

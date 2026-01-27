@@ -89,7 +89,7 @@ export function useDatabaseMetrics({
         try {
             setError(null);
 
-            const response = await fetch(`/api/databases/${uuid}/metrics`, {
+            const response = await fetch(`/_internal/databases/${uuid}/metrics`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',

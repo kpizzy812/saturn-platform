@@ -260,7 +260,7 @@ function IndexesTab({ database }: { database: StandaloneDatabase }) {
 
         setIsCreating(true);
         try {
-            const response = await fetch(`/api/databases/${database.uuid}/mongodb/indexes/create`, {
+            const response = await fetch(`/_internal/databases/${database.uuid}/mongodb/indexes/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

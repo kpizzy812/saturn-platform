@@ -85,7 +85,7 @@ export default function DatabaseConnections({ database }: Props) {
     const fetchConnections = async () => {
         setConnectionsLoading(true);
         try {
-            const response = await fetch(`/api/databases/${database.uuid}/connections`);
+            const response = await fetch(`/_internal/databases/${database.uuid}/connections`);
             const data = await response.json();
             if (data.available && data.connections) {
                 setActiveConnections(data.connections);
@@ -170,7 +170,7 @@ export default function DatabaseConnections({ database }: Props) {
     const confirmKillConnection = async () => {
         if (connectionToKill) {
             try {
-                const response = await fetch(`/api/databases/${database.uuid}/connections/kill`, {
+                const response = await fetch(`/_internal/databases/${database.uuid}/connections/kill`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

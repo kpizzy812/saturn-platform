@@ -77,7 +77,7 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
         setIsTesting(true);
         addToast('info', 'Testing S3 connection...');
         try {
-            const response = await fetch('/api/databases/s3/test', {
+            const response = await fetch('/_internal/databases/s3/test', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

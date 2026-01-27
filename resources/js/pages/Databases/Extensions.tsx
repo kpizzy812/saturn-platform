@@ -34,7 +34,7 @@ export default function DatabaseExtensions({ database }: Props) {
     const fetchExtensions = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/databases/${database.uuid}/extensions`);
+            const response = await fetch(`/_internal/databases/${database.uuid}/extensions`);
             const data = await response.json();
             if (data.available && data.extensions) {
                 setExtensions(data.extensions.map((ext: { name: string; version: string; enabled: boolean; description: string }, index: number) => ({
@@ -75,7 +75,7 @@ export default function DatabaseExtensions({ database }: Props) {
         const enable = !extension.enabled;
 
         try {
-            const response = await fetch(`/api/databases/${database.uuid}/extensions/toggle`, {
+            const response = await fetch(`/_internal/databases/${database.uuid}/extensions/toggle`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
