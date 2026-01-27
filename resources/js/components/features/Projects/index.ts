@@ -23,6 +23,9 @@ export {
     AppSettingsTab,
 } from './Tabs/Application';
 
+// Local Setup Modal
+export { LocalSetupModal } from './LocalSetupModal';
+
 // Database Tabs
 export {
     DatabaseDataTab,

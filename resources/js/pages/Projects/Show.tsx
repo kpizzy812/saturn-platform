@@ -27,6 +27,7 @@ import {
     DatabaseBackupsTab,
     DatabaseExtensionsTab,
     DatabaseSettingsTab,
+    LocalSetupModal,
 } from '@/components/features/Projects';
 
 interface Props {
@@ -40,6 +41,7 @@ export default function ProjectShow({ project }: Props) {
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'extensions' | 'settings'>('connect');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs' | 'settings'>('architecture');
     const [hasStagedChanges, setHasStagedChanges] = useState(false);
+    const [showLocalSetup, setShowLocalSetup] = useState(false);
 
     // Hooks - must be called before early return
     const { addToast } = useToast();
@@ -884,7 +886,10 @@ export default function ProjectShow({ project }: Props) {
                         </div>
 
                         <div className="absolute bottom-4 left-4 z-10">
-                            <button className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground-muted shadow-lg transition-colors hover:bg-background-secondary hover:text-foreground">
+                            <button
+                                onClick={() => setShowLocalSetup(true)}
+                                className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground-muted shadow-lg transition-colors hover:bg-background-secondary hover:text-foreground"
+                            >
                                 <Terminal className="h-4 w-4" />
                                 Set up your project locally
                             </button>
@@ -1296,6 +1301,13 @@ export default function ProjectShow({ project }: Props) {
                 onOpenUrl={handleOpenUrl}
                 onCreateBackup={handleCreateBackup}
                 onRestoreBackup={handleRestoreBackup}
+            />
+
+            {/* Local Setup Modal */}
+            <LocalSetupModal
+                isOpen={showLocalSetup}
+                onClose={() => setShowLocalSetup(false)}
+                environment={selectedEnv}
             />
 
             {/* Logs Viewer Modal */}
