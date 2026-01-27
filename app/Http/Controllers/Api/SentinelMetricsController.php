@@ -119,13 +119,23 @@ class SentinelMetricsController extends Controller
     public function metrics(Request $request, string $uuid): JsonResponse
     {
         // Support both API token and session-based authentication (SPA)
-        $teamId = getTeamIdFromToken();
+        $teamId = null;
+
+        try {
+            $teamId = getTeamIdFromToken();
+        } catch (\Throwable) {
+            // Token-based auth failed, try session
+        }
 
         if (is_null($teamId)) {
             // Try session-based auth for SPA frontend
-            $currentTeam = currentTeam();
-            if ($currentTeam) {
-                $teamId = $currentTeam->id;
+            try {
+                $currentTeam = currentTeam();
+                if ($currentTeam) {
+                    $teamId = $currentTeam->id;
+                }
+            } catch (\Throwable) {
+                // Session auth also failed
             }
         }
 
