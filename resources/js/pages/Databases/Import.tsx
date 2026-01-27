@@ -2,43 +2,74 @@ import { AppLayout } from '@/components/layout';
 import { Button, Card } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Link } from '@inertiajs/react';
-import { useState, useRef, FormEvent } from 'react';
+import { useState } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StandaloneDatabase } from '@/types';
 
-type ImportMethod = 'file' | 'url';
 type ExportFormat = 'sql' | 'csv' | 'json';
 
 interface Props {
     database: StandaloneDatabase;
 }
 
+// CLI import commands by database type
+function getImportCommands(database: StandaloneDatabase): { label: string; command: string }[] {
+    const containerName = database.uuid;
+    switch (database.database_type) {
+        case 'postgresql':
+            return [
+                { label: 'Import SQL dump', command: `docker exec -i ${containerName} psql -U ${database.postgres_user || 'postgres'} -d ${database.postgres_db || 'postgres'} < dump.sql` },
+                { label: 'Import compressed dump', command: `gunzip -c dump.sql.gz | docker exec -i ${containerName} psql -U ${database.postgres_user || 'postgres'} -d ${database.postgres_db || 'postgres'}` },
+                { label: 'Restore custom format', command: `docker exec -i ${containerName} pg_restore -U ${database.postgres_user || 'postgres'} -d ${database.postgres_db || 'postgres'} < dump.custom` },
+            ];
+        case 'mysql':
+        case 'mariadb':
+            return [
+                { label: 'Import SQL dump', command: `docker exec -i ${containerName} mysql -u root -p${database.mysql_root_password ? '***' : ''} ${database.mysql_database || 'mysql'} < dump.sql` },
+                { label: 'Import compressed dump', command: `gunzip -c dump.sql.gz | docker exec -i ${containerName} mysql -u root -p${database.mysql_root_password ? '***' : ''} ${database.mysql_database || 'mysql'}` },
+            ];
+        case 'mongodb':
+            return [
+                { label: 'Import BSON dump', command: `docker exec -i ${containerName} mongorestore --db ${database.mongo_initdb_database || 'admin'} /dump/` },
+                { label: 'Import JSON', command: `docker exec -i ${containerName} mongoimport --db ${database.mongo_initdb_database || 'admin'} --collection <name> --file data.json` },
+            ];
+        case 'redis':
+        case 'keydb':
+        case 'dragonfly':
+            return [
+                { label: 'Restore RDB file', command: `docker cp dump.rdb ${containerName}:/data/dump.rdb && docker restart ${containerName}` },
+            ];
+        case 'clickhouse':
+            return [
+                { label: 'Import CSV', command: `docker exec -i ${containerName} clickhouse-client --query="INSERT INTO <table> FORMAT CSV" < data.csv` },
+                { label: 'Import SQL dump', command: `docker exec -i ${containerName} clickhouse-client < dump.sql` },
+            ];
+        default:
+            return [
+                { label: 'Import SQL dump', command: `docker exec -i ${containerName} < dump.sql` },
+            ];
+    }
+}
+
 export default function DatabaseImport({ database }: Props) {
     const [activeTab, setActiveTab] = useState<'import' | 'export'>('import');
-    const [importMethod, setImportMethod] = useState<ImportMethod>('file');
     const [exportFormat, setExportFormat] = useState<ExportFormat>('sql');
-    const [importUrl, setImportUrl] = useState('');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [exportOptions, setExportOptions] = useState({
         includeData: true,
         includeStructure: true,
         compress: false,
     });
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const { addToast } = useToast();
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-        }
-    };
+    const importCommands = getImportCommands(database);
 
-    const handleImport = async (e: FormEvent) => {
-        e.preventDefault();
-        addToast('info', 'Database import requires CLI access. Use the restore command on your server to import data.');
+    const copyToClipboard = (text: string, index: number) => {
+        navigator.clipboard.writeText(text);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
     };
 
     const handleExport = async () => {
@@ -53,6 +84,7 @@ export default function DatabaseImport({ database }: Props) {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     frequency: 'manual',
                     save_s3: false,
@@ -70,12 +102,6 @@ export default function DatabaseImport({ database }: Props) {
         } finally {
             setIsProcessing(false);
         }
-    };
-
-    const formatFileSize = (bytes: number) => {
-        if (bytes < 1024) return `${bytes} B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
     return (
@@ -128,183 +154,73 @@ export default function DatabaseImport({ database }: Props) {
 
                 {/* Import Tab */}
                 {activeTab === 'import' && (
-                    <form onSubmit={handleImport} className="space-y-6">
-                        {/* Import Method */}
+                    <div className="space-y-6">
+                        {/* CLI Import Instructions */}
                         <Card className="p-6">
-                            <h2 className="mb-4 text-lg font-semibold text-foreground">
-                                Import Method
-                            </h2>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setImportMethod('file')}
-                                    className={cn(
-                                        'rounded-lg border-2 p-4 text-left transition-all',
-                                        importMethod === 'file'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border hover:border-border/80'
-                                    )}
-                                >
-                                    <Icons.FileUp className="mb-2 h-6 w-6 text-primary" />
-                                    <h3 className="mb-1 font-semibold text-foreground">
-                                        Upload File
-                                    </h3>
-                                    <p className="text-sm text-foreground-muted">
-                                        Upload a SQL dump file from your computer
-                                    </p>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setImportMethod('url')}
-                                    className={cn(
-                                        'rounded-lg border-2 p-4 text-left transition-all',
-                                        importMethod === 'url'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border hover:border-border/80'
-                                    )}
-                                >
-                                    <Icons.Link className="mb-2 h-6 w-6 text-primary" />
-                                    <h3 className="mb-1 font-semibold text-foreground">
-                                        Import from URL
-                                    </h3>
-                                    <p className="text-sm text-foreground-muted">
-                                        Import from a publicly accessible URL
-                                    </p>
-                                </button>
-                            </div>
-                        </Card>
-
-                        {/* File Upload */}
-                        {importMethod === 'file' && (
-                            <Card className="p-6">
-                                <h2 className="mb-4 text-lg font-semibold text-foreground">
-                                    Select File
+                            <div className="mb-4 flex items-center gap-3">
+                                <Icons.Terminal className="h-6 w-6 text-primary" />
+                                <h2 className="text-lg font-semibold text-foreground">
+                                    Import via CLI
                                 </h2>
-                                <div
-                                    className={cn(
-                                        'cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors',
-                                        selectedFile
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-border hover:border-border/80'
-                                    )}
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept=".sql,.gz,.zip"
-                                        onChange={handleFileSelect}
-                                        className="hidden"
-                                    />
-                                    {selectedFile ? (
-                                        <div>
-                                            <Icons.FileCheck className="mx-auto mb-3 h-12 w-12 text-primary" />
-                                            <h3 className="mb-1 font-semibold text-foreground">
-                                                {selectedFile.name}
-                                            </h3>
-                                            <p className="text-sm text-foreground-muted">
-                                                {formatFileSize(selectedFile.size)}
-                                            </p>
-                                            <Button
+                            </div>
+                            <p className="mb-6 text-sm text-foreground-muted">
+                                Database import is performed via CLI commands on the server where the database container is running.
+                                SSH into your server and use the commands below.
+                            </p>
+
+                            <div className="space-y-4">
+                                {importCommands.map((cmd, index) => (
+                                    <div key={index} className="rounded-lg border border-border bg-background-secondary p-4">
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-sm font-medium text-foreground">{cmd.label}</span>
+                                            <button
                                                 type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedFile(null);
-                                                }}
-                                                variant="secondary"
-                                                size="sm"
-                                                className="mt-3"
+                                                onClick={() => copyToClipboard(cmd.command, index)}
+                                                className="flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground"
                                             >
-                                                Change File
-                                            </Button>
+                                                {copiedIndex === index ? (
+                                                    <>
+                                                        <Icons.Check className="h-3.5 w-3.5 text-success" />
+                                                        Copied
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Icons.Copy className="h-3.5 w-3.5" />
+                                                        Copy
+                                                    </>
+                                                )}
+                                            </button>
                                         </div>
-                                    ) : (
-                                        <div>
-                                            <Icons.Upload className="mx-auto mb-3 h-12 w-12 text-foreground-subtle" />
-                                            <h3 className="mb-1 font-semibold text-foreground">
-                                                Click to upload or drag and drop
-                                            </h3>
-                                            <p className="text-sm text-foreground-muted">
-                                                SQL, GZ, or ZIP files (max 100MB)
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        )}
+                                        <pre className="overflow-x-auto rounded bg-background p-3 text-xs text-foreground-muted">
+                                            <code>{cmd.command}</code>
+                                        </pre>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
 
-                        {/* URL Import */}
-                        {importMethod === 'url' && (
-                            <Card className="p-6">
-                                <h2 className="mb-4 text-lg font-semibold text-foreground">
-                                    Import URL
-                                </h2>
-                                <div>
-                                    <label className="mb-2 block text-sm font-medium text-foreground">
-                                        File URL
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={importUrl}
-                                        onChange={(e) => setImportUrl(e.target.value)}
-                                        placeholder="https://example.com/database-dump.sql"
-                                        className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
-                                        required
-                                    />
-                                    <p className="mt-2 text-xs text-foreground-subtle">
-                                        The URL must be publicly accessible and point to a valid SQL dump file
-                                    </p>
-                                </div>
-                            </Card>
-                        )}
-
-                        {/* Warning */}
-                        <Card className="border-amber-500/50 bg-amber-500/10 p-4">
+                        {/* Tips */}
+                        <Card className="border-info/30 bg-info/5 p-4">
                             <div className="flex gap-3">
-                                <Icons.AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-500" />
+                                <Icons.Info className="h-5 w-5 flex-shrink-0 text-info" />
                                 <div>
-                                    <h3 className="mb-1 font-semibold text-amber-500">
-                                        Import Warning
-                                    </h3>
-                                    <p className="text-sm text-amber-400">
-                                        Importing data will modify your database. Make sure to backup your
-                                        data before proceeding. This action cannot be undone.
-                                    </p>
+                                    <h3 className="mb-1 font-semibold text-info">Tips</h3>
+                                    <ul className="space-y-1 text-sm text-foreground-muted">
+                                        <li>Create a backup before importing to prevent data loss</li>
+                                        <li>For large imports, consider using <code className="rounded bg-background px-1 text-xs">screen</code> or <code className="rounded bg-background px-1 text-xs">tmux</code> to prevent timeout</li>
+                                        <li>Replace placeholder values in the commands with your actual data</li>
+                                    </ul>
                                 </div>
                             </div>
                         </Card>
 
-                        {/* Submit */}
-                        <div className="flex gap-3">
-                            <Link href={`/databases/${database.uuid}`}>
-                                <Button type="button" variant="secondary">
-                                    Cancel
-                                </Button>
-                            </Link>
-                            <Button
-                                type="submit"
-                                disabled={
-                                    isProcessing ||
-                                    (importMethod === 'file' && !selectedFile) ||
-                                    (importMethod === 'url' && !importUrl.trim())
-                                }
-                                className="flex-1"
-                            >
-                                {isProcessing ? (
-                                    <>
-                                        <Icons.Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Importing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icons.Upload className="mr-2 h-4 w-4" />
-                                        Start Import
-                                    </>
-                                )}
+                        <Link href={`/databases/${database.uuid}`}>
+                            <Button variant="secondary">
+                                <Icons.ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Database
                             </Button>
-                        </div>
-                    </form>
+                        </Link>
+                    </div>
                 )}
 
                 {/* Export Tab */}
