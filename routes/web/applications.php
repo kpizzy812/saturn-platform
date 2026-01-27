@@ -496,7 +496,7 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'install_command' => 'sometimes|nullable|string',
         'start_command' => 'sometimes|nullable|string',
         'health_check_path' => 'sometimes|nullable|string|max:255',
-        'health_check_interval' => 'sometimes|integer|min:10|max:300',
+        'health_check_interval' => 'sometimes|integer|min:1|max:300',
         'build_pack' => 'sometimes|string|in:nixpacks,dockerfile,dockercompose,dockerimage',
         'deploy_on_push' => 'sometimes|boolean',
         'cpu_limit' => 'sometimes|nullable|string',

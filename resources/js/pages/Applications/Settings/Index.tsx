@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Select } from '@/components/ui';
-import { Settings as SettingsIcon, Save, Info, AlertCircle } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { Application } from '@/types';
 
 interface Props {
@@ -24,20 +24,32 @@ export default function ApplicationSettings({ application, projectUuid, environm
         cpu_limit: application.limits_cpus || '',
         memory_limit: application.limits_memory || '',
         build_pack: application.build_pack || 'nixpacks',
-        auto_deploy: application.is_auto_deploy_enabled ?? true,
         deploy_on_push: application.is_auto_deploy_enabled ?? true,
     });
     const [isSaving, setIsSaving] = React.useState(false);
+    const [errors, setErrors] = React.useState<Record<string, string>>({});
+    const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
+
+    React.useEffect(() => {
+        if (saveStatus !== 'idle') {
+            const timer = setTimeout(() => setSaveStatus('idle'), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [saveStatus]);
 
     const handleSave = () => {
         setIsSaving(true);
+        setErrors({});
         router.patch(`/applications/${application.uuid}/settings`, settings, {
             preserveScroll: true,
             onSuccess: () => {
                 setIsSaving(false);
+                setSaveStatus('success');
             },
-            onError: () => {
+            onError: (validationErrors) => {
                 setIsSaving(false);
+                setErrors(validationErrors);
+                setSaveStatus('error');
             },
         });
     };
@@ -66,6 +78,26 @@ export default function ApplicationSettings({ application, projectUuid, environm
                     </div>
                 </div>
             </div>
+
+            {saveStatus === 'success' && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-500/50 bg-green-500/10 p-3 text-sm text-green-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Settings saved successfully.
+                </div>
+            )}
+            {saveStatus === 'error' && Object.keys(errors).length > 0 && (
+                <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-400">
+                    <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle className="h-4 w-4" />
+                        Failed to save settings:
+                    </div>
+                    <ul className="list-disc list-inside ml-6">
+                        {Object.entries(errors).map(([field, message]) => (
+                            <li key={field}>{message}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Main Settings */}
@@ -197,7 +229,7 @@ export default function ApplicationSettings({ application, projectUuid, environm
                                         type="number"
                                         value={settings.health_check_interval}
                                         onChange={(e) => setSettings({ ...settings, health_check_interval: parseInt(e.target.value) })}
-                                        min="10"
+                                        min="1"
                                         max="300"
                                     />
                                 </div>
