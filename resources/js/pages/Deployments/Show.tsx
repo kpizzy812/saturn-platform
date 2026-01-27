@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
@@ -215,26 +215,68 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
 
                             {/* Actions */}
                             <div className="flex flex-wrap items-center gap-2 pt-2">
-                                {deployment.status === 'in_progress' && (
-                                    <Button variant="danger" size="sm">
+                                {(deployment.status === 'in_progress' || deployment.status === 'queued') && (
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (confirm('Cancel this deployment?')) {
+                                                fetch(`/api/v1/deployments/${deployment.deployment_uuid || deployment.uuid}/cancel`, {
+                                                    method: 'POST',
+                                                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
+                                                }).then(() => router.reload());
+                                            }
+                                        }}
+                                    >
                                         <StopCircle className="mr-2 h-4 w-4" />
                                         Cancel Deployment
                                     </Button>
                                 )}
-                                {deployment.status === 'finished' && (
+                                {deployment.status === 'finished' && deployment.application_uuid && (
                                     <>
-                                        <Button size="sm">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                if (confirm('Rollback to this deployment?')) {
+                                                    fetch(`/api/v1/applications/${deployment.application_uuid}/rollback/${deployment.deployment_uuid || deployment.uuid}`, {
+                                                        method: 'POST',
+                                                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
+                                                    }).then(() => router.reload());
+                                                }
+                                            }}
+                                        >
                                             <RotateCw className="mr-2 h-4 w-4" />
                                             Rollback
                                         </Button>
-                                        <Button variant="secondary" size="sm">
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => {
+                                                if (confirm('Redeploy this application?')) {
+                                                    fetch(`/api/v1/deploy?uuid=${deployment.application_uuid}`, {
+                                                        method: 'POST',
+                                                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
+                                                    }).then(() => router.visit('/deployments'));
+                                                }
+                                            }}
+                                        >
                                             <Play className="mr-2 h-4 w-4" />
                                             Redeploy
                                         </Button>
                                     </>
                                 )}
-                                {deployment.status === 'failed' && (
-                                    <Button size="sm">
+                                {deployment.status === 'failed' && deployment.application_uuid && (
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            if (confirm('Retry this deployment?')) {
+                                                fetch(`/api/v1/deploy?uuid=${deployment.application_uuid}`, {
+                                                    method: 'POST',
+                                                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
+                                                }).then(() => router.visit('/deployments'));
+                                            }
+                                        }}
+                                    >
                                         <RotateCw className="mr-2 h-4 w-4" />
                                         Retry
                                     </Button>

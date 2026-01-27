@@ -8,123 +8,32 @@ import { Button } from '@/components/ui/Button';
 import {
     Search,
     Server,
-    Cpu,
-    HardDrive,
     Activity,
     AlertTriangle,
 } from 'lucide-react';
 
 interface ServerInfo {
     id: number;
+    uuid: string;
     name: string;
+    description?: string;
     ip: string;
-    status: 'online' | 'offline' | 'error';
-    user: string;
-    team: string;
-    cpu_usage?: number;
-    memory_usage?: number;
-    disk_usage?: number;
-    uptime?: string;
-    applications_count: number;
-    last_seen?: string;
+    is_reachable: boolean;
+    is_build_server: boolean;
+    team_id?: number;
+    team_name?: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 interface Props {
-    servers: ServerInfo[];
-    total: number;
-}
-
-const defaultServers: ServerInfo[] = [
-    {
-        id: 1,
-        name: 'production-1',
-        ip: '192.168.1.100',
-        status: 'online',
-        user: 'john.doe@example.com',
-        team: 'Production Team',
-        cpu_usage: 45,
-        memory_usage: 67,
-        disk_usage: 82,
-        uptime: '45 days',
-        applications_count: 8,
-        last_seen: '2 minutes ago',
-    },
-    {
-        id: 2,
-        name: 'staging-1',
-        ip: '192.168.1.101',
-        status: 'online',
-        user: 'jane.smith@example.com',
-        team: 'Staging Team',
-        cpu_usage: 23,
-        memory_usage: 45,
-        disk_usage: 56,
-        uptime: '30 days',
-        applications_count: 5,
-        last_seen: '5 minutes ago',
-    },
-    {
-        id: 3,
-        name: 'development-1',
-        ip: '192.168.1.102',
-        status: 'offline',
-        user: 'bob.wilson@example.com',
-        team: 'Dev Team',
-        cpu_usage: 0,
-        memory_usage: 0,
-        disk_usage: 45,
-        applications_count: 3,
-        last_seen: '2 hours ago',
-    },
-    {
-        id: 4,
-        name: 'backup-server',
-        ip: '192.168.1.103',
-        status: 'error',
-        user: 'admin@example.com',
-        team: 'Infrastructure',
-        cpu_usage: 89,
-        memory_usage: 95,
-        disk_usage: 98,
-        uptime: '12 days',
-        applications_count: 2,
-        last_seen: '30 minutes ago',
-    },
-];
-
-function ResourceBar({ value, label }: { value: number; label: string }) {
-    const getColor = (val: number) => {
-        if (val >= 90) return 'bg-danger';
-        if (val >= 75) return 'bg-warning';
-        return 'bg-success';
+    servers: {
+        data: ServerInfo[];
+        total: number;
     };
-
-    return (
-        <div>
-            <div className="mb-1 flex items-center justify-between">
-                <span className="text-xs text-foreground-subtle">{label}</span>
-                <span className="text-xs font-medium text-foreground">{value}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-background-tertiary">
-                <div
-                    className={`h-full transition-all ${getColor(value)}`}
-                    style={{ width: `${value}%` }}
-                />
-            </div>
-        </div>
-    );
 }
 
 function ServerRow({ server }: { server: ServerInfo }) {
-    const statusConfig = {
-        online: { variant: 'success' as const, label: 'Online' },
-        offline: { variant: 'default' as const, label: 'Offline' },
-        error: { variant: 'danger' as const, label: 'Error' },
-    };
-
-    const config = statusConfig[server.status];
-    const hasHighUsage = (server.cpu_usage ?? 0) > 80 || (server.memory_usage ?? 0) > 80 || (server.disk_usage ?? 0) > 80;
-
     return (
         <div className="border-b border-border/50 py-4 last:border-0">
             <div className="flex items-start justify-between">
@@ -134,80 +43,61 @@ function ServerRow({ server }: { server: ServerInfo }) {
                         <div>
                             <div className="flex items-center gap-2">
                                 <Link
-                                    href={`/admin/servers/${server.id}`}
+                                    href={`/admin/servers/${server.uuid}`}
                                     className="font-medium text-foreground hover:text-primary"
                                 >
                                     {server.name}
                                 </Link>
-                                {hasHighUsage && (
-                                    <AlertTriangle className="h-4 w-4 text-warning" />
+                                {server.is_build_server && (
+                                    <Badge variant="primary" size="sm">Build Server</Badge>
                                 )}
                             </div>
                             <p className="text-sm text-foreground-muted">{server.ip}</p>
                             <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
-                                <span>{server.user}</span>
-                                <span>·</span>
-                                <span>{server.team}</span>
-                                <span>·</span>
-                                <span>{server.applications_count} apps</span>
-                                {server.uptime && (
+                                {server.team_name && <span>{server.team_name}</span>}
+                                {server.description && (
                                     <>
                                         <span>·</span>
-                                        <span>Uptime: {server.uptime}</span>
+                                        <span>{server.description}</span>
                                     </>
                                 )}
                             </div>
                         </div>
                     </div>
-
-                    {/* Resource Usage */}
-                    {server.status === 'online' && (
-                        <div className="ml-8 mt-4 grid gap-3 sm:grid-cols-3">
-                            {server.cpu_usage !== undefined && (
-                                <ResourceBar value={server.cpu_usage} label="CPU" />
-                            )}
-                            {server.memory_usage !== undefined && (
-                                <ResourceBar value={server.memory_usage} label="Memory" />
-                            )}
-                            {server.disk_usage !== undefined && (
-                                <ResourceBar value={server.disk_usage} label="Disk" />
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
-                    <Badge variant={config.variant} size="sm">
-                        {config.label}
+                    <Badge variant={server.is_reachable ? 'success' : 'danger'} size="sm">
+                        {server.is_reachable ? 'Reachable' : 'Unreachable'}
                     </Badge>
-                    {server.last_seen && (
-                        <span className="text-xs text-foreground-subtle">
-                            Last seen: {server.last_seen}
-                        </span>
-                    )}
+                    <span className="text-xs text-foreground-subtle">
+                        {new Date(server.created_at).toLocaleDateString()}
+                    </span>
                 </div>
             </div>
         </div>
     );
 }
 
-export default function AdminServersIndex({ servers = defaultServers, total = 4 }: Props) {
+export default function AdminServersIndex({ servers: serversData }: Props) {
+    const items = serversData?.data ?? [];
+    const total = serversData?.total ?? 0;
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<'all' | 'online' | 'offline' | 'error'>('all');
+    const [statusFilter, setStatusFilter] = React.useState<'all' | 'reachable' | 'unreachable'>('all');
 
-    const filteredServers = servers.filter((server) => {
+    const filteredServers = items.filter((server) => {
         const matchesSearch =
             server.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             server.ip.includes(searchQuery) ||
-            server.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            server.team.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || server.status === statusFilter;
+            (server.team_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === 'all' ||
+            (statusFilter === 'reachable' && server.is_reachable) ||
+            (statusFilter === 'unreachable' && !server.is_reachable);
         return matchesSearch && matchesStatus;
     });
 
-    const onlineCount = servers.filter((s) => s.status === 'online').length;
-    const offlineCount = servers.filter((s) => s.status === 'offline').length;
-    const errorCount = servers.filter((s) => s.status === 'error').length;
+    const reachableCount = items.filter((s) => s.is_reachable).length;
+    const unreachableCount = items.filter((s) => !s.is_reachable).length;
 
     return (
         <AdminLayout
@@ -232,8 +122,19 @@ export default function AdminServersIndex({ servers = defaultServers, total = 4 
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-foreground-subtle">Online</p>
-                                    <p className="text-2xl font-bold text-success">{onlineCount}</p>
+                                    <p className="text-sm text-foreground-subtle">Total</p>
+                                    <p className="text-2xl font-bold text-primary">{total}</p>
+                                </div>
+                                <Server className="h-8 w-8 text-primary/50" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card variant="glass">
+                        <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm text-foreground-subtle">Reachable</p>
+                                    <p className="text-2xl font-bold text-success">{reachableCount}</p>
                                 </div>
                                 <Activity className="h-8 w-8 text-success/50" />
                             </div>
@@ -243,19 +144,8 @@ export default function AdminServersIndex({ servers = defaultServers, total = 4 
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-foreground-subtle">Offline</p>
-                                    <p className="text-2xl font-bold text-foreground-muted">{offlineCount}</p>
-                                </div>
-                                <Server className="h-8 w-8 text-foreground-muted/50" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card variant="glass">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-foreground-subtle">Errors</p>
-                                    <p className="text-2xl font-bold text-danger">{errorCount}</p>
+                                    <p className="text-sm text-foreground-subtle">Unreachable</p>
+                                    <p className="text-2xl font-bold text-danger">{unreachableCount}</p>
                                 </div>
                                 <AlertTriangle className="h-8 w-8 text-danger/50" />
                             </div>
@@ -285,25 +175,18 @@ export default function AdminServersIndex({ servers = defaultServers, total = 4 
                                     All
                                 </Button>
                                 <Button
-                                    variant={statusFilter === 'online' ? 'primary' : 'secondary'}
+                                    variant={statusFilter === 'reachable' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('online')}
+                                    onClick={() => setStatusFilter('reachable')}
                                 >
-                                    Online
+                                    Reachable
                                 </Button>
                                 <Button
-                                    variant={statusFilter === 'offline' ? 'primary' : 'secondary'}
+                                    variant={statusFilter === 'unreachable' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('offline')}
+                                    onClick={() => setStatusFilter('unreachable')}
                                 >
-                                    Offline
-                                </Button>
-                                <Button
-                                    variant={statusFilter === 'error' ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => setStatusFilter('error')}
-                                >
-                                    Errors
+                                    Unreachable
                                 </Button>
                             </div>
                         </div>

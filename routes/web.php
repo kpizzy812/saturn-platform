@@ -1208,8 +1208,20 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 'resourceType' => $task->application_id ? 'application' : 'service',
             ]);
 
+        // Get available resources for the create task modal
+        $applications = \App\Models\Application::ownedByCurrentTeam()
+            ->select('id', 'name', 'uuid')
+            ->get()
+            ->map(fn ($app) => ['id' => $app->id, 'name' => $app->name, 'uuid' => $app->uuid, 'type' => 'application']);
+
+        $services = \App\Models\Service::ownedByCurrentTeam()
+            ->select('id', 'name', 'uuid')
+            ->get()
+            ->map(fn ($svc) => ['id' => $svc->id, 'name' => $svc->name, 'uuid' => $svc->uuid, 'type' => 'service']);
+
         return \Inertia\Inertia::render('ScheduledTasks/Index', [
             'tasks' => $tasks,
+            'resources' => $applications->merge($services)->values(),
         ]);
     })->name('scheduled-tasks.index');
 

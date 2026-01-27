@@ -12,7 +12,7 @@ interface MaintenanceProps {
 export default function Maintenance({
     estimatedReturn,
     message,
-    statusUrl = 'https://status.example.com'
+    statusUrl
 }: MaintenanceProps) {
     const [email, setEmail] = useState('');
     const [subscribed, setSubscribed] = useState(false);
@@ -80,17 +80,19 @@ export default function Maintenance({
                         )}
 
                         {/* Status page link */}
-                        <div className="mb-8">
-                            <a
-                                href={statusUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 transition-all hover:border-primary/50 hover:bg-primary/10"
-                            >
-                                <ExternalLink className="h-4 w-4" />
-                                <span className="text-sm font-medium">Check Status Page</span>
-                            </a>
-                        </div>
+                        {statusUrl && (
+                            <div className="mb-8">
+                                <a
+                                    href={statusUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 transition-all hover:border-primary/50 hover:bg-primary/10"
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Check Status Page</span>
+                                </a>
+                            </div>
+                        )}
 
                         {/* Email subscription */}
                         <div className="rounded-lg border border-border/50 bg-background-tertiary/30 p-6">
@@ -139,34 +141,11 @@ export default function Maintenance({
                     </div>
                 </div>
 
-                {/* Footer links */}
+                {/* Footer */}
                 <div className="mt-6 text-center">
-                    <div className="flex flex-wrap justify-center gap-3 text-sm">
-                        <a
-                            href="https://twitter.com/example.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-foreground-subtle hover:text-foreground"
-                        >
-                            Twitter Updates
-                        </a>
-                        <span className="text-foreground-subtle">·</span>
-                        <a
-                            href="https://#"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-foreground-subtle hover:text-foreground"
-                        >
-                            Discord Community
-                        </a>
-                        <span className="text-foreground-subtle">·</span>
-                        <a
-                            href="mailto:support@example.com"
-                            className="text-foreground-subtle hover:text-foreground"
-                        >
-                            Contact Support
-                        </a>
-                    </div>
+                    <p className="text-sm text-foreground-subtle">
+                        Your services are still running. This page will refresh automatically.
+                    </p>
                 </div>
             </div>
         </div>

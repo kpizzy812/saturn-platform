@@ -118,7 +118,21 @@ Route::get('/projects/{uuid}', function (string $uuid) {
 Route::get('/projects/{uuid}/environments', function (string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with('environments')
         ->firstOrFail();
+
+    $environments = $project->environments->map(function ($env) {
+        return [
+            'id' => $env->id,
+            'uuid' => $env->uuid,
+            'name' => $env->name,
+            'created_at' => $env->created_at,
+            'updated_at' => $env->updated_at,
+            'applications_count' => $env->applications()->count(),
+            'services_count' => $env->services()->count(),
+            'databases_count' => $env->databases()->count(),
+        ];
+    });
 
     return Inertia::render('Projects/Environments', [
         'project' => [
@@ -126,6 +140,7 @@ Route::get('/projects/{uuid}/environments', function (string $uuid) {
             'uuid' => $project->uuid,
             'name' => $project->name,
         ],
+        'environments' => $environments,
     ]);
 })->name('projects.environments');
 

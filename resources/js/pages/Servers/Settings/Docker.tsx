@@ -69,7 +69,7 @@ export default function ServerDockerSettings({ server }: Props) {
                             </div>
                             <div>
                                 <p className="font-medium text-foreground">Docker is installed and running</p>
-                                <p className="text-sm text-foreground-muted">Version: Docker 24.0.7</p>
+                                <p className="text-sm text-foreground-muted">Docker Engine installed</p>
                             </div>
                         </div>
                         <Button
@@ -154,11 +154,11 @@ export default function ServerDockerSettings({ server }: Props) {
                     <CardTitle>Docker Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <InfoRow label="Docker Version" value="24.0.7" />
-                    <InfoRow label="Docker Compose Version" value="2.23.0" />
-                    <InfoRow label="Running Containers" value="12" />
-                    <InfoRow label="Total Images" value="45" />
-                    <InfoRow label="Total Volumes" value="18" />
+                    <InfoRow label="Docker Version" value={server.settings?.docker_version || '—'} />
+                    <InfoRow label="Docker Compose Version" value={server.settings?.docker_compose_version || '—'} />
+                    <InfoRow label="Running Containers" value="—" />
+                    <InfoRow label="Total Images" value="—" />
+                    <InfoRow label="Total Volumes" value="—" />
                 </CardContent>
             </Card>
         </AppLayout>

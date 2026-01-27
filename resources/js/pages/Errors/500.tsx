@@ -101,13 +101,13 @@ export default function ServerError({ errorId, message }: ServerErrorProps) {
 
                         {/* Support link */}
                         <div className="mt-6">
-                            <a
-                                href="mailto:support@example.com"
+                            <Link
+                                href="/support"
                                 className="inline-flex items-center gap-2 text-sm text-foreground-subtle transition-colors hover:text-foreground"
                             >
                                 <MessageCircle className="h-4 w-4" />
                                 Contact Support
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -115,25 +115,7 @@ export default function ServerError({ errorId, message }: ServerErrorProps) {
                 {/* Additional help */}
                 <div className="mt-6 text-center">
                     <p className="text-sm text-foreground-muted">
-                        If this issue persists, check our{' '}
-                        <a
-                            href="https://status.example.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-foreground-subtle hover:text-foreground"
-                        >
-                            status page
-                        </a>{' '}
-                        or{' '}
-                        <a
-                            href="https://#"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-foreground-subtle hover:text-foreground"
-                        >
-                            report an issue
-                        </a>
-                        .
+                        If this issue persists, please contact your system administrator.
                     </p>
                 </div>
             </div>

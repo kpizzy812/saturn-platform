@@ -21,7 +21,6 @@ export default function DatabaseImport({ database }: Props) {
     const [importUrl, setImportUrl] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [progress, setProgress] = useState(0);
     const [exportOptions, setExportOptions] = useState({
         includeData: true,
         includeStructure: true,
@@ -39,47 +38,38 @@ export default function DatabaseImport({ database }: Props) {
 
     const handleImport = async (e: FormEvent) => {
         e.preventDefault();
-        setIsProcessing(true);
-        setProgress(0);
-
-        // Simulate progress
-        const interval = setInterval(() => {
-            setProgress((prev) => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        setIsProcessing(false);
-                        setProgress(0);
-                        setSelectedFile(null);
-                        setImportUrl('');
-                    }, 500);
-                    return 100;
-                }
-                return prev + 10;
-            });
-        }, 300);
+        addToast('info', 'Database import requires CLI access. Use the restore command on your server to import data.');
     };
 
     const handleExport = async () => {
         setIsProcessing(true);
-        setProgress(0);
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
-        // Simulate progress
-        const interval = setInterval(() => {
-            setProgress((prev) => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        setIsProcessing(false);
-                        setProgress(0);
-                        // Trigger download
-                        addToast('success', 'Export complete! Download started.');
-                    }, 500);
-                    return 100;
-                }
-                return prev + 10;
+        try {
+            const response = await fetch(`/api/v1/databases/${database.uuid}/backups`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    frequency: 'manual',
+                    save_s3: false,
+                }),
             });
-        }, 300);
+
+            if (response.ok) {
+                addToast('success', 'Backup initiated. Check the Backups tab for progress.');
+            } else {
+                const data = await response.json().catch(() => ({}));
+                addToast('error', data.message || 'Failed to initiate backup.');
+            }
+        } catch {
+            addToast('error', 'Failed to connect to the server.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const formatFileSize = (bytes: number) => {
@@ -463,27 +453,19 @@ export default function DatabaseImport({ database }: Props) {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <div className="mb-1 text-xs text-foreground-muted">
+                                        Database Name
+                                    </div>
+                                    <div className="font-medium text-foreground">
+                                        {database.name}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="mb-1 text-xs text-foreground-muted">
                                         Database Type
                                     </div>
                                     <div className="font-medium text-foreground">
-                                        {database.database_type.toUpperCase()}
+                                        {database.database_type?.toUpperCase() || 'Unknown'}
                                     </div>
-                                </div>
-                                <div>
-                                    <div className="mb-1 text-xs text-foreground-muted">
-                                        Estimated Size
-                                    </div>
-                                    <div className="font-medium text-foreground">~45 MB</div>
-                                </div>
-                                <div>
-                                    <div className="mb-1 text-xs text-foreground-muted">Tables</div>
-                                    <div className="font-medium text-foreground">12 tables</div>
-                                </div>
-                                <div>
-                                    <div className="mb-1 text-xs text-foreground-muted">
-                                        Total Rows
-                                    </div>
-                                    <div className="font-medium text-foreground">~1.2M rows</div>
                                 </div>
                             </div>
                         </Card>
@@ -514,23 +496,6 @@ export default function DatabaseImport({ database }: Props) {
                     </div>
                 )}
 
-                {/* Progress Bar */}
-                {isProcessing && (
-                    <Card className="p-6">
-                        <div className="mb-2 flex items-center justify-between text-sm">
-                            <span className="font-medium text-foreground">
-                                {activeTab === 'import' ? 'Importing...' : 'Exporting...'}
-                            </span>
-                            <span className="text-foreground-muted">{progress}%</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-background-tertiary">
-                            <div
-                                className="h-full bg-primary transition-all duration-300"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-                    </Card>
-                )}
             </div>
         </AppLayout>
     );

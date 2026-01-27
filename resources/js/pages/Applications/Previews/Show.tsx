@@ -198,17 +198,7 @@ export default function PreviewShow({ application, preview, previewUuid, project
                         <CardContent className="p-6">
                             <h2 className="text-lg font-semibold text-foreground mb-4">Deployment Logs</h2>
                             <LogsViewer
-                                logs={[
-                                    '[2024-01-15 10:30:45] Starting preview deployment for PR #42',
-                                    '[2024-01-15 10:30:46] Cloning repository from feature/auth branch',
-                                    '[2024-01-15 10:30:48] Installing dependencies...',
-                                    '[2024-01-15 10:31:12] Building application...',
-                                    '[2024-01-15 10:31:45] Creating Docker container...',
-                                    '[2024-01-15 10:31:50] Configuring preview domain: pr-42-app.preview.example.com',
-                                    '[2024-01-15 10:31:52] Starting container...',
-                                    '[2024-01-15 10:31:55] Preview deployment successful!',
-                                    '[2024-01-15 10:31:55] Preview URL: https://pr-42-app.preview.example.com',
-                                ]}
+                                logs={[]}
                                 maxHeight="400px"
                             />
                         </CardContent>
@@ -219,16 +209,10 @@ export default function PreviewShow({ application, preview, previewUuid, project
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-semibold text-foreground">Environment Variables</h2>
-                                <Button variant="secondary" size="sm">
-                                    Edit Variables
-                                </Button>
                             </div>
-                            <div className="space-y-2">
-                                <EnvironmentVariable name="NODE_ENV" value="preview" />
-                                <EnvironmentVariable name="DATABASE_URL" value="postgresql://***:***@db.preview.local/preview_pr42" />
-                                <EnvironmentVariable name="REDIS_URL" value="redis://cache.preview.local:6379" />
-                                <EnvironmentVariable name="API_BASE_URL" value="https://pr-42-app.preview.example.com/api" />
-                            </div>
+                            <p className="text-sm text-foreground-muted">
+                                Environment variables are inherited from the parent application.
+                            </p>
                         </CardContent>
                     </Card>
                 </div>

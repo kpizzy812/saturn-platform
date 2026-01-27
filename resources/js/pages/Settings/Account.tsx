@@ -220,7 +220,12 @@ export default function AccountSettings() {
                                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-semibold text-white">
                                         {currentUser.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <Button type="button" variant="secondary" size="sm">
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => addToast({ title: 'Coming soon', description: 'Avatar upload will be available in a future update.' })}
+                                    >
                                         <Upload className="mr-2 h-4 w-4" />
                                         Change Avatar
                                     </Button>

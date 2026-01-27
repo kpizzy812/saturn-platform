@@ -19,6 +19,11 @@ interface Props {
 export default function ProxyLogs({ server, logs: initialLogs }: Props) {
     const confirm = useConfirm();
     const [logs, setLogs] = useState<LogEntry[]>(initialLogs);
+
+    // Update logs when Inertia props change (e.g., from reload)
+    useEffect(() => {
+        setLogs(initialLogs);
+    }, [initialLogs]);
     const [isStreaming, setIsStreaming] = useState(true);
     const [selectedLevel, setSelectedLevel] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -48,14 +53,13 @@ export default function ProxyLogs({ server, logs: initialLogs }: Props) {
         return () => container.removeEventListener('scroll', handleScroll);
     }, []);
 
-    // Simulate real-time log streaming (replace with actual WebSocket)
+    // Periodically reload logs when streaming
     useEffect(() => {
         if (!isStreaming) return;
 
         const interval = setInterval(() => {
-            // This would be replaced with actual WebSocket connection
-            // For now, just placeholder
-        }, 1000);
+            router.reload({ only: ['logs'], preserveScroll: true });
+        }, 5000);
 
         return () => clearInterval(interval);
     }, [isStreaming]);

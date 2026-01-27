@@ -25,17 +25,6 @@ interface Props {
     notification?: Notification;
 }
 
-// Mock data for demo
-const MOCK_NOTIFICATION: Notification = {
-    id: '1',
-    type: 'deployment_success',
-    title: 'Deployment Successful',
-    description: 'production-api deployed successfully to production environment. All health checks passed. The deployment took 2 minutes and 34 seconds.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    isRead: false,
-    actionUrl: '/applications/app-1',
-};
-
 const iconMap: Record<NotificationType, React.ReactNode> = {
     deployment_success: <CheckCircle2 className="h-8 w-8 text-primary" />,
     deployment_failure: <XCircle className="h-8 w-8 text-danger" />,
@@ -63,37 +52,60 @@ const borderColorMap: Record<NotificationType, string> = {
     info: 'border-border',
 };
 
-export default function NotificationDetail({ notification: propNotification }: Props) {
-    const notification = propNotification || MOCK_NOTIFICATION;
-    const [isRead, setIsRead] = React.useState(notification.isRead);
+export default function NotificationDetail({ notification }: Props) {
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+    const [isRead, setIsRead] = React.useState(notification?.isRead ?? false);
 
     const handleMarkAsRead = React.useCallback(async () => {
+        if (!notification) return;
         setIsRead(true);
-        // In production, make API call:
-        // await fetch(`/api/notifications/${notification.id}/read`, { method: 'POST' });
-    }, []);
+        await fetch(`/notifications/${notification.id}/read`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
+    }, [notification, csrfToken]);
 
     const handleMarkAsUnread = React.useCallback(async () => {
+        if (!notification) return;
         setIsRead(false);
-        // In production, make API call:
-        // await fetch(`/api/notifications/${notification.id}/unread`, { method: 'POST' });
-    }, []);
+        // No dedicated unread endpoint, toggle read state locally
+    }, [notification]);
 
     const handleDelete = React.useCallback(async () => {
-        // In production, make API call:
-        // await fetch(`/api/notifications/${notification.id}`, { method: 'DELETE' });
+        if (!notification) return;
+        await fetch(`/api/v1/notifications/${notification.id}`, {
+            method: 'DELETE',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        });
         router.visit('/notifications');
-    }, []);
+    }, [notification, csrfToken]);
 
     // Auto-mark as read when viewing
     React.useEffect(() => {
-        if (!isRead) {
+        if (!isRead && notification) {
             const timer = setTimeout(() => {
                 handleMarkAsRead();
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [isRead, handleMarkAsRead]);
+    }, [isRead, handleMarkAsRead, notification]);
+
+    if (!notification) {
+        return (
+            <AppLayout title="Notification Not Found" breadcrumbs={[{ label: 'Notifications', href: '/notifications' }, { label: 'Not Found' }]}>
+                <div className="flex flex-col items-center justify-center py-16">
+                    <Info className="h-16 w-16 text-foreground-muted" />
+                    <h2 className="mt-4 text-xl font-semibold text-foreground">Notification not found</h2>
+                    <Link href="/notifications" className="mt-4">
+                        <Button variant="secondary">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Notifications
+                        </Button>
+                    </Link>
+                </div>
+            </AppLayout>
+        );
+    }
 
     // Get action button based on notification type
     const getActionButton = () => {

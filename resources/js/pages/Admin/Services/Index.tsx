@@ -11,109 +11,41 @@ import {
     CheckCircle,
     XCircle,
     AlertTriangle,
-    Server,
 } from 'lucide-react';
 
 interface ServiceInfo {
     id: number;
     name: string;
     uuid: string;
-    type: string;
-    status: 'running' | 'stopped' | 'error' | 'starting';
-    user: string;
-    team: string;
-    server: string;
-    server_ip?: string;
-    containers_count: number;
-    fqdn?: string;
+    description?: string;
+    status: string;
+    service_type?: string;
+    team_id?: number;
+    team_name?: string;
+    environment_id?: number;
+    environment_name?: string;
+    project_name?: string;
     created_at: string;
+    updated_at?: string;
 }
 
 interface Props {
-    services: ServiceInfo[];
-    total: number;
+    services: {
+        data: ServiceInfo[];
+        total: number;
+    };
 }
 
-const defaultServices: ServiceInfo[] = [
-    {
-        id: 1,
-        name: 'production-stack',
-        uuid: 'svc-1234-5678',
-        type: 'docker-compose',
-        status: 'running',
-        user: 'john.doe@example.com',
-        team: 'Production Team',
-        server: 'production-1',
-        server_ip: '192.168.1.100',
-        containers_count: 5,
-        fqdn: 'stack.example.com',
-        created_at: '2024-01-15',
-    },
-    {
-        id: 2,
-        name: 'monitoring-suite',
-        uuid: 'svc-2345-6789',
-        type: 'docker-compose',
-        status: 'running',
-        user: 'jane.smith@example.com',
-        team: 'DevOps Team',
-        server: 'monitoring-1',
-        server_ip: '192.168.1.105',
-        containers_count: 3,
-        fqdn: 'monitoring.example.com',
-        created_at: '2024-02-01',
-    },
-    {
-        id: 3,
-        name: 'dev-stack',
-        uuid: 'svc-3456-7890',
-        type: 'docker-compose',
-        status: 'starting',
-        user: 'bob.wilson@example.com',
-        team: 'Dev Team',
-        server: 'development-1',
-        server_ip: '192.168.1.102',
-        containers_count: 4,
-        created_at: '2024-03-01',
-    },
-    {
-        id: 4,
-        name: 'legacy-service',
-        uuid: 'svc-4567-8901',
-        type: 'docker-compose',
-        status: 'stopped',
-        user: 'admin@example.com',
-        team: 'Infrastructure',
-        server: 'legacy-1',
-        server_ip: '192.168.1.110',
-        containers_count: 2,
-        created_at: '2023-12-10',
-    },
-    {
-        id: 5,
-        name: 'analytics-stack',
-        uuid: 'svc-5678-9012',
-        type: 'docker-compose',
-        status: 'error',
-        user: 'data@example.com',
-        team: 'Data Team',
-        server: 'analytics-1',
-        server_ip: '192.168.1.120',
-        containers_count: 6,
-        fqdn: 'analytics.example.com',
-        created_at: '2024-01-20',
-    },
-];
-
 function ServiceRow({ service }: { service: ServiceInfo }) {
-    const statusConfig = {
-        running: { variant: 'success' as const, label: 'Running', icon: <CheckCircle className="h-3 w-3" /> },
-        stopped: { variant: 'default' as const, label: 'Stopped', icon: <XCircle className="h-3 w-3" /> },
-        error: { variant: 'danger' as const, label: 'Error', icon: <AlertTriangle className="h-3 w-3" /> },
-        starting: { variant: 'warning' as const, label: 'Starting', icon: <AlertTriangle className="h-3 w-3" /> },
+    const statusConfig: Record<string, { variant: 'success' | 'default' | 'danger' | 'warning'; label: string; icon: React.ReactNode }> = {
+        running: { variant: 'success', label: 'Running', icon: <CheckCircle className="h-3 w-3" /> },
+        stopped: { variant: 'default', label: 'Stopped', icon: <XCircle className="h-3 w-3" /> },
+        error: { variant: 'danger', label: 'Error', icon: <AlertTriangle className="h-3 w-3" /> },
+        starting: { variant: 'warning', label: 'Starting', icon: <AlertTriangle className="h-3 w-3" /> },
+        exited: { variant: 'danger', label: 'Exited', icon: <XCircle className="h-3 w-3" /> },
     };
 
-    const config = statusConfig[service.status];
+    const config = statusConfig[service.status] || { variant: 'default' as const, label: service.status || 'Unknown', icon: null };
 
     return (
         <div className="border-b border-border/50 py-4 last:border-0">
@@ -132,26 +64,29 @@ function ServiceRow({ service }: { service: ServiceInfo }) {
                                 <Badge variant={config.variant} size="sm" icon={config.icon}>
                                     {config.label}
                                 </Badge>
-                                <Badge variant="default" size="sm">
-                                    {service.containers_count} containers
-                                </Badge>
+                                {service.service_type && (
+                                    <Badge variant="default" size="sm">
+                                        {service.service_type}
+                                    </Badge>
+                                )}
                             </div>
-                            {service.fqdn && (
-                                <p className="text-sm text-foreground-muted">{service.fqdn}</p>
-                            )}
                             <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
-                                <span>{service.user}</span>
-                                <span>·</span>
-                                <span>{service.team}</span>
-                                <span>·</span>
-                                <span className="flex items-center gap-1">
-                                    <Server className="h-3 w-3" />
-                                    {service.server}
-                                    {service.server_ip && ` (${service.server_ip})`}
-                                </span>
+                                {service.team_name && <span>{service.team_name}</span>}
+                                {service.project_name && (
+                                    <>
+                                        <span>·</span>
+                                        <span>{service.project_name}</span>
+                                    </>
+                                )}
+                                {service.environment_name && (
+                                    <>
+                                        <span>·</span>
+                                        <span>{service.environment_name}</span>
+                                    </>
+                                )}
                             </div>
                             <div className="mt-1 text-xs text-foreground-subtle">
-                                Type: {service.type} · Created: {new Date(service.created_at).toLocaleDateString()}
+                                Created: {new Date(service.created_at).toLocaleDateString()}
                             </div>
                         </div>
                     </div>
@@ -161,25 +96,24 @@ function ServiceRow({ service }: { service: ServiceInfo }) {
     );
 }
 
-export default function AdminServicesIndex({ services = defaultServices, total = 5 }: Props) {
+export default function AdminServicesIndex({ services: servicesData }: Props) {
+    const items = servicesData?.data ?? [];
+    const total = servicesData?.total ?? 0;
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<'all' | 'running' | 'stopped' | 'error' | 'starting'>('all');
+    const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
-    const filteredServices = services.filter((service) => {
+    const filteredServices = items.filter((service) => {
         const matchesSearch =
             service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (service.fqdn && service.fqdn.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            service.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            service.server.toLowerCase().includes(searchQuery.toLowerCase());
+            (service.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (service.project_name || '').toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
-    const runningCount = services.filter((s) => s.status === 'running').length;
-    const stoppedCount = services.filter((s) => s.status === 'stopped').length;
-    const errorCount = services.filter((s) => s.status === 'error').length;
-    const totalContainers = services.reduce((sum, s) => sum + s.containers_count, 0);
+    const runningCount = items.filter((s) => s.status === 'running').length;
+    const stoppedCount = items.filter((s) => s.status === 'stopped' || s.status === 'exited').length;
+    const errorCount = items.filter((s) => s.status === 'error').length;
 
     return (
         <AdminLayout
@@ -199,7 +133,7 @@ export default function AdminServicesIndex({ services = defaultServices, total =
                 </div>
 
                 {/* Stats */}
-                <div className="mb-6 grid gap-4 sm:grid-cols-4">
+                <div className="mb-6 grid gap-4 sm:grid-cols-3">
                     <Card variant="glass">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
@@ -230,17 +164,6 @@ export default function AdminServicesIndex({ services = defaultServices, total =
                                     <p className="text-2xl font-bold text-danger">{errorCount}</p>
                                 </div>
                                 <AlertTriangle className="h-8 w-8 text-danger/50" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card variant="glass">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-foreground-subtle">Containers</p>
-                                    <p className="text-2xl font-bold text-foreground">{totalContainers}</p>
-                                </div>
-                                <Layers className="h-8 w-8 text-foreground-muted/50" />
                             </div>
                         </CardContent>
                     </Card>

@@ -112,12 +112,12 @@ export default function Forbidden({ resource, reason }: ForbiddenProps) {
                             Contact your team admin
                         </Link>{' '}
                         or{' '}
-                        <a
-                            href="mailto:support@example.com"
+                        <Link
+                            href="/support"
                             className="text-foreground-subtle hover:text-foreground"
                         >
                             reach out to support
-                        </a>
+                        </Link>
                         .
                     </p>
                 </div>

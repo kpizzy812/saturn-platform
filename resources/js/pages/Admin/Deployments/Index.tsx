@@ -12,109 +12,41 @@ import {
     XCircle,
     Clock,
     AlertTriangle,
-    GitBranch,
 } from 'lucide-react';
 
 interface Deployment {
     id: number;
-    uuid: string;
-    application_name: string;
-    application_uuid: string;
-    status: 'success' | 'failed' | 'in_progress' | 'cancelled';
-    user: string;
-    team: string;
+    deployment_uuid: string;
+    application_id?: number;
+    application_name?: string;
+    status: string;
     commit?: string;
-    branch?: string;
-    duration?: string;
-    started_at: string;
-    finished_at?: string;
+    commit_message?: string;
+    is_webhook?: boolean;
+    is_api?: boolean;
+    team_id?: number;
+    team_name?: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 interface Props {
-    deployments: Deployment[];
-    total: number;
+    deployments: {
+        data: Deployment[];
+        total: number;
+    };
 }
 
-const defaultDeployments: Deployment[] = [
-    {
-        id: 1,
-        uuid: 'dep-1234-5678',
-        application_name: 'production-api',
-        application_uuid: 'app-1234-5678',
-        status: 'success',
-        user: 'john.doe@example.com',
-        team: 'Production Team',
-        commit: 'abc123f',
-        branch: 'main',
-        duration: '2m 34s',
-        started_at: '2024-03-10 14:30:00',
-        finished_at: '2024-03-10 14:32:34',
-    },
-    {
-        id: 2,
-        uuid: 'dep-2345-6789',
-        application_name: 'staging-web',
-        application_uuid: 'app-2345-6789',
-        status: 'in_progress',
-        user: 'jane.smith@example.com',
-        team: 'Staging Team',
-        commit: 'def456a',
-        branch: 'develop',
-        started_at: '2024-03-10 14:25:00',
-    },
-    {
-        id: 3,
-        uuid: 'dep-3456-7890',
-        application_name: 'worker-service',
-        application_uuid: 'app-3456-7890',
-        status: 'failed',
-        user: 'bob.wilson@example.com',
-        team: 'Dev Team',
-        commit: 'ghi789b',
-        branch: 'feature/new-worker',
-        duration: '1m 12s',
-        started_at: '2024-03-10 14:20:00',
-        finished_at: '2024-03-10 14:21:12',
-    },
-    {
-        id: 4,
-        uuid: 'dep-4567-8901',
-        application_name: 'production-api',
-        application_uuid: 'app-1234-5678',
-        status: 'success',
-        user: 'john.doe@example.com',
-        team: 'Production Team',
-        commit: 'jkl012c',
-        branch: 'main',
-        duration: '3m 45s',
-        started_at: '2024-03-10 13:00:00',
-        finished_at: '2024-03-10 13:03:45',
-    },
-    {
-        id: 5,
-        uuid: 'dep-5678-9012',
-        application_name: 'legacy-app',
-        application_uuid: 'app-4567-8901',
-        status: 'cancelled',
-        user: 'admin@example.com',
-        team: 'Infrastructure',
-        commit: 'mno345d',
-        branch: 'hotfix/urgent',
-        duration: '30s',
-        started_at: '2024-03-10 12:30:00',
-        finished_at: '2024-03-10 12:30:30',
-    },
-];
-
 function DeploymentRow({ deployment }: { deployment: Deployment }) {
-    const statusConfig = {
-        success: { variant: 'success' as const, label: 'Success', icon: <CheckCircle className="h-3 w-3" /> },
-        failed: { variant: 'danger' as const, label: 'Failed', icon: <XCircle className="h-3 w-3" /> },
-        in_progress: { variant: 'warning' as const, label: 'In Progress', icon: <Clock className="h-3 w-3" /> },
-        cancelled: { variant: 'default' as const, label: 'Cancelled', icon: <AlertTriangle className="h-3 w-3" /> },
+    const statusConfig: Record<string, { variant: 'success' | 'danger' | 'warning' | 'default'; label: string; icon: React.ReactNode }> = {
+        finished: { variant: 'success', label: 'Success', icon: <CheckCircle className="h-3 w-3" /> },
+        failed: { variant: 'danger', label: 'Failed', icon: <XCircle className="h-3 w-3" /> },
+        in_progress: { variant: 'warning', label: 'In Progress', icon: <Clock className="h-3 w-3" /> },
+        queued: { variant: 'default', label: 'Queued', icon: <Clock className="h-3 w-3" /> },
+        cancelled: { variant: 'default', label: 'Cancelled', icon: <AlertTriangle className="h-3 w-3" /> },
     };
 
-    const config = statusConfig[deployment.status];
+    const config = statusConfig[deployment.status] || { variant: 'default' as const, label: deployment.status || 'Unknown', icon: null };
     const isInProgress = deployment.status === 'in_progress';
 
     return (
@@ -125,48 +57,38 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
                         <Rocket className="h-5 w-5 text-foreground-muted" />
                         <div>
                             <div className="flex items-center gap-2">
-                                <Link
-                                    href={`/admin/applications/${deployment.application_uuid}`}
-                                    className="font-medium text-foreground hover:text-primary"
-                                >
-                                    {deployment.application_name}
-                                </Link>
+                                <span className="font-medium text-foreground">
+                                    {deployment.application_name || `App #${deployment.application_id}`}
+                                </span>
                                 <Badge variant={config.variant} size="sm" icon={config.icon}>
                                     {config.label}
                                 </Badge>
-                                {deployment.branch && (
-                                    <Badge variant="default" size="sm" icon={<GitBranch className="h-3 w-3" />}>
-                                        {deployment.branch}
-                                    </Badge>
+                                {deployment.is_webhook && (
+                                    <Badge variant="default" size="sm">Webhook</Badge>
+                                )}
+                                {deployment.is_api && (
+                                    <Badge variant="default" size="sm">API</Badge>
                                 )}
                             </div>
                             <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
-                                <span>{deployment.user}</span>
-                                <span>·</span>
-                                <span>{deployment.team}</span>
+                                {deployment.team_name && <span>{deployment.team_name}</span>}
                                 {deployment.commit && (
                                     <>
                                         <span>·</span>
                                         <code className="rounded bg-background-tertiary px-1.5 py-0.5 font-mono">
-                                            {deployment.commit}
+                                            {deployment.commit.substring(0, 7)}
                                         </code>
+                                    </>
+                                )}
+                                {deployment.commit_message && (
+                                    <>
+                                        <span>·</span>
+                                        <span className="truncate max-w-xs">{deployment.commit_message}</span>
                                     </>
                                 )}
                             </div>
                             <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
-                                <span>Started: {new Date(deployment.started_at).toLocaleString()}</span>
-                                {deployment.finished_at && (
-                                    <>
-                                        <span>·</span>
-                                        <span>Finished: {new Date(deployment.finished_at).toLocaleString()}</span>
-                                    </>
-                                )}
-                                {deployment.duration && (
-                                    <>
-                                        <span>·</span>
-                                        <span>Duration: {deployment.duration}</span>
-                                    </>
-                                )}
+                                <span>{new Date(deployment.created_at).toLocaleString()}</span>
                                 {isInProgress && (
                                     <>
                                         <span>·</span>
@@ -179,7 +101,7 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
                 </div>
 
                 <Link
-                    href={`/admin/deployments/${deployment.uuid}`}
+                    href={`/admin/deployments/${deployment.deployment_uuid}`}
                     className="text-sm text-primary hover:underline"
                 >
                     View Logs
@@ -189,24 +111,24 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
     );
 }
 
-export default function AdminDeploymentsIndex({ deployments = defaultDeployments, total = 5 }: Props) {
+export default function AdminDeploymentsIndex({ deployments: deploymentsData }: Props) {
+    const items = deploymentsData?.data ?? [];
+    const total = deploymentsData?.total ?? 0;
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<'all' | 'success' | 'failed' | 'in_progress' | 'cancelled'>('all');
+    const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
-    const filteredDeployments = deployments.filter((deployment) => {
+    const filteredDeployments = items.filter((deployment) => {
         const matchesSearch =
-            deployment.application_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            deployment.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            deployment.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (deployment.commit && deployment.commit.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (deployment.branch && deployment.branch.toLowerCase().includes(searchQuery.toLowerCase()));
+            (deployment.application_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (deployment.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (deployment.commit || '').toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || deployment.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
-    const successCount = deployments.filter((d) => d.status === 'success').length;
-    const failedCount = deployments.filter((d) => d.status === 'failed').length;
-    const inProgressCount = deployments.filter((d) => d.status === 'in_progress').length;
+    const successCount = items.filter((d) => d.status === 'finished').length;
+    const failedCount = items.filter((d) => d.status === 'failed').length;
+    const inProgressCount = items.filter((d) => d.status === 'in_progress' || d.status === 'queued').length;
 
     return (
         <AdminLayout

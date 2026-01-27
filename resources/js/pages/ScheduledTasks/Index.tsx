@@ -29,11 +29,19 @@ import {
 } from 'lucide-react';
 import type { ScheduledTask } from '@/types';
 
-interface Props {
-    tasks?: ScheduledTask[];
+interface Resource {
+    id: number;
+    name: string;
+    uuid: string;
+    type: 'application' | 'service';
 }
 
-export default function ScheduledTasksIndex({ tasks = [] }: Props) {
+interface Props {
+    tasks?: ScheduledTask[];
+    resources?: Resource[];
+}
+
+export default function ScheduledTasksIndex({ tasks = [], resources = [] }: Props) {
     const confirm = useConfirm();
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | ScheduledTask['status']>('all');
@@ -416,11 +424,12 @@ export default function ScheduledTasksIndex({ tasks = [] }: Props) {
                                 onChange={(e) => setSelectedService(e.target.value)}
                                 required
                             >
-                                <option value="">Select a service</option>
-                                <option value="prod-api">Production API</option>
-                                <option value="staging-api">Staging API</option>
-                                <option value="worker">Background Worker</option>
-                                <option value="db-postgres">PostgreSQL Database</option>
+                                <option value="">Select a resource</option>
+                                {resources.map((r) => (
+                                    <option key={`${r.type}-${r.id}`} value={r.uuid}>
+                                        {r.name} ({r.type})
+                                    </option>
+                                ))}
                             </Select>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 import { AppLayout } from '@/components/layout';
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from '@/components/ui';
+import { formatRelativeTime } from '@/lib/utils';
 import {
     Clock,
     AlertCircle,
@@ -31,67 +32,9 @@ interface Trace {
     services: string[];
 }
 
-const mockTraces: Trace[] = [
-    {
-        id: 'trace-1',
-        name: 'GET /api/users',
-        duration: 245,
-        timestamp: '2 minutes ago',
-        status: 'success',
-        services: ['API Gateway', 'Auth Service', 'Database'],
-        spans: [
-            { id: 's1', name: 'HTTP GET', service: 'API Gateway', duration: 5, startTime: 0, status: 'success' },
-            { id: 's2', name: 'Authenticate', service: 'Auth Service', duration: 45, startTime: 5, status: 'success' },
-            { id: 's3', name: 'Query users', service: 'Database', duration: 180, startTime: 50, status: 'success' },
-            { id: 's4', name: 'Format response', service: 'API Gateway', duration: 15, startTime: 230, status: 'success' },
-        ],
-    },
-    {
-        id: 'trace-2',
-        name: 'POST /api/orders',
-        duration: 1250,
-        timestamp: '5 minutes ago',
-        status: 'error',
-        services: ['API Gateway', 'Order Service', 'Payment Service', 'Database'],
-        spans: [
-            { id: 's1', name: 'HTTP POST', service: 'API Gateway', duration: 8, startTime: 0, status: 'success' },
-            { id: 's2', name: 'Validate order', service: 'Order Service', duration: 35, startTime: 8, status: 'success' },
-            { id: 's3', name: 'Process payment', service: 'Payment Service', duration: 850, startTime: 43, status: 'error', tags: { error: 'Payment gateway timeout' } },
-            { id: 's4', name: 'Rollback transaction', service: 'Database', duration: 320, startTime: 893, status: 'success' },
-            { id: 's5', name: 'Error response', service: 'API Gateway', duration: 37, startTime: 1213, status: 'success' },
-        ],
-    },
-    {
-        id: 'trace-3',
-        name: 'GET /api/products/search',
-        duration: 85,
-        timestamp: '8 minutes ago',
-        status: 'success',
-        services: ['API Gateway', 'Search Service', 'Cache'],
-        spans: [
-            { id: 's1', name: 'HTTP GET', service: 'API Gateway', duration: 3, startTime: 0, status: 'success' },
-            { id: 's2', name: 'Cache lookup', service: 'Cache', duration: 5, startTime: 3, status: 'success' },
-            { id: 's3', name: 'Search query', service: 'Search Service', duration: 65, startTime: 8, status: 'success' },
-            { id: 's4', name: 'Return results', service: 'API Gateway', duration: 12, startTime: 73, status: 'success' },
-        ],
-    },
-    {
-        id: 'trace-4',
-        name: 'POST /api/auth/login',
-        duration: 156,
-        timestamp: '12 minutes ago',
-        status: 'success',
-        services: ['API Gateway', 'Auth Service', 'Database', 'Cache'],
-        spans: [
-            { id: 's1', name: 'HTTP POST', service: 'API Gateway', duration: 4, startTime: 0, status: 'success' },
-            { id: 's2', name: 'Validate credentials', service: 'Auth Service', duration: 25, startTime: 4, status: 'success' },
-            { id: 's3', name: 'Query user', service: 'Database', duration: 95, startTime: 29, status: 'success' },
-            { id: 's4', name: 'Generate token', service: 'Auth Service', duration: 18, startTime: 124, status: 'success' },
-            { id: 's5', name: 'Cache session', service: 'Cache', duration: 8, startTime: 142, status: 'success' },
-            { id: 's6', name: 'Return token', service: 'API Gateway', duration: 6, startTime: 150, status: 'success' },
-        ],
-    },
-];
+interface Props {
+    traces?: Trace[];
+}
 
 function TraceListItem({ trace, onClick }: { trace: Trace; onClick: () => void }) {
     const statusConfig = {
@@ -128,7 +71,7 @@ function TraceListItem({ trace, onClick }: { trace: Trace; onClick: () => void }
                                 <Clock className="h-3 w-3" />
                                 {trace.duration}ms
                             </span>
-                            <span>{trace.timestamp}</span>
+                            <span>{trace.timestamp ? formatRelativeTime(trace.timestamp) : ''}</span>
                             <span>{trace.spans.length} spans</span>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1">
@@ -217,13 +160,14 @@ function ServiceDependencyGraph({ trace }: { trace: Trace }) {
     );
 }
 
-export default function ObservabilityTraces() {
+export default function ObservabilityTraces({ traces: propTraces }: Props) {
+    const traces = propTraces ?? [];
     const [selectedTrace, setSelectedTrace] = useState<Trace | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'error'>('all');
     const [durationFilter, setDurationFilter] = useState<'all' | 'fast' | 'slow'>('all');
 
-    const filteredTraces = mockTraces.filter((trace) => {
+    const filteredTraces = traces.filter((trace) => {
         const searchMatch =
             !searchQuery ||
             trace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -329,7 +273,7 @@ export default function ObservabilityTraces() {
                                                 </div>
                                                 <div>
                                                     <p className="text-foreground-muted">Timestamp</p>
-                                                    <p className="text-foreground">{selectedTrace.timestamp}</p>
+                                                    <p className="text-foreground">{selectedTrace.timestamp ? formatRelativeTime(selectedTrace.timestamp) : ''}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-foreground-muted">Spans</p>

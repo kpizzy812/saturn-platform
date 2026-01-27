@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button';
 import {
     Search,
     Package,
-    Activity,
     AlertTriangle,
     CheckCircle,
     XCircle,
@@ -19,112 +18,37 @@ interface Application {
     id: number;
     name: string;
     uuid: string;
-    status: 'running' | 'stopped' | 'deploying' | 'error';
-    user: string;
-    team: string;
-    fqdn?: string;
+    description?: string;
+    status: string;
     git_repository?: string;
-    cpu_usage?: number;
-    memory_usage?: number;
-    deployed_at?: string;
-    last_deployment_status?: 'success' | 'failed' | 'in_progress';
+    git_branch?: string;
+    build_pack?: string;
+    team_id?: number;
+    team_name?: string;
+    environment_id?: number;
+    environment_name?: string;
+    project_name?: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 interface Props {
-    applications: Application[];
-    total: number;
-}
-
-const defaultApplications: Application[] = [
-    {
-        id: 1,
-        name: 'production-api',
-        uuid: 'app-1234-5678',
-        status: 'running',
-        user: 'john.doe@example.com',
-        team: 'Production Team',
-        fqdn: 'api.example.com',
-        git_repository: 'github.com/company/api',
-        cpu_usage: 45,
-        memory_usage: 512,
-        deployed_at: '2024-03-10 14:30',
-        last_deployment_status: 'success',
-    },
-    {
-        id: 2,
-        name: 'staging-web',
-        uuid: 'app-2345-6789',
-        status: 'running',
-        user: 'jane.smith@example.com',
-        team: 'Staging Team',
-        fqdn: 'staging.example.com',
-        git_repository: 'github.com/company/web',
-        cpu_usage: 23,
-        memory_usage: 256,
-        deployed_at: '2024-03-10 12:15',
-        last_deployment_status: 'success',
-    },
-    {
-        id: 3,
-        name: 'worker-service',
-        uuid: 'app-3456-7890',
-        status: 'deploying',
-        user: 'bob.wilson@example.com',
-        team: 'Dev Team',
-        git_repository: 'github.com/company/worker',
-        cpu_usage: 0,
-        memory_usage: 0,
-        last_deployment_status: 'in_progress',
-    },
-    {
-        id: 4,
-        name: 'legacy-app',
-        uuid: 'app-4567-8901',
-        status: 'error',
-        user: 'admin@example.com',
-        team: 'Infrastructure',
-        fqdn: 'legacy.example.com',
-        git_repository: 'github.com/company/legacy',
-        cpu_usage: 0,
-        memory_usage: 0,
-        deployed_at: '2024-03-09 18:00',
-        last_deployment_status: 'failed',
-    },
-];
-
-function ResourceUsage({ cpu, memory }: { cpu?: number; memory?: number }) {
-    if (cpu === undefined && memory === undefined) {
-        return <span className="text-xs text-foreground-subtle">N/A</span>;
-    }
-
-    return (
-        <div className="flex flex-col gap-1">
-            {cpu !== undefined && (
-                <span className="text-xs text-foreground-muted">CPU: {cpu}%</span>
-            )}
-            {memory !== undefined && (
-                <span className="text-xs text-foreground-muted">Mem: {memory}MB</span>
-            )}
-        </div>
-    );
+    applications: {
+        data: Application[];
+        total: number;
+    };
 }
 
 function ApplicationRow({ app }: { app: Application }) {
-    const statusConfig = {
-        running: { variant: 'success' as const, label: 'Running', icon: <CheckCircle className="h-3 w-3" /> },
-        stopped: { variant: 'default' as const, label: 'Stopped', icon: <XCircle className="h-3 w-3" /> },
-        deploying: { variant: 'warning' as const, label: 'Deploying', icon: <Clock className="h-3 w-3" /> },
-        error: { variant: 'danger' as const, label: 'Error', icon: <AlertTriangle className="h-3 w-3" /> },
+    const statusConfig: Record<string, { variant: 'success' | 'default' | 'warning' | 'danger'; label: string; icon: React.ReactNode }> = {
+        running: { variant: 'success', label: 'Running', icon: <CheckCircle className="h-3 w-3" /> },
+        stopped: { variant: 'default', label: 'Stopped', icon: <XCircle className="h-3 w-3" /> },
+        deploying: { variant: 'warning', label: 'Deploying', icon: <Clock className="h-3 w-3" /> },
+        error: { variant: 'danger', label: 'Error', icon: <AlertTriangle className="h-3 w-3" /> },
+        exited: { variant: 'danger', label: 'Exited', icon: <XCircle className="h-3 w-3" /> },
     };
 
-    const deploymentConfig = {
-        success: { variant: 'success' as const, label: 'Success' },
-        failed: { variant: 'danger' as const, label: 'Failed' },
-        in_progress: { variant: 'warning' as const, label: 'In Progress' },
-    };
-
-    const config = statusConfig[app.status];
-    const deploymentStatus = app.last_deployment_status ? deploymentConfig[app.last_deployment_status] : null;
+    const config = statusConfig[app.status] || { variant: 'default' as const, label: app.status || 'Unknown', icon: null };
 
     return (
         <div className="border-b border-border/50 py-4 last:border-0">
@@ -143,61 +67,59 @@ function ApplicationRow({ app }: { app: Application }) {
                                 <Badge variant={config.variant} size="sm" icon={config.icon}>
                                     {config.label}
                                 </Badge>
-                                {deploymentStatus && (
-                                    <Badge variant={deploymentStatus.variant} size="sm">
-                                        {deploymentStatus.label}
+                                {app.build_pack && (
+                                    <Badge variant="default" size="sm">
+                                        {app.build_pack}
                                     </Badge>
                                 )}
                             </div>
-                            {app.fqdn && (
-                                <p className="text-sm text-foreground-muted">{app.fqdn}</p>
-                            )}
                             <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
-                                <span>{app.user}</span>
-                                <span>·</span>
-                                <span>{app.team}</span>
+                                {app.team_name && <span>{app.team_name}</span>}
+                                {app.project_name && (
+                                    <>
+                                        <span>·</span>
+                                        <span>{app.project_name}</span>
+                                    </>
+                                )}
                                 {app.git_repository && (
                                     <>
                                         <span>·</span>
                                         <span className="truncate max-w-xs">{app.git_repository}</span>
                                     </>
                                 )}
+                                {app.git_branch && (
+                                    <>
+                                        <span>·</span>
+                                        <span>{app.git_branch}</span>
+                                    </>
+                                )}
                             </div>
-                            {app.deployed_at && (
-                                <div className="mt-1 text-xs text-foreground-subtle">
-                                    Last deployed: {app.deployed_at}
-                                </div>
-                            )}
                         </div>
                     </div>
-                </div>
-
-                <div className="ml-4">
-                    <ResourceUsage cpu={app.cpu_usage} memory={app.memory_usage} />
                 </div>
             </div>
         </div>
     );
 }
 
-export default function AdminApplicationsIndex({ applications = defaultApplications, total = 4 }: Props) {
+export default function AdminApplicationsIndex({ applications: appsData }: Props) {
+    const items = appsData?.data ?? [];
+    const total = appsData?.total ?? 0;
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<'all' | 'running' | 'stopped' | 'deploying' | 'error'>('all');
+    const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
-    const filteredApplications = applications.filter((app) => {
+    const filteredApplications = items.filter((app) => {
         const matchesSearch =
             app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (app.fqdn && app.fqdn.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            app.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            app.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (app.git_repository && app.git_repository.toLowerCase().includes(searchQuery.toLowerCase()));
+            (app.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (app.git_repository || '').toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
-    const runningCount = applications.filter((a) => a.status === 'running').length;
-    const errorCount = applications.filter((a) => a.status === 'error').length;
-    const deployingCount = applications.filter((a) => a.status === 'deploying').length;
+    const runningCount = items.filter((a) => a.status === 'running').length;
+    const errorCount = items.filter((a) => a.status === 'error' || a.status === 'exited').length;
+    const deployingCount = items.filter((a) => a.status === 'deploying').length;
 
     return (
         <AdminLayout

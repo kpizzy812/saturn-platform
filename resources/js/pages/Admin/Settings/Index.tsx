@@ -11,74 +11,44 @@ import {
     Settings,
     Globe,
     Mail,
-    Shield,
-    Zap,
-    AlertTriangle,
     Save,
     RotateCcw,
 } from 'lucide-react';
 
-interface SystemSettings {
-    site_name: string;
-    site_url: string;
-    admin_email: string;
-    maintenance_mode: boolean;
-    registration_enabled: boolean;
-    email_verification_required: boolean;
-    two_factor_required: boolean;
-    max_teams_per_user: number;
-    max_servers_per_team: number;
-    session_lifetime: number;
-}
-
-interface FeatureFlags {
-    enable_oauth: boolean;
-    enable_api: boolean;
-    enable_webhooks: boolean;
-    enable_backups: boolean;
-    enable_monitoring: boolean;
+interface InstanceSettingsData {
+    id?: number;
+    fqdn?: string;
+    instance_name?: string;
+    allowed_ip_ranges?: string;
+    is_auto_update_enabled?: boolean;
+    auto_update_frequency?: string;
+    update_check_frequency?: string;
+    is_wire_navigate_enabled?: boolean;
+    smtp_enabled?: boolean;
+    smtp_host?: string;
+    smtp_port?: number;
+    smtp_from_address?: string;
+    resend_enabled?: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 interface Props {
-    settings: SystemSettings;
-    featureFlags: FeatureFlags;
+    settings: InstanceSettingsData;
 }
 
-const defaultSettings: SystemSettings = {
-    site_name: '',
-    site_url: '',
-    admin_email: '',
-    maintenance_mode: false,
-    registration_enabled: true,
-    email_verification_required: true,
-    two_factor_required: false,
-    max_teams_per_user: 5,
-    max_servers_per_team: 10,
-    session_lifetime: 120,
-};
-
-const defaultFeatureFlags: FeatureFlags = {
-    enable_oauth: false,
-    enable_api: true,
-    enable_webhooks: true,
-    enable_backups: false,
-    enable_monitoring: false,
-};
-
 export default function AdminSettingsIndex({
-    settings = defaultSettings,
-    featureFlags = defaultFeatureFlags,
+    settings,
 }: Props) {
     const confirm = useConfirm();
-    const [formData, setFormData] = React.useState(settings);
-    const [flags, setFlags] = React.useState(featureFlags);
+    const [formData, setFormData] = React.useState<InstanceSettingsData>(settings ?? {});
     const [isSaving, setIsSaving] = React.useState(false);
 
     const handleSave = () => {
         setIsSaving(true);
         router.post(
             '/admin/settings',
-            { settings: formData, featureFlags: flags },
+            { settings: formData },
             {
                 onFinish: () => setIsSaving(false),
             }
@@ -88,13 +58,12 @@ export default function AdminSettingsIndex({
     const handleReset = async () => {
         const confirmed = await confirm({
             title: 'Reset Settings',
-            description: 'Reset all settings to defaults?',
+            description: 'Reset all settings to values from server?',
             confirmText: 'Reset',
             variant: 'warning',
         });
         if (confirmed) {
-            setFormData(defaultSettings);
-            setFlags(defaultFeatureFlags);
+            setFormData(settings ?? {});
         }
     };
 
@@ -135,273 +104,124 @@ export default function AdminSettingsIndex({
                                 <Globe className="h-5 w-5 text-primary" />
                                 <CardTitle>General Settings</CardTitle>
                             </div>
-                            <CardDescription>Basic system configuration</CardDescription>
+                            <CardDescription>Basic instance configuration</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
-                                    Site Name
+                                    Instance Name
                                 </label>
                                 <Input
-                                    value={formData.site_name}
+                                    value={formData.instance_name || ''}
                                     onChange={(e) =>
-                                        setFormData({ ...formData, site_name: e.target.value })
+                                        setFormData({ ...formData, instance_name: e.target.value })
                                     }
-                                    placeholder="Saturn Platform Cloud"
+                                    placeholder="Saturn Platform"
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
-                                    Site URL
+                                    FQDN
                                 </label>
                                 <Input
-                                    value={formData.site_url}
+                                    value={formData.fqdn || ''}
                                     onChange={(e) =>
-                                        setFormData({ ...formData, site_url: e.target.value })
+                                        setFormData({ ...formData, fqdn: e.target.value })
                                     }
-                                    placeholder="https://example.com"
+                                    placeholder="https://saturn.example.com"
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
-                                    Admin Email
+                                    Allowed IP Ranges
                                 </label>
                                 <Input
-                                    type="email"
-                                    value={formData.admin_email}
+                                    value={formData.allowed_ip_ranges || ''}
                                     onChange={(e) =>
-                                        setFormData({ ...formData, admin_email: e.target.value })
+                                        setFormData({ ...formData, allowed_ip_ranges: e.target.value })
                                     }
-                                    placeholder="admin@example.com"
+                                    placeholder="0.0.0.0/0"
                                 />
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Security Settings */}
-                    <Card variant="glass">
-                        <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <Shield className="h-5 w-5 text-primary" />
-                                <CardTitle>Security Settings</CardTitle>
-                            </div>
-                            <CardDescription>Authentication and security options</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-foreground">Registration Enabled</p>
-                                    <p className="text-sm text-foreground-muted">
-                                        Allow new users to register
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    checked={formData.registration_enabled}
-                                    onCheckedChange={(checked) =>
-                                        setFormData({ ...formData, registration_enabled: checked === true })
-                                    }
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-foreground">Email Verification Required</p>
-                                    <p className="text-sm text-foreground-muted">
-                                        Require email verification for new users
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    checked={formData.email_verification_required}
-                                    onCheckedChange={(checked) =>
-                                        setFormData({
-                                            ...formData,
-                                            email_verification_required: checked === true,
-                                        })
-                                    }
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-foreground">Two-Factor Required</p>
-                                    <p className="text-sm text-foreground-muted">
-                                        Require 2FA for all users
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    checked={formData.two_factor_required}
-                                    onCheckedChange={(checked) =>
-                                        setFormData({ ...formData, two_factor_required: checked === true })
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="mb-2 block text-sm font-medium text-foreground">
-                                    Session Lifetime (minutes)
-                                </label>
-                                <Input
-                                    type="number"
-                                    value={formData.session_lifetime}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            session_lifetime: parseInt(e.target.value) || 120,
-                                        })
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Resource Limits */}
+                    {/* Update Settings */}
                     <Card variant="glass">
                         <CardHeader>
                             <div className="flex items-center gap-2">
                                 <Settings className="h-5 w-5 text-primary" />
-                                <CardTitle>Resource Limits</CardTitle>
+                                <CardTitle>Update Settings</CardTitle>
                             </div>
-                            <CardDescription>Configure resource allocation limits</CardDescription>
+                            <CardDescription>Auto-update configuration</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <div>
-                                <label className="mb-2 block text-sm font-medium text-foreground">
-                                    Max Teams per User
-                                </label>
-                                <Input
-                                    type="number"
-                                    value={formData.max_teams_per_user}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            max_teams_per_user: parseInt(e.target.value) || 5,
-                                        })
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-foreground">Auto Update</p>
+                                    <p className="text-sm text-foreground-muted">
+                                        Enable automatic updates
+                                    </p>
+                                </div>
+                                <Checkbox
+                                    checked={formData.is_auto_update_enabled || false}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, is_auto_update_enabled: checked === true })
                                     }
                                 />
                             </div>
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
-                                    Max Servers per Team
+                                    Auto Update Frequency
                                 </label>
                                 <Input
-                                    type="number"
-                                    value={formData.max_servers_per_team}
+                                    value={formData.auto_update_frequency || ''}
                                     onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            max_servers_per_team: parseInt(e.target.value) || 10,
-                                        })
+                                        setFormData({ ...formData, auto_update_frequency: e.target.value })
                                     }
+                                    placeholder="0 0 * * *"
                                 />
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Feature Flags */}
+                    {/* Email Settings */}
                     <Card variant="glass">
                         <CardHeader>
                             <div className="flex items-center gap-2">
-                                <Zap className="h-5 w-5 text-primary" />
-                                <CardTitle>Feature Flags</CardTitle>
+                                <Mail className="h-5 w-5 text-primary" />
+                                <CardTitle>Email Settings</CardTitle>
                             </div>
-                            <CardDescription>Enable or disable system features</CardDescription>
+                            <CardDescription>SMTP and email delivery configuration</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="font-medium text-foreground">OAuth Integration</p>
+                                    <p className="font-medium text-foreground">SMTP Enabled</p>
                                     <p className="text-sm text-foreground-muted">
-                                        Enable OAuth login providers
+                                        {formData.smtp_enabled ? 'SMTP is configured' : 'SMTP not configured'}
                                     </p>
                                 </div>
-                                <Checkbox
-                                    checked={flags.enable_oauth}
-                                    onCheckedChange={(checked) =>
-                                        setFlags({ ...flags, enable_oauth: checked === true })
-                                    }
-                                />
+                                <Badge variant={formData.smtp_enabled ? 'success' : 'default'}>
+                                    {formData.smtp_enabled ? 'Enabled' : 'Disabled'}
+                                </Badge>
                             </div>
+                            {formData.smtp_port && (
+                                <div>
+                                    <p className="text-sm text-foreground-subtle">SMTP Port</p>
+                                    <p className="font-medium text-foreground">{formData.smtp_port}</p>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="font-medium text-foreground">API Access</p>
-                                    <p className="text-sm text-foreground-muted">Enable REST API endpoints</p>
-                                </div>
-                                <Checkbox
-                                    checked={flags.enable_api}
-                                    onCheckedChange={(checked) =>
-                                        setFlags({ ...flags, enable_api: checked === true })
-                                    }
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-foreground">Webhooks</p>
+                                    <p className="font-medium text-foreground">Resend Enabled</p>
                                     <p className="text-sm text-foreground-muted">
-                                        Enable webhook notifications
+                                        Alternative email delivery via Resend
                                     </p>
                                 </div>
-                                <Checkbox
-                                    checked={flags.enable_webhooks}
-                                    onCheckedChange={(checked) =>
-                                        setFlags({ ...flags, enable_webhooks: checked === true })
-                                    }
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-foreground">Automated Backups</p>
-                                    <p className="text-sm text-foreground-muted">
-                                        Enable automated backup system
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    checked={flags.enable_backups}
-                                    onCheckedChange={(checked) =>
-                                        setFlags({ ...flags, enable_backups: checked === true })
-                                    }
-                                />
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="font-medium text-foreground">System Monitoring</p>
-                                    <p className="text-sm text-foreground-muted">
-                                        Enable advanced monitoring features
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    checked={flags.enable_monitoring}
-                                    onCheckedChange={(checked) =>
-                                        setFlags({ ...flags, enable_monitoring: checked === true })
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Maintenance Mode */}
-                    <Card variant="glass" className={formData.maintenance_mode ? 'border-warning' : ''}>
-                        <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-warning" />
-                                <CardTitle>Maintenance Mode</CardTitle>
-                            </div>
-                            <CardDescription>
-                                Put the system into maintenance mode (blocks all non-admin access)
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between rounded-lg border border-warning/20 bg-warning/5 p-4">
-                                <div>
-                                    <p className="font-medium text-foreground">Maintenance Mode</p>
-                                    <p className="text-sm text-foreground-muted">
-                                        {formData.maintenance_mode
-                                            ? 'System is currently in maintenance mode'
-                                            : 'System is operational'}
-                                    </p>
-                                </div>
-                                <Checkbox
-                                    checked={formData.maintenance_mode}
-                                    onCheckedChange={(checked) =>
-                                        setFormData({ ...formData, maintenance_mode: checked === true })
-                                    }
-                                />
+                                <Badge variant={formData.resend_enabled ? 'success' : 'default'}>
+                                    {formData.resend_enabled ? 'Enabled' : 'Disabled'}
+                                </Badge>
                             </div>
                         </CardContent>
                     </Card>

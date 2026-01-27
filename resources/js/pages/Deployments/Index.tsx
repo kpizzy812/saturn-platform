@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, Input, Select } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
@@ -297,7 +297,12 @@ function DeploymentCard({ deployment, getTriggerBadgeColor }: DeploymentCardProp
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                // Handle rollback
+                                                if (confirm('Rollback to this deployment?') && deployment.application_uuid) {
+                                                    fetch(`/api/v1/applications/${deployment.application_uuid}/rollback/${deployment.deployment_uuid || deployment.uuid}`, {
+                                                        method: 'POST',
+                                                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
+                                                    }).then(() => router.reload());
+                                                }
                                             }}
                                         >
                                             <RotateCw className="mr-1 h-3.5 w-3.5" />

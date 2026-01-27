@@ -140,7 +140,7 @@ const faqItems: FAQItem[] = [
         category: 'Security',
         question: 'How do I report a security vulnerability?',
         answer:
-            'Please email security@saturn.example.com with details about the vulnerability. We take security seriously and will respond within 24 hours.',
+            'Please report security vulnerabilities through the Contact Support form below or via the GitHub repository. We take security seriously and will respond promptly.',
     },
 ];
 
@@ -214,19 +214,19 @@ export default function SupportIndex() {
                     icon={<BookOpen className="h-6 w-6" />}
                     title="Documentation"
                     description="Comprehensive guides and API reference"
-                    href="https://docs.example.com"
+                    href="https://coolify.io/docs"
                 />
                 <QuickLinkCard
                     icon={<Users className="h-6 w-6" />}
                     title="Community"
                     description="Join our Discord community"
-                    href="https://discord.gg/example"
+                    href="https://discord.gg/coolify"
                 />
                 <QuickLinkCard
                     icon={<Github className="h-6 w-6" />}
                     title="GitHub"
                     description="Report issues and contribute"
-                    href="https://github.com/example/saturn"
+                    href="https://github.com/coollabsio/coolify"
                 />
             </div>
 
@@ -413,18 +413,12 @@ export default function SupportIndex() {
                 </CardContent>
             </Card>
 
-            {/* Status Page Link */}
+            {/* Status Info */}
             <div className="mt-8 text-center">
-                <a
-                    href="https://status.example.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-                >
-                    <Check className="h-4 w-4" />
-                    All systems operational - View status page
-                    <ExternalLink className="h-4 w-4" />
-                </a>
+                <span className="inline-flex items-center gap-2 text-sm text-foreground-muted">
+                    <Check className="h-4 w-4 text-success" />
+                    Saturn Platform
+                </span>
             </div>
         </AppLayout>
     );
