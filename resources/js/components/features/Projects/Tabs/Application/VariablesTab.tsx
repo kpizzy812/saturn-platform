@@ -79,7 +79,14 @@ export function VariablesTab({ service }: VariablesTabProps) {
             });
             if (response.ok) {
                 const created = await response.json();
-                setVariables(prev => [...prev, created]);
+                // API returns only { uuid }, so construct full object for display
+                setVariables(prev => [...prev, {
+                    id: Date.now(), // Temporary ID for React key until refetch
+                    uuid: created.uuid,
+                    key: newKey,
+                    value: newValue,
+                    real_value: newValue,
+                }]);
                 setShowAddModal(false);
                 setNewKey('');
                 setNewValue('');
@@ -184,7 +191,7 @@ export function VariablesTab({ service }: VariablesTabProps) {
         setRevealedIds(prev => new Set(prev).add(v.id));
     };
 
-    const maskValue = (value: string) => '•'.repeat(Math.min(value.length, 12));
+    const maskValue = (value: string | undefined) => '•'.repeat(Math.min(value?.length ?? 0, 12));
 
     if (isLoading) {
         return (
