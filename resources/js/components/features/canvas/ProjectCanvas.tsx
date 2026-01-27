@@ -59,6 +59,10 @@ interface ProjectCanvasProps {
     onLinkCreated?: (link: ResourceLink) => void;
     showGrid?: boolean;
     onLinkDeleted?: (linkId: number) => void;
+    /** Quick action callbacks for node hover buttons */
+    onQuickDeploy?: (uuid: string) => void;
+    onQuickOpenUrl?: (url: string) => void;
+    onQuickViewLogs?: (uuid: string, name: string, type: 'application' | 'database') => void;
 }
 
 // Map database_type to API target_type
@@ -138,6 +142,9 @@ function ProjectCanvasInner({
     onLinkCreated,
     onLinkDeleted,
     showGrid = true,
+    onQuickDeploy,
+    onQuickOpenUrl,
+    onQuickViewLogs,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
     const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>(initialResourceLinks);
@@ -198,6 +205,10 @@ function ProjectCanvasInner({
                     type: 'application',
                     fqdn: app.fqdn,
                     buildPack: app.build_pack,
+                    uuid: app.uuid,
+                    onQuickDeploy: onQuickDeploy ? () => onQuickDeploy(app.uuid) : undefined,
+                    onQuickOpenUrl: onQuickOpenUrl && app.fqdn ? () => onQuickOpenUrl(app.fqdn!) : undefined,
+                    onQuickViewLogs: onQuickViewLogs ? () => onQuickViewLogs(app.uuid, app.name, 'application') : undefined,
                 },
             });
         });
@@ -214,12 +225,14 @@ function ProjectCanvasInner({
                     type: 'database',
                     databaseType: db.database_type,
                     volume: `${db.name.toLowerCase().replace(/\s+/g, '-')}-volume`,
+                    uuid: db.uuid,
+                    onQuickViewLogs: onQuickViewLogs ? () => onQuickViewLogs(db.uuid, db.name, 'database') : undefined,
                 },
             });
         });
 
         return nodes;
-    }, [applications, databases]);
+    }, [applications, databases, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs]);
 
     // Convert resource links to edges
     const linkedEdges = useMemo(() => {

@@ -211,6 +211,7 @@
 
     /* Glow Shadows */
     --shadow-glow-primary: 0 0 20px rgba(99, 102, 241, 0.3);
+    --shadow-glow-primary-hover: 0 0 15px rgba(124, 58, 237, 0.25), 0 0 30px rgba(124, 58, 237, 0.15), 0 0 45px rgba(124, 58, 237, 0.05);
     --shadow-glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
     --shadow-glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
     --shadow-glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);

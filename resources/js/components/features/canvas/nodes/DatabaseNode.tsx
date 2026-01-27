@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,8 @@ interface DatabaseNodeData {
     type: string;
     databaseType?: string;
     volume?: string;
+    uuid?: string;
+    onQuickViewLogs?: () => void;
 }
 
 // PostgreSQL Logo - Elephant head simplified
@@ -126,10 +128,29 @@ const getDbBgColor = (dbType?: string) => {
     return 'bg-gray-600';
 };
 
+// Quick action button component
+function QuickActionButton({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+    }, [onClick]);
+
+    return (
+        <button
+            onClick={handleClick}
+            title={title}
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-background-secondary/90 border border-border text-foreground-muted backdrop-blur-sm transition-all duration-150 hover:bg-[#7c3aed] hover:border-[#7c3aed] hover:text-white hover:scale-110"
+        >
+            {children}
+        </button>
+    );
+}
+
 export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const bgColor = getDbBgColor(data.databaseType);
+    const hasQuickActions = !!data.onQuickViewLogs;
 
     return (
         <>
@@ -140,13 +161,29 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
             />
             <div
                 className={cn(
-                    'w-[220px] rounded-lg border transition-all duration-200 cursor-pointer',
+                    'group relative w-[220px] rounded-lg border transition-all duration-200 cursor-pointer',
                     'bg-background-secondary/95 hover:bg-background-tertiary/95',
+                    'hover:-translate-y-0.5 hover:border-[#7c3aed] hover:shadow-[var(--shadow-glow-primary-hover)]',
                     selected
                         ? 'border-info shadow-glow-info'
-                        : 'border-border hover:border-border-hover'
+                        : 'border-border'
                 )}
             >
+                {/* Quick Actions - visible on hover */}
+                {hasQuickActions && (
+                    <div className="absolute -top-3.5 right-2 z-10 flex items-center gap-1 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
+                        {data.onQuickViewLogs && (
+                            <QuickActionButton onClick={data.onQuickViewLogs} title="View Logs">
+                                {/* Terminal icon */}
+                                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="4 17 10 11 4 5"/>
+                                    <line x1="12" y1="19" x2="20" y2="19"/>
+                                </svg>
+                            </QuickActionButton>
+                        )}
+                    </div>
+                )}
+
                 {/* Header with Logo */}
                 <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">

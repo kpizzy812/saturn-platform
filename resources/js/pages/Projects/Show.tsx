@@ -448,6 +448,36 @@ export default function ProjectShow({ project }: Props) {
         setActiveDbTab('backups');
     }, [contextMenuNode]);
 
+    // Quick action handlers for canvas nodes
+    const handleQuickDeploy = useCallback(async (uuid: string) => {
+        try {
+            const response = await fetch(`/api/v1/applications/${uuid}/start`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to deploy');
+            }
+            addToast('success', 'Deploy started', 'Application deployment has been initiated.');
+            router.reload();
+        } catch (err) {
+            addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy application');
+        }
+    }, [addToast]);
+
+    const handleQuickOpenUrl = useCallback((url: string) => {
+        window.open(url.startsWith('http') ? url : `https://${url}`, '_blank');
+    }, []);
+
+    const handleQuickViewLogs = useCallback((uuid: string, name: string, type: 'application' | 'database') => {
+        setLogsViewerService(name);
+        setLogsViewerServiceUuid(uuid);
+        setLogsViewerServiceType(type);
+        setLogsViewerOpen(true);
+    }, []);
+
     // Canvas zoom controls
     const handleZoomIn = useCallback(() => {
         if (window.__projectCanvasZoomIn) {
@@ -793,6 +823,9 @@ export default function ProjectShow({ project }: Props) {
                                 onNodeContextMenu={handleNodeContextMenu}
                                 onViewportChange={handleViewportChange}
                                 showGrid={showGrid}
+                                onQuickDeploy={handleQuickDeploy}
+                                onQuickOpenUrl={handleQuickOpenUrl}
+                                onQuickViewLogs={handleQuickViewLogs}
                             />
                         )}
 

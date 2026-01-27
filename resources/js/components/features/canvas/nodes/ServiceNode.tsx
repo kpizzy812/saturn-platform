@@ -1,6 +1,5 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ServiceNodeData {
@@ -10,6 +9,10 @@ interface ServiceNodeData {
     fqdn?: string | null;
     buildPack?: string;
     repository?: string;
+    uuid?: string;
+    onQuickDeploy?: () => void;
+    onQuickOpenUrl?: () => void;
+    onQuickViewLogs?: () => void;
 }
 
 // GitHub Logo SVG
@@ -26,10 +29,29 @@ const DockerLogo = () => (
     </svg>
 );
 
+// Quick action button component
+function QuickActionButton({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+    }, [onClick]);
+
+    return (
+        <button
+            onClick={handleClick}
+            title={title}
+            className="flex h-7 w-7 items-center justify-center rounded-md bg-background-secondary/90 border border-border text-foreground-muted backdrop-blur-sm transition-all duration-150 hover:bg-[#7c3aed] hover:border-[#7c3aed] hover:text-white hover:scale-110"
+        >
+            {children}
+        </button>
+    );
+}
+
 export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const isDeploying = statusBase === 'deploying' || statusBase === 'restarting';
+    const hasQuickActions = data.onQuickDeploy || data.onQuickOpenUrl || data.onQuickViewLogs;
 
     return (
         <>
@@ -40,14 +62,50 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
             />
             <div
                 className={cn(
-                    'w-[220px] rounded-lg border transition-all duration-200 cursor-pointer',
+                    'group relative w-[220px] rounded-lg border transition-all duration-200 cursor-pointer',
                     'bg-background-secondary/95 backdrop-blur-xl hover:bg-background-tertiary/95',
-                    'hover:-translate-y-0.5 hover:shadow-lg',
+                    'hover:-translate-y-0.5 hover:border-[#7c3aed] hover:shadow-[var(--shadow-glow-primary-hover)]',
                     selected
                         ? 'border-primary shadow-glow-primary'
-                        : 'border-border hover:border-border-hover'
+                        : 'border-border'
                 )}
             >
+                {/* Quick Actions - visible on hover */}
+                {hasQuickActions && (
+                    <div className="absolute -top-3.5 right-2 z-10 flex items-center gap-1 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
+                        {data.onQuickDeploy && (
+                            <QuickActionButton onClick={data.onQuickDeploy} title="Deploy">
+                                {/* Rocket icon */}
+                                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/>
+                                    <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/>
+                                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                                </svg>
+                            </QuickActionButton>
+                        )}
+                        {data.onQuickOpenUrl && (
+                            <QuickActionButton onClick={data.onQuickOpenUrl} title="Open URL">
+                                {/* External link icon */}
+                                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
+                                    <polyline points="15 3 21 3 21 9"/>
+                                    <line x1="10" y1="14" x2="21" y2="3"/>
+                                </svg>
+                            </QuickActionButton>
+                        )}
+                        {data.onQuickViewLogs && (
+                            <QuickActionButton onClick={data.onQuickViewLogs} title="View Logs">
+                                {/* Terminal icon */}
+                                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="4 17 10 11 4 5"/>
+                                    <line x1="12" y1="19" x2="20" y2="19"/>
+                                </svg>
+                            </QuickActionButton>
+                        )}
+                    </div>
+                )}
+
                 {/* Header with Logo */}
                 <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
