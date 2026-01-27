@@ -1,6 +1,5 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
-import { Dialog, Transition, Combobox } from '@headlessui/react';
+import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import {
     Search,
@@ -11,8 +10,6 @@ import {
     Settings,
     Users,
     Activity,
-    LogOut,
-    FileCode,
     Terminal,
 } from 'lucide-react';
 
@@ -51,6 +48,8 @@ const groupLabels: Record<string, string> = {
     settings: 'Settings',
 };
 
+const groupOrder: Array<CommandItem['group']> = ['navigation', 'actions', 'settings'];
+
 interface CommandPaletteProps {
     open: boolean;
     onClose: () => void;
@@ -58,6 +57,9 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     const [query, setQuery] = React.useState('');
+    const [selectedIndex, setSelectedIndex] = React.useState(0);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    const listRef = React.useRef<HTMLDivElement>(null);
 
     const filteredCommands = query === ''
         ? commands
@@ -66,148 +68,176 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             command.description?.toLowerCase().includes(query.toLowerCase())
         );
 
-    const groupedCommands = filteredCommands.reduce((acc, command) => {
-        if (!acc[command.group]) {
-            acc[command.group] = [];
+    // Build grouped commands maintaining order
+    const groupedCommands = groupOrder.reduce((acc, group) => {
+        const items = filteredCommands.filter((c) => c.group === group);
+        if (items.length > 0) {
+            acc.push({ group, items });
         }
-        acc[command.group].push(command);
         return acc;
-    }, {} as Record<string, CommandItem[]>);
+    }, [] as Array<{ group: string; items: CommandItem[] }>);
 
-    const handleSelect = (command: CommandItem) => {
+    // Flat list for keyboard navigation
+    const flatItems = groupedCommands.flatMap((g) => g.items);
+
+    const executeCommand = React.useCallback((command: CommandItem) => {
         if (command.action) {
             command.action();
         }
+        if (command.href) {
+            router.visit(command.href);
+        }
         onClose();
         setQuery('');
+        setSelectedIndex(0);
+    }, [onClose]);
+
+    // Reset selected index when query changes
+    React.useEffect(() => {
+        setSelectedIndex(0);
+    }, [query]);
+
+    // Focus input when opened, reset state
+    React.useEffect(() => {
+        if (open) {
+            setQuery('');
+            setSelectedIndex(0);
+            // Small delay to ensure DOM is ready
+            requestAnimationFrame(() => {
+                inputRef.current?.focus();
+            });
+        }
+    }, [open]);
+
+    // Scroll selected item into view
+    React.useEffect(() => {
+        if (listRef.current) {
+            const el = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
+            if (el) {
+                el.scrollIntoView({ block: 'nearest' });
+            }
+        }
+    }, [selectedIndex]);
+
+    // Handle keyboard navigation
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelectedIndex((prev) => Math.min(prev + 1, flatItems.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedIndex((prev) => Math.max(prev - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            const selected = flatItems[selectedIndex];
+            if (selected) {
+                executeCommand(selected);
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            onClose();
+        }
     };
 
+    if (!open) return null;
+
+    let globalIndex = 0;
+
     return (
-        <Transition appear show={open} as={React.Fragment}>
-            <Dialog as="div" className="relative z-50" onClose={onClose}>
-                <Transition.Child
-                    as={React.Fragment}
-                    enter="ease-out duration-200"
-                    enterFrom="opacity-0"
-                    enterTo="opacity-100"
-                    leave="ease-in duration-150"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
+        <>
+            {/* Backdrop */}
+            <div
+                className="fixed inset-0 z-50 bg-black/50"
+                onClick={onClose}
+            />
+
+            {/* Palette */}
+            <div className="fixed inset-0 z-50 overflow-y-auto pt-[20vh]" onClick={onClose}>
+                <div
+                    className="mx-auto max-w-xl overflow-hidden rounded-xl border border-border bg-background-secondary shadow-2xl shadow-black/40"
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    <div className="fixed inset-0 bg-black/50" />
-                </Transition.Child>
+                    {/* Search Input */}
+                    <div className="flex items-center gap-3 border-b border-border px-5 py-1">
+                        <Search className="h-5 w-5 text-foreground-muted" />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            className="h-12 w-full bg-transparent text-foreground placeholder-foreground-muted focus:outline-none"
+                            placeholder="Search commands..."
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                        />
+                        <kbd className="rounded-md bg-background-tertiary px-2.5 py-1 text-xs font-medium text-foreground-muted">
+                            ESC
+                        </kbd>
+                    </div>
 
-                <div className="fixed inset-0 overflow-y-auto pt-[20vh]">
-                    <Transition.Child
-                        as={React.Fragment}
-                        enter="ease-out duration-200"
-                        enterFrom="opacity-0 scale-95"
-                        enterTo="opacity-100 scale-100"
-                        leave="ease-in duration-150"
-                        leaveFrom="opacity-100 scale-100"
-                        leaveTo="opacity-0 scale-95"
-                    >
-                        <Dialog.Panel className="mx-auto max-w-xl">
-                            <Combobox onChange={handleSelect}>
-                                <div className="overflow-hidden rounded-xl border border-border bg-background-secondary shadow-2xl shadow-black/40">
-                                    {/* Search Input */}
-                                    <div className="flex items-center gap-3 border-b border-border px-5 py-1">
-                                        <Search className="h-5 w-5 text-foreground-muted" />
-                                        <Combobox.Input
-                                            className="h-12 w-full bg-transparent text-foreground placeholder-foreground-muted focus:outline-none"
-                                            placeholder="Search commands..."
-                                            value={query}
-                                            onChange={(e) => setQuery(e.target.value)}
-                                        />
-                                        <kbd className="rounded-md bg-background-tertiary px-2.5 py-1 text-xs font-medium text-foreground-muted">
-                                            ESC
-                                        </kbd>
-                                    </div>
-
-                                    {/* Results */}
-                                    <Combobox.Options static className="max-h-80 overflow-y-auto p-2">
-                                        {filteredCommands.length === 0 && query !== '' ? (
-                                            <div className="px-4 py-10 text-center text-foreground-muted">
-                                                No commands found for "{query}"
-                                            </div>
-                                        ) : (
-                                            Object.entries(groupedCommands).map(([group, items]) => (
-                                                <div key={group} className="mb-2">
-                                                    <div className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground-subtle">
-                                                        {groupLabels[group]}
-                                                    </div>
-                                                    {items.map((command) => (
-                                                        <Combobox.Option
-                                                            key={command.id}
-                                                            value={command}
-                                                            className={({ active }) =>
-                                                                cn(
-                                                                    'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100',
-                                                                    active ? 'bg-background-tertiary' : ''
-                                                                )
-                                                            }
-                                                        >
-                                                            {({ active }) => (
-                                                                <>
-                                                                    {command.href ? (
-                                                                        <Link
-                                                                            href={command.href}
-                                                                            className="flex w-full items-center gap-3"
-                                                                            onClick={onClose}
-                                                                        >
-                                                                            <span className="text-foreground-muted">{command.icon}</span>
-                                                                            <div className="flex-1">
-                                                                                <div className="text-sm text-foreground">{command.name}</div>
-                                                                                {command.description && (
-                                                                                    <div className="text-xs text-foreground-muted">
-                                                                                        {command.description}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </Link>
-                                                                    ) : (
-                                                                        <>
-                                                                            <span className="text-foreground-muted">{command.icon}</span>
-                                                                            <div className="flex-1">
-                                                                                <div className="text-sm text-foreground">{command.name}</div>
-                                                                                {command.description && (
-                                                                                    <div className="text-xs text-foreground-muted">
-                                                                                        {command.description}
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </Combobox.Option>
-                                                    ))}
-                                                </div>
-                                            ))
-                                        )}
-                                    </Combobox.Options>
-
-                                    {/* Footer */}
-                                    <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-foreground-muted">
-                                        <div className="flex items-center gap-5">
-                                            <span className="flex items-center gap-2">
-                                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">↑↓</kbd>
-                                                <span>navigate</span>
-                                            </span>
-                                            <span className="flex items-center gap-2">
-                                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">↵</kbd>
-                                                <span>select</span>
-                                            </span>
+                    {/* Results */}
+                    <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
+                        {flatItems.length === 0 && query !== '' ? (
+                            <div className="px-4 py-10 text-center text-foreground-muted">
+                                No commands found for &ldquo;{query}&rdquo;
+                            </div>
+                        ) : (
+                            groupedCommands.map(({ group, items }) => {
+                                const startIndex = globalIndex;
+                                const rendered = (
+                                    <div key={group} className="mb-2">
+                                        <div className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground-subtle">
+                                            {groupLabels[group]}
                                         </div>
-                                        <span className="text-foreground-subtle">Saturn</span>
+                                        {items.map((command, idx) => {
+                                            const itemIndex = startIndex + idx;
+                                            return (
+                                                <button
+                                                    key={command.id}
+                                                    data-index={itemIndex}
+                                                    onClick={() => executeCommand(command)}
+                                                    onMouseEnter={() => setSelectedIndex(itemIndex)}
+                                                    className={cn(
+                                                        'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-100',
+                                                        itemIndex === selectedIndex ? 'bg-background-tertiary' : ''
+                                                    )}
+                                                >
+                                                    <span className="text-foreground-muted">{command.icon}</span>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-sm text-foreground">{command.name}</div>
+                                                        {command.description && (
+                                                            <div className="text-xs text-foreground-muted">
+                                                                {command.description}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                </div>
-                            </Combobox>
-                        </Dialog.Panel>
-                    </Transition.Child>
+                                );
+                                globalIndex += items.length;
+                                return rendered;
+                            })
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-foreground-muted">
+                        <div className="flex items-center gap-5">
+                            <span className="flex items-center gap-2">
+                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">↑↓</kbd>
+                                <span>navigate</span>
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">↵</kbd>
+                                <span>select</span>
+                            </span>
+                        </div>
+                        <span className="text-foreground-subtle">Saturn</span>
+                    </div>
                 </div>
-            </Dialog>
-        </Transition>
+            </div>
+        </>
     );
 }
 
