@@ -12,4 +12,9 @@ class ProjectSetting extends Model
     {
         return $this->belongsTo(Project::class);
     }
+
+    public function defaultServer()
+    {
+        return $this->belongsTo(Server::class, 'default_server_id');
+    }
 }

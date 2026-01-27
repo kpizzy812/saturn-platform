@@ -148,6 +148,7 @@ Route::get('/projects/{uuid}/environments', function (string $uuid) {
 Route::get('/projects/{uuid}/settings', function (string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with(['environments', 'settings.defaultServer'])
         ->firstOrFail();
 
     // Count resources for delete warning
@@ -165,6 +166,69 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
     ];
     $totalResources = array_sum($resourcesCount);
 
+    // Environments with isEmpty check
+    $environments = $project->environments->map(fn ($env) => [
+        'id' => $env->id,
+        'uuid' => $env->uuid,
+        'name' => $env->name,
+        'created_at' => $env->created_at,
+        'is_empty' => $env->isEmpty(),
+    ]);
+
+    // Project-scoped shared variables
+    $sharedVariables = $project->environment_variables()
+        ->whereNull('environment_id')
+        ->get()
+        ->map(fn ($var) => [
+            'id' => $var->id,
+            'key' => $var->key,
+            'value' => $var->value,
+            'is_shown_once' => $var->is_shown_once,
+        ]);
+
+    // Available servers for default server selection
+    $servers = \App\Models\Server::ownedByCurrentTeam()->get()
+        ->map(fn ($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'ip' => $s->ip,
+        ]);
+
+    // Team notification channels status
+    $team = currentTeam();
+    $notificationChannels = [
+        'discord' => [
+            'enabled' => $team->discordNotificationSettings->discord_enabled ?? false,
+            'configured' => ! empty($team->discordNotificationSettings->discord_webhook_url),
+        ],
+        'slack' => [
+            'enabled' => $team->slackNotificationSettings->slack_enabled ?? false,
+            'configured' => ! empty($team->slackNotificationSettings->slack_webhook_url),
+        ],
+        'telegram' => [
+            'enabled' => $team->telegramNotificationSettings->telegram_enabled ?? false,
+            'configured' => ! empty($team->telegramNotificationSettings->telegram_token),
+        ],
+        'email' => [
+            'enabled' => $team->emailNotificationSettings->isEnabled() ?? false,
+            'configured' => $team->emailNotificationSettings->smtp_enabled
+                || $team->emailNotificationSettings->resend_enabled
+                || $team->emailNotificationSettings->use_instance_email_settings,
+        ],
+        'webhook' => [
+            'enabled' => $team->webhookNotificationSettings->webhook_enabled ?? false,
+            'configured' => ! empty($team->webhookNotificationSettings->webhook_url),
+        ],
+    ];
+
+    // Team members
+    $teamMembers = $team->members->map(fn ($m) => [
+        'id' => $m->id,
+        'name' => $m->name,
+        'email' => $m->email,
+        'role' => $m->pivot->role ?? 'member',
+    ]);
+
     return Inertia::render('Projects/Settings', [
         'project' => [
             'id' => $project->id,
@@ -176,7 +240,14 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
             'is_empty' => $project->isEmpty(),
             'resources_count' => $resourcesCount,
             'total_resources' => $totalResources,
+            'default_server_id' => $project->settings?->default_server_id,
         ],
+        'environments' => $environments,
+        'sharedVariables' => $sharedVariables,
+        'servers' => $servers,
+        'notificationChannels' => $notificationChannels,
+        'teamMembers' => $teamMembers,
+        'teamName' => $team->name,
     ]);
 })->name('projects.settings');
 
@@ -254,3 +325,150 @@ Route::post('/projects/{uuid}/environments', function (Request $request, string 
 
     return response()->json($environment);
 })->name('projects.environments.store');
+
+// Rename environment
+Route::patch('/projects/{uuid}/environments/{env_uuid}', function (Request $request, string $uuid, string $env_uuid) {
+    $request->validate([
+        'name' => 'required|string|max:255',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->firstOrFail();
+
+    // Check uniqueness within the project
+    if ($project->environments()
+        ->where('name', $request->name)
+        ->where('id', '!=', $environment->id)
+        ->exists()) {
+        return response()->json(['message' => 'Environment with this name already exists'], 422);
+    }
+
+    $environment->update(['name' => $request->name]);
+
+    return response()->json($environment);
+})->name('projects.environments.update');
+
+// Delete environment
+Route::delete('/projects/{uuid}/environments/{env_uuid}', function (string $uuid, string $env_uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->firstOrFail();
+
+    if (! $environment->isEmpty()) {
+        return response()->json(['message' => 'Environment has resources and cannot be deleted.'], 400);
+    }
+
+    $environment->delete();
+
+    return response()->json(['message' => 'Environment deleted.']);
+})->name('projects.environments.destroy');
+
+// Project-scoped shared variables CRUD
+Route::post('/projects/{uuid}/shared-variables', function (Request $request, string $uuid) {
+    $request->validate([
+        'key' => 'required|string|max:255',
+        'value' => 'required|string',
+        'is_shown_once' => 'sometimes|boolean',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $team = currentTeam();
+
+    if (\App\Models\SharedEnvironmentVariable::where('key', $request->key)
+        ->where('project_id', $project->id)
+        ->where('team_id', $team->id)
+        ->whereNull('environment_id')
+        ->exists()) {
+        return response()->json(['message' => 'Variable with this key already exists in this project'], 422);
+    }
+
+    $variable = \App\Models\SharedEnvironmentVariable::create([
+        'key' => $request->key,
+        'value' => $request->value,
+        'is_shown_once' => $request->is_shown_once ?? false,
+        'type' => 'project',
+        'team_id' => $team->id,
+        'project_id' => $project->id,
+    ]);
+
+    return response()->json([
+        'id' => $variable->id,
+        'key' => $variable->key,
+        'value' => $variable->value,
+        'is_shown_once' => $variable->is_shown_once,
+    ]);
+})->name('projects.shared-variables.store');
+
+Route::patch('/projects/{uuid}/shared-variables/{variable_id}', function (Request $request, string $uuid, int $variable_id) {
+    $request->validate([
+        'key' => 'sometimes|required|string|max:255',
+        'value' => 'sometimes|required|string',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $variable = \App\Models\SharedEnvironmentVariable::where('id', $variable_id)
+        ->where('project_id', $project->id)
+        ->firstOrFail();
+
+    $variable->update($request->only(['key', 'value']));
+
+    return response()->json([
+        'id' => $variable->id,
+        'key' => $variable->key,
+        'value' => $variable->value,
+        'is_shown_once' => $variable->is_shown_once,
+    ]);
+})->name('projects.shared-variables.update');
+
+Route::delete('/projects/{uuid}/shared-variables/{variable_id}', function (string $uuid, int $variable_id) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $variable = \App\Models\SharedEnvironmentVariable::where('id', $variable_id)
+        ->where('project_id', $project->id)
+        ->firstOrFail();
+
+    $variable->delete();
+
+    return response()->json(['message' => 'Variable deleted.']);
+})->name('projects.shared-variables.destroy');
+
+// Update default server
+Route::patch('/projects/{uuid}/settings/default-server', function (Request $request, string $uuid) {
+    $request->validate([
+        'default_server_id' => 'nullable|integer|exists:servers,id',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    // Verify server belongs to the team
+    if ($request->default_server_id) {
+        \App\Models\Server::ownedByCurrentTeam()
+            ->where('id', $request->default_server_id)
+            ->firstOrFail();
+    }
+
+    $project->settings()->update([
+        'default_server_id' => $request->default_server_id,
+    ]);
+
+    return redirect()->back()->with('success', 'Default server updated.');
+})->name('projects.settings.default-server');
