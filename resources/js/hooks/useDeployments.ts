@@ -55,7 +55,7 @@ export function useDeployments({
             setError(null);
 
             const url = applicationUuid
-                ? `/api/v1/deployments/applications/${applicationUuid}`
+                ? `/applications/${applicationUuid}/deployments/json`
                 : '/api/v1/deployments';
 
             const response = await fetch(url, {

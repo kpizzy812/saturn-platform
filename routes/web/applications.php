@@ -635,6 +635,43 @@ Route::get('/applications/{uuid}/logs', function (string $uuid) {
     ]);
 })->name('applications.logs');
 
+// JSON endpoint for application deployments (for XHR requests from canvas panel)
+Route::get('/applications/{uuid}/deployments/json', function (string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $deployments = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+        ->where('pull_request_id', 0)
+        ->orderBy('created_at', 'desc')
+        ->limit(50)
+        ->get()
+        ->map(function ($deployment) {
+            $duration = null;
+            if ($deployment->started_at && $deployment->finished_at) {
+                $duration = \Carbon\Carbon::parse($deployment->finished_at)
+                    ->diffInSeconds(\Carbon\Carbon::parse($deployment->started_at));
+            }
+
+            return [
+                'id' => $deployment->id,
+                'uuid' => $deployment->deployment_uuid,
+                'deployment_uuid' => $deployment->deployment_uuid,
+                'status' => $deployment->status,
+                'commit' => $deployment->commit,
+                'commit_message' => $deployment->commitMessage(),
+                'trigger' => $deployment->is_webhook ? 'push' : ($deployment->rollback ? 'rollback' : 'manual'),
+                'duration' => $duration,
+                'created_at' => $deployment->created_at?->toISOString(),
+                'updated_at' => $deployment->updated_at?->toISOString(),
+                'started_at' => $deployment->started_at,
+                'finished_at' => $deployment->finished_at,
+            ];
+        });
+
+    return response()->json($deployments);
+})->name('applications.deployments.json');
+
 // Application Deployments Route (Saturn)
 Route::get('/applications/{uuid}/deployments', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
