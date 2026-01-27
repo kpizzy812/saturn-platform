@@ -126,18 +126,60 @@ Route::get('/services/{uuid}/build-logs', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    // Fetch activity logs related to this service (deploy/restart/stop actions)
+    $activities = \Spatie\Activitylog\Models\Activity::where('subject_type', \App\Models\Service::class)
+        ->where('subject_id', $service->id)
+        ->orderByDesc('created_at')
+        ->limit(20)
+        ->get()
+        ->map(function ($activity) {
+            $properties = $activity->properties->toArray();
+
+            return [
+                'id' => $activity->id,
+                'name' => $activity->description ?? $activity->event ?? 'Unknown',
+                'status' => ($properties['status'] ?? null) === 'failed' ? 'failed' : 'success',
+                'duration' => $properties['duration'] ?? '-',
+                'logs' => isset($properties['stderr']) ? explode("\n", $properties['stderr']) : [],
+                'startTime' => $activity->created_at?->toISOString(),
+                'endTime' => $activity->updated_at?->toISOString(),
+            ];
+        });
+
     return Inertia::render('Services/BuildLogs', [
         'service' => $service,
+        'buildSteps' => $activities,
     ]);
 })->name('services.build-logs');
 
 Route::get('/services/{uuid}/domains', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with('applications')
         ->firstOrFail();
+
+    // Extract FQDNs from service applications
+    $domains = $service->applications
+        ->filter(fn ($app) => ! empty($app->fqdn))
+        ->flatMap(function ($app) {
+            return collect(explode(',', $app->fqdn))->map(function ($fqdn, $index) use ($app) {
+                $fqdn = trim($fqdn);
+
+                return [
+                    'id' => $app->id * 100 + $index,
+                    'domain' => preg_replace('#^https?://#', '', $fqdn),
+                    'isPrimary' => $index === 0,
+                    'sslStatus' => str_starts_with($fqdn, 'https://') ? 'active' : 'none',
+                    'sslProvider' => str_starts_with($fqdn, 'https://') ? 'letsencrypt' : null,
+                    'createdAt' => $app->created_at?->toISOString(),
+                ];
+            });
+        })
+        ->values();
 
     return Inertia::render('Services/Domains', [
         'service' => $service,
+        'domains' => $domains,
     ]);
 })->name('services.domains');
 
@@ -288,8 +330,16 @@ Route::get('/services/{uuid}/variables', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    $variables = $service->environment_variables()->get()->map(fn ($var) => [
+        'id' => $var->id,
+        'key' => $var->key,
+        'value' => $var->value,
+        'isSecret' => ! (bool) ($var->is_literal ?? true),
+    ]);
+
     return Inertia::render('Services/Variables', [
         'service' => $service,
+        'variables' => $variables,
     ]);
 })->name('services.variables');
 

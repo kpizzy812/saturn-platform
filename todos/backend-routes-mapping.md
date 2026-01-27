@@ -31,18 +31,16 @@ Quick reference for which Inertia pages have backend data and which still need i
 | Page | Route | Status | Data Passed |
 |------|-------|--------|-------------|
 | Services/Show | GET /services/{uuid} | DONE | `service` model |
-| Services/Variables | (tab in Show) | EMPTY | Needs env vars from `service.environment_variables()` |
-| Services/Domains | (tab in Show) | EMPTY | Needs FQDNs from `service.applications().pluck('fqdn')` |
-| Services/BuildLogs | (tab in Show) | EMPTY | Needs build logs from deployment queue |
-
-**TODO:** Services tabs need data passed through the `service` prop with eager-loaded relationships, or fetched via API calls from the tab components.
+| Services/Variables | GET /services/{uuid}/variables | DONE | `service`, `variables` (from environment_variables()) |
+| Services/Domains | GET /services/{uuid}/domains | DONE | `service`, `domains` (from service.applications FQDNs) |
+| Services/BuildLogs | GET /services/{uuid}/build-logs | DONE | `service`, `buildSteps` (from Spatie activity log) |
 
 ## Storage Pages
 
 | Page | Route | Status | Data Passed |
 |------|-------|--------|-------------|
-| Storage/Backups | GET /storage/backups | EMPTY | Needs backups list |
-| Storage/Snapshots | GET /storage/snapshots | EMPTY | Needs snapshots list |
+| Storage/Backups | GET /storage/backups | EMPTY | Needs backups list (no volume/backup model exists yet) |
+| Storage/Snapshots | GET /storage/snapshots | EMPTY | Needs snapshots list (no snapshot model exists yet) |
 | Storage/Create | POST /storage | DONE | S3Storage creation + test-connection |
 
 ## Volumes Pages
@@ -51,17 +49,21 @@ Quick reference for which Inertia pages have backend data and which still need i
 |------|-------|--------|-------------|
 | Volumes/Show | GET /volumes/{uuid} | DEFAULTS | `volume` passed, `snapshots` defaults to [] |
 
-## Admin Pages
+## Admin Pages (routes/web/admin.php)
 
 | Page | Route | Status | Data Passed |
 |------|-------|--------|-------------|
-| Admin/Index | GET /admin | DEFAULTS | `stats`, `recentActivity`, `healthChecks` all default to empty |
-| Admin/Users/Index | GET /admin/users | DEFAULTS | `users` defaults to [] |
-| Admin/Users/Show | GET /admin/users/{id} | DEFAULTS | needs user data |
-| Admin/Logs/Index | GET /admin/logs | DEFAULTS | `logs` defaults to [] |
-| Admin/Settings/Index | GET /admin/settings | DEFAULTS | `settings`, `featureFlags` default to empty |
-
-**TODO:** Admin routes need to query real data (User::count(), Server::count(), Team::count(), etc.)
+| Admin/Index | GET /admin | DONE | `stats` (User/Server/Team/Deployment counts), `recentActivity` (Spatie), `healthChecks` (DB/Redis ping) |
+| Admin/Users/Index | GET /admin/users | DONE | `users` paginated with teams |
+| Admin/Users/Show | GET /admin/users/{id} | DONE | `user` with teams.projects.environments |
+| Admin/Logs/Index | GET /admin/logs | DONE | `logs` parsed from laravel.log |
+| Admin/Settings/Index | GET /admin/settings | DONE | `settings` from InstanceSettings |
+| Admin/Applications/Index | GET /admin/applications | DONE | `applications` paginated |
+| Admin/Databases/Index | GET /admin/databases | DONE | `databases` (all 8 types merged) |
+| Admin/Services/Index | GET /admin/services | DONE | `services` paginated |
+| Admin/Servers/Index | GET /admin/servers | DONE | `servers` paginated |
+| Admin/Deployments/Index | GET /admin/deployments | DONE | `deployments` paginated |
+| Admin/Teams/Index | GET /admin/teams | DONE | `teams` with member/project/server counts |
 
 ## Observability Pages
 
@@ -70,6 +72,11 @@ Quick reference for which Inertia pages have backend data and which still need i
 | Observability/Metrics | GET /observability/metrics | DONE | `servers` list for Sentinel API |
 
 ---
+
+## Still Needs Backend (future work)
+
+- **Storage/Backups** and **Storage/Snapshots** — no Volume/Backup/Snapshot models exist in Coolify yet. These are placeholder pages for future functionality.
+- **Volumes/Show** — `volume` model is passed but `snapshots` and `usageData` need real data when volume management is implemented.
 
 ## Key Backend Patterns
 
@@ -98,3 +105,13 @@ $servers = Server::ownedByCurrentTeam()->get();
 - Belongs to `Application` via `application_id`
 - `application_name`, `server_name` fields for display
 - `is_webhook`, `rollback` flags for trigger type detection
+
+### Service Environment Variables
+- `$service->environment_variables()` — morphMany to EnvironmentVariable
+- `is_literal` flag — if false, value is interpolated (treated as secret)
+- FQDNs stored on ServiceApplication, comma-separated
+
+### Admin Route File
+- All admin routes in `routes/web/admin.php`
+- Prefix: `/admin`
+- Includes real DB counts, Spatie activity log, health checks

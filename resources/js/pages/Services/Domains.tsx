@@ -6,10 +6,6 @@ import {
 } from 'lucide-react';
 import type { Service } from '@/types';
 
-interface Props {
-    service: Service;
-}
-
 interface Domain {
     id: number;
     domain: string;
@@ -19,9 +15,14 @@ interface Domain {
     createdAt: string;
 }
 
-export function DomainsTab({ service }: Props) {
+interface Props {
+    service: Service;
+    domains?: Domain[];
+}
+
+export function DomainsTab({ service, domains: initialDomains = [] }: Props) {
     const confirm = useConfirm();
-    const [domains, setDomains] = useState<Domain[]>([]);
+    const [domains, setDomains] = useState<Domain[]>(initialDomains);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newDomain, setNewDomain] = useState('');
     const [showDnsInstructions, setShowDnsInstructions] = useState<number | null>(null);

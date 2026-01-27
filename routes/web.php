@@ -13,9 +13,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 // SuperAdmin routes
 require __DIR__.'/superadmin.php';
 
-// Admin routes - now using Inertia
-Route::get('/admin', fn () => Inertia::render('Admin/Index'))->name('admin.dashboard')->middleware(['auth', 'verified']);
-
 // Auth controller routes
 Route::post('/forgot-password', [Controller::class, 'forgot_password'])->name('password.forgot')->middleware('throttle:forgot-password');
 Route::get('/realtime', [Controller::class, 'realtime_test'])->middleware('auth');

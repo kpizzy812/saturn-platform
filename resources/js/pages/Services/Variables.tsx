@@ -3,10 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Modal, useConfirm } f
 import { Plus, Eye, EyeOff, Copy, Edit2, Trash2, Check } from 'lucide-react';
 import type { Service } from '@/types';
 
-interface Props {
-    service: Service;
-}
-
 interface Variable {
     id: number;
     key: string;
@@ -14,9 +10,14 @@ interface Variable {
     isSecret: boolean;
 }
 
-export function VariablesTab({ service }: Props) {
+interface Props {
+    service: Service;
+    variables?: Variable[];
+}
+
+export function VariablesTab({ service, variables: initialVariables = [] }: Props) {
     const confirm = useConfirm();
-    const [variables, setVariables] = useState<Variable[]>([]);
+    const [variables, setVariables] = useState<Variable[]>(initialVariables);
     const [showValues, setShowValues] = useState<Record<number, boolean>>({});
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);

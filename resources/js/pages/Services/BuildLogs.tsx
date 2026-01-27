@@ -7,10 +7,6 @@ import {
 import type { Service } from '@/types';
 import { getStatusIcon } from '@/lib/statusUtils';
 
-interface Props {
-    service: Service;
-}
-
 interface BuildStep {
     id: number;
     name: string;
@@ -21,9 +17,14 @@ interface BuildStep {
     endTime?: string;
 }
 
-export function BuildLogsTab({ service }: Props) {
+interface Props {
+    service: Service;
+    buildSteps?: BuildStep[];
+}
+
+export function BuildLogsTab({ service, buildSteps: initialBuildSteps = [] }: Props) {
     const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
-    const [buildSteps] = useState<BuildStep[]>([]);
+    const [buildSteps] = useState<BuildStep[]>(initialBuildSteps);
 
     const toggleStep = (stepId: number) => {
         setExpandedSteps((prev) => {

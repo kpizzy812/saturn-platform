@@ -25,9 +25,63 @@ Route::prefix('admin')->group(function () {
             'totalServices' => \App\Models\Service::count(),
         ];
 
+        // Recent activity from Spatie activity log
+        $recentActivity = \Spatie\Activitylog\Models\Activity::latest()
+            ->limit(10)
+            ->get()
+            ->map(function ($activity) {
+                $typeMap = [
+                    'created' => 'server_added',
+                    'deleted' => 'deployment_failed',
+                    'updated' => 'team_created',
+                ];
+
+                return [
+                    'id' => $activity->id,
+                    'type' => $typeMap[$activity->event ?? ''] ?? 'user_registered',
+                    'message' => $activity->description ?? ($activity->event.' '.$activity->subject_type),
+                    'timestamp' => $activity->created_at?->diffForHumans(),
+                    'user' => $activity->causer?->name ?? 'System',
+                ];
+            });
+
+        // Health checks
+        $healthChecks = [];
+        try {
+            // Check PostgreSQL
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $healthChecks[] = [
+                'service' => 'PostgreSQL',
+                'status' => 'healthy',
+                'lastCheck' => now()->toISOString(),
+            ];
+        } catch (\Exception $e) {
+            $healthChecks[] = [
+                'service' => 'PostgreSQL',
+                'status' => 'down',
+                'lastCheck' => now()->toISOString(),
+            ];
+        }
+
+        try {
+            \Illuminate\Support\Facades\Redis::ping();
+            $healthChecks[] = [
+                'service' => 'Redis',
+                'status' => 'healthy',
+                'lastCheck' => now()->toISOString(),
+            ];
+        } catch (\Exception $e) {
+            $healthChecks[] = [
+                'service' => 'Redis',
+                'status' => 'down',
+                'lastCheck' => now()->toISOString(),
+            ];
+        }
+
         return Inertia::render('Admin/Index', [
             'stats' => $stats,
-            'recentActivity' => [],
+            'recentActivity' => $recentActivity,
+            'healthChecks' => $healthChecks,
         ]);
     })->name('admin.index');
 
