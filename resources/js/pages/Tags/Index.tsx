@@ -149,7 +149,7 @@ function TagCard({ tag, onDelete }: TagCardProps) {
                                     Edit Tag
                                 </DropdownItem>
                                 <DropdownDivider />
-                                <DropdownItem onClick={onDelete} variant="destructive">
+                                <DropdownItem onClick={onDelete} danger>
                                     <Trash2 className="h-4 w-4" />
                                     Delete
                                 </DropdownItem>

@@ -67,7 +67,7 @@ export default function ProxyDomains({ server, domains: initialDomains }: Props)
         router.post(`/servers/${server.uuid}/proxy/domains/${domainId}/renew-certificate`);
     };
 
-    const getSslStatusColor = (status: Domain['ssl_certificate']['status']) => {
+    const getSslStatusColor = (status: NonNullable<Domain['ssl_certificate']>['status'] | null) => {
         switch (status) {
             case 'active': return 'success';
             case 'pending': return 'warning';
@@ -77,7 +77,7 @@ export default function ProxyDomains({ server, domains: initialDomains }: Props)
         }
     };
 
-    const getSslStatusIcon = (status: Domain['ssl_certificate']['status']) => {
+    const getSslStatusIcon = (status: NonNullable<Domain['ssl_certificate']>['status'] | null) => {
         switch (status) {
             case 'active': return <ShieldCheck className="h-4 w-4" />;
             case 'pending': return <RefreshCw className="h-4 w-4" />;

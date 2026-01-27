@@ -7,4 +7,6 @@ export type SelectedService = {
     fqdn?: string;
     dbType?: string;
     serverUuid?: string;
+    version?: string;
+    image?: string;
 };

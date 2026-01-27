@@ -42,7 +42,7 @@ const adminNavItems: NavItem[] = [
 
 function AdminSidebar() {
     const { url, props } = usePage();
-    const user = props.auth?.user as { name?: string; email?: string; is_root_user?: boolean } | undefined;
+    const user = (props as any).auth as { name?: string; email?: string; is_root_user?: boolean } | undefined;
 
     const isActive = (href: string) => {
         if (href === '/admin') {

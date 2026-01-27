@@ -12,6 +12,7 @@ import {
     CheckCircle,
     XCircle,
     Clock,
+    Activity,
 } from 'lucide-react';
 
 interface Application {

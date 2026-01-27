@@ -61,7 +61,7 @@ const actionBadgeColor: Record<ActivityAction, string> = {
     environment_variable_updated: 'bg-foreground-muted/10 text-foreground-muted',
 };
 
-function getResourceIcon(type: ActivityLog['resource']['type']) {
+function getResourceIcon(type: NonNullable<ActivityLog['resource']>['type']) {
     switch (type) {
         case 'project':
             return <GitBranch className="h-3.5 w-3.5" />;
@@ -109,7 +109,7 @@ function groupActivitiesByDate(activities: ActivityLog[]) {
 
 export const ActivityTimeline = React.forwardRef<HTMLDivElement, ActivityTimelineProps>(
     ({ activities, showDateSeparators = false, onLoadMore, hasMore = false, loading = false }, ref) => {
-        const groupedActivities = showDateSeparators
+        const groupedActivities: [string, ActivityLog[]][] = showDateSeparators
             ? groupActivitiesByDate(activities)
             : [['All', activities]];
 

@@ -2,7 +2,6 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
-import { LogsViewer } from '@/components/features/LogsViewer';
 import {
     GitPullRequest,
     ExternalLink,
@@ -197,10 +196,9 @@ export default function PreviewShow({ application, preview, previewUuid, project
                     <Card>
                         <CardContent className="p-6">
                             <h2 className="text-lg font-semibold text-foreground mb-4">Deployment Logs</h2>
-                            <LogsViewer
-                                logs={[]}
-                                maxHeight="400px"
-                            />
+                            <div className="rounded-lg border border-border bg-background-tertiary p-4 font-mono text-sm text-foreground-muted" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                <p className="text-center text-foreground-subtle">No deployment logs available</p>
+                            </div>
                         </CardContent>
                     </Card>
 

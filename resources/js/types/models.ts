@@ -41,6 +41,8 @@ export interface ServerSettings {
     server_id: number;
     is_build_server: boolean;
     concurrent_builds: number;
+    docker_version?: string;
+    docker_compose_version?: string;
 }
 
 export interface Project {
@@ -198,6 +200,7 @@ export interface Service {
     uuid: string;
     name: string;
     description: string | null;
+    status?: string;
     docker_compose_raw: string;
     environment_id: number;
     destination_id: number;
@@ -218,6 +221,7 @@ export interface Deployment {
     uuid: string;
     deployment_uuid?: string;
     application_id: number;
+    application_uuid?: string;
     status: DeploymentStatus;
     commit: string | null;
     commit_message: string | null;

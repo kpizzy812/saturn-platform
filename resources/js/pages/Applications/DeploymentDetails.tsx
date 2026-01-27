@@ -120,7 +120,7 @@ export default function DeploymentDetails({
         if (!isInProgress) return;
 
         const interval = setInterval(() => {
-            router.reload({ only: ['deployment', 'logs'], preserveScroll: true });
+            router.reload({ only: ['deployment', 'logs'] });
         }, 5000);
 
         return () => clearInterval(interval);
@@ -288,7 +288,7 @@ export default function DeploymentDetails({
 
                         <div className="flex items-center gap-2">
                             {isInProgress && (
-                                <Button variant="destructive" size="sm" onClick={handleCancel}>
+                                <Button variant="danger" size="sm" onClick={handleCancel}>
                                     <XCircle className="mr-2 h-4 w-4" />
                                     Cancel
                                 </Button>

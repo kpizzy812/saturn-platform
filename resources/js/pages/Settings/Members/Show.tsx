@@ -122,7 +122,7 @@ export default function MemberShow({ member, projects, activities }: Props) {
                 toast({
                     title: 'Error',
                     description: Object.values(errors).flat().join(', ') || 'Failed to remove member',
-                    variant: 'destructive',
+                    variant: 'error',
                 });
                 setIsRemoving(false);
             },
@@ -154,7 +154,7 @@ export default function MemberShow({ member, projects, activities }: Props) {
                 toast({
                     title: 'Error',
                     description: Object.values(errors).flat().join(', ') || 'Failed to update role',
-                    variant: 'destructive',
+                    variant: 'error',
                 });
             },
             onFinish: () => {

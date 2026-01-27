@@ -201,7 +201,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
         setIsSubmitting(true);
 
-        router.post('/applications', formData, {
+        router.post('/applications', formData as any, {
             onError: (errors) => {
                 setErrors(errors as Record<string, string>);
                 setIsSubmitting(false);

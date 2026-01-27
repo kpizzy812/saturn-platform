@@ -70,7 +70,7 @@ export function HealthChecksTab({ service }: Props) {
                 toast({
                     title: 'Error',
                     description: 'Failed to load healthcheck configuration',
-                    variant: 'destructive',
+                    variant: 'error',
                 });
             } finally {
                 setIsLoading(false);
@@ -139,7 +139,7 @@ export function HealthChecksTab({ service }: Props) {
             toast({
                 title: 'Error',
                 description: error instanceof Error ? error.message : 'Failed to save configuration',
-                variant: 'destructive',
+                variant: 'error',
             });
         } finally {
             setIsSaving(false);

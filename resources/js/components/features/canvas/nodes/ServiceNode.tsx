@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +26,7 @@ const DockerLogo = () => (
     </svg>
 );
 
-export const ServiceNode = memo(({ data, selected }: NodeProps<ServiceNodeData>) => {
+export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const isDeploying = statusBase === 'deploying' || statusBase === 'restarting';

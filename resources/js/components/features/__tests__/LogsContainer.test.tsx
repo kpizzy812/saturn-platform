@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { LogsContainer, type LogLine } from '../LogsContainer';
 
+declare const global: typeof globalThis;
+
 // Mock localStorage
 const localStorageMock = (() => {
     let store: Record<string, string> = {};

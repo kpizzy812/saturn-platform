@@ -15,7 +15,7 @@ interface Props {
 
 export default function ApplicationLogs({ application, projectUuid, environmentUuid }: Props) {
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [filterLevel, setFilterLevel] = React.useState<LogEntry['level'] | 'all'>('all');
+    const [filterLevel, setFilterLevel] = React.useState<'info' | 'error' | 'warning' | 'debug' | 'all'>('all');
     const logsContainerRef = React.useRef<HTMLDivElement>(null);
 
     const {

@@ -369,7 +369,7 @@ function ActivityTimelineItem({ activity, isLast }: { activity: ExtendedActivity
         environment_variable_updated: <Key className="h-4 w-4 text-foreground-muted" />,
     };
 
-    const getResourceIcon = (type: ActivityLog['resource']['type']) => {
+    const getResourceIcon = (type: NonNullable<ActivityLog['resource']>['type']) => {
         switch (type) {
             case 'project':
                 return <GitBranch className="h-3.5 w-3.5" />;

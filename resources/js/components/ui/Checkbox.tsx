@@ -3,29 +3,44 @@ import { cn } from '@/lib/utils';
 
 interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;
+    hint?: string;
+    onCheckedChange?: (checked: boolean) => void;
 }
 
 export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
-    ({ className, label, id, ...props }, ref) => {
+    ({ className, label, hint, id, onCheckedChange, onChange, ...props }, ref) => {
         const checkboxId = id || React.useId();
 
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            onChange?.(e);
+            onCheckedChange?.(e.target.checked);
+        };
+
         return (
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
                 <input
                     type="checkbox"
                     id={checkboxId}
                     className={cn(
-                        'h-4 w-4 rounded border-border bg-background-secondary text-primary',
+                        'mt-0.5 h-4 w-4 rounded border-border bg-background-secondary text-primary',
                         'focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background',
                         className
                     )}
                     ref={ref}
+                    onChange={handleChange}
                     {...props}
                 />
-                {label && (
-                    <label htmlFor={checkboxId} className="text-sm text-foreground">
-                        {label}
-                    </label>
+                {(label || hint) && (
+                    <div>
+                        {label && (
+                            <label htmlFor={checkboxId} className="text-sm text-foreground">
+                                {label}
+                            </label>
+                        )}
+                        {hint && (
+                            <p className="text-xs text-foreground-muted">{hint}</p>
+                        )}
+                    </div>
                 )}
             </div>
         );

@@ -59,7 +59,7 @@ export default function TemplateSubmit() {
             docker_compose: dockerCompose,
             category,
             environment_variables: envVars,
-        }, {
+        } as any, {
             onSuccess: () => {
                 addToast('success', 'Template submitted successfully for review');
             },
@@ -248,7 +248,6 @@ services:
                                                         updateEnvVar(index, 'key', e.target.value)
                                                     }
                                                     placeholder="DATABASE_URL"
-                                                    size="sm"
                                                 />
                                             </div>
                                             <div>
@@ -261,7 +260,6 @@ services:
                                                         updateEnvVar(index, 'defaultValue', e.target.value)
                                                     }
                                                     placeholder="(optional)"
-                                                    size="sm"
                                                 />
                                             </div>
                                             <div className="sm:col-span-2">
@@ -274,7 +272,6 @@ services:
                                                         updateEnvVar(index, 'description', e.target.value)
                                                     }
                                                     placeholder="Connection string for PostgreSQL database"
-                                                    size="sm"
                                                 />
                                             </div>
                                             <div className="flex items-center sm:col-span-2">

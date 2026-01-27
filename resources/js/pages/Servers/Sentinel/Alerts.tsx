@@ -161,7 +161,7 @@ function AlertHistoryCard({ alert }: { alert: AlertHistoryItem }) {
                     {isResolved && (
                         <div className="flex items-center gap-1.5">
                             <Clock className="h-3 w-3" />
-                            <span>Resolved: {new Date(alert.resolved_at).toLocaleString()}</span>
+                            <span>Resolved: {new Date(alert.resolved_at!).toLocaleString()}</span>
                         </div>
                     )}
                 </div>

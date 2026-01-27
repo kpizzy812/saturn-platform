@@ -92,7 +92,7 @@ export default function AuditLogSettings() {
             toast({
                 title: 'Error',
                 description: message,
-                variant: 'destructive',
+                variant: 'error',
             });
         } finally {
             setIsLoading(false);
@@ -227,7 +227,7 @@ export default function AuditLogSettings() {
             toast({
                 title: 'Export Failed',
                 description: message,
-                variant: 'destructive',
+                variant: 'error',
             });
         } finally {
             setIsExporting(false);

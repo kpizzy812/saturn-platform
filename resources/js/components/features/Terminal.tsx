@@ -217,7 +217,7 @@ export function Terminal({
         };
 
         // Debounce resize events
-        let resizeTimeout: NodeJS.Timeout;
+        let resizeTimeout: ReturnType<typeof setTimeout>;
         const debouncedResize = () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(handleResize, 100);

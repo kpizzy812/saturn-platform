@@ -119,7 +119,7 @@ export function useWebhooks({
                 prev.map((w) => (w.uuid === uuid ? { ...w, ...data } : w))
             );
 
-            router.put(`/integrations/webhooks/${uuid}`, data, {
+            router.put(`/integrations/webhooks/${uuid}`, data as any, {
                 preserveScroll: true,
                 onSuccess: () => resolve(),
                 onError: () => {

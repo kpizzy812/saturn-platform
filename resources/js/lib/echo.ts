@@ -5,7 +5,7 @@ import Pusher from 'pusher-js';
 declare global {
     interface Window {
         Pusher: typeof Pusher;
-        Echo: Echo | null;
+        Echo: Echo<'pusher'> | null;
     }
 }
 
@@ -20,7 +20,7 @@ window.Pusher = Pusher;
  * - Supports development and production environments
  * - Gracefully handles test environments where WebSocket may not be available
  */
-export function initializeEcho(): Echo | null {
+export function initializeEcho(): Echo<'pusher'> | null {
     // Skip initialization in test environments or when window is not available
     if (typeof window === 'undefined') {
         console.debug('Echo initialization skipped: window not available');
@@ -91,9 +91,9 @@ export function initializeEcho(): Echo | null {
             authEndpoint: '/broadcasting/auth',
         });
 
-        window.Echo = echo;
+        window.Echo = echo as Echo<'pusher'>;
         console.debug('Laravel Echo initialized successfully');
-        return echo;
+        return echo as Echo<'pusher'>;
     } catch (error) {
         console.error('Failed to initialize Laravel Echo:', error);
         window.Echo = null;
@@ -104,7 +104,7 @@ export function initializeEcho(): Echo | null {
 /**
  * Get or initialize the Echo instance
  */
-export function getEcho(): Echo | null {
+export function getEcho(): Echo<'pusher'> | null {
     if (window.Echo) {
         return window.Echo;
     }

@@ -153,19 +153,12 @@ export default function SecuritySettings({
             router.delete(`/settings/security/sessions/${sessionToRevoke.id}`, {
                 onSuccess: () => {
                     setSessions(sessions.filter((s) => s.id !== sessionToRevoke.id));
-                    addToast({
-                        title: 'Session revoked',
-                        description: 'The session has been revoked successfully.',
-                    });
+                    addToast('success', 'Session revoked', 'The session has been revoked successfully.');
                     setSessionToRevoke(null);
                     setShowRevokeSessionModal(false);
                 },
                 onError: () => {
-                    addToast({
-                        title: 'Failed to revoke session',
-                        description: 'An error occurred while revoking the session.',
-                        variant: 'danger',
-                    });
+                    addToast('error', 'Failed to revoke session', 'An error occurred while revoking the session.');
                 },
                 onFinish: () => {
                     setIsRevokingSession(false);
@@ -180,18 +173,11 @@ export default function SecuritySettings({
         router.delete('/settings/security/sessions/all', {
             onSuccess: () => {
                 setSessions(sessions.filter((s) => s.current));
-                addToast({
-                    title: 'All sessions revoked',
-                    description: 'All other sessions have been revoked successfully.',
-                });
+                addToast('success', 'All sessions revoked', 'All other sessions have been revoked successfully.');
                 setShowRevokeAllModal(false);
             },
             onError: () => {
-                addToast({
-                    title: 'Failed to revoke sessions',
-                    description: 'An error occurred while revoking sessions.',
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to revoke sessions', 'An error occurred while revoking sessions.');
             },
             onFinish: () => {
                 setIsRevokingAll(false);
@@ -216,20 +202,13 @@ export default function SecuritySettings({
                     createdAt: new Date().toISOString(),
                 };
                 setIpAllowlist([...ipAllowlist, newEntry]);
-                addToast({
-                    title: 'IP added',
-                    description: 'The IP address has been added to the allowlist.',
-                });
+                addToast('success', 'IP added', 'The IP address has been added to the allowlist.');
                 setNewIP({ ip: '', description: '' });
                 setIpError(undefined);
                 setShowAddIPModal(false);
             },
             onError: () => {
-                addToast({
-                    title: 'Failed to add IP',
-                    description: 'An error occurred while adding the IP address.',
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to add IP', 'An error occurred while adding the IP address.');
             },
             onFinish: () => {
                 setIsAddingIP(false);
@@ -241,17 +220,10 @@ export default function SecuritySettings({
         router.delete(`/settings/security/ip-allowlist/${id}`, {
             onSuccess: () => {
                 setIpAllowlist(ipAllowlist.filter((entry) => entry.id !== id));
-                addToast({
-                    title: 'IP removed',
-                    description: 'The IP address has been removed from the allowlist.',
-                });
+                addToast('success', 'IP removed', 'The IP address has been removed from the allowlist.');
             },
             onError: () => {
-                addToast({
-                    title: 'Failed to remove IP',
-                    description: 'An error occurred while removing the IP address.',
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to remove IP', 'An error occurred while removing the IP address.');
             }
         });
     };
@@ -267,17 +239,10 @@ export default function SecuritySettings({
         router.post('/settings/security/notifications', newNotifications, {
             onSuccess: () => {
                 setSecurityNotifications(newNotifications);
-                addToast({
-                    title: 'Notification settings updated',
-                    description: 'Your notification preferences have been saved.',
-                });
+                addToast('success', 'Notification settings updated', 'Your notification preferences have been saved.');
             },
             onError: () => {
-                addToast({
-                    title: 'Failed to update notifications',
-                    description: 'An error occurred while updating notification settings.',
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to update notifications', 'An error occurred while updating notification settings.');
             },
             onFinish: () => {
                 setIsUpdatingNotifications(false);

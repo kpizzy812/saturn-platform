@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import BuildLogsView from './BuildLogs';
 
+declare const global: typeof globalThis;
+
 // Mock Inertia
 vi.mock('@inertiajs/react', () => ({
     Link: ({ children, href, ...props }: any) => (
@@ -36,12 +38,12 @@ vi.mock('@/components/ui', () => ({
 
 describe('BuildLogsView', () => {
     it('renders the build logs page', () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
         expect(screen.getByText('Build Logs')).toBeInTheDocument();
     });
 
     it('displays build steps with status icons', () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         expect(screen.getByText('Clone Repository')).toBeInTheDocument();
         expect(screen.getByText('Install Dependencies')).toBeInTheDocument();
@@ -52,7 +54,7 @@ describe('BuildLogsView', () => {
     });
 
     it('displays build status and total duration', () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // Should show build in progress
         expect(screen.getByText('Build in progress...')).toBeInTheDocument();
@@ -62,7 +64,7 @@ describe('BuildLogsView', () => {
     });
 
     it('expands and collapses build steps', async () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // Find the first step header
         const stepHeader = screen.getByText('Clone Repository');
@@ -86,7 +88,7 @@ describe('BuildLogsView', () => {
     });
 
     it('expands all steps when expand all is clicked', async () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         const expandAllButton = screen.getByText('Expand All');
         fireEvent.click(expandAllButton);
@@ -102,7 +104,7 @@ describe('BuildLogsView', () => {
     });
 
     it('filters logs by search query', async () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         const searchInput = screen.getByPlaceholderText('Search within logs...');
         expect(searchInput).toBeInTheDocument();
@@ -122,7 +124,7 @@ describe('BuildLogsView', () => {
     });
 
     it('filters logs by log level', async () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // Expand all steps first
         const expandAllButton = screen.getByText('Expand All');
@@ -161,12 +163,12 @@ describe('BuildLogsView', () => {
     it('shows retry button when build fails', () => {
         // We'd need to pass a failed build step to test this
         // For now, we'll just check if the component renders
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
         expect(screen.getByText('Build Logs')).toBeInTheDocument();
     });
 
     it('displays step duration and time range', () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // Should show step durations
         expect(screen.getByText('2.3s')).toBeInTheDocument();
@@ -184,7 +186,7 @@ describe('BuildLogsView', () => {
             },
         });
 
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // Expand the first step
         const stepHeader = screen.getByText('Clone Repository');
@@ -201,7 +203,7 @@ describe('BuildLogsView', () => {
     });
 
     it('displays running step with animation', () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // The "Deploy Container" step should be running
         expect(screen.getByText('Deploy Container')).toBeInTheDocument();
@@ -217,7 +219,7 @@ describe('BuildLogsView', () => {
     });
 
     it('displays filtered log count when filters are active', async () => {
-        render(<BuildLogsView />);
+        render(<BuildLogsView deploymentUuid="test-uuid" />);
 
         // Expand a step
         const stepHeader = screen.getByText('Clone Repository');

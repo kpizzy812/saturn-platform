@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/Toast';
  * showing new messages even on same-page redirects.
  */
 export function FlashMessages() {
-    const { flash } = usePage().props;
+    const { flash } = usePage<{ flash: { success?: string; error?: string; warning?: string; info?: string } }>().props;
     const { addToast } = useToast();
     const shownRef = useRef<string | null>(null);
 

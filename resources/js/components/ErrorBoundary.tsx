@@ -102,15 +102,16 @@ interface ErrorBoundaryProps {
 export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
     return (
         <Sentry.ErrorBoundary
-            fallback={({ error, componentStack, eventId, resetError }) =>
-                fallback || (
-                    <ErrorFallback
-                        error={error}
-                        componentStack={componentStack}
-                        eventId={eventId}
-                        resetError={resetError}
-                    />
-                )
+            fallback={({ error, componentStack, eventId, resetError }) => (
+                    fallback || (
+                        <ErrorFallback
+                            error={error instanceof Error ? error : new Error(String(error))}
+                            componentStack={componentStack}
+                            eventId={eventId}
+                            resetError={resetError}
+                        />
+                    )
+                ) as React.ReactElement
             }
             beforeCapture={(scope) => {
                 scope.setTag('errorBoundary', 'true');

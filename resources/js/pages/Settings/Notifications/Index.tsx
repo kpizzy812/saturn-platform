@@ -88,8 +88,7 @@ export default function NotificationsIndex({ channels }: Props) {
     const handleQuickToggle = (channelId: string, currentlyEnabled: boolean) => {
         post(`/settings/notifications/${channelId}/toggle`, {
             data: { enabled: !currentlyEnabled },
-            preserveScroll: true,
-        });
+        } as any);
     };
 
     const enabledCount = notificationChannels.filter(c => c.enabled).length;

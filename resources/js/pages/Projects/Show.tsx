@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { getStatusLabel, getStatusDotClass } from '@/lib/statusUtils';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, useConfirm } from '@/components/ui';
@@ -913,9 +914,9 @@ export default function ProjectShow({ project }: Props) {
                                         <div key={app.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{app.name}</span>
-                                                <div className={`h-2 w-2 rounded-full ${app.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(app.status || 'stopped')}`} />
                                             </div>
-                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{app.status || 'unknown'}</p>
+                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{getStatusLabel(app.status || 'stopped')}</p>
                                             <div className="mt-3 flex items-center gap-2">
                                                 <button
                                                     onClick={() => {
@@ -939,9 +940,9 @@ export default function ProjectShow({ project }: Props) {
                                         <div key={db.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{db.name}</span>
-                                                <div className={`h-2 w-2 rounded-full ${db.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(db.status || 'stopped')}`} />
                                             </div>
-                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{db.status || 'unknown'}</p>
+                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{getStatusLabel(db.status || 'stopped')}</p>
                                             <div className="mt-3">
                                                 <button
                                                     onClick={() => {
@@ -998,7 +999,7 @@ export default function ProjectShow({ project }: Props) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${app.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(app.status || 'stopped')}`} />
                                                 <FileText className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </button>
@@ -1024,7 +1025,7 @@ export default function ProjectShow({ project }: Props) {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${db.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
+                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(db.status || 'stopped')}`} />
                                                 <FileText className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </button>
@@ -1104,8 +1105,8 @@ export default function ProjectShow({ project }: Props) {
                                         <div>
                                             <span className="font-medium text-foreground">{selectedService.name}</span>
                                             <div className="flex items-center gap-1.5 text-xs text-foreground-muted">
-                                                <div className={`h-1.5 w-1.5 rounded-full ${selectedService.status?.startsWith('running') ? 'bg-green-500' : 'bg-gray-500'}`} />
-                                                <span className="capitalize">{selectedService.status}</span>
+                                                <div className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(selectedService.status || 'stopped')}`} />
+                                                <span className="capitalize">{getStatusLabel(selectedService.status || 'stopped')}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1153,7 +1154,7 @@ export default function ProjectShow({ project }: Props) {
                                     <span>·</span>
                                     <span className="flex items-center gap-1">
                                         <Users className="h-3 w-3" />
-                                        {selectedService.status || 'unknown'}
+                                        {getStatusLabel(selectedService.status || 'stopped')}
                                     </span>
                                 </div>
                             </div>

@@ -51,12 +51,12 @@ export interface UseAutoScrollReturn {
     /**
      * Ref to attach to the scrollable container
      */
-    containerRef: React.RefObject<HTMLDivElement>;
+    containerRef: React.RefObject<HTMLDivElement | null>;
 
     /**
      * Ref to attach to the bottom anchor element
      */
-    bottomRef: React.RefObject<HTMLDivElement>;
+    bottomRef: React.RefObject<HTMLDivElement | null>;
 
     /**
      * Whether autoscroll is currently enabled
@@ -223,7 +223,7 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
 
     const containerRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
-    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isScrollingProgrammatically = useRef(false);
     const lastScrollTop = useRef(0);
 

@@ -134,16 +134,15 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     } = options;
 
     const page = usePage();
-    const auth = page.props.auth;
-    const teamId = auth?.team?.id;
+    const teamId = (page.props as any).team?.id;
 
     const [isConnected, setIsConnected] = React.useState(false);
     const [isConnecting, setIsConnecting] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
     const [reconnectAttempt, setReconnectAttempt] = React.useState(0);
 
-    const reconnectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-    const manualReconnectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const reconnectTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const manualReconnectTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const channelRef = React.useRef<any>(null);
     const shouldReconnectRef = React.useRef(true);
     const isMountedRef = React.useRef(true);

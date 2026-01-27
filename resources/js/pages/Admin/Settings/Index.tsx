@@ -48,7 +48,7 @@ export default function AdminSettingsIndex({
         setIsSaving(true);
         router.post(
             '/admin/settings',
-            { settings: formData },
+            { settings: formData } as any,
             {
                 onFinish: () => setIsSaving(false),
             }

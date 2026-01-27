@@ -64,6 +64,9 @@ interface DatabaseBackup {
     save_s3: boolean;
     frequency: string;
     number_of_backups_locally?: number;
+    filename?: string;
+    size?: string;
+    status?: string;
     executions: DatabaseBackupExecution[];
     created_at: string;
     updated_at: string;

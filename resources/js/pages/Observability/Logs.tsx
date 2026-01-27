@@ -158,7 +158,7 @@ export default function ObservabilityLogs({ resources = [] }: Props) {
             toast({
                 title: 'Error',
                 description: message,
-                variant: 'destructive',
+                variant: 'error',
             });
         } finally {
             setIsLoading(false);
@@ -208,7 +208,7 @@ export default function ObservabilityLogs({ resources = [] }: Props) {
             toast({
                 title: 'No Logs',
                 description: 'No logs available to download',
-                variant: 'destructive',
+                variant: 'error',
             });
             return;
         }
@@ -250,7 +250,7 @@ export default function ObservabilityLogs({ resources = [] }: Props) {
             toast({
                 title: 'No Logs',
                 description: 'No logs available to copy',
-                variant: 'destructive',
+                variant: 'error',
             });
             return;
         }
@@ -273,7 +273,7 @@ export default function ObservabilityLogs({ resources = [] }: Props) {
             toast({
                 title: 'Copy Failed',
                 description: 'Failed to copy logs to clipboard',
-                variant: 'destructive',
+                variant: 'error',
             });
         }
     }, [filteredLogs, toast]);

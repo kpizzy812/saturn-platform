@@ -19,14 +19,15 @@ interface EnvironmentOption {
     label: string;
 }
 
-interface PageProps {
+interface WorkspacePageProps {
     workspace: WorkspaceData;
     timezones: string[];
     environmentOptions: EnvironmentOption[];
+    [key: string]: unknown;
 }
 
 export default function WorkspaceSettings() {
-    const { workspace: initialWorkspace, timezones, environmentOptions } = usePage<PageProps>().props;
+    const { workspace: initialWorkspace, timezones, environmentOptions } = usePage<WorkspacePageProps>().props;
 
     const [workspace, setWorkspace] = React.useState<WorkspaceData>(initialWorkspace);
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
@@ -51,18 +52,11 @@ export default function WorkspaceSettings() {
             defaultEnvironment: workspace.defaultEnvironment,
         }, {
             onSuccess: () => {
-                addToast({
-                    title: 'Workspace updated',
-                    description: 'Your workspace settings have been saved successfully.',
-                });
+                addToast('success', 'Workspace updated', 'Your workspace settings have been saved successfully.');
             },
             onError: (errors) => {
                 const errorMessage = Object.values(errors).flat().join(', ') || 'An error occurred while saving your workspace settings.';
-                addToast({
-                    title: 'Failed to save workspace',
-                    description: errorMessage,
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to save workspace', errorMessage);
             },
             onFinish: () => {
                 setIsSaving(false);
@@ -76,21 +70,14 @@ export default function WorkspaceSettings() {
 
             router.delete('/settings/workspace', {
                 onSuccess: () => {
-                    addToast({
-                        title: 'Workspace deleted',
-                        description: 'Your workspace has been deleted successfully.',
-                    });
+                    addToast('success', 'Workspace deleted', 'Your workspace has been deleted successfully.');
                     setShowDeleteModal(false);
                     setDeleteConfirmation('');
                     // User will likely be redirected by the backend
                 },
                 onError: (errors) => {
                     const errorMessage = Object.values(errors).flat().join(', ') || 'An error occurred while deleting your workspace.';
-                    addToast({
-                        title: 'Failed to delete workspace',
-                        description: errorMessage,
-                        variant: 'danger',
-                    });
+                    addToast('error', 'Failed to delete workspace', errorMessage);
                 },
                 onFinish: () => {
                     setIsDeleting(false);

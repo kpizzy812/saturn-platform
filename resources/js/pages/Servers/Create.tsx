@@ -75,7 +75,7 @@ export default function ServerCreate({ privateKeys = [] }: Props) {
             data.private_key = privateKey;
         }
 
-        router.post('/servers', data);
+        router.post('/servers', data as any);
     };
 
     const hasValidKey = keyMode === 'existing' ? !!selectedKeyId : (!!privateKey && !privateKeyError);

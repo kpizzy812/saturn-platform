@@ -110,7 +110,7 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
                 const errorMessage = data.error || 'Query execution failed';
                 setError(errorMessage);
                 addToHistory(currentQuery, 'error', undefined, errorMessage);
-                addToast({ type: 'error', message: `Query failed: ${errorMessage}` });
+                addToast('error', `Query failed: ${errorMessage}`);
             } else {
                 setQueryResult({
                     columns: data.columns || [],
@@ -119,13 +119,13 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
                     rowCount: data.rowCount || 0,
                 });
                 addToHistory(currentQuery, 'success', data.rowCount);
-                addToast({ type: 'success', message: `Query executed: ${data.rowCount} rows returned in ${data.executionTime}s` });
+                addToast('success', `Query executed: ${data.rowCount} rows returned in ${data.executionTime}s`);
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Network error';
             setError(errorMessage);
             addToHistory(currentQuery, 'error', undefined, errorMessage);
-            addToast({ type: 'error', message: `Query failed: ${errorMessage}` });
+            addToast('error', `Query failed: ${errorMessage}`);
         } finally {
             setIsExecuting(false);
         }

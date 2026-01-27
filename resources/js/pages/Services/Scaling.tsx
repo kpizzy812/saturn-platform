@@ -94,19 +94,11 @@ export function ScalingTab({ service }: Props) {
 
         router.patch(`/api/v1/services/${service.uuid}`, data, {
             onSuccess: () => {
-                addToast({
-                    title: 'Resource limits saved',
-                    description: 'Changes will apply on next service restart.',
-                    variant: 'success',
-                });
+                addToast('success', 'Resource limits saved', 'Changes will apply on next service restart.');
                 setHasChanges(false);
             },
             onError: () => {
-                addToast({
-                    title: 'Failed to save resource limits',
-                    description: 'Please check your inputs and try again.',
-                    variant: 'destructive',
-                });
+                addToast('error', 'Failed to save resource limits', 'Please check your inputs and try again.');
             },
             onFinish: () => {
                 setIsSaving(false);

@@ -55,7 +55,7 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
             disable_local_backup: disableLocalBackup,
         };
 
-        router.patch(`/databases/${database.uuid}/settings/backups`, settings, {
+        router.patch(`/databases/${database.uuid}/settings/backups`, settings as any, {
             onSuccess: () => {
                 addToast('success', 'Backup settings saved successfully');
                 setHasChanges(false);

@@ -49,7 +49,7 @@ const actionIcons: Record<ActivityAction, React.ReactNode> = {
     environment_variable_updated: <Key className="h-5 w-5 text-foreground-muted" />,
 };
 
-function getResourceIcon(type: ActivityLog['resource']['type']) {
+function getResourceIcon(type: NonNullable<ActivityLog['resource']>['type']) {
     switch (type) {
         case 'project':
             return <GitBranch className="h-4 w-4" />;

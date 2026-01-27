@@ -5,6 +5,8 @@ import { useToast } from '@/components/ui/Toast';
 import { Github, GitBranch, MessageSquare, Zap, Settings, CheckCircle2, XCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
 
+declare function route(name: string, params?: Record<string, any>): string;
+
 interface Source {
     id: number;
     uuid: string;

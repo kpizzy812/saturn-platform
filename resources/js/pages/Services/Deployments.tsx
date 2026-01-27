@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { GitCommit, Clock, RotateCw, Play, Loader2 } from 'lucide-react';
+import { GitCommit, Clock, RotateCw, Play, Loader2, AlertCircle } from 'lucide-react';
 import type { Service } from '@/types';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 

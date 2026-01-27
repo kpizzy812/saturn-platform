@@ -44,18 +44,12 @@ export function RollbacksTab({ service, containers = [] }: Props) {
                 throw new Error(data.message || 'Redeploy failed');
             }
 
-            addToast({
-                type: 'success',
-                message: pullLatest
+            addToast('success', pullLatest
                     ? 'Redeploy initiated: Service will restart with latest images'
-                    : 'Restart initiated: Service restart initiated',
-            });
+                    : 'Restart initiated: Service restart initiated');
             setShowRedeployModal(false);
         } catch (err) {
-            addToast({
-                type: 'error',
-                message: `Redeploy failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-            });
+            addToast('error', `Redeploy failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
         } finally {
             setIsRedeploying(false);
         }

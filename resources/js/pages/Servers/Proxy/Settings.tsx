@@ -32,7 +32,7 @@ export default function ProxySettingsPage({ server, settings: initialSettings }:
     };
 
     const handleSave = () => {
-        router.post(`/servers/${server.uuid}/proxy/settings`, settings, {
+        router.post(`/servers/${server.uuid}/proxy/settings`, settings as any, {
             onSuccess: () => {
                 setIsDirty(false);
             },

@@ -238,7 +238,7 @@ function ActivityItem({ activity, isLast }: { activity: ActivityLog; isLast: boo
     );
 }
 
-function getResourceIcon(type: ActivityLog['resource']['type']) {
+function getResourceIcon(type: NonNullable<ActivityLog['resource']>['type']) {
     switch (type) {
         case 'project':
             return <GitBranch className="h-3.5 w-3.5" />;

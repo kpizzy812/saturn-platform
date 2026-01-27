@@ -39,7 +39,7 @@ export function useGitBranches({
     const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
-    const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+    const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const abortControllerRef = React.useRef<AbortController | null>(null);
 
     const clearBranches = React.useCallback(() => {

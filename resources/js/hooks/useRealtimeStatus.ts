@@ -148,17 +148,17 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
     } = options;
 
     const page = usePage();
-    const auth = page.props.auth;
-    const teamId = auth?.team?.id;
-    const userId = auth?.user?.id;
+    const pageProps = page.props as any;
+    const teamId = pageProps.team?.id;
+    const userId = pageProps.auth?.id;
 
     const [isConnected, setIsConnected] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
     const [isPolling, setIsPolling] = React.useState(false);
     const [reconnectAttempts, setReconnectAttempts] = React.useState(0);
 
-    const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
-    const reconnectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const pollingIntervalRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reconnectTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const isMountedRef = React.useRef(true);
     const maxReconnectAttempts = 3;
 

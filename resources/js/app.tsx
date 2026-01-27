@@ -24,9 +24,9 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         // Set Sentry user context if authenticated
-        const user = props.initialPage.props.auth?.user;
-        if (user) {
-            setUser({ id: user.id, email: user.email, name: user.name });
+        const auth = props.initialPage.props.auth as { user?: { id: number; email: string; name: string } } | undefined;
+        if (auth?.user) {
+            setUser({ id: auth.user.id, email: auth.user.email, name: auth.user.name });
         }
 
         const root = createRoot(el);

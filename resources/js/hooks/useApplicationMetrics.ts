@@ -95,7 +95,7 @@ export function useApplicationMetrics({
     const [lastUpdated, setLastUpdated] = React.useState<Date | null>(null);
 
     const isMountedRef = React.useRef(true);
-    const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     /**
      * Fetch metrics from API

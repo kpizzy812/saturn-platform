@@ -58,7 +58,7 @@ export function PreviewCard({ preview, applicationUuid }: PreviewCardProps) {
         e.preventDefault();
         e.stopPropagation();
         if (!safeOpenUrl(preview.preview_url)) {
-            addToast('Unable to open URL - invalid or unsafe protocol', 'error');
+            addToast('error', 'Unable to open URL - invalid or unsafe protocol');
         }
     };
 

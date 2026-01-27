@@ -89,7 +89,7 @@ export default function ApplicationShow({ application: initialApplication }: Pro
         if (!hasActiveDeployment) return;
 
         const interval = setInterval(() => {
-            router.reload({ only: ['application'], preserveScroll: true });
+            router.reload({ only: ['application'] });
         }, 5000);
 
         return () => clearInterval(interval);

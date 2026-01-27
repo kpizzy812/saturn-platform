@@ -198,7 +198,7 @@ export default function ObservabilityMetrics({ servers = [] }: Props) {
 
     const handleExport = useCallback(() => {
         if (metricsData.length === 0) {
-            addToastRef.current({ type: 'warning', message: 'No metrics data to export' });
+            addToastRef.current('warning', 'No metrics data to export');
             return;
         }
 
@@ -239,9 +239,9 @@ export default function ObservabilityMetrics({ servers = [] }: Props) {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            addToastRef.current({ type: 'success', message: 'Metrics exported to CSV' });
+            addToastRef.current('success', 'Metrics exported to CSV');
         } catch (exportError) {
-            addToastRef.current({ type: 'error', message: `Export failed: ${exportError instanceof Error ? exportError.message : 'Unknown error'}` });
+            addToastRef.current('error', `Export failed: ${exportError instanceof Error ? exportError.message : 'Unknown error'}`);
         } finally {
             setIsExporting(false);
         }

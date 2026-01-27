@@ -99,7 +99,7 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
             toast({
                 title: 'No Data',
                 description: 'No history entries to export',
-                variant: 'destructive',
+                variant: 'error',
             });
             return;
         }
@@ -170,7 +170,7 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
             toast({
                 title: 'Export Failed',
                 description: err instanceof Error ? err.message : 'Failed to export history',
-                variant: 'destructive',
+                variant: 'error',
             });
         } finally {
             setIsExporting(false);

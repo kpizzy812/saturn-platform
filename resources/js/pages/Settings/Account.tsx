@@ -82,17 +82,10 @@ export default function AccountSettings() {
 
         router.post('/settings/account/profile', profile, {
             onSuccess: () => {
-                addToast({
-                    title: 'Profile updated',
-                    description: 'Your profile has been saved successfully.',
-                });
+                addToast('success', 'Profile updated', 'Your profile has been saved successfully.');
             },
             onError: (errors) => {
-                addToast({
-                    title: 'Failed to save profile',
-                    description: getFirstErrorMessage(errors),
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to save profile', getFirstErrorMessage(errors));
             },
             onFinish: () => {
                 setIsSavingProfile(false);
@@ -107,17 +100,10 @@ export default function AccountSettings() {
         router.post('/settings/account/password', password, {
             onSuccess: () => {
                 setPassword({ current: '', new: '', confirm: '' });
-                addToast({
-                    title: 'Password updated',
-                    description: 'Your password has been changed successfully.',
-                });
+                addToast('success', 'Password updated', 'Your password has been changed successfully.');
             },
             onError: (errors) => {
-                addToast({
-                    title: 'Failed to update password',
-                    description: getFirstErrorMessage(errors),
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to update password', getFirstErrorMessage(errors));
             },
             onFinish: () => {
                 setIsSavingPassword(false);
@@ -132,19 +118,12 @@ export default function AccountSettings() {
         router.post('/settings/account/2fa', { enabled: newState }, {
             onSuccess: () => {
                 setTwoFactorEnabled(newState);
-                addToast({
-                    title: newState ? '2FA enabled' : '2FA disabled',
-                    description: newState
+                addToast('success', newState ? '2FA enabled' : '2FA disabled', newState
                         ? 'Two-factor authentication has been enabled.'
-                        : 'Two-factor authentication has been disabled.',
-                });
+                        : 'Two-factor authentication has been disabled.');
             },
             onError: (errors) => {
-                addToast({
-                    title: 'Failed to update 2FA',
-                    description: getFirstErrorMessage(errors),
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to update 2FA', getFirstErrorMessage(errors));
             },
             onFinish: () => {
                 setIsToggling2FA(false);
@@ -157,19 +136,12 @@ export default function AccountSettings() {
 
         router.delete('/settings/account', {
             onSuccess: () => {
-                addToast({
-                    title: 'Account deleted',
-                    description: 'Your account has been deleted successfully.',
-                });
+                addToast('success', 'Account deleted', 'Your account has been deleted successfully.');
                 setShowDeleteModal(false);
                 // User will likely be redirected to login page by the backend
             },
             onError: (errors) => {
-                addToast({
-                    title: 'Failed to delete account',
-                    description: getFirstErrorMessage(errors),
-                    variant: 'danger',
-                });
+                addToast('error', 'Failed to delete account', getFirstErrorMessage(errors));
             },
             onFinish: () => {
                 setIsDeletingAccount(false);
@@ -224,7 +196,7 @@ export default function AccountSettings() {
                                         type="button"
                                         variant="secondary"
                                         size="sm"
-                                        onClick={() => addToast({ title: 'Coming soon', description: 'Avatar upload will be available in a future update.' })}
+                                        onClick={() => addToast('info', 'Coming soon', 'Avatar upload will be available in a future update.')}
                                     >
                                         <Upload className="mr-2 h-4 w-4" />
                                         Change Avatar

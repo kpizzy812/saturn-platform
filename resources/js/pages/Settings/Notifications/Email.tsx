@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { SettingsLayout } from '../Index';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge, Select, Tabs } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge, Select } from '@/components/ui';
 import { useForm } from '@inertiajs/react';
 import { Send, CheckCircle2, Mail } from 'lucide-react';
 
@@ -108,15 +108,26 @@ export default function EmailNotifications({ settings, lastTestAt, lastTestStatu
                             <div className="space-y-4">
                                 <h3 className="text-sm font-medium text-foreground">Email Provider</h3>
 
-                                <Tabs
-                                    tabs={[
+                                <div className="flex gap-1 border-b border-border">
+                                    {[
                                         { id: 'smtp', label: 'SMTP' },
                                         { id: 'resend', label: 'Resend' },
                                         ...(canUseInstanceSettings ? [{ id: 'instance', label: 'Instance Settings' }] : []),
-                                    ]}
-                                    activeTab={activeTab}
-                                    onChange={(tab) => setActiveTab(tab as 'smtp' | 'resend' | 'instance')}
-                                />
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setActiveTab(tab.id as 'smtp' | 'resend' | 'instance')}
+                                            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                                                activeTab === tab.id
+                                                    ? 'border-primary text-foreground'
+                                                    : 'border-transparent text-foreground-muted hover:text-foreground'
+                                            }`}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
 
                                 {/* SMTP Configuration */}
                                 {activeTab === 'smtp' && (

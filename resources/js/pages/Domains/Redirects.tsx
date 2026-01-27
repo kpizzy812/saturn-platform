@@ -112,12 +112,12 @@ export default function DomainsRedirects({ redirects: propRedirects = [] }: Prop
     const handleTest = (redirect: RedirectRule) => {
         // Validate source path starts with / (already enforced by handleSave, but double-check)
         if (!redirect.source.startsWith('/')) {
-            addToast('Invalid redirect source path', 'error');
+            addToast('error', 'Invalid redirect source path');
             return;
         }
         const testUrl = `${window.location.origin}${redirect.source}`;
         if (!safeOpenUrl(testUrl)) {
-            addToast('Unable to open URL - invalid protocol', 'error');
+            addToast('error', 'Unable to open URL - invalid protocol');
         }
     };
 

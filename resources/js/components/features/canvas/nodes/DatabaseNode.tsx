@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -126,7 +126,7 @@ const getDbBgColor = (dbType?: string) => {
     return 'bg-gray-600';
 };
 
-export const DatabaseNode = memo(({ data, selected }: NodeProps<DatabaseNodeData>) => {
+export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const bgColor = getDbBgColor(data.databaseType);

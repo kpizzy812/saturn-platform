@@ -77,7 +77,7 @@ export default function NotificationsPreferences({ preferences: initialPreferenc
 
     const handleSave = () => {
         setIsSaving(true);
-        router.put('/api/v1/notifications/preferences', preferences, {
+        router.put('/api/v1/notifications/preferences', preferences as any, {
             onSuccess: () => {
                 addToast('success', 'Notification preferences saved successfully');
             },

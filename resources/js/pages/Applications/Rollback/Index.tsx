@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, Modal, ModalFooter } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Link, router } from '@inertiajs/react';
-import { GitCommit, Clock, User, RotateCw, Eye, ArrowLeft, Loader2 } from 'lucide-react';
+import { GitCommit, Clock, User, RotateCw, Eye, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import type { Application } from '@/types';
 import { RollbackTimeline } from '@/components/features/RollbackTimeline';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
@@ -105,7 +105,7 @@ export default function ApplicationRollbackIndex({ application, projectUuid, env
         loadData();
     }, [application.uuid, addToast]);
 
-    const handleRollbackClick = (deployment: Deployment) => {
+    const handleRollbackClick = (deployment: any) => {
         setSelectedDeployment(deployment);
         setShowRollbackModal(true);
     };

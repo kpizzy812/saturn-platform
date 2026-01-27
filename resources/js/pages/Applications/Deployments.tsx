@@ -25,7 +25,7 @@ interface ExtendedDeployment extends Deployment {
 
 export default function ApplicationDeployments({ application, deployments: propDeployments, projectUuid, environmentUuid }: Props) {
     const confirm = useConfirm();
-    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(propDeployments || []);
+    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>((propDeployments || []) as ExtendedDeployment[]);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [selectedDeployment, setSelectedDeployment] = React.useState<ExtendedDeployment | null>(null);
 

@@ -58,7 +58,7 @@ export default function ProxyLogs({ server, logs: initialLogs }: Props) {
         if (!isStreaming) return;
 
         const interval = setInterval(() => {
-            router.reload({ only: ['logs'], preserveScroll: true });
+            router.reload({ only: ['logs'] });
         }, 5000);
 
         return () => clearInterval(interval);

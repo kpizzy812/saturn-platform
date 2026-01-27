@@ -83,7 +83,7 @@ function DatabaseRow({ database }: { database: DatabaseInfo }) {
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <div className="flex items-center gap-3">
-                        <DatabaseTypeIcon type={database.type} />
+                        <DatabaseTypeIcon type={database.database_type} />
                         <div>
                             <div className="flex items-center gap-2">
                                 <Link

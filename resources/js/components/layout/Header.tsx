@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
-    const user = props.auth?.user as { name?: string; email?: string } | undefined;
+    const user = (props as any).auth as { name?: string; email?: string } | undefined;
     const { isExpanded, toggleSidebar } = useSidebar();
 
     // Theme state with persistence

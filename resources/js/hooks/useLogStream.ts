@@ -162,8 +162,8 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     } = options;
 
     const page = usePage();
-    const auth = page.props.auth;
-    const teamId = auth?.team?.id;
+    const auth = (page.props as any).auth;
+    const teamId = (page.props as any).team?.id;
 
     const [logs, setLogs] = React.useState<LogEntry[]>([]);
     const [isStreaming, setIsStreaming] = React.useState(false);
@@ -172,7 +172,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
 
-    const pollingIntervalRef = React.useRef<NodeJS.Timeout>();
+    const pollingIntervalRef = React.useRef<ReturnType<typeof setInterval> | undefined>(undefined);
     const lastLogIdRef = React.useRef<string | null>(null);
     const isPausedRef = React.useRef(false);
     const lastTimestampRef = React.useRef<number | null>(null);

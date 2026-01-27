@@ -25,16 +25,20 @@ export interface SharedTeam {
     personal_team: boolean;
 }
 
-declare module '@inertiajs/react' {
-    interface PageProps {
-        auth: AuthUser | null;
-        team: SharedTeam | null;
-        flash: {
-            success?: string;
-            error?: string;
-            warning?: string;
-            info?: string;
+// Use InertiaConfig augmentation for shared page props (Inertia v2 approach)
+declare module '@inertiajs/core' {
+    export interface InertiaConfig {
+        sharedPageProps: {
+            auth: AuthUser | null;
+            team: SharedTeam | null;
+            flash: {
+                success?: string;
+                error?: string;
+                warning?: string;
+                info?: string;
+            };
+            appName: string;
+            [key: string]: unknown;
         };
-        appName: string;
     }
 }

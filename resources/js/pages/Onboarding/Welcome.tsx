@@ -26,7 +26,7 @@ export default function OnboardingWelcome({ user }: Props) {
     const firstName = userName.split(' ')[0];
 
     return (
-        <AuthLayout>
+        <AuthLayout title="Welcome to Saturn">
             <div className="min-h-screen bg-background py-12">
                 <div className="mx-auto max-w-6xl px-4">
                     {/* Welcome Header */}
