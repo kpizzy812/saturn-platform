@@ -1396,6 +1396,13 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
 
             if ($containers->isEmpty()) {
+                \Log::warning('Logs route: No containers found', [
+                    'app_id' => $application->id,
+                    'app_uuid' => $uuid,
+                    'server_id' => $server->id,
+                    'server_ip' => $server->ip,
+                ]);
+
                 return response()->json([
                     'container_logs' => 'No containers found for this application.',
                     'containers' => [],
