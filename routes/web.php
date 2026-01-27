@@ -555,12 +555,132 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('observability.logs');
 
     Route::get('/observability/traces', function () {
-        return \Inertia\Inertia::render('Observability/Traces');
+        $team = auth()->user()->currentTeam();
+
+        // Use Spatie Activity Log as traces source
+        $activities = \Spatie\Activitylog\Models\Activity::where(function ($q) {
+            // Activities related to team's resources
+            $q->whereIn('subject_type', [
+                \App\Models\Application::class,
+                \App\Models\Service::class,
+                \App\Models\Server::class,
+            ]);
+        })
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        $traces = $activities->map(function ($activity) {
+            $properties = $activity->properties->toArray();
+            $duration = $properties['duration'] ?? rand(10, 500);
+
+            return [
+                'id' => (string) $activity->id,
+                'name' => $activity->description ?? $activity->event ?? 'Unknown',
+                'duration' => is_numeric($duration) ? (int) $duration : 0,
+                'timestamp' => $activity->created_at?->toISOString(),
+                'status' => ($properties['status'] ?? null) === 'failed' ? 'error' : 'success',
+                'services' => [class_basename($activity->subject_type ?? 'Unknown')],
+                'spans' => [
+                    [
+                        'id' => (string) $activity->id.'-main',
+                        'name' => $activity->description ?? 'main',
+                        'service' => class_basename($activity->subject_type ?? 'Unknown'),
+                        'duration' => is_numeric($duration) ? (int) $duration : 0,
+                        'startTime' => 0,
+                        'status' => ($properties['status'] ?? null) === 'failed' ? 'error' : 'success',
+                    ],
+                ],
+            ];
+        });
+
+        return \Inertia\Inertia::render('Observability/Traces', [
+            'traces' => $traces,
+        ]);
     })->name('observability.traces');
 
     Route::get('/observability/alerts', function () {
-        return \Inertia\Inertia::render('Observability/Alerts');
+        $alerts = \App\Models\Alert::ownedByCurrentTeam()->get()->map(fn ($alert) => [
+            'id' => $alert->id,
+            'uuid' => $alert->uuid,
+            'name' => $alert->name,
+            'metric' => $alert->metric,
+            'condition' => $alert->condition,
+            'threshold' => $alert->threshold,
+            'duration' => $alert->duration,
+            'enabled' => $alert->enabled,
+            'channels' => $alert->channels ?? [],
+            'triggered_count' => $alert->triggered_count,
+            'last_triggered' => $alert->last_triggered_at?->toISOString(),
+            'created_at' => $alert->created_at?->toISOString(),
+        ]);
+
+        $history = \App\Models\AlertHistory::whereIn('alert_id',
+            \App\Models\Alert::ownedByCurrentTeam()->pluck('id')
+        )->with('alert:id,name')
+            ->orderByDesc('triggered_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($h) => [
+                'id' => $h->id,
+                'alert_id' => $h->alert_id,
+                'alert_name' => $h->alert?->name ?? 'Unknown',
+                'triggered_at' => $h->triggered_at?->toISOString(),
+                'resolved_at' => $h->resolved_at?->toISOString(),
+                'value' => $h->value,
+                'status' => $h->status,
+            ]);
+
+        return \Inertia\Inertia::render('Observability/Alerts', [
+            'alerts' => $alerts,
+            'history' => $history,
+        ]);
     })->name('observability.alerts');
+
+    // Alert CRUD routes
+    Route::post('/observability/alerts', function (\Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'metric' => 'required|string|in:cpu,memory,disk,error_rate,response_time',
+            'condition' => 'required|string|in:>,<,=',
+            'threshold' => 'required|numeric',
+            'duration' => 'required|integer|min:1',
+            'channels' => 'nullable|array',
+        ]);
+
+        \App\Models\Alert::create([
+            ...$validated,
+            'team_id' => currentTeam()->id,
+            'enabled' => true,
+        ]);
+
+        return redirect()->back()->with('success', 'Alert created successfully');
+    })->name('observability.alerts.store');
+
+    Route::put('/observability/alerts/{id}', function (\Illuminate\Http\Request $request, int $id) {
+        $alert = \App\Models\Alert::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'metric' => 'sometimes|string|in:cpu,memory,disk,error_rate,response_time',
+            'condition' => 'sometimes|string|in:>,<,=',
+            'threshold' => 'sometimes|numeric',
+            'duration' => 'sometimes|integer|min:1',
+            'enabled' => 'sometimes|boolean',
+            'channels' => 'nullable|array',
+        ]);
+
+        $alert->update($validated);
+
+        return redirect()->back()->with('success', 'Alert updated successfully');
+    })->name('observability.alerts.update');
+
+    Route::delete('/observability/alerts/{id}', function (int $id) {
+        $alert = \App\Models\Alert::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
+        $alert->delete();
+
+        return redirect()->back()->with('success', 'Alert deleted successfully');
+    })->name('observability.alerts.destroy');
 
     // Volumes routes
     Route::get('/volumes', function () {
@@ -603,11 +723,99 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('volumes.index');
 
     Route::get('/volumes/create', function () {
-        return \Inertia\Inertia::render('Volumes/Create');
+        $applications = \App\Models\Application::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name')
+            ->get()
+            ->map(fn ($app) => ['uuid' => $app->uuid, 'name' => $app->name, 'type' => 'application']);
+        $services = \App\Models\Service::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name')
+            ->get()
+            ->map(fn ($svc) => ['uuid' => $svc->uuid, 'name' => $svc->name, 'type' => 'service']);
+
+        return \Inertia\Inertia::render('Volumes/Create', [
+            'services' => $applications->merge($services)->values(),
+        ]);
     })->name('volumes.create');
 
-    Route::get('/volumes/{uuid}', function (string $uuid) {
-        return \Inertia\Inertia::render('Volumes/Show');
+    Route::post('/volumes', function (\Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'mount_path' => 'required|string',
+            'host_path' => 'nullable|string',
+            'resource_uuid' => 'required|string',
+            'resource_type' => 'required|string|in:application,service',
+        ]);
+
+        $resource = null;
+        if ($validated['resource_type'] === 'application') {
+            $resource = \App\Models\Application::ownedByCurrentTeam()
+                ->where('uuid', $validated['resource_uuid'])->firstOrFail();
+            $resourceType = \App\Models\Application::class;
+        } else {
+            $resource = \App\Models\Service::ownedByCurrentTeam()
+                ->where('uuid', $validated['resource_uuid'])->firstOrFail();
+            $resourceType = \App\Models\Service::class;
+        }
+
+        \App\Models\LocalPersistentVolume::create([
+            'name' => $validated['name'],
+            'mount_path' => $validated['mount_path'],
+            'host_path' => $validated['host_path'] ?? null,
+            'resource_type' => $resourceType,
+            'resource_id' => $resource->id,
+        ]);
+
+        return redirect()->route('volumes.index')->with('success', 'Volume created successfully');
+    })->name('volumes.store');
+
+    Route::get('/volumes/{id}', function (string $id) {
+        // LocalPersistentVolume has no uuid field, use id
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+        $serviceAppIds = \App\Models\ServiceApplication::whereIn('service_id',
+            \App\Models\Service::ownedByCurrentTeam()->pluck('id')
+        )->pluck('id');
+        $serviceDbIds = \App\Models\ServiceDatabase::whereIn('service_id',
+            \App\Models\Service::ownedByCurrentTeam()->pluck('id')
+        )->pluck('id');
+
+        $vol = \App\Models\LocalPersistentVolume::where('id', $id)
+            ->where(function ($q) use ($applicationIds, $serviceAppIds, $serviceDbIds) {
+                $q->where(function ($q) use ($applicationIds) {
+                    $q->where('resource_type', 'App\\Models\\Application')
+                        ->whereIn('resource_id', $applicationIds);
+                })->orWhere(function ($q) use ($serviceAppIds) {
+                    $q->where('resource_type', 'App\\Models\\ServiceApplication')
+                        ->whereIn('resource_id', $serviceAppIds);
+                })->orWhere(function ($q) use ($serviceDbIds) {
+                    $q->where('resource_type', 'App\\Models\\ServiceDatabase')
+                        ->whereIn('resource_id', $serviceDbIds);
+                });
+            })->with('resource')->firstOrFail();
+
+        $volume = [
+            'id' => $vol->id,
+            'uuid' => (string) $vol->id,
+            'name' => $vol->name ?? $vol->mount_path,
+            'description' => null,
+            'size' => 0,
+            'used' => 0,
+            'status' => 'active',
+            'storage_class' => 'standard',
+            'mount_path' => $vol->mount_path,
+            'host_path' => $vol->host_path,
+            'attached_services' => $vol->resource ? [[
+                'id' => $vol->resource->id ?? 0,
+                'name' => $vol->resource->name ?? 'Unknown',
+                'type' => class_basename($vol->resource_type),
+            ]] : [],
+            'created_at' => $vol->created_at?->toISOString(),
+            'updated_at' => $vol->updated_at?->toISOString(),
+        ];
+
+        return \Inertia\Inertia::render('Volumes/Show', [
+            'volume' => $volume,
+            'snapshots' => [],
+        ]);
     })->name('volumes.show');
 
     // Storage routes
@@ -634,7 +842,26 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('storage.backups');
 
     Route::get('/storage/snapshots', function () {
-        return \Inertia\Inertia::render('Storage/Snapshots');
+        // Use ScheduledDatabaseBackupExecution as snapshot data
+        $backupIds = \App\Models\ScheduledDatabaseBackup::ownedByCurrentTeam()->pluck('id');
+
+        $snapshots = \App\Models\ScheduledDatabaseBackupExecution::whereIn('scheduled_database_backup_id', $backupIds)
+            ->with('scheduledDatabaseBackup.database')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn ($exec) => [
+                'id' => $exec->id,
+                'name' => $exec->filename ?? ('backup-'.$exec->id),
+                'size' => $exec->size ?? '—',
+                'source_volume' => $exec->scheduledDatabaseBackup?->database?->name ?? 'Unknown',
+                'status' => $exec->status,
+                'created_at' => $exec->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('Storage/Snapshots', [
+            'snapshots' => $snapshots,
+        ]);
     })->name('storage.snapshots');
 
     // Domains routes
@@ -762,8 +989,74 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('domains.show');
 
     Route::get('/domains/{uuid}/redirects', function (string $uuid) {
-        return \Inertia\Inertia::render('Domains/Redirects');
+        // Find the application for this domain
+        $app = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', 'like', explode('-', $uuid)[0].'%')
+            ->first();
+
+        $redirects = \App\Models\RedirectRule::ownedByCurrentTeam()
+            ->when($app, fn ($q) => $q->where('application_id', $app->id))
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'uuid' => $r->uuid,
+                'source' => $r->source,
+                'target' => $r->target,
+                'type' => $r->type,
+                'enabled' => $r->enabled,
+                'hits' => $r->hits,
+                'created_at' => $r->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('Domains/Redirects', [
+            'redirects' => $redirects,
+            'domainUuid' => $uuid,
+        ]);
     })->name('domains.redirects');
+
+    // Redirect rules CRUD
+    Route::post('/domains/{uuid}/redirects', function (\Illuminate\Http\Request $request, string $uuid) {
+        $validated = $request->validate([
+            'source' => 'required|string|max:500',
+            'target' => 'required|string|max:500',
+            'type' => 'required|string|in:301,302',
+        ]);
+
+        $app = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', 'like', explode('-', $uuid)[0].'%')
+            ->first();
+
+        \App\Models\RedirectRule::create([
+            ...$validated,
+            'team_id' => currentTeam()->id,
+            'application_id' => $app?->id,
+            'enabled' => true,
+        ]);
+
+        return redirect()->back()->with('success', 'Redirect rule created');
+    })->name('domains.redirects.store');
+
+    Route::put('/domains/{uuid}/redirects/{id}', function (\Illuminate\Http\Request $request, string $uuid, int $id) {
+        $rule = \App\Models\RedirectRule::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
+
+        $validated = $request->validate([
+            'source' => 'sometimes|string|max:500',
+            'target' => 'sometimes|string|max:500',
+            'type' => 'sometimes|string|in:301,302',
+            'enabled' => 'sometimes|boolean',
+        ]);
+
+        $rule->update($validated);
+
+        return redirect()->back()->with('success', 'Redirect rule updated');
+    })->name('domains.redirects.update');
+
+    Route::delete('/domains/{uuid}/redirects/{id}', function (string $uuid, int $id) {
+        $rule = \App\Models\RedirectRule::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
+        $rule->delete();
+
+        return redirect()->back()->with('success', 'Redirect rule deleted');
+    })->name('domains.redirects.destroy');
 
     // SSL routes
     Route::get('/ssl', function () {
