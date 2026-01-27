@@ -206,4 +206,50 @@ describe('Applications Index Page', () => {
         const updatedTexts = screen.getAllByText(/Updated/);
         expect(updatedTexts.length).toBeGreaterThan(0);
     });
+
+    it('optimistically removes application from list on delete', async () => {
+        // Mock Dropdown to render items directly (HeadlessUI transitions don't work in jsdom)
+        vi.mock('@/components/ui/Dropdown', () => ({
+            Dropdown: ({ children }: any) => <div>{children}</div>,
+            DropdownTrigger: ({ children }: any) => <div>{children}</div>,
+            DropdownContent: ({ children }: any) => <div>{children}</div>,
+            DropdownItem: ({ children, onClick, danger }: any) => (
+                <button onClick={onClick} data-danger={danger}>{children}</button>
+            ),
+            DropdownDivider: () => <hr />,
+        }));
+
+        const { router } = await import('@inertiajs/react');
+        vi.mocked(router.delete).mockImplementation((_url: string, options: any) => {
+            options.onSuccess?.();
+        });
+
+        const { user } = render(<ApplicationsIndex applications={mockApplications} />);
+
+        // All 3 apps visible initially
+        expect(screen.getByText('production-api')).toBeInTheDocument();
+        expect(screen.getByText('staging-frontend')).toBeInTheDocument();
+        expect(screen.getByText('dev-backend')).toBeInTheDocument();
+
+        // Click Delete button (now directly visible due to mocked Dropdown)
+        const deleteButtons = screen.getAllByText('Delete');
+        await user.click(deleteButtons[0]);
+
+        // Confirm the deletion in the confirmation dialog
+        const confirmBtn = await screen.findByRole('button', { name: /delete/i });
+        await user.click(confirmBtn);
+
+        // The app should be removed immediately (optimistic update)
+        expect(screen.queryByText('production-api')).not.toBeInTheDocument();
+
+        // Other apps should still be visible
+        expect(screen.getByText('staging-frontend')).toBeInTheDocument();
+        expect(screen.getByText('dev-backend')).toBeInTheDocument();
+
+        // Verify router.delete was called with preserveState: true
+        expect(router.delete).toHaveBeenCalledWith(
+            '/applications/app-uuid-1',
+            expect.objectContaining({ preserveState: true })
+        );
+    });
 });

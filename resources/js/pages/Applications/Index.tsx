@@ -35,6 +35,7 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
     const [filterProject, setFilterProject] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [appStatuses, setAppStatuses] = useState<Record<number, ApplicationStatus>>({});
+    const [deletedUuids, setDeletedUuids] = useState<Set<string>>(new Set());
 
     // Real-time status updates
     useRealtimeStatus({
@@ -51,8 +52,9 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
         return appStatuses[app.id] || app.status;
     };
 
-    // Filter applications
+    // Filter applications (exclude optimistically deleted ones)
     const filteredApplications = applications.filter(app => {
+        if (deletedUuids.has(app.uuid)) return false;
         const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             app.git_repository?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesProject = filterProject === 'all' || app.project_name === filterProject;
@@ -128,6 +130,7 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
                                 key={application.id}
                                 application={application}
                                 currentStatus={getAppStatus(application)}
+                                onDeleted={(uuid) => setDeletedUuids(prev => new Set(prev).add(uuid))}
                             />
                         ))}
                     </div>
@@ -140,9 +143,10 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
 interface ApplicationCardProps {
     application: ApplicationWithRelations;
     currentStatus: ApplicationStatus;
+    onDeleted: (uuid: string) => void;
 }
 
-function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
+function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationCardProps) {
     const confirm = useConfirm();
     const { toast } = useToast();
 
@@ -156,9 +160,10 @@ function ApplicationCard({ application, currentStatus }: ApplicationCardProps) {
             variant: 'danger',
         });
         if (confirmed) {
+            onDeleted(application.uuid);
             router.delete(`/applications/${application.uuid}`, {
                 preserveScroll: true,
-                preserveState: false, // Force refresh data after delete
+                preserveState: true,
                 onSuccess: () => {
                     toast({
                         title: 'Application deletion queued',
