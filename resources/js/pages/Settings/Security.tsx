@@ -90,7 +90,7 @@ export default function SecuritySettings({
                 id: session.id,
                 device,
                 deviceType,
-                location: 'Unknown', // GeoIP not implemented
+                location: session.ip || 'Unknown',
                 ip: session.ip || 'Unknown',
                 lastActive: session.lastActive,
                 current: session.current,

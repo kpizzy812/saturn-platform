@@ -36,31 +36,63 @@ export default function DatabaseSettings({ database }: Props) {
     const { addToast } = useToast();
     const confirm = useConfirm();
 
-    // State for settings
+    // Parse CPU limit to slider value (0 = unlimited → show as 1 core)
+    const parseCpuToSlider = (val: string | undefined) => {
+        const n = parseFloat(val || '0');
+        return n > 0 ? Math.round(n) : 2;
+    };
+    // Parse memory limit to GB slider (e.g. "0" → 4, "1073741824" → 1, "4g" → 4)
+    const parseMemoryToSlider = (val: string | undefined) => {
+        if (!val || val === '0') return 4;
+        const num = parseInt(val);
+        if (isNaN(num)) return 4;
+        // If the value is in bytes (very large number), convert to GB
+        if (num > 1000000) return Math.round(num / (1024 * 1024 * 1024));
+        return num;
+    };
+
+    // State for settings - initialized from real backend data
     const [name, setName] = useState(database.name);
     const [description, setDescription] = useState(database.description || '');
-    const [cpuAllocation, setCpuAllocation] = useState(2);
-    const [memoryAllocation, setMemoryAllocation] = useState(4);
+    const [cpuAllocation, setCpuAllocation] = useState(parseCpuToSlider(database.limits_cpus));
+    const [memoryAllocation, setMemoryAllocation] = useState(parseMemoryToSlider(database.limits_memory));
     const [storageSize, setStorageSize] = useState(50);
-    const [autoScalingEnabled, setAutoScalingEnabled] = useState(true);
-    const [sslEnabled, setSslEnabled] = useState(true);
+    const [autoScalingEnabled, setAutoScalingEnabled] = useState(false);
+    const [sslEnabled, setSslEnabled] = useState(database.enable_ssl || false);
     const [allowedIps, setAllowedIps] = useState('0.0.0.0/0');
     const [hasChanges, setHasChanges] = useState(false);
     const [restartRequired, setRestartRequired] = useState(false);
 
-    // Configuration parameters (PostgreSQL example)
-    const [configParams, setConfigParams] = useState({
-        max_connections: '100',
-        shared_buffers: '256MB',
-        effective_cache_size: '1GB',
-        maintenance_work_mem: '64MB',
-        checkpoint_completion_target: '0.9',
-        wal_buffers: '16MB',
-        default_statistics_target: '100',
-        random_page_cost: '1.1',
-        effective_io_concurrency: '200',
-        work_mem: '4MB',
-    });
+    // Configuration parameters - parse from postgres_conf or use defaults
+    const parsePostgresConf = (conf: string | null | undefined): Record<string, string> => {
+        const defaults: Record<string, string> = {
+            max_connections: '100',
+            shared_buffers: '256MB',
+            effective_cache_size: '1GB',
+            maintenance_work_mem: '64MB',
+            checkpoint_completion_target: '0.9',
+            wal_buffers: '16MB',
+            default_statistics_target: '100',
+            random_page_cost: '1.1',
+            effective_io_concurrency: '200',
+            work_mem: '4MB',
+        };
+        if (!conf) return defaults;
+        // Parse key=value pairs from postgres_conf string
+        const lines = conf.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
+        for (const line of lines) {
+            const [key, ...valueParts] = line.split('=');
+            if (key && valueParts.length > 0) {
+                const k = key.trim();
+                if (k in defaults) {
+                    defaults[k] = valueParts.join('=').trim().replace(/'/g, '');
+                }
+            }
+        }
+        return defaults;
+    };
+
+    const [configParams, setConfigParams] = useState(parsePostgresConf(database.postgres_conf));
 
     const handleSaveGeneral = () => {
         router.patch(`/databases/${database.uuid}`, {
@@ -78,23 +110,56 @@ export default function DatabaseSettings({ database }: Props) {
     };
 
     const handleSaveResources = () => {
-        // In real app, save resource settings
-        addToast('success', 'Resource settings saved successfully! Restart required to apply changes.');
-        setHasChanges(false);
-        setRestartRequired(true);
+        router.patch(`/databases/${database.uuid}`, {
+            limits_cpus: String(cpuAllocation),
+            limits_memory: `${memoryAllocation}g`,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                addToast('success', 'Resource settings saved successfully! Restart required to apply changes.');
+                setHasChanges(false);
+                setRestartRequired(true);
+            },
+            onError: () => {
+                addToast('error', 'Failed to save resource settings');
+            },
+        });
     };
 
     const handleSaveConfiguration = () => {
-        // In real app, save configuration parameters
-        addToast('success', 'Configuration saved successfully! Restart required to apply changes.');
-        setHasChanges(false);
-        setRestartRequired(true);
+        // Serialize config params to postgres_conf format
+        const confLines = Object.entries(configParams)
+            .map(([key, value]) => `${key} = '${value}'`)
+            .join('\n');
+
+        router.patch(`/databases/${database.uuid}`, {
+            postgres_conf: confLines,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                addToast('success', 'Configuration saved successfully! Restart required to apply changes.');
+                setHasChanges(false);
+                setRestartRequired(true);
+            },
+            onError: () => {
+                addToast('error', 'Failed to save configuration');
+            },
+        });
     };
 
     const handleSaveSecurity = () => {
-        // In real app, save security settings
-        addToast('success', 'Security settings saved successfully');
-        setHasChanges(false);
+        router.patch(`/databases/${database.uuid}`, {
+            enable_ssl: sslEnabled,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                addToast('success', 'Security settings saved successfully');
+                setHasChanges(false);
+            },
+            onError: () => {
+                addToast('error', 'Failed to save security settings');
+            },
+        });
     };
 
     const handleRestart = async () => {
@@ -170,7 +235,7 @@ export default function DatabaseSettings({ database }: Props) {
                                     placeholder="Optional description"
                                 />
                                 <InfoField label="Database Type" value={config.displayName} />
-                                <InfoField label="Version" value={config.version} />
+                                <InfoField label="Version" value={database.version || config.version} />
                                 <InfoField label="Status" value={database.status} />
                                 <InfoField label="Created" value={new Date(database.created_at).toLocaleDateString()} />
                                 <InfoField label="Last Updated" value={new Date(database.updated_at).toLocaleDateString()} />

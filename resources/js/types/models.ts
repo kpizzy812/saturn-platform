@@ -160,8 +160,25 @@ export interface StandaloneDatabase {
     // ClickHouse specific
     clickhouse_admin_user?: string;
     clickhouse_admin_password?: string;
-    // Public port for external access
+    // Image and version
+    image?: string;
+    version?: string;
+    // Resource limits
+    is_public?: boolean;
     public_port?: number;
+    limits_memory?: string;
+    limits_memory_swap?: string;
+    limits_memory_swappiness?: number;
+    limits_memory_reservation?: string;
+    limits_cpus?: string;
+    limits_cpuset?: string;
+    limits_cpu_shares?: number;
+    // Security
+    enable_ssl?: boolean;
+    ssl_mode?: string;
+    // Configuration
+    postgres_conf?: string;
+    custom_docker_run_options?: string;
     created_at: string;
     updated_at: string;
 }

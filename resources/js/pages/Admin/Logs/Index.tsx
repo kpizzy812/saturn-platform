@@ -206,8 +206,16 @@ export default function AdminLogsIndex({ logs = defaultLogs, total = 6 }: Props)
     });
 
     const handleExportLogs = () => {
-        // In real implementation, this would download logs as CSV/JSON
-        alert('Exporting logs...');
+        const data = JSON.stringify(filteredLogs, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `saturn-logs-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     return (

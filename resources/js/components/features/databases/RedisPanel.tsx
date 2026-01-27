@@ -243,12 +243,30 @@ function KeysTab({ database }: { database: StandaloneDatabase }) {
     const handleDeleteKey = async (name: string) => {
         const confirmed = await confirm({
             title: 'Delete Key',
-            description: `Are you sure you want to delete key "${name}"?`,
+            description: `Are you sure you want to delete key "${name}"? This action cannot be undone.`,
             confirmText: 'Delete',
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('info', `Delete key functionality coming soon`);
+            try {
+                const response = await fetch(`/api/databases/${database.uuid}/redis/keys/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                    },
+                    body: JSON.stringify({ key: name }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addToast('success', data.message || `Key "${name}" deleted`);
+                    refetch();
+                } else {
+                    addToast('error', data.error || 'Failed to delete key');
+                }
+            } catch {
+                addToast('error', 'Failed to delete key');
+            }
         }
     };
 

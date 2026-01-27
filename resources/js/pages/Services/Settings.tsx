@@ -13,8 +13,12 @@ export function SettingsTab({ service }: Props) {
     const [name, setName] = useState(service.name);
     const [description, setDescription] = useState(service.description || '');
     const [dockerCompose, setDockerCompose] = useState(service.docker_compose_raw || '');
+    const [memoryLimit, setMemoryLimit] = useState('');
+    const [memoryUnit, setMemoryUnit] = useState('MB');
+    const [cpuLimit, setCpuLimit] = useState('');
     const [isSavingGeneral, setIsSavingGeneral] = useState(false);
     const [isSavingCompose, setIsSavingCompose] = useState(false);
+    const [isSavingLimits, setIsSavingLimits] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const { addToast } = useToast();
     const confirm = useConfirm();
@@ -213,10 +217,16 @@ export function SettingsTab({ service }: Props) {
                         <div className="mt-1 flex gap-2">
                             <input
                                 type="number"
+                                value={memoryLimit}
+                                onChange={(e) => setMemoryLimit(e.target.value)}
                                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                 placeholder="512"
                             />
-                            <select className="rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
+                            <select
+                                value={memoryUnit}
+                                onChange={(e) => setMemoryUnit(e.target.value)}
+                                className="rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
                                 <option>MB</option>
                                 <option>GB</option>
                             </select>
@@ -233,6 +243,8 @@ export function SettingsTab({ service }: Props) {
                         <input
                             type="number"
                             step="0.1"
+                            value={cpuLimit}
+                            onChange={(e) => setCpuLimit(e.target.value)}
                             className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                             placeholder="1.0"
                         />
@@ -242,10 +254,38 @@ export function SettingsTab({ service }: Props) {
                     </div>
 
                     <div className="flex justify-end">
-                        {/* TODO: Resource limits API not implemented yet in ServicesController */}
-                        <Button disabled title="Resource limits API not yet implemented">
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Limits
+                        <Button
+                            onClick={() => {
+                                setIsSavingLimits(true);
+                                const limits: Record<string, string> = {};
+                                if (memoryLimit) {
+                                    limits.limits_memory = memoryUnit === 'GB'
+                                        ? `${memoryLimit}G`
+                                        : `${memoryLimit}M`;
+                                }
+                                if (cpuLimit) {
+                                    limits.limits_cpus = cpuLimit;
+                                }
+                                router.patch(`/api/v1/services/${service.uuid}`, limits, {
+                                    onSuccess: () => {
+                                        addToast('success', 'Resource limits saved');
+                                    },
+                                    onError: () => {
+                                        addToast('error', 'Failed to save resource limits');
+                                    },
+                                    onFinish: () => {
+                                        setIsSavingLimits(false);
+                                    },
+                                });
+                            }}
+                            disabled={isSavingLimits || (!memoryLimit && !cpuLimit)}
+                        >
+                            {isSavingLimits ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            {isSavingLimits ? 'Saving...' : 'Save Limits'}
                         </Button>
                     </div>
                 </CardContent>
@@ -265,13 +305,16 @@ export function SettingsTab({ service }: Props) {
                             <input
                                 type="text"
                                 className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                                value={`https://api.example.com/webhooks/${service.uuid}`}
+                                value={`${window.location.origin}/webhooks/services/${service.uuid}`}
                                 readOnly
                             />
                             <Button
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => navigator.clipboard.writeText(`https://api.example.com/webhooks/${service.uuid}`)}
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/webhooks/services/${service.uuid}`);
+                                    addToast('success', 'Webhook URL copied');
+                                }}
                             >
                                 Copy
                             </Button>

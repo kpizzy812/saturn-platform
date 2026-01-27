@@ -937,16 +937,24 @@ export default function ProjectShow({ project }: Props) {
                                     </div>
                                 )}
 
-                                {/* Region & Replica Info */}
+                                {/* Server & Status Info */}
                                 <div className="mt-2 flex items-center gap-2 text-xs text-foreground-muted">
                                     <span className="flex items-center gap-1">
                                         <Globe className="h-3 w-3" />
-                                        us-east4
+                                        {(() => {
+                                            const env = project.environments?.[0];
+                                            if (selectedService.type === 'app') {
+                                                const app = env?.applications?.find(a => String(a.id) === selectedService.id);
+                                                return app?.destination?.server?.name || 'Server';
+                                            }
+                                            const db = env?.databases?.find(d => String(d.id) === selectedService.id);
+                                            return db?.destination?.server?.name || 'Server';
+                                        })()}
                                     </span>
                                     <span>·</span>
                                     <span className="flex items-center gap-1">
                                         <Users className="h-3 w-3" />
-                                        1 Replica
+                                        {selectedService.status || 'unknown'}
                                     </span>
                                 </div>
                             </div>

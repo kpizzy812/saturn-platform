@@ -136,13 +136,39 @@ export default function WorkspaceSettings() {
                                     <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-2xl font-semibold text-white">
                                         <Building2 className="h-8 w-8" />
                                     </div>
-                                    <Button type="button" variant="secondary" size="sm">
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        Upload Logo
-                                    </Button>
+                                    <div>
+                                        <input
+                                            type="file"
+                                            id="workspace-logo"
+                                            accept="image/png,image/jpeg,image/svg+xml"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                if (file.size > 2 * 1024 * 1024) {
+                                                    addToast('error', 'File size must be less than 2MB');
+                                                    return;
+                                                }
+                                                router.post('/settings/workspace/logo', { logo: file }, {
+                                                    forceFormData: true,
+                                                    onSuccess: () => addToast('success', 'Logo uploaded'),
+                                                    onError: () => addToast('error', 'Failed to upload logo'),
+                                                });
+                                            }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => document.getElementById('workspace-logo')?.click()}
+                                        >
+                                            <Upload className="mr-2 h-4 w-4" />
+                                            Upload Logo
+                                        </Button>
+                                    </div>
                                 </div>
                                 <p className="mt-2 text-xs text-foreground-subtle">
-                                    Recommended size: 256x256px. Max file size: 2MB
+                                    Recommended size: 256x256px. Max file size: 2MB. PNG, JPG, or SVG.
                                 </p>
                             </div>
 

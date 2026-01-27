@@ -66,14 +66,41 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
         });
     };
 
-    const handleTestConnection = () => {
+    const [isTesting, setIsTesting] = useState(false);
+
+    const handleTestConnection = async () => {
         if (!s3Enabled || !s3Bucket || !s3AccessKey || !s3SecretKey) {
             addToast('error', 'Please fill in all S3 credentials');
             return;
         }
 
-        // In real app, test S3 connection
-        addToast('success', 'S3 connection test successful');
+        setIsTesting(true);
+        addToast('info', 'Testing S3 connection...');
+        try {
+            const response = await fetch('/api/databases/s3/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                },
+                body: JSON.stringify({
+                    bucket: s3Bucket,
+                    region: s3Region,
+                    access_key: s3AccessKey,
+                    secret_key: s3SecretKey,
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                addToast('success', 'S3 connection test successful!');
+            } else {
+                addToast('error', data.error || 'S3 connection test failed');
+            }
+        } catch {
+            addToast('error', 'S3 connection test failed');
+        } finally {
+            setIsTesting(false);
+        }
     };
 
     const markChanged = () => setHasChanges(true);
@@ -250,8 +277,8 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
                                 />
 
                                 <div className="flex gap-2">
-                                    <Button variant="secondary" size="sm" onClick={handleTestConnection}>
-                                        Test Connection
+                                    <Button variant="secondary" size="sm" onClick={handleTestConnection} disabled={isTesting}>
+                                        {isTesting ? 'Testing...' : 'Test Connection'}
                                     </Button>
                                 </div>
 

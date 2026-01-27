@@ -67,6 +67,63 @@ if (! function_exists('formatDatabaseForView')) {
     {
         [$database, $type] = is_array($databaseWithType) ? $databaseWithType : [$databaseWithType, 'postgresql'];
 
+        // Extract version from image tag (e.g. "postgres:15-alpine" → "15-alpine")
+        $image = $database->image ?? '';
+        $version = str_contains($image, ':') ? explode(':', $image, 2)[1] : $image;
+
+        // Build connection details based on database type
+        $connection = [];
+        switch ($type) {
+            case 'postgresql':
+                $connection = [
+                    'internal_host' => $database->uuid,
+                    'port' => '5432',
+                    'database' => $database->postgres_db ?? 'postgres',
+                    'username' => $database->postgres_user ?? 'postgres',
+                    'password' => $database->postgres_password ?? '',
+                ];
+                break;
+            case 'mysql':
+            case 'mariadb':
+                $connection = [
+                    'internal_host' => $database->uuid,
+                    'port' => '3306',
+                    'database' => $database->mysql_database ?? ($database->mariadb_database ?? ''),
+                    'username' => $database->mysql_user ?? ($database->mariadb_user ?? 'root'),
+                    'password' => $database->mysql_password ?? ($database->mariadb_password ?? $database->mysql_root_password ?? $database->mariadb_root_password ?? ''),
+                ];
+                break;
+            case 'mongodb':
+                $connection = [
+                    'internal_host' => $database->uuid,
+                    'port' => '27017',
+                    'database' => $database->mongo_initdb_database ?? 'admin',
+                    'username' => $database->mongo_initdb_root_username ?? '',
+                    'password' => $database->mongo_initdb_root_password ?? '',
+                ];
+                break;
+            case 'redis':
+            case 'keydb':
+            case 'dragonfly':
+                $connection = [
+                    'internal_host' => $database->uuid,
+                    'port' => '6379',
+                    'database' => '0',
+                    'username' => '',
+                    'password' => $database->redis_password ?? '',
+                ];
+                break;
+            case 'clickhouse':
+                $connection = [
+                    'internal_host' => $database->uuid,
+                    'port' => '8123',
+                    'database' => $database->clickhouse_db ?? 'default',
+                    'username' => $database->clickhouse_user ?? 'default',
+                    'password' => $database->clickhouse_password ?? '',
+                ];
+                break;
+        }
+
         return [
             'id' => $database->id,
             'uuid' => $database->uuid,
@@ -74,6 +131,31 @@ if (! function_exists('formatDatabaseForView')) {
             'description' => $database->description,
             'database_type' => $type,
             'status' => $database->status,
+            'image' => $image,
+            'version' => $version,
+            // Resource limits
+            'is_public' => $database->is_public ?? false,
+            'public_port' => $database->public_port,
+            'limits_memory' => $database->limits_memory ?? '0',
+            'limits_memory_swap' => $database->limits_memory_swap ?? '0',
+            'limits_memory_swappiness' => $database->limits_memory_swappiness ?? 60,
+            'limits_memory_reservation' => $database->limits_memory_reservation ?? '0',
+            'limits_cpus' => $database->limits_cpus ?? '0',
+            'limits_cpuset' => $database->limits_cpuset ?? '0',
+            'limits_cpu_shares' => $database->limits_cpu_shares ?? 1024,
+            // Security
+            'enable_ssl' => $database->enable_ssl ?? false,
+            'ssl_mode' => $database->ssl_mode ?? null,
+            // Configuration
+            'postgres_conf' => $database->postgres_conf ?? null,
+            'custom_docker_run_options' => $database->custom_docker_run_options ?? null,
+            // Connection
+            'internal_db_url' => $database->internal_db_url ?? '',
+            'external_db_url' => $database->external_db_url ?? '',
+            'connection' => $connection,
+            'postgres_user' => $database->postgres_user ?? null,
+            'postgres_password' => $database->postgres_password ?? null,
+            'postgres_db' => $database->postgres_db ?? null,
             'environment_id' => $database->environment_id,
             'created_at' => $database->created_at,
             'updated_at' => $database->updated_at,
@@ -293,6 +375,35 @@ Route::get('/databases/{uuid}', function (string $uuid) {
     ]);
 })->name('databases.show');
 
+Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $validated = $request->validate([
+        // General
+        'name' => 'sometimes|string|max:255',
+        'description' => 'sometimes|nullable|string',
+        // Resources
+        'limits_memory' => 'sometimes|string',
+        'limits_memory_swap' => 'sometimes|string',
+        'limits_memory_swappiness' => 'sometimes|numeric',
+        'limits_memory_reservation' => 'sometimes|string',
+        'limits_cpus' => 'sometimes|string',
+        'limits_cpuset' => 'sometimes|nullable|string',
+        'limits_cpu_shares' => 'sometimes|numeric',
+        'is_public' => 'sometimes|boolean',
+        'public_port' => 'sometimes|nullable|numeric',
+        // Security
+        'enable_ssl' => 'sometimes|boolean',
+        // Configuration (stored as custom_docker_run_options or postgres_conf etc.)
+        'postgres_conf' => 'sometimes|nullable|string',
+        'custom_docker_run_options' => 'sometimes|nullable|string',
+    ]);
+
+    $database->update($validated);
+
+    return redirect()->back()->with('success', 'Database updated successfully');
+})->name('databases.update');
+
 Route::delete('/databases/{uuid}', function (string $uuid) {
     [$database, $type] = findDatabaseByUuid($uuid);
     $database->delete();
@@ -431,6 +542,38 @@ Route::get('/api/databases/{uuid}/redis/persistence', [\App\Http\Controllers\Ine
 // MongoDB storage settings endpoint
 Route::get('/api/databases/{uuid}/mongodb/storage-settings', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getMongoStorageSettings'])
     ->name('databases.mongodb.storage-settings.api');
+
+// Active connections endpoint
+Route::get('/api/databases/{uuid}/connections', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getActiveConnections'])
+    ->name('databases.connections.api');
+
+// Kill connection endpoint
+Route::post('/api/databases/{uuid}/connections/kill', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'killConnection'])
+    ->name('databases.connections.kill.api');
+
+// Create user endpoint
+Route::post('/api/databases/{uuid}/users/create', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createUser'])
+    ->name('databases.users.create.api');
+
+// Delete user endpoint
+Route::post('/api/databases/{uuid}/users/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteUser'])
+    ->name('databases.users.delete.api');
+
+// MongoDB create index endpoint
+Route::post('/api/databases/{uuid}/mongodb/indexes/create', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createMongoIndex'])
+    ->name('databases.mongodb.indexes.create.api');
+
+// Redis delete key endpoint
+Route::post('/api/databases/{uuid}/redis/keys/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteRedisKey'])
+    ->name('databases.redis.keys.delete.api');
+
+// Database tables/collections list endpoint
+Route::get('/api/databases/{uuid}/tables', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTablesList'])
+    ->name('databases.tables.api');
+
+// S3 connection test endpoint
+Route::post('/api/databases/s3/test', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'testS3Connection'])
+    ->name('databases.s3.test.api');
 
 Route::get('/databases/{uuid}/settings', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);

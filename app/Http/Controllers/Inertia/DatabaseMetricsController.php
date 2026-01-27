@@ -1859,4 +1859,691 @@ class DatabaseMetricsController extends Controller
             ]);
         }
     }
+
+    /**
+     * Get active connections for a database.
+     */
+    public function getActiveConnections(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['available' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $connections = match ($type) {
+                'postgresql' => $this->getPostgresActiveConnections($server, $database),
+                'mysql', 'mariadb' => $this->getMysqlActiveConnections($server, $database),
+                default => [],
+            };
+
+            return response()->json([
+                'available' => true,
+                'connections' => $connections,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch active connections: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get PostgreSQL active connections.
+     */
+    protected function getPostgresActiveConnections(mixed $server, mixed $database): array
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT pid, usename, datname, state, COALESCE(query, '<IDLE>'), COALESCE(EXTRACT(EPOCH FROM (now() - query_start))::text, '0'), COALESCE(client_addr::text, 'local') FROM pg_stat_activity WHERE pid <> pg_backend_pid() ORDER BY query_start DESC NULLS LAST LIMIT 50;\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $connections = [];
+        if ($result) {
+            $id = 1;
+            foreach (explode("\n", $result) as $line) {
+                $parts = explode('|', trim($line));
+                if (count($parts) >= 5 && ! empty($parts[0])) {
+                    $duration = (float) ($parts[5] ?? 0);
+                    $connections[] = [
+                        'id' => $id++,
+                        'pid' => (int) $parts[0],
+                        'user' => $parts[1] ?? '',
+                        'database' => $parts[2] ?? '',
+                        'state' => $parts[3] ?? 'idle',
+                        'query' => $parts[4] ?? '<IDLE>',
+                        'duration' => $duration < 60 ? round($duration, 3).'s' : round($duration / 60, 1).'m',
+                        'clientAddr' => $parts[6] ?? 'local',
+                    ];
+                }
+            }
+        }
+
+        return $connections;
+    }
+
+    /**
+     * Get MySQL/MariaDB active connections.
+     */
+    protected function getMysqlActiveConnections(mixed $server, mixed $database): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SELECT ID, USER, DB, COMMAND, TIME, INFO, HOST FROM INFORMATION_SCHEMA.PROCESSLIST WHERE COMMAND != 'Daemon' ORDER BY TIME DESC LIMIT 50;\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $connections = [];
+        if ($result) {
+            $id = 1;
+            foreach (explode("\n", $result) as $line) {
+                $parts = preg_split('/\t/', trim($line));
+                if (count($parts) >= 5 && ! empty($parts[0])) {
+                    $time = (int) ($parts[4] ?? 0);
+                    $connections[] = [
+                        'id' => $id++,
+                        'pid' => (int) $parts[0],
+                        'user' => $parts[1] ?? '',
+                        'database' => $parts[2] ?? '',
+                        'state' => strtolower($parts[3] ?? 'idle') === 'query' ? 'active' : 'idle',
+                        'query' => $parts[5] ?? '<IDLE>',
+                        'duration' => $time < 60 ? $time.'s' : round($time / 60, 1).'m',
+                        'clientAddr' => explode(':', $parts[6] ?? '')[0] ?? 'local',
+                    ];
+                }
+            }
+        }
+
+        return $connections;
+    }
+
+    /**
+     * Kill a database connection by PID.
+     */
+    public function killConnection(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'pid' => 'required|integer',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        $pid = (int) $request->input('pid');
+
+        try {
+            $containerName = $database->uuid;
+            $result = match ($type) {
+                'postgresql' => $this->killPostgresConnection($server, $database, $pid),
+                'mysql', 'mariadb' => $this->killMysqlConnection($server, $database, $pid),
+                default => false,
+            };
+
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Connection PID {$pid} terminated",
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => "Failed to terminate connection PID {$pid}",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to kill connection: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Kill PostgreSQL connection.
+     */
+    protected function killPostgresConnection(mixed $server, mixed $database, int $pid): bool
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_terminate_backend({$pid});\" 2>&1";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        return stripos($result, 't') !== false;
+    }
+
+    /**
+     * Kill MySQL connection.
+     */
+    protected function killMysqlConnection(mixed $server, mixed $database, int $pid): bool
+    {
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -e \"KILL {$pid};\" 2>&1";
+        $result = instant_remote_process([$command], $server, false) ?? '';
+
+        return stripos($result, 'ERROR') === false;
+    }
+
+    /**
+     * Create a database user.
+     */
+    public function createUser(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'username' => ['required', 'string', 'max:63', 'regex:/^[a-zA-Z_][a-zA-Z0-9_]*$/'],
+            'password' => 'required|string|min:8',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        $username = $request->input('username');
+        $password = $request->input('password');
+
+        try {
+            $result = match ($type) {
+                'postgresql' => $this->createPostgresUser($server, $database, $username, $password),
+                'mysql', 'mariadb' => $this->createMysqlUser($server, $database, $username, $password),
+                default => ['success' => false, 'error' => 'User creation not supported for this database type'],
+            };
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to create user: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Create PostgreSQL user.
+     */
+    protected function createPostgresUser(mixed $server, mixed $database, string $username, string $password): array
+    {
+        $containerName = $database->uuid;
+        $adminUser = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Escape password for SQL
+        $escapedPassword = str_replace("'", "''", $password);
+
+        $command = "docker exec {$containerName} psql -U {$adminUser} -d {$dbName} -c \"CREATE ROLE \\\"{$username}\\\" WITH LOGIN PASSWORD '{$escapedPassword}';\" 2>&1";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        if (stripos($result, 'ERROR') !== false) {
+            return ['success' => false, 'error' => $result];
+        }
+
+        // Grant connect privilege
+        $grantCmd = "docker exec {$containerName} psql -U {$adminUser} -d {$dbName} -c \"GRANT CONNECT ON DATABASE \\\"{$dbName}\\\" TO \\\"{$username}\\\";\" 2>&1";
+        instant_remote_process([$grantCmd], $server, false);
+
+        return ['success' => true, 'message' => "User {$username} created successfully"];
+    }
+
+    /**
+     * Create MySQL user.
+     */
+    protected function createMysqlUser(mixed $server, mixed $database, string $username, string $password): array
+    {
+        $containerName = $database->uuid;
+        $rootPassword = $database->mysql_root_password ?? $database->mysql_password ?? '';
+
+        // Escape password for SQL
+        $escapedPassword = str_replace("'", "''", $password);
+
+        $command = "docker exec {$containerName} mysql -u root -p'{$rootPassword}' -e \"CREATE USER '{$username}'@'%' IDENTIFIED BY '{$escapedPassword}';\" 2>&1";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        if (stripos($result, 'ERROR') !== false) {
+            return ['success' => false, 'error' => $result];
+        }
+
+        // Grant basic privileges
+        $dbName = $database->mysql_database ?? '';
+        if ($dbName) {
+            $grantCmd = "docker exec {$containerName} mysql -u root -p'{$rootPassword}' -e \"GRANT ALL PRIVILEGES ON \`{$dbName}\`.* TO '{$username}'@'%'; FLUSH PRIVILEGES;\" 2>&1";
+            instant_remote_process([$grantCmd], $server, false);
+        }
+
+        return ['success' => true, 'message' => "User {$username} created successfully"];
+    }
+
+    /**
+     * Delete a database user.
+     */
+    public function deleteUser(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'username' => ['required', 'string'],
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        $username = $request->input('username');
+
+        // Prevent deleting admin users
+        $protectedUsers = match ($type) {
+            'postgresql' => ['postgres'],
+            'mysql', 'mariadb' => ['root', 'mysql.sys', 'mysql.session', 'mysql.infoschema'],
+            default => [],
+        };
+
+        if (in_array($username, $protectedUsers)) {
+            return response()->json([
+                'success' => false,
+                'error' => "Cannot delete system user: {$username}",
+            ]);
+        }
+
+        try {
+            $result = match ($type) {
+                'postgresql' => $this->deletePostgresUser($server, $database, $username),
+                'mysql', 'mariadb' => $this->deleteMysqlUser($server, $database, $username),
+                default => ['success' => false, 'error' => 'User deletion not supported for this database type'],
+            };
+
+            return response()->json($result);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete user: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Delete PostgreSQL user.
+     */
+    protected function deletePostgresUser(mixed $server, mixed $database, string $username): array
+    {
+        $containerName = $database->uuid;
+        $adminUser = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Revoke and drop
+        $command = "docker exec {$containerName} psql -U {$adminUser} -d {$dbName} -c \"REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM \\\"{$username}\\\"; REVOKE ALL ON DATABASE \\\"{$dbName}\\\" FROM \\\"{$username}\\\"; DROP ROLE IF EXISTS \\\"{$username}\\\";\" 2>&1";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        if (stripos($result, 'ERROR') !== false) {
+            return ['success' => false, 'error' => $result];
+        }
+
+        return ['success' => true, 'message' => "User {$username} deleted successfully"];
+    }
+
+    /**
+     * Delete MySQL user.
+     */
+    protected function deleteMysqlUser(mixed $server, mixed $database, string $username): array
+    {
+        $containerName = $database->uuid;
+        $rootPassword = $database->mysql_root_password ?? $database->mysql_password ?? '';
+
+        $command = "docker exec {$containerName} mysql -u root -p'{$rootPassword}' -e \"DROP USER IF EXISTS '{$username}'@'%';\" 2>&1";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        if (stripos($result, 'ERROR') !== false) {
+            return ['success' => false, 'error' => $result];
+        }
+
+        return ['success' => true, 'message' => "User {$username} deleted successfully"];
+    }
+
+    /**
+     * Create a MongoDB index.
+     */
+    public function createMongoIndex(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'collection' => 'required|string|max:255',
+            'fields' => 'required|string',
+            'unique' => 'boolean',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || $type !== 'mongodb') {
+            return response()->json(['success' => false, 'error' => 'MongoDB database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $dbName = $database->mongo_initdb_database ?? 'admin';
+            $collection = preg_replace('/[^a-zA-Z0-9_.]/', '', $request->input('collection'));
+            $fieldsStr = $request->input('fields');
+            $unique = $request->boolean('unique', false);
+
+            // Parse fields string (e.g., "field1:1,field2:-1")
+            $fieldsParts = explode(',', $fieldsStr);
+            $indexSpec = [];
+            foreach ($fieldsParts as $part) {
+                $kv = explode(':', trim($part));
+                $fieldName = trim($kv[0]);
+                $direction = isset($kv[1]) ? (int) trim($kv[1]) : 1;
+                if (! empty($fieldName) && preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $fieldName)) {
+                    $indexSpec[$fieldName] = $direction;
+                }
+            }
+
+            if (empty($indexSpec)) {
+                return response()->json(['success' => false, 'error' => 'Invalid field specification']);
+            }
+
+            $indexSpecJson = json_encode($indexSpec);
+            $options = $unique ? ', { unique: true }' : '';
+
+            $command = "docker exec {$containerName} mongosh --quiet --eval \"db.getCollection('{$collection}').createIndex({$indexSpecJson}{$options})\" {$dbName} 2>&1";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            if (stripos($result, 'error') !== false || stripos($result, 'exception') !== false) {
+                return response()->json(['success' => false, 'error' => $result]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Index created on {$collection}",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to create index: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Delete a Redis key.
+     */
+    public function deleteRedisKey(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'key' => 'required|string|max:1024',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['success' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = $database->uuid;
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? "-a '{$password}'" : '';
+            $keyName = $request->input('key');
+
+            // Escape key name for shell
+            $escapedKey = str_replace("'", "'\"'\"'", $keyName);
+
+            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL '{$escapedKey}' 2>&1";
+            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+            if (is_numeric($result) && (int) $result > 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Key '{$keyName}' deleted",
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => "Key not found or could not be deleted: {$result}",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete key: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get list of tables/collections for a database.
+     */
+    public function getTablesList(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['available' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['available' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $tables = match ($type) {
+                'postgresql' => $this->getPostgresTables($server, $database),
+                'mysql', 'mariadb' => $this->getMysqlTables($server, $database),
+                'mongodb' => $this->getMongoTables($server, $database),
+                'clickhouse' => $this->getClickhouseTables($server, $database),
+                default => [],
+            };
+
+            return response()->json([
+                'available' => true,
+                'tables' => $tables,
+                'type' => $type,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'available' => false,
+                'error' => 'Failed to fetch tables: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get PostgreSQL tables with row count and size.
+     */
+    protected function getPostgresTables(mixed $server, mixed $database): array
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT schemaname || '.' || relname, n_live_tup, pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname)) FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 100;\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $tables = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $parts = explode('|', trim($line));
+                if (count($parts) >= 3 && ! empty($parts[0])) {
+                    $tables[] = [
+                        'name' => $parts[0],
+                        'rows' => (int) ($parts[1] ?? 0),
+                        'size' => $parts[2] ?? '0 bytes',
+                    ];
+                }
+            }
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Get MySQL/MariaDB tables with row count and size.
+     */
+    protected function getMysqlTables(mixed $server, mixed $database): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $dbName = $database->mysql_database ?? 'mysql';
+
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SELECT TABLE_NAME, TABLE_ROWS, CONCAT(ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024, 1), ' KB') AS size FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$dbName}' ORDER BY TABLE_ROWS DESC LIMIT 100;\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $tables = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $parts = preg_split('/\t/', trim($line));
+                if (count($parts) >= 3 && ! empty($parts[0])) {
+                    $tables[] = [
+                        'name' => $parts[0],
+                        'rows' => (int) ($parts[1] ?? 0),
+                        'size' => $parts[2] ?? '0 KB',
+                    ];
+                }
+            }
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Get MongoDB collections as "tables".
+     */
+    protected function getMongoTables(mixed $server, mixed $database): array
+    {
+        $containerName = $database->uuid;
+        $dbName = $database->mongo_initdb_database ?? 'admin';
+
+        $command = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.getCollectionInfos().map(c => { const stats = db.getCollection(c.name).stats(); return { name: c.name, count: stats.count || 0, size: stats.size || 0 }; }))\" {$dbName} 2>/dev/null || echo '[]'";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '[]');
+
+        $tables = [];
+        $parsed = json_decode($result, true);
+        if (is_array($parsed)) {
+            foreach ($parsed as $c) {
+                $tables[] = [
+                    'name' => $c['name'] ?? 'unknown',
+                    'rows' => $c['count'] ?? 0,
+                    'size' => $this->formatBytes($c['size'] ?? 0),
+                ];
+            }
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Get ClickHouse tables with row count and size.
+     */
+    protected function getClickhouseTables(mixed $server, mixed $database): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->clickhouse_admin_password ?? '';
+        $authFlag = $password ? "--password '{$password}'" : '';
+
+        $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT name, total_rows, formatReadableSize(total_bytes) FROM system.tables WHERE database = currentDatabase() AND total_rows IS NOT NULL ORDER BY total_rows DESC LIMIT 100 FORMAT TabSeparated\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $tables = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $parts = preg_split('/\t/', trim($line));
+                if (count($parts) >= 3 && ! empty($parts[0])) {
+                    $tables[] = [
+                        'name' => $parts[0],
+                        'rows' => (int) ($parts[1] ?? 0),
+                        'size' => $parts[2] ?? '0 B',
+                    ];
+                }
+            }
+        }
+
+        return $tables;
+    }
+
+    /**
+     * Test S3 connection for backup storage.
+     */
+    public function testS3Connection(Request $request): JsonResponse
+    {
+        $request->validate([
+            'bucket' => 'required|string',
+            'region' => 'required|string',
+            'access_key' => 'required|string',
+            'secret_key' => 'required|string',
+            'endpoint' => 'nullable|string',
+        ]);
+
+        try {
+            $config = [
+                'driver' => 's3',
+                'key' => $request->input('access_key'),
+                'secret' => $request->input('secret_key'),
+                'region' => $request->input('region'),
+                'bucket' => $request->input('bucket'),
+            ];
+
+            if ($request->input('endpoint')) {
+                $config['endpoint'] = $request->input('endpoint');
+                $config['use_path_style_endpoint'] = true;
+            }
+
+            // Test by trying to list objects (limit 1)
+            $disk = \Illuminate\Support\Facades\Storage::build($config);
+            $disk->files('/', false);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'S3 connection successful',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'S3 connection failed: '.$e->getMessage(),
+            ]);
+        }
+    }
 }

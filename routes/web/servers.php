@@ -187,19 +187,57 @@ Route::get('/servers/{uuid}/private-keys', function (string $uuid) {
 Route::get('/servers/{uuid}/cleanup', function (string $uuid) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
-    // Fetch latest cleanup execution for this server
-    $latestCleanup = $server->dockerCleanupExecutions()
-        ->orderBy('created_at', 'desc')
-        ->first();
+    // Query Docker for real-time unused resource counts
+    $cleanupStats = null;
+    if ($server->isFunctional()) {
+        try {
+            // Count unused images
+            $imagesResult = trim(instant_remote_process(
+                ["docker images -f 'dangling=true' -q 2>/dev/null | wc -l"],
+                $server,
+                false
+            ) ?? '0');
 
-    $cleanupStats = $latestCleanup ? [
-        'executed_at' => $latestCleanup->created_at,
-        'containers_removed' => $latestCleanup->containers_removed ?? 0,
-        'images_removed' => $latestCleanup->images_removed ?? 0,
-        'volumes_removed' => $latestCleanup->volumes_removed ?? 0,
-        'networks_removed' => $latestCleanup->networks_removed ?? 0,
-        'space_reclaimed' => $latestCleanup->space_reclaimed ?? 0,
-    ] : null;
+            // Count stopped containers
+            $containersResult = trim(instant_remote_process(
+                ["docker ps -f 'status=exited' -f 'status=dead' -q 2>/dev/null | wc -l"],
+                $server,
+                false
+            ) ?? '0');
+
+            // Count unused volumes
+            $volumesResult = trim(instant_remote_process(
+                ["docker volume ls -f 'dangling=true' -q 2>/dev/null | wc -l"],
+                $server,
+                false
+            ) ?? '0');
+
+            // Count unused networks (excluding default ones)
+            $networksResult = trim(instant_remote_process(
+                ["docker network ls -f 'dangling=true' -q 2>/dev/null | wc -l"],
+                $server,
+                false
+            ) ?? '0');
+
+            // Get total reclaimable size
+            $sizeResult = trim(instant_remote_process(
+                ["docker system df --format '{{.Reclaimable}}' 2>/dev/null | head -1"],
+                $server,
+                false
+            ) ?? '0B');
+
+            $cleanupStats = [
+                'unused_images' => (int) $imagesResult,
+                'unused_containers' => (int) $containersResult,
+                'unused_volumes' => (int) $volumesResult,
+                'unused_networks' => (int) $networksResult,
+                'total_size' => $sizeResult ?: '0B',
+            ];
+        } catch (\Exception $e) {
+            // Fallback: server unreachable
+            $cleanupStats = null;
+        }
+    }
 
     return Inertia::render('Servers/Cleanup/Index', [
         'server' => $server,

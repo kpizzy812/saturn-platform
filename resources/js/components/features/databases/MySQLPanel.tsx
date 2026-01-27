@@ -180,19 +180,81 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
         autoRefresh: false,
     });
 
-    const handleCreateUser = () => {
-        addToast('info', 'Create user functionality coming soon');
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [newUsername, setNewUsername] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
+
+    const handleCreateUser = async () => {
+        if (!showCreateForm) {
+            setShowCreateForm(true);
+            return;
+        }
+
+        if (!newUsername || !newPassword) {
+            addToast('error', 'Username and password are required');
+            return;
+        }
+
+        if (newPassword.length < 8) {
+            addToast('error', 'Password must be at least 8 characters');
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            const response = await fetch(`/api/databases/${database.uuid}/users/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                },
+                body: JSON.stringify({ username: newUsername, password: newPassword }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                addToast('success', data.message || `User ${newUsername} created`);
+                setNewUsername('');
+                setNewPassword('');
+                setShowCreateForm(false);
+                refetch();
+            } else {
+                addToast('error', data.error || 'Failed to create user');
+            }
+        } catch {
+            addToast('error', 'Failed to create user');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     const handleDeleteUser = async (username: string) => {
         const confirmed = await confirm({
             title: 'Delete User',
-            description: `Are you sure you want to delete user ${username}?`,
+            description: `Are you sure you want to delete user "${username}"? This action cannot be undone.`,
             confirmText: 'Delete',
             variant: 'danger',
         });
         if (confirmed) {
-            addToast('info', `Deleting user ${username}... (not implemented)`);
+            try {
+                const response = await fetch(`/api/databases/${database.uuid}/users/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                    },
+                    body: JSON.stringify({ username }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addToast('success', data.message || `User ${username} deleted`);
+                    refetch();
+                } else {
+                    addToast('error', data.error || 'Failed to delete user');
+                }
+            } catch {
+                addToast('error', 'Failed to delete user');
+            }
         }
     };
 
@@ -206,12 +268,42 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
                             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
-                        <Button size="sm" onClick={handleCreateUser}>
+                        <Button size="sm" onClick={handleCreateUser} disabled={isCreating}>
                             <Users className="mr-2 h-4 w-4" />
-                            Create User
+                            {showCreateForm ? (isCreating ? 'Creating...' : 'Save User') : 'Create User'}
                         </Button>
+                        {showCreateForm && (
+                            <Button size="sm" variant="secondary" onClick={() => { setShowCreateForm(false); setNewUsername(''); setNewPassword(''); }}>
+                                Cancel
+                            </Button>
+                        )}
                     </div>
                 </div>
+
+                {showCreateForm && (
+                    <div className="mb-4 rounded-lg border border-border bg-background-secondary p-4 space-y-3">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Username</label>
+                            <input
+                                type="text"
+                                value={newUsername}
+                                onChange={(e) => setNewUsername(e.target.value)}
+                                placeholder="new_user"
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Password</label>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Minimum 8 characters"
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                            />
+                        </div>
+                    </div>
+                )}
                 {isLoading ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />

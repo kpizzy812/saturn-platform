@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
@@ -78,39 +78,29 @@ export default function DatabaseConnections({ database }: Props) {
     const connectionString = externalUrl ||
         `${database.database_type}://${connectionDetails.username}:${connectionDetails.password}@${connectionDetails.host}:${connectionDetails.publicPort || connectionDetails.port}/${connectionDetails.database}`;
 
-    // Mock active connections
-    const [activeConnections] = useState<ActiveConnection[]>([
-        {
-            id: 1,
-            pid: 12345,
-            user: 'saturn',
-            database: database.name,
-            state: 'active',
-            query: 'SELECT * FROM users WHERE created_at > NOW() - INTERVAL \'1 day\'',
-            duration: '0.042s',
-            clientAddr: '192.168.1.100',
-        },
-        {
-            id: 2,
-            pid: 12346,
-            user: 'saturn',
-            database: database.name,
-            state: 'idle',
-            query: '<IDLE>',
-            duration: '2m 15s',
-            clientAddr: '192.168.1.101',
-        },
-        {
-            id: 3,
-            pid: 12347,
-            user: 'app_user',
-            database: database.name,
-            state: 'idle in transaction',
-            query: 'UPDATE orders SET status = \'completed\' WHERE id = 12345',
-            duration: '0.128s',
-            clientAddr: '192.168.1.102',
-        },
-    ]);
+    // Fetch active connections from backend
+    const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([]);
+    const [connectionsLoading, setConnectionsLoading] = useState(true);
+
+    const fetchConnections = async () => {
+        setConnectionsLoading(true);
+        try {
+            const response = await fetch(`/api/databases/${database.uuid}/connections`);
+            const data = await response.json();
+            if (data.available && data.connections) {
+                setActiveConnections(data.connections);
+            }
+        } catch {
+            // Silent fail - connections will show as empty
+        } finally {
+            setConnectionsLoading(false);
+        }
+    };
+
+    // Fetch on mount
+    useEffect(() => {
+        fetchConnections();
+    }, [database.uuid]);
 
     const copyToClipboard = (text: string, field: string) => {
         navigator.clipboard.writeText(text);
@@ -161,8 +151,15 @@ export default function DatabaseConnections({ database }: Props) {
     };
 
     const handleSaveSettings = () => {
-        // In real app, save to backend
-        addToast('success', 'Connection settings saved successfully!');
+        router.patch(`/databases/${database.uuid}`, {
+            // Connection pooling is managed at Docker/PgBouncer level, save relevant settings
+            is_public: database.is_public,
+            public_port: database.public_port,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => addToast('success', 'Connection settings saved successfully!'),
+            onError: () => addToast('error', 'Failed to save connection settings'),
+        });
     };
 
     const handleKillConnection = (connection: ActiveConnection) => {
@@ -170,10 +167,27 @@ export default function DatabaseConnections({ database }: Props) {
         setShowKillModal(true);
     };
 
-    const confirmKillConnection = () => {
+    const confirmKillConnection = async () => {
         if (connectionToKill) {
-            // In real app, send kill request to backend
-            addToast('success', `Killed connection PID ${connectionToKill.pid}`);
+            try {
+                const response = await fetch(`/api/databases/${database.uuid}/connections/kill`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                    },
+                    body: JSON.stringify({ pid: connectionToKill.pid }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addToast('success', `Killed connection PID ${connectionToKill.pid}`);
+                    fetchConnections(); // Refresh connections list
+                } else {
+                    addToast('error', data.error || 'Failed to kill connection');
+                }
+            } catch {
+                addToast('error', 'Failed to kill connection');
+            }
             setShowKillModal(false);
             setConnectionToKill(null);
         }
@@ -462,8 +476,8 @@ export default function DatabaseConnections({ database }: Props) {
                                 {activeConnections.length} active connection{activeConnections.length !== 1 ? 's' : ''}
                             </p>
                         </div>
-                        <Button variant="secondary" size="sm">
-                            <RefreshCw className="mr-2 h-4 w-4" />
+                        <Button variant="secondary" size="sm" onClick={fetchConnections} disabled={connectionsLoading}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${connectionsLoading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
                     </div>

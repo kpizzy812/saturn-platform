@@ -241,8 +241,53 @@ function IndexesTab({ database }: { database: StandaloneDatabase }) {
         autoRefresh: false,
     });
 
-    const handleCreateIndex = () => {
-        addToast('info', 'Create index functionality coming soon');
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [indexCollection, setIndexCollection] = useState('');
+    const [indexFields, setIndexFields] = useState('');
+    const [indexUnique, setIndexUnique] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+
+    const handleCreateIndex = async () => {
+        if (!showCreateForm) {
+            setShowCreateForm(true);
+            return;
+        }
+
+        if (!indexCollection || !indexFields) {
+            addToast('error', 'Collection and fields are required');
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            const response = await fetch(`/api/databases/${database.uuid}/mongodb/indexes/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                },
+                body: JSON.stringify({
+                    collection: indexCollection,
+                    fields: indexFields,
+                    unique: indexUnique,
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                addToast('success', data.message || 'Index created');
+                setIndexCollection('');
+                setIndexFields('');
+                setIndexUnique(false);
+                setShowCreateForm(false);
+                refetch();
+            } else {
+                addToast('error', data.error || 'Failed to create index');
+            }
+        } catch {
+            addToast('error', 'Failed to create index');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     return (
@@ -255,12 +300,52 @@ function IndexesTab({ database }: { database: StandaloneDatabase }) {
                             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                             Refresh
                         </Button>
-                        <Button size="sm" onClick={handleCreateIndex}>
+                        <Button size="sm" onClick={handleCreateIndex} disabled={isCreating}>
                             <TrendingUp className="mr-2 h-4 w-4" />
-                            Create Index
+                            {showCreateForm ? (isCreating ? 'Creating...' : 'Save Index') : 'Create Index'}
                         </Button>
+                        {showCreateForm && (
+                            <Button size="sm" variant="secondary" onClick={() => { setShowCreateForm(false); setIndexCollection(''); setIndexFields(''); setIndexUnique(false); }}>
+                                Cancel
+                            </Button>
+                        )}
                     </div>
                 </div>
+
+                {showCreateForm && (
+                    <div className="mb-4 rounded-lg border border-border bg-background-secondary p-4 space-y-3">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Collection</label>
+                            <input
+                                type="text"
+                                value={indexCollection}
+                                onChange={(e) => setIndexCollection(e.target.value)}
+                                placeholder="users"
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-1">Fields (field:direction)</label>
+                            <input
+                                type="text"
+                                value={indexFields}
+                                onChange={(e) => setIndexFields(e.target.value)}
+                                placeholder="email:1,created_at:-1"
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                            />
+                            <p className="mt-1 text-xs text-foreground-muted">1 = ascending, -1 = descending</p>
+                        </div>
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                                type="checkbox"
+                                checked={indexUnique}
+                                onChange={(e) => setIndexUnique(e.target.checked)}
+                                className="rounded border-border"
+                            />
+                            Unique index
+                        </label>
+                    </div>
+                )}
                 {isLoading ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />

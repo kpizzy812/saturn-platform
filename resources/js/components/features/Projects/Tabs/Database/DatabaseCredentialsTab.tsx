@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { RefreshCw, Eye, EyeOff, Copy } from 'lucide-react';
 import { useDatabase } from '@/hooks/useDatabases';
 import type { SelectedService } from '../../types';
@@ -9,6 +10,7 @@ interface DatabaseCredentialsTabProps {
 }
 
 export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps) {
+    const { addToast } = useToast();
     const [showPassword, setShowPassword] = useState(false);
     const { database, isLoading, error } = useDatabase({ uuid: service.uuid });
 
@@ -101,7 +103,7 @@ export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps)
                                     onClick={() => {
                                         if (credentials.username) {
                                             navigator.clipboard.writeText(credentials.username);
-                                            alert('Username copied to clipboard');
+                                            addToast('success', 'Username copied');
                                         }
                                     }}
                                     className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"
@@ -135,7 +137,7 @@ export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps)
                                     onClick={() => {
                                         if (credentials.password) {
                                             navigator.clipboard.writeText(credentials.password);
-                                            alert('Password copied to clipboard');
+                                            addToast('success', 'Password copied');
                                         }
                                     }}
                                     className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"
@@ -158,7 +160,7 @@ export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps)
                                     onClick={() => {
                                         if (credentials.database) {
                                             navigator.clipboard.writeText(credentials.database);
-                                            alert('Database name copied to clipboard');
+                                            addToast('success', 'Database name copied');
                                         }
                                     }}
                                     className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground"

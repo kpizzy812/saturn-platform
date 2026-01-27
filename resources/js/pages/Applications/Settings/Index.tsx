@@ -30,16 +30,13 @@ export default function ApplicationSettings({ application, projectUuid, environm
     const [isSaving, setIsSaving] = React.useState(false);
 
     const handleSave = () => {
-        console.log('handleSave called, settings:', settings);
         setIsSaving(true);
         router.patch(`/applications/${application.uuid}/settings`, settings, {
             preserveScroll: true,
             onSuccess: () => {
-                console.log('Save success');
                 setIsSaving(false);
             },
-            onError: (errors) => {
-                console.error('Save error:', errors);
+            onError: () => {
                 setIsSaving(false);
             },
         });
@@ -278,10 +275,7 @@ export default function ApplicationSettings({ application, projectUuid, environm
                                 <button
                                     type="button"
                                     className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50"
-                                    onClick={() => {
-                                        alert('Button clicked! Settings: ' + JSON.stringify(settings));
-                                        handleSave();
-                                    }}
+                                    onClick={handleSave}
                                     disabled={isSaving}
                                 >
                                     <Save className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import { Copy, Shield, Globe, RefreshCw } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast';
 import { useDatabase } from '@/hooks/useDatabases';
 import type { SelectedService } from '../../types';
 
@@ -7,6 +8,7 @@ interface DatabaseConnectTabProps {
 }
 
 export function DatabaseConnectTab({ service }: DatabaseConnectTabProps) {
+    const { addToast } = useToast();
     // Fetch real database data
     const { database, isLoading, error } = useDatabase({ uuid: service.uuid });
 
@@ -90,7 +92,7 @@ export function DatabaseConnectTab({ service }: DatabaseConnectTabProps) {
                             onClick={() => {
                                 if (internalUrl) {
                                     navigator.clipboard.writeText(internalUrl);
-                                    alert('Connection string copied to clipboard');
+                                    addToast('success', 'Copied to clipboard');
                                 }
                             }}
                             className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"
@@ -121,7 +123,7 @@ export function DatabaseConnectTab({ service }: DatabaseConnectTabProps) {
                             onClick={() => {
                                 if (externalUrl) {
                                     navigator.clipboard.writeText(externalUrl);
-                                    alert('External URL copied to clipboard');
+                                    addToast('success', 'Copied to clipboard');
                                 }
                             }}
                             className="rounded p-1.5 text-foreground-muted hover:bg-background hover:text-foreground disabled:opacity-50"

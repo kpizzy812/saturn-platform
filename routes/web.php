@@ -559,7 +559,32 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('ssl.index');
 
     Route::get('/ssl/upload', function () {
-        return \Inertia\Inertia::render('SSL/Upload');
+        // Collect all unique FQDNs from applications in the current team
+        $team = auth()->user()->currentTeam();
+        $domains = [];
+        if ($team) {
+            $projects = $team->projects()->with('environments.applications')->get();
+            $id = 1;
+            foreach ($projects as $project) {
+                foreach ($project->environments as $env) {
+                    foreach ($env->applications as $app) {
+                        if ($app->fqdn) {
+                            // An app can have multiple FQDNs comma-separated
+                            foreach (explode(',', $app->fqdn) as $fqdn) {
+                                $domain = preg_replace('#^https?://#', '', trim($fqdn));
+                                if ($domain && ! in_array($domain, array_column($domains, 'domain'))) {
+                                    $domains[] = ['id' => $id++, 'domain' => $domain];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return \Inertia\Inertia::render('SSL/Upload', [
+            'domains' => $domains,
+        ]);
     })->name('ssl.upload');
 
     // Cron Jobs routes
@@ -723,11 +748,21 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Activity routes
     Route::get('/activity', function () {
-        return \Inertia\Inertia::render('Activity/Index');
+        $activities = \App\Http\Controllers\Inertia\ActivityHelper::getTeamActivities(50);
+
+        return \Inertia\Inertia::render('Activity/Index', [
+            'activities' => $activities,
+        ]);
     })->name('activity.index');
 
     Route::get('/activity/timeline', function () {
-        return \Inertia\Inertia::render('Activity/Timeline');
+        $activities = \App\Http\Controllers\Inertia\ActivityHelper::getTeamActivities(100);
+
+        return \Inertia\Inertia::render('Activity/Timeline', [
+            'activities' => $activities,
+            'currentPage' => 1,
+            'totalPages' => 1,
+        ]);
     })->name('activity.timeline');
 
     // Notifications routes
@@ -1365,7 +1400,13 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('activity.project');
 
     Route::get('/activity/{uuid}', function (string $uuid) {
-        return \Inertia\Inertia::render('Activity/Show', ['uuid' => $uuid]);
+        $activity = \App\Http\Controllers\Inertia\ActivityHelper::getActivity($uuid);
+        $related = \App\Http\Controllers\Inertia\ActivityHelper::getRelatedActivities($uuid);
+
+        return \Inertia\Inertia::render('Activity/Show', [
+            'activity' => $activity,
+            'relatedActivities' => $related,
+        ]);
     })->name('activity.show');
 
     // Environments additional routes

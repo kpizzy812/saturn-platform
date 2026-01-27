@@ -4,7 +4,8 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
-import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity } from 'lucide-react';
+import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity, Loader2 } from 'lucide-react';
+import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 import { PostgreSQLPanel } from '@/components/features/databases/PostgreSQLPanel';
 import { MySQLPanel } from '@/components/features/databases/MySQLPanel';
@@ -45,8 +46,12 @@ export default function DatabaseShow({ database }: Props) {
 
     const handleRestart = () => {
         setIsRestarting(true);
-        router.post(`/api/v1/databases/${database.uuid}/restart`, {}, {
-            onFinish: () => setIsRestarting(false),
+        router.post(`/databases/${database.uuid}/restart`, {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsRestarting(false);
+                addToast('success', 'Database restart initiated');
+            },
             onError: () => {
                 setIsRestarting(false);
                 addToast('error', 'Failed to restart database');
@@ -262,17 +267,42 @@ function ConnectionField({ label, value, onCopy, copied }: { label: string; valu
 }
 
 function MetricsTab({ database }: { database: StandaloneDatabase }) {
-    // Mock metrics data
-    const metrics = [
-        { label: 'Active Connections', value: '24', icon: Server, color: 'text-info', bgColor: 'bg-info/10' },
-        { label: 'Storage Used', value: '2.4 GB', icon: HardDrive, color: 'text-success', bgColor: 'bg-success/10' },
-        { label: 'Queries/sec', value: '1,240', icon: Activity, color: 'text-primary', bgColor: 'bg-primary/10' },
+    const { metrics: dbMetrics, isLoading } = useDatabaseMetrics({
+        uuid: database.uuid,
+        autoRefresh: true,
+        refreshInterval: 30000,
+    });
+
+    const metricsObj = dbMetrics as Record<string, unknown> | null;
+
+    const metricsDisplay = [
+        {
+            label: 'Active Connections',
+            value: isLoading ? '...' : formatMetricValue(metricsObj?.activeConnections as number | null | undefined),
+            icon: Server,
+            color: 'text-info',
+            bgColor: 'bg-info/10',
+        },
+        {
+            label: 'Database Size',
+            value: isLoading ? '...' : ((metricsObj?.databaseSize as string) || 'N/A'),
+            icon: HardDrive,
+            color: 'text-success',
+            bgColor: 'bg-success/10',
+        },
+        {
+            label: 'Queries/sec',
+            value: isLoading ? '...' : formatMetricValue(metricsObj?.queriesPerSec as number | null | undefined),
+            icon: Activity,
+            color: 'text-primary',
+            bgColor: 'bg-primary/10',
+        },
     ];
 
     return (
         <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
-                {metrics.map((metric) => (
+                {metricsDisplay.map((metric) => (
                     <Card key={metric.label}>
                         <CardContent className="p-6">
                             <div className="flex items-center gap-3">
@@ -289,15 +319,14 @@ function MetricsTab({ database }: { database: StandaloneDatabase }) {
                 ))}
             </div>
 
-            <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Activity className="h-12 w-12 text-foreground-subtle" />
-                    <h3 className="mt-4 font-medium text-foreground">Detailed Metrics</h3>
-                    <p className="mt-1 text-sm text-foreground-muted">
-                        Historical metrics and performance charts will appear here once data collection begins
-                    </p>
-                </CardContent>
-            </Card>
+            {isLoading && (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-foreground-muted" />
+                        <p className="mt-3 text-sm text-foreground-muted">Loading metrics...</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

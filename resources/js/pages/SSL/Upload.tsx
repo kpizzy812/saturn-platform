@@ -4,15 +4,16 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Textarea, Select } from '@/components/ui';
 import { Shield, ArrowLeft, Info, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 
-// Mock domains for the dropdown
-const mockDomains = [
-    { id: 1, domain: 'example.com' },
-    { id: 2, domain: 'api.example.com' },
-    { id: 3, domain: 'app.example.com' },
-    { id: 4, domain: 'staging.example.com' },
-];
+interface DomainOption {
+    id: number;
+    domain: string;
+}
 
-export default function SSLUpload() {
+interface Props {
+    domains?: DomainOption[];
+}
+
+export default function SSLUpload({ domains = [] }: Props) {
     const [certificate, setCertificate] = useState('');
     const [privateKey, setPrivateKey] = useState('');
     const [certificateChain, setCertificateChain] = useState('');
@@ -136,7 +137,7 @@ export default function SSLUpload() {
                                     }}
                                     options={[
                                         { value: '', label: 'Choose a domain...' },
-                                        ...mockDomains.map(d => ({
+                                        ...domains.map(d => ({
                                             value: d.id.toString(),
                                             label: d.domain
                                         }))

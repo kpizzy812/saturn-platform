@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui';
+import { router } from '@inertiajs/react';
+import { Button, useConfirm } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { Plus, RefreshCw, Clock, HardDrive } from 'lucide-react';
 import { useDatabaseBackups } from '@/hooks/useDatabases';
 import type { SelectedService } from '../../types';
@@ -15,6 +17,8 @@ export function DatabaseBackupsTab({ service }: DatabaseBackupsTabProps) {
         refreshInterval: 30000,
     });
 
+    const { addToast } = useToast();
+    const confirm = useConfirm();
     const [isCreating, setIsCreating] = useState(false);
     const [restoringBackupUuid, setRestoringBackupUuid] = useState<string | null>(null);
 
@@ -22,40 +26,51 @@ export function DatabaseBackupsTab({ service }: DatabaseBackupsTabProps) {
         setIsCreating(true);
         try {
             await createBackup();
-            alert('Backup creation started');
+            addToast('success', 'Backup creation started');
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to create backup');
+            addToast('error', err instanceof Error ? err.message : 'Failed to create backup');
         } finally {
             setIsCreating(false);
         }
     };
 
     const handleScheduleBackup = () => {
-        alert('Backup scheduling modal coming soon. Configure in database settings.');
+        router.visit(`/databases/${service.uuid}/settings/backups`);
     };
 
     const handleRestoreBackup = async (backupUuid: string, executionUuid?: string) => {
-        if (!window.confirm('Are you sure you want to restore this backup? Current data will be replaced.')) {
-            return;
-        }
+        const confirmed = await confirm({
+            title: 'Restore Backup',
+            description: 'Are you sure you want to restore this backup? Current data will be replaced.',
+            confirmText: 'Restore',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
         setRestoringBackupUuid(backupUuid);
         try {
             await restoreBackup(backupUuid, executionUuid);
-            alert('Database restore initiated. This may take a few minutes.');
+            addToast('success', 'Database restore initiated');
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to restore backup');
+            addToast('error', err instanceof Error ? err.message : 'Failed to restore backup');
         } finally {
             setRestoringBackupUuid(null);
         }
     };
 
     const handleDeleteBackup = async (backupUuid: string) => {
-        if (window.confirm('Are you sure you want to delete this backup?')) {
+        const confirmed = await confirm({
+            title: 'Delete Backup',
+            description: 'Are you sure you want to delete this backup?',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             try {
                 await deleteBackup(backupUuid);
-                alert('Backup deleted');
+                addToast('success', 'Backup deleted');
             } catch (err) {
-                alert(err instanceof Error ? err.message : 'Failed to delete backup');
+                addToast('error', err instanceof Error ? err.message : 'Failed to delete backup');
             }
         }
     };

@@ -24,11 +24,11 @@ export default function ServerCleanupIndex({ server, cleanupStats }: Props) {
     const [lastCleanup, setLastCleanup] = useState<string | null>(null);
 
     const stats = cleanupStats || {
-        unused_images: 12,
-        unused_containers: 5,
-        unused_volumes: 8,
-        unused_networks: 3,
-        total_size: '2.4 GB',
+        unused_images: 0,
+        unused_containers: 0,
+        unused_volumes: 0,
+        unused_networks: 0,
+        total_size: 'N/A',
     };
 
     const handleCleanup = async (type: string) => {

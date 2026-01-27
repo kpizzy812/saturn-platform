@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Badge, Button } from '@/components/ui';
+import { router } from '@inertiajs/react';
+import { Badge, Button, useConfirm } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { Globe, Users, ChevronDown, Plus, Copy, ExternalLink, Trash2, Link2, Terminal, Shield } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '@/components/ui/Dropdown';
 import type { SelectedService } from '../../types';
@@ -9,6 +11,8 @@ interface AppSettingsTabProps {
 }
 
 export function AppSettingsTab({ service }: AppSettingsTabProps) {
+    const { addToast } = useToast();
+    const confirm = useConfirm();
     const [cronEnabled, setCronEnabled] = useState(false);
     const [cronExpression, setCronExpression] = useState('0 * * * *');
     const [healthCheckEnabled, setHealthCheckEnabled] = useState(true);
@@ -25,7 +29,7 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
 
     const handleSaveSettings = async () => {
         if (!service.uuid) {
-            alert('Cannot save: service UUID not available');
+            addToast('error', 'Cannot save: service UUID not available');
             return;
         }
 
@@ -51,10 +55,9 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
                 throw new Error(error.message || 'Failed to save settings');
             }
 
-            alert('Settings saved successfully');
+            addToast('success', 'Settings saved successfully');
         } catch (err) {
-            console.error('Save settings error:', err);
-            alert(err instanceof Error ? err.message : 'Failed to save settings');
+            addToast('error', err instanceof Error ? err.message : 'Failed to save settings');
         } finally {
             setIsSaving(false);
         }
@@ -113,24 +116,24 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
                             <Badge variant="success" size="sm">Enabled</Badge>
                         </div>
 
-                        {/* Railway-provided domain */}
+                        {/* Platform-provided domain */}
                         <div className="mb-3">
-                            <p className="mb-1 text-xs text-foreground-muted">Railway-provided domain</p>
+                            <p className="mb-1 text-xs text-foreground-muted">Service domain</p>
                             <div className="flex items-center gap-2">
                                 <code className="flex-1 rounded bg-background px-2 py-1 text-sm text-foreground">
-                                    {service.name || 'api-server'}-production.up.railway.app
+                                    {service.fqdn || `${service.name || 'app'}.localhost`}
                                 </code>
                                 <button
                                     onClick={() => {
-                                        navigator.clipboard.writeText(`${service.name || 'api-server'}-production.up.railway.app`);
-                                        alert('Domain copied to clipboard');
+                                        navigator.clipboard.writeText(service.fqdn || `${service.name || 'app'}.localhost`);
+                                        addToast('success', 'Domain copied to clipboard');
                                     }}
                                     className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground"
                                     title="Copy domain"
                                 >
                                     <Copy className="h-4 w-4" />
                                 </button>
-                                <a href={`https://${service.name || 'api-server'}-production.up.railway.app`} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground">
+                                <a href={`https://${service.fqdn || service.name || 'app'}`} target="_blank" rel="noopener noreferrer" className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground">
                                     <ExternalLink className="h-4 w-4" />
                                 </a>
                             </div>
@@ -145,9 +148,16 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
                                     <code className="flex-1 text-sm text-foreground">{service.fqdn}</code>
                                     <Badge variant="success" size="sm">SSL</Badge>
                                     <button
-                                        onClick={() => {
-                                            if (window.confirm(`Delete domain ${service.fqdn}?`)) {
-                                                alert('Domain deletion coming soon. Use the Settings page for now.');
+                                        onClick={async () => {
+                                            const confirmed = await confirm({
+                                                title: 'Delete Domain',
+                                                description: `Are you sure you want to delete domain "${service.fqdn}"?`,
+                                                confirmText: 'Delete',
+                                                variant: 'danger',
+                                            });
+                                            if (confirmed) {
+                                                router.visit(`/applications/${service.uuid}/settings`);
+                                                addToast('info', 'Manage domains in application settings');
                                             }
                                         }}
                                         className="rounded p-1 text-foreground-muted hover:bg-background hover:text-red-500"
@@ -161,7 +171,7 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
                                 variant="secondary"
                                 size="sm"
                                 className="mt-2"
-                                onClick={() => alert('Add Domain modal coming soon. Use the Settings page for now.')}
+                                onClick={() => router.visit(`/applications/${service.uuid}/settings`)}
                             >
                                 <Plus className="mr-1 h-3.5 w-3.5" />
                                 Add Custom Domain
@@ -220,7 +230,7 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
                         </p>
                         <div className="rounded bg-background p-3">
                             <p className="mb-1 text-xs text-foreground-muted">Internal DNS</p>
-                            <code className="text-sm text-foreground">{service.name || 'api-server'}.railway.internal</code>
+                            <code className="text-sm text-foreground">{service.uuid || service.name || 'app'}</code>
                         </div>
                         <div className="mt-2 rounded bg-background p-3">
                             <p className="mb-1 text-xs text-foreground-muted">Internal Port</p>

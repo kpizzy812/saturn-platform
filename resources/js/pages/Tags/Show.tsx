@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, StatusBadge, useConfirm } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import {
     Tag as TagIcon,
     Edit2,
@@ -31,6 +32,7 @@ interface Props {
 
 export default function TagShow({ tag: initialTag, applications = [], services = [], databases = [] }: Props) {
     const confirm = useConfirm();
+    const { addToast } = useToast();
     const [tag, setTag] = useState(initialTag);
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(tag.name);
@@ -60,7 +62,7 @@ export default function TagShow({ tag: initialTag, applications = [], services =
 
     const handleDelete = async () => {
         if (totalResources > 0) {
-            alert('Cannot delete tag with resources. Remove all resources from this tag first.');
+            addToast('error', 'Cannot delete tag with resources. Remove all resources from this tag first.');
             return;
         }
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import {
     Network, Server, Box, Edit, Trash2, ArrowLeft,
     CheckCircle2, XCircle, Settings, ExternalLink,
@@ -43,6 +44,7 @@ interface Props {
 
 export default function DestinationShow({ destination, resources = [] }: Props) {
     const confirm = useConfirm();
+    const { addToast } = useToast();
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(destination.name);
     const [copied, setCopied] = useState(false);
@@ -56,7 +58,7 @@ export default function DestinationShow({ destination, resources = [] }: Props) 
 
     const handleDelete = async () => {
         if (resources.length > 0) {
-            alert('Cannot delete destination with active resources. Please remove all resources first.');
+            addToast('error', 'Cannot delete destination with active resources. Remove all resources first.');
             return;
         }
         const confirmed = await confirm({
