@@ -66,11 +66,13 @@ export function VariablesTab({ service }: VariablesTabProps) {
         }
         try {
             setIsSubmitting(true);
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${service.uuid}/envs`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
                 body: JSON.stringify({ key: newKey, value: newValue }),
@@ -97,11 +99,13 @@ export function VariablesTab({ service }: VariablesTabProps) {
         if (!editing) return;
         try {
             setIsSaving(true);
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${service.uuid}/envs`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
                 body: JSON.stringify({ key: editing.key, value: editing.value }),
@@ -147,9 +151,13 @@ export function VariablesTab({ service }: VariablesTabProps) {
         if (!confirm(`Delete variable "${key}"?`)) return;
         try {
             setDeletingIds(prev => new Set(prev).add(envUuid));
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${service.uuid}/envs/${envUuid}`, {
                 method: 'DELETE',
-                headers: { 'Accept': 'application/json' },
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
                 credentials: 'include',
             });
             if (response.ok) {

@@ -260,11 +260,13 @@ export default function ProjectShow({ project }: Props) {
         if (!node) return;
 
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${node.uuid}/start`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -289,11 +291,13 @@ export default function ProjectShow({ project }: Props) {
             : `/api/v1/databases/${node.uuid}/restart`;
 
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -318,11 +322,13 @@ export default function ProjectShow({ project }: Props) {
             : `/api/v1/databases/${node.uuid}/stop`;
 
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -355,11 +361,13 @@ export default function ProjectShow({ project }: Props) {
             : `/api/v1/databases/${node.uuid}`;
 
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(endpoint, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -387,12 +395,14 @@ export default function ProjectShow({ project }: Props) {
 
         try {
             // Deploy all applications in the environment
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const deployPromises = env.applications.map(app =>
                 fetch(`/api/v1/applications/${app.uuid}/start`, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     credentials: 'include',
                 })
@@ -412,11 +422,13 @@ export default function ProjectShow({ project }: Props) {
         if (!node || node.type !== 'db') return;
 
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/databases/${node.uuid}/backups`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -516,9 +528,10 @@ export default function ProjectShow({ project }: Props) {
             return;
         }
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${selectedService.uuid}/start`, {
                 method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                 credentials: 'include',
             });
             if (!response.ok) throw new Error('Failed to deploy');
@@ -537,9 +550,10 @@ export default function ProjectShow({ project }: Props) {
             ? `/api/v1/applications/${selectedService.uuid}/restart`
             : `/api/v1/databases/${selectedService.uuid}/restart`;
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                 credentials: 'include',
             });
             if (!response.ok) throw new Error('Failed to restart');
