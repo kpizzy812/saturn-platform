@@ -79,7 +79,7 @@ export function useTeamActivity({
                 params.set('date_range', filters.dateRange);
             }
 
-            const response = await fetch(`/api/v1/teams/current/activities?${params.toString()}`, {
+            const response = await fetch(`/web-api/team/activities?${params.toString()}`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',

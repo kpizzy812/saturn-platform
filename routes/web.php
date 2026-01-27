@@ -1664,6 +1664,22 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         ]);
     })->name('onboarding.connect-repo');
 
+    // Team activities JSON endpoint (for web session)
+    Route::get('/web-api/team/activities', function (\Illuminate\Http\Request $request) {
+        $limit = min((int) $request->query('per_page', 10), 100);
+        $activities = \App\Http\Controllers\Inertia\ActivityHelper::getTeamActivities($limit);
+
+        return response()->json([
+            'data' => $activities,
+            'meta' => [
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $limit,
+                'total' => count($activities),
+            ],
+        ]);
+    })->name('web-api.team.activities');
+
     // GitHub App API routes (for web session)
     Route::get('/web-api/github-apps/{github_app_id}/repositories', function ($github_app_id) {
         $githubApp = \App\Models\GithubApp::where('id', $github_app_id)
