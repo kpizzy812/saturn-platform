@@ -596,6 +596,29 @@ Route::get('/applications/{uuid}/settings/variables', function (string $uuid) {
     ]);
 })->name('applications.settings.variables');
 
+// Application Environment Variables JSON endpoint (for Show page eye toggle)
+Route::get('/applications/{uuid}/envs/json', function (string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $variables = \App\Models\EnvironmentVariable::where('resourceable_type', \App\Models\Application::class)
+        ->where('resourceable_id', $application->id)
+        ->where('is_preview', false)
+        ->orderBy('key')
+        ->get()
+        ->map(function ($var) {
+            return [
+                'id' => $var->id,
+                'key' => $var->key,
+                'value' => $var->value,
+                'is_build_time' => $var->is_build_time,
+            ];
+        });
+
+    return response()->json($variables);
+})->name('applications.envs.json');
+
 // Application Logs Route (Saturn)
 Route::get('/applications/{uuid}/logs', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
