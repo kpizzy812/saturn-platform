@@ -837,6 +837,30 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
             ]);
         }
 
+        // Helper to parse memory values like "512MiB", "2GiB", "100MB"
+        $parseMemory = function (string $val): int {
+            $val = trim($val);
+            if (preg_match('/^([\d.]+)\s*(B|KB|KiB|MB|MiB|GB|GiB|TB|TiB)$/i', $val, $m)) {
+                $num = (float) $m[1];
+                $unit = strtoupper($m[2]);
+
+                return (int) match ($unit) {
+                    'B' => $num,
+                    'KB' => $num * 1000,
+                    'KIB' => $num * 1024,
+                    'MB' => $num * 1000 * 1000,
+                    'MIB' => $num * 1024 * 1024,
+                    'GB' => $num * 1000 * 1000 * 1000,
+                    'GIB' => $num * 1024 * 1024 * 1024,
+                    'TB' => $num * 1000 * 1000 * 1000 * 1000,
+                    'TIB' => $num * 1024 * 1024 * 1024 * 1024,
+                    default => $num,
+                };
+            }
+
+            return 0;
+        };
+
         // Parse CPU percentage
         $cpuPercent = (float) str_replace('%', '', $stats['CPUPerc'] ?? '0%');
 
@@ -847,8 +871,8 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
         $memLimit = trim($memParts[1] ?? '0B');
 
         // Convert memory to bytes for calculations
-        $memUsedBytes = parseMemoryValue($memUsed);
-        $memLimitBytes = parseMemoryValue($memLimit);
+        $memUsedBytes = $parseMemory($memUsed);
+        $memLimitBytes = $parseMemory($memLimit);
         $memPercent = $memLimitBytes > 0 ? round(($memUsedBytes / $memLimitBytes) * 100, 1) : 0;
 
         // Parse network IO (format: "1.2MB / 500KB")
@@ -897,32 +921,3 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
         ]);
     }
 })->name('applications.metrics');
-
-/**
- * Helper function to parse memory values like "512MiB", "2GiB", "100MB"
- */
-if (! function_exists('parseMemoryValue')) {
-    function parseMemoryValue(string $value): int
-    {
-        $value = trim($value);
-        if (preg_match('/^([\d.]+)\s*(B|KB|KiB|MB|MiB|GB|GiB|TB|TiB)$/i', $value, $matches)) {
-            $num = (float) $matches[1];
-            $unit = strtoupper($matches[2]);
-
-            return (int) match ($unit) {
-                'B' => $num,
-                'KB' => $num * 1000,
-                'KIB' => $num * 1024,
-                'MB' => $num * 1000 * 1000,
-                'MIB' => $num * 1024 * 1024,
-                'GB' => $num * 1000 * 1000 * 1000,
-                'GIB' => $num * 1024 * 1024 * 1024,
-                'TB' => $num * 1000 * 1000 * 1000 * 1000,
-                'TIB' => $num * 1024 * 1024 * 1024 * 1024,
-                default => $num,
-            };
-        }
-
-        return 0;
-    }
-}
