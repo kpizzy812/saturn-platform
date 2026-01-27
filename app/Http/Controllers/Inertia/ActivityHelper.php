@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Inertia;
 
+use App\Models\Application;
+use App\Models\ApplicationDeploymentQueue;
 use Spatie\Activitylog\Models\Activity;
 
 class ActivityHelper
 {
     /**
      * Get activities for the current team formatted for frontend consumption.
+     * Combines deployment history and Spatie activity log entries.
      */
     public static function getTeamActivities(int $limit = 50): array
     {
@@ -18,9 +21,59 @@ class ActivityHelper
             return [];
         }
 
-        $memberIds = $team->members()->pluck('users.id')->toArray();
+        $activities = collect();
 
-        $activities = Activity::query()
+        // Get deployment activities from deployment queue
+        $teamApplicationIds = Application::ownedByCurrentTeam()->pluck('id');
+        if ($teamApplicationIds->isNotEmpty()) {
+            $deployments = ApplicationDeploymentQueue::whereIn('application_id', $teamApplicationIds)
+                ->with('application')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            foreach ($deployments as $deployment) {
+                $app = $deployment->application;
+                $appName = $app?->name ?? 'Unknown';
+                $status = $deployment->status;
+
+                $action = match ($status) {
+                    'finished' => 'deployment_completed',
+                    'failed' => 'deployment_failed',
+                    'in_progress', 'queued' => 'deployment_started',
+                    default => 'deployment_started',
+                };
+
+                $description = match ($status) {
+                    'finished' => "Deployment completed for {$appName}",
+                    'failed' => "Deployment failed for {$appName}",
+                    'in_progress' => "Deployment in progress for {$appName}",
+                    'queued' => "Deployment queued for {$appName}",
+                    default => "Deployment for {$appName}",
+                };
+
+                $activities->push([
+                    'id' => 'deploy-'.$deployment->id,
+                    'action' => $action,
+                    'description' => $description,
+                    'user' => [
+                        'name' => $user->name ?? 'System',
+                        'email' => $user->email ?? 'system@saturn.local',
+                        'avatar' => null,
+                    ],
+                    'resource' => [
+                        'type' => 'application',
+                        'name' => $appName,
+                        'id' => (string) ($app?->uuid ?? ''),
+                    ],
+                    'timestamp' => $deployment->created_at->toIso8601String(),
+                ]);
+            }
+        }
+
+        // Also include Spatie activity log entries with a causer (real user actions)
+        $memberIds = $team->members()->pluck('users.id')->toArray();
+        $spatieActivities = Activity::query()
             ->where('causer_type', 'App\\Models\\User')
             ->whereIn('causer_id', $memberIds)
             ->with('causer', 'subject')
@@ -28,11 +81,10 @@ class ActivityHelper
             ->limit($limit)
             ->get();
 
-        return $activities->map(function ($activity) {
+        foreach ($spatieActivities as $activity) {
             $causer = $activity->causer;
             $subject = $activity->subject;
 
-            // Determine resource type from subject
             $resourceType = null;
             $resourceName = null;
             $resourceId = null;
@@ -52,12 +104,11 @@ class ActivityHelper
                 $resourceId = (string) ($subject->uuid ?? $subject->id ?? '');
             }
 
-            // Map Spatie events to our frontend action types
             $event = $activity->event ?? $activity->log_name ?? 'unknown';
             $action = self::mapAction($event, $subject);
 
-            return [
-                'id' => (string) $activity->id,
+            $activities->push([
+                'id' => 'activity-'.$activity->id,
                 'action' => $action,
                 'description' => $activity->description ?? self::buildDescription($action, $resourceName),
                 'user' => [
@@ -71,8 +122,15 @@ class ActivityHelper
                     'id' => $resourceId ?? '',
                 ],
                 'timestamp' => $activity->created_at->toIso8601String(),
-            ];
-        })->values()->toArray();
+            ]);
+        }
+
+        // Sort by timestamp descending and limit
+        return $activities
+            ->sortByDesc('timestamp')
+            ->take($limit)
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -80,16 +138,51 @@ class ActivityHelper
      */
     public static function getActivity(string $id): ?array
     {
-        $activity = Activity::with('causer', 'subject')->find($id);
+        // Handle deployment activities
+        if (str_starts_with($id, 'deploy-')) {
+            $deployId = (int) str_replace('deploy-', '', $id);
+            $deployment = ApplicationDeploymentQueue::with('application')->find($deployId);
+            if (! $deployment) {
+                return null;
+            }
+
+            $app = $deployment->application;
+            $appName = $app?->name ?? 'Unknown';
+            $status = $deployment->status;
+            $user = auth()->user();
+
+            $action = match ($status) {
+                'finished' => 'deployment_completed',
+                'failed' => 'deployment_failed',
+                default => 'deployment_started',
+            };
+
+            return [
+                'id' => $id,
+                'action' => $action,
+                'description' => self::buildDescription($action, $appName),
+                'user' => [
+                    'name' => $user?->name ?? 'System',
+                    'email' => $user?->email ?? 'system@saturn.local',
+                    'avatar' => null,
+                ],
+                'resource' => [
+                    'type' => 'application',
+                    'name' => $appName,
+                    'id' => (string) ($app?->uuid ?? ''),
+                ],
+                'timestamp' => $deployment->created_at->toIso8601String(),
+            ];
+        }
+
+        // Handle Spatie activity log entries
+        $activityId = str_replace('activity-', '', $id);
+        $activity = Activity::with('causer', 'subject')->find($activityId);
 
         if (! $activity) {
             return null;
         }
 
-        $activities = collect([$activity]);
-        $result = self::getTeamActivities(1);
-
-        // Re-fetch with the proper logic
         $causer = $activity->causer;
         $subject = $activity->subject;
 
@@ -116,7 +209,7 @@ class ActivityHelper
         $action = self::mapAction($event, $subject);
 
         return [
-            'id' => (string) $activity->id,
+            'id' => $id,
             'action' => $action,
             'description' => $activity->description ?? self::buildDescription($action, $resourceName),
             'user' => [
@@ -138,7 +231,54 @@ class ActivityHelper
      */
     public static function getRelatedActivities(string $activityId, int $limit = 10): array
     {
-        $activity = Activity::find($activityId);
+        // For deployment activities, find other deployments for the same app
+        if (str_starts_with($activityId, 'deploy-')) {
+            $deployId = (int) str_replace('deploy-', '', $activityId);
+            $deployment = ApplicationDeploymentQueue::find($deployId);
+
+            if (! $deployment) {
+                return [];
+            }
+
+            $related = ApplicationDeploymentQueue::where('application_id', $deployment->application_id)
+                ->where('id', '!=', $deployId)
+                ->with('application')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+
+            $user = auth()->user();
+
+            return $related->map(function ($rel) use ($user) {
+                $app = $rel->application;
+                $appName = $app?->name ?? 'Unknown';
+                $action = match ($rel->status) {
+                    'finished' => 'deployment_completed',
+                    'failed' => 'deployment_failed',
+                    default => 'deployment_started',
+                };
+
+                return [
+                    'id' => 'deploy-'.$rel->id,
+                    'action' => $action,
+                    'description' => self::buildDescription($action, $appName),
+                    'user' => [
+                        'name' => $user?->name ?? 'System',
+                        'email' => $user?->email ?? 'system@saturn.local',
+                    ],
+                    'resource' => [
+                        'type' => 'application',
+                        'name' => $appName,
+                        'id' => (string) ($app?->uuid ?? ''),
+                    ],
+                    'timestamp' => $rel->created_at->toIso8601String(),
+                ];
+            })->values()->toArray();
+        }
+
+        // For Spatie activities
+        $realId = str_replace('activity-', '', $activityId);
+        $activity = Activity::find($realId);
 
         if (! $activity || ! $activity->subject_type || ! $activity->subject_id) {
             return [];
@@ -147,7 +287,7 @@ class ActivityHelper
         $related = Activity::query()
             ->where('subject_type', $activity->subject_type)
             ->where('subject_id', $activity->subject_id)
-            ->where('id', '!=', $activityId)
+            ->where('id', '!=', $realId)
             ->with('causer', 'subject')
             ->orderBy('created_at', 'desc')
             ->limit($limit)
@@ -158,7 +298,7 @@ class ActivityHelper
             $event = $rel->event ?? $rel->log_name ?? 'unknown';
 
             return [
-                'id' => (string) $rel->id,
+                'id' => 'activity-'.$rel->id,
                 'action' => self::mapAction($event, $rel->subject),
                 'description' => $rel->description ?? 'Activity',
                 'user' => [

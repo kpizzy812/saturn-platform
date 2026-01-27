@@ -78,7 +78,7 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
     const fetchApplication = useCallback(async () => {
         try {
             setIsLoading(true);
-            const response = await fetch(`/api/v1/applications/${service.uuid}`, {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
                 headers: { 'Accept': 'application/json' },
                 credentials: 'include',
             });
@@ -116,11 +116,12 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
     const handleSaveSettings = async () => {
         setIsSaving(true);
         try {
-            const response = await fetch(`/api/v1/applications/${service.uuid}`, {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -164,7 +165,7 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
         if (!confirmed) return;
 
         try {
-            const response = await fetch(`/api/v1/applications/${service.uuid}`, {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',

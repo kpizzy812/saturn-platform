@@ -1391,20 +1391,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         // Get since parameter for incremental fetching
         $since = $request->query('since');
 
-        // Get container logs
+        // Get container logs via SSH (works for both localhost and remote servers)
         try {
-            // For localhost/Saturn host, run Docker commands directly to avoid SSH issues
-            $isLocalhost = $server->isSaturnHost || $server->isLocalhost;
-
-            if ($isLocalhost) {
-                // Run Docker commands directly via Process::run()
-                $dockerPs = \Illuminate\Support\Facades\Process::run(
-                    "docker ps -a --filter='label=saturn.applicationId={$application->id}' --format '{{json .}}'"
-                );
-                $containers = format_docker_command_output_to_json(trim($dockerPs->output()));
-            } else {
-                $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
-            }
+            $containers = getCurrentApplicationContainerStatus($server, $application->id, 0, true);
 
             if ($containers->isEmpty()) {
                 return response()->json([
@@ -1418,21 +1407,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             $firstContainer = $containers->first();
             $containerName = $firstContainer['Names'] ?? null;
             if ($containerName) {
-                if ($isLocalhost) {
-                    // Run docker logs directly
-                    if ($since) {
-                        $process = \Illuminate\Support\Facades\Process::run("docker logs --since {$since} --timestamps {$containerName} 2>&1");
-                    } else {
-                        $process = \Illuminate\Support\Facades\Process::run("docker logs -n 200 --timestamps {$containerName} 2>&1");
-                    }
-                    $logs = trim($process->output());
+                if ($since) {
+                    $logs = instant_remote_process(["docker logs --since {$since} --timestamps {$containerName} 2>&1"], $server);
                 } else {
-                    // Use SSH for remote servers
-                    if ($since) {
-                        $logs = instant_remote_process(["docker logs --since {$since} --timestamps {$containerName} 2>&1"], $server);
-                    } else {
-                        $logs = instant_remote_process(["docker logs -n 200 --timestamps {$containerName} 2>&1"], $server);
-                    }
+                    $logs = instant_remote_process(["docker logs -n 200 --timestamps {$containerName} 2>&1"], $server);
                 }
 
                 return response()->json([
@@ -1718,6 +1696,57 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             ],
         ]);
     })->name('web-api.team.activities');
+
+    // Application settings JSON endpoints (for canvas panel, session auth)
+    Route::get('/web-api/applications/{uuid}', function (string $uuid) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        return response()->json($application);
+    })->name('web-api.applications.show');
+
+    Route::patch('/web-api/applications/{uuid}', function (string $uuid, \Illuminate\Http\Request $request) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        $allowedFields = [
+            'health_check_enabled', 'health_check_path', 'health_check_interval',
+            'health_check_timeout', 'health_check_retries',
+            'ports_exposes', 'ports_mappings',
+            'base_directory', 'publish_directory',
+            'install_command', 'build_command', 'start_command',
+            'watch_paths',
+        ];
+
+        $data = $request->only($allowedFields);
+        $application->update($data);
+
+        return response()->json($application->fresh());
+    })->name('web-api.applications.update');
+
+    Route::delete('/web-api/applications/{uuid}', function (string $uuid) {
+        $application = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', $uuid)
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        $application->delete();
+
+        return response()->json(['message' => 'Application deleted.']);
+    })->name('web-api.applications.delete');
 
     // GitHub App API routes (for web session)
     Route::get('/web-api/github-apps/{github_app_id}/repositories', function ($github_app_id) {
