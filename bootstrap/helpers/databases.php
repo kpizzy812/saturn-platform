@@ -441,6 +441,182 @@ function deleteOldBackupsFromS3($backup): Collection
     return $processedBackups;
 }
 
+function findDatabaseByUuid(string $uuid): array
+{
+    $database = StandalonePostgresql::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'postgresql'];
+    }
+
+    $database = StandaloneMysql::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'mysql'];
+    }
+
+    $database = StandaloneMariadb::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'mariadb'];
+    }
+
+    $database = StandaloneMongodb::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'mongodb'];
+    }
+
+    $database = StandaloneRedis::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'redis'];
+    }
+
+    $database = StandaloneKeydb::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'keydb'];
+    }
+
+    $database = StandaloneDragonfly::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'dragonfly'];
+    }
+
+    $database = StandaloneClickhouse::ownedByCurrentTeam()->where('uuid', $uuid)->first();
+    if ($database) {
+        return [$database, 'clickhouse'];
+    }
+
+    abort(404);
+}
+
+function formatDatabaseForView($databaseWithType): array
+{
+    [$database, $type] = is_array($databaseWithType) ? $databaseWithType : [$databaseWithType, 'postgresql'];
+
+    $image = $database->image ?? '';
+    $version = str_contains($image, ':') ? explode(':', $image, 2)[1] : $image;
+
+    $connection = [];
+    switch ($type) {
+        case 'postgresql':
+            $connection = [
+                'internal_host' => $database->uuid,
+                'port' => '5432',
+                'database' => $database->postgres_db ?? 'postgres',
+                'username' => $database->postgres_user ?? 'postgres',
+                'password' => $database->postgres_password ?? '',
+            ];
+            break;
+        case 'mysql':
+        case 'mariadb':
+            $connection = [
+                'internal_host' => $database->uuid,
+                'port' => '3306',
+                'database' => $database->mysql_database ?? ($database->mariadb_database ?? ''),
+                'username' => $database->mysql_user ?? ($database->mariadb_user ?? 'root'),
+                'password' => $database->mysql_password ?? ($database->mariadb_password ?? $database->mysql_root_password ?? $database->mariadb_root_password ?? ''),
+            ];
+            break;
+        case 'mongodb':
+            $connection = [
+                'internal_host' => $database->uuid,
+                'port' => '27017',
+                'database' => $database->mongo_initdb_database ?? 'admin',
+                'username' => $database->mongo_initdb_root_username ?? '',
+                'password' => $database->mongo_initdb_root_password ?? '',
+            ];
+            break;
+        case 'redis':
+        case 'keydb':
+        case 'dragonfly':
+            $connection = [
+                'internal_host' => $database->uuid,
+                'port' => '6379',
+                'database' => '0',
+                'username' => '',
+                'password' => $database->redis_password ?? '',
+            ];
+            break;
+        case 'clickhouse':
+            $connection = [
+                'internal_host' => $database->uuid,
+                'port' => '8123',
+                'database' => $database->clickhouse_db ?? 'default',
+                'username' => $database->clickhouse_user ?? 'default',
+                'password' => $database->clickhouse_password ?? '',
+            ];
+            break;
+    }
+
+    return [
+        'id' => $database->id,
+        'uuid' => $database->uuid,
+        'name' => $database->name,
+        'description' => $database->description,
+        'database_type' => $type,
+        'status' => $database->status,
+        'image' => $image,
+        'version' => $version,
+        'is_public' => $database->is_public ?? false,
+        'public_port' => $database->public_port,
+        'limits_memory' => $database->limits_memory ?? '0',
+        'limits_memory_swap' => $database->limits_memory_swap ?? '0',
+        'limits_memory_swappiness' => $database->limits_memory_swappiness ?? 60,
+        'limits_memory_reservation' => $database->limits_memory_reservation ?? '0',
+        'limits_cpus' => $database->limits_cpus ?? '0',
+        'limits_cpuset' => $database->limits_cpuset ?? '0',
+        'limits_cpu_shares' => $database->limits_cpu_shares ?? 1024,
+        'enable_ssl' => $database->enable_ssl ?? false,
+        'ssl_mode' => $database->ssl_mode ?? null,
+        'postgres_conf' => $database->postgres_conf ?? null,
+        'custom_docker_run_options' => $database->custom_docker_run_options ?? null,
+        'internal_db_url' => $database->internal_db_url ?? '',
+        'external_db_url' => $database->external_db_url ?? '',
+        'connection' => $connection,
+        'postgres_user' => $database->postgres_user ?? null,
+        'postgres_password' => $database->postgres_password ?? null,
+        'postgres_db' => $database->postgres_db ?? null,
+        'environment_id' => $database->environment_id,
+        'created_at' => $database->created_at,
+        'updated_at' => $database->updated_at,
+    ];
+}
+
+function getAllDatabases(): Collection
+{
+    $databases = StandalonePostgresql::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'postgresql']));
+
+    $mysqlDatabases = StandaloneMysql::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'mysql']));
+
+    $mariadbDatabases = StandaloneMariadb::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'mariadb']));
+
+    $mongodbDatabases = StandaloneMongodb::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'mongodb']));
+
+    $redisDatabases = StandaloneRedis::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'redis']));
+
+    $keydbDatabases = StandaloneKeydb::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'keydb']));
+
+    $dragonflyDatabases = StandaloneDragonfly::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'dragonfly']));
+
+    $clickhouseDatabases = StandaloneClickhouse::ownedByCurrentTeamCached()
+        ->map(fn ($db) => formatDatabaseForView([$db, 'clickhouse']));
+
+    return $databases
+        ->concat($mysqlDatabases)
+        ->concat($mariadbDatabases)
+        ->concat($mongodbDatabases)
+        ->concat($redisDatabases)
+        ->concat($keydbDatabases)
+        ->concat($dragonflyDatabases)
+        ->concat($clickhouseDatabases)
+        ->sortByDesc('updated_at')
+        ->values();
+}
+
 function isPublicPortAlreadyUsed(Server $server, int $port, ?string $id = null): bool
 {
     if ($id) {

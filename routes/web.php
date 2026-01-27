@@ -619,15 +619,92 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Deployments routes
     Route::get('/deployments', function () {
-        return \Inertia\Inertia::render('Deployments/Index');
+        $team = auth()->user()->currentTeam();
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+
+        $deployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(fn ($d) => [
+                'id' => $d->id,
+                'uuid' => $d->deployment_uuid,
+                'application_id' => $d->application_id,
+                'status' => $d->status,
+                'commit' => $d->commit,
+                'commit_message' => $d->commit_message,
+                'created_at' => $d->created_at?->toISOString(),
+                'updated_at' => $d->updated_at?->toISOString(),
+                'service_name' => $d->application_name,
+                'trigger' => $d->is_webhook ? 'push' : ($d->rollback ? 'rollback' : 'manual'),
+            ]);
+
+        return \Inertia\Inertia::render('Deployments/Index', [
+            'deployments' => $deployments,
+        ]);
     })->name('deployments.index');
 
     Route::get('/deployments/{uuid}', function (string $uuid) {
-        return \Inertia\Inertia::render('Deployments/Show');
+        $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+
+        if (! $deployment) {
+            return \Inertia\Inertia::render('Deployments/Show', ['deployment' => null]);
+        }
+
+        $logs = $deployment->logs ? json_decode($deployment->logs, true) : [];
+        $buildLogs = [];
+        $deployLogs = [];
+        foreach ($logs as $log) {
+            $line = ($log['timestamp'] ?? '').' '.($log['output'] ?? $log['message'] ?? '');
+            if (($log['type'] ?? '') === 'deploy') {
+                $deployLogs[] = trim($line);
+            } else {
+                $buildLogs[] = trim($line);
+            }
+        }
+
+        // Calculate duration
+        $duration = null;
+        if ($deployment->created_at && $deployment->updated_at && $deployment->status !== 'in_progress') {
+            $diff = $deployment->created_at->diff($deployment->updated_at);
+            if ($diff->i > 0) {
+                $duration = $diff->i.'m '.$diff->s.'s';
+            } else {
+                $duration = $diff->s.'s';
+            }
+        }
+
+        $data = [
+            'id' => $deployment->id,
+            'uuid' => $deployment->deployment_uuid,
+            'application_id' => $deployment->application_id,
+            'status' => $deployment->status,
+            'commit' => $deployment->commit,
+            'commit_message' => $deployment->commit_message,
+            'created_at' => $deployment->created_at?->toISOString(),
+            'updated_at' => $deployment->updated_at?->toISOString(),
+            'service_name' => $deployment->application_name,
+            'trigger' => $deployment->is_webhook ? 'push' : ($deployment->rollback ? 'rollback' : 'manual'),
+            'duration' => $duration,
+            'build_logs' => $buildLogs,
+            'deploy_logs' => $deployLogs,
+        ];
+
+        return \Inertia\Inertia::render('Deployments/Show', [
+            'deployment' => $data,
+        ]);
     })->name('deployments.show');
 
     Route::get('/deployments/{uuid}/logs', function (string $uuid) {
-        return \Inertia\Inertia::render('Deployments/BuildLogs');
+        $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+
+        return \Inertia\Inertia::render('Deployments/BuildLogs', [
+            'deployment' => $deployment ? [
+                'uuid' => $deployment->deployment_uuid,
+                'status' => $deployment->status,
+                'application_name' => $deployment->application_name,
+            ] : null,
+        ]);
     })->name('deployments.logs');
 
     // JSON endpoint for deployment logs (for XHR requests)
@@ -1464,7 +1541,30 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Activity additional routes
     Route::get('/activity/project/{projectUuid}', function (string $projectUuid) {
-        return \Inertia\Inertia::render('Activity/ProjectActivity', ['projectUuid' => $projectUuid]);
+        $project = \App\Models\Project::ownedByCurrentTeam()
+            ->where('uuid', $projectUuid)
+            ->first();
+
+        if (! $project) {
+            return \Inertia\Inertia::render('Activity/ProjectActivity', [
+                'project' => null,
+            ]);
+        }
+
+        $environments = $project->environments()->select('id', 'name', 'uuid')->get();
+
+        $activities = \App\Http\Controllers\Inertia\ActivityHelper::getTeamActivities(50);
+
+        return \Inertia\Inertia::render('Activity/ProjectActivity', [
+            'project' => [
+                'id' => $project->id,
+                'uuid' => $project->uuid,
+                'name' => $project->name,
+                'description' => $project->description,
+            ],
+            'environments' => $environments,
+            'activities' => $activities,
+        ]);
     })->name('activity.project');
 
     Route::get('/activity/{uuid}', function (string $uuid) {
