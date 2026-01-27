@@ -390,17 +390,152 @@ trait HandlesNixpacksBuildpack
             }
         }
 
+        // Try to infer required Node.js version from framework dependencies
+        if ($parsed) {
+            $inferredVersion = $this->inferNodeVersionFromDependencies($parsed);
+            if ($inferredVersion) {
+                return $inferredVersion;
+            }
+        }
+
         return null;
     }
 
     /**
-     * Parse Node.js version string and extract major version number.
-     *
-     * Handles formats like: "20", "20.x", ">=18", "^20.0.0", "20.11.0", "lts/*", etc.
-     *
-     * @param  string  $versionString  The version string to parse
-     * @return string|null The major version number or null if unparseable
+     * Known framework major versions and their minimum required Node.js versions.
+     * Format: 'package-name' => [[majorVersion, minNodeMajor], ...]
+     * Sorted descending by majorVersion for each package.
      */
+    private const FRAMEWORK_NODE_REQUIREMENTS = [
+        // Next.js: https://nextjs.org/docs/app/guides/upgrading
+        'next' => [
+            [16, 20],   // >= 20.9.0
+            [15, 18],   // >= 18.18.0
+            [14, 18],   // >= 18.17.0
+            [13, 16],   // >= 16.14.0
+        ],
+        // Nuxt: https://nuxt.com/docs/getting-started/installation
+        'nuxt' => [
+            [4, 20],    // >= 20.19.0
+            [3, 20],    // >= 20.x (Nuxt 3.14+ raised to Node 20)
+        ],
+        // Astro: https://astro.build/blog
+        'astro' => [
+            [5, 18],    // >= 18.20.8 || ^20.3.0 || >=22.0.0
+            [4, 18],    // >= 18.17.1 || ^20.3.0 || >=21.0.0
+        ],
+        // Svelte 5: https://svelte.dev/docs
+        'svelte' => [
+            [5, 20],    // ^20.19 || ^22.12 || >=24
+        ],
+        // SvelteKit: https://svelte.dev/docs/kit
+        '@sveltejs/kit' => [
+            [2, 18],    // >= 18.13.0
+        ],
+        // Gatsby: https://www.gatsbyjs.com/docs/reference/release-notes
+        'gatsby' => [
+            [5, 18],    // >= 18.0.0
+        ],
+        // Angular: https://angular.dev/reference/versions
+        '@angular/core' => [
+            [19, 20],   // >= 20.19.0
+            [18, 18],   // >= 18.19.0
+            [17, 18],   // >= 18.13.0 || ^20.9.0
+        ],
+        // Vite: https://vite.dev/blog
+        'vite' => [
+            [7, 20],    // >= 20.19.0 || >= 22.12.0
+            [6, 18],    // ^18.0.0 || ^20.0.0 || >=22.0.0
+            [5, 18],    // ^18.0.0 || >=20.0.0
+        ],
+        // Remix: https://remix.run/docs
+        'remix' => [
+            [2, 18],    // >= 18.0.0
+        ],
+        '@remix-run/react' => [
+            [2, 18],    // >= 18.0.0
+        ],
+    ];
+
+    /**
+     * Infer minimum Node.js version from framework dependencies in package.json.
+     *
+     * When .nvmrc and engines.node are absent, checks known frameworks
+     * (Next.js, Nuxt, Astro, etc.) and their version-specific Node.js requirements.
+     *
+     * @param  array  $packageJson  Parsed package.json content
+     * @return string|null The minimum required Node.js major version or null
+     */
+    private function inferNodeVersionFromDependencies(array $packageJson): ?string
+    {
+        $allDeps = array_merge(
+            $packageJson['dependencies'] ?? [],
+            $packageJson['devDependencies'] ?? []
+        );
+
+        $highestRequiredNode = null;
+        $detectedFramework = null;
+        $detectedFrameworkVersion = null;
+
+        foreach (self::FRAMEWORK_NODE_REQUIREMENTS as $package => $versionMap) {
+            if (! isset($allDeps[$package])) {
+                continue;
+            }
+
+            $depVersion = $allDeps[$package];
+            $majorVersion = $this->extractMajorVersion($depVersion);
+
+            if ($majorVersion === null) {
+                continue;
+            }
+
+            foreach ($versionMap as [$frameworkMajor, $minNode]) {
+                if ($majorVersion >= $frameworkMajor) {
+                    if ($highestRequiredNode === null || $minNode > $highestRequiredNode) {
+                        $highestRequiredNode = $minNode;
+                        $detectedFramework = $package;
+                        $detectedFrameworkVersion = $majorVersion;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if ($highestRequiredNode !== null) {
+            $this->application_deployment_queue->addLogEntry(
+                "Inferred Node.js >= {$highestRequiredNode} from {$detectedFramework}@{$detectedFrameworkVersion} dependency."
+            );
+
+            return (string) $highestRequiredNode;
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract major version number from a semver dependency string.
+     *
+     * Handles: "16.0.7", "^16.0.0", "~16.0.0", ">=16", "16.x", "latest", "*"
+     *
+     * @return int|null The major version number or null if unparseable
+     */
+    private function extractMajorVersion(string $versionString): ?int
+    {
+        $versionString = trim($versionString);
+
+        // Skip non-numeric specifiers
+        if (in_array($versionString, ['latest', '*', ''], true)) {
+            return null;
+        }
+
+        // Extract first numeric sequence (handles ^16.0.0, ~16.0.0, >=16, 16.x, etc.)
+        if (preg_match('/(\d+)/', $versionString, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return null;
+    }
+
     /**
      * Known Nixpacks Node.js versions (from Nix packages, may lag behind official releases).
      * Updated: January 2026
