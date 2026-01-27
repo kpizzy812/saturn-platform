@@ -442,7 +442,50 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Observability routes
     Route::get('/observability', function () {
-        return \Inertia\Inertia::render('Observability/Index');
+        $team = auth()->user()->currentTeam();
+        $servers = $team->servers;
+        $applications = \App\Models\Application::ownedByCurrentTeam()->get();
+        $services = \App\Models\Service::ownedByCurrentTeam()->get();
+
+        $metricsOverview = [
+            ['label' => 'Servers', 'value' => $servers->count(), 'status' => 'healthy'],
+            ['label' => 'Applications', 'value' => $applications->count(), 'status' => 'healthy'],
+            ['label' => 'Services', 'value' => $services->count(), 'status' => 'healthy'],
+            ['label' => 'Active Deployments', 'value' => \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))->where('status', 'in_progress')->count(), 'status' => 'info'],
+        ];
+
+        $serviceHealth = $servers->map(fn ($server) => [
+            'id' => $server->id,
+            'name' => $server->name,
+            'status' => $server->settings?->is_reachable ? 'healthy' : 'degraded',
+            'uptime' => '—',
+            'type' => 'server',
+        ])->concat($applications->map(fn ($app) => [
+            'id' => $app->id,
+            'name' => $app->name,
+            'status' => $app->status === 'running' ? 'healthy' : ($app->status === 'stopped' ? 'down' : 'degraded'),
+            'uptime' => '—',
+            'type' => 'application',
+        ]))->values();
+
+        $recentAlerts = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))
+            ->where('status', 'failed')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($d) => [
+                'id' => $d->id,
+                'type' => 'deployment_failed',
+                'message' => 'Deployment failed for '.($d->application_name ?? 'app'),
+                'severity' => 'error',
+                'timestamp' => $d->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('Observability/Index', [
+            'metricsOverview' => $metricsOverview,
+            'services' => $serviceHealth,
+            'recentAlerts' => $recentAlerts,
+        ]);
     })->name('observability.index');
 
     Route::get('/observability/metrics', function () {
@@ -521,7 +564,42 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Volumes routes
     Route::get('/volumes', function () {
-        return \Inertia\Inertia::render('Volumes/Index');
+        $team = auth()->user()->currentTeam();
+
+        // Collect resource IDs for team's applications, services, and databases
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+        $serviceAppIds = \App\Models\ServiceApplication::whereIn('service_id',
+            \App\Models\Service::ownedByCurrentTeam()->pluck('id')
+        )->pluck('id');
+        $serviceDbIds = \App\Models\ServiceDatabase::whereIn('service_id',
+            \App\Models\Service::ownedByCurrentTeam()->pluck('id')
+        )->pluck('id');
+
+        $volumes = \App\Models\LocalPersistentVolume::where(function ($q) use ($applicationIds, $serviceAppIds, $serviceDbIds) {
+            $q->where(function ($q) use ($applicationIds) {
+                $q->where('resource_type', 'App\\Models\\Application')
+                    ->whereIn('resource_id', $applicationIds);
+            })->orWhere(function ($q) use ($serviceAppIds) {
+                $q->where('resource_type', 'App\\Models\\ServiceApplication')
+                    ->whereIn('resource_id', $serviceAppIds);
+            })->orWhere(function ($q) use ($serviceDbIds) {
+                $q->where('resource_type', 'App\\Models\\ServiceDatabase')
+                    ->whereIn('resource_id', $serviceDbIds);
+            });
+        })->get()->map(fn ($vol) => [
+            'id' => $vol->id,
+            'uuid' => $vol->id,
+            'name' => $vol->name ?? $vol->mount_path,
+            'mountPath' => $vol->mount_path,
+            'hostPath' => $vol->host_path,
+            'resourceType' => class_basename($vol->resource_type),
+            'resourceId' => $vol->resource_id,
+            'created_at' => $vol->created_at?->toISOString(),
+        ]);
+
+        return \Inertia\Inertia::render('Volumes/Index', [
+            'volumes' => $volumes,
+        ]);
     })->name('volumes.index');
 
     Route::get('/volumes/create', function () {
@@ -534,7 +612,25 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Storage routes
     Route::get('/storage/backups', function () {
-        return \Inertia\Inertia::render('Storage/Backups');
+        $backups = \App\Models\ScheduledDatabaseBackup::ownedByCurrentTeam()
+            ->with(['database', 's3', 'latest_log'])
+            ->get()
+            ->map(fn ($backup) => [
+                'id' => $backup->id,
+                'uuid' => $backup->uuid,
+                'databaseName' => $backup->database?->name ?? 'Unknown',
+                'databaseType' => class_basename($backup->database_type ?? ''),
+                'frequency' => $backup->frequency,
+                'enabled' => $backup->enabled ?? true,
+                's3StorageName' => $backup->s3?->name,
+                'lastStatus' => $backup->latest_log?->status ?? 'unknown',
+                'lastRun' => $backup->latest_log?->created_at?->toISOString(),
+                'created_at' => $backup->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('Storage/Backups', [
+            'backups' => $backups,
+        ]);
     })->name('storage.backups');
 
     Route::get('/storage/snapshots', function () {
@@ -543,15 +639,126 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Domains routes
     Route::get('/domains', function () {
-        return \Inertia\Inertia::render('Domains/Index');
+        $team = auth()->user()->currentTeam();
+        $domains = collect();
+        $id = 1;
+
+        // Collect FQDNs from applications
+        $applications = \App\Models\Application::ownedByCurrentTeam()->get();
+        foreach ($applications as $app) {
+            if (! $app->fqdn) {
+                continue;
+            }
+            foreach (explode(',', $app->fqdn) as $index => $fqdn) {
+                $fqdn = trim($fqdn);
+                if (empty($fqdn)) {
+                    continue;
+                }
+                $domains->push([
+                    'id' => $id++,
+                    'uuid' => $app->uuid.'-'.$index,
+                    'domain' => preg_replace('#^https?://#', '', $fqdn),
+                    'fullUrl' => $fqdn,
+                    'sslStatus' => str_starts_with($fqdn, 'https://') ? 'active' : 'none',
+                    'resourceName' => $app->name,
+                    'resourceType' => 'application',
+                    'resourceUuid' => $app->uuid,
+                    'isPrimary' => $index === 0,
+                    'created_at' => $app->created_at?->toISOString(),
+                ]);
+            }
+        }
+
+        // Collect FQDNs from service applications
+        $services = \App\Models\Service::ownedByCurrentTeam()->with('applications')->get();
+        foreach ($services as $service) {
+            foreach ($service->applications as $svcApp) {
+                if (! $svcApp->fqdn) {
+                    continue;
+                }
+                foreach (explode(',', $svcApp->fqdn) as $index => $fqdn) {
+                    $fqdn = trim($fqdn);
+                    if (empty($fqdn)) {
+                        continue;
+                    }
+                    $domains->push([
+                        'id' => $id++,
+                        'uuid' => $service->uuid.'-svc-'.$index,
+                        'domain' => preg_replace('#^https?://#', '', $fqdn),
+                        'fullUrl' => $fqdn,
+                        'sslStatus' => str_starts_with($fqdn, 'https://') ? 'active' : 'none',
+                        'resourceName' => $service->name.' ('.$svcApp->name.')',
+                        'resourceType' => 'service',
+                        'resourceUuid' => $service->uuid,
+                        'isPrimary' => $index === 0,
+                        'created_at' => $service->created_at?->toISOString(),
+                    ]);
+                }
+            }
+        }
+
+        return \Inertia\Inertia::render('Domains/Index', [
+            'domains' => $domains->values(),
+        ]);
     })->name('domains.index');
 
     Route::get('/domains/add', function () {
-        return \Inertia\Inertia::render('Domains/Add');
+        $applications = \App\Models\Application::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name')->get();
+        $services = \App\Models\Service::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name')->get();
+
+        return \Inertia\Inertia::render('Domains/Add', [
+            'applications' => $applications,
+            'databases' => [],
+            'services' => $services,
+        ]);
     })->name('domains.add');
 
     Route::get('/domains/{uuid}', function (string $uuid) {
-        return \Inertia\Inertia::render('Domains/Show');
+        // Find an application whose FQDN contains this domain info
+        $app = \App\Models\Application::ownedByCurrentTeam()
+            ->where('uuid', 'like', explode('-', $uuid)[0].'%')
+            ->first();
+
+        $domain = null;
+        $sslCertificate = null;
+
+        if ($app && $app->fqdn) {
+            $fqdns = explode(',', $app->fqdn);
+            $fqdn = trim($fqdns[0] ?? '');
+            $domainName = preg_replace('#^https?://#', '', $fqdn);
+            $domain = [
+                'id' => $app->id,
+                'uuid' => $uuid,
+                'domain' => $domainName,
+                'fullUrl' => $fqdn,
+                'sslStatus' => str_starts_with($fqdn, 'https://') ? 'active' : 'none',
+                'resourceName' => $app->name,
+                'resourceType' => 'application',
+                'isPrimary' => true,
+                'created_at' => $app->created_at?->toISOString(),
+            ];
+
+            // Try to find matching SSL certificate
+            $serverIds = auth()->user()->currentTeam()->servers()->pluck('id');
+            $sslCertificate = \App\Models\SslCertificate::whereIn('server_id', $serverIds)
+                ->where('common_name', $domainName)
+                ->first();
+            if ($sslCertificate) {
+                $sslCertificate = [
+                    'id' => $sslCertificate->id,
+                    'commonName' => $sslCertificate->common_name,
+                    'validUntil' => $sslCertificate->valid_until?->toISOString(),
+                    'isExpired' => $sslCertificate->valid_until?->isPast() ?? false,
+                ];
+            }
+        }
+
+        return \Inertia\Inertia::render('Domains/Show', [
+            'domain' => $domain,
+            'sslCertificate' => $sslCertificate,
+        ]);
     })->name('domains.show');
 
     Route::get('/domains/{uuid}/redirects', function (string $uuid) {
@@ -560,7 +767,27 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // SSL routes
     Route::get('/ssl', function () {
-        return \Inertia\Inertia::render('SSL/Index');
+        $team = auth()->user()->currentTeam();
+        $serverIds = $team->servers()->pluck('id');
+
+        $certificates = \App\Models\SslCertificate::whereIn('server_id', $serverIds)
+            ->with('server:id,name')
+            ->get()
+            ->map(fn ($cert) => [
+                'id' => $cert->id,
+                'commonName' => $cert->common_name,
+                'subjectAlternativeNames' => $cert->subject_alternative_names ?? [],
+                'validUntil' => $cert->valid_until?->toISOString(),
+                'isExpired' => $cert->valid_until?->isPast() ?? false,
+                'isExpiringSoon' => $cert->valid_until?->diffInDays(now()) <= 30,
+                'serverName' => $cert->server?->name,
+                'isCaCertificate' => $cert->is_ca_certificate ?? false,
+                'created_at' => $cert->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('SSL/Index', [
+            'certificates' => $certificates,
+        ]);
     })->name('ssl.index');
 
     Route::get('/ssl/upload', function () {
@@ -594,24 +821,133 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Cron Jobs routes
     Route::get('/cron-jobs', function () {
-        return \Inertia\Inertia::render('CronJobs/Index');
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+        $serviceIds = \App\Models\Service::ownedByCurrentTeam()->pluck('id');
+
+        $cronJobs = \App\Models\ScheduledTask::where(function ($q) use ($applicationIds, $serviceIds) {
+            $q->whereIn('application_id', $applicationIds)
+                ->orWhereIn('service_id', $serviceIds);
+        })->with(['latest_log', 'application:id,name,uuid', 'service:id,name,uuid'])
+            ->get()
+            ->map(fn ($task) => [
+                'id' => $task->id,
+                'uuid' => $task->uuid,
+                'name' => $task->name,
+                'command' => $task->command,
+                'schedule' => $task->frequency,
+                'status' => $task->enabled ? ($task->latest_log?->status ?? 'scheduled') : 'disabled',
+                'lastRun' => $task->latest_log?->created_at?->toISOString(),
+                'nextRun' => null,
+                'resource' => $task->application?->name ?? $task->service?->name ?? 'Unknown',
+            ]);
+
+        return \Inertia\Inertia::render('CronJobs/Index', [
+            'cronJobs' => $cronJobs,
+        ]);
     })->name('cron-jobs.index');
 
     Route::get('/cron-jobs/create', function () {
-        return \Inertia\Inertia::render('CronJobs/Create');
+        $applications = \App\Models\Application::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name')->get();
+        $services = \App\Models\Service::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name')->get();
+
+        return \Inertia\Inertia::render('CronJobs/Create', [
+            'applications' => $applications,
+            'services' => $services,
+        ]);
     })->name('cron-jobs.create');
 
     Route::get('/cron-jobs/{uuid}', function (string $uuid) {
-        return \Inertia\Inertia::render('CronJobs/Show');
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+        $serviceIds = \App\Models\Service::ownedByCurrentTeam()->pluck('id');
+
+        $task = \App\Models\ScheduledTask::where('uuid', $uuid)
+            ->where(function ($q) use ($applicationIds, $serviceIds) {
+                $q->whereIn('application_id', $applicationIds)
+                    ->orWhereIn('service_id', $serviceIds);
+            })->with(['executions' => fn ($q) => $q->limit(20), 'application:id,name,uuid', 'service:id,name,uuid'])
+            ->firstOrFail();
+
+        return \Inertia\Inertia::render('CronJobs/Show', [
+            'cronJob' => [
+                'id' => $task->id,
+                'uuid' => $task->uuid,
+                'name' => $task->name,
+                'command' => $task->command,
+                'schedule' => $task->frequency,
+                'status' => $task->enabled ? ($task->latest_log?->status ?? 'scheduled') : 'disabled',
+                'lastRun' => $task->latest_log?->created_at?->toISOString(),
+                'resource' => $task->application?->name ?? $task->service?->name ?? 'Unknown',
+                'enabled' => $task->enabled,
+                'timeout' => $task->timeout,
+            ],
+            'executions' => $task->executions->map(fn ($e) => [
+                'id' => $e->id,
+                'status' => $e->status,
+                'message' => $e->message,
+                'created_at' => $e->created_at?->toISOString(),
+            ]),
+        ]);
     })->name('cron-jobs.show');
 
     // Scheduled Tasks routes
     Route::get('/scheduled-tasks', function () {
-        return \Inertia\Inertia::render('ScheduledTasks/Index');
+        $team = auth()->user()->currentTeam();
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+        $serviceIds = \App\Models\Service::ownedByCurrentTeam()->pluck('id');
+
+        $tasks = \App\Models\ScheduledTask::where(function ($q) use ($applicationIds, $serviceIds) {
+            $q->whereIn('application_id', $applicationIds)
+                ->orWhereIn('service_id', $serviceIds);
+        })->with(['latest_log', 'application:id,name,uuid', 'service:id,name,uuid'])
+            ->get()
+            ->map(fn ($task) => [
+                'id' => $task->id,
+                'uuid' => $task->uuid,
+                'name' => $task->name,
+                'command' => $task->command,
+                'frequency' => $task->frequency,
+                'enabled' => $task->enabled,
+                'status' => $task->latest_log?->status ?? 'unknown',
+                'lastRun' => $task->latest_log?->created_at?->toISOString(),
+                'resource' => $task->application?->name ?? $task->service?->name ?? 'Unknown',
+                'resourceType' => $task->application_id ? 'application' : 'service',
+            ]);
+
+        return \Inertia\Inertia::render('ScheduledTasks/Index', [
+            'tasks' => $tasks,
+        ]);
     })->name('scheduled-tasks.index');
 
     Route::get('/scheduled-tasks/history', function () {
-        return \Inertia\Inertia::render('ScheduledTasks/History');
+        $applicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
+        $serviceIds = \App\Models\Service::ownedByCurrentTeam()->pluck('id');
+
+        $tasks = \App\Models\ScheduledTask::where(function ($q) use ($applicationIds, $serviceIds) {
+            $q->whereIn('application_id', $applicationIds)
+                ->orWhereIn('service_id', $serviceIds);
+        })->with(['executions' => fn ($q) => $q->limit(10), 'application:id,name,uuid', 'service:id,name,uuid'])
+            ->get()
+            ->map(fn ($task) => [
+                'id' => $task->id,
+                'uuid' => $task->uuid,
+                'name' => $task->name,
+                'command' => $task->command,
+                'frequency' => $task->frequency,
+                'enabled' => $task->enabled,
+                'resource' => $task->application?->name ?? $task->service?->name ?? 'Unknown',
+                'executions' => $task->executions->map(fn ($e) => [
+                    'id' => $e->id,
+                    'status' => $e->status,
+                    'message' => $e->message,
+                    'created_at' => $e->created_at?->toISOString(),
+                ]),
+            ]);
+
+        return \Inertia\Inertia::render('ScheduledTasks/History', [
+            'history' => $tasks,
+        ]);
     })->name('scheduled-tasks.history');
 
     // Deployments routes
@@ -1378,7 +1714,22 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Storage routes
     Route::get('/storage', function () {
-        return \Inertia\Inertia::render('Storage/Index');
+        $storages = \App\Models\S3Storage::ownedByCurrentTeam()->get()->map(fn ($s) => [
+            'id' => $s->id,
+            'uuid' => $s->uuid,
+            'name' => $s->name,
+            'description' => $s->description,
+            'endpoint' => $s->endpoint,
+            'bucket' => $s->bucket,
+            'region' => $s->region,
+            'is_usable' => $s->is_usable,
+            'created_at' => $s->created_at?->toISOString(),
+            'updated_at' => $s->updated_at?->toISOString(),
+        ]);
+
+        return \Inertia\Inertia::render('Storage/Index', [
+            'storages' => $storages,
+        ]);
     })->name('storage.index');
 
     Route::get('/storage/create', function () {
@@ -1467,11 +1818,56 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Destinations routes
     Route::get('/destinations', function () {
-        return \Inertia\Inertia::render('Destinations/Index');
+        $team = auth()->user()->currentTeam();
+        $servers = $team->servers()->with(['standaloneDockers', 'swarmDockers'])->get();
+
+        $destinations = collect();
+        foreach ($servers as $server) {
+            foreach ($server->standaloneDockers as $docker) {
+                $destinations->push([
+                    'id' => $docker->id,
+                    'uuid' => $docker->uuid,
+                    'name' => $docker->name,
+                    'network' => $docker->network,
+                    'serverName' => $server->name,
+                    'serverUuid' => $server->uuid,
+                    'type' => 'standalone',
+                    'created_at' => $docker->created_at?->toISOString(),
+                ]);
+            }
+            foreach ($server->swarmDockers as $swarm) {
+                $destinations->push([
+                    'id' => $swarm->id,
+                    'uuid' => $swarm->uuid,
+                    'name' => $swarm->name,
+                    'network' => $swarm->network,
+                    'serverName' => $server->name,
+                    'serverUuid' => $server->uuid,
+                    'type' => 'swarm',
+                    'created_at' => $swarm->created_at?->toISOString(),
+                ]);
+            }
+        }
+
+        return \Inertia\Inertia::render('Destinations/Index', [
+            'destinations' => $destinations->values(),
+        ]);
     })->name('destinations.index');
 
     Route::get('/destinations/create', function () {
-        return \Inertia\Inertia::render('Destinations/Create');
+        $servers = \App\Models\Server::ownedByCurrentTeam()
+            ->select('id', 'uuid', 'name', 'ip')
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'uuid' => $s->uuid,
+                'name' => $s->name,
+                'ip' => $s->ip,
+            ]);
+
+        return \Inertia\Inertia::render('Destinations/Create', [
+            'servers' => $servers,
+        ]);
     })->name('destinations.create');
 
     Route::post('/destinations', function (\Illuminate\Http\Request $request) {
@@ -1484,11 +1880,40 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Shared Variables routes
     Route::get('/shared-variables', function () {
-        return \Inertia\Inertia::render('SharedVariables/Index');
+        $team = auth()->user()->currentTeam();
+        $variables = \App\Models\SharedEnvironmentVariable::where('team_id', $team->id)
+            ->with(['project', 'environment'])
+            ->get()
+            ->map(fn ($var) => [
+                'id' => $var->id,
+                'uuid' => $var->uuid ?? $var->id,
+                'key' => $var->key,
+                'value' => $var->value,
+                'scope' => $var->environment_id ? 'environment' : ($var->project_id ? 'project' : 'team'),
+                'project_name' => $var->project?->name,
+                'environment_name' => $var->environment?->name,
+                'created_at' => $var->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('SharedVariables/Index', [
+            'variables' => $variables,
+            'team' => ['id' => $team->id, 'name' => $team->name],
+        ]);
     })->name('shared-variables.index');
 
     Route::get('/shared-variables/create', function () {
-        return \Inertia\Inertia::render('SharedVariables/Create');
+        $team = auth()->user()->currentTeam();
+        $projects = $team->projects()->with('environments')->get();
+
+        return \Inertia\Inertia::render('SharedVariables/Create', [
+            'teams' => [['id' => $team->id, 'name' => $team->name]],
+            'projects' => $projects->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'team_id' => $team->id]),
+            'environments' => $projects->flatMap(fn ($p) => $p->environments->map(fn ($e) => [
+                'id' => $e->id,
+                'name' => $e->name,
+                'project_id' => $p->id,
+            ])),
+        ]);
     })->name('shared-variables.create');
 
     Route::post('/shared-variables', function (\Illuminate\Http\Request $request) {
@@ -1514,7 +1939,20 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Tags routes
     Route::get('/tags', function () {
-        return \Inertia\Inertia::render('Tags/Index');
+        $tags = \App\Models\Tag::ownedByCurrentTeam()
+            ->withCount(['applications', 'services'])
+            ->get()
+            ->map(fn ($tag) => [
+                'id' => $tag->id,
+                'name' => $tag->name,
+                'applicationsCount' => $tag->applications_count,
+                'servicesCount' => $tag->services_count,
+                'created_at' => $tag->created_at?->toISOString(),
+            ]);
+
+        return \Inertia\Inertia::render('Tags/Index', [
+            'tags' => $tags,
+        ]);
     })->name('tags.index');
 
     Route::get('/tags/{tagName}', function (string $tagName) {

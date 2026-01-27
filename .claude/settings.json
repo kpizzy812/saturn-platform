@@ -1,0 +1,123 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.php)|Edit(*.php)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./vendor/bin/pint \"$CLAUDE_FILE_PATHS\" --quiet 2>/dev/null || true",
+            "timeout": 30
+          }
+        ],
+        "description": "Auto-format PHP files with Laravel Pint"
+      },
+      {
+        "matcher": "Write(*.ts)|Write(*.tsx)|Edit(*.ts)|Edit(*.tsx)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$CLAUDE_FILE_PATHS\" 2>/dev/null || true",
+            "timeout": 15
+          }
+        ],
+        "description": "Auto-format TypeScript files with Prettier"
+      },
+      {
+        "matcher": "Write(*.js)|Write(*.jsx)|Edit(*.js)|Edit(*.jsx)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$CLAUDE_FILE_PATHS\" 2>/dev/null || true",
+            "timeout": 15
+          }
+        ],
+        "description": "Auto-format JavaScript files with Prettier"
+      },
+      {
+        "matcher": "Write(app/Actions/*.php)|Write(app/Services/*.php)|Write(app/Jobs/*.php)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/scripts/check-test-needed.sh",
+            "timeout": 5
+          }
+        ],
+        "description": "Remind to create tests for new PHP functionality"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf /|drop database|truncate table|:(){ :|:& };:' && echo '{\"decision\":\"block\",\"reason\":\"Dangerous command blocked for safety\"}' && exit 2 || exit 0",
+            "timeout": 5
+          }
+        ],
+        "description": "Block dangerous destructive commands"
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git branch --show-current 2>/dev/null); [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ] && echo '{\"decision\":\"block\",\"reason\":\"Cannot edit files on main/master branch. Switch to dev branch first.\"}' && exit 2 || exit 0",
+            "timeout": 5
+          }
+        ],
+        "description": "Protect main/master branch from direct edits"
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Grep(*)",
+      "Glob(*)",
+      "Bash(npm test*)",
+      "Bash(npm run *)",
+      "Bash(npx prettier *)",
+      "Bash(npx eslint *)",
+      "Bash(./vendor/bin/pint*)",
+      "Bash(./vendor/bin/phpstan*)",
+      "Bash(./vendor/bin/pest*)",
+      "Bash(./vendor/bin/rector*)",
+      "Bash(php artisan *)",
+      "Bash(docker exec saturn *)",
+      "Bash(docker compose *)",
+      "Bash(make *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git pull*)",
+      "Bash(gh *)",
+      "Bash(composer *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(storage/logs/*)",
+      "Write(vendor/*)",
+      "Write(node_modules/*)",
+      "Write(*.lock)",
+      "Edit(vendor/*)",
+      "Edit(node_modules/*)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)"
+    ]
+  }
+}
