@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Server;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
+use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
 class ApplicationsController extends Controller
