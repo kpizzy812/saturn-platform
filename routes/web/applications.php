@@ -915,7 +915,7 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
                 ],
                 'pids' => $stats['PIDs'] ?? '0',
                 'container_id' => $stats['ID'] ?? '',
-                'container_name' => $stats['Name'] ?? $containerName,
+                'container_name' => $stats['Name'] ?? $containerUuid,
             ],
             'timestamp' => now()->toIso8601String(),
         ]);
