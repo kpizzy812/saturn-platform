@@ -8,6 +8,8 @@
  */
 
 use App\Actions\Database\RestartDatabase;
+use App\Actions\Database\StartDatabaseProxy;
+use App\Actions\Database\StopDatabaseProxy;
 use App\Models\ScheduledDatabaseBackup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -216,7 +218,19 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
         'custom_docker_run_options' => 'sometimes|nullable|string',
     ]);
 
+    // Determine if we need to start/stop the database proxy
+    $wasPublic = $database->is_public;
     $database->update($validated);
+
+    // Handle proxy lifecycle when is_public or public_port changes
+    if (isset($validated['is_public']) || isset($validated['public_port'])) {
+        $database->refresh();
+        if ($database->is_public && $database->public_port) {
+            StartDatabaseProxy::run($database);
+        } elseif (! $database->is_public && $wasPublic) {
+            StopDatabaseProxy::run($database);
+        }
+    }
 
     return redirect()->back()->with('success', 'Database updated successfully');
 })->name('databases.update');

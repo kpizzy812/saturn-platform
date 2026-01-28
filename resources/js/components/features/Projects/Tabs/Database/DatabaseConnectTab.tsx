@@ -1,4 +1,5 @@
-import { Copy, Shield, Globe, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, Shield, Globe, RefreshCw, ExternalLink } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useDatabase } from '@/hooks/useDatabases';
 import type { SelectedService } from '../../types';
@@ -134,10 +135,19 @@ export function DatabaseConnectTab({ service }: DatabaseConnectTabProps) {
                         </button>
                     </div>
                 </div>
-                {!externalUrl && (
-                    <p className="mt-2 text-xs text-foreground-muted">
-                        Enable public access in database Settings to get an external connection URL.
-                    </p>
+                {!externalUrl && database?.uuid && (
+                    <div className="mt-2 flex items-center gap-2">
+                        <p className="text-xs text-foreground-muted">
+                            Enable public access to get an external connection URL.
+                        </p>
+                        <a
+                            href={`/databases/${database.uuid}`}
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                            Open Database Settings
+                            <ExternalLink className="h-3 w-3" />
+                        </a>
+                    </div>
                 )}
             </div>
 

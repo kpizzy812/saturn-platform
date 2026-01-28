@@ -415,7 +415,7 @@ class DatabaseMetricsController extends Controller
             $dbName = $database->postgres_db ?? 'postgres';
 
             // Get installed extensions
-            $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT e.extname, e.extversion, 'installed' as status, c.description FROM pg_extension e LEFT JOIN pg_available_extensions c ON e.extname = c.name ORDER BY e.extname;\" 2>/dev/null || echo ''";
+            $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT e.extname, e.extversion, 'installed' as status, c.comment FROM pg_extension e LEFT JOIN pg_available_extensions c ON e.extname = c.name ORDER BY e.extname;\" 2>/dev/null || echo ''";
             $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
             $extensions = [];
@@ -608,6 +608,22 @@ class DatabaseMetricsController extends Controller
             $lines = min(max($lines, 10), 1000); // Clamp between 10 and 1000
 
             $containerName = $database->uuid;
+
+            // Check if container exists before fetching logs
+            $checkCommand = "docker inspect --format='{{.State.Status}}' {$containerName} 2>&1";
+            $containerStatus = trim(instant_remote_process([$checkCommand], $server, false) ?? '');
+
+            if (str_contains($containerStatus, 'No such') || str_contains($containerStatus, 'Error')) {
+                return response()->json([
+                    'available' => true,
+                    'logs' => [[
+                        'timestamp' => date('Y-m-d H:i:s'),
+                        'level' => 'WARNING',
+                        'message' => 'Container is not running. The database may need to be started first.',
+                    ]],
+                ]);
+            }
+
             $command = "docker logs --tail {$lines} {$containerName} 2>&1 | tail -{$lines}";
             $result = trim(instant_remote_process([$command], $server, false) ?? '');
 

@@ -27,6 +27,8 @@ function create_standalone_postgresql($environmentId, $destinationUuid, ?array $
     $database->environment_id = $environmentId;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -51,6 +53,8 @@ function create_standalone_redis($environment_id, $destination_uuid, ?array $oth
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -85,6 +89,8 @@ function create_standalone_mongodb($environment_id, $destination_uuid, ?array $o
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -104,6 +110,8 @@ function create_standalone_mysql($environment_id, $destination_uuid, ?array $oth
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -123,6 +131,8 @@ function create_standalone_mariadb($environment_id, $destination_uuid, ?array $o
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -141,6 +151,8 @@ function create_standalone_keydb($environment_id, $destination_uuid, ?array $oth
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -159,6 +171,8 @@ function create_standalone_dragonfly($environment_id, $destination_uuid, ?array 
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -177,6 +191,8 @@ function create_standalone_clickhouse($environment_id, $destination_uuid, ?array
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
+    $database->is_public = true;
+    $database->public_port = getRandomPublicPort($destination);
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -621,6 +637,21 @@ function getAllDatabases(): Collection
         ->concat($clickhouseDatabases)
         ->sortByDesc('updated_at')
         ->values();
+}
+
+function getRandomPublicPort(StandaloneDocker $destination): int
+{
+    $server = $destination->server;
+    $maxAttempts = 50;
+    for ($i = 0; $i < $maxAttempts; $i++) {
+        $port = random_int(10000, 65535);
+        if (! isPublicPortAlreadyUsed($server, $port)) {
+            return $port;
+        }
+    }
+
+    // Fallback: return a random port even if collision check fails
+    return random_int(10000, 65535);
 }
 
 function isPublicPortAlreadyUsed(Server $server, int $port, ?string $id = null): bool

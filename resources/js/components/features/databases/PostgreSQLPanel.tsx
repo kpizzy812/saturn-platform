@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { router } from '@inertiajs/react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Users, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2 } from 'lucide-react';
+import { Users, Play, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2, Globe, Lock } from 'lucide-react';
 import {
     useDatabaseMetrics,
     useDatabaseExtensions,
@@ -32,6 +33,10 @@ export function PostgreSQLPanel({ database }: Props) {
 function OverviewTab({ database }: { database: StandaloneDatabase }) {
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+    const [isPublic, setIsPublic] = useState(database.is_public ?? false);
+    const [publicPort, setPublicPort] = useState(String(database.public_port || ''));
+    const [isSavingPublic, setIsSavingPublic] = useState(false);
+    const { addToast } = useToast();
 
     // Fetch real-time metrics from backend
     const { metrics, isLoading } = useDatabaseMetrics({
@@ -50,6 +55,53 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
         username: database.postgres_user || database.connection?.username || '',
         password: database.postgres_password || database.connection?.password || '',
         connectionString: database.internal_db_url || '',
+    };
+
+    // External connection details
+    const externalHost = database.connection?.external_host || '';
+    const externalConnectionString = database.external_db_url || '';
+
+    const handleTogglePublic = () => {
+        const newIsPublic = !isPublic;
+        setIsSavingPublic(true);
+
+        const data = { is_public: newIsPublic, ...(newIsPublic && publicPort ? { public_port: parseInt(publicPort, 10) } : {}) };
+
+        router.patch(`/databases/${database.uuid}`, data as Record<string, string | number | boolean>, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsPublic(newIsPublic);
+                setIsSavingPublic(false);
+                addToast('success', newIsPublic ? 'Public access enabled' : 'Public access disabled');
+            },
+            onError: () => {
+                setIsSavingPublic(false);
+                addToast('error', 'Failed to update public access');
+            },
+        });
+    };
+
+    const handleSavePublicPort = () => {
+        if (!publicPort || isNaN(parseInt(publicPort, 10))) {
+            addToast('error', 'Please enter a valid port number');
+            return;
+        }
+        setIsSavingPublic(true);
+
+        router.patch(`/databases/${database.uuid}`, {
+            is_public: true,
+            public_port: parseInt(publicPort, 10),
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsSavingPublic(false);
+                addToast('success', 'Public port updated');
+            },
+            onError: () => {
+                setIsSavingPublic(false);
+                addToast('error', 'Failed to update public port');
+            },
+        });
     };
 
     const stats = [
@@ -99,6 +151,115 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
                     </div>
                     {copiedField === 'connectionString' && (
                         <p className="mt-2 text-sm text-success">Copied to clipboard!</p>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Public Network Access */}
+            <Card>
+                <CardContent className="p-6">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            {isPublic ? (
+                                <Globe className="h-5 w-5 text-success" />
+                            ) : (
+                                <Lock className="h-5 w-5 text-foreground-muted" />
+                            )}
+                            <h3 className="text-lg font-medium text-foreground">Public Network Access</h3>
+                            <Badge variant={isPublic ? 'default' : 'secondary'}>
+                                {isPublic ? 'Enabled' : 'Disabled'}
+                            </Badge>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant={isPublic ? 'secondary' : 'default'}
+                            onClick={handleTogglePublic}
+                            disabled={isSavingPublic}
+                        >
+                            {isSavingPublic ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : isPublic ? (
+                                <Lock className="mr-2 h-4 w-4" />
+                            ) : (
+                                <Globe className="mr-2 h-4 w-4" />
+                            )}
+                            {isPublic ? 'Disable' : 'Enable'}
+                        </Button>
+                    </div>
+
+                    {isPublic && (
+                        <div className="space-y-4">
+                            <div className="flex items-end gap-3">
+                                <div className="flex-1">
+                                    <label className="mb-1 block text-sm font-medium text-foreground-muted">
+                                        Public Port
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={publicPort}
+                                        onChange={(e) => setPublicPort(e.target.value)}
+                                        placeholder="e.g. 55432"
+                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                                    />
+                                </div>
+                                <Button size="sm" variant="secondary" onClick={handleSavePublicPort} disabled={isSavingPublic}>
+                                    {isSavingPublic ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Port'}
+                                </Button>
+                            </div>
+
+                            {externalConnectionString && (
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-foreground-muted">
+                                        External Connection String
+                                    </label>
+                                    <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                                        <code className="flex-1 break-all font-mono text-sm text-foreground">
+                                            {externalConnectionString}
+                                        </code>
+                                        <button
+                                            onClick={() => copyToClipboard(externalConnectionString, 'externalConnectionString')}
+                                            className="shrink-0 rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    {copiedField === 'externalConnectionString' && (
+                                        <p className="mt-2 text-sm text-success">Copied to clipboard!</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {externalHost && database.public_port && (
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <ConnectionField
+                                        label="External Host"
+                                        value={externalHost}
+                                        onCopy={() => copyToClipboard(externalHost, 'externalHost')}
+                                        copied={copiedField === 'externalHost'}
+                                    />
+                                    <ConnectionField
+                                        label="External Port"
+                                        value={String(database.public_port)}
+                                        onCopy={() => copyToClipboard(String(database.public_port), 'externalPort')}
+                                        copied={copiedField === 'externalPort'}
+                                    />
+                                </div>
+                            )}
+
+                            {!externalConnectionString && !database.public_port && (
+                                <p className="text-sm text-foreground-muted">
+                                    Set a public port and save to generate the external connection string.
+                                    The database will be accessible at <code className="text-foreground">{externalHost}:&lt;port&gt;</code>.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {!isPublic && (
+                        <p className="text-sm text-foreground-muted">
+                            Enable public access to connect to this database from outside the Docker network.
+                            A proxy container will be started to expose the database on the specified port.
+                        </p>
                     )}
                 </CardContent>
             </Card>
@@ -299,9 +460,11 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
             const response = await fetch(`/_internal/databases/${database.uuid}/users/create`, {
                 method: 'POST',
                 headers: {
+                    'Accept': 'application/json',
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
                 },
+                credentials: 'include',
                 body: JSON.stringify({ username: newUsername, password: newPassword }),
             });
             const data = await response.json();
@@ -333,9 +496,11 @@ function UsersTab({ database }: { database: StandaloneDatabase }) {
                 const response = await fetch(`/_internal/databases/${database.uuid}/users/delete`, {
                     method: 'POST',
                     headers: {
+                        'Accept': 'application/json',
                         'Content-Type': 'application/json',
                         'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
                     },
+                    credentials: 'include',
                     body: JSON.stringify({ username }),
                 });
                 const data = await response.json();
