@@ -209,7 +209,8 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
 
     $link = \App\Models\ResourceLink::create([
         'environment_id' => $environment->id,
-        'source_application_id' => $validated['source_id'],
+        'source_type' => 'application',
+        'source_id' => $validated['source_id'],
         'target_type' => $validated['target_type'],
         'target_id' => $validated['target_id'],
         'auto_inject' => $validated['auto_inject'] ?? true,
@@ -219,7 +220,8 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
     if ($validated['target_type'] === 'application') {
         $reverseLink = \App\Models\ResourceLink::create([
             'environment_id' => $environment->id,
-            'source_application_id' => $validated['target_id'],
+            'source_type' => 'application',
+            'source_id' => $validated['target_id'],
             'target_type' => 'application',
             'target_id' => $validated['source_id'],
             'auto_inject' => $validated['auto_inject'] ?? true,
