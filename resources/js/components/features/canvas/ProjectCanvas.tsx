@@ -12,11 +12,13 @@ import {
     useReactFlow,
     ReactFlowProvider,
     type NodeTypes,
+    type EdgeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { ServiceNode } from './nodes/ServiceNode';
 import { DatabaseNode } from './nodes/DatabaseNode';
+import { VariableBadgeEdge } from './edges/VariableBadgeEdge';
 import type { Application, StandaloneDatabase, Service } from '@/types';
 import axios from 'axios';
 
@@ -25,6 +27,11 @@ const nodeTypes: NodeTypes = {
     service: ServiceNode,
     database: DatabaseNode,
 } as NodeTypes;
+
+// Custom edge types
+const edgeTypes: EdgeTypes = {
+    variableBadge: VariableBadgeEdge,
+} as EdgeTypes;
 
 // Resource Link from API
 interface ResourceLink {
@@ -84,11 +91,13 @@ function getDatabaseTargetType(databaseType: string): string {
 function EdgeContextMenu({
     position,
     link,
+    reverseLink,
     onDelete,
     onClose,
 }: {
     position: { x: number; y: number } | null;
     link: ResourceLink | null;
+    reverseLink?: ResourceLink | null;
     onDelete: () => void;
     onClose: () => void;
 }) {
@@ -101,26 +110,45 @@ function EdgeContextMenu({
 
     if (!position) return null;
 
+    const isBidirectional = !!reverseLink;
+
     return (
         <div
-            className="fixed z-50 min-w-[200px] rounded-lg border border-border bg-background-secondary/95 py-1 shadow-xl backdrop-blur-sm"
+            className="fixed z-50 min-w-[220px] rounded-lg border border-border bg-background-secondary/95 py-1 shadow-xl backdrop-blur-sm"
             style={{ left: position.x, top: position.y }}
             onClick={(e) => e.stopPropagation()}
         >
             {link && (
-                <div className="border-b border-border px-3 py-2">
-                    <div className="text-xs text-foreground-muted">Injects</div>
-                    <div className="font-mono text-sm text-green-500">{link.env_key}</div>
+                <div className="border-b border-border px-3 py-2.5">
+                    <div className="text-[10px] uppercase tracking-wider text-foreground-muted font-medium mb-2">
+                        {isBidirectional ? 'Injects (bidirectional)' : 'Injects'}
+                    </div>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <svg className="h-3 w-3 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M5 12h14M12 5l7 7-7 7" />
+                            </svg>
+                            <code className="font-mono text-xs text-success">{link.env_key}</code>
+                        </div>
+                        {reverseLink && (
+                            <div className="flex items-center gap-2">
+                                <svg className="h-3 w-3 text-pink-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                                <code className="font-mono text-xs text-success">{reverseLink.env_key}</code>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
             <button
                 onClick={onDelete}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-background-tertiary"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-background-tertiary transition-colors"
             >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                 </svg>
-                Delete Connection
+                Delete Connection{isBidirectional ? 's' : ''}
             </button>
         </div>
     );
@@ -252,27 +280,18 @@ function ProjectCanvasInner({
                 );
 
                 if (reverseLink) {
-                    // Bidirectional: merge into one edge with two-line label
+                    // Bidirectional: merge into one edge
                     processedPairs.add(pairKey);
-                    const combinedLabel = `→ ${link.env_key}\n← ${reverseLink.env_key}`;
                     result.push({
                         id: `link-${link.id}`,
                         source: `app-${link.source_id}`,
                         target: `app-${link.target_id}`,
-                        type: 'smoothstep',
+                        type: 'variableBadge',
                         animated: link.auto_inject || reverseLink.auto_inject,
                         data: { linkId: link.id, link, reverseLinkId: reverseLink.id, reverseLink },
                         style: {
-                            stroke: '#7c3aed',
-                            strokeWidth: 2,
                             strokeDasharray: (link.auto_inject || reverseLink.auto_inject) ? undefined : '5,5',
                         },
-                        label: combinedLabel,
-                        labelStyle: { fontSize: 10, whiteSpace: 'pre' as const },
-                        labelBgStyle: { fillOpacity: 0.9 },
-                        labelShowBg: true,
-                        labelBgPadding: [6, 6] as [number, number],
-                        labelBgBorderRadius: 4,
                     });
                     continue;
                 }
@@ -280,34 +299,23 @@ function ProjectCanvasInner({
 
             // Non-bidirectional (app→db or unpaired app→app)
             const targetNodeId = isAppTarget ? `app-${link.target_id}` : `db-${link.target_id}`;
-            const edgeColor = isAppTarget
-                ? '#7c3aed'
-                : link.auto_inject ? '#22c55e' : '#4a4a5e';
 
             result.push({
                 id: `link-${link.id}`,
                 source: `app-${link.source_id}`,
                 target: targetNodeId,
-                type: 'smoothstep',
+                type: 'variableBadge',
                 animated: link.auto_inject,
                 data: { linkId: link.id, link },
                 style: {
-                    stroke: edgeColor,
-                    strokeWidth: 2,
                     strokeDasharray: link.auto_inject ? undefined : '5,5',
                 },
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
-                    color: edgeColor,
+                    color: isAppTarget ? '#7c3aed' : (link.auto_inject ? '#22c55e' : '#4a4a5e'),
                     width: 15,
                     height: 15,
                 },
-                label: link.env_key,
-                labelStyle: { fontSize: 10 },
-                labelBgStyle: { fillOpacity: 0.9 },
-                labelShowBg: true,
-                labelBgPadding: [4, 4] as [number, number],
-                labelBgBorderRadius: 4,
             });
         }
 
@@ -324,7 +332,13 @@ function ProjectCanvasInner({
 
     // Edge selection and context menu state
     const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
-    const [edgeContextMenu, setEdgeContextMenu] = useState<{ x: number; y: number; edgeId: string; link: ResourceLink | null } | null>(null);
+    const [edgeContextMenu, setEdgeContextMenu] = useState<{
+        x: number;
+        y: number;
+        edgeId: string;
+        link: ResourceLink | null;
+        reverseLink?: ResourceLink | null;
+    } | null>(null);
 
     // Create new link via API
     const onConnect = useCallback(
@@ -428,7 +442,14 @@ function ProjectCanvasInner({
         (event: React.MouseEvent, edge: Edge) => {
             event.preventDefault();
             const link = edge.data?.link as ResourceLink | undefined;
-            setEdgeContextMenu({ x: event.clientX, y: event.clientY, edgeId: edge.id, link: link || null });
+            const reverseLink = edge.data?.reverseLink as ResourceLink | undefined;
+            setEdgeContextMenu({
+                x: event.clientX,
+                y: event.clientY,
+                edgeId: edge.id,
+                link: link || null,
+                reverseLink: reverseLink || null,
+            });
         },
         []
     );
@@ -482,16 +503,12 @@ function ProjectCanvasInner({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedEdge, handleDeleteEdge]);
 
-    // Update edge styles when selected
+    // Update edge styles when selected - pass selected state to edge component
     const styledEdges = useMemo(
         () =>
             edges.map((edge) => ({
                 ...edge,
-                style: {
-                    ...edge.style,
-                    stroke: edge.id === selectedEdge ? '#7c3aed' : (edge.style?.stroke || '#4a4a5e'),
-                    strokeWidth: edge.id === selectedEdge ? 3 : 2,
-                },
+                selected: edge.id === selectedEdge,
             })),
         [edges, selectedEdge]
     );
@@ -541,6 +558,7 @@ function ProjectCanvasInner({
                 onPaneClick={handlePaneClick}
                 onMove={handleMove}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 fitView
                 fitViewOptions={{ padding: 0.4 }}
                 className="bg-background-secondary dark:bg-[#0f0f1a]"
@@ -549,7 +567,7 @@ function ProjectCanvasInner({
                 maxZoom={2}
                 deleteKeyCode={null}
                 defaultEdgeOptions={{
-                    type: 'smoothstep',
+                    type: 'variableBadge',
                     animated: false,
                     style: { strokeWidth: 2, strokeDasharray: '5,5' },
                 }}
@@ -579,6 +597,7 @@ function ProjectCanvasInner({
             <EdgeContextMenu
                 position={edgeContextMenu ? { x: edgeContextMenu.x, y: edgeContextMenu.y } : null}
                 link={edgeContextMenu?.link || null}
+                reverseLink={edgeContextMenu?.reverseLink || null}
                 onDelete={() => edgeContextMenu && handleDeleteEdge(edgeContextMenu.edgeId)}
                 onClose={() => setEdgeContextMenu(null)}
             />
