@@ -16,6 +16,7 @@ interface EnvVariable {
 
 interface VariablesTabProps {
     service: SelectedService;
+    onChangeStaged?: () => void;
 }
 
 interface EditState {
@@ -24,7 +25,7 @@ interface EditState {
     value: string;
 }
 
-export function VariablesTab({ service }: VariablesTabProps) {
+export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
     const { toast } = useToast();
     const [variables, setVariables] = useState<EnvVariable[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +92,7 @@ export function VariablesTab({ service }: VariablesTabProps) {
                 setNewKey('');
                 setNewValue('');
                 toast({ title: 'Variable created' });
+                onChangeStaged?.();
             } else {
                 const error = await response.json();
                 toast({ title: error.message || 'Failed to create variable', variant: 'error' });
@@ -125,6 +127,7 @@ export function VariablesTab({ service }: VariablesTabProps) {
                 ));
                 setEditing(null);
                 toast({ title: `Updated ${editing.key}` });
+                onChangeStaged?.();
             } else {
                 const error = await response.json();
                 toast({ title: error.message || 'Failed to update variable', variant: 'error' });
@@ -170,6 +173,7 @@ export function VariablesTab({ service }: VariablesTabProps) {
             if (response.ok) {
                 setVariables(prev => prev.filter(v => v.uuid !== envUuid));
                 toast({ title: `Deleted ${key}` });
+                onChangeStaged?.();
             } else {
                 const error = await response.json();
                 toast({ title: error.message || 'Failed to delete variable', variant: 'error' });

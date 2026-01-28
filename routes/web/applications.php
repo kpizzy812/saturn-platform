@@ -926,3 +926,7 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
         ]);
     }
 })->name('applications.metrics');
+
+// API endpoint for application request stats (parsed from container logs)
+Route::get('/_internal/applications/{uuid}/request-stats', [\App\Http\Controllers\Inertia\ApplicationMetricsController::class, 'getRequestStats'])
+    ->name('applications.request-stats.api');

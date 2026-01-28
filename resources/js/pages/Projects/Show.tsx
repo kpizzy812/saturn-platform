@@ -42,7 +42,8 @@ export default function ProjectShow({ project }: Props) {
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'extensions' | 'settings'>('connect');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs'>('architecture');
-    const [hasStagedChanges, setHasStagedChanges] = useState(false);
+    const [stagedChanges, setStagedChanges] = useState<{ variables: number; configs: number }>({ variables: 0, configs: 0 });
+    const hasStagedChanges = stagedChanges.variables > 0 || stagedChanges.configs > 0;
     const [showLocalSetup, setShowLocalSetup] = useState(false);
     const [showNewEnvModal, setShowNewEnvModal] = useState(false);
     const [newEnvName, setNewEnvName] = useState('');
@@ -180,25 +181,25 @@ export default function ProjectShow({ project }: Props) {
     };
 
     // Track state changes for undo/redo
-    const trackStateChange = useCallback((_newService: SelectedService | null) => {
+    const trackStateChange = useCallback((newService: SelectedService | null) => {
         historyRef.current = {
             past: [...historyRef.current.past, selectedService ? [selectedService] : []],
             future: [],
         };
         setCanUndo(true);
         setCanRedo(false);
+        void newService; // Used by callers to set service after tracking
     }, [selectedService]);
-    // Note: trackStateChange is prepared for future use but currently unused
-    void trackStateChange;
 
     const handleNodeClick = useCallback((id: string, type: string) => {
-        const env = project.environments?.[0];
-        if (!env) return;
+        if (!selectedEnv) return;
+
+        let newService: SelectedService | null = null;
 
         if (type === 'app') {
-            const app = env.applications?.find(a => String(a.id) === id);
+            const app = selectedEnv.applications?.find(a => String(a.id) === id);
             if (app) {
-                setSelectedService({
+                newService = {
                     id: String(app.id),
                     uuid: app.uuid,
                     type: 'app',
@@ -206,12 +207,12 @@ export default function ProjectShow({ project }: Props) {
                     status: app.status || 'unknown',
                     fqdn: app.fqdn ?? undefined,
                     serverUuid: app.destination?.server?.uuid,
-                });
+                };
             }
         } else if (type === 'db') {
-            const db = env.databases?.find(d => String(d.id) === id);
+            const db = selectedEnv.databases?.find(d => String(d.id) === id);
             if (db) {
-                setSelectedService({
+                newService = {
                     id: String(db.id),
                     uuid: db.uuid,
                     type: 'db',
@@ -219,28 +220,33 @@ export default function ProjectShow({ project }: Props) {
                     status: db.status || 'unknown',
                     dbType: db.database_type,
                     serverUuid: db.destination?.server?.uuid,
-                });
+                };
             }
         }
+
+        if (newService) {
+            trackStateChange(newService);
+            setSelectedService(newService);
+        }
+
         // Reset to default tab based on type
         if (type === 'app') {
             setActiveAppTab('deployments');
         } else {
             setActiveDbTab('connect');
         }
-    }, [project.environments]);
+    }, [selectedEnv, trackStateChange]);
 
     const closePanel = () => setSelectedService(null);
 
     // Handle right-click on nodes
     const handleNodeContextMenu = useCallback((id: string, type: string, x: number, y: number) => {
-        const env = project.environments?.[0];
-        if (!env) return;
+        if (!selectedEnv) return;
 
         let nodeData: ContextMenuNode | null = null;
 
         if (type === 'app') {
-            const app = env.applications?.find(a => String(a.id) === id);
+            const app = selectedEnv.applications?.find(a => String(a.id) === id);
             if (app) {
                 nodeData = {
                     id: String(app.id),
@@ -252,7 +258,7 @@ export default function ProjectShow({ project }: Props) {
                 };
             }
         } else if (type === 'db') {
-            const db = env.databases?.find(d => String(d.id) === id);
+            const db = selectedEnv.databases?.find(d => String(d.id) === id);
             if (db) {
                 nodeData = {
                     id: String(db.id),
@@ -268,7 +274,7 @@ export default function ProjectShow({ project }: Props) {
             setContextMenuPosition({ x, y });
             setContextMenuNode(nodeData);
         }
-    }, [project.environments]);
+    }, [selectedEnv]);
 
     const closeContextMenu = () => {
         setContextMenuPosition(null);
@@ -424,18 +430,29 @@ export default function ProjectShow({ project }: Props) {
         }
     }, [contextMenuNode, addToast]);
 
-    // Deploy all staged changes
+    // Callback for child tabs to report staged changes
+    const handleVariableChanged = useCallback(() => {
+        setStagedChanges(prev => ({ ...prev, variables: prev.variables + 1 }));
+    }, []);
+
+    const handleConfigChanged = useCallback(() => {
+        setStagedChanges(prev => ({ ...prev, configs: prev.configs + 1 }));
+    }, []);
+
+    const handleDiscardStagedChanges = useCallback(() => {
+        setStagedChanges({ variables: 0, configs: 0 });
+    }, []);
+
+    // Deploy all applications in the current environment
     const handleDeployChanges = useCallback(async () => {
-        const env = project.environments?.[0];
-        if (!env?.applications?.length) {
-            setHasStagedChanges(false);
+        if (!selectedEnv?.applications?.length) {
+            setStagedChanges({ variables: 0, configs: 0 });
             return;
         }
 
         try {
-            // Deploy all applications in the environment
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const deployPromises = env.applications.map(app =>
+            const deployPromises = selectedEnv.applications.map(app =>
                 fetch(`/api/v1/applications/${app.uuid}/start`, {
                     method: 'POST',
                     headers: {
@@ -448,12 +465,13 @@ export default function ProjectShow({ project }: Props) {
             );
 
             await Promise.all(deployPromises);
-            setHasStagedChanges(false);
+            setStagedChanges({ variables: 0, configs: 0 });
+            addToast('success', 'Deploy started', 'All applications in this environment are being redeployed.');
             router.reload();
         } catch (err) {
             addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy changes');
         }
-    }, [project.environments, addToast]);
+    }, [selectedEnv, addToast]);
 
     // Database backup handlers
     const handleCreateBackup = useCallback(async (_nodeId: string) => {
@@ -751,10 +769,13 @@ export default function ProjectShow({ project }: Props) {
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-foreground">
-                                    You have staged changes
+                                    You have unsaved changes that require redeployment
                                 </p>
                                 <p className="text-xs text-foreground-muted">
-                                    3 environment variables modified, 1 service configuration updated
+                                    {[
+                                        stagedChanges.variables > 0 && `${stagedChanges.variables} environment variable(s) modified`,
+                                        stagedChanges.configs > 0 && `${stagedChanges.configs} configuration(s) updated`,
+                                    ].filter(Boolean).join(', ')}
                                 </p>
                             </div>
                         </div>
@@ -762,9 +783,9 @@ export default function ProjectShow({ project }: Props) {
                             <Button
                                 size="sm"
                                 variant="secondary"
-                                onClick={() => setHasStagedChanges(false)}
+                                onClick={handleDiscardStagedChanges}
                             >
-                                Discard
+                                Dismiss
                             </Button>
                             <Button
                                 size="sm"
@@ -1198,12 +1219,11 @@ export default function ProjectShow({ project }: Props) {
                                     <span className="flex items-center gap-1">
                                         <Globe className="h-3 w-3" />
                                         {(() => {
-                                            const env = project.environments?.[0];
                                             if (selectedService.type === 'app') {
-                                                const app = env?.applications?.find(a => String(a.id) === selectedService.id);
+                                                const app = selectedEnv?.applications?.find(a => String(a.id) === selectedService.id);
                                                 return app?.destination?.server?.name || 'Server';
                                             }
-                                            const db = env?.databases?.find(d => String(d.id) === selectedService.id);
+                                            const db = selectedEnv?.databases?.find(d => String(d.id) === selectedService.id);
                                             return db?.destination?.server?.name || 'Server';
                                         })()}
                                     </span>
@@ -1305,9 +1325,9 @@ export default function ProjectShow({ project }: Props) {
                                     /* Application Content */
                                     <>
                                         {activeAppTab === 'deployments' && <DeploymentsTab service={selectedService} />}
-                                        {activeAppTab === 'variables' && <VariablesTab service={selectedService} />}
+                                        {activeAppTab === 'variables' && <VariablesTab service={selectedService} onChangeStaged={handleVariableChanged} />}
                                         {activeAppTab === 'metrics' && <MetricsTab service={selectedService} />}
-                                        {activeAppTab === 'settings' && <AppSettingsTab service={selectedService} />}
+                                        {activeAppTab === 'settings' && <AppSettingsTab service={selectedService} onChangeStaged={handleConfigChanged} />}
                                     </>
                                 ) : (
                                     /* Database Content */

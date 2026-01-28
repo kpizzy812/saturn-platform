@@ -51,9 +51,10 @@ interface ApplicationData {
 
 interface AppSettingsTabProps {
     service: SelectedService;
+    onChangeStaged?: () => void;
 }
 
-export function AppSettingsTab({ service }: AppSettingsTabProps) {
+export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps) {
     const { addToast } = useToast();
     const confirm = useConfirm();
     const [app, setApp] = useState<ApplicationData | null>(null);
@@ -147,6 +148,7 @@ export function AppSettingsTab({ service }: AppSettingsTabProps) {
             }
 
             addToast('success', 'Settings saved successfully');
+            onChangeStaged?.();
             await fetchApplication();
         } catch (err) {
             addToast('error', err instanceof Error ? err.message : 'Failed to save settings');

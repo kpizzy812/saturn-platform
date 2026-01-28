@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui';
+import { Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { RefreshCw, Eye, EyeOff, Copy } from 'lucide-react';
 import { useDatabase } from '@/hooks/useDatabases';
@@ -11,8 +11,10 @@ interface DatabaseCredentialsTabProps {
 
 export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps) {
     const { addToast } = useToast();
+    const confirm = useConfirm();
     const [showPassword, setShowPassword] = useState(false);
-    const { database, isLoading, error } = useDatabase({ uuid: service.uuid });
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    const { database, isLoading, error, refetch } = useDatabase({ uuid: service.uuid });
 
     // Get credentials based on database type
     const getCredentials = () => {
@@ -68,6 +70,41 @@ export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps)
             };
         }
         return { username: null, password: null, database: null };
+    };
+
+    const handleRegeneratePassword = async () => {
+        const confirmed = await confirm({
+            title: 'Regenerate Password',
+            description: 'This will generate a new password and restart the database container. All services using this database will need to be redeployed. Are you sure?',
+            confirmText: 'Regenerate',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        setIsRegenerating(true);
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch(`/_internal/databases/${service.uuid}/regenerate-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+            });
+            const data = await response.json();
+            if (data.success) {
+                addToast('success', 'Password regenerated', data.message);
+                // Refetch credentials to show the new password
+                refetch();
+                setShowPassword(true);
+            } else {
+                addToast('error', 'Failed', data.error || 'Failed to regenerate password');
+            }
+        } catch {
+            addToast('error', 'Error', 'Failed to regenerate password');
+        } finally {
+            setIsRegenerating(false);
+        }
     };
 
     const credentials = getCredentials();
@@ -181,9 +218,14 @@ export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps)
                     Generate a new password. This will automatically update the DATABASE_URL variable.
                     You'll need to redeploy services that depend on this database.
                 </p>
-                <Button variant="secondary" size="sm">
-                    <RefreshCw className="mr-2 h-3 w-3" />
-                    Regenerate Password
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleRegeneratePassword}
+                    disabled={isRegenerating}
+                >
+                    <RefreshCw className={`mr-2 h-3 w-3 ${isRegenerating ? 'animate-spin' : ''}`} />
+                    {isRegenerating ? 'Regenerating...' : 'Regenerate Password'}
                 </Button>
             </div>
 

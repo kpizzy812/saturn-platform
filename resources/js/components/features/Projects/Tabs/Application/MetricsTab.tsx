@@ -1,10 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Gauge, RefreshCw, HardDrive } from 'lucide-react';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
 import type { SelectedService } from '../../types';
 
 interface MetricsTabProps {
     service: SelectedService;
+}
+
+interface RequestStats {
+    available: boolean;
+    totalRequests: number;
+    successRate: number;
+    avgLatencyMs: number | null;
+    statusCodes: {
+        '2xx': number;
+        '3xx': number;
+        '4xx': number;
+        '5xx': number;
+    };
+    error?: string;
 }
 
 export function MetricsTab({ service }: MetricsTabProps) {
@@ -17,6 +31,28 @@ export function MetricsTab({ service }: MetricsTabProps) {
         autoRefresh: !!service.serverUuid,
         refreshInterval: 30000, // 30 seconds
     });
+
+    // Request stats from container logs
+    const [requestStats, setRequestStats] = useState<RequestStats | null>(null);
+    const [requestStatsLoading, setRequestStatsLoading] = useState(false);
+
+    const fetchRequestStats = useCallback(async () => {
+        if (!service.uuid) return;
+        setRequestStatsLoading(true);
+        try {
+            const response = await fetch(`/_internal/applications/${service.uuid}/request-stats?timeRange=${timeRange}`);
+            const data = await response.json();
+            setRequestStats(data);
+        } catch {
+            setRequestStats({ available: false, totalRequests: 0, successRate: 0, avgLatencyMs: null, statusCodes: { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 }, error: 'Failed to fetch request stats' });
+        } finally {
+            setRequestStatsLoading(false);
+        }
+    }, [service.uuid, timeRange]);
+
+    useEffect(() => {
+        fetchRequestStats();
+    }, [fetchRequestStats]);
 
     const renderMiniChart = (data: number[], color: string, max: number = 100) => {
         const height = 40;
@@ -102,7 +138,7 @@ export function MetricsTab({ service }: MetricsTabProps) {
 
             {error && (
                 <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-500">
-                    Using cached/demo metrics. Real-time data unavailable.
+                    Unable to fetch real-time metrics from server. Data may be stale.
                 </div>
             )}
 
@@ -198,23 +234,61 @@ export function MetricsTab({ service }: MetricsTabProps) {
             {/* Request Stats */}
             <div className="rounded-lg border border-border bg-background-secondary p-4">
                 <h4 className="mb-3 text-sm font-medium text-foreground">Request Stats ({timeRange})</h4>
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-foreground">--</p>
-                        <p className="text-xs text-foreground-muted">Total Requests</p>
+                {requestStatsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                        <RefreshCw className="h-4 w-4 animate-spin text-foreground-muted" />
                     </div>
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-green-500">--</p>
-                        <p className="text-xs text-foreground-muted">Success Rate</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-2xl font-bold text-foreground">--</p>
-                        <p className="text-xs text-foreground-muted">Avg Latency</p>
-                    </div>
-                </div>
-                <p className="mt-3 text-center text-xs text-foreground-subtle">
-                    Request metrics require application instrumentation
-                </p>
+                ) : requestStats?.available && requestStats.totalRequests > 0 ? (
+                    <>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center">
+                                <p className="text-2xl font-bold text-foreground">
+                                    {requestStats.totalRequests.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-foreground-muted">Total Requests</p>
+                            </div>
+                            <div className="text-center">
+                                <p className={`text-2xl font-bold ${requestStats.successRate >= 95 ? 'text-green-500' : requestStats.successRate >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>
+                                    {requestStats.successRate}%
+                                </p>
+                                <p className="text-xs text-foreground-muted">Success Rate</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-2xl font-bold text-foreground">
+                                    {requestStats.avgLatencyMs !== null ? `${requestStats.avgLatencyMs}ms` : 'N/A'}
+                                </p>
+                                <p className="text-xs text-foreground-muted">Avg Latency</p>
+                            </div>
+                        </div>
+                        {/* Status code breakdown */}
+                        <div className="mt-3 flex items-center gap-3 text-xs text-foreground-muted">
+                            <span className="text-green-500">2xx: {requestStats.statusCodes['2xx']}</span>
+                            <span className="text-blue-500">3xx: {requestStats.statusCodes['3xx']}</span>
+                            <span className="text-yellow-500">4xx: {requestStats.statusCodes['4xx']}</span>
+                            <span className="text-red-500">5xx: {requestStats.statusCodes['5xx']}</span>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center">
+                                <p className="text-2xl font-bold text-foreground">--</p>
+                                <p className="text-xs text-foreground-muted">Total Requests</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-2xl font-bold text-green-500">--</p>
+                                <p className="text-xs text-foreground-muted">Success Rate</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-2xl font-bold text-foreground">--</p>
+                                <p className="text-xs text-foreground-muted">Avg Latency</p>
+                            </div>
+                        </div>
+                        <p className="mt-3 text-center text-xs text-foreground-subtle">
+                            {requestStats?.error || 'No HTTP request data found in container logs for this period'}
+                        </p>
+                    </>
+                )}
             </div>
         </div>
     );

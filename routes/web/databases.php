@@ -292,6 +292,10 @@ Route::get('/_internal/databases/{uuid}/extensions', [\App\Http\Controllers\Iner
 Route::post('/_internal/databases/{uuid}/extensions/toggle', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'toggleExtension'])
     ->name('databases.extensions.toggle.api');
 
+// API endpoint for regenerating database password
+Route::post('/_internal/databases/{uuid}/regenerate-password', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'regeneratePassword'])
+    ->name('databases.regenerate-password.api');
+
 // API endpoint for database users
 Route::get('/_internal/databases/{uuid}/users', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getUsers'])
     ->name('databases.users.api');

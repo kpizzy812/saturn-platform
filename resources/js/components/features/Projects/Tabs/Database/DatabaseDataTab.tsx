@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCw, Table, Database } from 'lucide-react';
 import { Button } from '@/components/ui';
 import type { SelectedService } from '../../types';
@@ -18,13 +18,22 @@ export function DatabaseDataTab({ service }: DatabaseDataTabProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [dbType, setDbType] = useState<string>('');
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-    const fetchTables = async () => {
+    const fetchTables = useCallback(async () => {
+        // Cancel any in-flight request
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(`/_internal/databases/${service.uuid}/tables`);
+            const response = await fetch(`/_internal/databases/${service.uuid}/tables`, {
+                signal: controller.signal,
+            });
             const data = await response.json();
+            if (controller.signal.aborted) return;
             if (data.available && data.tables) {
                 setTables(data.tables);
                 setDbType(data.type || '');
@@ -32,17 +41,23 @@ export function DatabaseDataTab({ service }: DatabaseDataTabProps) {
                 setError(data.error || 'Unable to fetch tables');
                 setTables([]);
             }
-        } catch {
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') return;
             setError('Failed to connect to database');
             setTables([]);
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
         }
-    };
+    }, [service.uuid]);
 
     useEffect(() => {
         fetchTables();
-    }, [service.uuid]);
+        return () => {
+            abortControllerRef.current?.abort();
+        };
+    }, [fetchTables]);
 
     const entityLabel = dbType === 'mongodb' ? 'Collections' : 'Tables';
     const rowLabel = dbType === 'mongodb' ? 'documents' : 'rows';

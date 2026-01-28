@@ -2546,4 +2546,64 @@ class DatabaseMetricsController extends Controller
             ]);
         }
     }
+
+    /**
+     * Regenerate password for a database.
+     *
+     * Generates a new random password, updates the database model,
+     * and restarts the container to apply the new credentials.
+     */
+    public function regeneratePassword(string $uuid): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $newPassword = \Illuminate\Support\Str::password(32);
+
+            // Update password field based on database type
+            $passwordField = match ($type) {
+                'postgresql' => 'postgres_password',
+                'mysql' => 'mysql_password',
+                'mariadb' => 'mariadb_password',
+                'mongodb' => 'mongo_initdb_root_password',
+                'redis' => 'redis_password',
+                'keydb' => 'keydb_password',
+                'dragonfly' => 'dragonfly_password',
+                'clickhouse' => 'clickhouse_admin_password',
+                default => null,
+            };
+
+            if (! $passwordField) {
+                return response()->json(['success' => false, 'error' => 'Unsupported database type']);
+            }
+
+            $database->{$passwordField} = $newPassword;
+            $database->save();
+
+            // Restart the database container to apply new credentials
+            $containerName = $database->uuid;
+            $restartCommand = "docker restart {$containerName} 2>&1";
+            instant_remote_process([$restartCommand], $server, false);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password regenerated and database restarting. Services using this database will need redeployment.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to regenerate password: '.$e->getMessage(),
+            ]);
+        }
+    }
 }
