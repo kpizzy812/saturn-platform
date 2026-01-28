@@ -213,7 +213,14 @@ class StartKeydb
         $this->commands[] = "docker compose -f $this->configuration_dir/docker-compose.yml up -d";
         $this->commands[] = "echo 'Database started.'";
 
-        return remote_process($this->commands, $database->destination->server, callEventOnFinish: 'DatabaseStatusChanged');
+        // Prepare event data for DatabaseStatusChanged event
+        $eventData = [
+            'databaseId' => $database->id,
+            'status' => 'starting',
+            'teamId' => $database->environment->project->team->id,
+        ];
+
+        return remote_process($this->commands, $database->destination->server, callEventOnFinish: 'DatabaseStatusChanged', callEventData: $eventData);
     }
 
     private function generate_local_persistent_volumes()

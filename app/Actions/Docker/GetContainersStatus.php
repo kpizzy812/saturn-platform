@@ -4,6 +4,8 @@ namespace App\Actions\Docker;
 
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Shared\ComplexStatusCheck;
+use App\Events\ApplicationStatusChanged;
+use App\Events\DatabaseStatusChanged;
 use App\Events\ServiceChecked;
 use App\Models\ApplicationPreview;
 use App\Models\Server;
@@ -219,6 +221,14 @@ class GetContainersStatus
 
                             $database->update($updateData);
 
+                            // Dispatch event if status changed
+                            if ($statusFromDb !== $containerStatus) {
+                                $teamId = $database->environment?->project?->team?->id;
+                                if ($teamId) {
+                                    DatabaseStatusChanged::dispatch($database->id, $containerStatus, $teamId);
+                                }
+                            }
+
                             if ($isPublic) {
                                 $foundTcpProxy = $this->containers->filter(function ($value, $key) use ($uuid) {
                                     if ($this->server->isSwarm()) {
@@ -346,6 +356,8 @@ class GetContainersStatus
                                  $application->last_restart_at &&
                                  $application->last_restart_at->greaterThan(now()->subSeconds(30));
 
+            $newStatus = $recentlyRestarted ? 'degraded:unhealthy' : 'exited';
+
             if ($recentlyRestarted) {
                 // Keep it as degraded if it was recently in a crash loop
                 $application->update(['status' => 'degraded:unhealthy']);
@@ -357,6 +369,12 @@ class GetContainersStatus
                     'last_restart_at' => null,
                     'last_restart_type' => null,
                 ]);
+            }
+
+            // Dispatch event for status change
+            $teamId = $application->environment?->project?->team?->id;
+            if ($teamId) {
+                ApplicationStatusChanged::dispatch($application->id, $newStatus, $teamId);
             }
         }
         $notRunningApplicationPreviews = $previews->pluck('id')->diff($foundApplicationPreviews);
@@ -386,6 +404,12 @@ class GetContainersStatus
                 'last_restart_at' => null,
                 'last_restart_type' => null,
             ]);
+
+            // Dispatch event for status change
+            $teamId = $database->environment?->project?->team?->id;
+            if ($teamId) {
+                DatabaseStatusChanged::dispatch($database->id, 'exited', $teamId);
+            }
 
             $name = data_get($database, 'name');
             $fqdn = data_get($database, 'fqdn');
@@ -450,6 +474,12 @@ class GetContainersStatus
                         $statusFromDb = $application->status;
                         if ($statusFromDb !== $aggregatedStatus) {
                             $application->update(['status' => $aggregatedStatus]);
+
+                            // Dispatch event for status change
+                            $teamId = $application->environment?->project?->team?->id;
+                            if ($teamId) {
+                                ApplicationStatusChanged::dispatch($application->id, $aggregatedStatus, $teamId);
+                            }
                         } else {
                             $application->update(['last_online_at' => now()]);
                         }

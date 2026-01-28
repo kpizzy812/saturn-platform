@@ -1,17 +1,18 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { getStatusLabel, getStatusDotClass } from '@/lib/statusUtils';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon } from 'lucide-react';
-import type { Project, Environment } from '@/types';
+import type { Project, Environment, Application, StandaloneDatabase } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
 import { LogsViewer } from '@/components/features/LogsViewer';
 import { useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 
 // Extracted components
 import {
@@ -52,10 +53,60 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [newEnvName, setNewEnvName] = useState('');
     const [creatingEnv, setCreatingEnv] = useState(false);
 
+    // Real-time status tracking for applications and databases
+    const [appStatuses, setAppStatuses] = useState<Record<number, string>>({});
+    const [dbStatuses, setDbStatuses] = useState<Record<number, string>>({});
+
     // Hooks - must be called before early return
     const { addToast } = useToast();
     const confirm = useConfirm();
     const { isDark, toggleTheme } = useTheme();
+
+    // Canvas control state
+    const [showGrid, setShowGrid] = useState(true);
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Real-time status updates via WebSocket
+    useRealtimeStatus({
+        onApplicationStatusChange: (data) => {
+            setAppStatuses((prev) => ({
+                ...prev,
+                [data.applicationId]: data.status,
+            }));
+            // Update selected service status if it's the same application
+            if (selectedService?.type === 'app' && selectedService?.id === String(data.applicationId)) {
+                setSelectedService((prev) => prev ? { ...prev, status: data.status } : null);
+            }
+        },
+        onDatabaseStatusChange: (data) => {
+            setDbStatuses((prev) => ({
+                ...prev,
+                [data.databaseId]: data.status,
+            }));
+            // Update selected service status if it's the same database
+            if (selectedService?.type === 'db' && selectedService?.id === String(data.databaseId)) {
+                setSelectedService((prev) => prev ? { ...prev, status: data.status } : null);
+            }
+        },
+    });
+
+    // Compute environments with real-time statuses
+    const envWithRealtimeStatuses = useMemo(() => {
+        if (!selectedEnv) return null;
+
+        return {
+            ...selectedEnv,
+            applications: selectedEnv.applications?.map((app) => ({
+                ...app,
+                status: appStatuses[app.id] ?? app.status,
+            })),
+            databases: selectedEnv.databases?.map((db) => ({
+                ...db,
+                status: dbStatuses[db.id] ?? db.status,
+            })),
+        };
+    }, [selectedEnv, appStatuses, dbStatuses]);
 
     // Show loading state if project is not available
     if (!project) {
@@ -68,11 +119,6 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
             </div>
         );
     }
-
-    // Canvas control state
-    const [showGrid, setShowGrid] = useState(true);
-    const [zoomLevel, setZoomLevel] = useState(1);
-    const [isFullscreen, setIsFullscreen] = useState(false);
 
     // Context menu state
     const [contextMenuPosition, setContextMenuPosition] = useState<ContextMenuPosition | null>(null);
@@ -985,12 +1031,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
 
                     {/* Canvas Area */}
                     <div className="relative flex-1 overflow-hidden">
-                        {selectedEnv && (
+                        {envWithRealtimeStatuses && (
                             <ProjectCanvas
-                                applications={selectedEnv.applications || []}
-                                databases={selectedEnv.databases || []}
-                                services={selectedEnv.services || []}
-                                environmentUuid={selectedEnv.uuid}
+                                applications={envWithRealtimeStatuses.applications || []}
+                                databases={envWithRealtimeStatuses.databases || []}
+                                services={envWithRealtimeStatuses.services || []}
+                                environmentUuid={envWithRealtimeStatuses.uuid}
                                 onNodeClick={handleNodeClick}
                                 onNodeContextMenu={handleNodeContextMenu}
                                 onViewportChange={handleViewportChange}
@@ -1115,7 +1161,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     <p className="mt-1 text-sm text-foreground-muted">Monitor health, performance and resource usage across all services.</p>
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {(selectedEnv?.applications || []).map((app) => (
+                                    {(envWithRealtimeStatuses?.applications || []).map((app) => (
                                         <div key={app.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{app.name}</span>
@@ -1142,7 +1188,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                             </div>
                                         </div>
                                     ))}
-                                    {(selectedEnv?.databases || []).map((db) => (
+                                    {(envWithRealtimeStatuses?.databases || []).map((db) => (
                                         <div key={db.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{db.name}</span>
@@ -1166,7 +1212,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         </div>
                                     ))}
                                 </div>
-                                {!(selectedEnv?.applications?.length || selectedEnv?.databases?.length) && (
+                                {!(envWithRealtimeStatuses?.applications?.length || envWithRealtimeStatuses?.databases?.length) && (
                                     <div className="flex flex-col items-center justify-center py-16 text-foreground-muted">
                                         <Activity className="h-10 w-10 mb-3 opacity-50" />
                                         <p className="text-sm">No services to monitor yet.</p>
@@ -1185,7 +1231,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     <p className="mt-1 text-sm text-foreground-muted">View logs for all services in this environment.</p>
                                 </div>
                                 <div className="space-y-3">
-                                    {(selectedEnv?.applications || []).map((app) => (
+                                    {(envWithRealtimeStatuses?.applications || []).map((app) => (
                                         <button
                                             key={app.id}
                                             onClick={() => {
@@ -1212,7 +1258,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                             </div>
                                         </button>
                                     ))}
-                                    {(selectedEnv?.databases || []).map((db) => (
+                                    {(envWithRealtimeStatuses?.databases || []).map((db) => (
                                         <button
                                             key={db.id}
                                             onClick={() => {
@@ -1240,7 +1286,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         </button>
                                     ))}
                                 </div>
-                                {!(selectedEnv?.applications?.length || selectedEnv?.databases?.length) && (
+                                {!(envWithRealtimeStatuses?.applications?.length || envWithRealtimeStatuses?.databases?.length) && (
                                     <div className="flex flex-col items-center justify-center py-16 text-foreground-muted">
                                         <FileText className="h-10 w-10 mb-3 opacity-50" />
                                         <p className="text-sm">No services to view logs for.</p>
