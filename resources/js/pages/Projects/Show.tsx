@@ -1397,6 +1397,7 @@ export default function ProjectShow({ project }: Props) {
 
             {/* Logs Viewer Modal */}
             <LogsViewer
+                key={logsViewerServiceUuid}
                 isOpen={logsViewerOpen}
                 onClose={() => setLogsViewerOpen(false)}
                 serviceName={logsViewerService}

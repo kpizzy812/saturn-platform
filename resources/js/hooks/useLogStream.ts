@@ -546,6 +546,18 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     }, [logs, resourceType, resourceId]);
 
     /**
+     * Reset logs when resource changes
+     */
+    React.useEffect(() => {
+        // Clear logs when switching to a different resource
+        setLogs([]);
+        lastLogIdRef.current = null;
+        lastTimestampRef.current = null;
+        seenLogHashesRef.current.clear();
+        isInitialLoadRef.current = true;
+    }, [resourceType, resourceId, container]);
+
+    /**
      * Initialize streaming on mount
      */
     React.useEffect(() => {
