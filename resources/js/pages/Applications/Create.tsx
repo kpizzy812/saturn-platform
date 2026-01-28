@@ -217,7 +217,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                 { label: 'Create' },
             ]}
         >
-            <div className="mx-auto max-w-4xl px-6 py-8">
+            <div className="mx-auto max-w-4xl">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-foreground">Create Application</h1>

@@ -63,7 +63,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
             <div className="flex h-screen flex-col bg-background">
                 <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
                 {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1 overflow-auto px-6 py-8">
                     {children}
                 </main>
             </div>

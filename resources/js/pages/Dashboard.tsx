@@ -198,7 +198,7 @@ export default function Dashboard({ projects = [] }: Props) {
 
     return (
         <AppLayout title="Dashboard">
-            <div className="mx-auto max-w-6xl px-6 py-8">
+            <div className="mx-auto max-w-6xl">
                 {/* Workspace Header */}
                 <div className="mb-8 flex items-center justify-between">
                     <div>

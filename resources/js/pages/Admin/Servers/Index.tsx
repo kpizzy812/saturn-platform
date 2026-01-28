@@ -107,7 +107,7 @@ export default function AdminServersIndex({ servers: serversData }: Props) {
                 { label: 'Servers' },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-semibold text-foreground">Server Management</h1>

@@ -50,7 +50,7 @@ export default function StorageIndex({ storages = [] }: Props) {
             title="Storage"
             breadcrumbs={[{ label: 'Storage' }]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>

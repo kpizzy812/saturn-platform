@@ -28,7 +28,7 @@ export default function OnboardingWelcome({ user }: Props) {
     return (
         <AuthLayout title="Welcome to Saturn">
             <div className="min-h-screen bg-background py-12">
-                <div className="mx-auto max-w-6xl px-4">
+                <div className="mx-auto max-w-6xl">
                     {/* Welcome Header */}
                     <div className="mb-12 text-center">
                         <div className="mb-4 flex justify-center">

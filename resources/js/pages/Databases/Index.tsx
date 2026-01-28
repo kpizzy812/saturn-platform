@@ -15,7 +15,7 @@ export default function DatabasesIndex({ databases = [] }: Props) {
             title="Databases"
             breadcrumbs={[{ label: 'Databases' }]}
         >
-            <div className="mx-auto max-w-6xl px-6 py-8">
+            <div className="mx-auto max-w-6xl">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>

@@ -243,7 +243,7 @@ export default function SentinelAlerts({ server, alertRules = [], alertHistory =
                 { label: 'Alerts' },
             ]}
         >
-            <div className="mx-auto max-w-6xl px-6 py-8">
+            <div className="mx-auto max-w-6xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>

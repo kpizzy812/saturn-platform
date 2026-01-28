@@ -248,7 +248,7 @@ export default function BoardingIndex({ userName, existingServers = [], privateK
         <div className="min-h-screen bg-background">
             {/* Progress Bar */}
             <div className="border-b border-border bg-background-secondary">
-                <div className="mx-auto max-w-4xl px-6 py-4">
+                <div className="mx-auto max-w-4xl">
                     <div className="flex items-center justify-between">
                         {steps.map((step, index) => (
                             <div key={step.id} className="flex items-center">
@@ -290,7 +290,7 @@ export default function BoardingIndex({ userName, existingServers = [], privateK
             </div>
 
             {/* Content */}
-            <div className="mx-auto max-w-2xl px-6 py-12">
+            <div className="mx-auto max-w-2xl">
                 {currentStep === 'welcome' && (
                     <WelcomeStep
                         userName={userName}

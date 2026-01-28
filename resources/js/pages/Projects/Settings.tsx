@@ -302,7 +302,7 @@ export default function ProjectSettings({
                 { label: 'Settings' },
             ]}
         >
-            <div className="mx-auto max-w-3xl px-6 py-8">
+            <div className="mx-auto max-w-3xl">
                 {/* Back link */}
                 <Link
                     href={`/projects/${project.uuid}`}

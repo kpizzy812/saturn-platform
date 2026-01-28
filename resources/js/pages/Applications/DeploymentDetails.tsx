@@ -249,7 +249,7 @@ export default function DeploymentDetails({
 
     return (
         <AppLayout title={`Deployment #${deployment.id}`} breadcrumbs={breadcrumbs}>
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Back button */}
                 <Link
                     href={`/applications/${application.uuid}/deployments`}

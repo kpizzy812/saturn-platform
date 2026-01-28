@@ -145,7 +145,7 @@ export default function ServerMetricsIndex({ server }: Props) {
                 { label: 'Metrics' },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-6">
                     <Link

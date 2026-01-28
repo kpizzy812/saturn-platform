@@ -45,7 +45,7 @@ export default function TemplateShow({ template }: Props) {
     if (!template) {
         return (
             <AppLayout title="Loading..." showNewProject={false}>
-                <div className="mx-auto max-w-5xl px-4 py-8">
+                <div className="mx-auto max-w-5xl">
                     <div className="flex items-center justify-center py-12">
                         <div className="text-center">
                             <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
@@ -59,7 +59,7 @@ export default function TemplateShow({ template }: Props) {
 
     return (
         <AppLayout title={template.name} showNewProject={false}>
-            <div className="mx-auto max-w-5xl px-4 py-8">
+            <div className="mx-auto max-w-5xl">
                 {/* Back link */}
                 <Link
                     href="/templates"

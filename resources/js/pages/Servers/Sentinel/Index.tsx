@@ -215,7 +215,7 @@ export default function SentinelIndex({ server }: Props) {
                 { label: 'Sentinel' },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">

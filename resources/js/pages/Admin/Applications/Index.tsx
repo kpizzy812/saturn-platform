@@ -130,7 +130,7 @@ export default function AdminApplicationsIndex({ applications: appsData }: Props
                 { label: 'Applications' },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-semibold text-foreground">Application Management</h1>

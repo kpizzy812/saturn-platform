@@ -75,7 +75,7 @@ export default function AdminSettingsIndex({
                 { label: 'Settings' },
             ]}
         >
-            <div className="mx-auto max-w-5xl px-6 py-8">
+            <div className="mx-auto max-w-5xl">
                 {/* Header */}
                 <div className="mb-8 flex items-start justify-between">
                     <div>

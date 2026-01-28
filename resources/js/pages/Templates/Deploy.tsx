@@ -129,7 +129,7 @@ export default function TemplateDeploy() {
 
     return (
         <AppLayout title="Deploy Template" showNewProject={false}>
-            <div className="mx-auto max-w-3xl px-4 py-8">
+            <div className="mx-auto max-w-3xl">
                 {/* Back link */}
                 <Link
                     href={`/templates/${template.id}`}

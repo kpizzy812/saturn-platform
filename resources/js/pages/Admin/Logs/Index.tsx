@@ -170,7 +170,7 @@ export default function AdminLogsIndex({ logs = defaultLogs, total = 6 }: Props)
                 { label: 'Logs' },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-8 flex items-start justify-between">
                     <div>

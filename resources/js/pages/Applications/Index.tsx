@@ -71,7 +71,7 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
             title="Applications"
             breadcrumbs={[{ label: 'Applications' }]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>

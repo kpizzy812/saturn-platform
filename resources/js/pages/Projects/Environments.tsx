@@ -76,7 +76,7 @@ export default function ProjectEnvironments({ project, environments: propEnviron
                 { label: 'Environments' },
             ]}
         >
-            <div className="mx-auto max-w-5xl px-6 py-8">
+            <div className="mx-auto max-w-5xl">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div>

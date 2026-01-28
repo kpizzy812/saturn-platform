@@ -100,7 +100,7 @@ export default function TagShow({ tag: initialTag, applications = [], services =
                 { label: tag.name },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-6">
                     <Card>

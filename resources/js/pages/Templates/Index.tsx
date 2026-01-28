@@ -27,7 +27,7 @@ export default function TemplatesIndex({ templates }: Props) {
     if (!templates) {
         return (
             <AppLayout title="Templates" showNewProject={false}>
-                <div className="mx-auto max-w-7xl px-4 py-8">
+                <div className="mx-auto max-w-7xl">
                     <div className="flex items-center justify-center py-12">
                         <div className="text-center">
                             <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
@@ -59,7 +59,7 @@ export default function TemplatesIndex({ templates }: Props) {
 
     return (
         <AppLayout title="Templates" showNewProject={false}>
-            <div className="mx-auto max-w-7xl px-4 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Back link */}
                 <Link
                     href="/projects/create"

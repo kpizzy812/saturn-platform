@@ -201,7 +201,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
     return (
         <AuthLayout title="Connect Repository">
             <div className="min-h-screen bg-background py-12">
-                <div className="mx-auto max-w-4xl px-4">
+                <div className="mx-auto max-w-4xl">
                     {/* Header */}
                     <div className="mb-8">
                         <Link href="/onboarding/welcome">

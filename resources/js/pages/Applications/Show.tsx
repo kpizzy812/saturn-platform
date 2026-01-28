@@ -155,7 +155,7 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                 { label: application.name },
             ]}
         >
-            <div className="mx-auto max-w-7xl px-6 py-8">
+            <div className="mx-auto max-w-7xl">
                 {/* Header */}
                 <div className="mb-6 flex items-start justify-between">
                     <div className="flex items-start gap-4">

@@ -54,7 +54,7 @@ export default function ServersIndex({ servers = [] }: Props) {
             title="Servers"
             breadcrumbs={[{ label: 'Servers' }]}
         >
-            <div className="mx-auto max-w-6xl px-6 py-8">
+            <div className="mx-auto max-w-6xl">
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>

@@ -99,7 +99,7 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
 
     return (
         <AppLayout title="Deployments" breadcrumbs={[{ label: 'Deployments' }]}>
-            <div className="mx-auto max-w-6xl px-6 py-8">
+            <div className="mx-auto max-w-6xl">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-foreground">Deployment History</h1>
