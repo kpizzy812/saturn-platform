@@ -107,8 +107,6 @@
       "Bash(wc *)"
     ],
     "deny": [
-      "Read(.env)",
-      "Read(.env.*)",
       "Read(storage/logs/*)",
       "Write(vendor/*)",
       "Write(node_modules/*)",
