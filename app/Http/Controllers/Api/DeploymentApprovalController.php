@@ -425,4 +425,84 @@ class DeploymentApprovalController extends Controller
 
         return response()->json($result);
     }
+
+    #[OA\Get(
+        summary: 'Get deployment approval status',
+        description: 'Get the approval status for a specific deployment.',
+        path: '/deployments/{uuid}/approval-status',
+        operationId: 'get-deployment-approval-status',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Deployment Approvals'],
+        parameters: [
+            new OA\Parameter(name: 'uuid', in: 'path', required: true, description: 'Deployment UUID', schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Approval status retrieved.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                'uuid' => ['type' => 'string'],
+                                'status' => ['type' => 'string'],
+                                'deployment_uuid' => ['type' => 'string'],
+                                'application_name' => ['type' => 'string'],
+                                'environment_name' => ['type' => 'string'],
+                                'requested_by' => ['type' => 'string'],
+                                'approved_by' => ['type' => 'string', 'nullable' => true],
+                                'comment' => ['type' => 'string', 'nullable' => true],
+                                'requested_at' => ['type' => 'string'],
+                                'decided_at' => ['type' => 'string', 'nullable' => true],
+                            ]
+                        )
+                    ),
+                ]),
+            new OA\Response(response: 401, ref: '#/components/responses/401'),
+            new OA\Response(response: 404, ref: '#/components/responses/404'),
+        ]
+    )]
+    public function approvalStatus(Request $request, string $uuid)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        if (! $deployment) {
+            return response()->json(['message' => 'Deployment not found.'], 404);
+        }
+
+        // Check if deployment belongs to team
+        $application = $deployment->application;
+        if (! $application || $application->team()?->id !== (int) $teamId) {
+            return response()->json(['message' => 'Deployment not found.'], 404);
+        }
+
+        $approval = DeploymentApproval::where('application_deployment_queue_id', $deployment->id)
+            ->latest()
+            ->first();
+
+        if (! $approval) {
+            return response()->json(['message' => 'No approval found for this deployment.'], 404);
+        }
+
+        return response()->json([
+            'uuid' => $approval->uuid,
+            'status' => $approval->status,
+            'deployment_uuid' => $deployment->deployment_uuid,
+            'application_name' => $application->name,
+            'environment_name' => $application->environment?->name,
+            'requested_by' => $approval->requestedBy?->email,
+            'approved_by' => $approval->approvedBy?->email,
+            'comment' => $approval->comment,
+            'requested_at' => $approval->created_at?->toIso8601String(),
+            'decided_at' => $approval->approved_at?->toIso8601String(),
+        ]);
+    }
 }

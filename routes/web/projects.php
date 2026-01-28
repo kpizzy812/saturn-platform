@@ -472,3 +472,192 @@ Route::patch('/projects/{uuid}/settings/default-server', function (Request $requ
 
     return redirect()->back()->with('success', 'Default server updated.');
 })->name('projects.settings.default-server');
+
+// Project members management
+Route::get('/projects/{uuid}/members', function (string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $currentUser = auth()->user();
+    $team = currentTeam();
+
+    // Get project-specific members
+    $projectMembers = $project->members()
+        ->get()
+        ->map(fn ($m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+            'email' => $m->email,
+            'role' => $m->pivot->role,
+            'is_team_fallback' => false,
+        ]);
+
+    // Get team members who are not project members (they inherit team-level access)
+    $projectMemberIds = $projectMembers->pluck('id')->toArray();
+    $teamMembersWithFallback = $team->members()
+        ->whereNotIn('users.id', $projectMemberIds)
+        ->get()
+        ->map(fn ($m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+            'email' => $m->email,
+            'role' => $m->pivot->role ?? 'member',
+            'is_team_fallback' => true,
+        ]);
+
+    // Combine and sort
+    $allMembers = $projectMembers->concat($teamMembersWithFallback)
+        ->sortBy('name')
+        ->values();
+
+    // Available team members to add (those not already in project)
+    $availableTeamMembers = $team->members()
+        ->whereNotIn('users.id', $projectMemberIds)
+        ->get()
+        ->map(fn ($m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+            'email' => $m->email,
+        ]);
+
+    // Get current user's role in the project
+    $currentUserRole = $currentUser->roleInProject($project);
+
+    return Inertia::render('Projects/Members', [
+        'project' => [
+            'id' => $project->id,
+            'uuid' => $project->uuid,
+            'name' => $project->name,
+        ],
+        'members' => $allMembers,
+        'availableTeamMembers' => $availableTeamMembers,
+        'currentUserRole' => $currentUserRole,
+        'currentUserId' => $currentUser->id,
+    ]);
+})->name('projects.members');
+
+// Add member to project
+Route::post('/projects/{uuid}/members', function (Request $request, string $uuid) {
+    $request->validate([
+        'user_id' => 'required|integer|exists:users,id',
+        'role' => 'required|in:owner,admin,developer,member,viewer',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $currentUser = auth()->user();
+    $currentUserRole = $currentUser->roleInProject($project);
+
+    // Check if current user can manage members
+    if (! in_array($currentUserRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'You do not have permission to manage members'], 403);
+    }
+
+    // Only owners can assign owner role
+    if ($request->role === 'owner' && $currentUserRole !== 'owner') {
+        return response()->json(['message' => 'Only project owners can assign the owner role'], 403);
+    }
+
+    $user = \App\Models\User::findOrFail($request->user_id);
+
+    // Check if user is in the same team
+    $team = currentTeam();
+    if (! $team->members()->where('user_id', $user->id)->exists()) {
+        return response()->json(['message' => 'User is not a member of this team'], 422);
+    }
+
+    // Check if already a member
+    if ($project->members()->where('user_id', $user->id)->exists()) {
+        return response()->json(['message' => 'User is already a member of this project'], 422);
+    }
+
+    $project->addMember($user, $request->role);
+
+    return response()->json([
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'role' => $request->role,
+        'is_team_fallback' => false,
+    ]);
+})->name('projects.members.store');
+
+// Update member role
+Route::patch('/projects/{uuid}/members/{memberId}', function (Request $request, string $uuid, int $memberId) {
+    $request->validate([
+        'role' => 'required|in:owner,admin,developer,member,viewer',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $currentUser = auth()->user();
+    $currentUserRole = $currentUser->roleInProject($project);
+
+    // Check if current user can manage members
+    if (! in_array($currentUserRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'You do not have permission to manage members'], 403);
+    }
+
+    // Only owners can assign owner role
+    if ($request->role === 'owner' && $currentUserRole !== 'owner') {
+        return response()->json(['message' => 'Only project owners can assign the owner role'], 403);
+    }
+
+    $user = \App\Models\User::findOrFail($memberId);
+
+    // Check if the user is a project member
+    if (! $project->members()->where('user_id', $user->id)->exists()) {
+        return response()->json(['message' => 'User is not a project member'], 404);
+    }
+
+    // Cannot change own role
+    if ($user->id === $currentUser->id) {
+        return response()->json(['message' => 'You cannot change your own role'], 422);
+    }
+
+    $project->updateMemberRole($user, $request->role);
+
+    return response()->json(['message' => 'Role updated successfully']);
+})->name('projects.members.update');
+
+// Remove member from project
+Route::delete('/projects/{uuid}/members/{memberId}', function (string $uuid, int $memberId) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $currentUser = auth()->user();
+    $currentUserRole = $currentUser->roleInProject($project);
+
+    // Check if current user can manage members
+    if (! in_array($currentUserRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'You do not have permission to manage members'], 403);
+    }
+
+    $user = \App\Models\User::findOrFail($memberId);
+
+    // Cannot remove yourself
+    if ($user->id === $currentUser->id) {
+        return response()->json(['message' => 'You cannot remove yourself from the project'], 422);
+    }
+
+    // Check if user is a project member
+    if (! $project->members()->where('user_id', $user->id)->exists()) {
+        return response()->json(['message' => 'User is not a project member'], 404);
+    }
+
+    // Admins cannot remove owners
+    $memberRole = $user->roleInProject($project);
+    if ($memberRole === 'owner' && $currentUserRole !== 'owner') {
+        return response()->json(['message' => 'Only project owners can remove other owners'], 403);
+    }
+
+    $project->removeMember($user);
+
+    return response()->json(['message' => 'Member removed successfully']);
+})->name('projects.members.destroy');

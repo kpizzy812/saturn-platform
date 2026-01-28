@@ -3,6 +3,35 @@
 // Resource status type matching StatusBadge component
 export type ResourceStatus = 'online' | 'offline' | 'deploying' | 'error' | 'stopped' | 'initializing' | 'running' | 'failed' | 'queued' | 'in_progress' | 'finished' | 'cancelled';
 
+// Platform and Project Role types
+export type PlatformRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type ProjectRole = 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
+export type EnvironmentType = 'development' | 'uat' | 'production';
+
+export interface ProjectMember {
+    id: number;
+    name: string;
+    email: string;
+    role: ProjectRole;
+    environment_permissions?: Record<string, boolean>;
+    created_at: string;
+}
+
+export interface DeploymentApproval {
+    id: number;
+    uuid: string;
+    status: 'pending' | 'approved' | 'rejected';
+    deployment_uuid: string;
+    application_name: string;
+    environment_name: string;
+    project_name?: string;
+    requested_by: string;
+    approved_by?: string;
+    comment?: string;
+    requested_at: string;
+    decided_at?: string;
+}
+
 export interface User {
     id: number;
     name: string;

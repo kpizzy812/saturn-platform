@@ -5027,6 +5027,85 @@
                 ]
             }
         },
+        "\/deployments\/{uuid}\/approval-status": {
+            "get": {
+                "tags": [
+                    "Deployment Approvals"
+                ],
+                "summary": "Get deployment approval status",
+                "description": "Get the approval status for a specific deployment.",
+                "operationId": "get-deployment-approval-status",
+                "parameters": [
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "description": "Deployment UUID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Approval status retrieved.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "uuid": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string"
+                                        },
+                                        "deployment_uuid": {
+                                            "type": "string"
+                                        },
+                                        "application_name": {
+                                            "type": "string"
+                                        },
+                                        "environment_name": {
+                                            "type": "string"
+                                        },
+                                        "requested_by": {
+                                            "type": "string"
+                                        },
+                                        "approved_by": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "comment": {
+                                            "type": "string",
+                                            "nullable": true
+                                        },
+                                        "requested_at": {
+                                            "type": "string"
+                                        },
+                                        "decided_at": {
+                                            "type": "string",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/git\/branches": {
             "get": {
                 "tags": [

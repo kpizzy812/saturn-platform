@@ -159,6 +159,7 @@ Route::group([
     Route::post('/deployments/{uuid}/request-approval', [DeploymentApprovalController::class, 'requestApproval'])->middleware(['api.ability:deploy']);
     Route::post('/deployments/{uuid}/approve', [DeploymentApprovalController::class, 'approve'])->middleware(['api.ability:deploy']);
     Route::post('/deployments/{uuid}/reject', [DeploymentApprovalController::class, 'reject'])->middleware(['api.ability:deploy']);
+    Route::get('/deployments/{uuid}/approval-status', [DeploymentApprovalController::class, 'approvalStatus'])->middleware(['api.ability:read']);
     Route::get('/approvals/pending', [DeploymentApprovalController::class, 'myPendingApprovals'])->middleware(['api.ability:read']);
 
     Route::get('/servers', [ServersController::class, 'servers'])->middleware(['api.ability:read']);
