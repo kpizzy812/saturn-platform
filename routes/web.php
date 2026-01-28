@@ -1301,10 +1301,11 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             }
         }
 
-        // Calculate duration
+        // Calculate duration (use started_at if available, fallback to created_at for old deployments)
         $duration = null;
-        if ($deployment->created_at && $deployment->updated_at && $deployment->status !== 'in_progress') {
-            $diff = $deployment->created_at->diff($deployment->updated_at);
+        $startTime = $deployment->started_at ?? $deployment->created_at;
+        if ($startTime && $deployment->updated_at && $deployment->status !== 'in_progress') {
+            $diff = $startTime->diff($deployment->updated_at);
             if ($diff->i > 0) {
                 $duration = $diff->i.'m '.$diff->s.'s';
             } else {
@@ -2132,7 +2133,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             })->name('sources.github.update');
 
             Route::delete('/{id}', function (string $id) {
-                $source = \App\Models\GithubApp::ownedByCurrentTeam()->findOrFail($id);
+                $query = \App\Models\GithubApp::ownedByCurrentTeam();
+                $source = is_numeric($id)
+                    ? $query->findOrFail($id)
+                    : $query->where('uuid', $id)->firstOrFail();
                 $source->delete();
 
                 return redirect()->route('sources.github.index')->with('success', 'GitHub App deleted successfully');
@@ -2193,7 +2197,11 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             })->name('sources.gitlab.store');
 
             Route::get('/{id}', function (string $id) {
-                $source = \App\Models\GitlabApp::ownedByCurrentTeam()->findOrFail($id);
+                // Support both numeric ID and UUID lookup
+                $query = \App\Models\GitlabApp::ownedByCurrentTeam();
+                $source = is_numeric($id)
+                    ? $query->findOrFail($id)
+                    : $query->where('uuid', $id)->firstOrFail();
 
                 return \Inertia\Inertia::render('Sources/GitLab/Show', [
                     'source' => [
@@ -2216,7 +2224,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             })->name('sources.gitlab.show');
 
             Route::put('/{id}', function (string $id, \Illuminate\Http\Request $request) {
-                $source = \App\Models\GitlabApp::ownedByCurrentTeam()->findOrFail($id);
+                $query = \App\Models\GitlabApp::ownedByCurrentTeam();
+                $source = is_numeric($id)
+                    ? $query->findOrFail($id)
+                    : $query->where('uuid', $id)->firstOrFail();
                 $validated = $request->validate([
                     'name' => 'sometimes|string|max:255',
                     'api_url' => 'sometimes|url',
@@ -2229,7 +2240,10 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             })->name('sources.gitlab.update');
 
             Route::delete('/{id}', function (string $id) {
-                $source = \App\Models\GitlabApp::ownedByCurrentTeam()->findOrFail($id);
+                $query = \App\Models\GitlabApp::ownedByCurrentTeam();
+                $source = is_numeric($id)
+                    ? $query->findOrFail($id)
+                    : $query->where('uuid', $id)->firstOrFail();
                 $source->delete();
 
                 return redirect()->route('sources.gitlab.index')->with('success', 'GitLab App deleted successfully');

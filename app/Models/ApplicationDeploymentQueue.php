@@ -42,6 +42,10 @@ class ApplicationDeploymentQueue extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'started_at' => 'datetime',
+    ];
+
     public function application()
     {
         return $this->belongsTo(Application::class);

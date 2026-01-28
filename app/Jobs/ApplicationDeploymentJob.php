@@ -285,6 +285,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         $this->application_deployment_queue->update([
             'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
+            'started_at' => Carbon::now(),
             'horizon_job_worker' => gethostname(),
         ]);
         if ($this->server->isFunctional() === false) {
