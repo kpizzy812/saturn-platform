@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
+import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity, Loader2 } from 'lucide-react';
 import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
@@ -138,8 +139,7 @@ export default function DatabaseShow({ database }: Props) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-    const variant = status.toLowerCase() === 'running' ? 'default' : 'secondary';
-    return <Badge variant={variant}>{status}</Badge>;
+    return <Badge variant={getStatusVariant(status)}>{getStatusLabel(status)}</Badge>;
 }
 
 function ConnectionTab({ database }: { database: StandaloneDatabase }) {

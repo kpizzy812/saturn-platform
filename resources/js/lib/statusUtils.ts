@@ -267,13 +267,20 @@ const statusRegistry: Record<string, StatusConfig> = {
         textColorClass: 'text-primary',
     },
 
-    // Volume statuses
+    // Volume & Destination statuses
     active: {
         label: 'Active',
         variant: 'success',
         iconName: 'CheckCircle',
         colorClass: 'bg-green-500',
         textColorClass: 'text-primary',
+    },
+    inactive: {
+        label: 'Inactive',
+        variant: 'default',
+        iconName: 'XCircle',
+        colorClass: 'bg-gray-500',
+        textColorClass: 'text-foreground-muted',
     },
     creating: {
         label: 'Creating',

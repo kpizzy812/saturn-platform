@@ -13,6 +13,7 @@ import {
     Download,
 } from 'lucide-react';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
+import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import type { Server } from '@/types';
 
 interface Props {
@@ -446,16 +447,10 @@ export default function SentinelMetrics({ server }: Props) {
                                                 <td className="py-3 font-medium text-foreground">{container.name}</td>
                                                 <td className="py-3">
                                                     <Badge
-                                                        variant={
-                                                            container.status?.startsWith('running')
-                                                                ? 'success'
-                                                                : container.status?.startsWith('stopped')
-                                                                ? 'secondary'
-                                                                : 'warning'
-                                                        }
+                                                        variant={getStatusVariant(container.status || 'stopped')}
                                                         size="sm"
                                                     >
-                                                        {container.status}
+                                                        {getStatusLabel(container.status || 'stopped')}
                                                     </Badge>
                                                 </td>
                                                 <td className="py-3 text-right text-foreground">{container.cpu}%</td>

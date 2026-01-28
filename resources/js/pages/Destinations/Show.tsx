@@ -215,8 +215,8 @@ export default function DestinationShow({ destination, resources = [] }: Props) 
                             <div>
                                 <label className="text-sm text-foreground-muted">Status</label>
                                 <div className="mt-1">
-                                    <Badge variant={destination.status === 'active' ? 'success' : 'default'}>
-                                        {destination.status}
+                                    <Badge variant={getStatusVariant(destination.status)}>
+                                        {getStatusLabel(destination.status)}
                                     </Badge>
                                 </div>
                             </div>

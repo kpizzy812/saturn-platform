@@ -14,6 +14,7 @@ import {
     Edit,
     ExternalLink
 } from 'lucide-react';
+import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import type { S3Storage } from '@/types';
 
 interface BackupInfo {
@@ -257,16 +258,8 @@ function BackupsTab({ backups }: { backups: BackupInfo[] }) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Badge
-                                        variant={
-                                            backup.status === 'completed'
-                                                ? 'success'
-                                                : backup.status === 'failed'
-                                                  ? 'danger'
-                                                  : 'default'
-                                        }
-                                    >
-                                        {backup.status}
+                                    <Badge variant={getStatusVariant(backup.status)}>
+                                        {getStatusLabel(backup.status)}
                                     </Badge>
                                     <span className="text-sm text-foreground-subtle">
                                         {new Date(backup.created_at).toLocaleDateString()}

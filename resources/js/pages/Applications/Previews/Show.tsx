@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import type { PreviewDeployment, Application } from '@/types';
 import { formatRelativeTime } from '@/lib/utils';
-import { getStatusColor, getStatusVariant } from '@/lib/statusUtils';
+import { getStatusColor, getStatusVariant, getStatusLabel } from '@/lib/statusUtils';
 
 interface Props {
     application: Application;
@@ -98,7 +98,7 @@ export default function PreviewShow({ application, preview, previewUuid, project
                                     PR #{preview.pull_request_number}
                                 </h1>
                                 <Badge variant={getStatusVariant(preview.status)}>
-                                    {preview.status}
+                                    {getStatusLabel(preview.status)}
                                 </Badge>
                             </div>
                             <p className="text-foreground-muted mb-2">
@@ -223,7 +223,7 @@ export default function PreviewShow({ application, preview, previewUuid, project
                             <h3 className="text-sm font-semibold text-foreground mb-3">Status</h3>
                             <div className="flex items-center gap-2 mb-4">
                                 <div className={`h-3 w-3 rounded-full ${getStatusColor(preview.status)}`} />
-                                <span className="text-sm font-medium capitalize text-foreground">{preview.status}</span>
+                                <span className="text-sm font-medium text-foreground">{getStatusLabel(preview.status)}</span>
                             </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">

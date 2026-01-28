@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
 import { Plus, Network, Server, CheckCircle2, XCircle, Box } from 'lucide-react';
+import { getStatusLabel } from '@/lib/statusUtils';
 
 interface Destination {
     id: number;
@@ -109,7 +110,7 @@ export default function DestinationsIndex({ destinations = [] }: Props) {
                                                             ) : (
                                                                 <XCircle className="h-4 w-4 text-danger" />
                                                             )}
-                                                            <span className="capitalize">{dest.status}</span>
+                                                            <span>{getStatusLabel(dest.status)}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1 text-foreground-muted">
                                                             <Box className="h-4 w-4" />

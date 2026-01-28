@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, Badge, Button, Modal, ModalFooter, useToast } from '@/components/ui';
 import { Container, Clock, RefreshCw, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
+import { getStatusLabel } from '@/lib/statusUtils';
 import type { Service } from '@/types';
 
 interface ContainerInfo {
@@ -155,7 +156,7 @@ export function RollbacksTab({ service, containers = [] }: Props) {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium">Status:</span>
-                                                    <span>{container.status}</span>
+                                                    <span>{getStatusLabel(container.status)}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium">ID:</span>

@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Checkbox, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
+import { getStatusLabel } from '@/lib/statusUtils';
 import {
     ArrowLeft,
     Database,
@@ -258,7 +259,7 @@ export default function DatabaseSettings({ database }: Props) {
                                 />
                                 <InfoField label="Database Type" value={config.displayName} />
                                 <InfoField label="Version" value={database.version || config.version} />
-                                <InfoField label="Status" value={database.status} />
+                                <InfoField label="Status" value={getStatusLabel(database.status)} />
                                 <InfoField label="Created" value={new Date(database.created_at).toLocaleDateString()} />
                                 <InfoField label="Last Updated" value={new Date(database.updated_at).toLocaleDateString()} />
                             </div>
