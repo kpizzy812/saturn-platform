@@ -2,9 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { getStatusLabel, getStatusDotClass } from '@/lib/statusUtils';
 import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
-import { Button, Input, useConfirm } from '@/components/ui';
+import { Button, Input, useConfirm, useTheme } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search } from 'lucide-react';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon } from 'lucide-react';
 import type { Project, Environment } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
@@ -52,6 +52,7 @@ export default function ProjectShow({ project }: Props) {
     // Hooks - must be called before early return
     const { addToast } = useToast();
     const confirm = useConfirm();
+    const { isDark, toggleTheme } = useTheme();
 
     // Show loading state if project is not available
     if (!project) {
@@ -716,6 +717,13 @@ export default function ProjectShow({ project }: Props) {
                                 </DropdownItem>
                             </DropdownContent>
                         </Dropdown>
+                        <button
+                            onClick={toggleTheme}
+                            className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground"
+                            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        >
+                            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                        </button>
                         <Link href={`/projects/${project.uuid}/settings`}>
                             <button className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground">
                                 <Settings className="h-4 w-4" />
