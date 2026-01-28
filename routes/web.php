@@ -675,7 +675,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         return redirect()->back()->with('success', 'Alert updated successfully');
     })->name('observability.alerts.update');
 
-    Route::delete('/observability/alerts/{id}', function (int $id) {
+    Route::delete('/observability/alerts/{id}', function (string $id) {
         $alert = \App\Models\Alert::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
         $alert->delete();
 
@@ -1997,25 +1997,34 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             $gitlabApps = \App\Models\GitlabApp::ownedByCurrentTeam()->get();
 
             // Combine all sources with type indicator
+            // Only include sources that are actually connected (have app_id/installation_id)
             $sources = collect()
-                ->concat($githubApps->map(fn ($app) => [
-                    'id' => $app->id,
-                    'uuid' => $app->uuid ?? null,
-                    'name' => $app->name,
-                    'type' => 'github',
-                    'html_url' => $app->html_url,
-                    'is_public' => $app->is_public,
-                    'created_at' => $app->created_at,
-                ]))
-                ->concat($gitlabApps->map(fn ($app) => [
-                    'id' => $app->id,
-                    'uuid' => $app->uuid ?? null,
-                    'name' => $app->name,
-                    'type' => 'gitlab',
-                    'html_url' => $app->html_url ?? null,
-                    'is_public' => $app->public_key ? false : true,
-                    'created_at' => $app->created_at,
-                ]));
+                ->concat($githubApps
+                    ->filter(fn ($app) => ! is_null($app->app_id) && ! is_null($app->installation_id))
+                    ->map(fn ($app) => [
+                        'id' => $app->id,
+                        'uuid' => $app->uuid ?? null,
+                        'name' => $app->name,
+                        'type' => 'github',
+                        'html_url' => $app->html_url,
+                        'is_public' => $app->is_public,
+                        'status' => 'connected',
+                        'repos_count' => $app->applications()->count(),
+                        'created_at' => $app->created_at,
+                    ]))
+                ->concat($gitlabApps
+                    ->filter(fn ($app) => ! is_null($app->app_id) || ! is_null($app->deploy_key_id))
+                    ->map(fn ($app) => [
+                        'id' => $app->id,
+                        'uuid' => $app->uuid ?? null,
+                        'name' => $app->name,
+                        'type' => 'gitlab',
+                        'html_url' => $app->html_url ?? null,
+                        'is_public' => $app->public_key ? false : true,
+                        'status' => 'connected',
+                        'repos_count' => $app->applications()->count(),
+                        'created_at' => $app->created_at,
+                    ]));
 
             return \Inertia\Inertia::render('Sources/Index', [
                 'sources' => $sources,
@@ -2079,8 +2088,12 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 ]);
             })->name('sources.github.store');
 
-            Route::get('/{id}', function (int $id) {
-                $source = \App\Models\GithubApp::ownedByCurrentTeam()->findOrFail($id);
+            Route::get('/{id}', function (string $id) {
+                // Support both numeric ID and UUID lookup
+                $query = \App\Models\GithubApp::ownedByCurrentTeam();
+                $source = is_numeric($id)
+                    ? $query->findOrFail($id)
+                    : $query->where('uuid', $id)->firstOrFail();
 
                 return \Inertia\Inertia::render('Sources/GitHub/Show', [
                     'source' => [
@@ -2103,8 +2116,11 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 ]);
             })->name('sources.github.show');
 
-            Route::put('/{id}', function (int $id, \Illuminate\Http\Request $request) {
-                $source = \App\Models\GithubApp::ownedByCurrentTeam()->findOrFail($id);
+            Route::put('/{id}', function (string $id, \Illuminate\Http\Request $request) {
+                $query = \App\Models\GithubApp::ownedByCurrentTeam();
+                $source = is_numeric($id)
+                    ? $query->findOrFail($id)
+                    : $query->where('uuid', $id)->firstOrFail();
                 $validated = $request->validate([
                     'name' => 'sometimes|string|max:255',
                     'organization' => 'nullable|string|max:255',
@@ -2115,7 +2131,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 return back()->with('success', 'GitHub App updated');
             })->name('sources.github.update');
 
-            Route::delete('/{id}', function (int $id) {
+            Route::delete('/{id}', function (string $id) {
                 $source = \App\Models\GithubApp::ownedByCurrentTeam()->findOrFail($id);
                 $source->delete();
 
@@ -2176,7 +2192,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                     ->with('success', 'GitLab connection created successfully');
             })->name('sources.gitlab.store');
 
-            Route::get('/{id}', function (int $id) {
+            Route::get('/{id}', function (string $id) {
                 $source = \App\Models\GitlabApp::ownedByCurrentTeam()->findOrFail($id);
 
                 return \Inertia\Inertia::render('Sources/GitLab/Show', [
@@ -2199,7 +2215,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 ]);
             })->name('sources.gitlab.show');
 
-            Route::put('/{id}', function (int $id, \Illuminate\Http\Request $request) {
+            Route::put('/{id}', function (string $id, \Illuminate\Http\Request $request) {
                 $source = \App\Models\GitlabApp::ownedByCurrentTeam()->findOrFail($id);
                 $validated = $request->validate([
                     'name' => 'sometimes|string|max:255',
@@ -2212,7 +2228,7 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
                 return back()->with('success', 'GitLab connection updated');
             })->name('sources.gitlab.update');
 
-            Route::delete('/{id}', function (int $id) {
+            Route::delete('/{id}', function (string $id) {
                 $source = \App\Models\GitlabApp::ownedByCurrentTeam()->findOrFail($id);
                 $source->delete();
 
