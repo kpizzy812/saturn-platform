@@ -204,12 +204,15 @@ function ProjectCanvasInner({
     const reactFlowInstance = useReactFlow();
     const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>(initialResourceLinks);
     const [isLoading, setIsLoading] = useState(false);
-    const linksLoadedRef = useRef(false);
+    const linksLoadedForEnvRef = useRef<string | null>(null);
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Load resource links from API
+    // Load resource links from API when environment changes
     useEffect(() => {
-        if (!environmentUuid || linksLoadedRef.current) return;
+        if (!environmentUuid) return;
+
+        // Skip if already loaded for this environment
+        if (linksLoadedForEnvRef.current === environmentUuid) return;
 
         const loadLinks = async () => {
             try {
@@ -219,7 +222,7 @@ function ProjectCanvasInner({
                     },
                 });
                 setResourceLinks(response.data);
-                linksLoadedRef.current = true;
+                linksLoadedForEnvRef.current = environmentUuid;
             } catch (error) {
                 console.error('Failed to load resource links:', error);
             }
@@ -399,6 +402,11 @@ function ProjectCanvasInner({
     useEffect(() => {
         setEdges(linkedEdges);
     }, [linkedEdges, setEdges]);
+
+    // Update nodes when applications/databases change
+    useEffect(() => {
+        setNodes(initialNodes);
+    }, [initialNodes, setNodes]);
 
     // Edge selection and context menu state
     const [selectedEdge, setSelectedEdge] = useState<string | null>(null);

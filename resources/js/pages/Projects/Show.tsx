@@ -1033,6 +1033,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     <div className="relative flex-1 overflow-hidden">
                         {envWithRealtimeStatuses && (
                             <ProjectCanvas
+                                key={envWithRealtimeStatuses.uuid}
                                 applications={envWithRealtimeStatuses.applications || []}
                                 databases={envWithRealtimeStatuses.databases || []}
                                 services={envWithRealtimeStatuses.services || []}
