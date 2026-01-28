@@ -21,6 +21,7 @@ export {
 } from './Dropdown';
 export { Tabs, TabsRoot, TabsList, TabsTrigger, TabsContent, TabsPanels } from './Tabs';
 export { ToastProvider, useToast } from './Toast';
+export { ThemeProvider, useTheme } from './ThemeProvider';
 export { CommandPalette, useCommandPalette } from './CommandPalette';
 export { NotificationItem } from './NotificationItem';
 export { ActivityTimeline } from './ActivityTimeline';

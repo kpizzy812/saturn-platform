@@ -3,6 +3,7 @@ import { Link, usePage, router } from '@inertiajs/react';
 import { HelpCircle, Bell, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
+import { useTheme } from '@/components/ui/ThemeProvider';
 
 interface HeaderProps {
     showNewProject?: boolean;
@@ -12,26 +13,7 @@ interface HeaderProps {
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
     const user = (props as any).auth as { name?: string; email?: string } | undefined;
-    // Theme state with persistence
-    const [isDark, setIsDark] = React.useState(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('theme');
-            if (saved) return saved === 'dark';
-            return document.documentElement.classList.contains('dark');
-        }
-        return true;
-    });
-
-    // Apply theme changes
-    React.useEffect(() => {
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-        }
-    }, [isDark]);
+    const { isDark, toggleTheme } = useTheme();
 
     // Detect OS for keyboard shortcut display
     const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -137,7 +119,7 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                         </DropdownItem>
                         <DropdownDivider />
                         <DropdownItem
-                            onClick={() => setIsDark(!isDark)}
+                            onClick={toggleTheme}
                             icon={isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                         >
                             {isDark ? 'Light Theme' : 'Dark Theme'}
