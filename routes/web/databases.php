@@ -301,7 +301,7 @@ Route::get('/databases/{uuid}/logs', function (string $uuid) {
 
 // JSON endpoint for database logs (used by LogsViewer modal)
 Route::get('/databases/{uuid}/logs/json', function (string $uuid, \Illuminate\Http\Request $request) {
-    $database = findDatabaseByUuid($uuid);
+    [$database, $type] = findDatabaseByUuid($uuid);
 
     if (! $database) {
         return response()->json(['message' => 'Database not found.'], 404);
