@@ -290,7 +290,7 @@ export default function BoardingIndex({ userName, existingServers = [], privateK
             </div>
 
             {/* Content */}
-            <div className="mx-auto max-w-2xl">
+            <div className="mx-auto max-w-2xl py-8">
                 {currentStep === 'welcome' && (
                     <WelcomeStep
                         userName={userName}
