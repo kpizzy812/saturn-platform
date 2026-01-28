@@ -99,9 +99,14 @@ export function DeploymentsTab({ service }: DeploymentsTabProps) {
 
     const handleRestart = async () => {
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${service.uuid}/restart`, {
                 method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
                 credentials: 'include',
             });
             if (!response.ok) throw new Error('Failed to restart');

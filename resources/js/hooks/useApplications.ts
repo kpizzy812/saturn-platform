@@ -131,11 +131,13 @@ export function useApplication({
 
     const updateApplication = React.useCallback(async (data: Partial<Application>) => {
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${uuid}`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
                 body: JSON.stringify(data),
@@ -154,11 +156,13 @@ export function useApplication({
 
     const startApplication = React.useCallback(async () => {
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${uuid}/start`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -175,11 +179,13 @@ export function useApplication({
 
     const stopApplication = React.useCallback(async () => {
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${uuid}/stop`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -196,11 +202,13 @@ export function useApplication({
 
     const restartApplication = React.useCallback(async () => {
         try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(`/api/v1/applications/${uuid}/restart`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
