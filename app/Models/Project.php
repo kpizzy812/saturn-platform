@@ -57,10 +57,30 @@ class Project extends BaseModel
             ProjectSetting::create([
                 'project_id' => $project->id,
             ]);
+
+            // Create all three standard environments
             Environment::create([
-                'name' => 'production',
+                'name' => 'development',
+                'type' => 'development',
                 'project_id' => $project->id,
                 'uuid' => (string) new Cuid2,
+                'requires_approval' => false,
+            ]);
+
+            Environment::create([
+                'name' => 'uat',
+                'type' => 'uat',
+                'project_id' => $project->id,
+                'uuid' => (string) new Cuid2,
+                'requires_approval' => false,
+            ]);
+
+            Environment::create([
+                'name' => 'production',
+                'type' => 'production',
+                'project_id' => $project->id,
+                'uuid' => (string) new Cuid2,
+                'requires_approval' => true,
             ]);
         });
         static::deleting(function ($project) {
