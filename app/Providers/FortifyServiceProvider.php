@@ -29,7 +29,7 @@ class FortifyServiceProvider extends ServiceProvider
             public function toResponse($request)
             {
                 // First user (root) will be redirected to /settings instead of / on registration.
-                if ($request->user()->currentTeam->id === 0) {
+                if (session('currentTeam')?->id === 0) {
                     return redirect()->route('settings.index');
                 }
 
