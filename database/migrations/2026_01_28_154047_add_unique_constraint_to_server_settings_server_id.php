@@ -27,9 +27,18 @@ return new class extends Migration
             )
         ');
 
-        Schema::table('server_settings', function (Blueprint $table) {
-            $table->unique('server_id');
-        });
+        // Add unique constraint if it doesn't exist
+        $indexExists = DB::select("
+            SELECT 1 FROM pg_indexes
+            WHERE tablename = 'server_settings'
+            AND indexname = 'server_settings_server_id_unique'
+        ");
+
+        if (empty($indexExists)) {
+            Schema::table('server_settings', function (Blueprint $table) {
+                $table->unique('server_id');
+            });
+        }
     }
 
     /**
