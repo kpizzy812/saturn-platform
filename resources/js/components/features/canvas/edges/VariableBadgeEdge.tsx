@@ -83,7 +83,7 @@ export const VariableBadgeEdge = memo(({
                 stroke={edgeColor}
                 strokeWidth={selected ? 8 : isHovered ? 6 : 0}
                 strokeOpacity={0.3}
-                style={{ transition: 'all 0.2s ease' }}
+                style={{ transition: 'stroke-width 0.15s ease, stroke-opacity 0.15s ease' }}
                 className="pointer-events-none"
             />
 
@@ -95,7 +95,7 @@ export const VariableBadgeEdge = memo(({
                     ...style,
                     stroke: edgeColor,
                     strokeWidth: selected ? 3 : isHovered ? 2.5 : 2,
-                    transition: 'all 0.2s ease',
+                    transition: 'stroke 0.15s ease, stroke-width 0.15s ease',
                 }}
                 interactionWidth={20}
             />
@@ -173,11 +173,13 @@ export const VariableBadgeEdge = memo(({
 
                             {/* Tooltip on hover */}
                             <div className={cn(
-                                'absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50',
+                                'absolute left-1/2 -translate-x-1/2 top-full mt-2',
                                 'opacity-0 pointer-events-none translate-y-1',
                                 'transition-all duration-200',
                                 isHovered && 'opacity-100 pointer-events-auto translate-y-0'
-                            )}>
+                            )}
+                            style={{ zIndex: 9999 }}
+                            >
                                 <div className="bg-background border border-border rounded-lg shadow-xl p-3 min-w-[200px]">
                                     <div className="text-[10px] uppercase tracking-wider text-foreground-muted font-medium mb-2">
                                         {isBidirectional ? 'Bidirectional Link' : 'Environment Variable'}
