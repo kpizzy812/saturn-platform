@@ -9,11 +9,14 @@ class ApiSensitiveData
 {
     public function handle(Request $request, Closure $next)
     {
-        $token = $request->user()->currentAccessToken();
+        $token = $request->user()?->currentAccessToken();
 
-        // Allow access to sensitive data if token has root or read:sensitive permission
+        // Session auth (no token) - allow full access to sensitive data
+        // Token auth - check for root or read:sensitive permission
+        $canReadSensitive = ! $token || $token->can('root') || $token->can('read:sensitive');
+
         $request->attributes->add([
-            'can_read_sensitive' => $token->can('root') || $token->can('read:sensitive'),
+            'can_read_sensitive' => $canReadSensitive,
         ]);
 
         return $next($request);

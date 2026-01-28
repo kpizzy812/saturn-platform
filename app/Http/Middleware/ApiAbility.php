@@ -9,7 +9,16 @@ class ApiAbility extends CheckForAnyAbility
     public function handle($request, $next, ...$abilities)
     {
         try {
-            if ($request->user()->tokenCan('root')) {
+            $user = $request->user();
+
+            // If user is authenticated via session (no token), allow access
+            // Session auth is already validated by Sanctum's EnsureFrontendRequestsAreStateful
+            if ($user && ! $user->currentAccessToken()) {
+                return $next($request);
+            }
+
+            // Token auth - check for root ability
+            if ($user && $user->tokenCan('root')) {
                 return $next($request);
             }
 
