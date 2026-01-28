@@ -154,6 +154,33 @@ function EdgeContextMenu({
     );
 }
 
+// LocalStorage key for node positions
+const getPositionsStorageKey = (environmentUuid: string) => `canvas-node-positions-${environmentUuid}`;
+
+// Load saved node positions from localStorage
+function loadSavedPositions(environmentUuid?: string): Record<string, { x: number; y: number }> {
+    if (!environmentUuid) return {};
+    try {
+        const saved = localStorage.getItem(getPositionsStorageKey(environmentUuid));
+        return saved ? JSON.parse(saved) : {};
+    } catch {
+        return {};
+    }
+}
+
+// Save node positions to localStorage
+function saveNodePositions(environmentUuid: string, nodes: Node[]) {
+    const positions: Record<string, { x: number; y: number }> = {};
+    nodes.forEach((node) => {
+        positions[node.id] = node.position;
+    });
+    try {
+        localStorage.setItem(getPositionsStorageKey(environmentUuid), JSON.stringify(positions));
+    } catch (e) {
+        console.warn('Failed to save node positions:', e);
+    }
+}
+
 function ProjectCanvasInner({
     applications,
     databases,
@@ -178,6 +205,7 @@ function ProjectCanvasInner({
     const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>(initialResourceLinks);
     const [isLoading, setIsLoading] = useState(false);
     const linksLoadedRef = useRef(false);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Load resource links from API
     useEffect(() => {
@@ -213,7 +241,10 @@ function ProjectCanvasInner({
         };
     }, [reactFlowInstance]);
 
-    // Convert data to nodes
+    // Load saved positions once on mount
+    const savedPositions = useMemo(() => loadSavedPositions(environmentUuid), [environmentUuid]);
+
+    // Convert data to nodes, using saved positions if available
     const initialNodes = useMemo(() => {
         const nodes: Node[] = [];
         const horizontalSpacing = 280;
@@ -223,10 +254,14 @@ function ProjectCanvasInner({
 
         // Application nodes - horizontal layout
         applications.forEach((app, index) => {
+            const nodeId = `app-${app.id}`;
+            const defaultPosition = { x: startX + index * horizontalSpacing, y: startY };
+            const position = savedPositions[nodeId] || defaultPosition;
+
             nodes.push({
-                id: `app-${app.id}`,
+                id: nodeId,
                 type: 'service',
-                position: { x: startX + index * horizontalSpacing, y: startY },
+                position,
                 data: {
                     label: app.name,
                     status: app.status,
@@ -243,10 +278,14 @@ function ProjectCanvasInner({
 
         // Database nodes - below applications
         databases.forEach((db, index) => {
+            const nodeId = `db-${db.id}`;
+            const defaultPosition = { x: startX + index * horizontalSpacing, y: startY + verticalSpacing };
+            const position = savedPositions[nodeId] || defaultPosition;
+
             nodes.push({
-                id: `db-${db.id}`,
+                id: nodeId,
                 type: 'database',
-                position: { x: startX + index * horizontalSpacing, y: startY + verticalSpacing },
+                position,
                 data: {
                     label: db.name,
                     status: db.status,
@@ -260,7 +299,7 @@ function ProjectCanvasInner({
         });
 
         return nodes;
-    }, [applications, databases, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs]);
+    }, [applications, databases, savedPositions, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs]);
 
     // Convert resource links to edges, merging bidirectional app-to-app pairs into one edge
     const linkedEdges = useMemo(() => {
@@ -322,8 +361,35 @@ function ProjectCanvasInner({
         return result;
     }, [resourceLinks]);
 
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [nodes, setNodes, onNodesChangeBase] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(linkedEdges);
+
+    // Wrap onNodesChange to save positions with debounce
+    const onNodesChange = useCallback(
+        (changes: Parameters<typeof onNodesChangeBase>[0]) => {
+            onNodesChangeBase(changes);
+
+            // Check if any position changes occurred
+            const hasPositionChange = changes.some(
+                (change) => change.type === 'position' && change.position
+            );
+
+            if (hasPositionChange && environmentUuid) {
+                // Debounce saving to avoid excessive writes
+                if (saveTimeoutRef.current) {
+                    clearTimeout(saveTimeoutRef.current);
+                }
+                saveTimeoutRef.current = setTimeout(() => {
+                    // Get updated nodes after state change
+                    setNodes((currentNodes) => {
+                        saveNodePositions(environmentUuid, currentNodes);
+                        return currentNodes;
+                    });
+                }, 300);
+            }
+        },
+        [onNodesChangeBase, environmentUuid, setNodes]
+    );
 
     // Update edges when resourceLinks change
     useEffect(() => {
