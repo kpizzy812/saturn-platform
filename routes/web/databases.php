@@ -11,6 +11,7 @@ use App\Actions\Database\RestartDatabase;
 use App\Actions\Database\StartDatabase;
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Database\StopDatabaseProxy;
+use App\Jobs\ServerCheckJob;
 use App\Models\ScheduledDatabaseBackup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -153,8 +154,13 @@ Route::post('/databases', function (Request $request) {
         'clickhouse' => create_standalone_clickhouse($environment->id, $destination->uuid, $otherData),
     };
 
-    // Start the database container automatically after creation
+    // Mark as starting and launch the database container
+    $database->update(['status' => 'starting']);
     StartDatabase::dispatch($database);
+
+    // Schedule a status check after container has time to start
+    $server = $database->destination->server;
+    ServerCheckJob::dispatch($server)->delay(now()->addSeconds(15));
 
     return redirect()->route('databases.show', $database->uuid);
 })->name('databases.store');
