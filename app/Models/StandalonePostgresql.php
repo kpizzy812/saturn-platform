@@ -245,7 +245,7 @@ class StandalonePostgresql extends BaseModel
             get: function () {
                 $encodedUser = rawurlencode($this->postgres_user);
                 $encodedPass = rawurlencode($this->postgres_password);
-                $url = "postgres://{$encodedUser}:{$encodedPass}@{$this->uuid}:5432/{$this->postgres_db}";
+                $url = "postgresql://{$encodedUser}:{$encodedPass}@{$this->uuid}:5432/{$this->postgres_db}";
                 if ($this->enable_ssl) {
                     $url .= "?sslmode={$this->ssl_mode}";
                     if (in_array($this->ssl_mode, ['verify-ca', 'verify-full'])) {
@@ -269,7 +269,7 @@ class StandalonePostgresql extends BaseModel
                     }
                     $encodedUser = rawurlencode($this->postgres_user);
                     $encodedPass = rawurlencode($this->postgres_password);
-                    $url = "postgres://{$encodedUser}:{$encodedPass}@{$serverIp}:{$this->public_port}/{$this->postgres_db}";
+                    $url = "postgresql://{$encodedUser}:{$encodedPass}@{$serverIp}:{$this->public_port}/{$this->postgres_db}";
                     if ($this->enable_ssl) {
                         $url .= "?sslmode={$this->ssl_mode}";
                         if (in_array($this->ssl_mode, ['verify-ca', 'verify-full'])) {
