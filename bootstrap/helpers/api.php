@@ -104,7 +104,7 @@ function sharedDataApplications()
         'static_image' => Rule::enum(StaticImageTypes::class),
         'domains' => 'string',
         'redirect' => Rule::enum(RedirectTypes::class),
-        'git_commit_sha' => 'string',
+        'git_commit_sha' => ['string', 'regex:/^([a-fA-F0-9]{4,40}|HEAD)$/'],
         'docker_registry_image_name' => 'string|nullable',
         'docker_registry_image_tag' => 'string|nullable',
         'install_command' => 'string|nullable',

@@ -1,0 +1,165 @@
+# Saturn Platform Security & Bug Audit
+
+## Master Checklist
+
+**Дата начала аудита:** 2026-01-28
+**Статус:** 🔄 В процессе
+
+---
+
+## Как использовать
+
+Каждый файл в подпапках содержит гипотезы для проверки. Агенты проверяют гипотезы и помечают их статус:
+
+- `[ ]` - Не проверено
+- `[🔍]` - В процессе проверки
+- `[✅]` - Проверено, проблем не найдено
+- `[⚠️]` - Найдена проблема (низкий приоритет)
+- `[🔴]` - Критическая уязвимость (требует немедленного исправления)
+- `[🔧]` - Исправлено (указать PR/commit)
+
+---
+
+## Архитектурный обзор
+
+### Критические компоненты для аудита
+
+| Область | Приоритет | Файл чеклиста | Статус |
+|---------|-----------|---------------|--------|
+| **Backend** ||||
+| Аутентификация & Сессии | 🔴 Critical | [backend/authentication.md](backend/authentication.md) | [ ] |
+| Авторизация & Policies | 🔴 Critical | [backend/authorization.md](backend/authorization.md) | [ ] |
+| API Security (89+ endpoints) | 🔴 Critical | [backend/api-security.md](backend/api-security.md) | [ ] |
+| SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 2 critical found |
+| Webhooks (GitHub, GitLab, etc.) | 🟡 High | [backend/webhooks.md](backend/webhooks.md) | [ ] |
+| Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [ ] |
+| File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
+| Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [ ] |
+| **Frontend** ||||
+| XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [ ] |
+| API Calls & Data Handling | 🟡 High | [frontend/api-calls.md](frontend/api-calls.md) | [ ] |
+| Authentication Flow | 🔴 Critical | [frontend/authentication-flow.md](frontend/authentication-flow.md) | [ ] |
+| Input Validation | 🟡 High | [frontend/input-validation.md](frontend/input-validation.md) | [ ] |
+| Sensitive Data Exposure | 🔴 Critical | [frontend/sensitive-data.md](frontend/sensitive-data.md) | [ ] |
+| **Infrastructure** ||||
+| Docker Security | 🔴 Critical | [infrastructure/docker-security.md](infrastructure/docker-security.md) | [ ] |
+| Secrets Management | 🔴 Critical | [infrastructure/secrets-management.md](infrastructure/secrets-management.md) | [ ] |
+| Proxy Configuration (Traefik/Caddy) | 🟡 High | [infrastructure/proxy-configuration.md](infrastructure/proxy-configuration.md) | [ ] |
+| WebSocket Security | 🟡 High | [infrastructure/websocket-security.md](infrastructure/websocket-security.md) | [ ] |
+| **Database** ||||
+| SQL Injection | 🔴 Critical | [database/sql-injection.md](database/sql-injection.md) | [ ] |
+| Data Exposure | 🔴 Critical | [database/data-exposure.md](database/data-exposure.md) | [ ] |
+| Migrations & Schema | 🟢 Medium | [database/migrations.md](database/migrations.md) | [ ] |
+
+---
+
+## Прогресс
+
+### Общая статистика
+
+```
+Total Hypotheses: 258
+Checked: 5
+Issues Found: 3
+Critical: 2
+Fixed: 2
+```
+
+### Breakdown по файлам
+
+| Файл | Гипотез |
+|------|---------|
+| backend/authentication.md | 25 |
+| backend/authorization.md | 33 |
+| backend/api-security.md | 37 |
+| backend/ssh-operations.md | 34 |
+| backend/webhooks.md | 26 |
+| backend/jobs-queues.md | 28 |
+| backend/file-uploads.md | 23 |
+| backend/environment-variables.md | 26 |
+| frontend/xss-prevention.md | 26 |
+| frontend/api-calls.md | 23 |
+| frontend/authentication-flow.md | 26 |
+| frontend/input-validation.md | 28 |
+| frontend/sensitive-data.md | 30 |
+| infrastructure/docker-security.md | 31 |
+| infrastructure/secrets-management.md | 31 |
+| infrastructure/proxy-configuration.md | 30 |
+| infrastructure/websocket-security.md | 29 |
+| database/sql-injection.md | 26 |
+| database/data-exposure.md | 28 |
+| database/migrations.md | 22 |
+
+### По категориям
+
+| Категория | Всего | Проверено | Проблемы | Исправлено |
+|-----------|-------|-----------|----------|------------|
+| Backend | - | 0 | 0 | 0 |
+| Frontend | - | 0 | 0 | 0 |
+| Infrastructure | - | 0 | 0 | 0 |
+| Database | - | 0 | 0 | 0 |
+
+---
+
+## Найденные проблемы (Summary)
+
+### 🔴 Критические
+
+1. **[SSH-006] Command Injection в git_commit_sha** - [ssh-operations.md](backend/ssh-operations.md) ✅ FIXED
+   - Файл: `app/Models/Application.php:1114`
+   - API позволяет установить произвольный `git_commit_sha` без валидации формата
+   - **Severity: RCE (Remote Code Execution)**
+
+2. **[SSH-005] Container name без escaping** - [ssh-operations.md](backend/ssh-operations.md) ✅ FIXED
+   - Файл: `app/Jobs/ScheduledTaskJob.php:141`
+   - Container name вставляется в docker exec без escapeshellarg
+
+### ⚠️ Важные
+
+1. **[SSH-017] Host key verification отключена** - [ssh-operations.md](backend/ssh-operations.md)
+   - Файл: `app/Helpers/SshMultiplexingHelper.php:235`
+   - MITM атака возможна, но приемлемо для PaaS
+
+### 🟡 Низкий приоритет
+
+> Пока не найдено
+
+---
+
+## Исправления
+
+| ID | Описание | Файл | Статус |
+|----|----------|------|--------|
+| SSH-006 | Command Injection в git_commit_sha | `bootstrap/helpers/api.php`, `app/Models/Application.php` | ✅ Fixed |
+| SSH-005 | Container name без escaping | `app/Jobs/ScheduledTaskJob.php` | ✅ Fixed |
+
+---
+
+## Инструкции для агентов
+
+### Как проверять гипотезу:
+
+1. Открыть соответствующий файл чеклиста
+2. Найти гипотезу со статусом `[ ]`
+3. Изменить статус на `[🔍]`
+4. Провести анализ кода
+5. Обновить статус:
+   - `[✅]` если проблем нет (добавить краткий комментарий)
+   - `[⚠️]` или `[🔴]` если найдена проблема
+6. При нахождении проблемы:
+   - Добавить описание в секцию "Findings" файла
+   - Создать issue или исправить код
+   - После исправления обновить статус на `[🔧]`
+
+### Приоритет проверки:
+
+1. 🔴 Critical - проверять первыми
+2. 🟡 High - после критических
+3. 🟢 Medium - в последнюю очередь
+
+---
+
+## Связанные документы
+
+- [.ai/patterns/security-patterns.md](../.ai/patterns/security-patterns.md) - паттерны безопасности
+- [CLAUDE.md](../CLAUDE.md) - инструкции проекта
