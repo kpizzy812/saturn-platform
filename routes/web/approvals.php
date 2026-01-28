@@ -181,19 +181,60 @@ Route::post('/applications/{uuid}/deploy/json', function (string $uuid) {
 })->name('applications.deploy.json');
 
 // Resource Links (web routes for session auth)
-Route::get('/environments/{uuid}/links/json', function (string $uuid) {
+// Helper function to format link for JSON response
+$formatResourceLink = function (\App\Models\ResourceLink $link): array {
+    $targetType = match ($link->target_type) {
+        \App\Models\StandalonePostgresql::class => 'postgresql',
+        \App\Models\StandaloneMysql::class => 'mysql',
+        \App\Models\StandaloneMariadb::class => 'mariadb',
+        \App\Models\StandaloneRedis::class => 'redis',
+        \App\Models\StandaloneKeydb::class => 'keydb',
+        \App\Models\StandaloneDragonfly::class => 'dragonfly',
+        \App\Models\StandaloneMongodb::class => 'mongodb',
+        \App\Models\StandaloneClickhouse::class => 'clickhouse',
+        \App\Models\Application::class => 'application',
+        default => 'unknown',
+    };
+
+    // Use smart env key for application targets
+    $envKey = $link->target_type === \App\Models\Application::class
+        ? $link->getSmartAppEnvKey()
+        : $link->getEnvKey();
+
+    return [
+        'id' => $link->id,
+        'environment_id' => $link->environment_id,
+        'source_type' => 'application',
+        'source_id' => $link->source_id,
+        'source_name' => $link->source?->name,
+        'target_type' => $targetType,
+        'target_id' => $link->target_id,
+        'target_name' => $link->target?->name,
+        'inject_as' => $link->inject_as,
+        'env_key' => $envKey,
+        'auto_inject' => $link->auto_inject,
+        'use_external_url' => $link->use_external_url ?? false,
+        'created_at' => $link->created_at?->toIso8601String(),
+        'updated_at' => $link->updated_at?->toIso8601String(),
+    ];
+};
+
+Route::get('/environments/{uuid}/links/json', function (string $uuid) use ($formatResourceLink) {
     $environment = \App\Models\Environment::where('uuid', $uuid)
         ->whereHas('project', function ($query) {
             $query->whereRelation('team', 'id', currentTeam()->id);
         })
         ->firstOrFail();
 
-    $links = \App\Models\ResourceLink::where('environment_id', $environment->id)->get();
+    $links = \App\Models\ResourceLink::where('environment_id', $environment->id)
+        ->with(['source', 'target'])
+        ->get()
+        ->map(fn ($link) => $formatResourceLink($link));
 
     return response()->json($links);
 })->name('environments.links.json');
 
-Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Request $request, string $uuid) {
+Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Request $request, string $uuid) use ($formatResourceLink) {
     $environment = \App\Models\Environment::where('uuid', $uuid)
         ->whereHas('project', function ($query) {
             $query->whereRelation('team', 'id', currentTeam()->id);
@@ -202,35 +243,94 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
 
     $validated = $request->validate([
         'source_id' => 'required|integer',
-        'target_type' => 'required|string',
+        'target_type' => 'required|string|in:postgresql,mysql,mariadb,redis,keydb,dragonfly,mongodb,clickhouse,application',
         'target_id' => 'required|integer',
         'auto_inject' => 'boolean',
     ]);
 
+    // Map target_type string to class name
+    $targetTypeMap = [
+        'postgresql' => \App\Models\StandalonePostgresql::class,
+        'mysql' => \App\Models\StandaloneMysql::class,
+        'mariadb' => \App\Models\StandaloneMariadb::class,
+        'redis' => \App\Models\StandaloneRedis::class,
+        'keydb' => \App\Models\StandaloneKeydb::class,
+        'dragonfly' => \App\Models\StandaloneDragonfly::class,
+        'mongodb' => \App\Models\StandaloneMongodb::class,
+        'clickhouse' => \App\Models\StandaloneClickhouse::class,
+        'application' => \App\Models\Application::class,
+    ];
+
+    $targetClass = $targetTypeMap[$validated['target_type']] ?? null;
+    if (! $targetClass) {
+        return response()->json(['message' => 'Invalid target type.'], 400);
+    }
+
+    // Verify source application exists
+    $application = \App\Models\Application::where('id', $validated['source_id'])
+        ->where('environment_id', $environment->id)
+        ->first();
+
+    if (! $application) {
+        return response()->json(['message' => 'Application not found.'], 404);
+    }
+
+    // Check if link already exists
+    $existingLink = \App\Models\ResourceLink::where('source_type', \App\Models\Application::class)
+        ->where('source_id', $application->id)
+        ->where('target_type', $targetClass)
+        ->where('target_id', $validated['target_id'])
+        ->first();
+
+    if ($existingLink) {
+        $existingLink->load(['source', 'target']);
+
+        return response()->json($formatResourceLink($existingLink));
+    }
+
     $link = \App\Models\ResourceLink::create([
         'environment_id' => $environment->id,
-        'source_type' => 'application',
+        'source_type' => \App\Models\Application::class,
         'source_id' => $validated['source_id'],
-        'target_type' => $validated['target_type'],
+        'target_type' => $targetClass,
         'target_id' => $validated['target_id'],
         'auto_inject' => $validated['auto_inject'] ?? true,
     ]);
 
+    // Auto-inject database URL if enabled
+    if ($link->auto_inject) {
+        $application->autoInjectDatabaseUrl();
+    }
+
     // For app-to-app links, create reverse link
-    if ($validated['target_type'] === 'application') {
+    if ($targetClass === \App\Models\Application::class) {
         $reverseLink = \App\Models\ResourceLink::create([
             'environment_id' => $environment->id,
-            'source_type' => 'application',
+            'source_type' => \App\Models\Application::class,
             'source_id' => $validated['target_id'],
-            'target_type' => 'application',
+            'target_type' => \App\Models\Application::class,
             'target_id' => $validated['source_id'],
             'auto_inject' => $validated['auto_inject'] ?? true,
         ]);
 
-        return response()->json([$link, $reverseLink]);
+        // Auto-inject for target application too
+        if ($reverseLink->auto_inject) {
+            $target = \App\Models\Application::find($validated['target_id']);
+            $target?->autoInjectDatabaseUrl();
+        }
+
+        $link->load(['source', 'target']);
+        $reverseLink->load(['source', 'target']);
+
+        return response()->json([
+            $formatResourceLink($link),
+            $formatResourceLink($reverseLink),
+        ]);
     }
 
-    return response()->json($link);
+    $link->load(['source', 'target']);
+
+    return response()->json($formatResourceLink($link));
 })->name('environments.links.store.json');
 
 Route::delete('/environments/{uuid}/links/{linkId}/json', function (string $uuid, int $linkId) {
