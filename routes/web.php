@@ -440,6 +440,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Admin routes
     require __DIR__.'/web/admin.php';
 
+    // Deployment Approvals routes
+    require __DIR__.'/web/approvals.php';
+
     // Observability routes
     Route::get('/observability', function () {
         $team = auth()->user()->currentTeam();

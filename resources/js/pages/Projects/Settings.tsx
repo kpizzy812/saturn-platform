@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Input, Badge, Select } from '@/components/ui';
 import {
     ArrowLeft, Save, Trash2, AlertTriangle, Plus, Pencil, Check, X,
-    Eye, EyeOff, ExternalLink, Layers, Server, Bell, Users, Key,
+    Eye, EyeOff, ExternalLink, Layers, Server, Bell, Users, Key, UserCog,
 } from 'lucide-react';
 
 // --- Types ---
@@ -699,7 +699,14 @@ export default function ProjectSettings({
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-3 text-right">
+                        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+                            <Link
+                                href={`/projects/${project.uuid}/members`}
+                                className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/20"
+                            >
+                                <UserCog className="h-4 w-4" />
+                                Manage Project Members & Roles
+                            </Link>
                             <Link
                                 href="/settings/team"
                                 className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground"
