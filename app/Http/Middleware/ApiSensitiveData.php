@@ -11,9 +11,11 @@ class ApiSensitiveData
     {
         $token = $request->user()?->currentAccessToken();
 
-        // Session auth (no token) - allow full access to sensitive data
-        // Token auth - check for root or read:sensitive permission
-        $canReadSensitive = ! $token || $token->can('root') || $token->can('read:sensitive');
+        // Session auth (TransientToken or no token) - allow full access to sensitive data
+        // Token auth (PersonalAccessToken) - check for root or read:sensitive permission
+        // Note: Sanctum creates TransientToken for cookie-based SPA auth
+        $isSessionAuth = ! $token || $token instanceof \Laravel\Sanctum\TransientToken;
+        $canReadSensitive = $isSessionAuth || $token->can('root') || $token->can('read:sensitive');
 
         $request->attributes->add([
             'can_read_sensitive' => $canReadSensitive,

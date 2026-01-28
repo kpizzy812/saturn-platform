@@ -14,19 +14,11 @@ class ApiAllowed
             return $next($request);
         }
 
-        // Debug logging for API authentication issues
-        \Log::debug('ApiAllowed middleware', [
-            'path' => $request->path(),
-            'user' => $request->user() ? $request->user()->id : null,
-            'has_token' => $request->user()?->currentAccessToken() ? true : false,
-            'referer' => $request->headers->get('referer'),
-            'origin' => $request->headers->get('origin'),
-            'sanctum_attribute' => $request->attributes->get('sanctum'),
-        ]);
-
         // Session auth (web frontend) - always allow, API restrictions don't apply
+        // Note: Sanctum creates TransientToken for cookie-based SPA auth, not null
         $user = $request->user();
-        if ($user && ! $user->currentAccessToken()) {
+        $token = $user?->currentAccessToken();
+        if ($user && (! $token || $token instanceof \Laravel\Sanctum\TransientToken)) {
             return $next($request);
         }
 

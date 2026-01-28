@@ -10,10 +10,12 @@ class ApiAbility extends CheckForAnyAbility
     {
         try {
             $user = $request->user();
+            $token = $user?->currentAccessToken();
 
-            // If user is authenticated via session (no token), allow access
+            // If user is authenticated via session (TransientToken or no token), allow access
             // Session auth is already validated by Sanctum's EnsureFrontendRequestsAreStateful
-            if ($user && ! $user->currentAccessToken()) {
+            // Note: Sanctum creates TransientToken for cookie-based SPA auth, not null
+            if ($user && (! $token || $token instanceof \Laravel\Sanctum\TransientToken)) {
                 return $next($request);
             }
 
