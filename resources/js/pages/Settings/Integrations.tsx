@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Github, GitBranch, MessageSquare, Zap, Settings, CheckCircle2, XCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
+import { Github, GitBranch, MessageSquare, Zap, Settings, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
 
 declare function route(name: string, params?: Record<string, any>): string;
@@ -76,7 +76,7 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                     Connect GitHub and GitLab for automatic deployments
                                 </CardDescription>
                             </div>
-                            <Link href="/new/sources">
+                            <Link href="/sources">
                                 <Button size="sm">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Add Source
@@ -92,7 +92,7 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                 <p className="mt-2 text-sm text-foreground-muted">
                                     Connect GitHub or GitLab to enable automatic deployments from your repositories.
                                 </p>
-                                <Link href="/new/sources" className="mt-4">
+                                <Link href="/sources" className="mt-4">
                                     <Button>
                                         <Plus className="mr-2 h-4 w-4" />
                                         Add Git Source
@@ -104,8 +104,8 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                 {sources.map((source) => {
                                     const Icon = sourceIcons[source.type];
                                     const showRoute = source.type === 'github'
-                                        ? `/new/sources/github/${source.id}`
-                                        : `/new/sources/gitlab/${source.id}`;
+                                        ? `/sources/github/${source.id}`
+                                        : `/sources/gitlab/${source.id}`;
 
                                     return (
                                         <div
@@ -119,9 +119,18 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
                                                         <p className="font-medium text-foreground">{source.name}</p>
-                                                        <Badge variant="success">
-                                                            <CheckCircle2 className="mr-1 h-3 w-3" />
-                                                            Connected
+                                                        <Badge variant={source.connected ? 'success' : 'warning'}>
+                                                            {source.connected ? (
+                                                                <>
+                                                                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                                                                    Connected
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <AlertCircle className="mr-1 h-3 w-3" />
+                                                                    Not Connected
+                                                                </>
+                                                            )}
                                                         </Badge>
                                                         <Badge variant="secondary">
                                                             {source.type === 'github' ? 'GitHub' : 'GitLab'}

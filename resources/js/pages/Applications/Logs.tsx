@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input } from '@/components/ui';
-import { Terminal, Download, Pause, Play, Trash2, Search, Filter, ChevronDown } from 'lucide-react';
+import { Card, CardContent, Button, Input, Badge } from '@/components/ui';
+import { Terminal, Download, Pause, Play, Trash2, Search, Filter, ChevronDown, Box } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useLogStream, LogEntry } from '@/hooks/useLogStream';
 import type { Application } from '@/types';
@@ -16,10 +16,12 @@ interface Props {
 export default function ApplicationLogs({ application, projectUuid, environmentUuid }: Props) {
     const [searchQuery, setSearchQuery] = React.useState('');
     const [filterLevel, setFilterLevel] = React.useState<'info' | 'error' | 'warning' | 'debug' | 'all'>('all');
+    const [selectedContainer, setSelectedContainer] = React.useState<string | undefined>(undefined);
     const logsContainerRef = React.useRef<HTMLDivElement>(null);
 
     const {
         logs,
+        availableContainers,
         isStreaming,
         isConnected,
         isPolling,
@@ -31,6 +33,7 @@ export default function ApplicationLogs({ application, projectUuid, environmentU
     } = useLogStream({
         resourceType: 'application',
         resourceId: application.uuid,
+        container: selectedContainer,
         filterLevel: filterLevel === 'all' ? undefined : filterLevel,
     });
 
@@ -93,6 +96,28 @@ export default function ApplicationLogs({ application, projectUuid, environmentU
                     </div>
                 </div>
             </div>
+
+            {/* Container Selector (shown when multiple containers exist) */}
+            {availableContainers.length > 1 && (
+                <div className="mb-4 flex flex-wrap gap-2">
+                    {availableContainers.map((name) => (
+                        <button
+                            key={name}
+                            onClick={() => setSelectedContainer(
+                                selectedContainer === name ? undefined : name
+                            )}
+                            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                                selectedContainer === name
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-border bg-background text-foreground-muted hover:border-border/80 hover:bg-background-secondary'
+                            }`}
+                        >
+                            <Box className="h-4 w-4" />
+                            {name}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Toolbar */}
             <Card className="mb-4">

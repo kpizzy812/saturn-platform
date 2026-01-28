@@ -9,6 +9,8 @@ interface LogsViewerProps {
     serviceName: string;
     serviceUuid?: string;
     serviceType?: 'application' | 'deployment' | 'database' | 'service';
+    /** Container name filter for services with multiple containers */
+    containerName?: string;
     deploymentId?: string;
 }
 
@@ -29,6 +31,7 @@ export function LogsViewer({
     serviceName,
     serviceUuid,
     serviceType = 'application',
+    containerName,
 }: LogsViewerProps) {
     const [selectedLevel, setSelectedLevel] = React.useState<string>('all');
 
@@ -45,6 +48,7 @@ export function LogsViewer({
     } = useLogStream({
         resourceType: serviceType,
         resourceId: serviceUuid || 'demo',
+        container: containerName,
         enableWebSocket: !!serviceUuid,
         pollingInterval: serviceUuid ? 2000 : 0,
         maxLogEntries: 500,

@@ -203,6 +203,12 @@ export type DatabaseType =
     | 'dragonfly'
     | 'clickhouse';
 
+export interface ServiceContainer {
+    name: string;
+    label: string;
+    type: 'application' | 'database';
+}
+
 export interface Service {
     id: number;
     uuid: string;

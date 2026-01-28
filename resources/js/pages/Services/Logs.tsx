@@ -1,22 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
+import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
-import { Search, Download, Trash2, Pause, Play, ChevronDown, Activity } from 'lucide-react';
+import { Search, Download, Trash2, Pause, Play, ChevronDown, Activity, Box, Database, ArrowLeft } from 'lucide-react';
 import { useLogStream } from '@/hooks/useLogStream';
-import type { Service } from '@/types';
+import { Link } from '@inertiajs/react';
+import type { Service, ServiceContainer } from '@/types';
 
 interface Props {
     service: Service;
+    containers?: ServiceContainer[];
 }
 
 type LogLevel = 'all' | 'info' | 'warn' | 'error';
 
-export function LogsTab({ service }: Props) {
+export function LogsTab({ service, containers = [] }: Props) {
     const [filter, setFilter] = useState<LogLevel>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [autoScroll, setAutoScroll] = useState(true);
+    const [selectedContainer, setSelectedContainer] = useState<string>(
+        containers.length > 0 ? containers[0].name : '',
+    );
     const logsEndRef = useRef<HTMLDivElement>(null);
 
-    // Real-time log streaming
+    // Real-time log streaming with container filter
     const {
         logs,
         isStreaming,
@@ -27,7 +33,8 @@ export function LogsTab({ service }: Props) {
     } = useLogStream({
         resourceType: 'service',
         resourceId: service.uuid,
-        maxLogEntries: 100,
+        container: selectedContainer || undefined,
+        maxLogEntries: 500,
         autoScroll,
     });
 
@@ -73,8 +80,37 @@ export function LogsTab({ service }: Props) {
         }
     };
 
+    const selectedContainerInfo = containers.find(c => c.name === selectedContainer);
+
     return (
         <div className="space-y-4">
+            {/* Container Selector */}
+            {containers.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                    {containers.map((container) => (
+                        <button
+                            key={container.name}
+                            onClick={() => setSelectedContainer(container.name)}
+                            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                                selectedContainer === container.name
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-border bg-background text-foreground-muted hover:border-border/80 hover:bg-background-secondary'
+                            }`}
+                        >
+                            {container.type === 'database' ? (
+                                <Database className="h-4 w-4" />
+                            ) : (
+                                <Box className="h-4 w-4" />
+                            )}
+                            {container.label}
+                            <Badge variant={container.type === 'database' ? 'warning' : 'default'} className="text-xs">
+                                {container.type}
+                            </Badge>
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Controls */}
             <Card>
                 <CardContent className="p-4">
@@ -202,5 +238,30 @@ export function LogsTab({ service }: Props) {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+// Standalone page wrapper for /services/{uuid}/logs route
+export default function ServiceLogsPage({ service, containers = [] }: Props) {
+    return (
+        <AppLayout
+            title={`${service.name} - Logs`}
+            breadcrumbs={[
+                { label: 'Dashboard', href: '/dashboard' },
+                { label: 'Services', href: '/services' },
+                { label: service.name, href: `/services/${service.uuid}` },
+                { label: 'Logs' },
+            ]}
+        >
+            <Link
+                href={`/services/${service.uuid}`}
+                className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
+            >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to {service.name}
+            </Link>
+
+            <LogsTab service={service} containers={containers} />
+        </AppLayout>
     );
 }

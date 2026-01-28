@@ -504,7 +504,7 @@ class Github extends Controller
             $github_app->private_key_id = $private_key->id;
             $github_app->save();
 
-            return redirect()->route('source.github.show', ['github_app_uuid' => $github_app->uuid]);
+            return redirect()->route('sources.github.show', ['id' => $github_app->id]);
         } catch (Exception $e) {
             return handleError($e);
         }
@@ -522,7 +522,7 @@ class Github extends Controller
                 $github_app->save();
             }
 
-            return redirect()->route('source.github.show', ['github_app_uuid' => $github_app->uuid]);
+            return redirect()->route('sources.github.show', ['id' => $github_app->id]);
         } catch (Exception $e) {
             return handleError($e);
         }

@@ -9,7 +9,7 @@ import {
     Cpu, MemoryStick, Network, GitCommit, Clock,
     CheckCircle, XCircle, AlertCircle, ArrowLeft
 } from 'lucide-react';
-import type { Service } from '@/types';
+import type { Service, ServiceContainer } from '@/types';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import { DeploymentsTab } from './Deployments';
 import { LogsTab } from './Logs';
@@ -19,9 +19,10 @@ import { RollbacksTab } from './Rollbacks';
 
 interface Props {
     service: Service;
+    containers?: ServiceContainer[];
 }
 
-export default function ServiceShow({ service }: Props) {
+export default function ServiceShow({ service, containers = [] }: Props) {
     const confirm = useConfirm();
     const [isDeploying, setIsDeploying] = useState(false);
     const [isRestarting, setIsRestarting] = useState(false);
@@ -103,7 +104,7 @@ export default function ServiceShow({ service }: Props) {
         },
         {
             label: 'Logs',
-            content: <LogsTab service={service} />,
+            content: <LogsTab service={service} containers={containers} />,
         },
         {
             label: 'Variables',

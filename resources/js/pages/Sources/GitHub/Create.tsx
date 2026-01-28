@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { useRef, useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
 import {
-    Github, ArrowLeft, Copy, CheckCircle2, ExternalLink,
-    AlertCircle, Info, ChevronRight
+    Github, ArrowLeft, CheckCircle2, ExternalLink,
+    AlertCircle, Info, Loader2, Shield, Zap
 } from 'lucide-react';
 
 interface Props {
@@ -13,39 +13,68 @@ interface Props {
 }
 
 export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
-    const [step, setStep] = useState(1);
-    const [appName, setAppName] = useState('');
-    const [appId, setAppId] = useState('');
-    const [clientId, setClientId] = useState('');
-    const [clientSecret, setClientSecret] = useState('');
-    const [webhookSecret, setWebhookSecret] = useState('');
-    const [privateKey, setPrivateKey] = useState('');
-    const [copied, setCopied] = useState<string | null>(null);
+    const [isPublic, setIsPublic] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
 
-    const copyToClipboard = (text: string, key: string) => {
-        navigator.clipboard.writeText(text);
-        setCopied(key);
-        setTimeout(() => setCopied(null), 2000);
+    const appName = 'saturn-' + Math.random().toString(36).substring(2, 8);
+
+    // GitHub App Manifest — all permissions and config are set automatically
+    const manifest = JSON.stringify({
+        name: appName,
+        url: window.location.origin,
+        hook_attributes: {
+            url: webhookUrl,
+            active: true,
+        },
+        redirect_url: callbackUrl,
+        callback_urls: [callbackUrl],
+        setup_url: `${window.location.origin}/source/github/install`,
+        setup_on_update: true,
+        public: isPublic,
+        default_permissions: {
+            contents: 'write',
+            metadata: 'read',
+            pull_requests: 'write',
+            administration: 'read',
+        },
+        default_events: ['push', 'pull_request'],
+    });
+
+    const handleCreateApp = async () => {
+        setCreating(true);
+
+        try {
+            // Create a placeholder GithubApp record to get a UUID for the state parameter
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+            const response = await fetch('/sources/github', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ is_public: isPublic }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create GitHub App record');
+            }
+
+            const data = await response.json();
+
+            // Submit the manifest form to GitHub with the uuid as state
+            if (formRef.current) {
+                const stateInput = formRef.current.querySelector<HTMLInputElement>('input[name="state"]');
+                if (stateInput) {
+                    stateInput.value = data.uuid;
+                }
+                formRef.current.submit();
+            }
+        } catch {
+            setCreating(false);
+        }
     };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.post('/sources/github', {
-            name: appName,
-            app_id: appId,
-            client_id: clientId,
-            client_secret: clientSecret,
-            webhook_secret: webhookSecret,
-            private_key: privateKey,
-        });
-    };
-
-    const steps = [
-        { number: 1, title: 'Create GitHub App', description: 'Register a new GitHub App' },
-        { number: 2, title: 'Configure Settings', description: 'Set permissions and webhooks' },
-        { number: 3, title: 'Install App', description: 'Install on your account' },
-        { number: 4, title: 'Complete Setup', description: 'Enter credentials in Saturn Platform' },
-    ];
 
     return (
         <AppLayout
@@ -59,9 +88,15 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
         >
             <Head title="Create GitHub App" />
 
-            <div className="max-w-4xl mx-auto space-y-6">
+            {/* Hidden form for GitHub App Manifest submission */}
+            <form ref={formRef} method="post" action="https://github.com/settings/apps/new" className="hidden">
+                <input type="hidden" name="manifest" value={manifest} />
+                <input type="hidden" name="state" value="" />
+            </form>
+
+            <div className="max-w-3xl mx-auto space-y-6">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-4">
                     <Link href="/sources/github">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -77,354 +112,194 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
                     <div>
                         <h1 className="text-2xl font-bold">Create GitHub App</h1>
                         <p className="text-foreground-muted">
-                            Connect Saturn Platform to your GitHub repositories
+                            Automatic setup via GitHub App Manifest
                         </p>
                     </div>
                 </div>
 
-                {/* Progress Steps */}
+                {/* How it works */}
                 <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                            {steps.map((s, index) => (
-                                <div key={s.number} className="flex items-center flex-1">
-                                    <div className={`flex flex-col items-center flex-1 ${
-                                        step >= s.number ? 'text-primary' : 'text-foreground-muted'
-                                    }`}>
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                                            step >= s.number
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'bg-background-secondary'
-                                        }`}>
-                                            {step > s.number ? (
-                                                <CheckCircle2 className="h-5 w-5" />
-                                            ) : (
-                                                s.number
-                                            )}
-                                        </div>
-                                        <p className="text-xs font-medium mt-2">{s.title}</p>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Zap className="h-5 w-5 text-primary" />
+                            How It Works
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-background-secondary">
+                                    <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                                        1
                                     </div>
-                                    {index < steps.length - 1 && (
-                                        <div className={`h-0.5 flex-1 mx-2 ${
-                                            step > s.number ? 'bg-primary' : 'bg-border'
-                                        }`} />
-                                    )}
+                                    <div>
+                                        <p className="font-medium text-sm">Click the button</p>
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            You'll be redirected to GitHub
+                                        </p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Step 1: Create GitHub App */}
-                {step === 1 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Step 1: Create GitHub App</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-3">
-                                <p className="text-sm text-foreground-muted">
-                                    Go to GitHub to create a new GitHub App for Saturn Platform:
-                                </p>
-                                <a
-                                    href="https://github.com/settings/apps/new"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block"
-                                >
-                                    <Button className="w-full">
-                                        <Github className="h-4 w-4 mr-2" />
-                                        Create GitHub App
-                                        <ExternalLink className="h-4 w-4 ml-2" />
-                                    </Button>
-                                </a>
-                            </div>
-
-                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
-                                <h4 className="font-medium text-sm">Basic Information</h4>
-                                <ul className="text-sm text-foreground-muted space-y-2 list-disc list-inside">
-                                    <li>GitHub App name: Choose a unique name (e.g., "Saturn Platform - Your Team")</li>
-                                    <li>Homepage URL: Your Saturn Platform instance URL</li>
-                                    <li>Description: "Saturn Platform integration for automatic deployments"</li>
-                                </ul>
-                            </div>
-
-                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
-                                <h4 className="font-medium text-sm">Callback URL</h4>
-                                <div className="flex items-center gap-2">
-                                    <code className="flex-1 text-xs bg-background px-3 py-2 rounded font-mono">
-                                        {callbackUrl}
-                                    </code>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => copyToClipboard(callbackUrl, 'callback')}
-                                    >
-                                        {copied === 'callback' ? (
-                                            <CheckCircle2 className="h-4 w-4 text-success" />
-                                        ) : (
-                                            <Copy className="h-4 w-4" />
-                                        )}
-                                    </Button>
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-background-secondary">
+                                    <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                                        2
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-sm">Confirm on GitHub</p>
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Review and create the app
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
-                                <h4 className="font-medium text-sm">Webhook URL</h4>
-                                <div className="flex items-center gap-2">
-                                    <code className="flex-1 text-xs bg-background px-3 py-2 rounded font-mono">
-                                        {webhookUrl}
-                                    </code>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => copyToClipboard(webhookUrl, 'webhook')}
-                                    >
-                                        {copied === 'webhook' ? (
-                                            <CheckCircle2 className="h-4 w-4 text-success" />
-                                        ) : (
-                                            <Copy className="h-4 w-4" />
-                                        )}
-                                    </Button>
-                                </div>
-                                <p className="text-xs text-foreground-muted">
-                                    Enable "Active" and select "application/json" as content type
-                                </p>
-                            </div>
-
-                            <Button onClick={() => setStep(2)} className="w-full">
-                                Continue to Permissions
-                                <ChevronRight className="h-4 w-4 ml-2" />
-                            </Button>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Step 2: Configure Permissions */}
-                {step === 2 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Step 2: Configure Permissions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
-                                <h4 className="font-medium text-sm">Repository Permissions</h4>
-                                <ul className="text-sm text-foreground-muted space-y-2">
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        <span><strong>Contents:</strong> Read & Write</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        <span><strong>Metadata:</strong> Read-only</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        <span><strong>Pull requests:</strong> Read & Write</span>
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        <span><strong>Webhooks:</strong> Read & Write</span>
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
-                                <h4 className="font-medium text-sm">Subscribe to Events</h4>
-                                <ul className="text-sm text-foreground-muted space-y-2">
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        Push
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        Pull request
-                                    </li>
-                                    <li className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-success" />
-                                        Repository
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div className="bg-info/5 border border-info/20 p-4 rounded-lg flex items-start gap-3">
-                                <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
-                                <p className="text-sm text-foreground-muted">
-                                    Make sure "Where can this GitHub App be installed?" is set to
-                                    <strong> "Any account"</strong> or the appropriate option for your use case.
-                                </p>
-                            </div>
-
-                            <div className="flex gap-2">
-                                <Button variant="ghost" onClick={() => setStep(1)} className="flex-1">
-                                    Back
-                                </Button>
-                                <Button onClick={() => setStep(3)} className="flex-1">
-                                    Continue to Installation
-                                    <ChevronRight className="h-4 w-4 ml-2" />
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Step 3: Install App */}
-                {step === 3 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Step 3: Install GitHub App</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-3">
-                                <p className="text-sm text-foreground-muted">
-                                    After creating the GitHub App, install it on your account or organization:
-                                </p>
-
-                                <div className="bg-background-secondary p-4 rounded-lg space-y-3">
-                                    <h4 className="font-medium text-sm">Installation Steps</h4>
-                                    <ol className="text-sm text-foreground-muted space-y-2 list-decimal list-inside">
-                                        <li>Click "Create GitHub App" button</li>
-                                        <li>You'll be redirected to the app settings page</li>
-                                        <li>Click "Install App" in the left sidebar</li>
-                                        <li>Select your account or organization</li>
-                                        <li>Choose "All repositories" or select specific ones</li>
-                                        <li>Click "Install"</li>
-                                    </ol>
-                                </div>
-
-                                <div className="bg-warning/5 border border-warning/20 p-4 rounded-lg flex items-start gap-3">
-                                    <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm">
-                                        <p className="font-medium">Important</p>
-                                        <p className="text-foreground-muted mt-1">
-                                            You can add or remove repositories later from the GitHub App installation settings.
+                                <div className="flex items-start gap-3 p-3 rounded-lg bg-background-secondary">
+                                    <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                                        3
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-sm">Done!</p>
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Credentials are set up automatically
                                         </p>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                            <div className="flex gap-2">
-                                <Button variant="ghost" onClick={() => setStep(2)} className="flex-1">
-                                    Back
-                                </Button>
-                                <Button onClick={() => setStep(4)} className="flex-1">
-                                    Continue to Setup
-                                    <ChevronRight className="h-4 w-4 ml-2" />
-                                </Button>
+                {/* Configuration that will be applied */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">What will be configured</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
+                                <h4 className="font-medium text-sm">Repository Permissions</h4>
+                                <ul className="text-sm text-foreground-muted space-y-2">
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        <span><strong>Contents:</strong> Read & Write</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        <span><strong>Metadata:</strong> Read-only</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        <span><strong>Pull Requests:</strong> Read & Write</span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        <span><strong>Administration:</strong> Read-only</span>
+                                    </li>
+                                </ul>
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                            <div className="bg-background-secondary p-4 rounded-lg space-y-3">
+                                <h4 className="font-medium text-sm">Webhook Events</h4>
+                                <ul className="text-sm text-foreground-muted space-y-2">
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        Push events
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        Pull Request events
+                                    </li>
+                                </ul>
+                                <h4 className="font-medium text-sm mt-4">URLs</h4>
+                                <ul className="text-sm text-foreground-muted space-y-2">
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        <span>Webhook: <code className="text-xs bg-background px-1.5 py-0.5 rounded">{webhookUrl}</code></span>
+                                    </li>
+                                    <li className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                        <span>Callback: <code className="text-xs bg-background px-1.5 py-0.5 rounded">{callbackUrl}</code></span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
 
-                {/* Step 4: Complete Setup */}
-                {step === 4 && (
-                    <form onSubmit={handleSubmit}>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Step 4: Complete Setup</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <p className="text-sm text-foreground-muted mb-4">
-                                    Enter the credentials from your GitHub App settings page:
-                                </p>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        App Name <span className="text-danger">*</span>
-                                    </label>
-                                    <Input
-                                        value={appName}
-                                        onChange={(e) => setAppName(e.target.value)}
-                                        placeholder="My GitHub App"
-                                        required
-                                    />
+                        {/* Visibility toggle */}
+                        <div className="border border-border rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Shield className="h-5 w-5 text-foreground-muted" />
+                                    <div>
+                                        <p className="font-medium text-sm">App Visibility</p>
+                                        <p className="text-xs text-foreground-muted mt-0.5">
+                                            {isPublic
+                                                ? 'Anyone can install this GitHub App'
+                                                : 'Only you can install this GitHub App'}
+                                        </p>
+                                    </div>
                                 </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        App ID <span className="text-danger">*</span>
-                                    </label>
-                                    <Input
-                                        value={appId}
-                                        onChange={(e) => setAppId(e.target.value)}
-                                        placeholder="123456"
-                                        required
-                                    />
-                                    <p className="text-xs text-foreground-muted mt-1">
-                                        Found at the top of your GitHub App settings page
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Client ID <span className="text-danger">*</span>
-                                    </label>
-                                    <Input
-                                        value={clientId}
-                                        onChange={(e) => setClientId(e.target.value)}
-                                        placeholder="Iv1.1234567890abcdef"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Client Secret <span className="text-danger">*</span>
-                                    </label>
-                                    <Input
-                                        type="password"
-                                        value={clientSecret}
-                                        onChange={(e) => setClientSecret(e.target.value)}
-                                        placeholder="••••••••••••••••"
-                                        required
-                                    />
-                                    <p className="text-xs text-foreground-muted mt-1">
-                                        Generate a new client secret if needed
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Webhook Secret <span className="text-danger">*</span>
-                                    </label>
-                                    <Input
-                                        type="password"
-                                        value={webhookSecret}
-                                        onChange={(e) => setWebhookSecret(e.target.value)}
-                                        placeholder="••••••••••••••••"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Private Key <span className="text-danger">*</span>
-                                    </label>
-                                    <textarea
-                                        value={privateKey}
-                                        onChange={(e) => setPrivateKey(e.target.value)}
-                                        placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;...&#10;-----END RSA PRIVATE KEY-----"
-                                        required
-                                        className="w-full min-h-32 px-3 py-2 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary font-mono"
-                                    />
-                                    <p className="text-xs text-foreground-muted mt-1">
-                                        Generate and download from the "Private keys" section
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-2 pt-4">
-                                    <Button type="button" variant="ghost" onClick={() => setStep(3)} className="flex-1">
-                                        Back
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant={!isPublic ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setIsPublic(false)}
+                                    >
+                                        Private
                                     </Button>
-                                    <Button type="submit" className="flex-1">
-                                        <Github className="h-4 w-4 mr-2" />
-                                        Complete Setup
+                                    <Button
+                                        variant={isPublic ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setIsPublic(true)}
+                                    >
+                                        Public
                                     </Button>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </form>
-                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Create Button */}
+                <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-6">
+                        <div className="text-center space-y-4">
+                            <p className="text-sm text-foreground-muted">
+                                Click the button below to create a GitHub App automatically.
+                                You'll be redirected to GitHub to confirm, then back to Saturn Platform.
+                            </p>
+                            <Button
+                                onClick={handleCreateApp}
+                                disabled={creating}
+                                size="lg"
+                                className="w-full max-w-md"
+                            >
+                                {creating ? (
+                                    <>
+                                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                                        Redirecting to GitHub...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Github className="h-5 w-5 mr-2" />
+                                        Create GitHub App
+                                        <ExternalLink className="h-4 w-4 ml-2" />
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* After installation note */}
+                <Card className="bg-background-secondary">
+                    <CardContent className="p-4 flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-medium">After Creating the App</p>
+                            <p className="text-foreground-muted mt-1">
+                                After the app is created, you'll need to <strong>install it</strong> on your GitHub account or organization.
+                                GitHub will prompt you to select which repositories the app can access.
+                                You can change repository access later in your GitHub App settings.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Help */}
                 <Card className="bg-background-secondary">
@@ -435,14 +310,14 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
                             <p className="text-foreground-muted mt-1">
                                 Check out the{' '}
                                 <a
-                                    href="https://docs.github.com/en/developers/apps/building-github-apps/creating-a-github-app"
+                                    href="https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-primary hover:underline"
                                 >
                                     GitHub App documentation
                                 </a>{' '}
-                                for detailed instructions on creating and configuring GitHub Apps.
+                                for detailed information about GitHub Apps and permissions.
                             </p>
                         </div>
                     </CardContent>

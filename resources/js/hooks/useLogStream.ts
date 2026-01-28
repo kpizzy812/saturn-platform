@@ -37,6 +37,11 @@ interface UseLogStreamOptions {
     resourceId: string | number;
 
     /**
+     * Container name filter (for services with multiple containers)
+     */
+    container?: string;
+
+    /**
      * Enable WebSocket streaming (default: true)
      */
     enableWebSocket?: boolean;
@@ -83,6 +88,11 @@ interface UseLogStreamReturn {
      * Log entries
      */
     logs: LogEntry[];
+
+    /**
+     * Available containers discovered from API responses (for container selector UI)
+     */
+    availableContainers: string[];
 
     /**
      * Whether logs are currently streaming
@@ -152,6 +162,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     const {
         resourceType,
         resourceId,
+        container,
         enableWebSocket = true,
         pollingInterval = 2000,
         maxLogEntries = 1000,
@@ -166,6 +177,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     const teamId = (page.props as any).team?.id;
 
     const [logs, setLogs] = React.useState<LogEntry[]>([]);
+    const [availableContainers, setAvailableContainers] = React.useState<string[]>([]);
     const [isStreaming, setIsStreaming] = React.useState(false);
     const [isConnected, setIsConnected] = React.useState(false);
     const [isPolling, setIsPolling] = React.useState(false);
@@ -236,11 +248,16 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
 
             // Add query parameters for incremental fetching
             const params = new URLSearchParams();
-            if (resourceType === 'application' && lastTimestampRef.current && !isInitialLoadRef.current) {
+            if ((resourceType === 'application' || resourceType === 'service') && lastTimestampRef.current && !isInitialLoadRef.current) {
                 // For container logs, use timestamp-based incremental fetching
                 params.append('since', lastTimestampRef.current.toString());
             } else if (lastLogIdRef.current && resourceType === 'deployment') {
                 params.append('after', lastLogIdRef.current);
+            }
+
+            // Add container filter for services and applications with multiple containers
+            if (container) {
+                params.append('container', container);
             }
 
             if (params.toString()) {
@@ -286,6 +303,16 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
                         source: resourceType,
                     });
                 });
+            }
+
+            // Discover available containers from response (for application type)
+            if (data.containers && Array.isArray(data.containers) && resourceType === 'application') {
+                const names = data.containers
+                    .map((c: any) => c.Names || c.name)
+                    .filter(Boolean) as string[];
+                if (names.length > 0) {
+                    setAvailableContainers(names);
+                }
             }
 
             // Handle container logs format (has container_logs string or containers array)
@@ -369,7 +396,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
         } finally {
             setLoading(false);
         }
-    }, [resourceType, resourceId, addLogEntry, maxLogEntries]);
+    }, [resourceType, resourceId, container, addLogEntry, maxLogEntries]);
 
     /**
      * Connect to WebSocket for log streaming
@@ -538,10 +565,11 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
         return () => {
             stopStreaming();
         };
-    }, [resourceType, resourceId]); // Re-initialize when resource changes
+    }, [resourceType, resourceId, container]); // Re-initialize when resource changes
 
     return {
         logs,
+        availableContainers,
         isStreaming,
         isConnected,
         isPolling,

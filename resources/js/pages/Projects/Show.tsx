@@ -78,7 +78,8 @@ export default function ProjectShow({ project }: Props) {
     const [logsViewerOpen, setLogsViewerOpen] = useState(false);
     const [logsViewerService, setLogsViewerService] = useState<string>('');
     const [logsViewerServiceUuid, setLogsViewerServiceUuid] = useState<string>('');
-    const [logsViewerServiceType, setLogsViewerServiceType] = useState<'application' | 'database'>('application');
+    const [logsViewerServiceType, setLogsViewerServiceType] = useState<'application' | 'deployment' | 'database' | 'service'>('application');
+    const [logsViewerContainerName, setLogsViewerContainerName] = useState<string | undefined>(undefined);
 
     // Undo/Redo history for canvas state
     const historyRef = useRef<{ past: SelectedService[][]; future: SelectedService[][] }>({
@@ -287,6 +288,7 @@ export default function ProjectShow({ project }: Props) {
             setLogsViewerService(node.name);
             setLogsViewerServiceUuid(node.uuid);
             setLogsViewerServiceType(node.type === 'db' ? 'database' : 'application');
+            setLogsViewerContainerName(undefined);
             setLogsViewerOpen(true);
         }
     };
@@ -550,6 +552,7 @@ export default function ProjectShow({ project }: Props) {
         setLogsViewerService(name);
         setLogsViewerServiceUuid(uuid);
         setLogsViewerServiceType(type);
+        setLogsViewerContainerName(undefined);
         setLogsViewerOpen(true);
     }, []);
 
@@ -628,6 +631,7 @@ export default function ProjectShow({ project }: Props) {
         setLogsViewerService(selectedService.name);
         setLogsViewerServiceUuid(selectedService.uuid);
         setLogsViewerServiceType(selectedService.type === 'db' ? 'database' : 'application');
+        setLogsViewerContainerName(undefined);
         setLogsViewerOpen(true);
     }, [selectedService, addToast]);
 
@@ -1043,6 +1047,7 @@ export default function ProjectShow({ project }: Props) {
                                                         setLogsViewerService(app.name);
                                                         setLogsViewerServiceUuid(app.uuid);
                                                         setLogsViewerServiceType('application');
+                                                        setLogsViewerContainerName(undefined);
                                                         setLogsViewerOpen(true);
                                                     }}
                                                     className="text-xs text-primary hover:underline"
@@ -1069,6 +1074,7 @@ export default function ProjectShow({ project }: Props) {
                                                         setLogsViewerService(db.name);
                                                         setLogsViewerServiceUuid(db.uuid);
                                                         setLogsViewerServiceType('database');
+                                                        setLogsViewerContainerName(undefined);
                                                         setLogsViewerOpen(true);
                                                     }}
                                                     className="text-xs text-primary hover:underline"
@@ -1105,6 +1111,7 @@ export default function ProjectShow({ project }: Props) {
                                                 setLogsViewerService(app.name);
                                                 setLogsViewerServiceUuid(app.uuid);
                                                 setLogsViewerServiceType('application');
+                                                setLogsViewerContainerName(undefined);
                                                 setLogsViewerOpen(true);
                                             }}
                                             className="flex w-full items-center justify-between rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:border-primary/50 hover:bg-background-tertiary"
@@ -1131,6 +1138,7 @@ export default function ProjectShow({ project }: Props) {
                                                 setLogsViewerService(db.name);
                                                 setLogsViewerServiceUuid(db.uuid);
                                                 setLogsViewerServiceType('database');
+                                                setLogsViewerContainerName(undefined);
                                                 setLogsViewerOpen(true);
                                             }}
                                             className="flex w-full items-center justify-between rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:border-primary/50 hover:bg-background-tertiary"
@@ -1394,6 +1402,7 @@ export default function ProjectShow({ project }: Props) {
                 serviceName={logsViewerService}
                 serviceUuid={logsViewerServiceUuid}
                 serviceType={logsViewerServiceType}
+                containerName={logsViewerContainerName}
             />
 
             {/* New Environment Modal */}

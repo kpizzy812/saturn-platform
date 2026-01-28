@@ -779,7 +779,7 @@ Route::get('/settings/integrations', function () {
         'name' => $app->name,
         'organization' => $app->organization,
         'type' => 'github',
-        'connected' => true,
+        'connected' => ! is_null($app->app_id) && ! is_null($app->installation_id),
         'lastSync' => $app->updated_at?->toISOString(),
         'applicationsCount' => $app->applications()->count(),
     ]);
@@ -792,7 +792,7 @@ Route::get('/settings/integrations', function () {
             'name' => $app->name,
             'organization' => $app->deploy_key_id ? 'Deploy Key' : 'OAuth',
             'type' => 'gitlab',
-            'connected' => true,
+            'connected' => ! is_null($app->app_id) || ! is_null($app->deploy_key_id),
             'lastSync' => $app->updated_at?->toISOString(),
             'applicationsCount' => $app->applications()->count(),
         ]);

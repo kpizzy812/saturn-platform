@@ -104,10 +104,29 @@ Route::post('/services', function (Request $request) {
 Route::get('/services/{uuid}', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with(['applications', 'databases'])
         ->firstOrFail();
+
+    // Build container list for the Logs tab
+    $containers = collect();
+    foreach ($service->applications as $app) {
+        $containers->push([
+            'name' => $app->name.'-'.$service->uuid,
+            'label' => $app->name,
+            'type' => 'application',
+        ]);
+    }
+    foreach ($service->databases as $db) {
+        $containers->push([
+            'name' => $db->name.'-'.$service->uuid,
+            'label' => $db->name,
+            'type' => 'database',
+        ]);
+    }
 
     return Inertia::render('Services/Show', [
         'service' => $service,
+        'containers' => $containers,
     ]);
 })->name('services.show');
 
@@ -216,12 +235,103 @@ Route::get('/services/{uuid}/deployments', function (string $uuid) {
 Route::get('/services/{uuid}/logs', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with(['applications', 'databases'])
         ->firstOrFail();
+
+    // Build container list for the frontend selector
+    $containers = collect();
+    foreach ($service->applications as $app) {
+        $containers->push([
+            'name' => $app->name.'-'.$service->uuid,
+            'label' => $app->name,
+            'type' => 'application',
+        ]);
+    }
+    foreach ($service->databases as $db) {
+        $containers->push([
+            'name' => $db->name.'-'.$service->uuid,
+            'label' => $db->name,
+            'type' => 'database',
+        ]);
+    }
 
     return Inertia::render('Services/Logs', [
         'service' => $service,
+        'containers' => $containers,
     ]);
 })->name('services.logs');
+
+// JSON endpoint for service container logs (for XHR polling)
+// Supports per-container filtering via ?container=<name> and incremental fetching via ?since=<unix_timestamp>
+Route::get('/services/{uuid}/logs/json', function (string $uuid, Request $request) {
+    $service = \App\Models\Service::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->with(['applications', 'databases'])
+        ->firstOrFail();
+
+    $server = $service->server;
+    if (! $server) {
+        return response()->json(['message' => 'Server not found.'], 404);
+    }
+
+    $containerFilter = $request->query('container');
+    $since = $request->query('since');
+    $lines = (int) ($request->query('lines', 200) ?: 200);
+    $logs = [];
+
+    // Collect all service containers (applications + databases)
+    $allContainers = collect();
+    foreach ($service->applications as $app) {
+        $allContainers->push([
+            'containerName' => $app->name.'-'.$service->uuid,
+            'label' => $app->name,
+            'type' => 'application',
+        ]);
+    }
+    foreach ($service->databases as $db) {
+        $allContainers->push([
+            'containerName' => $db->name.'-'.$service->uuid,
+            'label' => $db->name,
+            'type' => 'database',
+        ]);
+    }
+
+    // Filter to specific container if requested
+    if ($containerFilter) {
+        $allContainers = $allContainers->where('containerName', $containerFilter);
+    }
+
+    foreach ($allContainers as $container) {
+        $name = $container['containerName'];
+        try {
+            if ($since) {
+                $containerLogs = instant_remote_process(
+                    ["docker logs --since {$since} --timestamps {$name} 2>&1"],
+                    $server
+                );
+            } else {
+                $containerLogs = instant_remote_process(
+                    ["docker logs -n {$lines} --timestamps {$name} 2>&1"],
+                    $server
+                );
+            }
+        } catch (\Exception $e) {
+            $containerLogs = '';
+        }
+
+        $logs[] = [
+            'name' => $name,
+            'label' => $container['label'],
+            'type' => $container['type'],
+            'logs' => $containerLogs,
+        ];
+    }
+
+    return response()->json([
+        'containers' => $logs,
+        'timestamp' => now()->timestamp,
+    ]);
+})->name('services.logs.json');
 
 Route::get('/services/{uuid}/health-checks', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
