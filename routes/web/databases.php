@@ -8,6 +8,7 @@
  */
 
 use App\Actions\Database\RestartDatabase;
+use App\Actions\Database\StartDatabase;
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Database\StopDatabaseProxy;
 use App\Models\ScheduledDatabaseBackup;
@@ -151,6 +152,9 @@ Route::post('/databases', function (Request $request) {
         'dragonfly' => create_standalone_dragonfly($environment->id, $destination->uuid, $otherData),
         'clickhouse' => create_standalone_clickhouse($environment->id, $destination->uuid, $otherData),
     };
+
+    // Start the database container automatically after creation
+    StartDatabase::dispatch($database);
 
     return redirect()->route('databases.show', $database->uuid);
 })->name('databases.store');
