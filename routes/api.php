@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\DatabaseBackupsController;
 use App\Http\Controllers\Api\DatabaseCreateController;
 use App\Http\Controllers\Api\DatabasesController;
 use App\Http\Controllers\Api\DeployController;
+use App\Http\Controllers\Api\DeploymentApprovalController;
 use App\Http\Controllers\Api\GitController;
 use App\Http\Controllers\Api\GithubController;
 use App\Http\Controllers\Api\HetznerController;
@@ -95,6 +96,7 @@ Route::group([
     Route::post('/projects', [ProjectController::class, 'create_project'])->middleware(['api.ability:read']);
     Route::patch('/projects/{uuid}', [ProjectController::class, 'update_project'])->middleware(['api.ability:write']);
     Route::delete('/projects/{uuid}', [ProjectController::class, 'delete_project'])->middleware(['api.ability:write']);
+    Route::get('/projects/{uuid}/pending-approvals', [DeploymentApprovalController::class, 'pendingForProject'])->middleware(['api.ability:read']);
 
     // Resource Links (App <-> Database connections)
     Route::get('/environments/{environment_uuid}/links', [ResourceLinkController::class, 'index'])->middleware(['api.ability:read']);
@@ -152,6 +154,12 @@ Route::group([
     })->middleware(['api.ability:read', 'throttle:60,1']);
     Route::post('/deployments/{uuid}/cancel', [DeployController::class, 'cancel_deployment'])->middleware(['api.ability:deploy']);
     Route::get('/deployments/applications/{uuid}', [DeployController::class, 'get_application_deployments'])->middleware(['api.ability:read']);
+
+    // Deployment Approval Routes
+    Route::post('/deployments/{uuid}/request-approval', [DeploymentApprovalController::class, 'requestApproval'])->middleware(['api.ability:deploy']);
+    Route::post('/deployments/{uuid}/approve', [DeploymentApprovalController::class, 'approve'])->middleware(['api.ability:deploy']);
+    Route::post('/deployments/{uuid}/reject', [DeploymentApprovalController::class, 'reject'])->middleware(['api.ability:deploy']);
+    Route::get('/approvals/pending', [DeploymentApprovalController::class, 'myPendingApprovals'])->middleware(['api.ability:read']);
 
     Route::get('/servers', [ServersController::class, 'servers'])->middleware(['api.ability:read']);
     Route::get('/servers/{uuid}', [ServersController::class, 'server_by_uuid'])->middleware(['api.ability:read']);

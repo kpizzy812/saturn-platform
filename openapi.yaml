@@ -3099,6 +3099,187 @@ paths:
       security:
         -
           bearerAuth: []
+  '/deployments/{uuid}/request-approval':
+    post:
+      tags:
+        - 'Deployment Approvals'
+      summary: 'Request deployment approval'
+      description: 'Request approval for a deployment to a protected environment.'
+      operationId: request-deployment-approval
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Deployment UUID'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Approval request created or already exists.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string }
+                  approval_uuid: { type: string }
+                  status: { type: string }
+                type: object
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/deployments/{uuid}/approve':
+    post:
+      tags:
+        - 'Deployment Approvals'
+      summary: 'Approve deployment'
+      description: 'Approve a pending deployment request.'
+      operationId: approve-deployment
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Deployment UUID'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                comment:
+                  description: 'Optional approval comment'
+                  type: string
+              type: object
+      responses:
+        '200':
+          description: 'Deployment approved successfully.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string }
+                  deployment_uuid: { type: string }
+                  status: { type: string }
+                type: object
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          description: 'Not authorized to approve this deployment.'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/deployments/{uuid}/reject':
+    post:
+      tags:
+        - 'Deployment Approvals'
+      summary: 'Reject deployment'
+      description: 'Reject a pending deployment request.'
+      operationId: reject-deployment
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Deployment UUID'
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                reason:
+                  description: 'Rejection reason'
+                  type: string
+              type: object
+      responses:
+        '200':
+          description: 'Deployment rejected successfully.'
+          content:
+            application/json:
+              schema:
+                properties:
+                  message: { type: string }
+                  deployment_uuid: { type: string }
+                  status: { type: string }
+                type: object
+        '400':
+          $ref: '#/components/responses/400'
+        '401':
+          $ref: '#/components/responses/401'
+        '403':
+          description: 'Not authorized to reject this deployment.'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/projects/{uuid}/pending-approvals':
+    get:
+      tags:
+        - 'Deployment Approvals'
+      summary: 'List pending approvals for project'
+      description: 'Get all pending deployment approvals for a specific project.'
+      operationId: list-project-pending-approvals
+      parameters:
+        -
+          name: uuid
+          in: path
+          description: 'Project UUID'
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'List of pending approvals.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties: { uuid: { type: string }, status: { type: string }, deployment_uuid: { type: string }, application_name: { type: string }, environment_name: { type: string }, requested_by: { type: string }, requested_at: { type: string } }
+                  type: object
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  /approvals/pending:
+    get:
+      tags:
+        - 'Deployment Approvals'
+      summary: 'List my pending approvals'
+      description: 'Get all pending deployment approvals that the current user can approve.'
+      operationId: list-my-pending-approvals
+      responses:
+        '200':
+          description: 'List of pending approvals for the current user.'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties: { uuid: { type: string }, status: { type: string }, deployment_uuid: { type: string }, application_name: { type: string }, environment_name: { type: string }, project_name: { type: string }, requested_by: { type: string }, requested_at: { type: string } }
+                  type: object
+        '401':
+          $ref: '#/components/responses/401'
+      security:
+        -
+          bearerAuth: []
   /git/branches:
     get:
       tags:
@@ -7319,6 +7500,9 @@ tags:
   -
     name: Deployments
     description: Deployments
+  -
+    name: 'Deployment Approvals'
+    description: 'Deployment Approvals'
   -
     name: Git
     description: Git

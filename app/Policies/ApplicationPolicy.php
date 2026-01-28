@@ -4,19 +4,20 @@ namespace App\Policies;
 
 use App\Models\Application;
 use App\Models\User;
+use App\Services\Authorization\ProjectAuthorizationService;
 use Illuminate\Auth\Access\Response;
 
 class ApplicationPolicy
 {
+    public function __construct(
+        protected ProjectAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return true;
-        */
         return true;
     }
 
@@ -25,11 +26,12 @@ class ApplicationPolicy
      */
     public function view(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return true;
-        */
-        return true;
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        return $this->authService->canViewEnvironment($user, $environment);
     }
 
     /**
@@ -37,14 +39,7 @@ class ApplicationPolicy
      */
     public function create(User $user): bool
     {
-        // Authorization temporarily disabled
-        /*
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        return false;
-        */
+        // Any authenticated team member can create applications
         return true;
     }
 
@@ -53,15 +48,22 @@ class ApplicationPolicy
      */
     public function update(User $user, Application $application): Response
     {
-        // Authorization temporarily disabled
-        /*
-        if ($user->isAdmin()) {
+        $environment = $application->environment;
+        if (! $environment) {
             return Response::allow();
         }
 
-        return Response::deny('As a member, you cannot update this application.<br/><br/>You need at least admin or owner permissions.');
-        */
-        return Response::allow();
+        $project = $environment->project;
+        if ($this->authService->canManageProject($user, $project)) {
+            return Response::allow();
+        }
+
+        // Developers can update applications but not project settings
+        if ($this->authService->hasMinimumRole($user, $project, 'developer')) {
+            return Response::allow();
+        }
+
+        return Response::deny('You do not have permission to update this application. You need at least developer permissions.');
     }
 
     /**
@@ -69,15 +71,12 @@ class ApplicationPolicy
      */
     public function delete(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        if ($user->isAdmin()) {
+        $environment = $application->environment;
+        if (! $environment) {
             return true;
         }
 
-        return false;
-        */
-        return true;
+        return $this->authService->canManageProject($user, $environment->project);
     }
 
     /**
@@ -85,11 +84,12 @@ class ApplicationPolicy
      */
     public function restore(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return true;
-        */
-        return true;
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        return $this->authService->canManageProject($user, $environment->project);
     }
 
     /**
@@ -97,11 +97,12 @@ class ApplicationPolicy
      */
     public function forceDelete(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return $user->isAdmin() && $user->teams->contains('id', $application->team()->first()->id);
-        */
-        return true;
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        return $this->authService->canManageProject($user, $environment->project);
     }
 
     /**
@@ -109,11 +110,12 @@ class ApplicationPolicy
      */
     public function deploy(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return $user->teams->contains('id', $application->team()->first()->id);
-        */
-        return true;
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        return $this->authService->canDeployApplication($user, $application);
     }
 
     /**
@@ -121,11 +123,12 @@ class ApplicationPolicy
      */
     public function manageDeployments(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return $user->isAdmin() && $user->teams->contains('id', $application->team()->first()->id);
-        */
-        return true;
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        return $this->authService->canManageProject($user, $environment->project);
     }
 
     /**
@@ -133,11 +136,13 @@ class ApplicationPolicy
      */
     public function manageEnvironment(User $user, Application $application): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return $user->isAdmin() && $user->teams->contains('id', $application->team()->first()->id);
-        */
-        return true;
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        // Developers and above can manage env vars
+        return $this->authService->hasMinimumRole($user, $environment->project, 'developer');
     }
 
     /**
@@ -145,10 +150,6 @@ class ApplicationPolicy
      */
     public function cleanupDeploymentQueue(User $user): bool
     {
-        // Authorization temporarily disabled
-        /*
-        return $user->isAdmin();
-        */
-        return true;
+        return $user->isPlatformAdmin() || $user->isSuperAdmin();
     }
 }

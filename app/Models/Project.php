@@ -93,6 +93,73 @@ class Project extends BaseModel
         return $this->belongsTo(Team::class);
     }
 
+    /**
+     * Get users who are members of this project (via project_user pivot).
+     */
+    public function members()
+    {
+        return $this->belongsToMany(User::class, 'project_user')
+            ->withPivot(['role', 'environment_permissions'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get project admins (owner and admin roles).
+     */
+    public function admins()
+    {
+        return $this->members()->wherePivotIn('role', ['owner', 'admin']);
+    }
+
+    /**
+     * Get project owners.
+     */
+    public function owners()
+    {
+        return $this->members()->wherePivot('role', 'owner');
+    }
+
+    /**
+     * Add a user as a member of this project.
+     */
+    public function addMember(User $user, string $role = 'developer', ?array $envPermissions = null): void
+    {
+        $this->members()->attach($user->id, [
+            'role' => $role,
+            'environment_permissions' => $envPermissions ? json_encode($envPermissions) : null,
+        ]);
+    }
+
+    /**
+     * Remove a user from this project.
+     */
+    public function removeMember(User $user): void
+    {
+        $this->members()->detach($user->id);
+    }
+
+    /**
+     * Update a member's role in this project.
+     */
+    public function updateMemberRole(User $user, string $role): void
+    {
+        $this->members()->updateExistingPivot($user->id, ['role' => $role]);
+    }
+
+    /**
+     * Check if a user is a member of this project (directly or via team).
+     */
+    public function hasMember(User $user): bool
+    {
+        // Check direct project membership
+        if ($this->members()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        // Fallback to team membership
+        return $this->team->members()->where('user_id', $user->id)->exists();
+    }
+
     public function services()
     {
         return $this->hasManyThrough(Service::class, Environment::class);

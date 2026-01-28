@@ -59,6 +59,8 @@ class AuthServiceProvider extends ServiceProvider
         // Git source policies
         \App\Models\GithubApp::class => \App\Policies\GithubAppPolicy::class,
 
+        // Deployment approval policy
+        \App\Models\DeploymentApproval::class => \App\Policies\DeploymentApprovalPolicy::class,
     ];
 
     /**

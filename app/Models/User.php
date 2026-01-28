@@ -56,6 +56,7 @@ class User extends Authenticatable implements SendsEmail
         'show_boarding' => 'boolean',
         'email_change_code_expires_at' => 'datetime',
         'is_superadmin' => 'boolean',
+        'platform_role' => 'string',
     ];
 
     /**
@@ -220,6 +221,156 @@ class User extends Authenticatable implements SendsEmail
     public function teams()
     {
         return $this->belongsToMany(Team::class)->withPivot('role');
+    }
+
+    /**
+     * Get projects the user is a member of (via project_user pivot).
+     */
+    public function projectMemberships()
+    {
+        return $this->belongsToMany(Project::class, 'project_user')
+            ->withPivot(['role', 'environment_permissions'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get the user's platform role.
+     */
+    public function platformRole(): string
+    {
+        return $this->platform_role ?? 'member';
+    }
+
+    /**
+     * Check if user is the platform owner (root user).
+     */
+    public function isPlatformOwner(): bool
+    {
+        return $this->id === 0 || $this->platform_role === 'owner';
+    }
+
+    /**
+     * Check if user is a platform admin (owner or admin).
+     */
+    public function isPlatformAdmin(): bool
+    {
+        return in_array($this->platform_role, ['owner', 'admin']);
+    }
+
+    /**
+     * Get user's role in a specific project.
+     */
+    public function roleInProject(Project $project): ?string
+    {
+        $membership = $this->projectMemberships()
+            ->where('project_id', $project->id)
+            ->first();
+
+        return $membership?->pivot?->role;
+    }
+
+    /**
+     * Check if user is admin or owner of a project.
+     */
+    public function isProjectAdmin(Project $project): bool
+    {
+        $role = $this->roleInProject($project);
+
+        return in_array($role, ['owner', 'admin']);
+    }
+
+    /**
+     * Check if user can deploy to a specific environment.
+     * Takes into account platform role, project role, and environment type.
+     */
+    public function canDeployToEnvironment(Environment $environment): bool
+    {
+        // Platform owner/admin can deploy anywhere
+        if ($this->isPlatformAdmin() || $this->isSuperAdmin()) {
+            return true;
+        }
+
+        $project = $environment->project;
+        $projectRole = $this->roleInProject($project);
+
+        // If not a project member, check team membership (fallback to team role)
+        if (! $projectRole) {
+            $teamRole = $this->teams()
+                ->where('team_id', $project->team_id)
+                ->first()?->pivot?->role;
+
+            // Map team role to project equivalent
+            $projectRole = $teamRole;
+        }
+
+        if (! $projectRole) {
+            return false;
+        }
+
+        // Viewers can never deploy
+        if ($projectRole === 'viewer') {
+            return false;
+        }
+
+        // Project owner/admin can deploy anywhere
+        if (in_array($projectRole, ['owner', 'admin'])) {
+            return true;
+        }
+
+        // Check environment type restrictions
+        $envType = $environment->type ?? 'development';
+
+        // Development: everyone except viewer can deploy
+        if ($envType === 'development') {
+            return true;
+        }
+
+        // UAT: developer and above can deploy
+        if ($envType === 'uat') {
+            return in_array($projectRole, ['owner', 'admin', 'developer']);
+        }
+
+        // Production: only owner/admin can deploy directly, developer needs approval
+        if ($envType === 'production') {
+            return in_array($projectRole, ['owner', 'admin']);
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user's deployment requires approval for this environment.
+     */
+    public function requiresApprovalForEnvironment(Environment $environment): bool
+    {
+        // Platform admins don't need approval
+        if ($this->isPlatformAdmin() || $this->isSuperAdmin()) {
+            return false;
+        }
+
+        // Environment must require approval
+        if (! $environment->requires_approval) {
+            return false;
+        }
+
+        $project = $environment->project;
+        $projectRole = $this->roleInProject($project);
+
+        // Fallback to team role if no project role
+        if (! $projectRole) {
+            $teamRole = $this->teams()
+                ->where('team_id', $project->team_id)
+                ->first()?->pivot?->role;
+            $projectRole = $teamRole;
+        }
+
+        // Owner/admin don't need approval
+        if (in_array($projectRole, ['owner', 'admin'])) {
+            return false;
+        }
+
+        // Developer needs approval for production
+        return $projectRole === 'developer' && $environment->type === 'production';
     }
 
     public function changelogReads()

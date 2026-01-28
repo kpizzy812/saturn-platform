@@ -27,6 +27,10 @@ class Environment extends BaseModel
 
     protected $guarded = [];
 
+    protected $casts = [
+        'requires_approval' => 'boolean',
+    ];
+
     protected static function booted()
     {
         static::deleting(function ($environment) {
@@ -123,6 +127,70 @@ class Environment extends BaseModel
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Get the environment type (development, uat, production).
+     */
+    public function getEnvironmentType(): string
+    {
+        return $this->type ?? 'development';
+    }
+
+    /**
+     * Check if this is a production environment.
+     */
+    public function isProduction(): bool
+    {
+        return $this->type === 'production';
+    }
+
+    /**
+     * Check if this is a UAT/staging environment.
+     */
+    public function isUat(): bool
+    {
+        return $this->type === 'uat';
+    }
+
+    /**
+     * Check if this is a development environment.
+     */
+    public function isDevelopment(): bool
+    {
+        return $this->type === 'development' || $this->type === null;
+    }
+
+    /**
+     * Check if this environment is protected (production by default).
+     */
+    public function isProtected(): bool
+    {
+        return $this->isProduction();
+    }
+
+    /**
+     * Check if deployments to this environment require approval.
+     */
+    public function requiresDeploymentApproval(): bool
+    {
+        return $this->requires_approval === true;
+    }
+
+    /**
+     * Check if a specific user can deploy to this environment.
+     */
+    public function canUserDeploy(User $user): bool
+    {
+        return $user->canDeployToEnvironment($this);
+    }
+
+    /**
+     * Check if a specific user's deployment requires approval.
+     */
+    public function userRequiresApproval(User $user): bool
+    {
+        return $user->requiresApprovalForEnvironment($this);
     }
 
     public function services()

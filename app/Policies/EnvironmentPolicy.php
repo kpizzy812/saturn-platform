@@ -4,9 +4,14 @@ namespace App\Policies;
 
 use App\Models\Environment;
 use App\Models\User;
+use App\Services\Authorization\ProjectAuthorizationService;
 
 class EnvironmentPolicy
 {
+    public function __construct(
+        protected ProjectAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
@@ -20,8 +25,7 @@ class EnvironmentPolicy
      */
     public function view(User $user, Environment $environment): bool
     {
-        // return $user->teams->contains('id', $environment->project->team_id);
-        return true;
+        return $this->authService->canViewEnvironment($user, $environment);
     }
 
     /**
@@ -29,7 +33,7 @@ class EnvironmentPolicy
      */
     public function create(User $user): bool
     {
-        // return $user->isAdmin();
+        // Any authenticated team member can create environments
         return true;
     }
 
@@ -38,8 +42,7 @@ class EnvironmentPolicy
      */
     public function update(User $user, Environment $environment): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $environment->project->team_id);
-        return true;
+        return $this->authService->canManageEnvironment($user, $environment);
     }
 
     /**
@@ -47,8 +50,7 @@ class EnvironmentPolicy
      */
     public function delete(User $user, Environment $environment): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $environment->project->team_id);
-        return true;
+        return $this->authService->canManageEnvironment($user, $environment);
     }
 
     /**
@@ -56,8 +58,7 @@ class EnvironmentPolicy
      */
     public function restore(User $user, Environment $environment): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $environment->project->team_id);
-        return true;
+        return $this->authService->canManageEnvironment($user, $environment);
     }
 
     /**
@@ -65,7 +66,22 @@ class EnvironmentPolicy
      */
     public function forceDelete(User $user, Environment $environment): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $environment->project->team_id);
-        return true;
+        return $this->authService->canManageEnvironment($user, $environment);
+    }
+
+    /**
+     * Determine whether the user can deploy to the environment.
+     */
+    public function deploy(User $user, Environment $environment): bool
+    {
+        return $this->authService->canDeploy($user, $environment);
+    }
+
+    /**
+     * Determine whether the user can approve deployments for the environment.
+     */
+    public function approveDeployments(User $user, Environment $environment): bool
+    {
+        return $this->authService->canApproveDeployment($user, $environment);
     }
 }
