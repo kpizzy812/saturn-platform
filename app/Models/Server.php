@@ -133,7 +133,7 @@ class Server extends BaseModel
             }
         });
         static::created(function ($server) {
-            ServerSetting::create([
+            ServerSetting::firstOrCreate([
                 'server_id' => $server->id,
             ]);
             if ($server->id === 0) {

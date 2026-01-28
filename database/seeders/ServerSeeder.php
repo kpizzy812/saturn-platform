@@ -11,6 +11,10 @@ class ServerSeeder extends Seeder
 {
     public function run(): void
     {
+        if (Server::find(0) !== null) {
+            return;
+        }
+
         Server::create([
             'id' => 0,
             'uuid' => 'localhost',
