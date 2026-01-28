@@ -21,9 +21,15 @@ export function PendingApprovalsWidget({ projectUuid, showProjectName = false, m
         setError('');
         try {
             const url = projectUuid
-                ? `/api/v1/projects/${projectUuid}/pending-approvals`
-                : '/api/v1/approvals/pending';
-            const res = await fetch(url);
+                ? `/projects/${projectUuid}/approvals/pending/json`
+                : '/approvals/pending/json';
+            const res = await fetch(url, {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
             setApprovals(data.slice(0, maxItems));
@@ -44,8 +50,9 @@ export function PendingApprovalsWidget({ projectUuid, showProjectName = false, m
     const handleApprove = async (deploymentUuid: string) => {
         setActionLoading(deploymentUuid);
         try {
-            const res = await fetch(`/api/v1/deployments/${deploymentUuid}/approve`, {
+            const res = await fetch(`/deployments/${deploymentUuid}/approve/json`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
@@ -71,8 +78,9 @@ export function PendingApprovalsWidget({ projectUuid, showProjectName = false, m
 
         setActionLoading(deploymentUuid);
         try {
-            const res = await fetch(`/api/v1/deployments/${deploymentUuid}/reject`, {
+            const res = await fetch(`/deployments/${deploymentUuid}/reject/json`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',

@@ -14,7 +14,13 @@ export default function ApprovalsIndex() {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch('/api/v1/approvals/pending');
+            const res = await fetch('/approvals/pending/json', {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
             if (!res.ok) throw new Error('Failed to fetch');
             const data = await res.json();
             setApprovals(data);
@@ -35,8 +41,9 @@ export default function ApprovalsIndex() {
     const handleApprove = async (deploymentUuid: string) => {
         setActionLoading(deploymentUuid);
         try {
-            const res = await fetch(`/api/v1/deployments/${deploymentUuid}/approve`, {
+            const res = await fetch(`/deployments/${deploymentUuid}/approve/json`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
@@ -61,8 +68,9 @@ export default function ApprovalsIndex() {
 
         setActionLoading(deploymentUuid);
         try {
-            const res = await fetch(`/api/v1/deployments/${deploymentUuid}/reject`, {
+            const res = await fetch(`/deployments/${deploymentUuid}/reject/json`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',

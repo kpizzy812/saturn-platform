@@ -104,6 +104,43 @@ Route::group([
     Route::patch('/environments/{environment_uuid}/links/{link_id}', [ResourceLinkController::class, 'update'])->middleware(['api.ability:write']);
     Route::delete('/environments/{environment_uuid}/links/{link_id}', [ResourceLinkController::class, 'destroy'])->middleware(['api.ability:write']);
 
+    // Environment Settings (type and approval)
+    Route::patch('/environments/{environment_uuid}/settings', function (\Illuminate\Http\Request $request, string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', function ($query) use ($teamId) {
+                $query->where('team_id', $teamId);
+            })
+            ->firstOrFail();
+
+        // Check if user can manage environment settings (requires project admin/owner role)
+        $user = auth()->user();
+        $userRole = $user->roleInProject($environment->project);
+        if (! in_array($userRole, ['owner', 'admin'])) {
+            return response()->json(['message' => 'You do not have permission to manage environment settings'], 403);
+        }
+
+        $validated = $request->validate([
+            'type' => 'sometimes|in:development,uat,production',
+            'requires_approval' => 'sometimes|boolean',
+        ]);
+
+        $environment->update($validated);
+
+        return response()->json([
+            'message' => 'Environment settings updated successfully',
+            'environment' => [
+                'uuid' => $environment->uuid,
+                'type' => $environment->type,
+                'requires_approval' => $environment->requires_approval,
+            ],
+        ]);
+    })->middleware(['api.ability:write']);
+
     Route::get('/security/keys', [SecurityController::class, 'keys'])->middleware(['api.ability:read']);
     Route::post('/security/keys', [SecurityController::class, 'create_key'])->middleware(['api.ability:write']);
 
@@ -161,6 +198,46 @@ Route::group([
     Route::post('/deployments/{uuid}/reject', [DeploymentApprovalController::class, 'reject'])->middleware(['api.ability:deploy']);
     Route::get('/deployments/{uuid}/approval-status', [DeploymentApprovalController::class, 'approvalStatus'])->middleware(['api.ability:read']);
     Route::get('/approvals/pending', [DeploymentApprovalController::class, 'myPendingApprovals'])->middleware(['api.ability:read']);
+
+    // Check if deployment requires approval before starting
+    Route::get('/applications/{uuid}/check-approval', function (\Illuminate\Http\Request $request, string $uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $application = \App\Models\Application::where('uuid', $uuid)
+            ->whereHas('environment.project', function ($query) use ($teamId) {
+                $query->where('team_id', $teamId);
+            })
+            ->with('environment.project')
+            ->first();
+
+        if (! $application) {
+            return response()->json(['message' => 'Application not found.'], 404);
+        }
+
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+        $environment = $application->environment;
+
+        // Check if user requires approval for this environment
+        $requiresApproval = $user->requiresApprovalForEnvironment($environment);
+        $canDeploy = $user->canDeployToEnvironment($environment);
+        $userRole = $user->roleInProject($environment->project);
+
+        return response()->json([
+            'requires_approval' => $requiresApproval,
+            'can_deploy' => $canDeploy,
+            'user_role' => $userRole,
+            'environment' => [
+                'uuid' => $environment->uuid,
+                'name' => $environment->name,
+                'type' => $environment->type ?? 'development',
+                'requires_approval' => $environment->requires_approval,
+            ],
+        ]);
+    })->middleware(['api.ability:read']);
 
     Route::get('/servers', [ServersController::class, 'servers'])->middleware(['api.ability:read']);
     Route::get('/servers/{uuid}', [ServersController::class, 'server_by_uuid'])->middleware(['api.ability:read']);

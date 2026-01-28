@@ -110,8 +110,15 @@ Route::get('/projects/{uuid}', function (string $uuid) {
         $env->databases = $env->databases();
     });
 
+    // Get user's role in this project
+    $currentUser = auth()->user();
+    $userRole = $currentUser->roleInProject($project);
+    $canManageEnvironments = in_array($userRole, ['owner', 'admin']);
+
     return Inertia::render('Projects/Show', [
         'project' => $project,
+        'userRole' => $userRole ?? 'member',
+        'canManageEnvironments' => $canManageEnvironments,
     ]);
 })->name('projects.show');
 
@@ -472,6 +479,39 @@ Route::patch('/projects/{uuid}/settings/default-server', function (Request $requ
 
     return redirect()->back()->with('success', 'Default server updated.');
 })->name('projects.settings.default-server');
+
+// Environment settings page
+Route::get('/environments/{uuid}/settings', function (string $uuid) {
+    $environment = \App\Models\Environment::where('uuid', $uuid)
+        ->whereHas('project', function ($query) {
+            $query->whereRelation('team', 'id', currentTeam()->id);
+        })
+        ->with('project')
+        ->firstOrFail();
+
+    $currentUser = auth()->user();
+    $userRole = $currentUser->roleInProject($environment->project);
+
+    // Check if user can manage environment settings (owner/admin only)
+    $canManage = in_array($userRole, ['owner', 'admin']);
+
+    return Inertia::render('Environments/Settings', [
+        'environment' => [
+            'id' => $environment->id,
+            'uuid' => $environment->uuid,
+            'name' => $environment->name,
+            'type' => $environment->type ?? 'development',
+            'requires_approval' => $environment->requires_approval ?? false,
+        ],
+        'project' => [
+            'id' => $environment->project->id,
+            'uuid' => $environment->project->uuid,
+            'name' => $environment->project->name,
+        ],
+        'canManage' => $canManage,
+        'userRole' => $userRole ?? 'member',
+    ]);
+})->name('environments.settings');
 
 // Project members management
 Route::get('/projects/{uuid}/members', function (string $uuid) {

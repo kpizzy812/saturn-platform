@@ -31,12 +31,15 @@ import {
     DatabaseSettingsTab,
     LocalSetupModal,
 } from '@/components/features/Projects';
+import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
 
 interface Props {
     project?: Project;
+    userRole?: string;
+    canManageEnvironments?: boolean;
 }
 
-export default function ProjectShow({ project }: Props) {
+export default function ProjectShow({ project, userRole = 'member', canManageEnvironments = false }: Props) {
     const [selectedEnv, setSelectedEnv] = useState<Environment | null>(project?.environments?.[0] || null);
     const [selectedService, setSelectedService] = useState<SelectedService | null>(null);
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
@@ -74,6 +77,15 @@ export default function ProjectShow({ project }: Props) {
     // Context menu state
     const [contextMenuPosition, setContextMenuPosition] = useState<ContextMenuPosition | null>(null);
     const [contextMenuNode, setContextMenuNode] = useState<ContextMenuNode | null>(null);
+
+    // Approval modal state
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [approvalPendingApp, setApprovalPendingApp] = useState<{
+        uuid: string;
+        name: string;
+        environmentName: string;
+        environmentType: string;
+    } | null>(null);
 
     // Logs viewer state
     const [logsViewerOpen, setLogsViewerOpen] = useState(false);
@@ -302,6 +314,39 @@ export default function ProjectShow({ project }: Props) {
         window.open(url, '_blank');
     };
 
+    // Execute actual deployment
+    const executeDeployment = useCallback(async (appUuid: string) => {
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+        const response = await fetch(`/applications/${appUuid}/deploy/json`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to deploy');
+        }
+
+        return response.json();
+    }, []);
+
+    // Request deployment approval
+    const requestDeploymentApproval = useCallback(async () => {
+        if (!approvalPendingApp) return;
+
+        // For approval flow, just create the deployment - it will be in pending state
+        // The backend handles the approval workflow
+        await executeDeployment(approvalPendingApp.uuid);
+
+        addToast('success', 'Approval Requested', 'Your deployment request has been submitted for approval');
+        router.reload();
+    }, [approvalPendingApp, executeDeployment, addToast]);
+
     // API action handlers for context menu
     const handleDeploy = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
@@ -309,26 +354,41 @@ export default function ProjectShow({ project }: Props) {
 
         try {
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch(`/api/v1/applications/${node.uuid}/start`, {
-                method: 'POST',
+
+            // Check if approval is required
+            const checkResponse = await fetch(`/applications/${node.uuid}/check-approval/json`, {
+                method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to deploy');
+            if (checkResponse.ok) {
+                const checkData = await checkResponse.json();
+
+                if (checkData.requires_approval) {
+                    // Show approval modal instead of deploying directly
+                    setApprovalPendingApp({
+                        uuid: node.uuid,
+                        name: node.name,
+                        environmentName: checkData.environment?.name || selectedEnv?.name || 'Unknown',
+                        environmentType: checkData.environment?.type || 'development',
+                    });
+                    setShowApprovalModal(true);
+                    return;
+                }
             }
 
+            // No approval required, deploy directly
+            await executeDeployment(node.uuid);
+            addToast('success', 'Deployment Started', `Deploying ${node.name}`);
             router.reload();
         } catch (err) {
             addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy application');
         }
-    }, [contextMenuNode, addToast]);
+    }, [contextMenuNode, selectedEnv, executeDeployment, addToast]);
 
     const handleRestart = useCallback(async (_nodeId: string) => {
         const node = contextMenuNode;
@@ -524,7 +584,7 @@ export default function ProjectShow({ project }: Props) {
     const handleQuickDeploy = useCallback(async (uuid: string) => {
         try {
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch('/api/v1/deploy', {
+            const response = await fetch(`/applications/${uuid}/deploy/json`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -532,7 +592,6 @@ export default function ProjectShow({ project }: Props) {
                     'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
-                body: JSON.stringify({ uuid }),
             });
             if (!response.ok) {
                 const error = await response.json();
@@ -700,15 +759,29 @@ export default function ProjectShow({ project }: Props) {
                             </DropdownTrigger>
                             <DropdownContent align="right">
                                 {project.environments?.map((env) => (
-                                    <DropdownItem
-                                        key={env.id}
-                                        onClick={() => handleSwitchEnv(env)}
-                                    >
-                                        {env.name}
-                                        {env.id === selectedEnv?.id && (
-                                            <span className="ml-2 text-primary">✓</span>
+                                    <div key={env.id} className="flex items-center justify-between">
+                                        <DropdownItem
+                                            onClick={() => handleSwitchEnv(env)}
+                                            className="flex-1"
+                                        >
+                                            {env.name}
+                                            {env.id === selectedEnv?.id && (
+                                                <span className="ml-2 text-primary">✓</span>
+                                            )}
+                                        </DropdownItem>
+                                        {canManageEnvironments && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    router.visit(`/environments/${env.uuid}/settings`);
+                                                }}
+                                                className="p-1.5 text-foreground-muted hover:text-foreground hover:bg-background-tertiary rounded"
+                                                title="Environment Settings"
+                                            >
+                                                <Cog className="h-4 w-4" />
+                                            </button>
                                         )}
-                                    </DropdownItem>
+                                    </div>
                                 ))}
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setShowNewEnvModal(true)}>
@@ -1454,6 +1527,19 @@ export default function ProjectShow({ project }: Props) {
                     </Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Approval Required Modal */}
+            <ApprovalRequiredModal
+                isOpen={showApprovalModal}
+                onClose={() => {
+                    setShowApprovalModal(false);
+                    setApprovalPendingApp(null);
+                }}
+                onRequestApproval={requestDeploymentApproval}
+                environmentName={approvalPendingApp?.environmentName || ''}
+                environmentType={approvalPendingApp?.environmentType || 'development'}
+                applicationName={approvalPendingApp?.name || ''}
+            />
         </>
     );
 }
