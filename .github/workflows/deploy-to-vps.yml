@@ -7,12 +7,16 @@
 #   - Push to dev/main → Build image + Auto deploy
 #   - Manual trigger
 #
-# Required Secrets:
+# GitHub Environments:
+#   - development (dev branch)   - Dev server secrets
+#   - production (main branch)   - Production server secrets
+#
+# Required Secrets (per environment):
 #   - VPS_HOST        - Server IP
 #   - VPS_USER        - SSH username
 #   - VPS_SSH_KEY     - Private SSH key
 #   - VPS_PORT        - SSH port
-#   - PRODUCTION_ENV  - Full .env file contents for production
+#   - PRODUCTION_ENV  - Full .env file contents
 # =============================================================================
 
 name: Deploy to VPS
@@ -98,6 +102,7 @@ jobs:
     needs: [build]
     if: always() && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
