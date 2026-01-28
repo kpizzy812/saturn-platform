@@ -315,6 +315,123 @@ Route::post('/_internal/services/{uuid}/redeploy', function (string $uuid, Reque
     ]);
 })->name('services.redeploy.api');
 
+// API endpoint for service container metrics (docker stats)
+Route::get('/_internal/services/{uuid}/container-stats', function (string $uuid) {
+    $service = \App\Models\Service::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $server = $service->server;
+
+    if (! $server || ! $server->isFunctional()) {
+        return response()->json([
+            'error' => 'Server is not functional',
+            'containers' => [],
+        ]);
+    }
+
+    try {
+        // Get all containers for this service by label
+        $command = "docker stats --no-stream --format '{{json .}}' $(docker ps -q --filter 'label=coolify.serviceId={$service->id}' 2>/dev/null) 2>/dev/null || echo ''";
+        $output = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        if (empty($output)) {
+            return response()->json([
+                'error' => 'No running containers found',
+                'containers' => [],
+            ]);
+        }
+
+        // Helper to parse memory values
+        $parseMemory = function (string $val): int {
+            $val = trim($val);
+            if (preg_match('/^([\d.]+)\s*(B|KB|KiB|MB|MiB|GB|GiB|TB|TiB)$/i', $val, $m)) {
+                $num = (float) $m[1];
+                $unit = strtoupper($m[2]);
+
+                return (int) match ($unit) {
+                    'B' => $num,
+                    'KB' => $num * 1000,
+                    'KIB' => $num * 1024,
+                    'MB' => $num * 1000 * 1000,
+                    'MIB' => $num * 1024 * 1024,
+                    'GB' => $num * 1000 * 1000 * 1000,
+                    'GIB' => $num * 1024 * 1024 * 1024,
+                    'TB' => $num * 1000 * 1000 * 1000 * 1000,
+                    'TIB' => $num * 1024 * 1024 * 1024 * 1024,
+                    default => $num,
+                };
+            }
+
+            return 0;
+        };
+
+        $containers = [];
+        $lines = array_filter(explode("\n", $output));
+
+        foreach ($lines as $line) {
+            $stats = json_decode(trim($line), true);
+            if (! $stats) {
+                continue;
+            }
+
+            $cpuPercent = (float) str_replace('%', '', $stats['CPUPerc'] ?? '0%');
+
+            $memUsage = $stats['MemUsage'] ?? '0B / 0B';
+            $memParts = explode('/', $memUsage);
+            $memUsed = trim($memParts[0] ?? '0B');
+            $memLimit = trim($memParts[1] ?? '0B');
+            $memUsedBytes = $parseMemory($memUsed);
+            $memLimitBytes = $parseMemory($memLimit);
+            $memPercent = $memLimitBytes > 0 ? round(($memUsedBytes / $memLimitBytes) * 100, 1) : 0;
+
+            $netIO = $stats['NetIO'] ?? '0B / 0B';
+            $netParts = explode('/', $netIO);
+
+            $blockIO = $stats['BlockIO'] ?? '0B / 0B';
+            $blockParts = explode('/', $blockIO);
+
+            $containers[] = [
+                'name' => $stats['Name'] ?? 'unknown',
+                'container_id' => $stats['ID'] ?? '',
+                'cpu' => ['percent' => $cpuPercent, 'formatted' => $stats['CPUPerc'] ?? '0%'],
+                'memory' => [
+                    'used' => $memUsed,
+                    'limit' => $memLimit,
+                    'percent' => $memPercent,
+                    'used_bytes' => $memUsedBytes,
+                    'limit_bytes' => $memLimitBytes,
+                ],
+                'network' => ['rx' => trim($netParts[0] ?? '0B'), 'tx' => trim($netParts[1] ?? '0B')],
+                'disk' => ['read' => trim($blockParts[0] ?? '0B'), 'write' => trim($blockParts[1] ?? '0B')],
+                'pids' => $stats['PIDs'] ?? '0',
+            ];
+        }
+
+        // Compute aggregated totals
+        $totalCpu = array_sum(array_column(array_column($containers, 'cpu'), 'percent'));
+        $totalMemUsed = array_sum(array_column(array_column($containers, 'memory'), 'used_bytes'));
+        $totalMemLimit = array_sum(array_column(array_column($containers, 'memory'), 'limit_bytes'));
+
+        return response()->json([
+            'containers' => $containers,
+            'summary' => [
+                'cpu_percent' => round($totalCpu, 1),
+                'memory_used_bytes' => $totalMemUsed,
+                'memory_limit_bytes' => $totalMemLimit,
+                'memory_percent' => $totalMemLimit > 0 ? round(($totalMemUsed / $totalMemLimit) * 100, 1) : 0,
+                'container_count' => count($containers),
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'containers' => [],
+        ]);
+    }
+})->name('services.container-stats.api');
+
 Route::get('/services/{uuid}/settings', function (string $uuid) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)

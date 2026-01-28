@@ -134,6 +134,11 @@ export function DatabaseConnectTab({ service }: DatabaseConnectTabProps) {
                         </button>
                     </div>
                 </div>
+                {!externalUrl && (
+                    <p className="mt-2 text-xs text-foreground-muted">
+                        Enable public access in database Settings to get an external connection URL.
+                    </p>
+                )}
             </div>
 
             {/* Connection Variables */}

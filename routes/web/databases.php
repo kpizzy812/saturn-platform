@@ -200,10 +200,17 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
         'limits_cpus' => 'sometimes|string',
         'limits_cpuset' => 'sometimes|nullable|string',
         'limits_cpu_shares' => 'sometimes|numeric',
+        'storage_limit' => 'sometimes|integer|min:0|max:10000',
+        'auto_scaling_enabled' => 'sometimes|boolean',
         'is_public' => 'sometimes|boolean',
         'public_port' => 'sometimes|nullable|numeric',
         // Security
         'enable_ssl' => 'sometimes|boolean',
+        'allowed_ips' => 'sometimes|nullable|string|max:10000',
+        // Connection pooling
+        'connection_pool_enabled' => 'sometimes|boolean',
+        'connection_pool_size' => 'sometimes|integer|min:1|max:1000',
+        'connection_pool_max' => 'sometimes|integer|min:1|max:10000',
         // Configuration (stored as custom_docker_run_options or postgres_conf etc.)
         'postgres_conf' => 'sometimes|nullable|string',
         'custom_docker_run_options' => 'sometimes|nullable|string',

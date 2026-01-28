@@ -9,6 +9,7 @@ import {
     Settings,
     Cpu,
     Shield,
+    Globe,
     RotateCw,
     Trash2,
     AlertCircle,
@@ -56,10 +57,12 @@ export default function DatabaseSettings({ database }: Props) {
     const [description, setDescription] = useState(database.description || '');
     const [cpuAllocation, setCpuAllocation] = useState(parseCpuToSlider(database.limits_cpus));
     const [memoryAllocation, setMemoryAllocation] = useState(parseMemoryToSlider(database.limits_memory));
-    const [storageSize, setStorageSize] = useState(50);
-    const [autoScalingEnabled, setAutoScalingEnabled] = useState(false);
+    const [storageSize, setStorageSize] = useState(database.storage_limit || 0);
+    const [autoScalingEnabled, setAutoScalingEnabled] = useState(database.auto_scaling_enabled || false);
     const [sslEnabled, setSslEnabled] = useState(database.enable_ssl || false);
-    const [allowedIps, setAllowedIps] = useState('0.0.0.0/0');
+    const [allowedIps, setAllowedIps] = useState(database.allowed_ips || '0.0.0.0/0');
+    const [isPublic, setIsPublic] = useState(database.is_public || false);
+    const [publicPort, setPublicPort] = useState(database.public_port || getDefaultPortNumber(database.database_type));
     const [hasChanges, setHasChanges] = useState(false);
     const [restartRequired, setRestartRequired] = useState(false);
 
@@ -113,6 +116,8 @@ export default function DatabaseSettings({ database }: Props) {
         router.patch(`/databases/${database.uuid}`, {
             limits_cpus: String(cpuAllocation),
             limits_memory: `${memoryAllocation}g`,
+            storage_limit: storageSize,
+            auto_scaling_enabled: autoScalingEnabled,
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -150,6 +155,7 @@ export default function DatabaseSettings({ database }: Props) {
     const handleSaveSecurity = () => {
         router.patch(`/databases/${database.uuid}`, {
             enable_ssl: sslEnabled,
+            allowed_ips: allowedIps,
         }, {
             preserveScroll: true,
             onSuccess: () => {
@@ -200,6 +206,22 @@ export default function DatabaseSettings({ database }: Props) {
                 router.delete(`/databases/${database.uuid}`);
             }
         }
+    };
+
+    const handleSaveNetwork = () => {
+        router.patch(`/databases/${database.uuid}`, {
+            is_public: isPublic,
+            public_port: isPublic ? publicPort : null,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                addToast('success', 'Network settings saved successfully');
+                setHasChanges(false);
+            },
+            onError: () => {
+                addToast('error', 'Failed to save network settings');
+            },
+        });
     };
 
     const handleConfigChange = (key: string, value: string) => {
@@ -312,12 +334,12 @@ export default function DatabaseSettings({ database }: Props) {
 
                                 <div>
                                     <div className="mb-2 flex items-center justify-between">
-                                        <label className="text-sm font-medium text-foreground">Storage</label>
-                                        <span className="text-sm font-medium text-foreground">{storageSize} GB</span>
+                                        <label className="text-sm font-medium text-foreground">Storage Limit</label>
+                                        <span className="text-sm font-medium text-foreground">{storageSize === 0 ? 'Unlimited' : `${storageSize} GB`}</span>
                                     </div>
                                     <input
                                         type="range"
-                                        min="10"
+                                        min="0"
                                         max="500"
                                         step="10"
                                         value={storageSize}
@@ -328,7 +350,7 @@ export default function DatabaseSettings({ database }: Props) {
                                         className="w-full"
                                     />
                                     <div className="mt-1 flex justify-between text-xs text-foreground-muted">
-                                        <span>10 GB</span>
+                                        <span>Unlimited</span>
                                         <span>500 GB</span>
                                     </div>
                                 </div>
@@ -433,6 +455,59 @@ export default function DatabaseSettings({ database }: Props) {
             ),
         },
         {
+            label: 'Network',
+            content: (
+                <div className="space-y-6">
+                    <Card>
+                        <CardContent className="p-6">
+                            <div className="mb-4 flex items-center justify-between">
+                                <h3 className="text-lg font-medium text-foreground">Public Access</h3>
+                                <Globe className="h-5 w-5 text-foreground-muted" />
+                            </div>
+                            <div className="space-y-4">
+                                <Checkbox
+                                    label="Enable public access"
+                                    checked={isPublic}
+                                    onChange={(e) => {
+                                        setIsPublic(e.target.checked);
+                                        setHasChanges(true);
+                                    }}
+                                />
+                                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-500" />
+                                        <p className="text-sm text-yellow-400">
+                                            Enabling public access exposes this database to the internet. Make sure you use strong credentials and consider restricting access by IP.
+                                        </p>
+                                    </div>
+                                </div>
+                                {isPublic && (
+                                    <Input
+                                        type="number"
+                                        label="Public Port"
+                                        value={publicPort}
+                                        onChange={(e) => {
+                                            setPublicPort(parseInt(e.target.value) || 0);
+                                            setHasChanges(true);
+                                        }}
+                                        hint="Port on which the database will be accessible externally (1024-65535)"
+                                    />
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    {hasChanges && (
+                        <div className="flex justify-end">
+                            <Button onClick={handleSaveNetwork}>
+                                <Save className="mr-2 h-4 w-4" />
+                                Save Network Settings
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            ),
+        },
+        {
             label: 'Danger Zone',
             content: (
                 <Card className="border-red-500/50">
@@ -507,6 +582,20 @@ export default function DatabaseSettings({ database }: Props) {
             <Tabs tabs={tabs} />
         </AppLayout>
     );
+}
+
+function getDefaultPortNumber(databaseType: DatabaseType): number {
+    const ports: Record<DatabaseType, number> = {
+        postgresql: 5432,
+        mysql: 3306,
+        mariadb: 3306,
+        mongodb: 27017,
+        redis: 6379,
+        keydb: 6379,
+        dragonfly: 6379,
+        clickhouse: 9000,
+    };
+    return ports[databaseType] || 5432;
 }
 
 interface InfoFieldProps {

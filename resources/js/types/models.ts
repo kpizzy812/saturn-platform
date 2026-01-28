@@ -178,6 +178,14 @@ export interface StandaloneDatabase {
     // Security
     enable_ssl?: boolean;
     ssl_mode?: string;
+    allowed_ips?: string;
+    // Resources
+    storage_limit?: number;
+    auto_scaling_enabled?: boolean;
+    // Connection pooling
+    connection_pool_enabled?: boolean;
+    connection_pool_size?: number;
+    connection_pool_max?: number;
     // Configuration
     postgres_conf?: string;
     custom_docker_run_options?: string;

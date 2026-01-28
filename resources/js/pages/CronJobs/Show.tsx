@@ -85,7 +85,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
     const tabs = [
         {
             label: 'Overview',
-            content: <OverviewTab cronJob={cronJob} />,
+            content: <OverviewTab cronJob={cronJob} executions={executions} />,
         },
         {
             label: 'Execution History',
@@ -181,7 +181,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
     );
 }
 
-function OverviewTab({ cronJob }: { cronJob: CronJob }) {
+function OverviewTab({ cronJob, executions = [] }: { cronJob: CronJob; executions?: CronJobExecution[] }) {
     const formatDuration = (seconds: number) => {
         if (seconds < 60) return `${seconds}s`;
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
@@ -298,15 +298,13 @@ function OverviewTab({ cronJob }: { cronJob: CronJob }) {
                 </CardContent>
             </Card>
 
-            {/* Success/Failure Chart Placeholder */}
+            {/* Execution Trend */}
             <Card>
                 <CardHeader>
                     <CardTitle>Execution Trend (Last 7 Days)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-64 flex items-center justify-center bg-background-tertiary rounded-lg">
-                        <p className="text-foreground-muted">Chart visualization would go here</p>
-                    </div>
+                    <ExecutionTrendChart executions={executions} />
                 </CardContent>
             </Card>
         </div>
@@ -441,6 +439,95 @@ function ExecutionHistoryTab({
                         </p>
                     </Card>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function ExecutionTrendChart({ executions }: { executions: CronJobExecution[] }) {
+    // Group executions by day (last 7 days)
+    const now = new Date();
+    const days: { label: string; date: string; success: number; failure: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayLabel = d.toLocaleDateString(undefined, { weekday: 'short' });
+        days.push({ label: dayLabel, date: dateStr, success: 0, failure: 0 });
+    }
+
+    for (const exec of executions) {
+        const execDate = new Date(exec.started_at).toISOString().split('T')[0];
+        const day = days.find((d) => d.date === execDate);
+        if (day) {
+            if (exec.status === 'success') {
+                day.success++;
+            } else if (exec.status === 'failed') {
+                day.failure++;
+            }
+        }
+    }
+
+    const maxVal = Math.max(1, ...days.map((d) => d.success + d.failure));
+    const hasData = days.some((d) => d.success > 0 || d.failure > 0);
+
+    if (!hasData) {
+        return (
+            <div className="flex h-48 items-center justify-center rounded-lg bg-background-tertiary">
+                <div className="text-center">
+                    <TrendingUp className="mx-auto h-8 w-8 text-foreground-muted" />
+                    <p className="mt-2 text-sm text-foreground-muted">No execution data for the last 7 days</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            {/* Bar chart */}
+            <div className="flex items-end gap-2" style={{ height: '200px' }}>
+                {days.map((day) => {
+                    const total = day.success + day.failure;
+                    const successHeight = total > 0 ? (day.success / maxVal) * 100 : 0;
+                    const failureHeight = total > 0 ? (day.failure / maxVal) * 100 : 0;
+
+                    return (
+                        <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
+                            <div className="relative flex w-full flex-col items-center" style={{ height: '170px' }}>
+                                <div className="flex w-full max-w-8 flex-col-reverse" style={{ height: '100%' }}>
+                                    {successHeight > 0 && (
+                                        <div
+                                            className="w-full rounded-t bg-primary transition-all duration-300"
+                                            style={{ height: `${successHeight}%` }}
+                                            title={`${day.success} successful`}
+                                        />
+                                    )}
+                                    {failureHeight > 0 && (
+                                        <div
+                                            className="w-full bg-danger transition-all duration-300"
+                                            style={{ height: `${failureHeight}%` }}
+                                            title={`${day.failure} failed`}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                            <span className="text-xs text-foreground-muted">{day.label}</span>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 flex items-center justify-center gap-6 text-xs text-foreground-muted">
+                <div className="flex items-center gap-1.5">
+                    <div className="h-2.5 w-2.5 rounded-sm bg-primary" />
+                    <span>Success</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <div className="h-2.5 w-2.5 rounded-sm bg-danger" />
+                    <span>Failure</span>
+                </div>
             </div>
         </div>
     );

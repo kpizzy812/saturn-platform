@@ -51,9 +51,9 @@ export default function DatabaseConnections({ database }: Props) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
-    const [maxConnections, setMaxConnections] = useState(100);
-    const [poolingEnabled, setPoolingEnabled] = useState(true);
-    const [poolSize, setPoolSize] = useState(20);
+    const [maxConnections, setMaxConnections] = useState(database.connection_pool_max || 100);
+    const [poolingEnabled, setPoolingEnabled] = useState(database.connection_pool_enabled || false);
+    const [poolSize, setPoolSize] = useState(database.connection_pool_size || 20);
     const [showKillModal, setShowKillModal] = useState(false);
     const [connectionToKill, setConnectionToKill] = useState<ActiveConnection | null>(null);
     const { addToast } = useToast();
@@ -86,12 +86,18 @@ export default function DatabaseConnections({ database }: Props) {
         setConnectionsLoading(true);
         try {
             const response = await fetch(`/_internal/databases/${database.uuid}/connections`);
+            if (!response.ok) {
+                setActiveConnections([]);
+                return;
+            }
             const data = await response.json();
             if (data.available && data.connections) {
                 setActiveConnections(data.connections);
+            } else {
+                setActiveConnections([]);
             }
         } catch {
-            // Silent fail - connections will show as empty
+            setActiveConnections([]);
         } finally {
             setConnectionsLoading(false);
         }
@@ -152,12 +158,12 @@ export default function DatabaseConnections({ database }: Props) {
 
     const handleSaveSettings = () => {
         router.patch(`/databases/${database.uuid}`, {
-            // Connection pooling is managed at Docker/PgBouncer level, save relevant settings
-            is_public: database.is_public,
-            public_port: database.public_port,
+            connection_pool_enabled: poolingEnabled,
+            connection_pool_size: poolSize,
+            connection_pool_max: maxConnections,
         }, {
             preserveScroll: true,
-            onSuccess: () => addToast('success', 'Connection settings saved successfully!'),
+            onSuccess: () => addToast('success', 'Connection pooling settings saved successfully!'),
             onError: () => addToast('error', 'Failed to save connection settings'),
         });
     };
@@ -170,14 +176,21 @@ export default function DatabaseConnections({ database }: Props) {
     const confirmKillConnection = async () => {
         if (connectionToKill) {
             try {
+                const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
                 const response = await fetch(`/_internal/databases/${database.uuid}/connections/kill`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                     body: JSON.stringify({ pid: connectionToKill.pid }),
                 });
+                if (!response.ok) {
+                    addToast('error', `Server returned ${response.status}`);
+                    setShowKillModal(false);
+                    setConnectionToKill(null);
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     addToast('success', `Killed connection PID ${connectionToKill.pid}`);

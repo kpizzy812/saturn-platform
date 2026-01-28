@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
-import { BarChart3, Cpu, MemoryStick, Network, Activity, RefreshCw } from 'lucide-react';
+import { BarChart3, Cpu, MemoryStick, Network, Activity, RefreshCw, AlertCircle, Container } from 'lucide-react';
+import { useServiceMetrics } from '@/hooks/useServiceMetrics';
+import type { ContainerMetrics } from '@/hooks/useServiceMetrics';
 import type { Service } from '@/types';
 
 interface Props {
@@ -9,9 +11,22 @@ interface Props {
 
 type TimeRange = '1h' | '6h' | '24h' | '7d';
 
+function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+}
+
 export function MetricsTab({ service }: Props) {
     const [timeRange, setTimeRange] = useState<TimeRange>('24h');
-    const [autoRefresh, setAutoRefresh] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(true);
+
+    const { containers, summary, isLoading, error, refetch, lastUpdated } = useServiceMetrics({
+        serviceUuid: service.uuid,
+        autoRefresh,
+        refreshInterval: 10000,
+    });
 
     const timeRangeOptions: { value: TimeRange; label: string }[] = [
         { value: '1h', label: '1 Hour' },
@@ -43,6 +58,11 @@ export function MetricsTab({ service }: Props) {
                             ))}
                         </div>
                         <div className="flex items-center gap-2">
+                            {lastUpdated && (
+                                <span className="text-xs text-foreground-subtle">
+                                    Updated {lastUpdated.toLocaleTimeString()}
+                                </span>
+                            )}
                             <button
                                 onClick={() => setAutoRefresh(!autoRefresh)}
                                 className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -54,7 +74,7 @@ export function MetricsTab({ service }: Props) {
                                 <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
                                 Auto-refresh {autoRefresh ? 'On' : 'Off'}
                             </button>
-                            <Button variant="secondary" size="sm">
+                            <Button variant="secondary" size="sm" onClick={refetch}>
                                 <RefreshCw className="mr-2 h-4 w-4" />
                                 Refresh Now
                             </Button>
@@ -63,190 +83,258 @@ export function MetricsTab({ service }: Props) {
                 </CardContent>
             </Card>
 
-            {/* Current Metrics Summary */}
-            <div className="grid gap-4 md:grid-cols-4">
+            {/* Error State */}
+            {error && !isLoading && containers.length === 0 && (
                 <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
-                                <Cpu className="h-5 w-5 text-info" />
+                    <CardContent className="p-8 text-center">
+                        <AlertCircle className="mx-auto h-10 w-10 text-foreground-muted" />
+                        <h3 className="mt-3 text-sm font-medium text-foreground">Unable to fetch metrics</h3>
+                        <p className="mt-1 text-sm text-foreground-muted">{error}</p>
+                        <Button variant="secondary" size="sm" className="mt-4" onClick={refetch}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Loading State */}
+            {isLoading && containers.length === 0 && (
+                <div className="grid gap-4 md:grid-cols-4">
+                    {[...Array(4)].map((_, i) => (
+                        <Card key={i}>
+                            <CardContent className="p-4">
+                                <div className="animate-pulse">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-lg bg-background-tertiary" />
+                                        <div className="space-y-2">
+                                            <div className="h-3 w-20 rounded bg-background-tertiary" />
+                                            <div className="h-6 w-16 rounded bg-background-tertiary" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Summary Metrics */}
+            {summary && (
+                <div className="grid gap-4 md:grid-cols-4">
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
+                                    <Cpu className="h-5 w-5 text-info" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">CPU Usage</p>
+                                    <p className="text-2xl font-bold text-foreground">{summary.cpu_percent}%</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm text-foreground-muted">CPU Usage</p>
-                                <p className="text-2xl font-bold text-foreground">23%</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                                    <MemoryStick className="h-5 w-5 text-warning" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">Memory</p>
+                                    <p className="text-2xl font-bold text-foreground">
+                                        {formatBytes(summary.memory_used_bytes)}
+                                    </p>
+                                    <p className="text-xs text-foreground-subtle">
+                                        {summary.memory_percent}% of {formatBytes(summary.memory_limit_bytes)}
+                                    </p>
+                                </div>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                    <Container className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">Containers</p>
+                                    <p className="text-2xl font-bold text-foreground">{summary.container_count}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                                    <Activity className="h-5 w-5 text-success" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">Status</p>
+                                    <p className="text-2xl font-bold text-foreground">
+                                        {containers.length > 0 ? 'Running' : 'Stopped'}
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Per-Container Metrics */}
+            {containers.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Container className="h-5 w-5" />
+                            Container Details
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {containers.map((container) => (
+                                <ContainerCard key={container.container_id} container={container} />
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
+            )}
 
+            {/* CPU Usage per Container */}
+            {containers.length > 0 && (
                 <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-                                <MemoryStick className="h-5 w-5 text-warning" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-foreground-muted">Memory</p>
-                                <p className="text-2xl font-bold text-foreground">512 MB</p>
-                            </div>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Cpu className="h-5 w-5 text-info" />
+                            CPU Usage by Container
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {containers.map((c) => (
+                                <div key={c.container_id}>
+                                    <div className="mb-1 flex items-center justify-between text-sm">
+                                        <span className="font-medium text-foreground">{c.name}</span>
+                                        <span className="text-foreground-muted">{c.cpu.formatted}</span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-background-tertiary">
+                                        <div
+                                            className="h-2 rounded-full bg-info transition-all duration-500"
+                                            style={{ width: `${Math.min(c.cpu.percent, 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
+            )}
 
+            {/* Memory Usage per Container */}
+            {containers.length > 0 && (
                 <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                <Network className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-foreground-muted">Network I/O</p>
-                                <p className="text-2xl font-bold text-foreground">1.2 MB/s</p>
-                            </div>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <MemoryStick className="h-5 w-5 text-warning" />
+                            Memory Usage by Container
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {containers.map((c) => (
+                                <div key={c.container_id}>
+                                    <div className="mb-1 flex items-center justify-between text-sm">
+                                        <span className="font-medium text-foreground">{c.name}</span>
+                                        <span className="text-foreground-muted">{c.memory.used} / {c.memory.limit}</span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-background-tertiary">
+                                        <div
+                                            className="h-2 rounded-full bg-warning transition-all duration-500"
+                                            style={{ width: `${Math.min(c.memory.percent, 100)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
+            )}
 
+            {/* Network I/O Table */}
+            {containers.length > 0 && (
                 <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-                                <Activity className="h-5 w-5 text-success" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-foreground-muted">Requests</p>
-                                <p className="text-2xl font-bold text-foreground">1.2k/min</p>
-                            </div>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Network className="h-5 w-5 text-primary" />
+                            Network I/O
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-border text-left text-foreground-muted">
+                                        <th className="pb-2 font-medium">Container</th>
+                                        <th className="pb-2 font-medium">Received</th>
+                                        <th className="pb-2 font-medium">Transmitted</th>
+                                        <th className="pb-2 font-medium">Disk Read</th>
+                                        <th className="pb-2 font-medium">Disk Write</th>
+                                        <th className="pb-2 font-medium">PIDs</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {containers.map((c) => (
+                                        <tr key={c.container_id} className="border-b border-border/50">
+                                            <td className="py-2 font-medium text-foreground">{c.name}</td>
+                                            <td className="py-2 text-foreground-muted">{c.network.rx}</td>
+                                            <td className="py-2 text-foreground-muted">{c.network.tx}</td>
+                                            <td className="py-2 text-foreground-muted">{c.disk.read}</td>
+                                            <td className="py-2 text-foreground-muted">{c.disk.write}</td>
+                                            <td className="py-2 text-foreground-muted">{c.pids}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-
-            {/* CPU Usage Graph */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Cpu className="h-5 w-5 text-info" />
-                        CPU Usage
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <MetricChart
-                        title="CPU Usage Over Time"
-                        color="info"
-                        currentValue="23%"
-                        avgValue="18%"
-                        peakValue="45%"
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Memory Usage Graph */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <MemoryStick className="h-5 w-5 text-warning" />
-                        Memory Usage
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <MetricChart
-                        title="Memory Usage Over Time"
-                        color="warning"
-                        currentValue="512 MB"
-                        avgValue="480 MB"
-                        peakValue="768 MB"
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Network I/O Graph */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Network className="h-5 w-5 text-primary" />
-                        Network I/O
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <MetricChart
-                        title="Network Traffic Over Time"
-                        color="primary"
-                        currentValue="1.2 MB/s"
-                        avgValue="0.8 MB/s"
-                        peakValue="3.4 MB/s"
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Request Count Graph */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-success" />
-                        Request Count
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <MetricChart
-                        title="Requests Per Minute"
-                        color="success"
-                        currentValue="1.2k/min"
-                        avgValue="980/min"
-                        peakValue="2.1k/min"
-                    />
-                </CardContent>
-            </Card>
+            )}
         </div>
     );
 }
 
-interface MetricChartProps {
-    title: string;
-    color: 'info' | 'warning' | 'primary' | 'success';
-    currentValue: string;
-    avgValue: string;
-    peakValue: string;
-}
-
-function MetricChart({ title, color, currentValue, avgValue, peakValue }: MetricChartProps) {
-    const colorClasses = {
-        info: 'bg-info/10 border-info/20',
-        warning: 'bg-warning/10 border-warning/20',
-        primary: 'bg-primary/10 border-primary/20',
-        success: 'bg-success/10 border-success/20',
-    };
-
+function ContainerCard({ container }: { container: ContainerMetrics }) {
     return (
-        <div>
-            {/* Stats Summary */}
-            <div className="mb-4 grid grid-cols-3 gap-4">
-                <div>
-                    <p className="text-xs text-foreground-muted">Current</p>
-                    <p className="text-lg font-semibold text-foreground">{currentValue}</p>
+        <div className="rounded-lg border border-border bg-background-secondary p-4">
+            <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <span className="text-sm font-medium text-foreground">{container.name}</span>
                 </div>
-                <div>
-                    <p className="text-xs text-foreground-muted">Average</p>
-                    <p className="text-lg font-semibold text-foreground">{avgValue}</p>
-                </div>
-                <div>
-                    <p className="text-xs text-foreground-muted">Peak</p>
-                    <p className="text-lg font-semibold text-foreground">{peakValue}</p>
-                </div>
+                <code className="text-xs text-foreground-subtle">{container.container_id.slice(0, 12)}</code>
             </div>
-
-            {/* Chart Placeholder */}
-            <div
-                className={`flex h-64 items-center justify-center rounded-lg border ${colorClasses[color]}`}
-            >
-                <div className="text-center">
-                    <BarChart3 className={`mx-auto h-12 w-12 text-${color}`} />
-                    <p className="mt-2 text-sm font-medium text-foreground-muted">
-                        {title} Chart
-                    </p>
-                    <p className="mt-1 text-xs text-foreground-subtle">
-                        Chart visualization will be displayed here
-                    </p>
+            <div className="grid grid-cols-4 gap-4 text-sm">
+                <div>
+                    <p className="text-foreground-muted">CPU</p>
+                    <p className="font-medium text-foreground">{container.cpu.formatted}</p>
+                </div>
+                <div>
+                    <p className="text-foreground-muted">Memory</p>
+                    <p className="font-medium text-foreground">{container.memory.used}</p>
+                </div>
+                <div>
+                    <p className="text-foreground-muted">Net RX/TX</p>
+                    <p className="font-medium text-foreground">{container.network.rx} / {container.network.tx}</p>
+                </div>
+                <div>
+                    <p className="text-foreground-muted">PIDs</p>
+                    <p className="font-medium text-foreground">{container.pids}</p>
                 </div>
             </div>
         </div>

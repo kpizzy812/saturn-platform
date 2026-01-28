@@ -62,6 +62,10 @@ export function DatabaseExtensionsTab({ service }: DatabaseExtensionsTabProps) {
                     enable: !ext.enabled,
                 }),
             });
+            if (!response.ok) {
+                addToast('error', 'Failed', `Server returned ${response.status}`);
+                return;
+            }
             const data = await response.json();
             if (data.success) {
                 addToast('success', ext.enabled ? 'Extension disabled' : 'Extension enabled', data.message);
