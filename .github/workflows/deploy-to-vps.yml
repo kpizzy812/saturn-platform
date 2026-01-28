@@ -8,10 +8,11 @@
 #   - Manual trigger
 #
 # Required Secrets:
-#   - VPS_HOST      - Server IP
-#   - VPS_USER      - SSH username
-#   - VPS_SSH_KEY   - Private SSH key
-#   - VPS_PORT      - SSH port
+#   - VPS_HOST        - Server IP
+#   - VPS_USER        - SSH username
+#   - VPS_SSH_KEY     - Private SSH key
+#   - VPS_PORT        - SSH port
+#   - PRODUCTION_ENV  - Full .env file contents for production
 # =============================================================================
 
 name: Deploy to VPS
@@ -115,6 +116,21 @@ jobs:
             --include='deploy/***' \
             --exclude='*' \
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/saturn/
+
+      - name: Deploy .env file
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENV_SCRIPT'
+          mkdir -p /data/saturn/source
+          ENV_SCRIPT
+
+          # Write .env file securely (not via heredoc to avoid expansion issues)
+          echo "$PRODUCTION_ENV" | ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /data/saturn/source/.env"
+
+          echo "✓ .env deployed to /data/saturn/source/.env"
 
       - name: Deploy to VPS
         env:
