@@ -109,12 +109,32 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
         }
     };
 
-    const handleCopyToken = (token: string) => {
-        navigator.clipboard.writeText(token);
-        toast({
-            title: 'Copied to clipboard',
-            description: 'API token copied to clipboard.',
-        });
+    const handleCopyToken = async (token: string) => {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(token);
+            } else {
+                // Fallback for non-secure contexts (HTTP)
+                const textarea = document.createElement('textarea');
+                textarea.value = token;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+            toast({
+                title: 'Copied to clipboard',
+                description: 'API token copied to clipboard.',
+            });
+        } catch {
+            toast({
+                title: 'Failed to copy',
+                description: 'Please select and copy the token manually.',
+                variant: 'error',
+            });
+        }
     };
 
     return (
