@@ -213,7 +213,11 @@ function ProjectCanvasInner({
 
         const loadLinks = async () => {
             try {
-                const response = await axios.get(`/api/v1/environments/${environmentUuid}/links`);
+                const response = await axios.get(`/environments/${environmentUuid}/links/json`, {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                });
                 setResourceLinks(response.data);
                 linksLoadedRef.current = true;
             } catch (error) {
@@ -467,11 +471,15 @@ function ProjectCanvasInner({
             setIsLoading(true);
 
             try {
-                const response = await axios.post(`/api/v1/environments/${environmentUuid}/links`, {
+                const response = await axios.post(`/environments/${environmentUuid}/links/json`, {
                     source_id: sourceId,
                     target_type: targetType,
                     target_id: targetId,
                     auto_inject: true,
+                }, {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
                 });
 
                 // Backend returns array for bidirectional app-to-app links, single object for db links
@@ -531,7 +539,11 @@ function ProjectCanvasInner({
 
             if (linkId && environmentUuid) {
                 try {
-                    await axios.delete(`/api/v1/environments/${environmentUuid}/links/${linkId}`);
+                    await axios.delete(`/environments/${environmentUuid}/links/${linkId}/json`, {
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        },
+                    });
 
                     // For bidirectional edges, also remove the reverse link from local state
                     const reverseLinkId = edge?.data?.reverseLinkId as number | undefined;

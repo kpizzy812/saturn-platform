@@ -179,3 +179,70 @@ Route::post('/applications/{uuid}/deploy/json', function (string $uuid) {
         'deployment_uuid' => (string) $deployment_uuid,
     ]);
 })->name('applications.deploy.json');
+
+// Resource Links (web routes for session auth)
+Route::get('/environments/{uuid}/links/json', function (string $uuid) {
+    $environment = \App\Models\Environment::where('uuid', $uuid)
+        ->whereHas('project', function ($query) {
+            $query->whereRelation('team', 'id', currentTeam()->id);
+        })
+        ->firstOrFail();
+
+    $links = \App\Models\ResourceLink::where('environment_id', $environment->id)->get();
+
+    return response()->json($links);
+})->name('environments.links.json');
+
+Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Request $request, string $uuid) {
+    $environment = \App\Models\Environment::where('uuid', $uuid)
+        ->whereHas('project', function ($query) {
+            $query->whereRelation('team', 'id', currentTeam()->id);
+        })
+        ->firstOrFail();
+
+    $validated = $request->validate([
+        'source_id' => 'required|integer',
+        'target_type' => 'required|string',
+        'target_id' => 'required|integer',
+        'auto_inject' => 'boolean',
+    ]);
+
+    $link = \App\Models\ResourceLink::create([
+        'environment_id' => $environment->id,
+        'source_application_id' => $validated['source_id'],
+        'target_type' => $validated['target_type'],
+        'target_id' => $validated['target_id'],
+        'auto_inject' => $validated['auto_inject'] ?? true,
+    ]);
+
+    // For app-to-app links, create reverse link
+    if ($validated['target_type'] === 'application') {
+        $reverseLink = \App\Models\ResourceLink::create([
+            'environment_id' => $environment->id,
+            'source_application_id' => $validated['target_id'],
+            'target_type' => 'application',
+            'target_id' => $validated['source_id'],
+            'auto_inject' => $validated['auto_inject'] ?? true,
+        ]);
+
+        return response()->json([$link, $reverseLink]);
+    }
+
+    return response()->json($link);
+})->name('environments.links.store.json');
+
+Route::delete('/environments/{uuid}/links/{linkId}/json', function (string $uuid, int $linkId) {
+    $environment = \App\Models\Environment::where('uuid', $uuid)
+        ->whereHas('project', function ($query) {
+            $query->whereRelation('team', 'id', currentTeam()->id);
+        })
+        ->firstOrFail();
+
+    $link = \App\Models\ResourceLink::where('id', $linkId)
+        ->where('environment_id', $environment->id)
+        ->firstOrFail();
+
+    $link->delete();
+
+    return response()->json(['message' => 'Link deleted']);
+})->name('environments.links.destroy.json');
