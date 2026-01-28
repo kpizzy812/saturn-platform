@@ -299,6 +299,52 @@ Route::get('/databases/{uuid}/logs', function (string $uuid) {
     ]);
 })->name('databases.logs');
 
+// JSON endpoint for database logs (used by LogsViewer modal)
+Route::get('/databases/{uuid}/logs/json', function (string $uuid, \Illuminate\Http\Request $request) {
+    $database = findDatabaseByUuid($uuid);
+
+    if (! $database) {
+        return response()->json(['message' => 'Database not found.'], 404);
+    }
+
+    $server = $database->destination?->server;
+    if (! $server) {
+        return response()->json(['message' => 'Server not found.'], 404);
+    }
+
+    $since = $request->query('since');
+
+    try {
+        $containerName = $database->uuid;
+
+        // Check if container exists
+        $checkCommand = "docker inspect --format='{{.State.Status}}' {$containerName} 2>&1";
+        $containerStatus = trim(instant_remote_process([$checkCommand], $server, false) ?? '');
+
+        if (str_contains($containerStatus, 'No such') || str_contains($containerStatus, 'Error')) {
+            return response()->json([
+                'container_logs' => 'Container is not running. The database may need to be started first.',
+                'timestamp' => now()->timestamp,
+            ]);
+        }
+
+        if ($since) {
+            $logs = instant_remote_process(["docker logs --since {$since} --timestamps {$containerName} 2>&1"], $server);
+        } else {
+            $logs = instant_remote_process(["docker logs -n 200 --timestamps {$containerName} 2>&1"], $server);
+        }
+
+        return response()->json([
+            'container_logs' => $logs,
+            'timestamp' => now()->timestamp,
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Failed to fetch logs: '.$e->getMessage(),
+        ], 500);
+    }
+})->name('databases.logs.json');
+
 Route::get('/databases/{uuid}/metrics', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 
