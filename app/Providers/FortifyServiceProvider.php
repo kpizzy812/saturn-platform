@@ -90,16 +90,16 @@ class FortifyServiceProvider extends ServiceProvider
                     if (! $user->teams()->where('team_id', $invitation->team->id)->exists()) {
                         $user->teams()->attach($invitation->team->id, ['role' => $invitation->role]);
                     }
-                    $user->currentTeam = $invitation->team;
+                    $currentTeam = $invitation->team;
                     $invitation->delete();
                 } else {
                     // Normal login - use personal team
-                    $user->currentTeam = $user->teams->firstWhere('personal_team', true);
-                    if (! $user->currentTeam) {
-                        $user->currentTeam = $user->recreate_personal_team();
+                    $currentTeam = $user->teams->firstWhere('personal_team', true);
+                    if (! $currentTeam) {
+                        $currentTeam = $user->recreate_personal_team();
                     }
                 }
-                session(['currentTeam' => $user->currentTeam]);
+                session(['currentTeam' => $currentTeam]);
 
                 return $user;
             }
