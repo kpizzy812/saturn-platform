@@ -13,6 +13,13 @@ class ApiAllowed
         if (isCloud()) {
             return $next($request);
         }
+
+        // Session auth (web frontend) - always allow, API restrictions don't apply
+        $user = $request->user();
+        if ($user && ! $user->currentAccessToken()) {
+            return $next($request);
+        }
+
         $settings = instanceSettings();
         if ($settings->is_api_enabled === false) {
             return response()->json(['success' => true, 'message' => 'API is disabled.'], 403);
