@@ -34,11 +34,16 @@ Route::get('/services/create', function () {
         ->whereRelation('settings', 'is_usable', true)
         ->get();
 
+    // Get service templates for quick deploy
+    $templateService = app(\App\Services\TemplateService::class);
+    $templates = $templateService->getAllTemplates();
+
     return Inertia::render('Services/Create', [
         'projects' => $projects,
         'localhost' => $localhost,
         'userServers' => $userServers,
         'needsProject' => $projects->isEmpty(),
+        'templates' => $templates,
     ]);
 })->name('services.create');
 
