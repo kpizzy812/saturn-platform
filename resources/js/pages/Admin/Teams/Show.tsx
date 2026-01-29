@@ -309,7 +309,12 @@ export default function AdminTeamShow({ team }: Props) {
                                         <div className="flex items-center gap-3">
                                             <Server className="h-5 w-5 text-foreground-muted" />
                                             <div>
-                                                <p className="font-medium text-foreground">{server.name}</p>
+                                                <Link
+                                                    href={`/server/${server.uuid}`}
+                                                    className="font-medium text-foreground hover:text-primary"
+                                                >
+                                                    {server.name}
+                                                </Link>
                                                 <p className="text-sm text-foreground-muted">{server.ip}</p>
                                             </div>
                                         </div>
@@ -320,7 +325,7 @@ export default function AdminTeamShow({ team }: Props) {
                                             >
                                                 {server.is_reachable ? 'Reachable' : 'Unreachable'}
                                             </Badge>
-                                            <Link href={`/admin/servers`}>
+                                            <Link href={`/server/${server.uuid}`}>
                                                 <Button variant="ghost" size="sm">
                                                     <ExternalLink className="h-4 w-4" />
                                                 </Button>
@@ -352,12 +357,22 @@ export default function AdminTeamShow({ team }: Props) {
                                         <div className="flex items-center gap-3">
                                             <FolderKanban className="h-5 w-5 text-foreground-muted" />
                                             <div>
-                                                <p className="font-medium text-foreground">{project.name}</p>
+                                                <Link
+                                                    href={`/project/${project.uuid}`}
+                                                    className="font-medium text-foreground hover:text-primary"
+                                                >
+                                                    {project.name}
+                                                </Link>
                                                 <p className="text-sm text-foreground-muted">
                                                     {project.environments_count} environments
                                                 </p>
                                             </div>
                                         </div>
+                                        <Link href={`/project/${project.uuid}`}>
+                                            <Button variant="ghost" size="sm">
+                                                <ExternalLink className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
                                     </div>
                                 ))}
                             </div>
