@@ -166,10 +166,13 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
      * Attempt to connect to WebSocket
      */
     const connectWebSocket = React.useCallback(() => {
-        console.debug('[useRealtimeStatus] connectWebSocket called', { enableWebSocket, teamId, userId });
+        // Skip connection if user is not authenticated or has no team
+        if (!teamId || !userId) {
+            // Only log once, not on every retry
+            return false;
+        }
 
-        if (!enableWebSocket || !teamId || !userId) {
-            console.warn('[useRealtimeStatus] Missing required params', { enableWebSocket, teamId, userId });
+        if (!enableWebSocket) {
             return false;
         }
 
@@ -428,10 +431,16 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
     }, [reconnectAttempts, connectWebSocket, startPolling]);
 
     /**
-     * Initialize connection on mount
+     * Initialize connection when auth data is available
      */
     React.useEffect(() => {
         isMountedRef.current = true;
+
+        // Don't attempt connection if user is not authenticated
+        if (!teamId || !userId) {
+            return;
+        }
+
         const connected = connectWebSocket();
 
         if (!connected && enableWebSocket) {
@@ -442,7 +451,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
             startPolling();
         }
 
-        // Cleanup on unmount
+        // Cleanup on unmount or when auth changes
         return () => {
             isMountedRef.current = false;
 
@@ -461,8 +470,12 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
             if (echo && teamId) {
                 echo.leave(`team.${teamId}`);
             }
+
+            // Reset connection state
+            setIsConnected(false);
+            setReconnectAttempts(0);
         };
-    }, []); // Only run on mount/unmount
+    }, [teamId, userId, enableWebSocket, connectWebSocket, reconnect, startPolling]);
 
     return {
         isConnected,
