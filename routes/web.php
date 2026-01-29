@@ -191,21 +191,88 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
     })->name('auth.verify-email');
 
     Route::get('/invitations/{uuid}', function (string $uuid) {
-        // Find the invitation - implement your invitation logic here
-        $invitation = [
-            'id' => $uuid,
-            'team_name' => 'Example Team',
-            'inviter_name' => 'John Doe',
-            'inviter_email' => 'john@example.com',
-            'role' => 'Member',
-            'expires_at' => now()->addDays(7)->toISOString(),
-        ];
+        $invitation = \App\Models\TeamInvitation::where('uuid', $uuid)->firstOrFail();
+
+        if (! $invitation->isValid()) {
+            return \Inertia\Inertia::render('Auth/AcceptInvite', [
+                'invitation' => null,
+                'error' => 'This invitation has expired or is no longer valid.',
+                'isAuthenticated' => auth()->check(),
+            ]);
+        }
+
+        $team = $invitation->team;
+        $inviter = $team->members()->wherePivot('role', 'owner')->first()
+            ?? $team->members()->first();
 
         return \Inertia\Inertia::render('Auth/AcceptInvite', [
-            'invitation' => $invitation,
+            'invitation' => [
+                'id' => $invitation->uuid,
+                'team_name' => $team->name,
+                'inviter_name' => $inviter?->name ?? 'Team Admin',
+                'inviter_email' => $inviter?->email ?? '',
+                'role' => ucfirst($invitation->role ?? 'member'),
+                'expires_at' => $invitation->created_at->addDays(
+                    config('constants.invitation.link.expiration_days', 7)
+                )->toISOString(),
+            ],
             'isAuthenticated' => auth()->check(),
         ]);
     })->name('auth.accept-invite');
+
+    Route::post('/invitations/{uuid}/accept', function (string $uuid) {
+        $user = auth()->user();
+        if (! $user) {
+            return redirect()->route('login', ['redirect' => "/invitations/{$uuid}"]);
+        }
+
+        $invitation = \App\Models\TeamInvitation::where('uuid', $uuid)->firstOrFail();
+
+        if (! $invitation->isValid()) {
+            return redirect()->back()->with('error', 'This invitation has expired.');
+        }
+
+        // Check if email matches
+        if (strtolower($user->email) !== strtolower($invitation->email)) {
+            return redirect()->back()->with('error', 'This invitation was sent to a different email address.');
+        }
+
+        $team = $invitation->team;
+
+        // Check if already a member
+        if ($team->members()->where('user_id', $user->id)->exists()) {
+            $invitation->delete();
+
+            return redirect('/dashboard')->with('info', 'You are already a member of this team.');
+        }
+
+        // Add user to team
+        $team->members()->attach($user->id, [
+            'role' => $invitation->role ?? 'member',
+        ]);
+
+        // Delete the invitation
+        $invitation->delete();
+
+        // Switch to the new team
+        $user->update(['current_team_id' => $team->id]);
+
+        return redirect('/dashboard')->with('success', "You have joined {$team->name}!");
+    })->name('auth.accept-invite.store');
+
+    Route::post('/invitations/{uuid}/decline', function (string $uuid) {
+        $invitation = \App\Models\TeamInvitation::where('uuid', $uuid)->first();
+
+        if ($invitation) {
+            $invitation->delete();
+        }
+
+        if (auth()->check()) {
+            return redirect('/dashboard')->with('info', 'Invitation declined.');
+        }
+
+        return redirect('/login')->with('info', 'Invitation declined.');
+    })->name('auth.decline-invite');
 });
 
 // React/Inertia Routes (new frontend)
