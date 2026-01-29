@@ -358,7 +358,7 @@ export default function AdminTeamShow({ team }: Props) {
                                             <FolderKanban className="h-5 w-5 text-foreground-muted" />
                                             <div>
                                                 <Link
-                                                    href={`/project/${project.uuid}`}
+                                                    href={`/admin/projects/${project.id}`}
                                                     className="font-medium text-foreground hover:text-primary"
                                                 >
                                                     {project.name}
@@ -368,7 +368,7 @@ export default function AdminTeamShow({ team }: Props) {
                                                 </p>
                                             </div>
                                         </div>
-                                        <Link href={`/project/${project.uuid}`}>
+                                        <Link href={`/admin/projects/${project.id}`}>
                                             <Button variant="ghost" size="sm">
                                                 <ExternalLink className="h-4 w-4" />
                                             </Button>

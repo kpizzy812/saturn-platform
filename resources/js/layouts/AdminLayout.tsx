@@ -12,6 +12,7 @@ import {
     Shield,
     LogOut,
     ChevronDown,
+    FolderKanban,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -35,6 +36,7 @@ const adminNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
     { label: 'Teams', href: '/admin/teams', icon: <Teams className="h-4 w-4" /> },
+    { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
     { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
     { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
     { label: 'Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },

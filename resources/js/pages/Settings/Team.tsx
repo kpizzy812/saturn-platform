@@ -2,20 +2,20 @@ import * as React from 'react';
 import { router } from '@inertiajs/react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
-import { Mail, UserX, Crown, Shield, User as UserIcon } from 'lucide-react';
+import { Mail, UserX, Crown, Shield, User as UserIcon, Lock } from 'lucide-react';
 
 interface TeamMember {
     id: number;
     name: string;
     email: string;
-    role: 'owner' | 'admin' | 'member';
+    role: 'owner' | 'admin' | 'member' | 'viewer';
     joinedAt: string;
 }
 
 interface Invitation {
     id: number;
     email: string;
-    role: 'admin' | 'member';
+    role: 'admin' | 'member' | 'viewer';
     sentAt: string;
 }
 
@@ -31,7 +31,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [memberToRemove, setMemberToRemove] = React.useState<TeamMember | null>(null);
     const [inviteEmail, setInviteEmail] = React.useState('');
-    const [inviteRole, setInviteRole] = React.useState<'admin' | 'member'>('member');
+    const [inviteRole, setInviteRole] = React.useState<'admin' | 'member' | 'viewer'>('member');
     const [isInviting, setIsInviting] = React.useState(false);
 
     const handleInviteMember = (e: React.FormEvent) => {
@@ -80,17 +80,21 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                 return <Crown className="h-4 w-4" />;
             case 'admin':
                 return <Shield className="h-4 w-4" />;
+            case 'viewer':
+                return <Lock className="h-4 w-4" />;
             default:
                 return <UserIcon className="h-4 w-4" />;
         }
     };
 
-    const getRoleBadgeVariant = (role: string): 'default' | 'success' | 'warning' => {
+    const getRoleBadgeVariant = (role: string): 'default' | 'success' | 'warning' | 'info' => {
         switch (role) {
             case 'owner':
                 return 'warning';
             case 'admin':
                 return 'success';
+            case 'viewer':
+                return 'info';
             default:
                 return 'default';
         }
@@ -228,10 +232,11 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                         <Select
                             label="Role"
                             value={inviteRole}
-                            onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
+                            onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member' | 'viewer')}
                         >
-                            <option value="member">Member - Can view and deploy</option>
                             <option value="admin">Admin - Full access except billing</option>
+                            <option value="member">Member - Can view and deploy</option>
+                            <option value="viewer">Viewer - Read-only access</option>
                         </Select>
                     </div>
 
