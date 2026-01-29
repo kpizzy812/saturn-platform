@@ -36,8 +36,21 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     const [isInviting, setIsInviting] = React.useState(false);
     const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
 
-    const handleCopyLink = async (invitation: Invitation) => {
-        await navigator.clipboard.writeText(invitation.link);
+    const handleCopyLink = (invitation: Invitation) => {
+        // Fallback for HTTP (clipboard API requires HTTPS)
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(invitation.link);
+        } else {
+            // Fallback using textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = invitation.link;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
         setCopiedLinkId(invitation.id);
         setTimeout(() => setCopiedLinkId(null), 2000);
     };
@@ -54,7 +67,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                 setInviteEmail('');
                 setInviteRole('member');
                 setShowInviteModal(false);
-                router.reload({ only: ['invitations'] });
+                router.reload();
             },
             onFinish: () => {
                 setIsInviting(false);
@@ -77,7 +90,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     const handleRevokeInvitation = (invitationId: number) => {
         router.delete(`/settings/team/invitations/${invitationId}`, {
             onSuccess: () => {
-                router.reload({ only: ['invitations'] });
+                router.reload();
             },
         });
     };
