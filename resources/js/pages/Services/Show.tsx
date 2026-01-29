@@ -45,13 +45,16 @@ export default function ServiceShow({ service, containers = [] }: Props) {
 
     // Real-time service status updates
     const { isConnected } = useRealtimeStatus({
-        onServiceStatusChange: (data) => {
-            // Update service status when WebSocket event arrives
-            if (data.serviceId === service.id) {
-                setCurrentStatus(data.status);
-            }
+        onServiceStatusChange: () => {
+            // Reload page data when service status changes
+            router.reload({ only: ['service', 'containers'] });
         },
     });
+
+    // Sync local state when service prop changes
+    useEffect(() => {
+        setCurrentStatus(service?.status || 'running');
+    }, [service?.status]);
 
     const status = currentStatus;
 
