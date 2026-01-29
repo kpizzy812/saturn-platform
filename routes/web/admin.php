@@ -401,6 +401,7 @@ Route::prefix('admin')->group(function () {
         // Fetch system logs (admin view)
         $logPath = storage_path('logs/laravel.log');
         $logs = [];
+        $id = 1;
 
         if (file_exists($logPath)) {
             $logContent = file_get_contents($logPath);
@@ -411,11 +412,39 @@ Route::prefix('admin')->group(function () {
 
             foreach ($logLines as $line) {
                 if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\w+)\.(\w+): (.+)/', $line, $matches)) {
+                    // Map Laravel log levels to frontend expected levels
+                    $levelMap = [
+                        'DEBUG' => 'debug',
+                        'INFO' => 'info',
+                        'NOTICE' => 'info',
+                        'WARNING' => 'warning',
+                        'ERROR' => 'error',
+                        'CRITICAL' => 'critical',
+                        'ALERT' => 'critical',
+                        'EMERGENCY' => 'critical',
+                    ];
+
+                    // Detect category from message content
+                    $message = $matches[4];
+                    $category = 'system';
+                    if (stripos($message, 'auth') !== false || stripos($message, 'login') !== false) {
+                        $category = 'auth';
+                    } elseif (stripos($message, 'deploy') !== false) {
+                        $category = 'deployment';
+                    } elseif (stripos($message, 'server') !== false || stripos($message, 'ssh') !== false) {
+                        $category = 'server';
+                    } elseif (stripos($message, 'api') !== false) {
+                        $category = 'api';
+                    } elseif (stripos($message, 'security') !== false || stripos($message, 'permission') !== false) {
+                        $category = 'security';
+                    }
+
                     $logs[] = [
+                        'id' => $id++,
                         'timestamp' => $matches[1],
-                        'environment' => $matches[2],
-                        'level' => $matches[3],
-                        'message' => $matches[4],
+                        'level' => $levelMap[strtoupper($matches[3])] ?? 'info',
+                        'category' => $category,
+                        'message' => $message,
                     ];
                 } else {
                     // If line doesn't match pattern, add to previous log entry or create new one
@@ -430,6 +459,7 @@ Route::prefix('admin')->group(function () {
 
         return Inertia::render('Admin/Logs/Index', [
             'logs' => $logs,
+            'total' => count($logs),
         ]);
     })->name('admin.logs.index');
 });
