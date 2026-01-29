@@ -114,14 +114,36 @@ Route::prefix('admin')->group(function () {
     })->name('admin.index');
 
     Route::get('/users', function () {
-        // Fetch all users with their teams
-        $users = \App\Models\User::with(['teams'])
+        // Fetch all users with their teams and count servers through teams
+        $paginator = \App\Models\User::with(['teams'])
             ->withCount(['teams'])
             ->latest()
             ->paginate(50);
 
+        $users = $paginator->through(function ($user) {
+            // Count servers across all user's teams
+            $serversCount = $user->teams->sum(function ($team) {
+                return $team->servers()->count();
+            });
+
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'status' => 'active', // Default status, can be extended later
+                'is_root_user' => $user->id === 0 || $user->is_superadmin,
+                'teams_count' => $user->teams_count,
+                'servers_count' => $serversCount,
+                'created_at' => $user->created_at->toISOString(),
+                'last_login_at' => $user->updated_at?->toISOString(),
+            ];
+        });
+
         return Inertia::render('Admin/Users/Index', [
-            'users' => $users,
+            'users' => $users->items(),
+            'total' => $paginator->total(),
+            'currentPage' => $paginator->currentPage(),
+            'perPage' => $paginator->perPage(),
         ]);
     })->name('admin.users.index');
 
