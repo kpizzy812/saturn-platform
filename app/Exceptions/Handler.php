@@ -60,9 +60,9 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
-        // Handle authorization exceptions for API routes
+        // Handle authorization exceptions for API routes and broadcasting
         if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) {
-            if ($request->is('api/*') || $request->expectsJson()) {
+            if ($request->is('api/*') || $request->is('broadcasting/*') || $request->expectsJson()) {
                 // Get the custom message from the policy if available
                 $message = $e->getMessage();
 
