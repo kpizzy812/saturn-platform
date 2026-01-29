@@ -39,6 +39,43 @@ interface Props {
 
 const defaultLogs: LogEntry[] = [];
 
+// Format log message - extract text and JSON separately
+function formatLogMessage(message: string): { text: string; jsonData: Record<string, unknown> | null } {
+    // Check if message contains JSON object
+    const jsonMatch = message.match(/^(.+?)\s*(\{.+\})\s*$/);
+    if (jsonMatch) {
+        try {
+            const jsonData = JSON.parse(jsonMatch[2]);
+            return { text: jsonMatch[1].trim(), jsonData };
+        } catch {
+            // Not valid JSON
+        }
+    }
+
+    // Check if entire message is JSON
+    if (message.startsWith('{') || message.startsWith('[')) {
+        try {
+            const jsonData = JSON.parse(message);
+            // Extract meaningful text from common fields
+            if (typeof jsonData === 'object' && jsonData !== null) {
+                const textParts: string[] = [];
+                if (jsonData.message) textParts.push(String(jsonData.message));
+                if (jsonData.action) textParts.push(String(jsonData.action));
+                if (jsonData.error) textParts.push(String(jsonData.error));
+
+                if (textParts.length > 0) {
+                    return { text: textParts.join(' - '), jsonData };
+                }
+                return { text: 'System event', jsonData };
+            }
+        } catch {
+            // Not valid JSON
+        }
+    }
+
+    return { text: message, jsonData: null };
+}
+
 function LogRow({ log }: { log: LogEntry }) {
     const levelConfig = {
         info: {
@@ -81,6 +118,9 @@ function LogRow({ log }: { log: LogEntry }) {
     const Icon = config.icon;
     const CategoryIcon = categoryIcons[log.category];
 
+    // Parse message for JSON content
+    const { text: messageText, jsonData: parsedJson } = formatLogMessage(log.message);
+
     return (
         <div className="border-b border-border/50 py-4 last:border-0">
             <div className="flex items-start gap-3">
@@ -99,7 +139,17 @@ function LogRow({ log }: { log: LogEntry }) {
                                 </Badge>
                                 <span className="text-xs text-foreground-subtle">{log.timestamp}</span>
                             </div>
-                            <p className="mt-2 text-sm text-foreground">{log.message}</p>
+                            <p className="mt-2 text-sm text-foreground">{messageText}</p>
+                            {parsedJson && (
+                                <details className="mt-2">
+                                    <summary className="cursor-pointer text-xs text-foreground-muted hover:text-foreground">
+                                        View details
+                                    </summary>
+                                    <pre className="mt-1 rounded-md bg-background-tertiary p-2 text-xs text-foreground-muted overflow-x-auto">
+                                        {JSON.stringify(parsedJson, null, 2)}
+                                    </pre>
+                                </details>
+                            )}
                             {(log.user || log.ip_address) && (
                                 <div className="mt-1 flex items-center gap-3 text-xs text-foreground-muted">
                                     {log.user && (

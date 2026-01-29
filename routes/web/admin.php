@@ -40,12 +40,18 @@ Route::prefix('admin')->group(function () {
 
                 return [
                     'id' => $deployment->id,
+                    'deployment_uuid' => $deployment->deployment_uuid,
                     'action' => $statusAction,
+                    'status' => $deployment->status,
                     'description' => $deployment->commit_message ?: "Deployment {$deployment->status}",
+                    'commit' => $deployment->commit ? substr($deployment->commit, 0, 7) : null,
                     'user_name' => $deployment->application?->environment?->project?->team?->name,
                     'team_name' => $deployment->application?->environment?->project?->team?->name,
                     'resource_type' => 'Application',
                     'resource_name' => $deployment->application?->name,
+                    'application_uuid' => $deployment->application?->uuid,
+                    'is_webhook' => $deployment->is_webhook,
+                    'is_api' => $deployment->is_api,
                     'created_at' => $deployment->created_at,
                 ];
             });

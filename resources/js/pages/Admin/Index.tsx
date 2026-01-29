@@ -12,6 +12,10 @@ import {
     Database,
     CheckCircle,
     XCircle,
+    GitCommit,
+    Webhook,
+    Code2,
+    ExternalLink,
 } from 'lucide-react';
 
 interface SystemStats {
@@ -27,12 +31,18 @@ interface SystemStats {
 
 interface RecentActivity {
     id: number;
+    deployment_uuid?: string;
     action: string | null;
+    status?: string;
     description: string | null;
+    commit?: string | null;
     user_name: string | null;
     team_name: string | null;
     resource_type: string | null;
     resource_name: string | null;
+    application_uuid?: string;
+    is_webhook?: boolean;
+    is_api?: boolean;
     created_at: string;
 }
 
@@ -177,21 +187,52 @@ function formatRelativeTime(dateString: string | null | undefined): string {
     return date.toLocaleDateString();
 }
 
+function getStatusBadgeVariant(status: string | undefined): 'success' | 'danger' | 'warning' | 'info' | 'default' {
+    switch (status) {
+        case 'finished': return 'success';
+        case 'failed': case 'cancelled': return 'danger';
+        case 'in_progress': return 'warning';
+        case 'queued': return 'info';
+        default: return 'default';
+    }
+}
+
 function ActivityItem({ activity }: { activity: RecentActivity }) {
-    return (
-        <div className="flex items-start gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0">
+    const deploymentUrl = activity.deployment_uuid ? `/deployments/${activity.deployment_uuid}` : null;
+
+    const content = (
+        <div className={`flex items-start gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0 rounded-lg p-2 -m-2 ${deploymentUrl ? 'hover:bg-background-tertiary/50 cursor-pointer transition-colors' : ''}`}>
             <div className="mt-1 rounded-full bg-background-tertiary p-2">
                 {getActionIcon(activity.action)}
             </div>
             <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-foreground capitalize">
                         {(activity.action || 'unknown').replace(/_/g, ' ')}
                     </span>
-                    {activity.resource_type && (
-                        <span className="text-xs text-foreground-muted">
-                            {activity.resource_type}
+                    {activity.status && (
+                        <Badge variant={getStatusBadgeVariant(activity.status)} size="sm">
+                            {activity.status}
+                        </Badge>
+                    )}
+                    {activity.commit && (
+                        <span className="flex items-center gap-1 text-xs text-foreground-muted font-mono bg-background-tertiary px-1.5 py-0.5 rounded">
+                            <GitCommit className="h-3 w-3" />
+                            {activity.commit}
                         </span>
+                    )}
+                    {activity.is_webhook && (
+                        <span className="flex items-center gap-1 text-xs text-info" title="Triggered by webhook">
+                            <Webhook className="h-3 w-3" />
+                        </span>
+                    )}
+                    {activity.is_api && (
+                        <span className="flex items-center gap-1 text-xs text-info" title="Triggered by API">
+                            <Code2 className="h-3 w-3" />
+                        </span>
+                    )}
+                    {deploymentUrl && (
+                        <ExternalLink className="h-3 w-3 text-foreground-muted ml-auto" />
                     )}
                 </div>
                 <p className="text-sm text-foreground-muted mt-0.5">
@@ -216,6 +257,11 @@ function ActivityItem({ activity }: { activity: RecentActivity }) {
             </div>
         </div>
     );
+
+    if (deploymentUrl) {
+        return <Link href={deploymentUrl}>{content}</Link>;
+    }
+    return content;
 }
 
 function HealthCheckRow({ check }: { check: HealthCheck }) {
