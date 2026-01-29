@@ -32,7 +32,7 @@ export function LogsTab({ service, containers = [] }: Props) {
         downloadLogs: handleDownloadLogs,
     } = useLogStream({
         resourceType: 'service',
-        resourceId: service.uuid,
+        resourceId: service.id,
         container: selectedContainer || undefined,
         maxLogEntries: 500,
         autoScroll,

@@ -22,7 +22,7 @@ export default function DatabaseLogs({ database }: Props) {
         downloadLogs,
     } = useLogStream({
         resourceType: 'database',
-        resourceId: database.uuid,
+        resourceId: database.id,
         enableWebSocket: true,
         pollingInterval: 2000,
         maxLogEntries: 1000,

@@ -32,7 +32,7 @@ export default function ApplicationLogs({ application, projectUuid, environmentU
         downloadLogs,
     } = useLogStream({
         resourceType: 'application',
-        resourceId: application.uuid,
+        resourceId: application.id,
         container: selectedContainer,
         filterLevel: filterLevel === 'all' ? undefined : filterLevel,
     });

@@ -16,21 +16,8 @@ use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('team.{teamId}', function (User $user, string|int $teamId) {
     $teamId = (int) $teamId;
-    \Illuminate\Support\Facades\Log::debug('WebSocket auth attempt', [
-        'user_id' => $user->id,
-        'team_id' => $teamId,
-        'user_teams' => $user->teams->pluck('id')->toArray(),
-    ]);
 
-    if ($user->teams->pluck('id')->contains($teamId)) {
-        \Illuminate\Support\Facades\Log::debug('WebSocket auth SUCCESS', ['team_id' => $teamId]);
-
-        return true;
-    }
-
-    \Illuminate\Support\Facades\Log::warning('WebSocket auth FAILED', ['team_id' => $teamId]);
-
-    return false;
+    return $user->teams->pluck('id')->contains($teamId);
 });
 
 Broadcast::channel('user.{userId}', function (User $user, string|int $userId) {
@@ -95,14 +82,6 @@ Broadcast::channel('deployment.{deploymentId}.logs', function (User $user, strin
 Broadcast::channel('service.{serviceId}.logs', function (User $user, string|int $serviceId) {
     $serviceId = (int) $serviceId;
     $service = \App\Models\Service::find($serviceId);
-
-    \Illuminate\Support\Facades\Log::debug('Service logs channel auth', [
-        'user_id' => $user->id,
-        'service_id' => $serviceId,
-        'service_found' => $service !== null,
-        'service_team_id' => $service?->team_id,
-        'user_teams' => $user->teams->pluck('id')->toArray(),
-    ]);
 
     return $service && $user->teams->pluck('id')->contains($service->team_id);
 });
