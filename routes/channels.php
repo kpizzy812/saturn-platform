@@ -24,9 +24,10 @@ Broadcast::channel('user.{userId}', function (User $user, string|int $userId) {
     return $user->id === (int) $userId;
 });
 
-Broadcast::channel('application.{applicationId}.logs', function (User $user, string|int $applicationId) {
-    $applicationId = (int) $applicationId;
-    $application = \App\Models\Application::find($applicationId);
+Broadcast::channel('application.{applicationId}.logs', function (User $user, string $applicationId) {
+    // applicationId can be UUID or numeric ID
+    $application = \App\Models\Application::where('uuid', $applicationId)->first()
+        ?? \App\Models\Application::find($applicationId);
 
     return $application && $user->teams->pluck('id')->contains($application->team_id);
 });
@@ -59,16 +60,16 @@ Broadcast::channel('database.{databaseId}', function (User $user, string|int $da
     return $database && $user->teams->pluck('id')->contains($database->team()?->id);
 });
 
-Broadcast::channel('database.{databaseId}.logs', function (User $user, string|int $databaseId) {
-    $databaseId = (int) $databaseId;
-    $database = \App\Models\StandalonePostgresql::find($databaseId)
-        ?? \App\Models\StandaloneMysql::find($databaseId)
-        ?? \App\Models\StandaloneMongodb::find($databaseId)
-        ?? \App\Models\StandaloneRedis::find($databaseId)
-        ?? \App\Models\StandaloneKeydb::find($databaseId)
-        ?? \App\Models\StandaloneDragonfly::find($databaseId)
-        ?? \App\Models\StandaloneClickhouse::find($databaseId)
-        ?? \App\Models\StandaloneMariadb::find($databaseId);
+Broadcast::channel('database.{databaseId}.logs', function (User $user, string $databaseId) {
+    // databaseId can be UUID or numeric ID
+    $database = \App\Models\StandalonePostgresql::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneMysql::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneMongodb::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneRedis::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneKeydb::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneDragonfly::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneClickhouse::where('uuid', $databaseId)->first()
+        ?? \App\Models\StandaloneMariadb::where('uuid', $databaseId)->first();
 
     return $database && $user->teams->pluck('id')->contains($database->team()?->id);
 });
@@ -79,9 +80,10 @@ Broadcast::channel('deployment.{deploymentId}.logs', function (User $user, strin
     return $deployment && $user->teams->pluck('id')->contains($deployment->application?->team_id);
 });
 
-Broadcast::channel('service.{serviceId}.logs', function (User $user, string|int $serviceId) {
-    $serviceId = (int) $serviceId;
-    $service = \App\Models\Service::find($serviceId);
+Broadcast::channel('service.{serviceId}.logs', function (User $user, string $serviceId) {
+    // serviceId can be UUID or numeric ID
+    $service = \App\Models\Service::where('uuid', $serviceId)->first()
+        ?? \App\Models\Service::find($serviceId);
 
     return $service && $user->teams->pluck('id')->contains($service->team_id);
 });

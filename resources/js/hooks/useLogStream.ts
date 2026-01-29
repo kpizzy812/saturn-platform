@@ -562,17 +562,12 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
      * Initialize streaming on mount
      */
     React.useEffect(() => {
-        // Try WebSocket first
-        const connected = connectWebSocket();
+        // Try WebSocket for real-time events (deployment logs)
+        connectWebSocket();
 
-        if (!connected && enableWebSocket) {
-            // Fallback to polling
-            console.warn('WebSocket unavailable, falling back to polling');
-            startPolling();
-        } else if (!connected) {
-            // WebSocket disabled, use polling
-            startPolling();
-        }
+        // Always use polling to fetch logs from containers
+        // WebSocket is only for real-time deployment log events, not container logs
+        startPolling();
 
         // Cleanup on unmount
         return () => {
