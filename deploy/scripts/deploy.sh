@@ -75,6 +75,7 @@ validate_prerequisites() {
     mkdir -p "${SATURN_DATA}/databases"
     mkdir -p "${SATURN_DATA}/services"
     mkdir -p "${SATURN_DATA}/backups"
+    mkdir -p "${SATURN_DATA}/uploads"  # For avatars, logos, and other public uploads
 
     log_success "Prerequisites OK"
 }
@@ -170,6 +171,9 @@ run_migrations() {
         log_error "Migration failed"
         exit 1
     }
+
+    # Create storage symlink for public uploads (avatars, logos)
+    docker exec saturn-dev php artisan storage:link --force 2>/dev/null || true
 
     log_success "Migrations done"
 }

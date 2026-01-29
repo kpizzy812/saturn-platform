@@ -22,6 +22,7 @@ services:
       - /data/saturn/databases:/var/www/html/storage/app/databases
       - /data/saturn/services:/var/www/html/storage/app/services
       - /data/saturn/backups:/var/www/html/storage/app/backups
+      - /data/saturn/uploads:/var/www/html/storage/app/public
     environment:
       - APP_ENV=development
       - APP_DEBUG=true
