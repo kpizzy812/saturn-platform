@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Badge, Button, useConfirm } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Plus, Container, MoreVertical, Settings, Trash2, Power, RotateCw, FileCode } from 'lucide-react';
 import type { Service } from '@/types';
 
@@ -9,7 +12,29 @@ interface Props {
     services: Service[];
 }
 
-export default function ServicesIndex({ services = [] }: Props) {
+export default function ServicesIndex({ services: initialServices = [] }: Props) {
+    const [services, setServices] = useState<Service[]>(initialServices);
+    const { addToast } = useToast();
+
+    // Sync with props when they change (e.g., after navigation)
+    useEffect(() => {
+        setServices(initialServices);
+    }, [initialServices]);
+
+    // Real-time updates via WebSocket
+    useRealtimeStatus({
+        onServiceStatusChange: () => {
+            // Reload services list when any service changes
+            router.reload({ only: ['services'] });
+        },
+    });
+
+    const handleDeleteService = (serviceUuid: string) => {
+        // Optimistically remove from UI
+        setServices(prev => prev.filter(s => s.uuid !== serviceUuid));
+        addToast('success', 'Service deleted successfully');
+    };
+
     return (
         <AppLayout
             title="Services"
@@ -36,7 +61,7 @@ export default function ServicesIndex({ services = [] }: Props) {
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {services.map((service) => (
-                        <ServiceCard key={service.id} service={service} />
+                        <ServiceCard key={service.id} service={service} onDelete={handleDeleteService} />
                     ))}
                 </div>
             )}
@@ -45,8 +70,9 @@ export default function ServicesIndex({ services = [] }: Props) {
     );
 }
 
-function ServiceCard({ service }: { service: Service }) {
+function ServiceCard({ service, onDelete }: { service: Service; onDelete: (uuid: string) => void }) {
     const confirm = useConfirm();
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -57,9 +83,22 @@ function ServiceCard({ service }: { service: Service }) {
             variant: 'danger',
         });
         if (confirmed) {
-            router.delete(`/services/${service.uuid}`);
+            setIsDeleting(true);
+            router.delete(`/services/${service.uuid}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    onDelete(service.uuid);
+                },
+                onError: () => {
+                    setIsDeleting(false);
+                },
+            });
         }
     };
+
+    if (isDeleting) {
+        return null; // Hide card immediately when deleting
+    }
 
     return (
         <Link

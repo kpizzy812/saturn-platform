@@ -88,7 +88,15 @@ export default function ServiceShow({ service, containers = [] }: Props) {
             variant: 'danger',
         });
         if (confirmed) {
-            router.delete(`/services/${service.uuid}`);
+            router.delete(`/services/${service.uuid}`, {
+                onSuccess: () => {
+                    addToast('success', 'Service deleted successfully');
+                    router.visit('/services');
+                },
+                onError: () => {
+                    addToast('error', 'Failed to delete service');
+                },
+            });
         }
     };
 

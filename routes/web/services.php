@@ -590,3 +590,25 @@ Route::post('/services/{uuid}/stop', function (string $uuid) {
 
     return redirect()->back()->with('success', 'Service stopped');
 })->name('services.stop');
+
+Route::delete('/services/{uuid}', function (string $uuid, Request $request) {
+    $service = \App\Models\Service::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $teamId = $service->environment->project->team->id;
+
+    // Stop and delete the service
+    StopService::run(service: $service, dockerCleanup: true, deleteConfigurations: true);
+    $service->delete();
+
+    // Dispatch event for realtime updates
+    \App\Events\ServiceStatusChanged::dispatch($teamId);
+
+    // Return JSON for XHR requests, redirect for normal requests
+    if ($request->wantsJson() || $request->header('X-Inertia')) {
+        return response()->json(['success' => true, 'message' => 'Service deleted successfully']);
+    }
+
+    return redirect()->route('services.index')->with('success', 'Service deleted successfully');
+})->name('services.destroy');
