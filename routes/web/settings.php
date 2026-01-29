@@ -446,7 +446,7 @@ Route::post('/settings/security/notifications', function (Request $request) {
 // Team Settings POST/DELETE routes
 Route::post('/settings/team/members/{id}/role', function (string $id, Request $request) {
     $request->validate([
-        'role' => 'required|string|in:owner,admin,member,viewer',
+        'role' => 'required|string|in:owner,admin,developer,member,viewer',
     ]);
 
     $team = currentTeam();
@@ -509,7 +509,7 @@ Route::delete('/settings/team/members/{id}', function (string $id) {
 Route::post('/settings/team/invite', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
-        'role' => 'required|string|in:owner,admin,member,viewer',
+        'role' => 'required|string|in:owner,admin,developer,member,viewer',
     ]);
 
     $email = strtolower($request->email);
