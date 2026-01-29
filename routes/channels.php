@@ -14,7 +14,8 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 
-Broadcast::channel('team.{teamId}', function (User $user, int $teamId) {
+Broadcast::channel('team.{teamId}', function (User $user, string|int $teamId) {
+    $teamId = (int) $teamId;
     \Illuminate\Support\Facades\Log::debug('WebSocket auth attempt', [
         'user_id' => $user->id,
         'team_id' => $teamId,
@@ -32,29 +33,33 @@ Broadcast::channel('team.{teamId}', function (User $user, int $teamId) {
     return false;
 });
 
-Broadcast::channel('user.{userId}', function (User $user, int $userId) {
-    return $user->id === $userId;
+Broadcast::channel('user.{userId}', function (User $user, string|int $userId) {
+    return $user->id === (int) $userId;
 });
 
-Broadcast::channel('application.{applicationId}.logs', function (User $user, int $applicationId) {
+Broadcast::channel('application.{applicationId}.logs', function (User $user, string|int $applicationId) {
+    $applicationId = (int) $applicationId;
     $application = \App\Models\Application::find($applicationId);
 
     return $application && $user->teams->pluck('id')->contains($application->team_id);
 });
 
-Broadcast::channel('deployment.{deploymentId}', function (User $user, int $deploymentId) {
+Broadcast::channel('deployment.{deploymentId}', function (User $user, string|int $deploymentId) {
+    $deploymentId = (int) $deploymentId;
     $deployment = \App\Models\ApplicationDeploymentQueue::find($deploymentId);
 
     return $deployment && $user->teams->pluck('id')->contains($deployment->application?->team_id);
 });
 
-Broadcast::channel('server.{serverId}', function (User $user, int $serverId) {
+Broadcast::channel('server.{serverId}', function (User $user, string|int $serverId) {
+    $serverId = (int) $serverId;
     $server = \App\Models\Server::find($serverId);
 
     return $server && $user->teams->pluck('id')->contains($server->team_id);
 });
 
-Broadcast::channel('database.{databaseId}', function (User $user, int $databaseId) {
+Broadcast::channel('database.{databaseId}', function (User $user, string|int $databaseId) {
+    $databaseId = (int) $databaseId;
     $database = \App\Models\StandalonePostgresql::find($databaseId)
         ?? \App\Models\StandaloneMysql::find($databaseId)
         ?? \App\Models\StandaloneMongodb::find($databaseId)
@@ -67,7 +72,8 @@ Broadcast::channel('database.{databaseId}', function (User $user, int $databaseI
     return $database && $user->teams->pluck('id')->contains($database->team()?->id);
 });
 
-Broadcast::channel('database.{databaseId}.logs', function (User $user, int $databaseId) {
+Broadcast::channel('database.{databaseId}.logs', function (User $user, string|int $databaseId) {
+    $databaseId = (int) $databaseId;
     $database = \App\Models\StandalonePostgresql::find($databaseId)
         ?? \App\Models\StandaloneMysql::find($databaseId)
         ?? \App\Models\StandaloneMongodb::find($databaseId)
@@ -86,7 +92,8 @@ Broadcast::channel('deployment.{deploymentId}.logs', function (User $user, strin
     return $deployment && $user->teams->pluck('id')->contains($deployment->application?->team_id);
 });
 
-Broadcast::channel('service.{serviceId}.logs', function (User $user, int $serviceId) {
+Broadcast::channel('service.{serviceId}.logs', function (User $user, string|int $serviceId) {
+    $serviceId = (int) $serviceId;
     $service = \App\Models\Service::find($serviceId);
 
     return $service && $user->teams->pluck('id')->contains($service->team_id);
