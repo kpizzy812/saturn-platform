@@ -15,9 +15,19 @@ use App\Models\User;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('team.{teamId}', function (User $user, int $teamId) {
+    \Illuminate\Support\Facades\Log::debug('WebSocket auth attempt', [
+        'user_id' => $user->id,
+        'team_id' => $teamId,
+        'user_teams' => $user->teams->pluck('id')->toArray(),
+    ]);
+
     if ($user->teams->pluck('id')->contains($teamId)) {
+        \Illuminate\Support\Facades\Log::debug('WebSocket auth SUCCESS', ['team_id' => $teamId]);
+
         return true;
     }
+
+    \Illuminate\Support\Facades\Log::warning('WebSocket auth FAILED', ['team_id' => $teamId]);
 
     return false;
 });
