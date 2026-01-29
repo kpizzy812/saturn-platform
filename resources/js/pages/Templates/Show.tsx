@@ -2,42 +2,24 @@ import { AppLayout } from '@/components/layout';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Link } from '@inertiajs/react';
-import { ArrowLeft, Download, CheckCircle2, Zap } from 'lucide-react';
-import * as Icons from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Zap, Box } from 'lucide-react';
 
-interface TemplateDetail {
+interface Template {
     id: string;
     name: string;
     description: string;
-    longDescription: string;
-    icon: React.ReactNode;
-    iconBg: string;
-    iconColor: string;
+    logo?: string | null;
     category: string;
+    originalCategory?: string;
     tags: string[];
     deployCount: number;
     featured?: boolean;
-    services: {
-        name: string;
-        icon: React.ReactNode;
-        description: string;
-    }[];
-    features: string[];
-    envVars: {
-        name: string;
-        description: string;
-        required: boolean;
-        default?: string;
-    }[];
-    documentation: {
-        gettingStarted: string[];
-        configuration: string[];
-        deployment: string[];
-    };
+    documentation?: string | null;
+    port?: string | null;
 }
 
 interface Props {
-    template?: TemplateDetail;
+    template?: Template;
 }
 
 export default function TemplateShow({ template }: Props) {
@@ -57,6 +39,8 @@ export default function TemplateShow({ template }: Props) {
         );
     }
 
+    const logoUrl = template.logo ? `/${template.logo}` : null;
+
     return (
         <AppLayout title={template.name} showNewProject={false}>
             <div className="mx-auto max-w-5xl">
@@ -72,8 +56,19 @@ export default function TemplateShow({ template }: Props) {
                 {/* Header */}
                 <div className="mb-8 rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-8">
                     <div className="flex items-start gap-6">
-                        <div className={`flex h-20 w-20 items-center justify-center rounded-2xl ${template.iconBg} ${template.iconColor} shadow-2xl`}>
-                            {template.icon}
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-background-tertiary shadow-2xl">
+                            {logoUrl ? (
+                                <img
+                                    src={logoUrl}
+                                    alt={template.name}
+                                    className="h-12 w-12 object-contain"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    }}
+                                />
+                            ) : null}
+                            <Box className={`h-10 w-10 text-foreground-muted ${logoUrl ? 'hidden' : ''}`} />
                         </div>
                         <div className="flex-1">
                             <div className="mb-3 flex items-center gap-3">
@@ -84,18 +79,26 @@ export default function TemplateShow({ template }: Props) {
                                     </Badge>
                                 )}
                             </div>
-                            <p className="mb-4 text-lg text-foreground-muted">{template.longDescription}</p>
+                            <p className="mb-4 text-lg text-foreground-muted">{template.description}</p>
                             <div className="flex flex-wrap items-center gap-3">
                                 <Badge variant="default">{template.category}</Badge>
+                                {template.originalCategory && template.originalCategory !== template.category && (
+                                    <Badge variant="default" className="opacity-60">{template.originalCategory}</Badge>
+                                )}
                                 <div className="flex items-center gap-1.5 text-sm text-foreground-muted">
                                     <Download className="h-4 w-4" />
                                     <span>{template.deployCount.toLocaleString()} deploys</span>
                                 </div>
+                                {template.port && (
+                                    <div className="text-sm text-foreground-muted">
+                                        Port: <code className="rounded bg-background-tertiary px-1.5 py-0.5">{template.port}</code>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Deploy Button */}
+                    {/* Action Buttons */}
                     <div className="mt-6 flex gap-3">
                         <Link href={`/templates/${template.id}/deploy`} className="flex-1">
                             <Button className="w-full" size="lg">
@@ -103,131 +106,56 @@ export default function TemplateShow({ template }: Props) {
                                 Deploy Now
                             </Button>
                         </Link>
+                        {template.documentation && (
+                            <a
+                                href={template.documentation}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-shrink-0"
+                            >
+                                <Button variant="secondary" size="lg">
+                                    <ExternalLink className="mr-2 h-5 w-5" />
+                                    Documentation
+                                </Button>
+                            </a>
+                        )}
                     </div>
                 </div>
 
                 {/* Tags */}
-                <div className="mb-8">
-                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
-                        Technologies
-                    </h2>
-                    <div className="flex flex-wrap gap-2">
-                        {template.tags.map((tag) => (
-                            <Badge key={tag} variant="default" className="text-sm">
-                                {tag}
-                            </Badge>
-                        ))}
+                {template.tags.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-foreground-muted">
+                            Tags
+                        </h2>
+                        <div className="flex flex-wrap gap-2">
+                            {template.tags.map((tag) => (
+                                <Badge key={tag} variant="default" className="text-sm">
+                                    {tag}
+                                </Badge>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
-                {/* Included Services */}
-                <div className="mb-8">
-                    <h2 className="mb-4 text-xl font-semibold text-foreground">Included Services</h2>
+                {/* Info Card */}
+                <div className="mb-8 rounded-xl border border-border/50 bg-background-secondary p-6">
+                    <h2 className="mb-4 text-xl font-semibold text-foreground">About this template</h2>
+                    <p className="text-foreground-muted mb-4">
+                        {template.description}
+                    </p>
                     <div className="grid gap-4 md:grid-cols-3">
-                        {template.services.map((service, index) => (
-                            <div
-                                key={index}
-                                className="rounded-lg border border-border/50 bg-background-secondary p-4"
-                            >
-                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary">
-                                    {service.icon}
-                                </div>
-                                <h3 className="mb-1 font-semibold text-foreground">{service.name}</h3>
-                                <p className="text-sm text-foreground-muted">{service.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Features */}
-                <div className="mb-8">
-                    <h2 className="mb-4 text-xl font-semibold text-foreground">Features</h2>
-                    <div className="grid gap-3 md:grid-cols-2">
-                        {template.features.map((feature, index) => (
-                            <div key={index} className="flex items-start gap-3">
-                                <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
-                                <span className="text-foreground-muted">{feature}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Environment Variables */}
-                <div className="mb-8">
-                    <h2 className="mb-4 text-xl font-semibold text-foreground">Configuration Options</h2>
-                    <div className="space-y-3">
-                        {template.envVars.map((envVar, index) => (
-                            <div
-                                key={index}
-                                className="rounded-lg border border-border/50 bg-background-secondary p-4"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="mb-1 flex items-center gap-2">
-                                            <code className="text-sm font-mono font-semibold text-foreground">
-                                                {envVar.name}
-                                            </code>
-                                            {envVar.required && (
-                                                <Badge variant="danger" className="text-xs">
-                                                    Required
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-foreground-muted">{envVar.description}</p>
-                                        {envVar.default && (
-                                            <div className="mt-2">
-                                                <span className="text-xs text-foreground-subtle">Default: </span>
-                                                <code className="text-xs text-foreground-muted">{envVar.default}</code>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Documentation */}
-                <div className="mb-8">
-                    <h2 className="mb-4 text-xl font-semibold text-foreground">Documentation</h2>
-                    <div className="space-y-4">
-                        {/* Getting Started */}
-                        <div className="rounded-lg border border-border/50 bg-background-secondary p-5">
-                            <h3 className="mb-3 font-semibold text-foreground">Getting Started</h3>
-                            <ol className="space-y-2">
-                                {template.documentation.gettingStarted.map((step, index) => (
-                                    <li key={index} className="flex gap-3 text-foreground-muted">
-                                        <span className="font-semibold text-primary">{index + 1}.</span>
-                                        <span>{step}</span>
-                                    </li>
-                                ))}
-                            </ol>
+                        <div className="rounded-lg bg-background-tertiary p-4">
+                            <div className="text-2xl font-bold text-foreground">{template.deployCount.toLocaleString()}</div>
+                            <div className="text-sm text-foreground-muted">Total Deployments</div>
                         </div>
-
-                        {/* Configuration */}
-                        <div className="rounded-lg border border-border/50 bg-background-secondary p-5">
-                            <h3 className="mb-3 font-semibold text-foreground">Configuration</h3>
-                            <ul className="space-y-2">
-                                {template.documentation.configuration.map((item, index) => (
-                                    <li key={index} className="flex gap-3 text-foreground-muted">
-                                        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="rounded-lg bg-background-tertiary p-4">
+                            <div className="text-2xl font-bold text-foreground">{template.category}</div>
+                            <div className="text-sm text-foreground-muted">Category</div>
                         </div>
-
-                        {/* Deployment */}
-                        <div className="rounded-lg border border-border/50 bg-background-secondary p-5">
-                            <h3 className="mb-3 font-semibold text-foreground">Deployment</h3>
-                            <ul className="space-y-2">
-                                {template.documentation.deployment.map((item, index) => (
-                                    <li key={index} className="flex gap-3 text-foreground-muted">
-                                        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="rounded-lg bg-background-tertiary p-4">
+                            <div className="text-2xl font-bold text-foreground">{template.tags.length}</div>
+                            <div className="text-sm text-foreground-muted">Tags</div>
                         </div>
                     </div>
                 </div>
@@ -236,14 +164,28 @@ export default function TemplateShow({ template }: Props) {
                 <div className="rounded-xl border border-border/50 bg-gradient-to-br from-primary/10 to-primary/5 p-8 text-center">
                     <h2 className="mb-2 text-2xl font-bold text-foreground">Ready to deploy?</h2>
                     <p className="mb-6 text-foreground-muted">
-                        Get your {template.name} up and running in minutes.
+                        Get {template.name} up and running on your server in minutes.
                     </p>
-                    <Link href={`/templates/${template.id}/deploy`}>
-                        <Button size="lg">
-                            <Zap className="mr-2 h-5 w-5" />
-                            Deploy Now
-                        </Button>
-                    </Link>
+                    <div className="flex justify-center gap-3">
+                        <Link href={`/templates/${template.id}/deploy`}>
+                            <Button size="lg">
+                                <Zap className="mr-2 h-5 w-5" />
+                                Deploy Now
+                            </Button>
+                        </Link>
+                        {template.documentation && (
+                            <a
+                                href={template.documentation}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <Button variant="secondary" size="lg">
+                                    <ExternalLink className="mr-2 h-5 w-5" />
+                                    View Docs
+                                </Button>
+                            </a>
+                        )}
+                    </div>
                 </div>
             </div>
         </AppLayout>
