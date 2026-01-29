@@ -2,12 +2,13 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Select, Modal, ModalFooter, useToast } from '@/components/ui';
 import { router, usePage } from '@inertiajs/react';
-import { Building2, Upload, Trash2, Globe } from 'lucide-react';
+import { Building2, Upload, Trash2, Globe, X } from 'lucide-react';
 
 interface WorkspaceData {
     id: number;
     name: string;
     slug: string;
+    logo?: string | null;
     description?: string;
     timezone: string;
     defaultEnvironment: string;
@@ -34,7 +35,48 @@ export default function WorkspaceSettings() {
     const [deleteConfirmation, setDeleteConfirmation] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isUploadingLogo, setIsUploadingLogo] = React.useState(false);
     const { addToast } = useToast();
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            addToast('error', 'File too large', 'Please select an image smaller than 2MB.');
+            return;
+        }
+
+        setIsUploadingLogo(true);
+        router.post('/settings/workspace/logo', { logo: file }, {
+            forceFormData: true,
+            onSuccess: () => {
+                addToast('success', 'Logo uploaded', 'Workspace logo has been updated successfully.');
+            },
+            onError: () => {
+                addToast('error', 'Upload failed', 'Failed to upload workspace logo.');
+            },
+            onFinish: () => {
+                setIsUploadingLogo(false);
+                e.target.value = '';
+            }
+        });
+    };
+
+    const handleRemoveLogo = () => {
+        setIsUploadingLogo(true);
+        router.delete('/settings/workspace/logo', {
+            onSuccess: () => {
+                addToast('success', 'Logo removed', 'Workspace logo has been removed successfully.');
+            },
+            onError: () => {
+                addToast('error', 'Remove failed', 'Failed to remove workspace logo.');
+            },
+            onFinish: () => {
+                setIsUploadingLogo(false);
+            }
+        });
+    };
 
     // Update local state when props change (e.g., after successful save)
     React.useEffect(() => {
@@ -114,49 +156,60 @@ export default function WorkspaceSettings() {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Workspace Avatar */}
+                            {/* Workspace Logo */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
                                     Workspace Logo
                                 </label>
                                 <div className="flex items-center gap-4">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-2xl font-semibold text-white">
-                                        <Building2 className="h-8 w-8" />
+                                    <div className="relative">
+                                        {workspace.logo ? (
+                                            <img
+                                                src={`/storage/${workspace.logo}`}
+                                                alt={workspace.name}
+                                                className="h-16 w-16 rounded-lg object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-primary text-2xl font-semibold text-white">
+                                                <Building2 className="h-8 w-8" />
+                                            </div>
+                                        )}
+                                        {workspace.logo && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveLogo}
+                                                disabled={isUploadingLogo}
+                                                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/80 disabled:opacity-50"
+                                                title="Remove logo"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
                                     </div>
                                     <div>
                                         <input
                                             type="file"
                                             id="workspace-logo"
-                                            accept="image/png,image/jpeg,image/svg+xml"
+                                            accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,image/svg+xml"
                                             className="hidden"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (!file) return;
-                                                if (file.size > 2 * 1024 * 1024) {
-                                                    addToast('error', 'File size must be less than 2MB');
-                                                    return;
-                                                }
-                                                router.post('/settings/workspace/logo', { logo: file }, {
-                                                    forceFormData: true,
-                                                    onSuccess: () => addToast('success', 'Logo uploaded'),
-                                                    onError: () => addToast('error', 'Failed to upload logo'),
-                                                });
-                                            }}
+                                            onChange={handleLogoUpload}
+                                            disabled={isUploadingLogo}
                                         />
                                         <Button
                                             type="button"
                                             variant="secondary"
                                             size="sm"
                                             onClick={() => document.getElementById('workspace-logo')?.click()}
+                                            loading={isUploadingLogo}
                                         >
                                             <Upload className="mr-2 h-4 w-4" />
-                                            Upload Logo
+                                            {workspace.logo ? 'Change Logo' : 'Upload Logo'}
                                         </Button>
+                                        <p className="mt-1 text-xs text-foreground-subtle">
+                                            Max 2MB. PNG, JPG, GIF, WebP, or SVG.
+                                        </p>
                                     </div>
                                 </div>
-                                <p className="mt-2 text-xs text-foreground-subtle">
-                                    Recommended size: 256x256px. Max file size: 2MB. PNG, JPG, or SVG.
-                                </p>
                             </div>
 
                             <Input

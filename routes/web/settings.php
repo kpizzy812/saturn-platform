@@ -9,6 +9,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 // Settings
@@ -159,6 +160,7 @@ Route::get('/settings/workspace', function () {
             'id' => $team->id,
             'name' => $team->name,
             'slug' => $slug,
+            'logo' => $team->logo,
             'description' => $team->description,
             'timezone' => $team->timezone ?? 'UTC',
             'defaultEnvironment' => $team->default_environment ?? 'production',
@@ -263,6 +265,37 @@ Route::post('/settings/account/profile', function (Request $request) {
 
     return redirect()->back()->with('success', 'Profile updated successfully');
 })->name('settings.account.profile');
+
+Route::post('/settings/account/avatar', function (Request $request) {
+    $request->validate([
+        'avatar' => 'required|image|mimes:jpeg,jpg,png,gif,webp|max:2048', // 2MB max
+    ]);
+
+    $user = auth()->user();
+
+    // Delete old avatar if exists
+    if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+        Storage::disk('public')->delete($user->avatar);
+    }
+
+    // Store new avatar
+    $path = $request->file('avatar')->store('avatars', 'public');
+    $user->update(['avatar' => $path]);
+
+    return redirect()->back()->with('success', 'Avatar updated successfully');
+})->name('settings.account.avatar');
+
+Route::delete('/settings/account/avatar', function () {
+    $user = auth()->user();
+
+    if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+        Storage::disk('public')->delete($user->avatar);
+    }
+
+    $user->update(['avatar' => null]);
+
+    return redirect()->back()->with('success', 'Avatar removed successfully');
+})->name('settings.account.avatar.delete');
 
 Route::post('/settings/account/password', function (Request $request) {
     $request->validate([
@@ -595,6 +628,48 @@ Route::post('/settings/workspace', function (Request $request) {
 
     return redirect()->back()->with('success', 'Workspace updated successfully');
 })->name('settings.workspace.update');
+
+Route::post('/settings/workspace/logo', function (Request $request) {
+    $request->validate([
+        'logo' => 'required|image|mimes:jpeg,jpg,png,gif,webp,svg|max:2048', // 2MB max
+    ]);
+
+    $team = currentTeam();
+    $user = auth()->user();
+
+    // Check if the user is an admin or owner
+    if (! $user->isAdmin()) {
+        return redirect()->back()->withErrors(['logo' => 'You do not have permission to update workspace logo']);
+    }
+
+    // Delete old logo if exists
+    if ($team->logo && Storage::disk('public')->exists($team->logo)) {
+        Storage::disk('public')->delete($team->logo);
+    }
+
+    // Store new logo
+    $path = $request->file('logo')->store('logos', 'public');
+    $team->update(['logo' => $path]);
+
+    return redirect()->back()->with('success', 'Workspace logo updated successfully');
+})->name('settings.workspace.logo');
+
+Route::delete('/settings/workspace/logo', function () {
+    $team = currentTeam();
+    $user = auth()->user();
+
+    if (! $user->isAdmin()) {
+        return redirect()->back()->withErrors(['logo' => 'You do not have permission to remove workspace logo']);
+    }
+
+    if ($team->logo && Storage::disk('public')->exists($team->logo)) {
+        Storage::disk('public')->delete($team->logo);
+    }
+
+    $team->update(['logo' => null]);
+
+    return redirect()->back()->with('success', 'Workspace logo removed successfully');
+})->name('settings.workspace.logo.delete');
 
 Route::delete('/settings/workspace', function () {
     $team = currentTeam();

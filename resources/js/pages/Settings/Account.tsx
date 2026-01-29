@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, useToast } from '@/components/ui';
 import { usePage, router } from '@inertiajs/react';
-import { Shield, Trash2, Upload, AlertCircle } from 'lucide-react';
+import { Shield, Trash2, Upload, AlertCircle, X } from 'lucide-react';
 import { validatePassword, validatePasswordMatch } from '@/lib/validation';
 import type { AuthUser } from '@/types/inertia';
 
@@ -42,7 +42,57 @@ export default function AccountSettings() {
     const [isSavingPassword, setIsSavingPassword] = React.useState(false);
     const [isToggling2FA, setIsToggling2FA] = React.useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
+    const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
     const { addToast } = useToast();
+
+    const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            addToast('error', 'File too large', 'Please select an image smaller than 2MB.');
+            return;
+        }
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            addToast('error', 'Invalid file type', 'Please select a JPEG, PNG, GIF, or WebP image.');
+            return;
+        }
+
+        setIsUploadingAvatar(true);
+        router.post('/settings/account/avatar', { avatar: file }, {
+            forceFormData: true,
+            onSuccess: () => {
+                addToast('success', 'Avatar updated', 'Your avatar has been updated successfully.');
+            },
+            onError: (errors) => {
+                addToast('error', 'Failed to upload avatar', getFirstErrorMessage(errors));
+            },
+            onFinish: () => {
+                setIsUploadingAvatar(false);
+                // Reset the input
+                e.target.value = '';
+            }
+        });
+    };
+
+    const handleRemoveAvatar = () => {
+        setIsUploadingAvatar(true);
+        router.delete('/settings/account/avatar', {
+            onSuccess: () => {
+                addToast('success', 'Avatar removed', 'Your avatar has been removed successfully.');
+            },
+            onError: (errors) => {
+                addToast('error', 'Failed to remove avatar', getFirstErrorMessage(errors));
+            },
+            onFinish: () => {
+                setIsUploadingAvatar(false);
+            }
+        });
+    };
 
     const handleNewPasswordChange = (value: string) => {
         setPassword({ ...password, new: value });
@@ -189,18 +239,53 @@ export default function AccountSettings() {
                                     Avatar
                                 </label>
                                 <div className="flex items-center gap-4">
-                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-semibold text-white">
-                                        {currentUser.name.charAt(0).toUpperCase()}
+                                    <div className="relative">
+                                        {currentUser.avatar ? (
+                                            <img
+                                                src={`/storage/${currentUser.avatar}`}
+                                                alt={currentUser.name}
+                                                className="h-16 w-16 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-semibold text-white">
+                                                {currentUser.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        )}
+                                        {currentUser.avatar && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveAvatar}
+                                                disabled={isUploadingAvatar}
+                                                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-white hover:bg-danger/80 disabled:opacity-50"
+                                                title="Remove avatar"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
                                     </div>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => addToast('info', 'Coming soon', 'Avatar upload will be available in a future update.')}
-                                    >
-                                        <Upload className="mr-2 h-4 w-4" />
-                                        Change Avatar
-                                    </Button>
+                                    <div>
+                                        <input
+                                            type="file"
+                                            id="avatar-upload"
+                                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                            className="hidden"
+                                            onChange={handleAvatarUpload}
+                                            disabled={isUploadingAvatar}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => document.getElementById('avatar-upload')?.click()}
+                                            loading={isUploadingAvatar}
+                                        >
+                                            <Upload className="mr-2 h-4 w-4" />
+                                            {currentUser.avatar ? 'Change Avatar' : 'Upload Avatar'}
+                                        </Button>
+                                        <p className="mt-1 text-xs text-foreground-subtle">
+                                            Max 2MB. JPEG, PNG, GIF, or WebP.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
