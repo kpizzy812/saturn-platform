@@ -25,6 +25,7 @@ import {
     ShieldAlert,
     Trash2,
     ExternalLink,
+    Code,
 } from 'lucide-react';
 
 interface TeamMember {
@@ -88,7 +89,9 @@ function MemberRow({ member, teamId, isPersonalTeam }: { member: TeamMember; tea
     const roleConfig: Record<string, { variant: 'primary' | 'success' | 'warning' | 'danger' | 'default'; icon: React.ReactNode }> = {
         owner: { variant: 'primary', icon: <ShieldAlert className="h-3 w-3" /> },
         admin: { variant: 'warning', icon: <ShieldCheck className="h-3 w-3" /> },
+        developer: { variant: 'success', icon: <Code className="h-3 w-3" /> },
         member: { variant: 'default', icon: <Shield className="h-3 w-3" /> },
+        viewer: { variant: 'default', icon: <Eye className="h-3 w-3" /> },
     };
 
     const config = roleConfig[member.role] || roleConfig.member;
@@ -140,10 +143,22 @@ function MemberRow({ member, teamId, isPersonalTeam }: { member: TeamMember; tea
                                 Make Admin
                             </DropdownItem>
                         )}
+                        {member.role !== 'developer' && (
+                            <DropdownItem onClick={() => handleChangeRole('developer')}>
+                                <Code className="h-4 w-4" />
+                                Make Developer
+                            </DropdownItem>
+                        )}
                         {member.role !== 'member' && (
                             <DropdownItem onClick={() => handleChangeRole('member')}>
                                 <Shield className="h-4 w-4" />
                                 Make Member
+                            </DropdownItem>
+                        )}
+                        {member.role !== 'viewer' && (
+                            <DropdownItem onClick={() => handleChangeRole('viewer')}>
+                                <Eye className="h-4 w-4" />
+                                Make Viewer
                             </DropdownItem>
                         )}
                         {!isPersonalTeam && member.role !== 'owner' && (

@@ -620,7 +620,7 @@ Route::prefix('admin')->group(function () {
         $team = \App\Models\Team::findOrFail($teamId);
         $newRole = request()->input('role');
 
-        if (! in_array($newRole, ['owner', 'admin', 'member'])) {
+        if (! in_array($newRole, ['owner', 'admin', 'developer', 'member', 'viewer'])) {
             return back()->with('error', 'Invalid role');
         }
 
