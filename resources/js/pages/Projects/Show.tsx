@@ -67,6 +67,34 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [zoomLevel, setZoomLevel] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // Context menu state (moved here to comply with hooks rules)
+    const [contextMenuPosition, setContextMenuPosition] = useState<ContextMenuPosition | null>(null);
+    const [contextMenuNode, setContextMenuNode] = useState<ContextMenuNode | null>(null);
+
+    // Approval modal state
+    const [showApprovalModal, setShowApprovalModal] = useState(false);
+    const [approvalPendingApp, setApprovalPendingApp] = useState<{
+        uuid: string;
+        name: string;
+        environmentName: string;
+        environmentType: string;
+    } | null>(null);
+
+    // Logs viewer state
+    const [logsViewerOpen, setLogsViewerOpen] = useState(false);
+    const [logsViewerService, setLogsViewerService] = useState<string>('');
+    const [logsViewerServiceUuid, setLogsViewerServiceUuid] = useState<string>('');
+    const [logsViewerServiceType, setLogsViewerServiceType] = useState<'application' | 'deployment' | 'database' | 'service'>('application');
+    const [logsViewerContainerName, setLogsViewerContainerName] = useState<string | undefined>(undefined);
+
+    // Undo/Redo history for canvas state
+    const historyRef = useRef<{ past: SelectedService[][]; future: SelectedService[][] }>({
+        past: [],
+        future: [],
+    });
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+
     // Real-time status updates via WebSocket
     useRealtimeStatus({
         onApplicationStatusChange: (data) => {
@@ -107,46 +135,6 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
             })),
         };
     }, [selectedEnv, appStatuses, dbStatuses]);
-
-    // Show loading state if project is not available
-    if (!project) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-background">
-                <div className="text-center">
-                    <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="mt-4 text-foreground-muted">Loading project...</p>
-                </div>
-            </div>
-        );
-    }
-
-    // Context menu state
-    const [contextMenuPosition, setContextMenuPosition] = useState<ContextMenuPosition | null>(null);
-    const [contextMenuNode, setContextMenuNode] = useState<ContextMenuNode | null>(null);
-
-    // Approval modal state
-    const [showApprovalModal, setShowApprovalModal] = useState(false);
-    const [approvalPendingApp, setApprovalPendingApp] = useState<{
-        uuid: string;
-        name: string;
-        environmentName: string;
-        environmentType: string;
-    } | null>(null);
-
-    // Logs viewer state
-    const [logsViewerOpen, setLogsViewerOpen] = useState(false);
-    const [logsViewerService, setLogsViewerService] = useState<string>('');
-    const [logsViewerServiceUuid, setLogsViewerServiceUuid] = useState<string>('');
-    const [logsViewerServiceType, setLogsViewerServiceType] = useState<'application' | 'deployment' | 'database' | 'service'>('application');
-    const [logsViewerContainerName, setLogsViewerContainerName] = useState<string | undefined>(undefined);
-
-    // Undo/Redo history for canvas state
-    const historyRef = useRef<{ past: SelectedService[][]; future: SelectedService[][] }>({
-        past: [],
-        future: [],
-    });
-    const [canUndo, setCanUndo] = useState(false);
-    const [canRedo, setCanRedo] = useState(false);
 
     // Switch environment handler
     const handleSwitchEnv = (env: Environment) => {
@@ -754,6 +742,18 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
             type: 'database',
         })),
     ];
+
+    // Show loading state if project is not available (after all hooks)
+    if (!project) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-background">
+                <div className="text-center">
+                    <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    <p className="mt-4 text-foreground-muted">Loading project...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

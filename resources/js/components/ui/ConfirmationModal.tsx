@@ -137,7 +137,7 @@ export function useConfirmation(options: UseConfirmationOptions): UseConfirmatio
         } finally {
             setIsLoading(false);
         }
-    }, [options.onConfirm]);
+    }, [options]);
 
     const ConfirmationDialog = React.useCallback(
         () => (
@@ -204,12 +204,12 @@ export function ConfirmationProvider({ children }: { children: React.ReactNode }
     const handleConfirm = React.useCallback(() => {
         state.resolve?.(true);
         setState({ isOpen: false, options: null, resolve: null });
-    }, [state.resolve]);
+    }, [state]);
 
     const handleClose = React.useCallback(() => {
         state.resolve?.(false);
         setState({ isOpen: false, options: null, resolve: null });
-    }, [state.resolve]);
+    }, [state]);
 
     return (
         <ConfirmationContext.Provider value={{ confirm }}>

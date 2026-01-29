@@ -14,6 +14,10 @@ type ViewMode = 'grid' | 'list';
 type FilterStatus = 'all' | 'active' | 'creating' | 'error';
 
 export default function VolumesIndex({ volumes }: Props) {
+    const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+    const [searchQuery, setSearchQuery] = useState('');
+
     // Show loading state when volumes data is not yet available
     if (!volumes) {
         return (
@@ -30,9 +34,6 @@ export default function VolumesIndex({ volumes }: Props) {
             </AppLayout>
         );
     }
-    const [viewMode, setViewMode] = useState<ViewMode>('grid');
-    const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-    const [searchQuery, setSearchQuery] = useState('');
 
     // Filter volumes
     const filteredVolumes = volumes.filter(volume => {

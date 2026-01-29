@@ -30,7 +30,8 @@ export const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
         formatValue,
         ...props
     }, ref) => {
-        const sliderId = id || React.useId();
+        const generatedId = React.useId();
+        const sliderId = id || generatedId;
         const percentage = ((value - min) / (max - min)) * 100;
 
         return (

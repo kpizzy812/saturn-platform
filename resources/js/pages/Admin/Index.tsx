@@ -10,7 +10,6 @@ import {
     AlertTriangle,
     TrendingUp,
     Database,
-    Clock,
     CheckCircle,
     XCircle,
 } from 'lucide-react';
@@ -103,10 +102,19 @@ function StatCard({ title, value, subtitle, icon: Icon, trend }: {
 function getActionIcon(action: string | null | undefined) {
     if (!action) return <Activity className="h-4 w-4 text-foreground-muted" />;
     const actionLower = action.toLowerCase();
+    if (actionLower.includes('completed') || actionLower.includes('finished')) {
+        return <CheckCircle className="h-4 w-4 text-success" />;
+    }
+    if (actionLower.includes('failed') || actionLower.includes('cancelled')) {
+        return <XCircle className="h-4 w-4 text-danger" />;
+    }
+    if (actionLower.includes('started') || actionLower.includes('progress') || actionLower.includes('queued')) {
+        return <Activity className="h-4 w-4 text-primary" />;
+    }
     if (actionLower.includes('deploy') || actionLower.includes('rollback')) {
         return <Activity className="h-4 w-4 text-primary" />;
     }
-    if (actionLower.includes('delete') || actionLower.includes('fail')) {
+    if (actionLower.includes('delete')) {
         return <XCircle className="h-4 w-4 text-danger" />;
     }
     if (actionLower.includes('create') || actionLower.includes('add')) {

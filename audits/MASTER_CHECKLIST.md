@@ -30,7 +30,7 @@
 | Аутентификация & Сессии | 🔴 Critical | [backend/authentication.md](backend/authentication.md) | [ ] |
 | Авторизация & Policies | 🔴 Critical | [backend/authorization.md](backend/authorization.md) | [ ] |
 | API Security (89+ endpoints) | 🔴 Critical | [backend/api-security.md](backend/api-security.md) | [ ] |
-| SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 2 critical found |
+| SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 4 critical found |
 | Webhooks (GitHub, GitLab, etc.) | 🟡 High | [backend/webhooks.md](backend/webhooks.md) | [ ] |
 | Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [ ] |
 | File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
@@ -47,7 +47,7 @@
 | Proxy Configuration (Traefik/Caddy) | 🟡 High | [infrastructure/proxy-configuration.md](infrastructure/proxy-configuration.md) | [ ] |
 | WebSocket Security | 🟡 High | [infrastructure/websocket-security.md](infrastructure/websocket-security.md) | [ ] |
 | **Database** ||||
-| SQL Injection | 🔴 Critical | [database/sql-injection.md](database/sql-injection.md) | [ ] |
+| SQL Injection | 🔴 Critical | [database/sql-injection.md](database/sql-injection.md) | [🔍] 4 critical found |
 | Data Exposure | 🔴 Critical | [database/data-exposure.md](database/data-exposure.md) | [ ] |
 | Migrations & Schema | 🟢 Medium | [database/migrations.md](database/migrations.md) | [ ] |
 
@@ -59,9 +59,9 @@
 
 ```
 Total Hypotheses: 258
-Checked: 5
-Issues Found: 3
-Critical: 2
+Checked: 22
+Issues Found: 10
+Critical: 8
 Fixed: 2
 ```
 
@@ -114,15 +114,55 @@ Fixed: 2
    - Файл: `app/Jobs/ScheduledTaskJob.php:141`
    - Container name вставляется в docker exec без escapeshellarg
 
+3. **[SSH-002] Container name без escaping в backup/restore** - [ssh-operations.md](backend/ssh-operations.md) 🆕
+   - Файлы: `DatabaseBackupJob.php` (14+ мест), `DatabaseRestoreJob.php` (8 мест)
+   - `$this->container_name` вставляется в docker exec без escapeshellarg
+   - **Severity: RCE (Remote Code Execution)**
+
+4. **[SSH-012] Отсутствует cleanup SSH ключей** - [ssh-operations.md](backend/ssh-operations.md) 🆕
+   - Файлы: `HandlesGitOperations.php`, `Application.php`
+   - SSH ключ `/root/.ssh/id_rsa` не удаляется из deployment контейнера
+   - **Severity: HIGH (credential exposure)**
+
+5. **[CMD-001] Command Injection в Redis KEYS** - [sql-injection.md](database/sql-injection.md) 🆕
+   - Файл: `DatabaseMetricsController.php:1345`
+   - User input `pattern` вставляется в shell без escaping
+   - **Severity: RCE**
+
+6. **[CMD-002] Command Injection в PostgreSQL query** - [sql-injection.md](database/sql-injection.md) 🆕
+   - Файл: `DatabaseMetricsController.php:773`
+   - Query execution через shell с неадекватным escaping
+   - **Severity: RCE**
+
+7. **[CMD-003] Command Injection в MySQL query** - [sql-injection.md](database/sql-injection.md) 🆕
+   - Файл: `DatabaseMetricsController.php:800`
+   - Аналогично CMD-002
+   - **Severity: RCE**
+
+8. **[CMD-004] Command Injection в ClickHouse query** - [sql-injection.md](database/sql-injection.md) 🆕
+   - Файл: `DatabaseMetricsController.php:828`
+   - Аналогично CMD-002
+   - **Severity: RCE**
+
 ### ⚠️ Важные
 
 1. **[SSH-017] Host key verification отключена** - [ssh-operations.md](backend/ssh-operations.md)
    - Файл: `app/Helpers/SshMultiplexingHelper.php:235`
    - MITM атака возможна, но приемлемо для PaaS
 
+2. **[SSH-010] Временные SSH ключи в контейнере** - [ssh-operations.md](backend/ssh-operations.md) 🆕
+   - Ключи остаются в deployment контейнере после использования
+
+3. **[SSH-014] Частичное скрытие ключей в логах** - [ssh-operations.md](backend/ssh-operations.md) 🆕
+   - hidden=true используется, но нет редактирования base64 encoded keys
+
+4. **[SQLI-003-A] Regex Injection в ServiceComposeParser** - [sql-injection.md](database/sql-injection.md) 🆕
+   - Файл: `ServiceComposeParser.php:398,430`
+   - Regex metacharacters не экранируются
+
 ### 🟡 Низкий приоритет
 
-> Пока не найдено
+1. **[SQLI-007] whereRaw("1=0") anti-pattern** - Безопасно, но не best practice
 
 ---
 
@@ -132,6 +172,12 @@ Fixed: 2
 |----|----------|------|--------|
 | SSH-006 | Command Injection в git_commit_sha | `bootstrap/helpers/api.php`, `app/Models/Application.php` | ✅ Fixed |
 | SSH-005 | Container name без escaping | `app/Jobs/ScheduledTaskJob.php` | ✅ Fixed |
+| SSH-002 | Container name в backup/restore | `DatabaseBackupJob.php`, `DatabaseRestoreJob.php` | ⏳ Pending |
+| SSH-012 | Cleanup SSH ключей | `HandlesGitOperations.php` | ⏳ Pending |
+| CMD-001 | Redis KEYS pattern injection | `DatabaseMetricsController.php` | ⏳ Pending |
+| CMD-002 | PostgreSQL query injection | `DatabaseMetricsController.php` | ⏳ Pending |
+| CMD-003 | MySQL query injection | `DatabaseMetricsController.php` | ⏳ Pending |
+| CMD-004 | ClickHouse query injection | `DatabaseMetricsController.php` | ⏳ Pending |
 
 ---
 

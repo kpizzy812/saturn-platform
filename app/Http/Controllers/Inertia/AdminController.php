@@ -42,21 +42,28 @@ class AdminController extends Controller
             'totalServices' => Service::count(),
         ];
 
-        // Get recent activity from audit logs
-        $recentActivity = AuditLog::with(['user', 'team'])
+        // Get recent activity from deployments (primary source of activity)
+        $recentActivity = ApplicationDeploymentQueue::with(['application.environment.project.team'])
             ->latest()
             ->limit(10)
             ->get()
-            ->map(function ($log) {
+            ->map(function ($deployment) {
+                $statusAction = match ($deployment->status) {
+                    'finished' => 'deployment_completed',
+                    'failed', 'cancelled' => 'deployment_failed',
+                    'in_progress', 'queued' => 'deployment_started',
+                    default => 'deployment_updated',
+                };
+
                 return [
-                    'id' => $log->id,
-                    'action' => $log->action,
-                    'description' => $log->description,
-                    'user_name' => $log->user?->name,
-                    'team_name' => $log->team?->name,
-                    'resource_type' => $log->resource_type_name,
-                    'resource_name' => $log->resource_name,
-                    'created_at' => $log->created_at,
+                    'id' => $deployment->id,
+                    'action' => $statusAction,
+                    'description' => $deployment->commit_message ?: "Deployment {$deployment->status}",
+                    'user_name' => $deployment->application?->environment?->project?->team?->name,
+                    'team_name' => $deployment->application?->environment?->project?->team?->name,
+                    'resource_type' => 'Application',
+                    'resource_name' => $deployment->application?->name,
+                    'created_at' => $deployment->created_at,
                 ];
             });
 

@@ -67,14 +67,14 @@ export default function TeamActivity() {
     // Debounce search
     React.useEffect(() => {
         const timer = setTimeout(() => {
-            setFilters({
-                ...filters,
+            setFilters(prev => ({
+                ...prev,
                 search: searchQuery || undefined,
-            });
+            }));
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [searchQuery, setFilters]);
 
     // Update filters when select values change
     React.useEffect(() => {
@@ -84,7 +84,7 @@ export default function TeamActivity() {
             action: selectedAction !== 'all' ? selectedAction : undefined,
             dateRange: selectedDateRange !== 'all' ? selectedDateRange : undefined,
         });
-    }, [selectedMember, selectedAction, selectedDateRange]);
+    }, [selectedMember, selectedAction, selectedDateRange, searchQuery, setFilters]);
 
     // Get unique team members from activities
     const teamMembers = React.useMemo(() => {

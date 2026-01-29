@@ -198,7 +198,8 @@ export function Terminal({
             fitAddonRef.current = null;
             setIsInitialized(false);
         };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Intentionally empty - terminal should only initialize once on mount
 
     /**
      * Handle window resize

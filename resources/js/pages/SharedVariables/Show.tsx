@@ -89,7 +89,9 @@ export default function SharedVariableShow({ variable: initialVariable }: Props)
                 };
             case 'environment':
                 return {
-                    label: `${variable.project?.name} / ${variable.environment?.name}` || 'Unknown',
+                    label: (variable.project?.name && variable.environment?.name)
+                        ? `${variable.project.name} / ${variable.environment.name}`
+                        : 'Unknown',
                     href: variable.environment && variable.project
                         ? `/projects/${variable.project.uuid}/environments/${variable.environment.uuid}`
                         : '#'

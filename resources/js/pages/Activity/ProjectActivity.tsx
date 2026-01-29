@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input, Select } from '@/components/ui';
+import { Card, CardContent, Button, Input, Select } from '@/components/ui';
 import { ActivityTimeline } from '@/components/ui/ActivityTimeline';
-import type { ActivityLog, Project, Environment, Application, Service } from '@/types';
+import type { ActivityLog, Project, Environment } from '@/types';
 import {
     Filter,
     ArrowLeft,
@@ -29,20 +29,10 @@ export default function ProjectActivity({
     environments: propEnvironments,
 }: Props) {
     const project = propProject;
-    const activities = propActivities || [];
+    const activities = React.useMemo(() => propActivities || [], [propActivities]);
     const environments = propEnvironments || [];
 
-    if (!project) {
-        return (
-            <AppLayout title="Project Activity" breadcrumbs={[{ label: 'Projects', href: '/projects' }, { label: 'Activity' }]}>
-                <div className="flex flex-col items-center justify-center py-16">
-                    <GitBranch className="h-12 w-12 text-foreground-muted" />
-                    <h3 className="mt-4 text-lg font-medium text-foreground">Project not found</h3>
-                </div>
-            </AppLayout>
-        );
-    }
-
+    // All hooks must be called before any conditional returns
     const [filterType, setFilterType] = React.useState<FilterType>('all');
     const [environmentFilter, setEnvironmentFilter] = React.useState<EnvironmentFilter>('all');
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -113,6 +103,18 @@ export default function ProjectActivity({
 
         return { deployments, settingsChanges, databases };
     }, [activities]);
+
+    // Early return for missing project - AFTER all hooks
+    if (!project) {
+        return (
+            <AppLayout title="Project Activity" breadcrumbs={[{ label: 'Projects', href: '/projects' }, { label: 'Activity' }]}>
+                <div className="flex flex-col items-center justify-center py-16">
+                    <GitBranch className="h-12 w-12 text-foreground-muted" />
+                    <h3 className="mt-4 text-lg font-medium text-foreground">Project not found</h3>
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout

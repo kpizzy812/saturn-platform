@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Modal, ModalFooter, Input, useToast } from '@/components/ui';
 import { Clock, CheckCircle, XCircle, ChevronRight, RefreshCw } from 'lucide-react';
@@ -22,7 +22,7 @@ export function PendingApprovalsWidget({ projectUuid, showProjectName = false, m
     const [rejectingDeploymentUuid, setRejectingDeploymentUuid] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
 
-    const fetchApprovals = async () => {
+    const fetchApprovals = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
@@ -44,14 +44,14 @@ export function PendingApprovalsWidget({ projectUuid, showProjectName = false, m
         } finally {
             setLoading(false);
         }
-    };
+    }, [projectUuid, maxItems]);
 
     useEffect(() => {
         fetchApprovals();
         // Set up polling every 30 seconds
         const interval = setInterval(fetchApprovals, 30000);
         return () => clearInterval(interval);
-    }, [projectUuid]);
+    }, [fetchApprovals]);
 
     const handleApprove = async (deploymentUuid: string) => {
         setActionLoading(deploymentUuid);

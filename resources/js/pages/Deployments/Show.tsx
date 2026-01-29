@@ -140,30 +140,28 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
         }
     };
 
+    // Transform logs to LogLine format for LogsContainer
     // Use streamed logs if deployment is in progress and streaming is active,
     // otherwise use the logs from props
-    const buildLogs = isStreaming && streamedLogs.length > 0
-        ? streamedLogs.filter(log => !log.source || log.source === 'build').map(log => log.message)
-        : (deployment?.build_logs || []);
-
-    const deployLogs = isStreaming && streamedLogs.length > 0
-        ? streamedLogs.filter(log => log.source === 'deploy').map(log => log.message)
-        : (deployment?.deploy_logs || []);
-
-    // Transform logs to LogLine format for LogsContainer
     const buildLogsFormatted: LogLine[] = React.useMemo(() => {
+        const buildLogs = isStreaming && streamedLogs.length > 0
+            ? streamedLogs.filter(log => !log.source || log.source === 'build').map(log => log.message)
+            : (deployment?.build_logs || []);
         return buildLogs.map((log, index) => ({
             id: `build-${index}`,
             content: log,
         }));
-    }, [buildLogs]);
+    }, [isStreaming, streamedLogs, deployment?.build_logs]);
 
     const deployLogsFormatted: LogLine[] = React.useMemo(() => {
+        const deployLogs = isStreaming && streamedLogs.length > 0
+            ? streamedLogs.filter(log => log.source === 'deploy').map(log => log.message)
+            : (deployment?.deploy_logs || []);
         return deployLogs.map((log, index) => ({
             id: `deploy-${index}`,
             content: log,
         }));
-    }, [deployLogs]);
+    }, [isStreaming, streamedLogs, deployment?.deploy_logs]);
 
     if (!deployment) {
         return (

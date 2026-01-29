@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal, ModalFooter, Button, Badge } from '@/components/ui';
 import { Clock, CheckCircle, XCircle, AlertTriangle, RefreshCw, User } from 'lucide-react';
 import type { DeploymentApproval } from '@/types/models';
@@ -28,16 +28,7 @@ export function DeploymentApprovalModal({
     const [approval, setApproval] = useState<DeploymentApproval | null>(null);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (isOpen && deploymentUuid) {
-            fetchApprovalStatus();
-            // Poll every 5 seconds for status updates
-            const interval = setInterval(fetchApprovalStatus, 5000);
-            return () => clearInterval(interval);
-        }
-    }, [isOpen, deploymentUuid]);
-
-    const fetchApprovalStatus = async () => {
+    const fetchApprovalStatus = useCallback(async () => {
         try {
             const res = await fetch(`/api/v1/deployments/${deploymentUuid}/approval-status`);
             if (!res.ok) {
@@ -62,7 +53,16 @@ export function DeploymentApprovalModal({
             setStatus('error');
             setError('Failed to fetch approval status');
         }
-    };
+    }, [deploymentUuid, onApproved, onRejected]);
+
+    useEffect(() => {
+        if (isOpen && deploymentUuid) {
+            fetchApprovalStatus();
+            // Poll every 5 seconds for status updates
+            const interval = setInterval(fetchApprovalStatus, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [isOpen, deploymentUuid, fetchApprovalStatus]);
 
     const getStatusIcon = () => {
         switch (status) {

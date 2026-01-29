@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Select } from '@/components/ui';
@@ -67,21 +67,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
     const [isLoadingBranches, setIsLoadingBranches] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Load repositories when GitHub App is selected
-    useEffect(() => {
-        if (selectedGithubApp && selectedProvider === 'github') {
-            loadRepositories();
-        }
-    }, [selectedGithubApp]);
-
-    // Load branches when repository is selected
-    useEffect(() => {
-        if (selectedRepo && selectedGithubApp) {
-            loadBranches();
-        }
-    }, [selectedRepo]);
-
-    const loadRepositories = async () => {
+    const loadRepositories = useCallback(async () => {
         if (!selectedGithubApp) return;
 
         setIsLoadingRepos(true);
@@ -109,18 +95,18 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
         } finally {
             setIsLoadingRepos(false);
         }
-    };
+    }, [selectedGithubApp]);
 
-    const loadBranches = async () => {
-        if (!selectedGithubApp || !selectedRepo) return;
+    const loadBranches = useCallback(async (repo: Repository) => {
+        if (!selectedGithubApp || !repo) return;
 
         setIsLoadingBranches(true);
         setBranches([]);
 
         try {
-            const [owner, repo] = selectedRepo.full_name.split('/');
+            const [owner, repoName] = repo.full_name.split('/');
             const response = await fetch(
-                `/web-api/github-apps/${selectedGithubApp.id}/repositories/${owner}/${repo}/branches`,
+                `/web-api/github-apps/${selectedGithubApp.id}/repositories/${owner}/${repoName}/branches`,
                 {
                     headers: {
                         'Accept': 'application/json',
@@ -138,15 +124,29 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
             setBranches(data.branches || []);
 
             // Auto-select default branch
-            if (selectedRepo.default_branch) {
-                setSelectedBranch(selectedRepo.default_branch);
+            if (repo.default_branch) {
+                setSelectedBranch(repo.default_branch);
             }
         } catch {
             addToast('error', 'Failed to load branches');
         } finally {
             setIsLoadingBranches(false);
         }
-    };
+    }, [selectedGithubApp, addToast]);
+
+    // Load repositories when GitHub App is selected
+    useEffect(() => {
+        if (selectedGithubApp && selectedProvider === 'github') {
+            loadRepositories();
+        }
+    }, [selectedGithubApp, selectedProvider, loadRepositories]);
+
+    // Load branches when repository is selected
+    useEffect(() => {
+        if (selectedRepo && selectedGithubApp) {
+            loadBranches(selectedRepo);
+        }
+    }, [selectedRepo, selectedGithubApp, loadBranches]);
 
     // Filter repositories by search
     const filteredRepos = repositories.filter(

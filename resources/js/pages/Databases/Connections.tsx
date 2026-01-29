@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
@@ -82,7 +82,7 @@ export default function DatabaseConnections({ database }: Props) {
     const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([]);
     const [connectionsLoading, setConnectionsLoading] = useState(true);
 
-    const fetchConnections = async () => {
+    const fetchConnections = useCallback(async () => {
         setConnectionsLoading(true);
         try {
             const response = await fetch(`/_internal/databases/${database.uuid}/connections`);
@@ -101,12 +101,12 @@ export default function DatabaseConnections({ database }: Props) {
         } finally {
             setConnectionsLoading(false);
         }
-    };
+    }, [database.uuid]);
 
     // Fetch on mount
     useEffect(() => {
         fetchConnections();
-    }, [database.uuid]);
+    }, [fetchConnections]);
 
     const copyToClipboard = (text: string, field: string) => {
         navigator.clipboard.writeText(text);

@@ -365,7 +365,7 @@ function getNextBackupTime(frequency: BackupSettings['frequency'], time: string)
     const now = new Date();
     const [hours, minutes] = time.split(':').map(Number);
 
-    let next = new Date(now);
+    const next = new Date(now);
     next.setHours(hours, minutes, 0, 0);
 
     switch (frequency) {

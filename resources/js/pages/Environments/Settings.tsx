@@ -48,7 +48,7 @@ export default function EnvironmentSettings({ environment, project, canManage, u
         if (type === 'production' && !requiresApproval) {
             // Suggest enabling approval for production, but don't force it
         }
-    }, [type]);
+    }, [type, requiresApproval]);
 
     const handleSave = async () => {
         setSaving(true);

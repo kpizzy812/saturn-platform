@@ -390,7 +390,8 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, []); // Only on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only on mount - intentionally empty deps
 
     return useMemo(() => ({
         containerRef,

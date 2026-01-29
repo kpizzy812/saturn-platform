@@ -23,6 +23,22 @@ export default function TemplatesIndex({ templates }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
 
+    const filteredTemplates = useMemo(() => {
+        if (!templates) return [];
+        return templates.filter((template) => {
+            const matchesSearch =
+                template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+
+            const matchesCategory =
+                selectedCategory === 'All' ||
+                template.category === selectedCategory;
+
+            return matchesSearch && matchesCategory;
+        });
+    }, [templates, searchQuery, selectedCategory]);
+
     // Loading state
     if (!templates) {
         return (
@@ -38,21 +54,6 @@ export default function TemplatesIndex({ templates }: Props) {
             </AppLayout>
         );
     }
-
-    const filteredTemplates = useMemo(() => {
-        return templates.filter((template) => {
-            const matchesSearch =
-                template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-
-            const matchesCategory =
-                selectedCategory === 'All' ||
-                template.category === selectedCategory;
-
-            return matchesSearch && matchesCategory;
-        });
-    }, [templates, searchQuery, selectedCategory]);
 
     const featuredTemplates = filteredTemplates.filter(t => t.featured);
     const regularTemplates = filteredTemplates.filter(t => !t.featured);

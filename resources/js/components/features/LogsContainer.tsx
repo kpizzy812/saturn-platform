@@ -393,7 +393,7 @@ export function LogsContainer({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [enableKeyboardShortcuts, scrollToBottom, scrollToTop]);
+    }, [enableKeyboardShortcuts, scrollToBottom, scrollToTop, containerRef]);
 
     // Copy logs to clipboard
     const handleCopy = React.useCallback(async () => {

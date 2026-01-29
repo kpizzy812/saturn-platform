@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input } from '@/components/ui';
+import { Card, CardContent, Badge, Input } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { ArrowLeft, Search, Database, Package, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
@@ -31,7 +31,7 @@ export default function DatabaseExtensions({ database }: Props) {
     const [isLoading, setIsLoading] = useState(true);
     const { addToast } = useToast();
 
-    const fetchExtensions = async () => {
+    const fetchExtensions = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await fetch(`/_internal/databases/${database.uuid}/extensions`);
@@ -51,11 +51,11 @@ export default function DatabaseExtensions({ database }: Props) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [database.uuid, addToast]);
 
     useEffect(() => {
         fetchExtensions();
-    }, [database.uuid]);
+    }, [fetchExtensions]);
 
     const filteredExtensions = extensions.filter((ext) =>
         ext.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
