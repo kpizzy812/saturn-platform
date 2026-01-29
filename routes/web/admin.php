@@ -25,23 +25,28 @@ Route::prefix('admin')->group(function () {
             'totalServices' => \App\Models\Service::count(),
         ];
 
-        // Recent activity from Spatie activity log
-        $recentActivity = \Spatie\Activitylog\Models\Activity::latest()
+        // Recent activity from deployments (primary source of activity)
+        $recentActivity = \App\Models\ApplicationDeploymentQueue::with(['application.environment.project.team'])
+            ->latest()
             ->limit(10)
             ->get()
-            ->map(function ($activity) {
-                $typeMap = [
-                    'created' => 'server_added',
-                    'deleted' => 'deployment_failed',
-                    'updated' => 'team_created',
-                ];
+            ->map(function ($deployment) {
+                $statusAction = match ($deployment->status) {
+                    'finished' => 'deployment_completed',
+                    'failed', 'cancelled' => 'deployment_failed',
+                    'in_progress', 'queued' => 'deployment_started',
+                    default => 'deployment_updated',
+                };
 
                 return [
-                    'id' => $activity->id,
-                    'type' => $typeMap[$activity->event ?? ''] ?? 'user_registered',
-                    'message' => $activity->description ?? ($activity->event.' '.$activity->subject_type),
-                    'timestamp' => $activity->created_at?->diffForHumans(),
-                    'user' => $activity->causer?->name ?? 'System',
+                    'id' => $deployment->id,
+                    'action' => $statusAction,
+                    'description' => $deployment->commit_message ?: "Deployment {$deployment->status}",
+                    'user_name' => $deployment->application?->environment?->project?->team?->name,
+                    'team_name' => $deployment->application?->environment?->project?->team?->name,
+                    'resource_type' => 'Application',
+                    'resource_name' => $deployment->application?->name,
+                    'created_at' => $deployment->created_at,
                 ];
             });
 
