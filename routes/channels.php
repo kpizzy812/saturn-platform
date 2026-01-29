@@ -96,5 +96,13 @@ Broadcast::channel('service.{serviceId}.logs', function (User $user, string|int 
     $serviceId = (int) $serviceId;
     $service = \App\Models\Service::find($serviceId);
 
+    \Illuminate\Support\Facades\Log::debug('Service logs channel auth', [
+        'user_id' => $user->id,
+        'service_id' => $serviceId,
+        'service_found' => $service !== null,
+        'service_team_id' => $service?->team_id,
+        'user_teams' => $user->teams->pluck('id')->toArray(),
+    ]);
+
     return $service && $user->teams->pluck('id')->contains($service->team_id);
 });
