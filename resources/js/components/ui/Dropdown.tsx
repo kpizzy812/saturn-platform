@@ -76,8 +76,8 @@ export function DropdownContent({
             <MenuItems
                 style={{ marginTop: sideOffset }}
                 className={cn(
-                    // Base styles
-                    'absolute z-50 origin-top rounded-xl p-1.5',
+                    // Base styles - z-[100] to ensure dropdown is above cards with backdrop-blur
+                    'absolute z-[100] origin-top rounded-xl p-1.5',
                     // Width
                     widthClasses[width],
                     // Glassmorphism background
