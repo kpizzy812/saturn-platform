@@ -20,6 +20,7 @@ import { ServiceNode } from './nodes/ServiceNode';
 import { DatabaseNode } from './nodes/DatabaseNode';
 import { VariableBadgeEdge } from './edges/VariableBadgeEdge';
 import type { Application, StandaloneDatabase, Service } from '@/types';
+import { useToast } from '@/components/ui/Toast';
 import axios from 'axios';
 
 // Custom node types - use type assertion for compatibility with @xyflow/react
@@ -202,6 +203,7 @@ function ProjectCanvasInner({
     onQuickViewLogs,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
+    const { addToast } = useToast();
     const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>(initialResourceLinks);
     const [isLoading, setIsLoading] = useState(false);
     const linksLoadedForEnvRef = useRef<string | null>(null);
@@ -501,7 +503,7 @@ function ProjectCanvasInner({
                 newLinks.forEach((link) => onLinkCreated?.(link));
 
                 const keys = newLinks.map((l) => l.env_key).join(', ');
-                console.log(`Connected! ${keys} will be injected on next deploy.`);
+                addToast('success', 'Connected!', `${keys} will be injected on next deploy.`);
             } catch (error: any) {
                 console.error('Failed to create link:', error);
                 if (error.response?.data?.message) {
