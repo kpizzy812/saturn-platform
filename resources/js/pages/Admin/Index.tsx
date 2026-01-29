@@ -28,10 +28,13 @@ interface SystemStats {
 
 interface RecentActivity {
     id: number;
-    type: 'user_registered' | 'deployment_failed' | 'server_added' | 'team_created';
-    message: string;
-    timestamp: string;
-    user?: string;
+    action: string;
+    description: string | null;
+    user_name: string | null;
+    team_name: string | null;
+    resource_type: string | null;
+    resource_name: string | null;
+    created_at: string;
 }
 
 interface HealthCheck {
@@ -97,25 +100,109 @@ function StatCard({ title, value, subtitle, icon: Icon, trend }: {
     );
 }
 
-function ActivityItem({ activity }: { activity: RecentActivity }) {
-    const iconMap = {
-        user_registered: <Users className="h-4 w-4 text-success" />,
-        deployment_failed: <XCircle className="h-4 w-4 text-danger" />,
-        server_added: <Server className="h-4 w-4 text-primary" />,
-        team_created: <Users className="h-4 w-4 text-info" />,
-    };
+function getActionIcon(action: string) {
+    const actionLower = action.toLowerCase();
+    if (actionLower.includes('deploy') || actionLower.includes('rollback')) {
+        return <Activity className="h-4 w-4 text-primary" />;
+    }
+    if (actionLower.includes('delete') || actionLower.includes('fail')) {
+        return <XCircle className="h-4 w-4 text-danger" />;
+    }
+    if (actionLower.includes('create') || actionLower.includes('add')) {
+        return <CheckCircle className="h-4 w-4 text-success" />;
+    }
+    if (actionLower.includes('server')) {
+        return <Server className="h-4 w-4 text-primary" />;
+    }
+    if (actionLower.includes('user') || actionLower.includes('team')) {
+        return <Users className="h-4 w-4 text-info" />;
+    }
+    return <Activity className="h-4 w-4 text-foreground-muted" />;
+}
 
+function formatDescription(description: string | null): string {
+    if (!description) return 'No description';
+
+    // Check if description is JSON array or object
+    if (description.startsWith('[') || description.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(description);
+            // If it's an array of log entries, extract meaningful output
+            if (Array.isArray(parsed)) {
+                const outputs = parsed
+                    .filter((item: { type?: string; output?: string }) => item.output)
+                    .map((item: { type?: string; output?: string }) => item.output)
+                    .slice(0, 2);
+                if (outputs.length > 0) {
+                    const summary = outputs.join(' ').slice(0, 100);
+                    return summary + (summary.length >= 100 ? '...' : '');
+                }
+                return 'Activity logged';
+            }
+            // If it's an object with message/output
+            if (parsed.message) return parsed.message;
+            if (parsed.output) return parsed.output;
+            return 'Activity logged';
+        } catch {
+            // Not valid JSON, return truncated original
+            return description.slice(0, 100) + (description.length > 100 ? '...' : '');
+        }
+    }
+
+    return description.slice(0, 150) + (description.length > 150 ? '...' : '');
+}
+
+function formatRelativeTime(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+}
+
+function ActivityItem({ activity }: { activity: RecentActivity }) {
     return (
         <div className="flex items-start gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0">
             <div className="mt-1 rounded-full bg-background-tertiary p-2">
-                {iconMap[activity.type]}
+                {getActionIcon(activity.action)}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-sm text-foreground">{activity.message}</p>
-                {activity.user && (
-                    <p className="text-xs text-foreground-muted">{activity.user}</p>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground capitalize">
+                        {activity.action.replace(/_/g, ' ')}
+                    </span>
+                    {activity.resource_type && (
+                        <span className="text-xs text-foreground-muted">
+                            {activity.resource_type}
+                        </span>
+                    )}
+                </div>
+                <p className="text-sm text-foreground-muted mt-0.5">
+                    {formatDescription(activity.description)}
+                </p>
+                {activity.resource_name && (
+                    <p className="text-xs text-foreground-subtle mt-0.5">
+                        Resource: {activity.resource_name}
+                    </p>
                 )}
-                <p className="mt-1 text-xs text-foreground-subtle">{activity.timestamp}</p>
+                <div className="flex items-center gap-2 mt-1">
+                    {activity.user_name && (
+                        <span className="text-xs text-foreground-muted">{activity.user_name}</span>
+                    )}
+                    {activity.user_name && activity.created_at && (
+                        <span className="text-xs text-foreground-subtle">•</span>
+                    )}
+                    <span className="text-xs text-foreground-subtle">
+                        {formatRelativeTime(activity.created_at)}
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -223,11 +310,19 @@ export default function AdminDashboard({
                             <CardDescription>Latest system events</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {recentActivity.map((activity) => (
-                                    <ActivityItem key={activity.id} activity={activity} />
-                                ))}
-                            </div>
+                            {recentActivity.length > 0 ? (
+                                <div className="space-y-4">
+                                    {recentActivity.map((activity) => (
+                                        <ActivityItem key={activity.id} activity={activity} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <Activity className="h-8 w-8 text-foreground-muted mb-2" />
+                                    <p className="text-sm text-foreground-muted">No recent activity</p>
+                                    <p className="text-xs text-foreground-subtle mt-1">Activity will appear here as actions are performed</p>
+                                </div>
+                            )}
                             <div className="mt-4">
                                 <Link
                                     href="/admin/logs"

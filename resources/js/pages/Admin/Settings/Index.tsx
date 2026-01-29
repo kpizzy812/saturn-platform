@@ -128,7 +128,7 @@ export default function AdminSettingsIndex({
                                     onChange={(e) =>
                                         setFormData({ ...formData, fqdn: e.target.value })
                                     }
-                                    placeholder="https://saturn.example.com"
+                                    placeholder="https://your-domain.com"
                                 />
                             </div>
                             <div>

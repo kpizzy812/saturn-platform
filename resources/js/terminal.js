@@ -2,6 +2,24 @@ import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import { FitAddon } from '@xterm/addon-fit';
 
+// Terminal debug logging - set to true for debugging connection issues
+const TERMINAL_DEBUG = false;
+
+function terminalLog(level, ...args) {
+    if (!TERMINAL_DEBUG && level !== 'error') return;
+    const prefix = '[Terminal]';
+    switch (level) {
+        case 'error':
+            console.error(prefix, ...args);
+            break;
+        case 'warn':
+            if (TERMINAL_DEBUG) console.warn(prefix, ...args);
+            break;
+        default:
+            if (TERMINAL_DEBUG) console.log(prefix, ...args);
+    }
+}
+
 export function initializeTerminalComponent() {
     function terminalData() {
         return {
@@ -223,7 +241,7 @@ export function initializeTerminalComponent() {
 
             initializeWebSocket() {
                 if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
-                    console.log('[Terminal] WebSocket already connecting/connected, skipping');
+                    terminalLog('log', 'WebSocket already connecting/connected, skipping');
                     return; // Already connecting or connected
                 }
 
@@ -232,7 +250,7 @@ export function initializeTerminalComponent() {
 
                 // Ensure terminal config is available
                 if (!window.terminalConfig) {
-                    console.warn('[Terminal] Terminal config not available, using defaults');
+                    terminalLog('warn', 'Terminal config not available, using defaults');
                     window.terminalConfig = {};
                 }
 
@@ -258,7 +276,7 @@ export function initializeTerminalComponent() {
                 }
 
                 const url = `${connectionString.protocol}://${connectionString.host}${connectionString.port}${connectionString.path}`
-                console.log(`[Terminal] Attempting connection to: ${url}`);
+                terminalLog('log', 'Attempting connection to:', url);
 
                 try {
                     this.socket = new WebSocket(url);
@@ -267,7 +285,7 @@ export function initializeTerminalComponent() {
                     const timeoutMs = this.reconnectAttempts === 0 ? 15000 : this.connectionTimeout;
                     this.connectionTimeoutId = setTimeout(() => {
                         if (this.connectionState === 'connecting') {
-                            console.error(`[Terminal] Connection timeout after ${timeoutMs}ms`);
+                            terminalLog('error', 'Connection timeout after', timeoutMs, 'ms');
                             this.socket.close();
                             this.handleConnectionError('Connection timeout');
                         }
@@ -279,13 +297,13 @@ export function initializeTerminalComponent() {
                     this.socket.onclose = this.handleSocketClose.bind(this);
 
                 } catch (error) {
-                    console.error('[Terminal] Failed to create WebSocket:', error);
+                    terminalLog('error', 'Failed to create WebSocket:', error);
                     this.handleConnectionError(`Failed to create WebSocket connection: ${error.message}`);
                 }
             },
 
             handleSocketOpen() {
-                console.log('[Terminal] WebSocket connection established.');
+                terminalLog('log', 'WebSocket connection established.');
                 this.connectionState = 'connected';
                 this.reconnectAttempts = 0;
                 this.heartbeatMissed = 0;
@@ -305,16 +323,16 @@ export function initializeTerminalComponent() {
             },
 
             handleSocketError(error) {
-                console.error('[Terminal] WebSocket error:', error);
-                console.error('[Terminal] WebSocket state:', this.socket ? this.socket.readyState : 'No socket');
-                console.error('[Terminal] Connection attempt:', this.reconnectAttempts + 1);
+                terminalLog('error', 'WebSocket error:', error);
+                terminalLog('error', 'WebSocket state:', this.socket ? this.socket.readyState : 'No socket');
+                terminalLog('error', 'Connection attempt:', this.reconnectAttempts + 1);
                 this.handleConnectionError('WebSocket error occurred');
             },
 
             handleSocketClose(event) {
-                console.warn(`[Terminal] WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason provided'}`);
-                console.log('[Terminal] Was clean close:', event.code === 1000);
-                console.log('[Terminal] Connection attempt:', this.reconnectAttempts + 1);
+                terminalLog('warn', 'WebSocket connection closed. Code:', event.code, 'Reason:', event.reason || 'No reason provided');
+                terminalLog('log', 'Was clean close:', event.code === 1000);
+                terminalLog('log', 'Connection attempt:', this.reconnectAttempts + 1);
 
                 this.connectionState = 'disconnected';
                 this.clearAllTimers();
@@ -332,7 +350,7 @@ export function initializeTerminalComponent() {
             },
 
             handleConnectionError(reason) {
-                console.error(`[Terminal] Connection error: ${reason} (attempt ${this.reconnectAttempts + 1})`);
+                terminalLog('error', 'Connection error:', reason, '(attempt', this.reconnectAttempts + 1, ')');
                 this.connectionState = 'disconnected';
 
                 // Only dispatch error to UI after a few failed attempts to avoid immediate error on page load
@@ -345,7 +363,7 @@ export function initializeTerminalComponent() {
 
             scheduleReconnect() {
                 if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-                    console.error('[Terminal] Max reconnection attempts reached');
+                    terminalLog('error', 'Max reconnection attempts reached');
                     this.message = '(connection failed - max retries exceeded)';
                     return;
                 }
@@ -370,7 +388,7 @@ export function initializeTerminalComponent() {
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                     this.socket.send(JSON.stringify(message));
                 } else {
-                    console.warn('[Terminal] WebSocket not ready, message not sent:', message);
+                    terminalLog('warn', 'WebSocket not ready, message not sent:', message);
                 }
             },
 
@@ -438,12 +456,12 @@ export function initializeTerminalComponent() {
                         this.pendingWrites++;
                         this.term.write(event.data, (err) => {
                             if (err) {
-                                console.error('[Terminal] Write error:', err);
+                                terminalLog('error', 'Write error:', err);
                             }
                             this.flowControlCallback();
                         });
                     } catch (error) {
-                        console.error('[Terminal] Write operation failed:', error);
+                        terminalLog('error', 'Write operation failed:', error);
                         this.pendingWrites = Math.max(0, this.pendingWrites - 1);
                     }
                 }
@@ -518,10 +536,10 @@ export function initializeTerminalComponent() {
                         clearTimeout(this.pingTimeoutId);
                         this.pingTimeoutId = null;
                     }
-                    console.log('[Terminal] Tab hidden, pausing heartbeat monitoring');
+                    terminalLog('log', 'Tab hidden, pausing heartbeat monitoring');
                 } else if (wasVisible === false) {
                     // Tab is now visible again
-                    console.log('[Terminal] Tab visible, resuming connection management');
+                    terminalLog('log', 'Tab visible, resuming connection management');
 
                     if (this.wasConnectedBeforeHidden && this.socket && this.socket.readyState === WebSocket.OPEN) {
                         // Send immediate ping to verify connection is still alive
@@ -550,7 +568,7 @@ export function initializeTerminalComponent() {
 
                 this.focusAttempts++;
                 if (this.focusAttempts >= this.maxFocusAttempts) {
-                    console.warn('[Terminal] Max focus attempts reached, giving up');
+                    terminalLog('warn', 'Max focus attempts reached, giving up');
                     this.focusAttempts = 0;
                     return;
                 }
@@ -584,7 +602,7 @@ export function initializeTerminalComponent() {
                     console.warn(`[Terminal] Ping timeout - missed ${this.heartbeatMissed}/${this.maxHeartbeatMisses}`);
 
                     if (this.heartbeatMissed >= this.maxHeartbeatMisses) {
-                        console.error('[Terminal] Too many missed heartbeats, closing connection');
+                        terminalLog('error', 'Too many missed heartbeats, closing connection');
                         this.socket.close(1001, 'Heartbeat timeout');
                     }
                 }, this.pingTimeout);
@@ -598,7 +616,7 @@ export function initializeTerminalComponent() {
                 this.fullscreen = !this.fullscreen;
                 this.$nextTick(() => {
                     // Force a layout reflow to ensure DOM changes are applied
-                    this.$refs.terminalWrapper.offsetHeight;
+                    void this.$refs.terminalWrapper.offsetHeight;
 
                     // Add a small delay to ensure CSS transitions complete
                     this.scheduleTimeout(() => {
@@ -633,13 +651,13 @@ export function initializeTerminalComponent() {
                     if (height <= 0 || width <= 0) {
                         this.resizeRetryCount++;
                         if (this.resizeRetryCount < this.maxResizeRetries) {
-                            console.warn('[Terminal] Invalid wrapper dimensions, retrying...', { height, width, attempt: this.resizeRetryCount });
+                            terminalLog('warn', 'Invalid wrapper dimensions, retrying...', { height, width, attempt: this.resizeRetryCount });
                             if (this.resizeRetryTimeout) {
                                 clearTimeout(this.resizeRetryTimeout);
                             }
                             this.resizeRetryTimeout = setTimeout(() => this.resizeTerminal(true), 100);
                         } else {
-                            console.error('[Terminal] Max resize retries reached for invalid dimensions');
+                            terminalLog('error', 'Max resize retries reached for invalid dimensions');
                         }
                         return;
                     }
@@ -650,13 +668,13 @@ export function initializeTerminalComponent() {
                         // Fallback values if char size not available yet
                         this.resizeRetryCount++;
                         if (this.resizeRetryCount < this.maxResizeRetries) {
-                            console.warn('[Terminal] Character size not available, retrying...', { attempt: this.resizeRetryCount });
+                            terminalLog('warn', 'Character size not available, retrying...', { attempt: this.resizeRetryCount });
                             if (this.resizeRetryTimeout) {
                                 clearTimeout(this.resizeRetryTimeout);
                             }
                             this.resizeRetryTimeout = setTimeout(() => this.resizeTerminal(true), 100);
                         } else {
-                            console.error('[Terminal] Max resize retries reached for char size');
+                            terminalLog('error', 'Max resize retries reached for char size');
                         }
                         return;
                     }
@@ -677,10 +695,10 @@ export function initializeTerminalComponent() {
                             });
                         }
                     } else {
-                        console.warn('[Terminal] Invalid calculated dimensions:', { rows, cols, height, width, charSize });
+                        terminalLog('warn', 'Invalid calculated dimensions:', { rows, cols, height, width, charSize });
                     }
                 } catch (error) {
-                    console.error('[Terminal] Resize error:', error);
+                    terminalLog('error', 'Resize error:', error);
                 }
             },
 

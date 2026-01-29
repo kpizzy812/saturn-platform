@@ -50,7 +50,7 @@ const providerTypes: ProviderOption[] = [
         iconBg: 'bg-gradient-to-br from-pink-500 to-pink-600',
         icon: '🪣',
         defaultRegion: 'us-east-1',
-        defaultEndpoint: 'https://minio.example.com',
+        defaultEndpoint: '',
     },
     {
         type: 'custom',

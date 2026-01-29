@@ -128,7 +128,7 @@ export default function PreviewSettingsPage({ application, settings: propSetting
                                         onChange={(e) =>
                                             setSettings({ ...settings, preview_url_template: e.target.value || null })
                                         }
-                                        placeholder="pr-{{pr_id}}-{{app_name}}.preview.example.com"
+                                        placeholder="pr-{{pr_id}}-{{app_name}}.preview.your-domain.com"
                                     />
                                     <p className="text-xs text-foreground-muted mt-2">
                                         Available variables: <code className="text-xs">{'{{pr_id}}'}</code>,{' '}

@@ -280,11 +280,11 @@ export function DomainsTab({ service, domains: initialDomains = [] }: Props) {
                                     type="text"
                                     value={newDomain}
                                     onChange={(e) => setNewDomain(e.target.value)}
-                                    placeholder="api.example.com"
+                                    placeholder="api.your-domain.com"
                                     required
                                 />
                                 <p className="mt-2 text-xs text-foreground-muted">
-                                    Enter the full domain name (e.g., api.example.com)
+                                    Enter the full domain name (e.g., api.your-domain.com)
                                 </p>
                             </div>
                             <div className="flex justify-end gap-2">

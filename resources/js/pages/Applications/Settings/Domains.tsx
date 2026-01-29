@@ -125,7 +125,7 @@ export default function ApplicationDomains({ application, domains: propDomains, 
                         <Input
                             value={newDomain}
                             onChange={(e) => setNewDomain(e.target.value)}
-                            placeholder="app.example.com"
+                            placeholder="app.your-domain.com"
                             className="flex-1"
                             onKeyPress={(e) => e.key === 'Enter' && handleAddDomain()}
                         />

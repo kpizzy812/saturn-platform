@@ -168,20 +168,12 @@ export default function OnboardingWelcome({ user }: Props) {
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
-                                    <a
-                                        href="https://docs.example.com"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <Button variant="ghost">View Docs</Button>
-                                    </a>
-                                    <a
-                                        href="https://docs.example.com/guides"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <Button variant="ghost">Quick Start Guide</Button>
-                                    </a>
+                                    <Link href="/settings">
+                                        <Button variant="ghost">View Settings</Button>
+                                    </Link>
+                                    <Link href="/servers">
+                                        <Button variant="ghost">Add Server</Button>
+                                    </Link>
                                 </div>
                             </div>
                         </CardContent>
