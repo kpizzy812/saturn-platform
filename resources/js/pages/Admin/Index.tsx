@@ -28,7 +28,7 @@ interface SystemStats {
 
 interface RecentActivity {
     id: number;
-    action: string;
+    action: string | null;
     description: string | null;
     user_name: string | null;
     team_name: string | null;
@@ -100,7 +100,8 @@ function StatCard({ title, value, subtitle, icon: Icon, trend }: {
     );
 }
 
-function getActionIcon(action: string) {
+function getActionIcon(action: string | null | undefined) {
+    if (!action) return <Activity className="h-4 w-4 text-foreground-muted" />;
     const actionLower = action.toLowerCase();
     if (actionLower.includes('deploy') || actionLower.includes('rollback')) {
         return <Activity className="h-4 w-4 text-primary" />;
@@ -152,7 +153,8 @@ function formatDescription(description: string | null): string {
     return description.slice(0, 150) + (description.length > 150 ? '...' : '');
 }
 
-function formatRelativeTime(dateString: string): string {
+function formatRelativeTime(dateString: string | null | undefined): string {
+    if (!dateString) return 'Unknown';
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -176,7 +178,7 @@ function ActivityItem({ activity }: { activity: RecentActivity }) {
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground capitalize">
-                        {activity.action.replace(/_/g, ' ')}
+                        {(activity.action || 'unknown').replace(/_/g, ' ')}
                     </span>
                     {activity.resource_type && (
                         <span className="text-xs text-foreground-muted">
