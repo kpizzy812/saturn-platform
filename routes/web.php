@@ -1385,7 +1385,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     })->name('deployments.index');
 
     Route::get('/deployments/{uuid}', function (string $uuid) {
-        $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        $deployment = \App\Models\ApplicationDeploymentQueue::with(['application', 'user'])
+            ->where('deployment_uuid', $uuid)
+            ->first();
 
         if (! $deployment) {
             return \Inertia\Inertia::render('Deployments/Show', ['deployment' => null]);
@@ -1394,13 +1396,32 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
         $logs = $deployment->logs ? json_decode($deployment->logs, true) : [];
         $buildLogs = [];
         $deployLogs = [];
+
+        // Filter out hidden logs and format for display
         foreach ($logs as $log) {
-            $line = ($log['timestamp'] ?? '').' '.($log['output'] ?? $log['message'] ?? '');
-            if (($log['type'] ?? '') === 'deploy') {
-                $deployLogs[] = trim($line);
-            } else {
-                $buildLogs[] = trim($line);
+            // Skip hidden logs (internal commands, sensitive data)
+            if (! empty($log['hidden'])) {
+                continue;
             }
+
+            $timestamp = $log['timestamp'] ?? '';
+            $output = $log['output'] ?? $log['message'] ?? '';
+            $type = $log['type'] ?? 'stdout';
+
+            // Format timestamp if present
+            $formattedLine = $output;
+            if ($timestamp) {
+                try {
+                    $time = \Carbon\Carbon::parse($timestamp)->format('H:i:s');
+                    $formattedLine = "[$time] ".$output;
+                } catch (\Exception $e) {
+                    $formattedLine = $output;
+                }
+            }
+
+            // All logs go to buildLogs since we don't have separate deploy phase
+            // The build process includes pulling, building, and deploying
+            $buildLogs[] = trim($formattedLine);
         }
 
         // Calculate duration (use started_at if available, fallback to created_at for old deployments)
@@ -1415,20 +1436,56 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             }
         }
 
+        // Get application for environment variables and UUID
+        $application = $deployment->application;
+        $environment = [];
+
+        if ($application) {
+            // Get environment variables (mask sensitive values)
+            $envVars = $application->environment_variables ?? collect();
+            foreach ($envVars as $envVar) {
+                $key = $envVar->key;
+                $value = $envVar->is_shown_once ? '********' : ($envVar->value ?? '');
+                $environment[$key] = $value;
+            }
+        }
+
+        // Get user who triggered the deployment
+        $author = null;
+        if ($deployment->user) {
+            $author = [
+                'name' => $deployment->user->name,
+                'email' => $deployment->user->email,
+            ];
+        }
+
+        // Determine trigger type
+        $trigger = 'manual';
+        if ($deployment->is_webhook) {
+            $trigger = 'push';
+        } elseif ($deployment->is_api) {
+            $trigger = 'api';
+        } elseif ($deployment->rollback) {
+            $trigger = 'rollback';
+        }
+
         $data = [
             'id' => $deployment->id,
             'uuid' => $deployment->deployment_uuid,
             'application_id' => $deployment->application_id,
+            'application_uuid' => $application?->uuid,
             'status' => $deployment->status,
             'commit' => $deployment->commit,
-            'commit_message' => $deployment->commit_message,
+            'commit_message' => $deployment->commit_message ?? 'Deployment',
             'created_at' => $deployment->created_at?->toISOString(),
             'updated_at' => $deployment->updated_at?->toISOString(),
-            'service_name' => $deployment->application_name,
-            'trigger' => $deployment->is_webhook ? 'push' : ($deployment->rollback ? 'rollback' : 'manual'),
+            'service_name' => $deployment->application_name ?? $application?->name,
+            'trigger' => $trigger,
             'duration' => $duration,
             'build_logs' => $buildLogs,
             'deploy_logs' => $deployLogs,
+            'environment' => $environment,
+            'author' => $author,
         ];
 
         return \Inertia\Inertia::render('Deployments/Show', [
