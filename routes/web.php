@@ -425,10 +425,87 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
             abort(404);
         }
 
+        // Get projects with environments
+        $projects = \App\Models\Project::ownedByCurrentTeam()
+            ->with('environments')
+            ->get();
+
+        // Get localhost (platform's master server)
+        $localhost = \App\Models\Server::where('id', 0)->first();
+
+        // Get user's additional servers
+        $userServers = \App\Models\Server::ownedByCurrentTeam()
+            ->where('id', '!=', 0)
+            ->whereRelation('settings', 'is_usable', true)
+            ->get();
+
         return \Inertia\Inertia::render('Templates/Deploy', [
             'template' => $template,
+            'projects' => $projects,
+            'localhost' => $localhost,
+            'userServers' => $userServers,
+            'needsProject' => $projects->isEmpty(),
         ]);
     })->name('templates.deploy');
+
+    // Template deploy action (POST)
+    Route::post('/templates/{id}/deploy', function (string $id, \Illuminate\Http\Request $request) {
+        $templateService = app(\App\Services\TemplateService::class);
+        $template = $templateService->getTemplate($id);
+
+        if (! $template) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'project_uuid' => 'required|string',
+            'environment_uuid' => 'required|string',
+            'server_uuid' => 'required|string',
+            'instant_deploy' => 'boolean',
+        ]);
+
+        // Find project and environment
+        $project = \App\Models\Project::ownedByCurrentTeam()
+            ->where('uuid', $validated['project_uuid'])
+            ->firstOrFail();
+
+        $environment = $project->environments()
+            ->where('uuid', $validated['environment_uuid'])
+            ->firstOrFail();
+
+        // Find server
+        $localhost = \App\Models\Server::where('id', 0)->first();
+        if ($localhost && $localhost->uuid === $validated['server_uuid']) {
+            $server = $localhost;
+        } else {
+            $server = \App\Models\Server::ownedByCurrentTeam()
+                ->where('uuid', $validated['server_uuid'])
+                ->firstOrFail();
+        }
+
+        $destination = $server->destinations()->first();
+        if (! $destination) {
+            return redirect()->back()->withErrors(['server_uuid' => 'Server has no destinations configured']);
+        }
+
+        // Create one-click service using the template
+        $result = \App\Actions\Service\CreateOneClickServiceAction::run(
+            type: $id,
+            server: $server,
+            environment: $environment,
+            destination: $destination,
+            instantDeploy: $validated['instant_deploy'] ?? false
+        );
+
+        if (isset($result['error'])) {
+            return redirect()->back()->withErrors(['template' => $result['error']]);
+        }
+
+        $service = $result['service'];
+
+        return redirect()->route('services.show', $service->uuid)
+            ->with('success', 'Service "'.$template['name'].'" deployed successfully!');
+    })->name('templates.deploy.store');
 
     // Service routes
     require __DIR__.'/web/services.php';

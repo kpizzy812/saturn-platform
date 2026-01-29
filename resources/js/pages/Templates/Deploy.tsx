@@ -1,91 +1,105 @@
 import { AppLayout } from '@/components/layout';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Link, router, useForm } from '@inertiajs/react';
+import { useState, useMemo } from 'react';
 import {
     ArrowLeft,
     ArrowRight,
     CheckCircle2,
     Zap,
-    Settings,
-    Server,
-    Eye,
-    EyeOff,
+    Server as ServerIcon,
+    FolderOpen,
     Loader2,
+    Box,
+    AlertCircle,
+    Plus,
 } from 'lucide-react';
-import * as Icons from 'lucide-react';
 
-interface DeployFormData {
-    projectName: string;
-    envVars: Record<string, string>;
-    serverId: string;
-    autoDeploy: boolean;
+interface Template {
+    id: string;
+    name: string;
+    description: string;
+    logo?: string | null;
+    category: string;
+    tags: string[];
+    deployCount: number;
+    featured?: boolean;
+    documentation?: string | null;
+    port?: string | null;
 }
 
-// Mock data - would come from props in production
-const template = {
-    id: 'nextjs-starter',
-    name: 'Next.js Starter',
-    icon: <Icons.Zap className="h-6 w-6" />,
-    iconBg: 'bg-gradient-to-br from-slate-800 to-slate-900',
-    iconColor: 'text-white',
-    envVars: [
-        {
-            name: 'DATABASE_URL',
-            description: 'PostgreSQL connection string',
-            required: true,
-            default: 'postgresql://user:password@postgres:5432/mydb',
-            sensitive: true,
-        },
-        {
-            name: 'REDIS_URL',
-            description: 'Redis connection string',
-            required: true,
-            default: 'redis://redis:6379',
-            sensitive: false,
-        },
-        {
-            name: 'NEXT_PUBLIC_API_URL',
-            description: 'Public API URL',
-            required: false,
-            default: '',
-            sensitive: false,
-        },
-        {
-            name: 'SECRET_KEY',
-            description: 'Secret key for sessions',
-            required: true,
-            default: '',
-            sensitive: true,
-        },
-    ],
-};
+interface Environment {
+    id: number;
+    uuid: string;
+    name: string;
+}
 
-const servers = [
-    { id: '1', name: 'Production Server', region: 'us-east-1', status: 'online' },
-    { id: '2', name: 'Staging Server', region: 'us-west-2', status: 'online' },
-    { id: '3', name: 'Development Server', region: 'eu-west-1', status: 'online' },
-];
+interface Project {
+    id: number;
+    uuid: string;
+    name: string;
+    environments: Environment[];
+}
 
-export default function TemplateDeploy() {
+interface Server {
+    id: number;
+    uuid: string;
+    name: string;
+    ip: string;
+}
+
+interface Props {
+    template?: Template;
+    projects: Project[];
+    localhost?: Server | null;
+    userServers: Server[];
+    needsProject: boolean;
+}
+
+export default function TemplateDeploy({ template, projects, localhost, userServers, needsProject }: Props) {
     const [currentStep, setCurrentStep] = useState(1);
-    const [isDeploying, setIsDeploying] = useState(false);
-    const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-    const [formData, setFormData] = useState<DeployFormData>({
-        projectName: '',
-        envVars: template.envVars.reduce((acc, envVar) => {
-            acc[envVar.name] = envVar.default || '';
-            return acc;
-        }, {} as Record<string, string>),
-        serverId: servers[0].id,
-        autoDeploy: true,
+
+    const { data, setData, post, processing, errors } = useForm({
+        project_uuid: projects[0]?.uuid || '',
+        environment_uuid: projects[0]?.environments[0]?.uuid || '',
+        server_uuid: localhost?.uuid || userServers[0]?.uuid || '',
+        instant_deploy: true,
     });
 
-    const totalSteps = 4;
+    // Combine servers
+    const allServers = useMemo(() => {
+        const servers: Server[] = [];
+        if (localhost) {
+            servers.push({ ...localhost, name: localhost.name || 'Platform Server (localhost)' });
+        }
+        servers.push(...userServers);
+        return servers;
+    }, [localhost, userServers]);
+
+    // Get selected project's environments
+    const selectedProject = projects.find(p => p.uuid === data.project_uuid);
+    const environments = selectedProject?.environments || [];
+
+    // Loading state
+    if (!template) {
+        return (
+            <AppLayout title="Loading..." showNewProject={false}>
+                <div className="mx-auto max-w-3xl">
+                    <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                            <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
+                            <p className="text-foreground-muted">Loading template...</p>
+                        </div>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
+    const logoUrl = template.logo ? `/${template.logo}` : null;
+    const totalSteps = 3;
 
     const handleNext = () => {
         if (currentStep < totalSteps) {
@@ -100,35 +114,62 @@ export default function TemplateDeploy() {
     };
 
     const handleDeploy = () => {
-        setIsDeploying(true);
-        // Simulate deployment
-        setTimeout(() => {
-            // In production, this would redirect to the actual project
-            router.visit('/dashboard');
-        }, 3000);
+        post(`/templates/${template.id}/deploy`);
     };
 
     const canProceed = () => {
         switch (currentStep) {
             case 1:
-                return formData.projectName.trim().length > 0;
+                return data.project_uuid && data.environment_uuid;
             case 2:
-                return template.envVars
-                    .filter(v => v.required)
-                    .every(v => formData.envVars[v.name]?.trim().length > 0);
-            case 3:
-                return formData.serverId.length > 0;
+                return data.server_uuid;
             default:
                 return true;
         }
     };
 
-    const toggleSecretVisibility = (varName: string) => {
-        setShowSecrets(prev => ({ ...prev, [varName]: !prev[varName] }));
+    const handleProjectChange = (projectUuid: string) => {
+        const project = projects.find(p => p.uuid === projectUuid);
+        setData({
+            ...data,
+            project_uuid: projectUuid,
+            environment_uuid: project?.environments[0]?.uuid || '',
+        });
     };
 
+    // If user needs to create a project first
+    if (needsProject) {
+        return (
+            <AppLayout title={`Deploy ${template.name}`} showNewProject={false}>
+                <div className="mx-auto max-w-3xl">
+                    <Link
+                        href={`/templates/${template.id}`}
+                        className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Template
+                    </Link>
+
+                    <div className="rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-8 text-center">
+                        <AlertCircle className="mx-auto mb-4 h-12 w-12 text-warning" />
+                        <h2 className="mb-2 text-xl font-semibold text-foreground">Create a Project First</h2>
+                        <p className="mb-6 text-foreground-muted">
+                            You need to create a project before deploying templates. Projects help organize your services and applications.
+                        </p>
+                        <Link href="/projects/create">
+                            <Button size="lg">
+                                <Plus className="mr-2 h-5 w-5" />
+                                Create Project
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
+
     return (
-        <AppLayout title="Deploy Template" showNewProject={false}>
+        <AppLayout title={`Deploy ${template.name}`} showNewProject={false}>
             <div className="mx-auto max-w-3xl">
                 {/* Back link */}
                 <Link
@@ -141,19 +182,23 @@ export default function TemplateDeploy() {
 
                 {/* Header */}
                 <div className="mb-8 flex items-center gap-4">
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${template.iconBg} ${template.iconColor} shadow-lg`}>
-                        {template.icon}
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-background-tertiary shadow-lg">
+                        {logoUrl ? (
+                            <img src={logoUrl} alt={template.name} className="h-9 w-9 object-contain" />
+                        ) : (
+                            <Box className="h-8 w-8 text-foreground-muted" />
+                        )}
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Deploy {template.name}</h1>
-                        <p className="text-foreground-muted">Configure and deploy your template</p>
+                        <p className="text-foreground-muted">Configure and deploy your service</p>
                     </div>
                 </div>
 
                 {/* Progress Indicator */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between">
-                        {[1, 2, 3, 4].map((step) => (
+                        {[1, 2, 3].map((step) => (
                             <div key={step} className="flex flex-1 items-center">
                                 <div className="flex flex-col items-center">
                                     <div
@@ -173,12 +218,11 @@ export default function TemplateDeploy() {
                                     </div>
                                     <span className="mt-2 text-xs text-foreground-muted">
                                         {step === 1 && 'Project'}
-                                        {step === 2 && 'Configure'}
-                                        {step === 3 && 'Server'}
-                                        {step === 4 && 'Review'}
+                                        {step === 2 && 'Server'}
+                                        {step === 3 && 'Review'}
                                     </span>
                                 </div>
-                                {step < 4 && (
+                                {step < 3 && (
                                     <div
                                         className={`mx-2 h-0.5 flex-1 ${
                                             step < currentStep ? 'bg-primary' : 'bg-border'
@@ -190,113 +234,99 @@ export default function TemplateDeploy() {
                     </div>
                 </div>
 
-                {/* Step Content */}
-                <div className="mb-8 rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-8">
-                    {/* Step 1: Project Name */}
-                    {currentStep === 1 && (
-                        <div>
-                            <div className="mb-6">
-                                <Settings className="mb-3 h-8 w-8 text-primary" />
-                                <h2 className="mb-2 text-xl font-semibold text-foreground">Configure Project</h2>
-                                <p className="text-foreground-muted">
-                                    Choose a name for your project. This will be used to identify your deployment.
-                                </p>
-                            </div>
-                            <Input
-                                label="Project Name"
-                                placeholder="my-nextjs-app"
-                                value={formData.projectName}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, projectName: e.target.value })
-                                }
-                                hint="Use lowercase letters, numbers, and hyphens"
-                            />
-                        </div>
-                    )}
-
-                    {/* Step 2: Environment Variables */}
-                    {currentStep === 2 && (
-                        <div>
-                            <div className="mb-6">
-                                <Settings className="mb-3 h-8 w-8 text-primary" />
-                                <h2 className="mb-2 text-xl font-semibold text-foreground">
-                                    Set Environment Variables
-                                </h2>
-                                <p className="text-foreground-muted">
-                                    Configure the environment variables for your application. Required fields are marked.
-                                </p>
-                            </div>
-                            <div className="space-y-4">
-                                {template.envVars.map((envVar) => (
-                                    <div key={envVar.name} className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <label className="text-sm font-medium text-foreground">
-                                                {envVar.name}
-                                            </label>
-                                            {envVar.required && (
-                                                <Badge variant="danger" className="text-xs">
-                                                    Required
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <p className="text-xs text-foreground-muted">{envVar.description}</p>
-                                        <div className="relative">
-                                            <input
-                                                type={
-                                                    envVar.sensitive && !showSecrets[envVar.name]
-                                                        ? 'password'
-                                                        : 'text'
-                                                }
-                                                value={formData.envVars[envVar.name]}
-                                                onChange={(e) =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        envVars: {
-                                                            ...formData.envVars,
-                                                            [envVar.name]: e.target.value,
-                                                        },
-                                                    })
-                                                }
-                                                placeholder={envVar.default || `Enter ${envVar.name}`}
-                                                className="h-10 w-full rounded-md border border-border bg-background-secondary px-3 py-2 pr-10 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                                            />
-                                            {envVar.sensitive && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleSecretVisibility(envVar.name)}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
-                                                >
-                                                    {showSecrets[envVar.name] ? (
-                                                        <EyeOff className="h-4 w-4" />
-                                                    ) : (
-                                                        <Eye className="h-4 w-4" />
-                                                    )}
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
+                {/* Error Display */}
+                {Object.keys(errors).length > 0 && (
+                    <div className="mb-6 rounded-lg border border-danger/50 bg-danger/10 p-4">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="h-5 w-5 text-danger flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-danger">Deployment Error</p>
+                                {Object.values(errors).map((error, index) => (
+                                    <p key={index} className="text-sm text-danger/80">{error}</p>
                                 ))}
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {/* Step 3: Select Server */}
-                    {currentStep === 3 && (
+                {/* Step Content */}
+                <div className="mb-8 rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-8">
+                    {/* Step 1: Select Project & Environment */}
+                    {currentStep === 1 && (
                         <div>
                             <div className="mb-6">
-                                <Server className="mb-3 h-8 w-8 text-primary" />
-                                <h2 className="mb-2 text-xl font-semibold text-foreground">Select Server</h2>
+                                <FolderOpen className="mb-3 h-8 w-8 text-primary" />
+                                <h2 className="mb-2 text-xl font-semibold text-foreground">Select Project</h2>
                                 <p className="text-foreground-muted">
-                                    Choose where you want to deploy your application.
+                                    Choose where to deploy this service.
                                 </p>
                             </div>
+
+                            {/* Project Selection */}
+                            <div className="mb-6">
+                                <label className="mb-2 block text-sm font-medium text-foreground">Project</label>
+                                <div className="space-y-2">
+                                    {projects.map((project) => (
+                                        <button
+                                            key={project.uuid}
+                                            onClick={() => handleProjectChange(project.uuid)}
+                                            className={`w-full rounded-lg border p-4 text-left transition-all ${
+                                                data.project_uuid === project.uuid
+                                                    ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                                    : 'border-border bg-background-secondary hover:border-border/80'
+                                            }`}
+                                        >
+                                            <h3 className="font-semibold text-foreground">{project.name}</h3>
+                                            <p className="text-sm text-foreground-muted">
+                                                {project.environments.length} environment{project.environments.length !== 1 ? 's' : ''}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Environment Selection */}
+                            {environments.length > 0 && (
+                                <div>
+                                    <label className="mb-2 block text-sm font-medium text-foreground">Environment</label>
+                                    <div className="space-y-2">
+                                        {environments.map((env) => (
+                                            <button
+                                                key={env.uuid}
+                                                onClick={() => setData('environment_uuid', env.uuid)}
+                                                className={`w-full rounded-lg border p-3 text-left transition-all ${
+                                                    data.environment_uuid === env.uuid
+                                                        ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                                        : 'border-border bg-background hover:border-border/80'
+                                                }`}
+                                            >
+                                                <span className="font-medium text-foreground">{env.name}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Step 2: Select Server */}
+                    {currentStep === 2 && (
+                        <div>
+                            <div className="mb-6">
+                                <ServerIcon className="mb-3 h-8 w-8 text-primary" />
+                                <h2 className="mb-2 text-xl font-semibold text-foreground">Select Server</h2>
+                                <p className="text-foreground-muted">
+                                    Choose where to run this service.
+                                </p>
+                            </div>
+
                             <div className="space-y-3">
-                                {servers.map((server) => (
+                                {allServers.map((server) => (
                                     <button
-                                        key={server.id}
-                                        onClick={() => setFormData({ ...formData, serverId: server.id })}
+                                        key={server.uuid}
+                                        onClick={() => setData('server_uuid', server.uuid)}
                                         className={`w-full rounded-lg border p-4 text-left transition-all ${
-                                            formData.serverId === server.id
+                                            data.server_uuid === server.uuid
                                                 ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background'
                                                 : 'border-border bg-background-secondary hover:border-border/80'
                                         }`}
@@ -305,32 +335,38 @@ export default function TemplateDeploy() {
                                             <div>
                                                 <h3 className="font-semibold text-foreground">{server.name}</h3>
                                                 <p className="text-sm text-foreground-muted">
-                                                    Region: {server.region}
+                                                    {server.ip}
                                                 </p>
                                             </div>
-                                            <Badge variant="success">{server.status}</Badge>
+                                            <Badge variant="success">Online</Badge>
                                         </div>
                                     </button>
                                 ))}
                             </div>
+
+                            {allServers.length === 0 && (
+                                <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 text-center">
+                                    <AlertCircle className="mx-auto mb-2 h-8 w-8 text-warning" />
+                                    <p className="text-foreground-muted">No servers available. Please add a server first.</p>
+                                </div>
+                            )}
+
                             <div className="mt-6">
                                 <Checkbox
-                                    id="auto-deploy"
-                                    label="Enable automatic deployments"
-                                    checked={formData.autoDeploy}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, autoDeploy: e.target.checked })
-                                    }
+                                    id="instant-deploy"
+                                    label="Start service immediately after creation"
+                                    checked={data.instant_deploy}
+                                    onChange={(e) => setData('instant_deploy', e.target.checked)}
                                 />
                                 <p className="ml-6 mt-1 text-xs text-foreground-muted">
-                                    Automatically deploy when changes are pushed to your repository
+                                    The service will be started automatically after deployment
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {/* Step 4: Review */}
-                    {currentStep === 4 && (
+                    {/* Step 3: Review */}
+                    {currentStep === 3 && (
                         <div>
                             <div className="mb-6">
                                 <CheckCircle2 className="mb-3 h-8 w-8 text-primary" />
@@ -339,44 +375,41 @@ export default function TemplateDeploy() {
                                     Review your configuration before deploying.
                                 </p>
                             </div>
+
                             <div className="space-y-4">
                                 <div className="rounded-lg border border-border/50 bg-background p-4">
-                                    <h3 className="mb-2 text-sm font-semibold text-foreground-muted">
-                                        Project Name
-                                    </h3>
-                                    <p className="text-foreground">{formData.projectName}</p>
-                                </div>
-                                <div className="rounded-lg border border-border/50 bg-background p-4">
-                                    <h3 className="mb-2 text-sm font-semibold text-foreground-muted">
-                                        Environment Variables
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {template.envVars.map((envVar) => (
-                                            <div key={envVar.name} className="flex justify-between">
-                                                <code className="text-sm text-foreground">{envVar.name}</code>
-                                                <span className="text-sm text-foreground-muted">
-                                                    {formData.envVars[envVar.name]
-                                                        ? envVar.sensitive
-                                                            ? '••••••••'
-                                                            : formData.envVars[envVar.name]
-                                                        : 'Not set'}
-                                                </span>
-                                            </div>
-                                        ))}
+                                    <h3 className="mb-2 text-sm font-semibold text-foreground-muted">Template</h3>
+                                    <div className="flex items-center gap-3">
+                                        {logoUrl && <img src={logoUrl} alt={template.name} className="h-6 w-6 object-contain" />}
+                                        <span className="text-foreground">{template.name}</span>
                                     </div>
                                 </div>
+
+                                <div className="rounded-lg border border-border/50 bg-background p-4">
+                                    <h3 className="mb-2 text-sm font-semibold text-foreground-muted">Project</h3>
+                                    <p className="text-foreground">{selectedProject?.name}</p>
+                                </div>
+
+                                <div className="rounded-lg border border-border/50 bg-background p-4">
+                                    <h3 className="mb-2 text-sm font-semibold text-foreground-muted">Environment</h3>
+                                    <p className="text-foreground">
+                                        {environments.find(e => e.uuid === data.environment_uuid)?.name}
+                                    </p>
+                                </div>
+
                                 <div className="rounded-lg border border-border/50 bg-background p-4">
                                     <h3 className="mb-2 text-sm font-semibold text-foreground-muted">Server</h3>
                                     <p className="text-foreground">
-                                        {servers.find(s => s.id === formData.serverId)?.name}
+                                        {allServers.find(s => s.uuid === data.server_uuid)?.name}
                                     </p>
                                 </div>
+
                                 <div className="rounded-lg border border-border/50 bg-background p-4">
                                     <h3 className="mb-2 text-sm font-semibold text-foreground-muted">Options</h3>
                                     <p className="text-foreground">
-                                        {formData.autoDeploy
-                                            ? 'Automatic deployments enabled'
-                                            : 'Manual deployments only'}
+                                        {data.instant_deploy
+                                            ? 'Service will start immediately'
+                                            : 'Service will be created but not started'}
                                     </p>
                                 </div>
                             </div>
@@ -389,7 +422,7 @@ export default function TemplateDeploy() {
                     <Button
                         variant="ghost"
                         onClick={handleBack}
-                        disabled={currentStep === 1 || isDeploying}
+                        disabled={currentStep === 1 || processing}
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back
@@ -401,8 +434,8 @@ export default function TemplateDeploy() {
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     ) : (
-                        <Button onClick={handleDeploy} disabled={isDeploying}>
-                            {isDeploying ? (
+                        <Button onClick={handleDeploy} disabled={processing}>
+                            {processing ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Deploying...
@@ -418,14 +451,14 @@ export default function TemplateDeploy() {
                 </div>
 
                 {/* Deploying State */}
-                {isDeploying && (
+                {processing && (
                     <div className="mt-6 rounded-lg border border-primary/50 bg-primary/10 p-4">
                         <div className="flex items-center gap-3">
                             <Loader2 className="h-5 w-5 animate-spin text-primary" />
                             <div>
-                                <p className="font-semibold text-foreground">Deploying your application...</p>
+                                <p className="font-semibold text-foreground">Deploying {template.name}...</p>
                                 <p className="text-sm text-foreground-muted">
-                                    This may take a few minutes. You'll be redirected when complete.
+                                    This may take a moment. You'll be redirected when complete.
                                 </p>
                             </div>
                         </div>
