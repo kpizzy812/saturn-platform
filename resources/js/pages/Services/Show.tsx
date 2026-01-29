@@ -11,6 +11,17 @@ import {
 } from 'lucide-react';
 import type { Service, ServiceContainer } from '@/types';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
+import { formatRelativeTime, formatBytes } from '@/lib/utils';
+
+// Map activity log status to deployment status
+function mapDeploymentStatus(status?: string): 'finished' | 'failed' | 'in_progress' | 'queued' {
+    if (!status) return 'finished';
+    const s = status.toLowerCase();
+    if (s === 'failed' || s === 'error') return 'failed';
+    if (s === 'in_progress' || s === 'running' || s === 'deploying') return 'in_progress';
+    if (s === 'queued' || s === 'pending') return 'queued';
+    return 'finished';
+}
 import { DeploymentsTab } from './Deployments';
 import { LogsTab } from './Logs';
 import { VariablesTab } from './Variables';
@@ -29,6 +40,19 @@ export default function ServiceShow({ service, containers = [] }: Props) {
     const [currentStatus, setCurrentStatus] = useState(service?.status || 'running');
     const { addToast } = useToast();
 
+    // Real-time service status updates
+    useRealtimeStatus({
+        onServiceStatusChange: () => {
+            // Reload page data when service status changes
+            router.reload({ only: ['service', 'containers'] });
+        },
+    });
+
+    // Sync local state when service prop changes
+    useEffect(() => {
+        setCurrentStatus(service?.status || 'running');
+    }, [service?.status]);
+
     // Show loading state if service is not available
     if (!service) {
         return (
@@ -42,19 +66,6 @@ export default function ServiceShow({ service, containers = [] }: Props) {
             </AppLayout>
         );
     }
-
-    // Real-time service status updates
-    const { isConnected } = useRealtimeStatus({
-        onServiceStatusChange: () => {
-            // Reload page data when service status changes
-            router.reload({ only: ['service', 'containers'] });
-        },
-    });
-
-    // Sync local state when service prop changes
-    useEffect(() => {
-        setCurrentStatus(service?.status || 'running');
-    }, [service?.status]);
 
     const status = currentStatus;
 
@@ -196,21 +207,121 @@ export default function ServiceShow({ service, containers = [] }: Props) {
     );
 }
 
+interface ServiceMetrics {
+    cpu: string;
+    memory: string;
+    network: string;
+}
+
+interface ServiceDeployment {
+    id: number;
+    uuid: string;
+    commit: string;
+    message: string;
+    status: 'finished' | 'failed' | 'in_progress' | 'queued';
+    time: string;
+    duration: string;
+}
+
 function OverviewTab({ service }: { service: Service }) {
-    const metrics = {
+    const [metrics, setMetrics] = useState<ServiceMetrics>({
         cpu: '-',
         memory: '-',
         network: '-',
-    };
+    });
+    const [recentDeployments, setRecentDeployments] = useState<ServiceDeployment[]>([]);
+    const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
+    const [isLoadingDeployments, setIsLoadingDeployments] = useState(true);
 
-    const recentDeployments: Array<{
-        id: number;
-        commit: string;
-        message: string;
-        status: 'finished' | 'failed' | 'in_progress';
-        time: string;
-        duration: string;
-    }> = [];
+    // Fetch container metrics
+    useEffect(() => {
+        const fetchMetrics = async () => {
+            try {
+                const response = await fetch(`/_internal/services/${service.uuid}/container-stats`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Aggregate metrics from all containers
+                    if (data.containers && data.containers.length > 0) {
+                        let totalCpu = 0;
+                        let totalMemory = 0;
+                        let memoryLimit = 0;
+                        let totalNetworkRx = 0;
+                        let totalNetworkTx = 0;
+
+                        data.containers.forEach((container: {
+                            cpu_percent?: number;
+                            memory_usage?: number;
+                            memory_limit?: number;
+                            network_rx?: number;
+                            network_tx?: number;
+                        }) => {
+                            totalCpu += container.cpu_percent || 0;
+                            totalMemory += container.memory_usage || 0;
+                            memoryLimit += container.memory_limit || 0;
+                            totalNetworkRx += container.network_rx || 0;
+                            totalNetworkTx += container.network_tx || 0;
+                        });
+
+                        setMetrics({
+                            cpu: `${totalCpu.toFixed(1)}%`,
+                            memory: memoryLimit > 0
+                                ? `${formatBytes(totalMemory)} / ${formatBytes(memoryLimit)}`
+                                : formatBytes(totalMemory),
+                            network: `↓${formatBytes(totalNetworkRx)} ↑${formatBytes(totalNetworkTx)}`,
+                        });
+                    }
+                }
+            } catch {
+                // Keep default values on error
+            } finally {
+                setIsLoadingMetrics(false);
+            }
+        };
+
+        fetchMetrics();
+        // Refresh metrics every 10 seconds
+        const interval = setInterval(fetchMetrics, 10000);
+        return () => clearInterval(interval);
+    }, [service.uuid]);
+
+    // Fetch recent deployments
+    useEffect(() => {
+        const fetchDeployments = async () => {
+            try {
+                const response = await fetch(`/api/v1/services/${service.uuid}/deployments?take=5`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const deployments = (data.deployments || data || []).map((d: {
+                        id: number;
+                        uuid?: string;
+                        properties?: {
+                            commit?: string;
+                            commit_message?: string;
+                            duration?: string;
+                            status?: string;
+                        };
+                        description?: string;
+                        created_at: string;
+                    }) => ({
+                        id: d.id,
+                        uuid: d.uuid || String(d.id),
+                        commit: d.properties?.commit?.substring(0, 7) || 'N/A',
+                        message: d.properties?.commit_message || d.description || 'Deployment',
+                        status: mapDeploymentStatus(d.properties?.status),
+                        time: formatRelativeTime(d.created_at),
+                        duration: d.properties?.duration || '-',
+                    }));
+                    setRecentDeployments(deployments);
+                }
+            } catch {
+                // Keep empty array on error
+            } finally {
+                setIsLoadingDeployments(false);
+            }
+        };
+
+        fetchDeployments();
+    }, [service.uuid]);
 
     return (
         <div className="space-y-6">
@@ -224,7 +335,11 @@ function OverviewTab({ service }: { service: Service }) {
                             </div>
                             <div>
                                 <p className="text-sm text-foreground-muted">CPU Usage</p>
-                                <p className="text-2xl font-bold text-foreground">{metrics.cpu}</p>
+                                {isLoadingMetrics ? (
+                                    <div className="h-8 w-16 animate-pulse rounded bg-background-tertiary" />
+                                ) : (
+                                    <p className="text-2xl font-bold text-foreground">{metrics.cpu}</p>
+                                )}
                             </div>
                         </div>
                     </CardContent>
@@ -238,7 +353,11 @@ function OverviewTab({ service }: { service: Service }) {
                             </div>
                             <div>
                                 <p className="text-sm text-foreground-muted">Memory</p>
-                                <p className="text-2xl font-bold text-foreground">{metrics.memory}</p>
+                                {isLoadingMetrics ? (
+                                    <div className="h-8 w-24 animate-pulse rounded bg-background-tertiary" />
+                                ) : (
+                                    <p className="text-2xl font-bold text-foreground">{metrics.memory}</p>
+                                )}
                             </div>
                         </div>
                     </CardContent>
@@ -252,7 +371,11 @@ function OverviewTab({ service }: { service: Service }) {
                             </div>
                             <div>
                                 <p className="text-sm text-foreground-muted">Network</p>
-                                <p className="text-2xl font-bold text-foreground">{metrics.network}</p>
+                                {isLoadingMetrics ? (
+                                    <div className="h-8 w-28 animate-pulse rounded bg-background-tertiary" />
+                                ) : (
+                                    <p className="text-2xl font-bold text-foreground">{metrics.network}</p>
+                                )}
                             </div>
                         </div>
                     </CardContent>
@@ -265,44 +388,68 @@ function OverviewTab({ service }: { service: Service }) {
                     <CardTitle>Recent Deployments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-3">
-                        {recentDeployments.map((deployment) => (
-                            <Link
-                                key={deployment.id}
-                                href={`/services/${service.uuid}/deployments/${deployment.id}`}
-                                className="block rounded-lg border border-border bg-background-secondary p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border/80 hover:bg-background-secondary/80 hover:shadow-md"
-                            >
-                                <div className="flex items-center justify-between">
+                    {isLoadingDeployments ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="animate-pulse rounded-lg border border-border bg-background-secondary p-4">
                                     <div className="flex items-center gap-3">
-                                        {deployment.status === 'finished' ? (
-                                            <CheckCircle className="h-4 w-4 text-primary" />
-                                        ) : deployment.status === 'failed' ? (
-                                            <XCircle className="h-4 w-4 text-danger" />
-                                        ) : (
-                                            <AlertCircle className="h-4 w-4 text-warning" />
-                                        )}
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
-                                                <code className="text-sm font-medium text-foreground">{deployment.commit}</code>
-                                                <span className="text-sm text-foreground-muted">·</span>
-                                                <span className="text-sm text-foreground">{deployment.message}</span>
-                                            </div>
-                                            <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">
-                                                <Clock className="h-3 w-3" />
-                                                <span>{deployment.time}</span>
-                                                <span>·</span>
-                                                <span>{deployment.duration}</span>
-                                            </div>
+                                        <div className="h-4 w-4 rounded-full bg-background-tertiary" />
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 w-3/4 rounded bg-background-tertiary" />
+                                            <div className="h-3 w-1/2 rounded bg-background-tertiary" />
                                         </div>
                                     </div>
-                                    <Badge variant={getStatusVariant(deployment.status)}>
-                                        {getStatusLabel(deployment.status)}
-                                    </Badge>
                                 </div>
-                            </Link>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : recentDeployments.length === 0 ? (
+                        <div className="py-8 text-center">
+                            <Activity className="mx-auto h-12 w-12 text-foreground-subtle" />
+                            <p className="mt-4 text-foreground-muted">No deployments yet</p>
+                            <p className="mt-1 text-sm text-foreground-subtle">
+                                Deployments will appear here after you deploy this service
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {recentDeployments.map((deployment) => (
+                                <Link
+                                    key={deployment.id}
+                                    href={`/services/${service.uuid}/deployments/${deployment.uuid}`}
+                                    className="block rounded-lg border border-border bg-background-secondary p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border/80 hover:bg-background-secondary/80 hover:shadow-md"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            {deployment.status === 'finished' ? (
+                                                <CheckCircle className="h-4 w-4 text-primary" />
+                                            ) : deployment.status === 'failed' ? (
+                                                <XCircle className="h-4 w-4 text-danger" />
+                                            ) : (
+                                                <AlertCircle className="h-4 w-4 text-warning" />
+                                            )}
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
+                                                    <code className="text-sm font-medium text-foreground">{deployment.commit}</code>
+                                                    <span className="text-sm text-foreground-muted">·</span>
+                                                    <span className="text-sm text-foreground">{deployment.message}</span>
+                                                </div>
+                                                <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">
+                                                    <Clock className="h-3 w-3" />
+                                                    <span>{deployment.time}</span>
+                                                    <span>·</span>
+                                                    <span>{deployment.duration}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <Badge variant={getStatusVariant(deployment.status)}>
+                                            {getStatusLabel(deployment.status)}
+                                        </Badge>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

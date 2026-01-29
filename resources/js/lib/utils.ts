@@ -30,6 +30,20 @@ export function formatRelativeTime(date: string | Date): string {
 }
 
 /**
+ * Formats bytes into a human-readable string (e.g., "1.5 GB", "256 MB")
+ */
+export function formatBytes(bytes: number, decimals = 1): string {
+    if (bytes === 0) return '0 B';
+    if (!bytes || isNaN(bytes)) return '-';
+
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(k));
+
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+}
+
+/**
  * Validates that a URL uses a safe protocol (http: or https:).
  * Prevents XSS attacks via javascript:, data:, vbscript: and other dangerous protocols.
  *

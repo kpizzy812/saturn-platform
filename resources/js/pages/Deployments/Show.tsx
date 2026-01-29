@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from '@/components/ui';
+import { Card, CardContent, CardHeader, Badge, Button, useConfirm } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
@@ -49,6 +49,121 @@ interface Props {
 export default function DeploymentShow({ deployment: propDeployment }: Props) {
     const deployment = propDeployment;
     const [activeTab, setActiveTab] = React.useState<'build' | 'deploy' | 'environment' | 'artifacts'>('build');
+    const confirm = useConfirm();
+
+    // Real-time log streaming for in-progress deployments
+    const {
+        logs: streamedLogs,
+        isStreaming,
+    } = useLogStream({
+        resourceType: 'deployment',
+        resourceId: deployment?.uuid || '',
+        enableWebSocket: deployment?.status === 'in_progress',
+    });
+
+    // Action handlers with confirmation dialogs
+    const handleCancelDeployment = async () => {
+        if (!deployment) return;
+        const confirmed = await confirm({
+            title: 'Cancel Deployment',
+            description: 'Are you sure you want to cancel this deployment? This action cannot be undone.',
+            confirmText: 'Cancel Deployment',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            await fetch(`/api/v1/deployments/${deployment.deployment_uuid || deployment.uuid}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+            });
+            router.reload();
+        }
+    };
+
+    const handleRollback = async () => {
+        if (!deployment?.application_uuid) return;
+        const confirmed = await confirm({
+            title: 'Rollback Deployment',
+            description: 'Are you sure you want to rollback to this deployment? This will redeploy the application with this version.',
+            confirmText: 'Rollback',
+            variant: 'warning',
+        });
+        if (confirmed) {
+            await fetch(`/api/v1/applications/${deployment.application_uuid}/rollback/${deployment.deployment_uuid || deployment.uuid}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+            });
+            router.reload();
+        }
+    };
+
+    const handleRedeploy = async () => {
+        if (!deployment?.application_uuid) return;
+        const confirmed = await confirm({
+            title: 'Redeploy Application',
+            description: 'Are you sure you want to redeploy this application?',
+            confirmText: 'Redeploy',
+        });
+        if (confirmed) {
+            await fetch(`/api/v1/deploy?uuid=${deployment.application_uuid}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+            });
+            router.visit('/deployments');
+        }
+    };
+
+    const handleRetry = async () => {
+        if (!deployment?.application_uuid) return;
+        const confirmed = await confirm({
+            title: 'Retry Deployment',
+            description: 'Are you sure you want to retry this deployment?',
+            confirmText: 'Retry',
+        });
+        if (confirmed) {
+            await fetch(`/api/v1/deploy?uuid=${deployment.application_uuid}`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                },
+            });
+            router.visit('/deployments');
+        }
+    };
+
+    // Use streamed logs if deployment is in progress and streaming is active,
+    // otherwise use the logs from props
+    const buildLogs = isStreaming && streamedLogs.length > 0
+        ? streamedLogs.filter(log => !log.source || log.source === 'build').map(log => log.message)
+        : (deployment?.build_logs || []);
+
+    const deployLogs = isStreaming && streamedLogs.length > 0
+        ? streamedLogs.filter(log => log.source === 'deploy').map(log => log.message)
+        : (deployment?.deploy_logs || []);
+
+    // Transform logs to LogLine format for LogsContainer
+    const buildLogsFormatted: LogLine[] = React.useMemo(() => {
+        return buildLogs.map((log, index) => ({
+            id: `build-${index}`,
+            content: log,
+        }));
+    }, [buildLogs]);
+
+    const deployLogsFormatted: LogLine[] = React.useMemo(() => {
+        return deployLogs.map((log, index) => ({
+            id: `deploy-${index}`,
+            content: log,
+        }));
+    }, [deployLogs]);
 
     if (!deployment) {
         return (
@@ -66,44 +181,6 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
             </AppLayout>
         );
     }
-
-    // Real-time log streaming for in-progress deployments
-    const {
-        logs: streamedLogs,
-        isStreaming,
-        isConnected,
-        clearLogs,
-        downloadLogs,
-    } = useLogStream({
-        resourceType: 'deployment',
-        resourceId: deployment.uuid,
-        enableWebSocket: deployment.status === 'in_progress',
-    });
-
-    // Use streamed logs if deployment is in progress and streaming is active,
-    // otherwise use the logs from props
-    const buildLogs = isStreaming && streamedLogs.length > 0
-        ? streamedLogs.filter(log => !log.source || log.source === 'build').map(log => log.message)
-        : (deployment.build_logs || []);
-
-    const deployLogs = isStreaming && streamedLogs.length > 0
-        ? streamedLogs.filter(log => log.source === 'deploy').map(log => log.message)
-        : (deployment.deploy_logs || []);
-
-    // Transform logs to LogLine format for LogsContainer
-    const buildLogsFormatted: LogLine[] = React.useMemo(() => {
-        return buildLogs.map((log, index) => ({
-            id: `build-${index}`,
-            content: log,
-        }));
-    }, [buildLogs]);
-
-    const deployLogsFormatted: LogLine[] = React.useMemo(() => {
-        return deployLogs.map((log, index) => ({
-            id: `deploy-${index}`,
-            content: log,
-        }));
-    }, [deployLogs]);
 
     const initials = deployment.author?.name
         .split(' ')
@@ -219,14 +296,7 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                                     <Button
                                         variant="danger"
                                         size="sm"
-                                        onClick={() => {
-                                            if (confirm('Cancel this deployment?')) {
-                                                fetch(`/api/v1/deployments/${deployment.deployment_uuid || deployment.uuid}/cancel`, {
-                                                    method: 'POST',
-                                                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
-                                                }).then(() => router.reload());
-                                            }
-                                        }}
+                                        onClick={handleCancelDeployment}
                                     >
                                         <StopCircle className="mr-2 h-4 w-4" />
                                         Cancel Deployment
@@ -234,49 +304,18 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                                 )}
                                 {deployment.status === 'finished' && deployment.application_uuid && (
                                     <>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => {
-                                                if (confirm('Rollback to this deployment?')) {
-                                                    fetch(`/api/v1/applications/${deployment.application_uuid}/rollback/${deployment.deployment_uuid || deployment.uuid}`, {
-                                                        method: 'POST',
-                                                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
-                                                    }).then(() => router.reload());
-                                                }
-                                            }}
-                                        >
+                                        <Button size="sm" onClick={handleRollback}>
                                             <RotateCw className="mr-2 h-4 w-4" />
                                             Rollback
                                         </Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => {
-                                                if (confirm('Redeploy this application?')) {
-                                                    fetch(`/api/v1/deploy?uuid=${deployment.application_uuid}`, {
-                                                        method: 'POST',
-                                                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
-                                                    }).then(() => router.visit('/deployments'));
-                                                }
-                                            }}
-                                        >
+                                        <Button variant="secondary" size="sm" onClick={handleRedeploy}>
                                             <Play className="mr-2 h-4 w-4" />
                                             Redeploy
                                         </Button>
                                     </>
                                 )}
                                 {deployment.status === 'failed' && deployment.application_uuid && (
-                                    <Button
-                                        size="sm"
-                                        onClick={() => {
-                                            if (confirm('Retry this deployment?')) {
-                                                fetch(`/api/v1/deploy?uuid=${deployment.application_uuid}`, {
-                                                    method: 'POST',
-                                                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '' },
-                                                }).then(() => router.visit('/deployments'));
-                                            }
-                                        }}
-                                    >
+                                    <Button size="sm" onClick={handleRetry}>
                                         <RotateCw className="mr-2 h-4 w-4" />
                                         Retry
                                     </Button>
