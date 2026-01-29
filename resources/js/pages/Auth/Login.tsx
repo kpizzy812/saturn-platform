@@ -6,9 +6,10 @@ import { Github, Mail } from 'lucide-react';
 interface Props {
     canResetPassword: boolean;
     status?: string;
+    is_registration_enabled?: boolean;
 }
 
-export default function Login({ canResetPassword, status }: Props) {
+export default function Login({ canResetPassword, status, is_registration_enabled = true }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
@@ -96,12 +97,14 @@ export default function Login({ canResetPassword, status }: Props) {
             </form>
 
             {/* Register Link */}
-            <p className="mt-6 text-center text-sm text-foreground-muted">
-                Don't have an account?{' '}
-                <Link href="/register" className="text-primary hover:underline">
-                    Sign up
-                </Link>
-            </p>
+            {is_registration_enabled && (
+                <p className="mt-6 text-center text-sm text-foreground-muted">
+                    Don't have an account?{' '}
+                    <Link href="/register" className="text-primary hover:underline">
+                        Sign up
+                    </Link>
+                </p>
+            )}
         </AuthLayout>
     );
 }
