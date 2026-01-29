@@ -2,7 +2,7 @@ import * as React from 'react';
 import { router } from '@inertiajs/react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
-import { Mail, UserX, Crown, Shield, User as UserIcon, Lock, Code } from 'lucide-react';
+import { Mail, UserX, Crown, Shield, User as UserIcon, Lock, Code, Copy, Check } from 'lucide-react';
 
 interface TeamMember {
     id: number;
@@ -17,6 +17,7 @@ interface Invitation {
     email: string;
     role: 'admin' | 'developer' | 'member' | 'viewer';
     sentAt: string;
+    link: string;
 }
 
 interface Props {
@@ -33,6 +34,13 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     const [inviteEmail, setInviteEmail] = React.useState('');
     const [inviteRole, setInviteRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
     const [isInviting, setIsInviting] = React.useState(false);
+    const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
+
+    const handleCopyLink = async (invitation: Invitation) => {
+        await navigator.clipboard.writeText(invitation.link);
+        setCopiedLinkId(invitation.id);
+        setTimeout(() => setCopiedLinkId(null), 2000);
+    };
 
     const handleInviteMember = (e: React.FormEvent) => {
         e.preventDefault();
@@ -193,10 +201,22 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-2">
                                             <p className="text-xs text-foreground-subtle">
                                                 Sent {new Date(invitation.sentAt).toLocaleDateString()}
                                             </p>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleCopyLink(invitation)}
+                                                title="Copy invitation link"
+                                            >
+                                                {copiedLinkId === invitation.id ? (
+                                                    <Check className="h-4 w-4 text-success" />
+                                                ) : (
+                                                    <Copy className="h-4 w-4" />
+                                                )}
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

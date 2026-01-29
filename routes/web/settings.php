@@ -37,6 +37,7 @@ Route::get('/settings/team', function () {
         'email' => $invitation->email,
         'role' => $invitation->role ?? 'member',
         'sentAt' => $invitation->created_at->toISOString(),
+        'link' => $invitation->link,
     ]);
 
     return Inertia::render('Settings/Team', [
