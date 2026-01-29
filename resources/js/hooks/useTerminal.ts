@@ -200,7 +200,8 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
      * Connect to WebSocket for terminal
      */
     const connect = React.useCallback(() => {
-        if (!enableWebSocket || !teamId || !serverId) {
+        // Use == null to check both null and undefined, but allow id=0
+        if (!enableWebSocket || teamId == null || !serverId) {
             return;
         }
 

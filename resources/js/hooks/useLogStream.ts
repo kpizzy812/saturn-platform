@@ -402,7 +402,8 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
      * Connect to WebSocket for log streaming
      */
     const connectWebSocket = React.useCallback(() => {
-        if (!enableWebSocket || !teamId || !resourceId) {
+        // Use == null to check both null and undefined, but allow id=0
+        if (!enableWebSocket || teamId == null || !resourceId) {
             return false;
         }
 

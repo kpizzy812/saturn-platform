@@ -167,8 +167,8 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
      */
     const connectWebSocket = React.useCallback(() => {
         // Skip connection if user is not authenticated or has no team
-        if (!teamId || !userId) {
-            // Only log once, not on every retry
+        // Use == null to check both null and undefined, but allow id=0
+        if (teamId == null || userId == null) {
             return false;
         }
 
@@ -266,7 +266,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
      * Fetch status updates from API
      */
     const fetchStatusUpdates = React.useCallback(async () => {
-        if (!teamId) return;
+        if (teamId == null) return;
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -437,7 +437,8 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
         isMountedRef.current = true;
 
         // Don't attempt connection if user is not authenticated
-        if (!teamId || !userId) {
+        // Use == null to check both null and undefined, but allow id=0
+        if (teamId == null || userId == null) {
             return;
         }
 
@@ -467,7 +468,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
             }
 
             const echo = getEcho();
-            if (echo && teamId) {
+            if (echo && teamId != null) {
                 echo.leave(`team.${teamId}`);
             }
 
