@@ -13,7 +13,8 @@ import {
     Crown,
     Shield,
     User as UserIcon,
-    Lock
+    Lock,
+    Code
 } from 'lucide-react';
 
 interface Project {
@@ -24,7 +25,7 @@ interface Project {
 interface Invitation {
     id: number;
     email: string;
-    role: 'admin' | 'member' | 'viewer';
+    role: 'admin' | 'developer' | 'member' | 'viewer';
     projectAccess: 'all' | number[];
     message?: string;
     sentAt: string;
@@ -42,7 +43,7 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
 
     // Form state
     const [emails, setEmails] = React.useState<string[]>(['']);
-    const [role, setRole] = React.useState<'admin' | 'member' | 'viewer'>('member');
+    const [role, setRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
     const [projectAccess, setProjectAccess] = React.useState<'all' | 'specific'>('all');
     const [selectedProjects, setSelectedProjects] = React.useState<number[]>([]);
     const [message, setMessage] = React.useState('');
@@ -117,6 +118,8 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
         switch (role) {
             case 'admin':
                 return <Shield className="h-4 w-4" />;
+            case 'developer':
+                return <Code className="h-4 w-4" />;
             case 'viewer':
                 return <Lock className="h-4 w-4" />;
             default:
@@ -213,7 +216,7 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
                                     Role
                                 </label>
                                 <div className="grid gap-3">
-                                    {(['admin', 'member', 'viewer'] as const).map((r) => (
+                                    {(['admin', 'developer', 'member', 'viewer'] as const).map((r) => (
                                         <button
                                             key={r}
                                             type="button"
@@ -231,7 +234,8 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
                                                 <p className="font-medium text-foreground capitalize">{r}</p>
                                                 <p className="text-xs text-foreground-muted">
                                                     {r === 'admin' && 'Manage team members and settings'}
-                                                    {r === 'member' && 'Deploy and manage resources'}
+                                                    {r === 'developer' && 'Deploy and manage resources'}
+                                                    {r === 'member' && 'View resources and basic operations'}
                                                     {r === 'viewer' && 'Read-only access to resources'}
                                                 </p>
                                             </div>

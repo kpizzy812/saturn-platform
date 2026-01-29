@@ -2,20 +2,20 @@ import * as React from 'react';
 import { router } from '@inertiajs/react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
-import { Mail, UserX, Crown, Shield, User as UserIcon, Lock } from 'lucide-react';
+import { Mail, UserX, Crown, Shield, User as UserIcon, Lock, Code } from 'lucide-react';
 
 interface TeamMember {
     id: number;
     name: string;
     email: string;
-    role: 'owner' | 'admin' | 'member' | 'viewer';
+    role: 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
     joinedAt: string;
 }
 
 interface Invitation {
     id: number;
     email: string;
-    role: 'admin' | 'member' | 'viewer';
+    role: 'admin' | 'developer' | 'member' | 'viewer';
     sentAt: string;
 }
 
@@ -31,7 +31,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [memberToRemove, setMemberToRemove] = React.useState<TeamMember | null>(null);
     const [inviteEmail, setInviteEmail] = React.useState('');
-    const [inviteRole, setInviteRole] = React.useState<'admin' | 'member' | 'viewer'>('member');
+    const [inviteRole, setInviteRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
     const [isInviting, setIsInviting] = React.useState(false);
 
     const handleInviteMember = (e: React.FormEvent) => {
@@ -80,6 +80,8 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                 return <Crown className="h-4 w-4" />;
             case 'admin':
                 return <Shield className="h-4 w-4" />;
+            case 'developer':
+                return <Code className="h-4 w-4" />;
             case 'viewer':
                 return <Lock className="h-4 w-4" />;
             default:
@@ -232,9 +234,10 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                         <Select
                             label="Role"
                             value={inviteRole}
-                            onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member' | 'viewer')}
+                            onChange={(e) => setInviteRole(e.target.value as 'admin' | 'developer' | 'member' | 'viewer')}
                         >
                             <option value="admin">Admin - Full access except billing</option>
+                            <option value="developer">Developer - Deploy and manage resources</option>
                             <option value="member">Member - Can view and deploy</option>
                             <option value="viewer">Viewer - Read-only access</option>
                         </Select>

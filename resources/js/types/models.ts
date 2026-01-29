@@ -4,7 +4,7 @@
 export type ResourceStatus = 'online' | 'offline' | 'deploying' | 'error' | 'stopped' | 'initializing' | 'running' | 'failed' | 'queued' | 'in_progress' | 'finished' | 'cancelled';
 
 // Platform and Project Role types
-export type PlatformRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type PlatformRole = 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
 export type ProjectRole = 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
 export type EnvironmentType = 'development' | 'uat' | 'production';
 

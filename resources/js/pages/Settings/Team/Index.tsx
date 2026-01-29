@@ -18,7 +18,8 @@ import {
     Settings,
     Activity,
     Lock,
-    FolderCog
+    FolderCog,
+    Code
 } from 'lucide-react';
 import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
 
@@ -27,7 +28,7 @@ interface TeamMember {
     name: string;
     email: string;
     avatar?: string;
-    role: 'owner' | 'admin' | 'member' | 'viewer';
+    role: 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
     joinedAt: string;
     lastActive: string;
     hasRestrictedAccess?: boolean;
@@ -62,6 +63,8 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                 return <Crown className="h-4 w-4" />;
             case 'admin':
                 return <Shield className="h-4 w-4" />;
+            case 'developer':
+                return <Code className="h-4 w-4" />;
             case 'viewer':
                 return <Lock className="h-4 w-4" />;
             default:
@@ -289,8 +292,8 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                                         <UserCog className="h-4 w-4" />
                                                         Change Role
                                                     </DropdownItem>
-                                                    {/* Configure Projects - only for member/viewer */}
-                                                    {(member.role === 'member' || member.role === 'viewer') && (
+                                                    {/* Configure Projects - only for developer/member/viewer */}
+                                                    {(member.role === 'developer' || member.role === 'member' || member.role === 'viewer') && (
                                                         <DropdownItem
                                                             onClick={() => {
                                                                 setSelectedMember(member);
@@ -339,7 +342,7 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
             >
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        {(['owner', 'admin', 'member', 'viewer'] as const).map((role) => (
+                        {(['owner', 'admin', 'developer', 'member', 'viewer'] as const).map((role) => (
                             <button
                                 key={role}
                                 onClick={() => setNewRole(role)}
@@ -357,7 +360,8 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                     <p className="text-xs text-foreground-muted">
                                         {role === 'owner' && 'Full control of the team and billing'}
                                         {role === 'admin' && 'Manage team members and settings'}
-                                        {role === 'member' && 'Deploy and manage resources'}
+                                        {role === 'developer' && 'Deploy and manage resources'}
+                                        {role === 'member' && 'View resources and basic operations'}
                                         {role === 'viewer' && 'Read-only access to resources'}
                                     </p>
                                 </div>
