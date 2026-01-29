@@ -18,7 +18,7 @@ class ProjectAuthorizationService
      * User can view if they are:
      * - Platform admin/owner
      * - Direct project member
-     * - Team member of the project's team
+     * - Team member of the project's team WITH access to this project
      */
     public function canViewProject(User $user, Project $project): bool
     {
@@ -32,8 +32,28 @@ class ProjectAuthorizationService
             return true;
         }
 
-        // Check team membership
-        return $user->teams()->where('team_id', $project->team_id)->exists();
+        // Check team membership with project access restriction
+        $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
+
+        if (! $teamMembership) {
+            return false;
+        }
+
+        // Owner/Admin always have full access to all projects
+        if (in_array($teamMembership->pivot->role, ['owner', 'admin'])) {
+            return true;
+        }
+
+        // Check allowed_projects restriction
+        $allowedProjects = $teamMembership->pivot->allowed_projects;
+
+        // null means all projects are allowed (default behavior)
+        if ($allowedProjects === null) {
+            return true;
+        }
+
+        // Check if this project is in the allowed list
+        return in_array($project->id, $allowedProjects, true);
     }
 
     /**

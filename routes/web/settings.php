@@ -1007,6 +1007,7 @@ Route::get('/settings/team/index', function () {
             'role' => $user->pivot->role ?? 'member',
             'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
             'lastActive' => $lastActive,
+            'hasRestrictedAccess' => $user->pivot->allowed_projects !== null,
         ];
     });
 
@@ -1028,3 +1029,101 @@ Route::get('/settings/team/invite', function () {
 Route::get('/settings/team/roles', function () {
     return Inertia::render('Settings/Team/Roles');
 })->name('settings.team.roles');
+
+// Team Member Project Access Routes
+Route::get('/settings/team/members/{id}/projects', function (string $id) {
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only owner/admin can view project access settings
+    if (! $currentUser->isOwner() && ! $currentUser->isAdmin()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        return response()->json(['message' => 'Member not found'], 404);
+    }
+
+    // Admin cannot manage other admins or owners
+    if ($currentUser->isAdmin() && ! $currentUser->isOwner()) {
+        $memberRole = $member->pivot->role;
+        if (in_array($memberRole, ['owner', 'admin'])) {
+            return response()->json(['message' => 'Cannot configure project access for admins or owners'], 403);
+        }
+    }
+
+    $projects = $team->projects()->orderByRaw('LOWER(name)')->get()->map(fn ($p) => [
+        'id' => $p->id,
+        'name' => $p->name,
+    ]);
+
+    $allowedProjects = $member->pivot->allowed_projects;
+
+    return response()->json([
+        'member' => [
+            'id' => $member->id,
+            'name' => $member->name,
+            'email' => $member->email,
+            'role' => $member->pivot->role,
+        ],
+        'projects' => $projects,
+        'allowed_projects' => $allowedProjects,
+        'has_restricted_access' => $allowedProjects !== null,
+    ]);
+})->name('settings.team.members.projects');
+
+Route::post('/settings/team/members/{id}/projects', function (Request $request, string $id) {
+    $request->validate([
+        'access_type' => 'required|in:all,restricted',
+        'allowed_projects' => 'array',
+        'allowed_projects.*' => 'integer',
+    ]);
+
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only owner/admin can update project access
+    if (! $currentUser->isOwner() && ! $currentUser->isAdmin()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        return response()->json(['message' => 'Member not found'], 404);
+    }
+
+    $memberRole = $member->pivot->role;
+
+    // Admin cannot manage other admins or owners
+    if ($currentUser->isAdmin() && ! $currentUser->isOwner()) {
+        if (in_array($memberRole, ['owner', 'admin'])) {
+            return response()->json(['message' => 'Cannot configure project access for admins or owners'], 403);
+        }
+    }
+
+    // Owner/Admin always have full access - cannot be restricted
+    if (in_array($memberRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'Owners and admins always have full access and cannot be restricted'], 422);
+    }
+
+    // Determine allowed_projects value
+    $allowedProjects = null; // default: all projects
+
+    if ($request->access_type === 'restricted') {
+        $allowedProjects = $request->allowed_projects ?? [];
+
+        // Validate that all project IDs belong to this team
+        $teamProjectIds = $team->projects()->pluck('id')->toArray();
+        $invalidIds = array_diff($allowedProjects, $teamProjectIds);
+        if (! empty($invalidIds)) {
+            return response()->json(['message' => 'Invalid project IDs'], 422);
+        }
+    }
+
+    $team->members()->updateExistingPivot($id, [
+        'allowed_projects' => $allowedProjects,
+    ]);
+
+    return response()->json(['message' => 'Project access updated successfully']);
+})->name('settings.team.members.projects.update');

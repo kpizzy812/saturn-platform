@@ -220,8 +220,50 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     public function members()
     {
         return $this->belongsToMany(User::class, 'team_user', 'team_id', 'user_id')
-            ->withPivot('role')
+            ->using(TeamUser::class)
+            ->withPivot('role', 'allowed_projects')
             ->withTimestamps();
+    }
+
+    /**
+     * Get allowed project IDs for a user in this team.
+     * Returns null if user has access to all projects.
+     *
+     * @return array<int>|null
+     */
+    public function getAllowedProjectsForUser(User $user): ?array
+    {
+        $membership = $this->members()
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $membership) {
+            return [];
+        }
+
+        return $membership->pivot->allowed_projects;
+    }
+
+    /**
+     * Update allowed projects for a user in this team.
+     *
+     * @param  array<int>|null  $projectIds  null=all projects
+     */
+    public function setAllowedProjectsForUser(User $user, ?array $projectIds): void
+    {
+        $this->members()->updateExistingPivot($user->id, [
+            'allowed_projects' => $projectIds,
+        ]);
+    }
+
+    /**
+     * Check if user has restricted project access (not all projects).
+     */
+    public function userHasRestrictedAccess(User $user): bool
+    {
+        $allowedProjects = $this->getAllowedProjectsForUser($user);
+
+        return $allowedProjects !== null;
     }
 
     public function subscription()

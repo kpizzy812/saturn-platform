@@ -17,8 +17,10 @@ import {
     UserCog,
     Settings,
     Activity,
-    Lock
+    Lock,
+    FolderCog
 } from 'lucide-react';
+import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
 
 interface TeamMember {
     id: number;
@@ -28,6 +30,7 @@ interface TeamMember {
     role: 'owner' | 'admin' | 'member' | 'viewer';
     joinedAt: string;
     lastActive: string;
+    hasRestrictedAccess?: boolean;
 }
 
 interface Team {
@@ -46,6 +49,7 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
+    const [showProjectsModal, setShowProjectsModal] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);
     const [newRole, setNewRole] = React.useState<TeamMember['role']>('member');
     const [isChangingRole, setIsChangingRole] = React.useState(false);
@@ -285,6 +289,25 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                                         <UserCog className="h-4 w-4" />
                                                         Change Role
                                                     </DropdownItem>
+                                                    {/* Configure Projects - only for member/viewer */}
+                                                    {(member.role === 'member' || member.role === 'viewer') && (
+                                                        <DropdownItem
+                                                            onClick={() => {
+                                                                setSelectedMember(member);
+                                                                setShowProjectsModal(true);
+                                                            }}
+                                                        >
+                                                            <FolderCog className="h-4 w-4" />
+                                                            <span className="flex items-center gap-2">
+                                                                Configure Projects
+                                                                {member.hasRestrictedAccess && (
+                                                                    <Badge variant="warning" className="text-[10px] px-1 py-0">
+                                                                        Restricted
+                                                                    </Badge>
+                                                                )}
+                                                            </span>
+                                                        </DropdownItem>
+                                                    )}
                                                     <DropdownDivider />
                                                     <DropdownItem
                                                         danger
@@ -372,6 +395,19 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                     </Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Configure Projects Modal */}
+            <ConfigureProjectsModal
+                isOpen={showProjectsModal}
+                onClose={() => setShowProjectsModal(false)}
+                member={selectedMember}
+                onSuccess={() => {
+                    toast({
+                        title: 'Project access updated',
+                        description: `${selectedMember?.name}'s project access has been updated.`,
+                    });
+                }}
+            />
         </SettingsLayout>
     );
 }

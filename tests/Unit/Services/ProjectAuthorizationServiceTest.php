@@ -68,9 +68,14 @@ describe('canViewProject', function () {
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
 
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'member';
+        $teamMembership->pivot->allowed_projects = null; // null = all projects
+
         $teams = m::mock();
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
-        $teams->shouldReceive('exists')->andReturn(true);
+        $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
 
         $project = m::mock(Project::class)->makePartial();
@@ -92,7 +97,7 @@ describe('canViewProject', function () {
 
         $teams = m::mock();
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
-        $teams->shouldReceive('exists')->andReturn(false);
+        $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
 
         $project = m::mock(Project::class)->makePartial();
@@ -100,6 +105,195 @@ describe('canViewProject', function () {
         $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
 
         expect($this->service->canViewProject($user, $project))->toBeFalse();
+    });
+
+    it('allows team owner to view any project regardless of allowed_projects', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'owner';
+        $teamMembership->pivot->allowed_projects = []; // Even with empty allowed_projects, owner should see all
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeTrue();
+    });
+
+    it('allows team admin to view any project regardless of allowed_projects', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'admin';
+        $teamMembership->pivot->allowed_projects = []; // Even with empty allowed_projects, admin should see all
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeTrue();
+    });
+
+    it('allows team member with null allowed_projects to view any project', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'member';
+        $teamMembership->pivot->allowed_projects = null; // null = all projects allowed
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeTrue();
+    });
+
+    it('allows team member to view project when project is in allowed_projects', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'member';
+        $teamMembership->pivot->allowed_projects = [1, 5, 10]; // Project 1 is in the list
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeTrue();
+    });
+
+    it('denies team member from viewing project when project is not in allowed_projects', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 99)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'member';
+        $teamMembership->pivot->allowed_projects = [1, 5, 10]; // Project 99 is NOT in the list
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(99);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeFalse();
+    });
+
+    it('denies team member with empty allowed_projects from viewing any project', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'member';
+        $teamMembership->pivot->allowed_projects = []; // Empty array = no access
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeFalse();
+    });
+
+    it('allows viewer with project in allowed_projects to view', function () {
+        $user = m::mock(User::class)->makePartial();
+        $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+        $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+        $projectMemberships = m::mock();
+        $projectMemberships->shouldReceive('where')->with('project_id', 5)->andReturnSelf();
+        $projectMemberships->shouldReceive('exists')->andReturn(false);
+        $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
+
+        $teamMembership = new \stdClass;
+        $teamMembership->pivot = new \stdClass;
+        $teamMembership->pivot->role = 'viewer';
+        $teamMembership->pivot->allowed_projects = [5, 10];
+
+        $teams = m::mock();
+        $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
+        $teams->shouldReceive('first')->andReturn($teamMembership);
+        $user->shouldReceive('teams')->andReturn($teams);
+
+        $project = m::mock(Project::class)->makePartial();
+        $project->shouldReceive('getAttribute')->with('id')->andReturn(5);
+        $project->shouldReceive('getAttribute')->with('team_id')->andReturn(10);
+
+        expect($this->service->canViewProject($user, $project))->toBeTrue();
     });
 });
 

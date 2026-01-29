@@ -34,11 +34,54 @@ class Project extends BaseModel
 
     /**
      * Get query builder for projects owned by current team.
+     * Applies project access restrictions for non-admin users.
      * If you need all projects without further query chaining, use ownedByCurrentTeamCached() instead.
      */
     public static function ownedByCurrentTeam()
     {
-        return Project::whereTeamId(currentTeam()->id)->orderByRaw('LOWER(name)');
+        $user = auth()->user();
+        $team = currentTeam();
+
+        $query = Project::whereTeamId($team->id)->orderByRaw('LOWER(name)');
+
+        // Return all projects if no authenticated user
+        if (! $user) {
+            return $query;
+        }
+
+        // Super admin sees all projects
+        if ($user->isSuperAdmin()) {
+            return $query;
+        }
+
+        // Get team membership
+        $teamMembership = $user->teams()->where('team_id', $team->id)->first();
+
+        if (! $teamMembership) {
+            // User not in team - return empty result
+            return $query->whereRaw('1 = 0');
+        }
+
+        // Owner/Admin always see all projects
+        if (in_array($teamMembership->pivot->role, ['owner', 'admin'])) {
+            return $query;
+        }
+
+        // Check allowed_projects restriction
+        $allowedProjects = $teamMembership->pivot->allowed_projects;
+
+        // null means all projects (default behavior)
+        if ($allowedProjects === null) {
+            return $query;
+        }
+
+        // Filter to allowed projects only
+        if (empty($allowedProjects)) {
+            // Empty array means no access
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('id', $allowedProjects);
     }
 
     /**
