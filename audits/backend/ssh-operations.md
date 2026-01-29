@@ -25,13 +25,13 @@
 ### Command Injection
 
 - [✅] **SSH-001**: Проверить все места где формируются SSH команды - OK (HEREDOC защита)
-- [🔴] **SSH-002**: Проверить escaping user input в командах - **CRITICAL: container names без escaping**
+- [🔧] **SSH-002**: Проверить escaping user input в командах - **FIXED: added escapeshellarg()**
 - [✅] **SSH-003**: Проверить `ExecuteRemoteCommand` trait на injection - OK (HEREDOC + stdin)
 - [⚠️] **SSH-004**: Проверить deployment scripts на command injection - **containerName без escaping**
 - [🔧] **SSH-005**: Проверить docker commands construction - FIXED
 - [🔧] **SSH-006**: Проверить git commands (clone, pull) - FIXED
-- [🔴] **SSH-007**: Проверить backup commands - **CRITICAL: связано с SSH-002**
-- [🔴] **SSH-008**: Проверить database commands (psql, mysql) - **CRITICAL: связано с SSH-002**
+- [🔧] **SSH-007**: Проверить backup commands - **FIXED: added escapeshellarg() in DatabaseBackupJob/RestoreJob**
+- [🔧] **SSH-008**: Проверить database commands (psql, mysql) - **FIXED: added escapeshellarg() in DatabaseMetricsController**
 
 ### Private Key Security
 

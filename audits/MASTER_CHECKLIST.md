@@ -27,9 +27,9 @@
 | Область | Приоритет | Файл чеклиста | Статус |
 |---------|-----------|---------------|--------|
 | **Backend** ||||
-| Аутентификация & Сессии | 🔴 Critical | [backend/authentication.md](backend/authentication.md) | [ ] |
-| Авторизация & Policies | 🔴 Critical | [backend/authorization.md](backend/authorization.md) | [ ] |
-| API Security (89+ endpoints) | 🔴 Critical | [backend/api-security.md](backend/api-security.md) | [ ] |
+| Аутентификация & Сессии | 🔴 Critical | [backend/authentication.md](backend/authentication.md) | [🔍] 1 critical, 6 medium |
+| Авторизация & Policies | 🔴 Critical | [backend/authorization.md](backend/authorization.md) | [🔴] **КРИТИЧЕСКОЕ! 10+ policies отключены** |
+| API Security (89+ endpoints) | 🔴 Critical | [backend/api-security.md](backend/api-security.md) | [🔍] 7 critical found |
 | SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 4 critical found |
 | Webhooks (GitHub, GitLab, etc.) | 🟡 High | [backend/webhooks.md](backend/webhooks.md) | [ ] |
 | Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [ ] |
@@ -59,10 +59,10 @@
 
 ```
 Total Hypotheses: 258
-Checked: 22
-Issues Found: 10
-Critical: 8
-Fixed: 2
+Checked: 85+
+Issues Found: 30+
+Critical: 20+
+Fixed: 7
 ```
 
 ### Breakdown по файлам
@@ -144,6 +144,32 @@ Fixed: 2
    - Аналогично CMD-002
    - **Severity: RCE**
 
+9. **[AUTHZ-ALL] ‼️ БОЛЬШИНСТВО POLICIES ОТКЛЮЧЕНЫ** - [authorization.md](backend/authorization.md) 🆕
+   - 10+ Policies возвращают `true` для ВСЕХ методов
+   - Пользователи могут получить доступ к ЛЮБЫМ ресурсам других команд
+   - **Severity: CRITICAL - полный обход авторизации**
+
+10. **[AUTH-015] API Токены НИКОГДА не истекают** - [authentication.md](backend/authentication.md) 🆕
+    - Файл: `config/sanctum.php:49`
+    - `'expiration' => null` - украденный токен работает вечно
+    - **Severity: HIGH**
+
+11. **[API-011] CORS открыт для ВСЕХ источников** - [api-security.md](backend/api-security.md) 🆕
+    - Файл: `config/cors.php:22`
+    - `'allowed_origins' => ['*']`
+    - **Severity: HIGH - CSRF атаки**
+
+12. **[API-033] Webhook сигнатуры НЕ проверяются** - [api-security.md](backend/api-security.md) 🆕
+    - GitHub: пропускается в dev
+    - GitLab: только проверка на не-пустой токен
+    - Bitbucket: алгоритм берется из входных данных
+    - **Severity: CRITICAL - поддельные deployments**
+
+13. **[API-015/017] Mass Assignment через $request->all()** - [api-security.md](backend/api-security.md) 🆕
+    - EnvironmentVariable имеет `$guarded = []`
+    - Используется `$request->all()` без валидации
+    - **Severity: HIGH**
+
 ### ⚠️ Важные
 
 1. **[SSH-017] Host key verification отключена** - [ssh-operations.md](backend/ssh-operations.md)
@@ -172,12 +198,17 @@ Fixed: 2
 |----|----------|------|--------|
 | SSH-006 | Command Injection в git_commit_sha | `bootstrap/helpers/api.php`, `app/Models/Application.php` | ✅ Fixed |
 | SSH-005 | Container name без escaping | `app/Jobs/ScheduledTaskJob.php` | ✅ Fixed |
-| SSH-002 | Container name в backup/restore | `DatabaseBackupJob.php`, `DatabaseRestoreJob.php` | ⏳ Pending |
+| SSH-002 | Container name в backup/restore | `DatabaseBackupJob.php`, `DatabaseRestoreJob.php` | ✅ Fixed |
 | SSH-012 | Cleanup SSH ключей | `HandlesGitOperations.php` | ⏳ Pending |
-| CMD-001 | Redis KEYS pattern injection | `DatabaseMetricsController.php` | ⏳ Pending |
-| CMD-002 | PostgreSQL query injection | `DatabaseMetricsController.php` | ⏳ Pending |
-| CMD-003 | MySQL query injection | `DatabaseMetricsController.php` | ⏳ Pending |
-| CMD-004 | ClickHouse query injection | `DatabaseMetricsController.php` | ⏳ Pending |
+| CMD-001 | Redis KEYS pattern injection | `DatabaseMetricsController.php` | ✅ Fixed |
+| CMD-002 | PostgreSQL query injection | `DatabaseMetricsController.php` | ✅ Fixed |
+| CMD-003 | MySQL query injection | `DatabaseMetricsController.php` | ✅ Fixed |
+| CMD-004 | ClickHouse query injection | `DatabaseMetricsController.php` | ✅ Fixed |
+| AUTHZ-ALL | 10+ Policies отключены | `app/Policies/*.php` | ⏳ **СРОЧНО** |
+| AUTH-015 | API Tokens никогда не истекают | `config/sanctum.php` | ⏳ Pending |
+| API-011 | CORS открыт для всех | `config/cors.php` | ⏳ Pending |
+| API-033 | Webhook сигнатуры не проверяются | `app/Http/Controllers/Webhook/*` | ⏳ **СРОЧНО** |
+| API-015 | Mass Assignment уязвимость | `EnvironmentVariable.php`, Controllers | ⏳ Pending |
 
 ---
 

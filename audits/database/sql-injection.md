@@ -98,7 +98,7 @@ User input `$pattern` вставляется напрямую в shell кома�
 $pattern = escapeshellarg($request->input('pattern', '*'));
 ```
 
-**Статус:** [ ] Требует исправления
+**Статус:** [🔧] ИСПРАВЛЕНО - добавлена валидация pattern + escapeshellarg()
 **Severity:** CRITICAL - Remote Code Execution
 
 ---
@@ -127,7 +127,7 @@ $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '
 **Рекомендация:**
 Использовать PostgreSQL wire protocol (PDO) вместо shell или `escapeshellarg()`.
 
-**Статус:** [ ] Требует исправления
+**Статус:** [🔧] ИСПРАВЛЕНО - заменено на escapeshellarg() для всех параметров
 **Severity:** CRITICAL
 
 ---
@@ -142,7 +142,7 @@ $escapedQuery = str_replace("'", "'\"'\"'", $query);
 $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -B -e '{$escapedQuery}' 2>&1";
 ```
 
-**Статус:** [ ] Требует исправления
+**Статус:** [🔧] ИСПРАВЛЕНО - заменено на escapeshellarg() для всех параметров
 **Severity:** CRITICAL
 
 ---
@@ -157,7 +157,7 @@ $escapedQuery = str_replace("'", "'\"'\"'", $query);
 $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q '{$escapedQuery}' 2>&1";
 ```
 
-**Статус:** [ ] Требует исправления
+**Статус:** [🔧] ИСПРАВЛЕНО - заменено на escapeshellarg() для всех параметров
 **Severity:** CRITICAL
 
 ---
