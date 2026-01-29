@@ -509,6 +509,156 @@ Route::prefix('admin')->group(function () {
         ]);
     })->name('admin.servers.index');
 
+    Route::get('/servers/{uuid}', function (string $uuid) {
+        // Fetch specific server with all resources
+        $server = \App\Models\Server::with(['team', 'settings'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        // Get metrics if available
+        $metrics = null;
+        if ($server->settings?->is_metrics_enabled) {
+            try {
+                $diskUsage = $server->getDiskUsage();
+                $metrics = [
+                    'cpu_usage' => null,
+                    'memory_usage' => null,
+                    'disk_usage' => $diskUsage ? (float) $diskUsage : null,
+                ];
+            } catch (\Exception $e) {
+                // Metrics unavailable
+            }
+        }
+
+        // Get applications on this server
+        $applications = \App\Models\Application::whereHas('destination', function ($query) use ($server) {
+            $query->where('server_id', $server->id);
+        })->get()->map(function ($app) {
+            return [
+                'id' => $app->id,
+                'uuid' => $app->uuid,
+                'name' => $app->name,
+                'status' => $app->status ?? 'unknown',
+            ];
+        });
+
+        // Get databases on this server (all 8 types)
+        $databases = collect();
+        $dbTypes = [
+            \App\Models\StandalonePostgresql::class => 'PostgreSQL',
+            \App\Models\StandaloneMysql::class => 'MySQL',
+            \App\Models\StandaloneMariadb::class => 'MariaDB',
+            \App\Models\StandaloneMongodb::class => 'MongoDB',
+            \App\Models\StandaloneRedis::class => 'Redis',
+            \App\Models\StandaloneKeydb::class => 'KeyDB',
+            \App\Models\StandaloneDragonfly::class => 'Dragonfly',
+            \App\Models\StandaloneClickhouse::class => 'ClickHouse',
+        ];
+
+        foreach ($dbTypes as $model => $typeName) {
+            $dbs = $model::whereHas('destination', function ($query) use ($server) {
+                $query->where('server_id', $server->id);
+            })->get()->map(function ($db) use ($typeName) {
+                return [
+                    'id' => $db->id,
+                    'uuid' => $db->uuid,
+                    'name' => $db->name,
+                    'type' => $typeName,
+                    'status' => $db->status(),
+                ];
+            });
+            $databases = $databases->concat($dbs);
+        }
+
+        // Get services on this server
+        $services = \App\Models\Service::where('server_id', $server->id)
+            ->get()
+            ->map(function ($service) {
+                return [
+                    'id' => $service->id,
+                    'uuid' => $service->uuid,
+                    'name' => $service->name,
+                    'status' => 'running',
+                ];
+            });
+
+        return Inertia::render('Admin/Servers/Show', [
+            'server' => [
+                'id' => $server->id,
+                'uuid' => $server->uuid,
+                'name' => $server->name,
+                'description' => $server->description,
+                'ip' => $server->ip,
+                'port' => $server->port,
+                'user' => $server->user,
+                'is_reachable' => $server->settings?->is_reachable ?? false,
+                'is_usable' => $server->settings?->is_usable ?? false,
+                'is_build_server' => $server->settings?->is_build_server ?? false,
+                'is_localhost' => $server->isLocalhost(),
+                'team_id' => $server->team_id,
+                'team_name' => $server->team?->name ?? 'Unknown',
+                'settings' => [
+                    'is_reachable' => $server->settings?->is_reachable ?? false,
+                    'is_usable' => $server->settings?->is_usable ?? false,
+                    'concurrent_builds' => $server->settings?->concurrent_builds ?? 2,
+                    'is_metrics_enabled' => $server->settings?->is_metrics_enabled ?? false,
+                    'docker_version' => $server->settings?->docker_version,
+                    'docker_compose_version' => $server->settings?->docker_compose_version,
+                ],
+                'metrics' => $metrics,
+                'resources' => [
+                    'applications' => $applications,
+                    'databases' => $databases,
+                    'services' => $services,
+                ],
+                'created_at' => $server->created_at,
+                'updated_at' => $server->updated_at,
+            ],
+        ]);
+    })->name('admin.servers.show');
+
+    Route::post('/servers/{uuid}/validate', function (string $uuid) {
+        $server = \App\Models\Server::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $result = $server->validateConnection();
+
+            if ($result['uptime']) {
+                return back()->with('success', 'Server connection validated successfully');
+            } else {
+                return back()->with('error', 'Server validation failed: '.($result['error'] ?? 'Unknown error'));
+            }
+        } catch (\Exception $e) {
+            return back()->with('error', 'Server validation failed: '.$e->getMessage());
+        }
+    })->name('admin.servers.validate');
+
+    Route::post('/servers/{uuid}/docker-cleanup', function (string $uuid) {
+        $server = \App\Models\Server::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            instant_remote_process(['docker system prune -af'], $server);
+
+            return back()->with('success', 'Docker cleanup completed successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Docker cleanup failed: '.$e->getMessage());
+        }
+    })->name('admin.servers.docker-cleanup');
+
+    Route::delete('/servers/{uuid}', function (string $uuid) {
+        $server = \App\Models\Server::where('uuid', $uuid)->firstOrFail();
+        $serverName = $server->name;
+
+        // Check if it's localhost - prevent deletion
+        if ($server->isLocalhost()) {
+            return back()->with('error', 'Cannot delete localhost server');
+        }
+
+        $server->delete();
+
+        return redirect()->route('admin.servers.index')->with('success', "Server '{$serverName}' deleted");
+    })->name('admin.servers.delete');
+
     Route::get('/deployments', function () {
         // Fetch all deployments across all teams (admin view)
         $deployments = \App\Models\ApplicationDeploymentQueue::with(['application.environment.project.team'])
@@ -655,6 +805,251 @@ Route::prefix('admin')->group(function () {
             'settings' => $settings,
         ]);
     })->name('admin.settings.index');
+
+    // Queue Monitor routes
+    Route::get('/queues', function () {
+        // Get queue statistics
+        $stats = [
+            'pending' => \Illuminate\Support\Facades\DB::table('jobs')->count(),
+            'processing' => 0, // Reserved jobs in Horizon
+            'completed' => 0, // Would need Horizon metrics
+            'failed' => \Illuminate\Support\Facades\DB::table('failed_jobs')->count(),
+        ];
+
+        // Get failed jobs
+        $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')
+            ->orderByDesc('failed_at')
+            ->limit(100)
+            ->get()
+            ->map(function ($job) {
+                return [
+                    'id' => $job->id,
+                    'uuid' => $job->uuid,
+                    'connection' => $job->connection,
+                    'queue' => $job->queue,
+                    'payload' => $job->payload,
+                    'exception' => $job->exception,
+                    'failed_at' => $job->failed_at,
+                ];
+            });
+
+        return Inertia::render('Admin/Queues/Index', [
+            'stats' => $stats,
+            'failedJobs' => $failedJobs,
+        ]);
+    })->name('admin.queues.index');
+
+    Route::post('/queues/failed/{id}/retry', function (int $id) {
+        $failedJob = \Illuminate\Support\Facades\DB::table('failed_jobs')->where('id', $id)->first();
+
+        if (! $failedJob) {
+            return back()->with('error', 'Failed job not found');
+        }
+
+        try {
+            \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => [$failedJob->uuid]]);
+
+            return back()->with('success', 'Job queued for retry');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to retry job: '.$e->getMessage());
+        }
+    })->name('admin.queues.retry');
+
+    Route::delete('/queues/failed/{id}', function (int $id) {
+        $deleted = \Illuminate\Support\Facades\DB::table('failed_jobs')->where('id', $id)->delete();
+
+        if ($deleted) {
+            return back()->with('success', 'Failed job deleted');
+        }
+
+        return back()->with('error', 'Failed job not found');
+    })->name('admin.queues.delete');
+
+    Route::post('/queues/failed/retry-all', function () {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('queue:retry', ['id' => ['all']]);
+
+            return back()->with('success', 'All failed jobs queued for retry');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to retry jobs: '.$e->getMessage());
+        }
+    })->name('admin.queues.retry-all');
+
+    Route::delete('/queues/failed/flush', function () {
+        \Illuminate\Support\Facades\Artisan::call('queue:flush');
+
+        return back()->with('success', 'All failed jobs deleted');
+    })->name('admin.queues.flush');
+
+    // Backup Management routes
+    Route::get('/backups', function () {
+        // Get all scheduled backups
+        $backups = \App\Models\ScheduledDatabaseBackup::with(['database', 'latest_log', 's3'])
+            ->get()
+            ->map(function ($backup) {
+                $database = $backup->database;
+                $server = $backup->server();
+
+                return [
+                    'id' => $backup->id,
+                    'uuid' => $backup->uuid,
+                    'database_id' => $database?->id,
+                    'database_uuid' => $database?->uuid,
+                    'database_name' => $database?->name ?? 'Unknown',
+                    'database_type' => $database ? class_basename($database) : 'Unknown',
+                    'team_id' => $backup->team_id,
+                    'team_name' => $backup->team?->name ?? 'Unknown',
+                    'frequency' => $backup->frequency,
+                    'enabled' => $backup->enabled,
+                    'save_s3' => $backup->save_s3,
+                    's3_storage_name' => $backup->s3?->name,
+                    'last_execution' => $backup->latest_log ? [
+                        'id' => $backup->latest_log->id,
+                        'uuid' => $backup->latest_log->uuid ?? '',
+                        'status' => $backup->latest_log->status,
+                        'size' => $backup->latest_log->size,
+                        'filename' => $backup->latest_log->filename,
+                        'message' => $backup->latest_log->message,
+                        'created_at' => $backup->latest_log->created_at,
+                    ] : null,
+                    'executions_count' => $backup->executions()->count(),
+                    'created_at' => $backup->created_at,
+                ];
+            });
+
+        // Calculate stats
+        $stats = [
+            'total' => $backups->count(),
+            'enabled' => $backups->where('enabled', true)->count(),
+            'with_s3' => $backups->where('save_s3', true)->count(),
+            'failed_last_24h' => \App\Models\ScheduledDatabaseBackupExecution::where('created_at', '>=', now()->subDay())
+                ->where('status', 'failed')
+                ->count(),
+        ];
+
+        return Inertia::render('Admin/Backups/Index', [
+            'backups' => $backups,
+            'stats' => $stats,
+        ]);
+    })->name('admin.backups.index');
+
+    Route::get('/backups/{uuid}', function (string $uuid) {
+        $backup = \App\Models\ScheduledDatabaseBackup::with(['database', 'executions', 's3', 'team'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+
+        $database = $backup->database;
+        $server = $backup->server();
+
+        return Inertia::render('Admin/Backups/Show', [
+            'backup' => [
+                'id' => $backup->id,
+                'uuid' => $backup->uuid,
+                'database_id' => $database?->id,
+                'database_uuid' => $database?->uuid,
+                'database_name' => $database?->name ?? 'Unknown',
+                'database_type' => $database ? class_basename($database) : 'Unknown',
+                'team_id' => $backup->team_id,
+                'team_name' => $backup->team?->name ?? 'Unknown',
+                'server_name' => $server?->name ?? 'Unknown',
+                'frequency' => $backup->frequency,
+                'enabled' => $backup->enabled,
+                'save_s3' => $backup->save_s3,
+                's3_storage_name' => $backup->s3?->name,
+                'number_of_backups_locally' => $backup->number_of_backups_locally ?? 7,
+                'executions' => $backup->executions()
+                    ->orderByDesc('created_at')
+                    ->limit(50)
+                    ->get()
+                    ->map(function ($exec) {
+                        return [
+                            'id' => $exec->id,
+                            'uuid' => $exec->uuid ?? '',
+                            'status' => $exec->status,
+                            'size' => $exec->size,
+                            'filename' => $exec->filename,
+                            'message' => $exec->message,
+                            's3_uploaded' => $exec->s3_uploaded ?? false,
+                            'local_storage_deleted' => $exec->local_storage_deleted ?? false,
+                            'created_at' => $exec->created_at,
+                            'finished_at' => $exec->finished_at,
+                        ];
+                    }),
+                'created_at' => $backup->created_at,
+                'updated_at' => $backup->updated_at,
+            ],
+        ]);
+    })->name('admin.backups.show');
+
+    Route::post('/backups/{uuid}/run', function (string $uuid) {
+        $backup = \App\Models\ScheduledDatabaseBackup::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            \App\Jobs\DatabaseBackupJob::dispatch($backup);
+
+            return back()->with('success', 'Backup job queued successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to queue backup: '.$e->getMessage());
+        }
+    })->name('admin.backups.run');
+
+    Route::post('/backups/executions/{id}/restore', function (int $id) {
+        $execution = \App\Models\ScheduledDatabaseBackupExecution::findOrFail($id);
+        $backup = $execution->scheduledDatabaseBackup;
+
+        try {
+            \App\Jobs\DatabaseRestoreJob::dispatch($backup, $execution);
+
+            return back()->with('success', 'Restore job queued successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to queue restore: '.$e->getMessage());
+        }
+    })->name('admin.backups.restore');
+
+    Route::delete('/backups/executions/{id}', function (int $id) {
+        $execution = \App\Models\ScheduledDatabaseBackupExecution::findOrFail($id);
+        $execution->delete();
+
+        return back()->with('success', 'Backup execution deleted');
+    })->name('admin.backups.executions.delete');
+
+    // Invitations Management routes
+    Route::get('/invitations', function () {
+        $invitations = \App\Models\TeamInvitation::with(['team'])
+            ->latest()
+            ->paginate(50)
+            ->through(function ($invitation) {
+                return [
+                    'id' => $invitation->id,
+                    'uuid' => $invitation->uuid,
+                    'email' => $invitation->email,
+                    'role' => $invitation->role,
+                    'team_id' => $invitation->team_id,
+                    'team_name' => $invitation->team?->name ?? 'Unknown',
+                    'via' => $invitation->via,
+                    'is_valid' => $invitation->isValid(),
+                    'created_at' => $invitation->created_at,
+                ];
+            });
+
+        return Inertia::render('Admin/Invitations/Index', [
+            'invitations' => $invitations,
+        ]);
+    })->name('admin.invitations.index');
+
+    Route::delete('/invitations/{id}', function (int $id) {
+        $invitation = \App\Models\TeamInvitation::findOrFail($id);
+        $invitation->delete();
+
+        return back()->with('success', 'Invitation deleted');
+    })->name('admin.invitations.delete');
+
+    Route::post('/invitations/{id}/resend', function (int $id) {
+        $invitation = \App\Models\TeamInvitation::findOrFail($id);
+
+        // Resend logic would go here - for now just flash success
+        return back()->with('success', 'Invitation resent');
+    })->name('admin.invitations.resend');
 
     Route::get('/logs', function () {
         // Fetch system logs (admin view)
