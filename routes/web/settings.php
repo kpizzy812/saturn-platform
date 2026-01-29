@@ -557,6 +557,43 @@ Route::post('/settings/team/invite', function (Request $request) {
     return redirect()->back()->with('success', 'Invitation sent successfully');
 })->name('settings.team.invite.store');
 
+Route::delete('/settings/team/invitations/{id}', function (string $id) {
+    $team = currentTeam();
+    $invitation = \App\Models\TeamInvitation::where('team_id', $team->id)
+        ->where('id', $id)
+        ->firstOrFail();
+
+    $invitation->delete();
+
+    return redirect()->back()->with('success', 'Invitation cancelled successfully');
+})->name('settings.team.invitations.destroy');
+
+Route::post('/settings/team/invitations/{id}/resend', function (string $id) {
+    $team = currentTeam();
+    $invitation = \App\Models\TeamInvitation::where('team_id', $team->id)
+        ->where('id', $id)
+        ->firstOrFail();
+
+    // Regenerate UUID and link
+    $uuid = (string) \Illuminate\Support\Str::uuid();
+    $invitation->update([
+        'uuid' => $uuid,
+        'link' => url("/invitations/{$uuid}"),
+    ]);
+
+    // Try to send email notification
+    try {
+        $user = \App\Models\User::where('email', $invitation->email)->first();
+        if ($user) {
+            $user->notify(new \App\Notifications\TransactionalEmails\InvitationLink($user));
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning('Failed to send invitation email: '.$e->getMessage());
+    }
+
+    return redirect()->back()->with('success', 'Invitation resent successfully');
+})->name('settings.team.invitations.resend');
+
 // Tokens POST/DELETE routes
 Route::post('/settings/tokens', function (Request $request) {
     $request->validate([

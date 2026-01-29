@@ -38,7 +38,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
         e.preventDefault();
         setIsInviting(true);
 
-        router.post('/api/v1/teams/invitations', {
+        router.post('/settings/team/invite', {
             email: inviteEmail,
             role: inviteRole,
         }, {
@@ -67,7 +67,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     };
 
     const handleRevokeInvitation = (invitationId: number) => {
-        router.delete(`/api/v1/teams/invitations/${invitationId}`, {
+        router.delete(`/settings/team/invitations/${invitationId}`, {
             onSuccess: () => {
                 router.reload({ only: ['invitations'] });
             },
