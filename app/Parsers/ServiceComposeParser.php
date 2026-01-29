@@ -29,7 +29,7 @@ class ServiceComposeParser
 
     private mixed $server;
 
-    private array $allServices;
+    private Collection $allServices;
 
     private Collection $topLevel;
 
