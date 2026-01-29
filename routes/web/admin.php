@@ -356,7 +356,7 @@ Route::prefix('admin')->group(function () {
                         'status' => 'running',
                     ];
                 }),
-                'databases' => $env->databases()->get()->map(function ($db) {
+                'databases' => $env->databases()->map(function ($db) {
                     return [
                         'id' => $db->id,
                         'uuid' => $db->uuid,
@@ -1001,7 +1001,7 @@ Route::prefix('admin')->group(function () {
                 'is_reachable' => $server->settings?->is_reachable ?? false,
                 'is_usable' => $server->settings?->is_usable ?? false,
                 'is_build_server' => $server->settings?->is_build_server ?? false,
-                'is_localhost' => $server->isLocalhost(),
+                'is_localhost' => $server->is_localhost,
                 'team_id' => $server->team_id,
                 'team_name' => $server->team?->name ?? 'Unknown',
                 'settings' => [
@@ -1057,7 +1057,7 @@ Route::prefix('admin')->group(function () {
         $serverName = $server->name;
 
         // Check if it's localhost - prevent deletion
-        if ($server->isLocalhost()) {
+        if ($server->is_localhost) {
             return back()->with('error', 'Cannot delete localhost server');
         }
 
@@ -1216,33 +1216,55 @@ Route::prefix('admin')->group(function () {
     // Queue Monitor routes
     Route::get('/queues', function () {
         // Get queue statistics
+        // Note: jobs table only exists when using database queue driver
+        // Saturn uses Redis queue, so we need to handle this gracefully
+        $pendingJobs = 0;
+        $failedJobs = 0;
+
+        try {
+            $pendingJobs = \Illuminate\Support\Facades\DB::table('jobs')->count();
+        } catch (\Exception $e) {
+            // Table doesn't exist - using Redis queue driver
+        }
+
+        try {
+            $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+        } catch (\Exception $e) {
+            // Table doesn't exist
+        }
+
         $stats = [
-            'pending' => \Illuminate\Support\Facades\DB::table('jobs')->count(),
+            'pending' => $pendingJobs,
             'processing' => 0, // Reserved jobs in Horizon
             'completed' => 0, // Would need Horizon metrics
-            'failed' => \Illuminate\Support\Facades\DB::table('failed_jobs')->count(),
+            'failed' => $failedJobs,
         ];
 
         // Get failed jobs
-        $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')
-            ->orderByDesc('failed_at')
-            ->limit(100)
-            ->get()
-            ->map(function ($job) {
-                return [
-                    'id' => $job->id,
-                    'uuid' => $job->uuid,
-                    'connection' => $job->connection,
-                    'queue' => $job->queue,
-                    'payload' => $job->payload,
-                    'exception' => $job->exception,
-                    'failed_at' => $job->failed_at,
-                ];
-            });
+        $failedJobsList = collect();
+        try {
+            $failedJobsList = \Illuminate\Support\Facades\DB::table('failed_jobs')
+                ->orderByDesc('failed_at')
+                ->limit(100)
+                ->get()
+                ->map(function ($job) {
+                    return [
+                        'id' => $job->id,
+                        'uuid' => $job->uuid,
+                        'connection' => $job->connection,
+                        'queue' => $job->queue,
+                        'payload' => $job->payload,
+                        'exception' => $job->exception,
+                        'failed_at' => $job->failed_at,
+                    ];
+                });
+        } catch (\Exception $e) {
+            // Table doesn't exist
+        }
 
         return Inertia::render('Admin/Queues/Index', [
             'stats' => $stats,
-            'failedJobs' => $failedJobs,
+            'failedJobs' => $failedJobsList,
         ]);
     })->name('admin.queues.index');
 
@@ -1570,13 +1592,24 @@ Route::prefix('admin')->group(function () {
         }
 
         // Queue worker check (simplified - check if jobs are processing)
-        $pendingJobs = \Illuminate\Support\Facades\DB::table('jobs')->count();
-        $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+        // Note: jobs table only exists when using database queue driver
+        $healthPendingJobs = 0;
+        $healthFailedJobs = 0;
+        try {
+            $healthPendingJobs = \Illuminate\Support\Facades\DB::table('jobs')->count();
+        } catch (\Exception $e) {
+            // Table doesn't exist - using Redis queue driver
+        }
+        try {
+            $healthFailedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+        } catch (\Exception $e) {
+            // Table doesn't exist
+        }
         $services[] = [
             'service' => 'Queue Worker',
-            'status' => $failedJobs > 10 ? 'degraded' : 'healthy',
+            'status' => $healthFailedJobs > 10 ? 'degraded' : 'healthy',
             'lastCheck' => now()->toISOString(),
-            'details' => "{$pendingJobs} pending, {$failedJobs} failed",
+            'details' => "{$healthPendingJobs} pending, {$healthFailedJobs} failed",
         ];
 
         // Servers health
@@ -1618,10 +1651,23 @@ Route::prefix('admin')->group(function () {
             });
 
         // Queue statistics
+        // Note: jobs table only exists when using database queue driver
+        $queuePending = 0;
+        $queueFailed = 0;
+        try {
+            $queuePending = \Illuminate\Support\Facades\DB::table('jobs')->count();
+        } catch (\Exception $e) {
+            // Table doesn't exist - using Redis queue driver
+        }
+        try {
+            $queueFailed = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+        } catch (\Exception $e) {
+            // Table doesn't exist
+        }
         $queues = [
-            'pending' => \Illuminate\Support\Facades\DB::table('jobs')->count(),
+            'pending' => $queuePending,
             'processing' => 0,
-            'failed' => \Illuminate\Support\Facades\DB::table('failed_jobs')->count(),
+            'failed' => $queueFailed,
             'workers' => 1, // Simplified - would need Horizon for accurate count
         ];
 
