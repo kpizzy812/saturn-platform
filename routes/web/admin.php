@@ -427,6 +427,7 @@ Route::prefix('admin')->group(function () {
                     'id' => $team->id,
                     'name' => $team->name,
                     'description' => $team->description,
+                    'personal_team' => $team->personal_team,
                     'members_count' => $team->members_count,
                     'projects_count' => $team->projects_count,
                     'servers_count' => $team->servers_count,
@@ -439,6 +440,96 @@ Route::prefix('admin')->group(function () {
             'teams' => $teams,
         ]);
     })->name('admin.teams.index');
+
+    Route::get('/teams/{id}', function (int $id) {
+        // Fetch specific team with all relationships
+        $team = \App\Models\Team::with(['members', 'servers.settings', 'projects'])
+            ->withCount(['members', 'servers', 'projects'])
+            ->findOrFail($id);
+
+        return Inertia::render('Admin/Teams/Show', [
+            'team' => [
+                'id' => $team->id,
+                'name' => $team->name,
+                'description' => $team->description,
+                'personal_team' => $team->personal_team,
+                'created_at' => $team->created_at,
+                'updated_at' => $team->updated_at,
+                'members' => $team->members->map(function ($member) {
+                    return [
+                        'id' => $member->id,
+                        'name' => $member->name,
+                        'email' => $member->email,
+                        'role' => $member->pivot->role ?? 'member',
+                        'created_at' => $member->created_at,
+                    ];
+                }),
+                'servers' => $team->servers->map(function ($server) {
+                    return [
+                        'id' => $server->id,
+                        'uuid' => $server->uuid,
+                        'name' => $server->name,
+                        'ip' => $server->ip,
+                        'is_reachable' => $server->settings?->is_reachable ?? false,
+                    ];
+                }),
+                'projects' => $team->projects->map(function ($project) {
+                    return [
+                        'id' => $project->id,
+                        'uuid' => $project->uuid,
+                        'name' => $project->name,
+                        'environments_count' => $project->environments()->count(),
+                    ];
+                }),
+            ],
+        ]);
+    })->name('admin.teams.show');
+
+    Route::post('/teams/{teamId}/members/{userId}/remove', function (int $teamId, int $userId) {
+        $team = \App\Models\Team::findOrFail($teamId);
+        $user = \App\Models\User::findOrFail($userId);
+
+        // Check if user is owner - owners cannot be removed
+        $role = $team->members()->where('user_id', $userId)->first()?->pivot?->role;
+        if ($role === 'owner') {
+            return back()->with('error', 'Cannot remove team owner');
+        }
+
+        $team->members()->detach($userId);
+
+        return back()->with('success', "Removed {$user->name} from team");
+    })->name('admin.teams.members.remove');
+
+    Route::post('/teams/{teamId}/members/{userId}/role', function (int $teamId, int $userId) {
+        $team = \App\Models\Team::findOrFail($teamId);
+        $newRole = request()->input('role');
+
+        if (! in_array($newRole, ['owner', 'admin', 'member'])) {
+            return back()->with('error', 'Invalid role');
+        }
+
+        $team->members()->updateExistingPivot($userId, ['role' => $newRole]);
+
+        return back()->with('success', 'Role updated successfully');
+    })->name('admin.teams.members.role');
+
+    Route::delete('/teams/{id}', function (int $id) {
+        $team = \App\Models\Team::findOrFail($id);
+
+        // Prevent deletion of root team (id=0) or personal teams
+        if ($team->id === 0) {
+            return back()->with('error', 'Cannot delete root team');
+        }
+
+        if ($team->personal_team) {
+            return back()->with('error', 'Cannot delete personal teams');
+        }
+
+        $teamName = $team->name;
+        $team->delete();
+
+        return redirect()->route('admin.teams.index')->with('success', "Team '{$teamName}' deleted");
+    })->name('admin.teams.delete');
 
     Route::get('/settings', function () {
         // Fetch instance settings (admin view)
