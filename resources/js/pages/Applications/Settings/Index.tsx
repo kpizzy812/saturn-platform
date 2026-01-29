@@ -2,16 +2,26 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Select } from '@/components/ui';
-import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History } from 'lucide-react';
 import type { Application } from '@/types';
+
+interface ApplicationSettings {
+    auto_rollback_enabled: boolean;
+    rollback_validation_seconds: number;
+    rollback_max_restarts: number;
+    rollback_on_health_check_fail: boolean;
+    rollback_on_crash_loop: boolean;
+    docker_images_to_keep: number;
+}
 
 interface Props {
     application: Application;
+    applicationSettings?: ApplicationSettings;
     projectUuid?: string;
     environmentUuid?: string;
 }
 
-export default function ApplicationSettings({ application, projectUuid, environmentUuid }: Props) {
+export default function ApplicationSettingsPage({ application, applicationSettings, projectUuid, environmentUuid }: Props) {
     const [settings, setSettings] = React.useState({
         name: application.name || '',
         description: application.description || '',
@@ -25,6 +35,13 @@ export default function ApplicationSettings({ application, projectUuid, environm
         memory_limit: application.limits_memory || '',
         build_pack: application.build_pack || 'nixpacks',
         deploy_on_push: application.is_auto_deploy_enabled ?? true,
+        // Rollback settings
+        auto_rollback_enabled: applicationSettings?.auto_rollback_enabled ?? false,
+        rollback_validation_seconds: applicationSettings?.rollback_validation_seconds ?? 300,
+        rollback_max_restarts: applicationSettings?.rollback_max_restarts ?? 3,
+        rollback_on_health_check_fail: applicationSettings?.rollback_on_health_check_fail ?? true,
+        rollback_on_crash_loop: applicationSettings?.rollback_on_crash_loop ?? true,
+        docker_images_to_keep: applicationSettings?.docker_images_to_keep ?? 2,
     });
     const [isSaving, setIsSaving] = React.useState(false);
     const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -291,6 +308,156 @@ export default function ApplicationSettings({ application, projectUuid, environm
                                         <option value="4G">4 GB</option>
                                         <option value="8G">8 GB</option>
                                     </Select>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Rollback Settings */}
+                    <Card>
+                        <CardContent className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <History className="h-5 w-5 text-foreground-muted" />
+                                <h2 className="text-lg font-semibold text-foreground">Rollback Settings</h2>
+                            </div>
+                            <div className="space-y-4">
+                                {/* Auto Rollback Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <label className="text-sm font-medium text-foreground mb-1 block">
+                                            Auto Rollback
+                                        </label>
+                                        <p className="text-sm text-foreground-muted">
+                                            Automatically rollback to the previous version if deployment fails health checks
+                                        </p>
+                                    </div>
+                                    <label className="relative inline-flex cursor-pointer items-center">
+                                        <input
+                                            type="checkbox"
+                                            className="peer sr-only"
+                                            checked={settings.auto_rollback_enabled}
+                                            onChange={(e) => setSettings({ ...settings, auto_rollback_enabled: e.target.checked })}
+                                        />
+                                        <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
+                                    </label>
+                                </div>
+
+                                {/* Rollback conditions - only shown when auto rollback is enabled */}
+                                {settings.auto_rollback_enabled && (
+                                    <>
+                                        <div className="border-t border-border pt-4">
+                                            <p className="text-sm font-medium text-foreground mb-3">Rollback Triggers</p>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1">
+                                                        <label className="text-sm text-foreground">
+                                                            Rollback on Health Check Failure
+                                                        </label>
+                                                        <p className="text-xs text-foreground-muted">
+                                                            Trigger rollback when container becomes unhealthy
+                                                        </p>
+                                                    </div>
+                                                    <label className="relative inline-flex cursor-pointer items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="peer sr-only"
+                                                            checked={settings.rollback_on_health_check_fail}
+                                                            onChange={(e) => setSettings({ ...settings, rollback_on_health_check_fail: e.target.checked })}
+                                                        />
+                                                        <div className="peer h-5 w-9 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1">
+                                                        <label className="text-sm text-foreground">
+                                                            Rollback on Crash Loop
+                                                        </label>
+                                                        <p className="text-xs text-foreground-muted">
+                                                            Trigger rollback when container keeps restarting
+                                                        </p>
+                                                    </div>
+                                                    <label className="relative inline-flex cursor-pointer items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="peer sr-only"
+                                                            checked={settings.rollback_on_crash_loop}
+                                                            onChange={(e) => setSettings({ ...settings, rollback_on_crash_loop: e.target.checked })}
+                                                        />
+                                                        <div className="peer h-5 w-9 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t border-border pt-4">
+                                            <p className="text-sm font-medium text-foreground mb-3">Rollback Parameters</p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-sm text-foreground mb-2 block">
+                                                        Validation Period (seconds)
+                                                    </label>
+                                                    <Input
+                                                        type="number"
+                                                        value={settings.rollback_validation_seconds}
+                                                        onChange={(e) => setSettings({ ...settings, rollback_validation_seconds: parseInt(e.target.value) || 300 })}
+                                                        min="60"
+                                                        max="1800"
+                                                    />
+                                                    <p className="text-xs text-foreground-muted mt-1">
+                                                        Time to monitor after deploy (60-1800s)
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <label className="text-sm text-foreground mb-2 block">
+                                                        Max Restarts Before Rollback
+                                                    </label>
+                                                    <Input
+                                                        type="number"
+                                                        value={settings.rollback_max_restarts}
+                                                        onChange={(e) => setSettings({ ...settings, rollback_max_restarts: parseInt(e.target.value) || 3 })}
+                                                        min="1"
+                                                        max="10"
+                                                    />
+                                                    <p className="text-xs text-foreground-muted mt-1">
+                                                        Crash loop threshold (1-10)
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Docker Images Retention */}
+                                <div className="border-t border-border pt-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground mb-2 block">
+                                            Docker Images to Keep
+                                        </label>
+                                        <Select
+                                            value={settings.docker_images_to_keep.toString()}
+                                            onChange={(e) => setSettings({ ...settings, docker_images_to_keep: parseInt(e.target.value) })}
+                                        >
+                                            <option value="1">1 (current only)</option>
+                                            <option value="2">2 (recommended)</option>
+                                            <option value="3">3</option>
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                        </Select>
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Number of previous images to keep for rollback. Higher values use more disk space.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Manual Rollback Link */}
+                                <div className="border-t border-border pt-4">
+                                    <Link
+                                        href={`/applications/${application.uuid}/rollback`}
+                                        className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                    >
+                                        <History className="h-4 w-4" />
+                                        View deployment history &amp; manual rollback
+                                    </Link>
                                 </div>
                             </div>
                         </CardContent>

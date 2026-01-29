@@ -26,6 +26,12 @@ class ApplicationSetting extends Model
         'is_git_lfs_enabled' => 'boolean',
         'is_git_shallow_clone_enabled' => 'boolean',
         'docker_images_to_keep' => 'integer',
+        // Auto-rollback settings
+        'auto_rollback_enabled' => 'boolean',
+        'rollback_validation_seconds' => 'integer',
+        'rollback_max_restarts' => 'integer',
+        'rollback_on_health_check_fail' => 'boolean',
+        'rollback_on_crash_loop' => 'boolean',
     ];
 
     protected $guarded = [];

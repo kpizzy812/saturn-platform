@@ -25,6 +25,7 @@ import {
     CheckCircle2,
     XCircle,
     Loader2,
+    History,
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
@@ -200,6 +201,10 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                 <DropdownItem onClick={handleForceRebuild}>
                                     <Rocket className="h-4 w-4" />
                                     Force Rebuild
+                                </DropdownItem>
+                                <DropdownItem onClick={() => router.visit(`/applications/${application.uuid}/rollback`)}>
+                                    <History className="h-4 w-4" />
+                                    Rollback
                                 </DropdownItem>
                                 <DropdownDivider />
                                 {application.status?.startsWith('running') ? (

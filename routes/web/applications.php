@@ -471,8 +471,19 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
     $project = $application->environment->project;
     $environment = $application->environment;
 
+    // Load settings for rollback configuration
+    $settings = $application->settings;
+
     return Inertia::render('Applications/Settings/Index', [
         'application' => $application,
+        'applicationSettings' => [
+            'auto_rollback_enabled' => $settings->auto_rollback_enabled ?? false,
+            'rollback_validation_seconds' => $settings->rollback_validation_seconds ?? 300,
+            'rollback_max_restarts' => $settings->rollback_max_restarts ?? 3,
+            'rollback_on_health_check_fail' => $settings->rollback_on_health_check_fail ?? true,
+            'rollback_on_crash_loop' => $settings->rollback_on_crash_loop ?? true,
+            'docker_images_to_keep' => $settings->docker_images_to_keep ?? 2,
+        ],
         'projectUuid' => $project->uuid,
         'environmentUuid' => $environment->uuid,
     ]);
@@ -501,6 +512,13 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'deploy_on_push' => 'sometimes|boolean',
         'cpu_limit' => 'sometimes|nullable|string',
         'memory_limit' => 'sometimes|nullable|string',
+        // Rollback settings
+        'auto_rollback_enabled' => 'sometimes|boolean',
+        'rollback_validation_seconds' => 'sometimes|integer|min:60|max:1800',
+        'rollback_max_restarts' => 'sometimes|integer|min:1|max:10',
+        'rollback_on_health_check_fail' => 'sometimes|boolean',
+        'rollback_on_crash_loop' => 'sometimes|boolean',
+        'docker_images_to_keep' => 'sometimes|integer|min:1|max:20',
     ]);
 
     // Map frontend field names to application model field names
@@ -517,11 +535,26 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
     }
 
     // Handle settings fields (stored in application_settings table)
-    if (isset($validated['deploy_on_push'])) {
-        $application->settings->update([
-            'is_auto_deploy_enabled' => $validated['deploy_on_push'],
-        ]);
-        unset($validated['deploy_on_push']);
+    $settingsFields = [
+        'deploy_on_push' => 'is_auto_deploy_enabled',
+        'auto_rollback_enabled' => 'auto_rollback_enabled',
+        'rollback_validation_seconds' => 'rollback_validation_seconds',
+        'rollback_max_restarts' => 'rollback_max_restarts',
+        'rollback_on_health_check_fail' => 'rollback_on_health_check_fail',
+        'rollback_on_crash_loop' => 'rollback_on_crash_loop',
+        'docker_images_to_keep' => 'docker_images_to_keep',
+    ];
+
+    $settingsUpdate = [];
+    foreach ($settingsFields as $frontendKey => $settingsKey) {
+        if (isset($validated[$frontendKey])) {
+            $settingsUpdate[$settingsKey] = $validated[$frontendKey];
+            unset($validated[$frontendKey]);
+        }
+    }
+
+    if (! empty($settingsUpdate)) {
+        $application->settings->update($settingsUpdate);
     }
 
     // Mark build_pack as explicitly set when user changes it via settings
