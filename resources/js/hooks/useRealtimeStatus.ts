@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { usePage } from '@inertiajs/react';
-import { getEcho, isEchoConnected } from '@/lib/echo';
-import type { Application, StandaloneDatabase, Service, Server } from '@/types';
+import { getEcho } from '@/lib/echo';
+import type { Application } from '@/types';
 
 /**
  * Event data structures for WebSocket events
@@ -260,6 +260,112 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
     ]);
 
     /**
+     * Fetch status updates from API
+     */
+    const fetchStatusUpdates = React.useCallback(async () => {
+        if (!teamId) return;
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            // Fetch applications status
+            if (onApplicationStatusChange) {
+                const appsResponse = await fetch('/api/v1/applications', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                });
+
+                if (appsResponse.ok) {
+                    const apps = await appsResponse.json();
+                    if (Array.isArray(apps)) {
+                        apps.forEach((app: { id: number; status: Application['status'] }) => {
+                            onApplicationStatusChange({
+                                applicationId: app.id,
+                                status: app.status,
+                            });
+                        });
+                    }
+                }
+            }
+
+            // Fetch servers status
+            if (onServerStatusChange) {
+                const serversResponse = await fetch('/api/v1/servers', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                });
+
+                if (serversResponse.ok) {
+                    const servers = await serversResponse.json();
+                    if (Array.isArray(servers)) {
+                        servers.forEach((server: { id: number; is_reachable: boolean; is_usable: boolean }) => {
+                            onServerStatusChange({
+                                serverId: server.id,
+                                isReachable: server.is_reachable,
+                                isUsable: server.is_usable,
+                            });
+                        });
+                    }
+                }
+            }
+
+            // Fetch databases status
+            if (onDatabaseStatusChange) {
+                const dbResponse = await fetch('/api/v1/databases', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                });
+
+                if (dbResponse.ok) {
+                    const databases = await dbResponse.json();
+                    if (Array.isArray(databases)) {
+                        databases.forEach((db: { id: number; status: string }) => {
+                            onDatabaseStatusChange({
+                                databaseId: db.id,
+                                status: db.status,
+                            });
+                        });
+                    }
+                }
+            }
+
+            // Fetch services status
+            if (onServiceStatusChange) {
+                const servicesResponse = await fetch('/api/v1/services', {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                });
+
+                if (servicesResponse.ok) {
+                    const services = await servicesResponse.json();
+                    if (Array.isArray(services)) {
+                        services.forEach((service: { id: number; status: string }) => {
+                            onServiceStatusChange({
+                                serviceId: service.id,
+                                status: service.status,
+                            });
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[useRealtimeStatus] Polling fetch error:', err);
+        }
+    }, [teamId, onApplicationStatusChange, onServerStatusChange, onDatabaseStatusChange, onServiceStatusChange]);
+
+    /**
      * Start polling as fallback
      */
     const startPolling = React.useCallback(() => {
@@ -274,12 +380,12 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
             clearInterval(pollingIntervalRef.current);
         }
 
+        // Immediate first fetch
+        fetchStatusUpdates();
+
         // Set up new polling interval
         pollingIntervalRef.current = setInterval(() => {
-            // In production, this would fetch status from API
-            // For now, this is a placeholder for the polling logic
-            // You would implement API calls here to fetch latest status
-            console.debug('Polling for status updates...');
+            fetchStatusUpdates();
         }, pollingInterval);
 
         return () => {
@@ -287,7 +393,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
                 clearInterval(pollingIntervalRef.current);
             }
         };
-    }, [pollingInterval]);
+    }, [pollingInterval, fetchStatusUpdates]);
 
     /**
      * Reconnect to WebSocket

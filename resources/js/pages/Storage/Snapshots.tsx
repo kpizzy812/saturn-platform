@@ -1,24 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Modal, ModalFooter } from '@/components/ui';
-import { ArrowLeft, Plus, RotateCcw, Trash2, Clock, HardDrive, Camera, AlertCircle } from 'lucide-react';
-
-interface Props {
-    volumeId?: string;
-    volumeName?: string;
-}
+import { ArrowLeft, Plus, RotateCcw, Trash2, Clock, HardDrive, Camera, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface Snapshot {
     id: number;
     name: string;
     size: string;
     source_volume: string;
+    status?: string;
     created_at: string;
 }
 
-export default function StorageSnapshots({ volumeId = 'vol_123', volumeName = 'app-data' }: Props) {
-    const [snapshots] = useState<Snapshot[]>([]);
+interface Props {
+    volumeId?: string;
+    volumeName?: string;
+    snapshots?: Snapshot[];
+}
+
+export default function StorageSnapshots({
+    volumeId,
+    volumeName = 'Storage',
+    snapshots: initialSnapshots = []
+}: Props) {
+    const [snapshots, setSnapshots] = useState<Snapshot[]>(initialSnapshots);
+    const [loading, setLoading] = useState(!initialSnapshots.length);
+
+    // Fetch snapshots if not provided via props
+    useEffect(() => {
+        if (initialSnapshots.length > 0) {
+            setSnapshots(initialSnapshots);
+            setLoading(false);
+            return;
+        }
+
+        const fetchSnapshots = async () => {
+            try {
+                const url = volumeId
+                    ? `/api/v1/storage/${volumeId}/snapshots`
+                    : '/storage/snapshots/json';
+
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setSnapshots(Array.isArray(data) ? data : data.snapshots || []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch snapshots:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchSnapshots();
+    }, [volumeId, initialSnapshots]);
+
+    const handleRefresh = () => {
+        router.reload({ only: ['snapshots'] });
+    };
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRestoreModal, setShowRestoreModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -66,23 +113,32 @@ export default function StorageSnapshots({ volumeId = 'vol_123', volumeName = 'a
         }
     };
 
+    const breadcrumbs = volumeId
+        ? [
+            { label: 'Storage', href: '/volumes' },
+            { label: volumeName, href: `/volumes/${volumeId}` },
+            { label: 'Snapshots' }
+        ]
+        : [
+            { label: 'Storage', href: '/storage/snapshots' },
+            { label: 'Snapshots' }
+        ];
+
     return (
         <AppLayout
-            title={`${volumeName} - Snapshots`}
-            breadcrumbs={[
-                { label: 'Storage', href: '/volumes' },
-                { label: volumeName, href: `/volumes/${volumeId}` },
-                { label: 'Snapshots' }
-            ]}
+            title={volumeId ? `${volumeName} - Snapshots` : 'Storage Snapshots'}
+            breadcrumbs={breadcrumbs}
         >
             {/* Back Button */}
-            <Link
-                href={`/volumes/${volumeId}`}
-                className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
-            >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to {volumeName}
-            </Link>
+            {volumeId && (
+                <Link
+                    href={`/volumes/${volumeId}`}
+                    className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
+                >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to {volumeName}
+                </Link>
+            )}
 
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
@@ -90,10 +146,18 @@ export default function StorageSnapshots({ volumeId = 'vol_123', volumeName = 'a
                     <h1 className="text-2xl font-bold text-foreground">Volume Snapshots</h1>
                     <p className="text-foreground-muted">Point-in-time snapshots of {volumeName}</p>
                 </div>
-                <Button onClick={handleCreateSnapshot}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Snapshot
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="secondary" onClick={handleRefresh} disabled={loading}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                    {volumeId && (
+                        <Button onClick={handleCreateSnapshot}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Snapshot
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Info Card */}
@@ -125,18 +189,29 @@ export default function StorageSnapshots({ volumeId = 'vol_123', volumeName = 'a
             <div className="space-y-3">
                 <h2 className="text-lg font-medium text-foreground">Snapshots ({snapshots.length})</h2>
 
-                {snapshots.length === 0 ? (
+                {loading ? (
+                    <Card>
+                        <CardContent className="p-12 text-center">
+                            <RefreshCw className="mx-auto h-8 w-8 animate-spin text-foreground-muted" />
+                            <p className="mt-4 text-foreground-muted">Loading snapshots...</p>
+                        </CardContent>
+                    </Card>
+                ) : snapshots.length === 0 ? (
                     <Card>
                         <CardContent className="p-12 text-center">
                             <Camera className="mx-auto h-12 w-12 text-foreground-subtle" />
                             <h3 className="mt-4 font-medium text-foreground">No snapshots yet</h3>
                             <p className="mt-1 text-sm text-foreground-muted">
-                                Create your first snapshot to preserve the current state
+                                {volumeId
+                                    ? 'Create your first snapshot to preserve the current state'
+                                    : 'Database backup executions will appear here as snapshots'}
                             </p>
-                            <Button onClick={handleCreateSnapshot} className="mt-6">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Create Snapshot
-                            </Button>
+                            {volumeId && (
+                                <Button onClick={handleCreateSnapshot} className="mt-6">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Snapshot
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 ) : (

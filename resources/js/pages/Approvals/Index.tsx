@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, Modal, ModalFooter, Input, useToast } from '@/components/ui';
 import { Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, Inbox } from 'lucide-react';
 import type { DeploymentApproval } from '@/types/models';
 
 export default function ApprovalsIndex() {
+    const { addToast } = useToast();
     const [approvals, setApprovals] = useState<DeploymentApproval[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+    // Reject modal state
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectingDeploymentUuid, setRejectingDeploymentUuid] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
 
     const fetchApprovals = async () => {
         setLoading(true);
@@ -51,40 +57,49 @@ export default function ApprovalsIndex() {
             });
             if (!res.ok) {
                 const err = await res.json();
-                alert(err.message || 'Failed to approve');
+                addToast('error', 'Approval Failed', err.message || 'Failed to approve deployment');
                 return;
             }
+            addToast('success', 'Deployment Approved', 'The deployment has been approved and will proceed.');
             fetchApprovals();
         } catch {
-            alert('Failed to approve deployment');
+            addToast('error', 'Approval Failed', 'Failed to approve deployment. Please try again.');
         } finally {
             setActionLoading(null);
         }
     };
 
-    const handleReject = async (deploymentUuid: string) => {
-        const reason = prompt('Rejection reason (optional):');
-        if (reason === null) return;
+    const openRejectModal = (deploymentUuid: string) => {
+        setRejectingDeploymentUuid(deploymentUuid);
+        setRejectReason('');
+        setShowRejectModal(true);
+    };
 
-        setActionLoading(deploymentUuid);
+    const handleReject = async () => {
+        if (!rejectingDeploymentUuid) return;
+
+        setActionLoading(rejectingDeploymentUuid);
         try {
-            const res = await fetch(`/deployments/${deploymentUuid}/reject/json`, {
+            const res = await fetch(`/deployments/${rejectingDeploymentUuid}/reject/json`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                body: JSON.stringify({ reason }),
+                body: JSON.stringify({ reason: rejectReason }),
             });
             if (!res.ok) {
                 const err = await res.json();
-                alert(err.message || 'Failed to reject');
+                addToast('error', 'Rejection Failed', err.message || 'Failed to reject deployment');
                 return;
             }
+            addToast('success', 'Deployment Rejected', 'The deployment has been rejected.');
+            setShowRejectModal(false);
+            setRejectingDeploymentUuid(null);
             fetchApprovals();
         } catch {
-            alert('Failed to reject deployment');
+            addToast('error', 'Rejection Failed', 'Failed to reject deployment. Please try again.');
         } finally {
             setActionLoading(null);
         }
@@ -191,7 +206,7 @@ export default function ApprovalsIndex() {
                                         </Button>
                                         <Button
                                             variant="danger"
-                                            onClick={() => handleReject(approval.deployment_uuid)}
+                                            onClick={() => openRejectModal(approval.deployment_uuid)}
                                             disabled={actionLoading === approval.deployment_uuid}
                                         >
                                             <XCircle className="mr-2 h-4 w-4" />
@@ -220,6 +235,56 @@ export default function ApprovalsIndex() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Reject Confirmation Modal */}
+            <Modal
+                isOpen={showRejectModal}
+                onClose={() => {
+                    setShowRejectModal(false);
+                    setRejectingDeploymentUuid(null);
+                    setRejectReason('');
+                }}
+                title="Reject Deployment"
+                description="Are you sure you want to reject this deployment?"
+            >
+                <div className="space-y-4">
+                    <div className="rounded-lg border border-danger/50 bg-danger/10 p-4">
+                        <p className="text-sm font-medium text-danger">This action cannot be undone</p>
+                        <p className="mt-1 text-sm text-foreground-muted">
+                            The deployment will be cancelled and the requester will be notified.
+                        </p>
+                    </div>
+
+                    <Input
+                        label="Rejection Reason (optional)"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="Enter a reason for rejection..."
+                        hint="This will be shared with the person who requested the deployment"
+                    />
+
+                    <ModalFooter>
+                        <Button
+                            variant="secondary"
+                            onClick={() => {
+                                setShowRejectModal(false);
+                                setRejectingDeploymentUuid(null);
+                                setRejectReason('');
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleReject}
+                            loading={actionLoading === rejectingDeploymentUuid}
+                        >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Reject Deployment
+                        </Button>
+                    </ModalFooter>
+                </div>
+            </Modal>
         </AppLayout>
     );
 }

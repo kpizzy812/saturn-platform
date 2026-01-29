@@ -285,7 +285,7 @@ export function initializeTerminalComponent() {
             },
 
             handleSocketOpen() {
-                console.log('[Terminal] WebSocket connection established. Cool cool cool cool cool cool.');
+                console.log('[Terminal] WebSocket connection established.');
                 this.connectionState = 'connected';
                 this.reconnectAttempts = 0;
                 this.heartbeatMissed = 0;
