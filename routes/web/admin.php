@@ -367,7 +367,7 @@ Route::prefix('admin')->group(function () {
 
     Route::get('/servers', function () {
         // Fetch all servers across all teams (admin view)
-        $servers = \App\Models\Server::with(['team'])
+        $servers = \App\Models\Server::with(['team', 'settings'])
             ->latest()
             ->paginate(50)
             ->through(function ($server) {
@@ -379,6 +379,8 @@ Route::prefix('admin')->group(function () {
                     'ip' => $server->ip,
                     'port' => $server->port,
                     'user' => $server->user,
+                    'is_reachable' => $server->settings?->is_reachable ?? false,
+                    'is_usable' => $server->settings?->is_usable ?? false,
                     'team_name' => $server->team?->name ?? 'Unknown',
                     'team_id' => $server->team_id,
                     'created_at' => $server->created_at,
