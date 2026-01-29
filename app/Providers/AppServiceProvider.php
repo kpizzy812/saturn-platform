@@ -6,6 +6,7 @@ use App\Models\PersonalAccessToken;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -28,7 +29,24 @@ class AppServiceProvider extends ServiceProvider
         $this->configurePasswords();
         $this->configureSanctumModel();
         $this->configureGitHubHttp();
+        $this->ensureStorageLink();
+    }
 
+    /**
+     * Ensure storage symlink exists for public file access.
+     * Auto-creates the symlink if missing (avatars, logos, etc.)
+     */
+    private function ensureStorageLink(): void
+    {
+        $publicStorage = public_path('storage');
+
+        if (! File::exists($publicStorage)) {
+            try {
+                File::link(storage_path('app/public'), $publicStorage);
+            } catch (\Exception $e) {
+                // Silently fail - might be running in read-only environment or CLI
+            }
+        }
     }
 
     private function configureCommands(): void
