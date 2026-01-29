@@ -260,6 +260,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
             $databaseName = $this->execution->database_name;
             $commands = [];
+            $escapedContainerName = escapeshellarg($this->container_name);
 
             // Check if it's a dump_all backup (gzipped)
             if (str($backupLocation)->endsWith('.gz')) {
@@ -268,7 +269,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 if ($this->postgres_password) {
                     $restoreCommand .= " -e PGPASSWORD=\"{$this->postgres_password}\"";
                 }
-                $restoreCommand .= " {$this->container_name} psql --username {$this->database->postgres_user} -d postgres";
+                $restoreCommand .= " {$escapedContainerName} psql --username {$this->database->postgres_user} -d postgres";
                 $commands[] = "gunzip -c {$backupLocation} | {$restoreCommand}";
             } else {
                 // Custom format restore
@@ -280,7 +281,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 validateShellSafePath($databaseName, 'database name');
                 $escapedDatabase = escapeshellarg($databaseName);
 
-                $restoreCommand .= " {$this->container_name} pg_restore --username {$this->database->postgres_user} --dbname {$escapedDatabase} --clean --if-exists --no-owner --no-acl {$backupLocation}";
+                $restoreCommand .= " {$escapedContainerName} pg_restore --username {$this->database->postgres_user} --dbname {$escapedDatabase} --clean --if-exists --no-owner --no-acl {$backupLocation}";
                 $commands[] = $restoreCommand;
             }
 
@@ -297,14 +298,15 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $databaseName = $this->execution->database_name;
             $commands = [];
+            $escapedContainerName = escapeshellarg($this->container_name);
 
             // Check if it's a dump_all backup (gzipped)
             if (str($backupLocation)->endsWith('.gz')) {
-                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$this->container_name} mysql -u root -p\"{$this->database->mysql_root_password}\"";
+                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$escapedContainerName} mysql -u root -p\"{$this->database->mysql_root_password}\"";
             } else {
                 validateShellSafePath($databaseName, 'database name');
                 $escapedDatabase = escapeshellarg($databaseName);
-                $commands[] = "docker exec -i {$this->container_name} mysql -u root -p\"{$this->database->mysql_root_password}\" {$escapedDatabase} < {$backupLocation}";
+                $commands[] = "docker exec -i {$escapedContainerName} mysql -u root -p\"{$this->database->mysql_root_password}\" {$escapedDatabase} < {$backupLocation}";
             }
 
             $this->restore_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
@@ -320,14 +322,15 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $databaseName = $this->execution->database_name;
             $commands = [];
+            $escapedContainerName = escapeshellarg($this->container_name);
 
             // Check if it's a dump_all backup
             if (str($backupLocation)->endsWith('.gz')) {
-                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$this->container_name} mariadb -u root -p\"{$this->database->mariadb_root_password}\"";
+                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$escapedContainerName} mariadb -u root -p\"{$this->database->mariadb_root_password}\"";
             } else {
                 validateShellSafePath($databaseName, 'database name');
                 $escapedDatabase = escapeshellarg($databaseName);
-                $commands[] = "docker exec -i {$this->container_name} mariadb -u root -p\"{$this->database->mariadb_root_password}\" {$escapedDatabase} < {$backupLocation}";
+                $commands[] = "docker exec -i {$escapedContainerName} mariadb -u root -p\"{$this->database->mariadb_root_password}\" {$escapedDatabase} < {$backupLocation}";
             }
 
             $this->restore_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
@@ -353,11 +356,12 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             $commands = [];
+            $escapedContainerName = escapeshellarg($this->container_name);
 
             if (str($this->database->image)->startsWith('mongo:4')) {
-                $commands[] = "docker exec {$this->container_name} mongorestore --uri=\"{$url}\" --gzip --archive={$backupLocation} --drop";
+                $commands[] = "docker exec {$escapedContainerName} mongorestore --uri=\"{$url}\" --gzip --archive={$backupLocation} --drop";
             } else {
-                $commands[] = "docker exec {$this->container_name} mongorestore --authenticationDatabase=admin --uri=\"{$url}\" --gzip --archive={$backupLocation} --drop";
+                $commands[] = "docker exec {$escapedContainerName} mongorestore --authenticationDatabase=admin --uri=\"{$url}\" --gzip --archive={$backupLocation} --drop";
             }
 
             $this->restore_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
@@ -372,7 +376,8 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
     {
         if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
             $commands = [];
-            $commands[] = "docker exec {$this->container_name} env | grep POSTGRES_PASSWORD=";
+            $escapedContainerName = escapeshellarg($this->container_name);
+            $commands[] = "docker exec {$escapedContainerName} env | grep POSTGRES_PASSWORD=";
             $envs = instant_remote_process($commands, $this->server, true, false, null, disableMultiplexing: true);
             $envs = str($envs)->explode("\n");
 
@@ -392,7 +397,8 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
     {
         if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
             $commands = [];
-            $commands[] = "docker exec {$this->container_name} env | grep MONGO_INITDB_";
+            $escapedContainerName = escapeshellarg($this->container_name);
+            $commands[] = "docker exec {$escapedContainerName} env | grep MONGO_INITDB_";
             $envs = instant_remote_process($commands, $this->server, true, false, null, disableMultiplexing: true);
 
             if (filled($envs)) {

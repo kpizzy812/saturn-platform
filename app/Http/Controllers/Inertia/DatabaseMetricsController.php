@@ -112,9 +112,10 @@ class DatabaseMetricsController extends Controller
      */
     protected function collectPostgresMetrics(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
+        $dbNameRaw = $database->postgres_db ?? 'postgres';
 
         $metrics = [
             'activeConnections' => null,
@@ -132,8 +133,9 @@ class DatabaseMetricsController extends Controller
                 $metrics['activeConnections'] = (int) $activeConnections;
             }
 
-            // Get database size
-            $sizeCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_size_pretty(pg_database_size('{$dbName}'));\" 2>/dev/null || echo 'N/A'";
+            // Get database size - use escaped dbName in SQL query
+            $escapedDbNameSql = addslashes($dbNameRaw);
+            $sizeCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_size_pretty(pg_database_size('{$escapedDbNameSql}'));\" 2>/dev/null || echo 'N/A'";
             $databaseSize = trim(instant_remote_process([$sizeCommand], $server, false) ?? 'N/A');
             if ($databaseSize && $databaseSize !== 'N/A') {
                 $metrics['databaseSize'] = $databaseSize;
@@ -157,8 +159,9 @@ class DatabaseMetricsController extends Controller
      */
     protected function collectMysqlMetrics(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $escapedPassword = escapeshellarg($password);
 
         $metrics = [
             'activeConnections' => null,
@@ -170,21 +173,21 @@ class DatabaseMetricsController extends Controller
 
         try {
             // Get active connections
-            $connCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW STATUS LIKE 'Threads_connected';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
+            $connCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW STATUS LIKE 'Threads_connected';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
             $connections = trim(instant_remote_process([$connCommand], $server, false) ?? '');
             if (is_numeric($connections)) {
                 $metrics['activeConnections'] = (int) $connections;
             }
 
             // Get max connections
-            $maxConnCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}' || echo '150'";
+            $maxConnCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}' || echo '150'";
             $maxConnections = trim(instant_remote_process([$maxConnCommand], $server, false) ?? '150');
             if (is_numeric($maxConnections)) {
                 $metrics['maxConnections'] = (int) $maxConnections;
             }
 
             // Get slow queries
-            $slowCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW STATUS LIKE 'Slow_queries';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
+            $slowCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW STATUS LIKE 'Slow_queries';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
             $slowQueries = trim(instant_remote_process([$slowCommand], $server, false) ?? '');
             if (is_numeric($slowQueries)) {
                 $metrics['slowQueries'] = (int) $slowQueries;
@@ -212,10 +215,11 @@ class DatabaseMetricsController extends Controller
         ];
 
         try {
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $escapedContainerName = escapeshellarg($containerName);
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
 
             // Get Redis INFO
-            $infoCommand = "docker exec {$containerName} redis-cli {$authFlag} INFO 2>/dev/null || echo ''";
+            $infoCommand = "docker exec {$escapedContainerName} redis-cli {$authFlag} INFO 2>/dev/null || echo ''";
             $info = instant_remote_process([$infoCommand], $server, false) ?? '';
 
             // Parse used memory
@@ -762,15 +766,15 @@ class DatabaseMetricsController extends Controller
      */
     protected function executePostgresQuery(mixed $server, mixed $database, string $query): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
-        // Escape single quotes in query for shell
-        $escapedQuery = str_replace("'", "'\"'\"'", $query);
+        // Escape query for shell using escapeshellarg for safety
+        $escapedQuery = escapeshellarg($query);
 
         // Execute query with pipe-delimited output format
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c '{$escapedQuery}' 2>&1";
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$escapedQuery} 2>&1";
         $result = instant_remote_process([$command], $server, false, false, 30);
 
         if ($result === null) {
@@ -790,14 +794,15 @@ class DatabaseMetricsController extends Controller
      */
     protected function executeMysqlQuery(mixed $server, mixed $database, string $query): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $escapedPassword = escapeshellarg($password);
 
-        // Escape single quotes in query for shell
-        $escapedQuery = str_replace("'", "'\"'\"'", $query);
+        // Escape query for shell using escapeshellarg for safety
+        $escapedQuery = escapeshellarg($query);
 
         // Execute query with tab-delimited output
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -B -e '{$escapedQuery}' 2>&1";
+        $command = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -B -e {$escapedQuery} 2>&1";
         $result = instant_remote_process([$command], $server, false, false, 30);
 
         if ($result === null) {
@@ -817,15 +822,15 @@ class DatabaseMetricsController extends Controller
      */
     protected function executeClickhouseQuery(mixed $server, mixed $database, string $query): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
 
-        // Escape single quotes in query for shell
-        $escapedQuery = str_replace("'", "'\"'\"'", $query);
-        $authFlag = $password ? "--password '{$password}'" : '';
+        // Escape query for shell using escapeshellarg for safety
+        $escapedQuery = escapeshellarg($query);
+        $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
         // Execute query with TabSeparated format
-        $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q '{$escapedQuery}' 2>&1";
+        $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q {$escapedQuery} 2>&1";
         $result = instant_remote_process([$command], $server, false, false, 30);
 
         if ($result === null) {
@@ -1335,14 +1340,19 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
+            $containerName = escapeshellarg($database->uuid);
             $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
             $pattern = $request->input('pattern', '*');
+            // Validate pattern to prevent command injection - allow only safe Redis glob patterns
+            if (! preg_match('/^[a-zA-Z0-9_:.*?\[\]-]+$/', $pattern)) {
+                return response()->json(['available' => false, 'error' => 'Invalid pattern format']);
+            }
+            $escapedPattern = escapeshellarg($pattern);
             $limit = min((int) $request->input('limit', 100), 500);
 
             // Get keys matching pattern
-            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning KEYS '{$pattern}' 2>/dev/null | head -n {$limit}";
+            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning KEYS {$escapedPattern} 2>/dev/null | head -n {$limit}";
             $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
             $keys = [];
@@ -1355,17 +1365,19 @@ class DatabaseMetricsController extends Controller
                         continue;
                     }
 
+                    $escapedKeyName = escapeshellarg($keyName);
+
                     // Get key type
-                    $typeCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TYPE '{$keyName}' 2>/dev/null";
+                    $typeCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TYPE {$escapedKeyName} 2>/dev/null";
                     $keyType = trim(instant_remote_process([$typeCmd], $server, false) ?? 'unknown');
 
                     // Get TTL
-                    $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TTL '{$keyName}' 2>/dev/null";
+                    $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TTL {$escapedKeyName} 2>/dev/null";
                     $ttl = (int) trim(instant_remote_process([$ttlCmd], $server, false) ?? '-1');
                     $ttlDisplay = $ttl === -1 ? 'none' : ($ttl === -2 ? 'expired' : $this->formatSeconds($ttl));
 
                     // Get memory usage
-                    $memCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning MEMORY USAGE '{$keyName}' 2>/dev/null";
+                    $memCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning MEMORY USAGE {$escapedKeyName} 2>/dev/null";
                     $memUsage = trim(instant_remote_process([$memCmd], $server, false) ?? '0');
                     $size = is_numeric($memUsage) ? $this->formatBytes((int) $memUsage) : 'N/A';
 
@@ -1408,9 +1420,9 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
+            $containerName = escapeshellarg($database->uuid);
             $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
 
             // Get memory info
             $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning INFO memory 2>/dev/null";
@@ -1482,9 +1494,9 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
+            $containerName = escapeshellarg($database->uuid);
             $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
 
             $flushCommand = $flushType === 'all' ? 'FLUSHALL' : 'FLUSHDB';
             $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning {$flushCommand} 2>&1";
@@ -1533,12 +1545,13 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
-            $user = $database->postgres_user ?? 'postgres';
-            $dbName = $database->postgres_db ?? 'postgres';
+            $containerName = escapeshellarg($database->uuid);
+            $user = escapeshellarg($database->postgres_user ?? 'postgres');
+            $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
             $sql = strtoupper($operation);
-            $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$sql};\" 2>&1";
+            $escapedSql = escapeshellarg("{$sql};");
+            $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c {$escapedSql} 2>&1";
             $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
             if (stripos($result, 'ERROR') !== false) {
@@ -1678,9 +1691,9 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
+            $containerName = escapeshellarg($database->uuid);
             $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
 
             $persistence = [
                 'rdbEnabled' => false,
@@ -2108,14 +2121,24 @@ class DatabaseMetricsController extends Controller
      */
     protected function createPostgresUser(mixed $server, mixed $database, string $username, string $password): array
     {
-        $containerName = $database->uuid;
-        $adminUser = $database->postgres_user ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $adminUser = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = $database->postgres_db ?? 'postgres';
+        $escapedDbName = escapeshellarg($dbName);
 
-        // Escape password for SQL
-        $escapedPassword = str_replace("'", "''", $password);
+        // Validate username format (alphanumeric, underscore only)
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $username)) {
+            return ['success' => false, 'error' => 'Invalid username format'];
+        }
 
-        $command = "docker exec {$containerName} psql -U {$adminUser} -d {$dbName} -c \"CREATE ROLE \\\"{$username}\\\" WITH LOGIN PASSWORD '{$escapedPassword}';\" 2>&1";
+        // Escape password for SQL (double single quotes)
+        $escapedPasswordSql = str_replace("'", "''", $password);
+
+        // Build SQL command and escape for shell
+        $createSql = "CREATE ROLE \"{$username}\" WITH LOGIN PASSWORD '{$escapedPasswordSql}';";
+        $escapedCreateSql = escapeshellarg($createSql);
+
+        $command = "docker exec {$containerName} psql -U {$adminUser} -d {$escapedDbName} -c {$escapedCreateSql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         if (stripos($result, 'ERROR') !== false) {
@@ -2123,7 +2146,9 @@ class DatabaseMetricsController extends Controller
         }
 
         // Grant connect privilege
-        $grantCmd = "docker exec {$containerName} psql -U {$adminUser} -d {$dbName} -c \"GRANT CONNECT ON DATABASE \\\"{$dbName}\\\" TO \\\"{$username}\\\";\" 2>&1";
+        $grantSql = "GRANT CONNECT ON DATABASE \"{$dbName}\" TO \"{$username}\";";
+        $escapedGrantSql = escapeshellarg($grantSql);
+        $grantCmd = "docker exec {$containerName} psql -U {$adminUser} -d {$escapedDbName} -c {$escapedGrantSql} 2>&1";
         instant_remote_process([$grantCmd], $server, false);
 
         return ['success' => true, 'message' => "User {$username} created successfully"];
@@ -2134,13 +2159,23 @@ class DatabaseMetricsController extends Controller
      */
     protected function createMysqlUser(mixed $server, mixed $database, string $username, string $password): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $rootPassword = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $escapedRootPassword = escapeshellarg($rootPassword);
 
-        // Escape password for SQL
-        $escapedPassword = str_replace("'", "''", $password);
+        // Validate username format (alphanumeric, underscore only)
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $username)) {
+            return ['success' => false, 'error' => 'Invalid username format'];
+        }
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$rootPassword}' -e \"CREATE USER '{$username}'@'%' IDENTIFIED BY '{$escapedPassword}';\" 2>&1";
+        // Escape password for MySQL (escape single quotes and backslashes)
+        $escapedPasswordSql = str_replace(['\\', "'"], ['\\\\', "\\'"], $password);
+
+        // Build SQL command and escape for shell
+        $createSql = "CREATE USER '{$username}'@'%' IDENTIFIED BY '{$escapedPasswordSql}';";
+        $escapedCreateSql = escapeshellarg($createSql);
+
+        $command = "docker exec {$containerName} mysql -u root -p{$escapedRootPassword} -e {$escapedCreateSql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         if (stripos($result, 'ERROR') !== false) {
@@ -2150,7 +2185,13 @@ class DatabaseMetricsController extends Controller
         // Grant basic privileges
         $dbName = $database->mysql_database ?? '';
         if ($dbName) {
-            $grantCmd = "docker exec {$containerName} mysql -u root -p'{$rootPassword}' -e \"GRANT ALL PRIVILEGES ON \`{$dbName}\`.* TO '{$username}'@'%'; FLUSH PRIVILEGES;\" 2>&1";
+            // Validate database name format
+            if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $dbName)) {
+                return ['success' => true, 'message' => "User {$username} created (grant skipped - invalid db name format)"];
+            }
+            $grantSql = "GRANT ALL PRIVILEGES ON \`{$dbName}\`.* TO '{$username}'@'%'; FLUSH PRIVILEGES;";
+            $escapedGrantSql = escapeshellarg($grantSql);
+            $grantCmd = "docker exec {$containerName} mysql -u root -p{$escapedRootPassword} -e {$escapedGrantSql} 2>&1";
             instant_remote_process([$grantCmd], $server, false);
         }
 
@@ -2215,12 +2256,21 @@ class DatabaseMetricsController extends Controller
      */
     protected function deletePostgresUser(mixed $server, mixed $database, string $username): array
     {
-        $containerName = $database->uuid;
-        $adminUser = $database->postgres_user ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $adminUser = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = $database->postgres_db ?? 'postgres';
+        $escapedDbName = escapeshellarg($dbName);
 
-        // Revoke and drop
-        $command = "docker exec {$containerName} psql -U {$adminUser} -d {$dbName} -c \"REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM \\\"{$username}\\\"; REVOKE ALL ON DATABASE \\\"{$dbName}\\\" FROM \\\"{$username}\\\"; DROP ROLE IF EXISTS \\\"{$username}\\\";\" 2>&1";
+        // Validate username format (alphanumeric, underscore only)
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $username)) {
+            return ['success' => false, 'error' => 'Invalid username format'];
+        }
+
+        // Revoke and drop - build SQL and escape for shell
+        $sql = "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM \"{$username}\"; REVOKE ALL ON DATABASE \"{$dbName}\" FROM \"{$username}\"; DROP ROLE IF EXISTS \"{$username}\";";
+        $escapedSql = escapeshellarg($sql);
+
+        $command = "docker exec {$containerName} psql -U {$adminUser} -d {$escapedDbName} -c {$escapedSql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         if (stripos($result, 'ERROR') !== false) {
@@ -2235,10 +2285,19 @@ class DatabaseMetricsController extends Controller
      */
     protected function deleteMysqlUser(mixed $server, mixed $database, string $username): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $rootPassword = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $escapedRootPassword = escapeshellarg($rootPassword);
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$rootPassword}' -e \"DROP USER IF EXISTS '{$username}'@'%';\" 2>&1";
+        // Validate username format (alphanumeric, underscore only)
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $username)) {
+            return ['success' => false, 'error' => 'Invalid username format'];
+        }
+
+        $sql = "DROP USER IF EXISTS '{$username}'@'%';";
+        $escapedSql = escapeshellarg($sql);
+
+        $command = "docker exec {$containerName} mysql -u root -p{$escapedRootPassword} -e {$escapedSql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         if (stripos($result, 'ERROR') !== false) {
@@ -2272,11 +2331,17 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
+            $containerName = escapeshellarg($database->uuid);
             $dbName = $database->mongo_initdb_database ?? 'admin';
+            $escapedDbName = escapeshellarg($dbName);
             $collection = preg_replace('/[^a-zA-Z0-9_.]/', '', $request->input('collection'));
             $fieldsStr = $request->input('fields');
             $unique = $request->boolean('unique', false);
+
+            // Validate collection name
+            if (empty($collection) || ! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $collection)) {
+                return response()->json(['success' => false, 'error' => 'Invalid collection name']);
+            }
 
             // Parse fields string (e.g., "field1:1,field2:-1")
             $fieldsParts = explode(',', $fieldsStr);
@@ -2297,7 +2362,11 @@ class DatabaseMetricsController extends Controller
             $indexSpecJson = json_encode($indexSpec);
             $options = $unique ? ', { unique: true }' : '';
 
-            $command = "docker exec {$containerName} mongosh --quiet --eval \"db.getCollection('{$collection}').createIndex({$indexSpecJson}{$options})\" {$dbName} 2>&1";
+            // Build mongosh command and escape for shell
+            $mongoCommand = "db.getCollection('{$collection}').createIndex({$indexSpecJson}{$options})";
+            $escapedMongoCommand = escapeshellarg($mongoCommand);
+
+            $command = "docker exec {$containerName} mongosh --quiet --eval {$escapedMongoCommand} {$escapedDbName} 2>&1";
             $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
             if (stripos($result, 'error') !== false || stripos($result, 'exception') !== false) {
@@ -2338,15 +2407,15 @@ class DatabaseMetricsController extends Controller
         }
 
         try {
-            $containerName = $database->uuid;
+            $containerName = escapeshellarg($database->uuid);
             $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
             $keyName = $request->input('key');
 
-            // Escape key name for shell
-            $escapedKey = str_replace("'", "'\"'\"'", $keyName);
+            // Escape key name for shell using escapeshellarg for safety
+            $escapedKey = escapeshellarg($keyName);
 
-            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL '{$escapedKey}' 2>&1";
+            $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL {$escapedKey} 2>&1";
             $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
             if (is_numeric($result) && (int) $result > 0) {
