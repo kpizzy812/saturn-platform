@@ -183,6 +183,114 @@ Route::prefix('admin')->group(function () {
         ]);
     })->name('admin.applications.index');
 
+    Route::get('/applications/{uuid}', function (string $uuid) {
+        // Fetch specific application with all relationships
+        $application = \App\Models\Application::with([
+            'environment.project.team',
+            'destination.server',
+        ])->where('uuid', $uuid)->firstOrFail();
+
+        // Get recent deployments
+        $recentDeployments = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get()
+            ->map(function ($deployment) {
+                return [
+                    'id' => $deployment->id,
+                    'deployment_uuid' => $deployment->deployment_uuid,
+                    'status' => $deployment->status,
+                    'commit' => $deployment->commit,
+                    'commit_message' => $deployment->commit_message,
+                    'triggered_by' => $deployment->triggered_by ?? ($deployment->is_webhook ? 'webhook' : ($deployment->is_api ? 'api' : 'manual')),
+                    'created_at' => $deployment->created_at,
+                    'finished_at' => $deployment->updated_at,
+                ];
+            });
+
+        $server = $application->destination?->server;
+
+        return Inertia::render('Admin/Applications/Show', [
+            'application' => [
+                'id' => $application->id,
+                'uuid' => $application->uuid,
+                'name' => $application->name,
+                'description' => $application->description,
+                'fqdn' => $application->fqdn,
+                'status' => $application->status ?? 'unknown',
+                'git_repository' => $application->git_repository,
+                'git_branch' => $application->git_branch,
+                'git_commit_sha' => $application->git_commit_sha,
+                'build_pack' => $application->build_pack,
+                'dockerfile_location' => $application->dockerfile_location,
+                'team_id' => $application->environment?->project?->team?->id,
+                'team_name' => $application->environment?->project?->team?->name ?? 'Unknown',
+                'project_id' => $application->environment?->project?->id,
+                'project_name' => $application->environment?->project?->name ?? 'Unknown',
+                'environment_id' => $application->environment?->id,
+                'environment_name' => $application->environment?->name ?? 'Unknown',
+                'server_id' => $server?->id,
+                'server_name' => $server?->name,
+                'server_uuid' => $server?->uuid,
+                'recent_deployments' => $recentDeployments,
+                'created_at' => $application->created_at,
+                'updated_at' => $application->updated_at,
+            ],
+        ]);
+    })->name('admin.applications.show');
+
+    Route::post('/applications/{uuid}/restart', function (string $uuid) {
+        $application = \App\Models\Application::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $application->restart();
+
+            return back()->with('success', 'Application restart initiated');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to restart application: '.$e->getMessage());
+        }
+    })->name('admin.applications.restart');
+
+    Route::post('/applications/{uuid}/stop', function (string $uuid) {
+        $application = \App\Models\Application::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $application->stop();
+
+            return back()->with('success', 'Application stopped');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to stop application: '.$e->getMessage());
+        }
+    })->name('admin.applications.stop');
+
+    Route::post('/applications/{uuid}/start', function (string $uuid) {
+        $application = \App\Models\Application::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $application->restart();
+
+            return back()->with('success', 'Application started');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to start application: '.$e->getMessage());
+        }
+    })->name('admin.applications.start');
+
+    Route::post('/applications/{uuid}/redeploy', function (string $uuid) {
+        $application = \App\Models\Application::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            queue_application_deployment(
+                application: $application,
+                deployment_uuid: (string) new \Illuminate\Support\Str,
+                force_rebuild: false,
+            );
+
+            return back()->with('success', 'Redeploy initiated');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to redeploy: '.$e->getMessage());
+        }
+    })->name('admin.applications.redeploy');
+
     Route::get('/projects', function () {
         // Fetch all projects across all teams (admin view)
         $projects = \App\Models\Project::with(['team', 'environments'])
@@ -457,6 +565,216 @@ Route::prefix('admin')->group(function () {
         ]);
     })->name('admin.databases.index');
 
+    Route::get('/databases/{uuid}', function (string $uuid) {
+        // Try to find database by UUID across all database types
+        $database = null;
+        $databaseType = null;
+
+        $dbModels = [
+            'postgresql' => \App\Models\StandalonePostgresql::class,
+            'mysql' => \App\Models\StandaloneMysql::class,
+            'mariadb' => \App\Models\StandaloneMariadb::class,
+            'mongodb' => \App\Models\StandaloneMongodb::class,
+            'redis' => \App\Models\StandaloneRedis::class,
+            'keydb' => \App\Models\StandaloneKeydb::class,
+            'dragonfly' => \App\Models\StandaloneDragonfly::class,
+            'clickhouse' => \App\Models\StandaloneClickhouse::class,
+        ];
+
+        foreach ($dbModels as $type => $model) {
+            $db = $model::with(['environment.project.team', 'destination.server', 'scheduledBackups'])
+                ->where('uuid', $uuid)
+                ->first();
+            if ($db) {
+                $database = $db;
+                $databaseType = $type;
+                break;
+            }
+        }
+
+        if (! $database) {
+            abort(404, 'Database not found');
+        }
+
+        $server = $database->destination?->server;
+
+        // Get backup schedules
+        $backups = $database->scheduledBackups?->map(function ($backup) {
+            $lastExecution = $backup->executions()->latest()->first();
+
+            return [
+                'id' => $backup->id,
+                'uuid' => $backup->uuid,
+                'frequency' => $backup->frequency,
+                'enabled' => $backup->enabled,
+                'last_execution_status' => $lastExecution?->status,
+                'last_execution_at' => $lastExecution?->created_at,
+            ];
+        }) ?? collect();
+
+        return Inertia::render('Admin/Databases/Show', [
+            'database' => [
+                'id' => $database->id,
+                'uuid' => $database->uuid,
+                'name' => $database->name,
+                'description' => $database->description,
+                'database_type' => ucfirst($databaseType),
+                'status' => $database->status(),
+                'internal_db_url' => $database->internal_db_url ?? null,
+                'public_port' => $database->public_port ?? null,
+                'is_public' => $database->is_public ?? false,
+                'team_id' => $database->environment?->project?->team?->id,
+                'team_name' => $database->environment?->project?->team?->name ?? 'Unknown',
+                'project_id' => $database->environment?->project?->id,
+                'project_name' => $database->environment?->project?->name ?? 'Unknown',
+                'environment_id' => $database->environment?->id,
+                'environment_name' => $database->environment?->name ?? 'Unknown',
+                'server_id' => $server?->id,
+                'server_name' => $server?->name,
+                'server_uuid' => $server?->uuid,
+                'image' => $database->image ?? null,
+                'limits_memory' => $database->limits_memory ?? null,
+                'limits_cpus' => $database->limits_cpus ?? null,
+                'backups' => $backups,
+                'created_at' => $database->created_at,
+                'updated_at' => $database->updated_at,
+            ],
+        ]);
+    })->name('admin.databases.show');
+
+    Route::post('/databases/{uuid}/restart', function (string $uuid) {
+        $dbModels = [
+            \App\Models\StandalonePostgresql::class,
+            \App\Models\StandaloneMysql::class,
+            \App\Models\StandaloneMariadb::class,
+            \App\Models\StandaloneMongodb::class,
+            \App\Models\StandaloneRedis::class,
+            \App\Models\StandaloneKeydb::class,
+            \App\Models\StandaloneDragonfly::class,
+            \App\Models\StandaloneClickhouse::class,
+        ];
+
+        $database = null;
+        foreach ($dbModels as $model) {
+            $db = $model::where('uuid', $uuid)->first();
+            if ($db) {
+                $database = $db;
+                break;
+            }
+        }
+
+        if (! $database) {
+            return back()->with('error', 'Database not found');
+        }
+
+        try {
+            \App\Actions\Database\RestartDatabase::run($database);
+
+            return back()->with('success', 'Database restart initiated');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to restart database: '.$e->getMessage());
+        }
+    })->name('admin.databases.restart');
+
+    Route::post('/databases/{uuid}/stop', function (string $uuid) {
+        $dbModels = [
+            \App\Models\StandalonePostgresql::class,
+            \App\Models\StandaloneMysql::class,
+            \App\Models\StandaloneMariadb::class,
+            \App\Models\StandaloneMongodb::class,
+            \App\Models\StandaloneRedis::class,
+            \App\Models\StandaloneKeydb::class,
+            \App\Models\StandaloneDragonfly::class,
+            \App\Models\StandaloneClickhouse::class,
+        ];
+
+        $database = null;
+        foreach ($dbModels as $model) {
+            $db = $model::where('uuid', $uuid)->first();
+            if ($db) {
+                $database = $db;
+                break;
+            }
+        }
+
+        if (! $database) {
+            return back()->with('error', 'Database not found');
+        }
+
+        try {
+            \App\Actions\Database\StopDatabase::run($database);
+
+            return back()->with('success', 'Database stopped');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to stop database: '.$e->getMessage());
+        }
+    })->name('admin.databases.stop');
+
+    Route::post('/databases/{uuid}/start', function (string $uuid) {
+        $dbModels = [
+            \App\Models\StandalonePostgresql::class,
+            \App\Models\StandaloneMysql::class,
+            \App\Models\StandaloneMariadb::class,
+            \App\Models\StandaloneMongodb::class,
+            \App\Models\StandaloneRedis::class,
+            \App\Models\StandaloneKeydb::class,
+            \App\Models\StandaloneDragonfly::class,
+            \App\Models\StandaloneClickhouse::class,
+        ];
+
+        $database = null;
+        foreach ($dbModels as $model) {
+            $db = $model::where('uuid', $uuid)->first();
+            if ($db) {
+                $database = $db;
+                break;
+            }
+        }
+
+        if (! $database) {
+            return back()->with('error', 'Database not found');
+        }
+
+        try {
+            \App\Actions\Database\StartDatabase::run($database);
+
+            return back()->with('success', 'Database started');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to start database: '.$e->getMessage());
+        }
+    })->name('admin.databases.start');
+
+    Route::delete('/databases/{uuid}', function (string $uuid) {
+        $dbModels = [
+            \App\Models\StandalonePostgresql::class,
+            \App\Models\StandaloneMysql::class,
+            \App\Models\StandaloneMariadb::class,
+            \App\Models\StandaloneMongodb::class,
+            \App\Models\StandaloneRedis::class,
+            \App\Models\StandaloneKeydb::class,
+            \App\Models\StandaloneDragonfly::class,
+            \App\Models\StandaloneClickhouse::class,
+        ];
+
+        $database = null;
+        foreach ($dbModels as $model) {
+            $db = $model::where('uuid', $uuid)->first();
+            if ($db) {
+                $database = $db;
+                break;
+            }
+        }
+
+        if (! $database) {
+            return back()->with('error', 'Database not found');
+        }
+
+        $dbName = $database->name;
+        $database->delete();
+
+        return redirect()->route('admin.databases.index')->with('success', "Database '{$dbName}' deleted");
+    })->name('admin.databases.delete');
+
     Route::get('/services', function () {
         // Fetch all services across all teams (admin view)
         $services = \App\Models\Service::with(['environment.project.team', 'server', 'applications'])
@@ -480,6 +798,95 @@ Route::prefix('admin')->group(function () {
             'services' => $services,
         ]);
     })->name('admin.services.index');
+
+    Route::get('/services/{uuid}', function (string $uuid) {
+        // Fetch specific service with all relationships
+        $service = \App\Models\Service::with([
+            'environment.project.team',
+            'server',
+            'applications',
+            'databases',
+        ])->where('uuid', $uuid)->firstOrFail();
+
+        return Inertia::render('Admin/Services/Show', [
+            'service' => [
+                'id' => $service->id,
+                'uuid' => $service->uuid,
+                'name' => $service->name,
+                'description' => $service->description,
+                'status' => $service->status() ?? 'unknown',
+                'service_type' => $service->service_type ?? null,
+                'team_id' => $service->environment?->project?->team?->id,
+                'team_name' => $service->environment?->project?->team?->name ?? 'Unknown',
+                'project_id' => $service->environment?->project?->id,
+                'project_name' => $service->environment?->project?->name ?? 'Unknown',
+                'environment_id' => $service->environment?->id,
+                'environment_name' => $service->environment?->name ?? 'Unknown',
+                'server_id' => $service->server?->id,
+                'server_name' => $service->server?->name,
+                'server_uuid' => $service->server?->uuid,
+                'applications' => $service->applications->map(function ($app) {
+                    return [
+                        'id' => $app->id,
+                        'uuid' => $app->uuid ?? '',
+                        'name' => $app->name,
+                        'fqdn' => $app->fqdn ?? null,
+                        'status' => $app->status ?? 'unknown',
+                    ];
+                }),
+                'databases' => $service->databases->map(function ($db) {
+                    return [
+                        'id' => $db->id,
+                        'uuid' => $db->uuid ?? '',
+                        'name' => $db->name,
+                        'type' => class_basename($db),
+                        'status' => method_exists($db, 'status') ? $db->status() : 'unknown',
+                    ];
+                }),
+                'created_at' => $service->created_at,
+                'updated_at' => $service->updated_at,
+            ],
+        ]);
+    })->name('admin.services.show');
+
+    Route::post('/services/{uuid}/restart', function (string $uuid) {
+        $service = \App\Models\Service::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $service->parse();
+            $activity = \App\Actions\Service\RestartService::run($service);
+
+            return back()->with('success', 'Service restart initiated');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to restart service: '.$e->getMessage());
+        }
+    })->name('admin.services.restart');
+
+    Route::post('/services/{uuid}/stop', function (string $uuid) {
+        $service = \App\Models\Service::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $service->parse();
+            \App\Actions\Service\StopService::run($service);
+
+            return back()->with('success', 'Service stopped');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to stop service: '.$e->getMessage());
+        }
+    })->name('admin.services.stop');
+
+    Route::post('/services/{uuid}/start', function (string $uuid) {
+        $service = \App\Models\Service::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $service->parse();
+            $activity = \App\Actions\Service\StartService::run($service);
+
+            return back()->with('success', 'Service started');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to start service: '.$e->getMessage());
+        }
+    })->name('admin.services.start');
 
     Route::get('/servers', function () {
         // Fetch all servers across all teams (admin view)
@@ -1116,4 +1523,113 @@ Route::prefix('admin')->group(function () {
             'total' => count($logs),
         ]);
     })->name('admin.logs.index');
+
+    // System Health Dashboard
+    Route::get('/health', function () {
+        // Core services health checks
+        $services = [];
+
+        // PostgreSQL check
+        try {
+            $startTime = microtime(true);
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            $responseTime = round((microtime(true) - $startTime) * 1000, 2);
+            $services[] = [
+                'service' => 'PostgreSQL',
+                'status' => 'healthy',
+                'lastCheck' => now()->toISOString(),
+                'responseTime' => $responseTime,
+            ];
+        } catch (\Exception $e) {
+            $services[] = [
+                'service' => 'PostgreSQL',
+                'status' => 'down',
+                'lastCheck' => now()->toISOString(),
+                'details' => $e->getMessage(),
+            ];
+        }
+
+        // Redis check
+        try {
+            $startTime = microtime(true);
+            \Illuminate\Support\Facades\Redis::ping();
+            $responseTime = round((microtime(true) - $startTime) * 1000, 2);
+            $services[] = [
+                'service' => 'Redis',
+                'status' => 'healthy',
+                'lastCheck' => now()->toISOString(),
+                'responseTime' => $responseTime,
+            ];
+        } catch (\Exception $e) {
+            $services[] = [
+                'service' => 'Redis',
+                'status' => 'down',
+                'lastCheck' => now()->toISOString(),
+                'details' => $e->getMessage(),
+            ];
+        }
+
+        // Queue worker check (simplified - check if jobs are processing)
+        $pendingJobs = \Illuminate\Support\Facades\DB::table('jobs')->count();
+        $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->count();
+        $services[] = [
+            'service' => 'Queue Worker',
+            'status' => $failedJobs > 10 ? 'degraded' : 'healthy',
+            'lastCheck' => now()->toISOString(),
+            'details' => "{$pendingJobs} pending, {$failedJobs} failed",
+        ];
+
+        // Servers health
+        $servers = \App\Models\Server::with(['settings'])
+            ->get()
+            ->map(function ($server) {
+                $metrics = null;
+                if ($server->settings?->is_metrics_enabled) {
+                    try {
+                        $diskUsage = $server->getDiskUsage();
+                        $metrics = [
+                            'cpu_usage' => null,
+                            'memory_usage' => null,
+                            'disk_usage' => $diskUsage ? (float) $diskUsage : null,
+                        ];
+                    } catch (\Exception $e) {
+                        // Metrics unavailable
+                    }
+                }
+
+                // Count resources on server
+                $resourcesCount = 0;
+                $resourcesCount += \App\Models\Application::whereHas('destination', function ($query) use ($server) {
+                    $query->where('server_id', $server->id);
+                })->count();
+                $resourcesCount += \App\Models\Service::where('server_id', $server->id)->count();
+
+                return [
+                    'id' => $server->id,
+                    'uuid' => $server->uuid,
+                    'name' => $server->name,
+                    'ip' => $server->ip,
+                    'is_reachable' => $server->settings?->is_reachable ?? false,
+                    'is_usable' => $server->settings?->is_usable ?? false,
+                    'metrics' => $metrics,
+                    'resources_count' => $resourcesCount,
+                    'last_check' => now()->toISOString(),
+                ];
+            });
+
+        // Queue statistics
+        $queues = [
+            'pending' => \Illuminate\Support\Facades\DB::table('jobs')->count(),
+            'processing' => 0,
+            'failed' => \Illuminate\Support\Facades\DB::table('failed_jobs')->count(),
+            'workers' => 1, // Simplified - would need Horizon for accurate count
+        ];
+
+        return Inertia::render('Admin/Health/Index', [
+            'services' => $services,
+            'servers' => $servers,
+            'queues' => $queues,
+            'lastUpdated' => now()->toISOString(),
+        ]);
+    })->name('admin.health.index');
 });

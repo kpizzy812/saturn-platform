@@ -38,6 +38,7 @@ interface NavItem {
 
 const adminNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { label: 'Health', href: '/admin/health', icon: <Activity className="h-4 w-4" /> },
     { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
     { label: 'Teams', href: '/admin/teams', icon: <Teams className="h-4 w-4" /> },
     { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
