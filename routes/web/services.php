@@ -605,15 +605,9 @@ Route::delete('/services/{uuid}', function (string $uuid, Request $request) {
     // Dispatch event for realtime updates
     \App\Events\ServiceStatusChanged::dispatch($teamId);
 
-    // For Inertia/XHR - no redirect, just success response (card disappears via optimistic update)
-    if ($request->header('X-Inertia')) {
-        return \Inertia\Inertia::render('Services/Index', [
-            'services' => \App\Models\Service::ownedByCurrentTeam()->get(),
-        ]);
-    }
-
-    if ($request->wantsJson()) {
-        return response()->json(['success' => true, 'message' => 'Service deleted successfully']);
+    // For Inertia/XHR - return empty response, card disappears via optimistic update
+    if ($request->header('X-Inertia') || $request->wantsJson()) {
+        return response()->noContent();
     }
 
     return redirect()->route('services.index')->with('success', 'Service deleted successfully');
