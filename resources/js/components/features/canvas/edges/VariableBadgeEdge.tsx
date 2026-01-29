@@ -1,4 +1,5 @@
-import { memo, useState } from 'react';
+import { memo, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type Position } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Link2, Zap, ArrowRight, ArrowLeft } from 'lucide-react';
@@ -45,6 +46,19 @@ export const VariableBadgeEdge = memo(({
     style,
 }: VariableBadgeEdgeProps) => {
     const [isHovered, setIsHovered] = useState(false);
+    const badgeRef = useRef<HTMLDivElement>(null);
+    const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+
+    // Update tooltip position when hovered
+    const updateTooltipPosition = () => {
+        if (badgeRef.current) {
+            const rect = badgeRef.current.getBoundingClientRect();
+            setTooltipPosition({
+                x: rect.left + rect.width / 2,
+                y: rect.bottom + 8,
+            });
+        }
+    };
 
     // Use bezier path for smooth curves
     const [edgePath, labelX, labelY] = getBezierPath({
@@ -121,8 +135,12 @@ export const VariableBadgeEdge = memo(({
                             pointerEvents: 'all',
                         }}
                         className="nodrag nopan"
-                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseEnter={() => {
+                            setIsHovered(true);
+                            updateTooltipPosition();
+                        }}
                         onMouseLeave={() => setIsHovered(false)}
+                        ref={badgeRef}
                     >
                         {/* Main Badge */}
                         <div
@@ -140,15 +158,16 @@ export const VariableBadgeEdge = memo(({
                             <div className="px-2.5 py-1.5">
                                 {isBidirectional ? (
                                     // Bidirectional: two rows
+                                    // Arrow direction shows where the URL comes FROM (target → source)
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-1.5">
-                                            <ArrowRight className="w-3 h-3 text-primary flex-shrink-0" />
+                                            <ArrowLeft className="w-3 h-3 text-primary flex-shrink-0" />
                                             <code className="text-[10px] font-mono text-success truncate max-w-[120px]">
                                                 {link.env_key}
                                             </code>
                                         </div>
                                         <div className="flex items-center gap-1.5">
-                                            <ArrowLeft className="w-3 h-3 text-pink-500 flex-shrink-0" />
+                                            <ArrowRight className="w-3 h-3 text-pink-500 flex-shrink-0" />
                                             <code className="text-[10px] font-mono text-success truncate max-w-[120px]">
                                                 {reverseLink.env_key}
                                             </code>
@@ -171,14 +190,18 @@ export const VariableBadgeEdge = memo(({
                                 )}
                             </div>
 
-                            {/* Tooltip on hover */}
-                            <div className={cn(
-                                'absolute left-1/2 -translate-x-1/2 top-full mt-2',
-                                'opacity-0 pointer-events-none translate-y-1',
-                                'transition-all duration-200',
-                                isHovered && 'opacity-100 pointer-events-auto translate-y-0'
-                            )}
-                            style={{ zIndex: 9999 }}
+                        </div>
+
+                        {/* Tooltip rendered via Portal to appear above nodes */}
+                        {isHovered && tooltipPosition && createPortal(
+                            <div
+                                className="fixed pointer-events-none animate-in fade-in duration-200"
+                                style={{
+                                    left: tooltipPosition.x,
+                                    top: tooltipPosition.y,
+                                    transform: 'translateX(-50%)',
+                                    zIndex: 99999,
+                                }}
                             >
                                 <div className="bg-background border border-border rounded-lg shadow-xl p-3 min-w-[200px]">
                                     <div className="text-[10px] uppercase tracking-wider text-foreground-muted font-medium mb-2">
@@ -186,7 +209,7 @@ export const VariableBadgeEdge = memo(({
                                     </div>
 
                                     <div className="space-y-2">
-                                        {/* First variable */}
+                                        {/* First variable: URL from target injected into source */}
                                         <div className="flex items-start gap-2">
                                             <div className={cn(
                                                 'w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0',
@@ -197,12 +220,12 @@ export const VariableBadgeEdge = memo(({
                                                     {link.env_key}
                                                 </code>
                                                 <div className="text-[10px] text-foreground-muted mt-0.5">
-                                                    {link.source_name || 'Source'} → {link.target_name || 'Target'}
+                                                    {link.target_name || 'Target'} → {link.source_name || 'Source'}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Second variable (if bidirectional) */}
+                                        {/* Second variable (if bidirectional): URL from target injected into source */}
                                         {reverseLink && (
                                             <div className="flex items-start gap-2">
                                                 <div className={cn(
@@ -214,7 +237,7 @@ export const VariableBadgeEdge = memo(({
                                                         {reverseLink.env_key}
                                                     </code>
                                                     <div className="text-[10px] text-foreground-muted mt-0.5">
-                                                        {reverseLink.source_name || 'Source'} → {reverseLink.target_name || 'Target'}
+                                                        {reverseLink.target_name || 'Target'} → {reverseLink.source_name || 'Source'}
                                                     </div>
                                                 </div>
                                             </div>
@@ -232,8 +255,9 @@ export const VariableBadgeEdge = memo(({
                                         </span>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                            </div>,
+                            document.body
+                        )}
                     </div>
                 </EdgeLabelRenderer>
             )}
