@@ -52,7 +52,7 @@ export default function TemplatesIndex({ templates }: Props) {
 
             return matchesSearch && matchesCategory;
         });
-    }, [searchQuery, selectedCategory]);
+    }, [templates, searchQuery, selectedCategory]);
 
     const featuredTemplates = filteredTemplates.filter(t => t.featured);
     const regularTemplates = filteredTemplates.filter(t => !t.featured);

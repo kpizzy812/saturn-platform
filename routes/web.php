@@ -397,15 +397,37 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Templates
     Route::get('/templates', function () {
-        return \Inertia\Inertia::render('Templates/Index');
+        $templateService = app(\App\Services\TemplateService::class);
+
+        return \Inertia\Inertia::render('Templates/Index', [
+            'templates' => $templateService->getTemplates()->toArray(),
+        ]);
     })->name('templates.index');
 
     Route::get('/templates/{id}', function (string $id) {
-        return \Inertia\Inertia::render('Templates/Show');
+        $templateService = app(\App\Services\TemplateService::class);
+        $template = $templateService->getTemplate($id);
+
+        if (! $template) {
+            abort(404);
+        }
+
+        return \Inertia\Inertia::render('Templates/Show', [
+            'template' => $template,
+        ]);
     })->name('templates.show');
 
     Route::get('/templates/{id}/deploy', function (string $id) {
-        return \Inertia\Inertia::render('Templates/Deploy');
+        $templateService = app(\App\Services\TemplateService::class);
+        $template = $templateService->getTemplate($id);
+
+        if (! $template) {
+            abort(404);
+        }
+
+        return \Inertia\Inertia::render('Templates/Deploy', [
+            'template' => $template,
+        ]);
     })->name('templates.deploy');
 
     // Service routes

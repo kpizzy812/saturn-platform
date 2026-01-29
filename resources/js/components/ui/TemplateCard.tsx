@@ -1,20 +1,21 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { Badge } from './Badge';
-import { Download } from 'lucide-react';
+import { Download, Box } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface Template {
     id: string;
     name: string;
     description: string;
-    icon: React.ReactNode;
-    iconBg: string;
-    iconColor: string;
+    logo?: string | null;
     category: string;
+    originalCategory?: string;
     tags: string[];
     deployCount: number;
     featured?: boolean;
+    documentation?: string | null;
+    port?: string | null;
 }
 
 interface TemplateCardProps {
@@ -23,6 +24,8 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({ template, featured = false }: TemplateCardProps) {
+    const logoUrl = template.logo ? `/${template.logo}` : null;
+
     return (
         <Link
             href={`/templates/${template.id}`}
@@ -35,10 +38,21 @@ export function TemplateCard({ template, featured = false }: TemplateCardProps) 
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
             <div className="relative">
-                {/* Header with icon */}
+                {/* Header with logo */}
                 <div className="mb-4 flex items-start justify-between">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${template.iconBg} ${template.iconColor} shadow-lg transition-transform duration-300 group-hover:scale-110`}>
-                        {template.icon}
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background-tertiary shadow-lg transition-transform duration-300 group-hover:scale-110">
+                        {logoUrl ? (
+                            <img
+                                src={logoUrl}
+                                alt={template.name}
+                                className="h-8 w-8 object-contain"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                            />
+                        ) : null}
+                        <Box className={cn('h-6 w-6 text-foreground-muted', logoUrl && 'hidden')} />
                     </div>
                     {template.featured && (
                         <Badge variant="success" className="animate-pulse">
