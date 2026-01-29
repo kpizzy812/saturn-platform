@@ -37,10 +37,12 @@ interface RecentActivity {
     description: string | null;
     commit?: string | null;
     user_name: string | null;
+    user_email?: string | null;
     team_name: string | null;
     resource_type: string | null;
     resource_name: string | null;
     application_uuid?: string;
+    triggered_by?: string;
     is_webhook?: boolean;
     is_api?: boolean;
     created_at: string;
@@ -243,16 +245,29 @@ function ActivityItem({ activity }: { activity: RecentActivity }) {
                         Resource: {activity.resource_name}
                     </p>
                 )}
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {activity.user_name && (
-                        <span className="text-xs text-foreground-muted">{activity.user_name}</span>
+                        <span
+                            className="text-xs text-foreground-muted cursor-default"
+                            title={activity.user_email || undefined}
+                        >
+                            {activity.user_name}
+                        </span>
                     )}
-                    {activity.user_name && activity.created_at && (
-                        <span className="text-xs text-foreground-subtle">•</span>
+                    {activity.team_name && activity.user_name !== activity.team_name && (
+                        <>
+                            <span className="text-xs text-foreground-subtle">•</span>
+                            <span className="text-xs text-foreground-subtle">{activity.team_name}</span>
+                        </>
                     )}
-                    <span className="text-xs text-foreground-subtle">
-                        {formatRelativeTime(activity.created_at)}
-                    </span>
+                    {activity.created_at && (
+                        <>
+                            <span className="text-xs text-foreground-subtle">•</span>
+                            <span className="text-xs text-foreground-subtle">
+                                {formatRelativeTime(activity.created_at)}
+                            </span>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

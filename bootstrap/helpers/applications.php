@@ -12,7 +12,7 @@ use App\Models\StandaloneDocker;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
-function queue_application_deployment(Application $application, string $deployment_uuid, ?int $pull_request_id = 0, string $commit = 'HEAD', bool $force_rebuild = false, bool $is_webhook = false, bool $is_api = false, bool $restart_only = false, ?string $git_type = null, bool $no_questions_asked = false, ?Server $server = null, ?StandaloneDocker $destination = null, bool $only_this_server = false, bool $rollback = false)
+function queue_application_deployment(Application $application, string $deployment_uuid, ?int $pull_request_id = 0, string $commit = 'HEAD', bool $force_rebuild = false, bool $is_webhook = false, bool $is_api = false, bool $restart_only = false, ?string $git_type = null, bool $no_questions_asked = false, ?Server $server = null, ?StandaloneDocker $destination = null, bool $only_this_server = false, bool $rollback = false, ?int $user_id = null)
 {
     $application_id = $application->id;
     $deployment_link = Url::fromString($application->link()."/deployment/{$deployment_uuid}");
@@ -63,8 +63,23 @@ function queue_application_deployment(Application $application, string $deployme
         }
     }
 
+    // Determine triggered_by based on context
+    $triggered_by = 'manual';
+    if ($is_webhook) {
+        $triggered_by = 'webhook';
+    } elseif ($is_api) {
+        $triggered_by = 'api';
+    }
+
+    // If no user_id provided, try to get from auth context
+    if ($user_id === null && auth()->check()) {
+        $user_id = auth()->id();
+    }
+
     $deployment = ApplicationDeploymentQueue::create([
         'application_id' => $application_id,
+        'user_id' => $user_id,
+        'triggered_by' => $triggered_by,
         'application_name' => $application->name,
         'server_id' => $server_id,
         'server_name' => $server_name,
