@@ -506,6 +506,50 @@ Route::group([
     Route::match(['get', 'post'], '/services/{uuid}/restart', [ServiceActionsController::class, 'restart'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/services/{uuid}/stop', [ServiceActionsController::class, 'stop'])->middleware(['api.ability:write']);
 
+    // Service deployments (activity log based)
+    Route::get('/services/{uuid}/deployments', function (string $uuid, \Illuminate\Http\Request $request) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $service = \App\Models\Service::whereRelation('environment.project.team', 'id', $teamId)
+            ->whereUuid($uuid)
+            ->first();
+
+        if (! $service) {
+            return response()->json(['message' => 'Service not found'], 404);
+        }
+
+        $take = $request->get('take', 20);
+        $skip = $request->get('skip', 0);
+
+        // Get activity log entries for this service
+        $deployments = \Spatie\Activitylog\Models\Activity::where('properties->type_uuid', $service->uuid)
+            ->orderByDesc('created_at')
+            ->skip($skip)
+            ->take($take)
+            ->get()
+            ->map(function ($activity) {
+                $properties = $activity->properties->toArray();
+
+                return [
+                    'id' => $activity->id,
+                    'status' => $properties['status'] ?? 'unknown',
+                    'commit' => $properties['commit'] ?? null,
+                    'commit_message' => $activity->description ?? 'Service operation',
+                    'created_at' => $activity->created_at?->toIso8601String(),
+                    'updated_at' => $activity->updated_at?->toIso8601String(),
+                    'duration' => isset($properties['started_at'], $properties['finished_at'])
+                        ? \Carbon\Carbon::parse($properties['finished_at'])->diffInSeconds(\Carbon\Carbon::parse($properties['started_at'])).'s'
+                        : null,
+                    'author' => $properties['causer_name'] ?? 'System',
+                ];
+            });
+
+        return response()->json($deployments);
+    })->middleware(['api.ability:read']);
+
     // Healthcheck endpoints
     Route::get('/services/{uuid}/healthcheck', [ServiceHealthcheckController::class, 'show'])->middleware(['api.ability:read']);
     Route::patch('/services/{uuid}/healthcheck', [ServiceHealthcheckController::class, 'update'])->middleware(['api.ability:write']);
