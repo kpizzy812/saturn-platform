@@ -44,6 +44,7 @@ class ApplicationDeploymentQueue extends Model
 
     protected $casts = [
         'started_at' => 'datetime',
+        'application_id' => 'integer',
     ];
 
     public function application()
