@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { cn } from '@/lib/utils';
 
 // Context for compound components
@@ -64,41 +64,34 @@ export function DropdownContent({
     width = 'md',
     className,
 }: DropdownContentProps) {
+    const anchorPosition = align === 'left' ? 'bottom start' : align === 'center' ? 'bottom' : 'bottom end';
+
     return (
-        <Transition
-            enter="transition ease-out duration-200"
-            enterFrom="transform opacity-0 scale-95 -translate-y-2"
-            enterTo="transform opacity-100 scale-100 translate-y-0"
-            leave="transition ease-in duration-150"
-            leaveFrom="transform opacity-100 scale-100 translate-y-0"
-            leaveTo="transform opacity-0 scale-95 -translate-y-2"
+        <MenuItems
+            portal
+            anchor={{ to: anchorPosition as any, gap: sideOffset }}
+            transition
+            className={cn(
+                // Base styles with high z-index for portal
+                'z-[9999] origin-top rounded-xl p-1.5',
+                // Width
+                widthClasses[width],
+                // Glassmorphism background
+                'bg-background-tertiary/95 backdrop-blur-xl',
+                // Border with subtle glow
+                'border border-white/[0.08]',
+                'ring-1 ring-white/[0.05]',
+                // Shadow for depth
+                'shadow-2xl shadow-black/50',
+                // Focus
+                'focus:outline-none',
+                // Transitions
+                'transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0',
+                className
+            )}
         >
-            <MenuItems
-                style={{ marginTop: sideOffset }}
-                className={cn(
-                    // Base styles - z-[100] to ensure dropdown is above cards with backdrop-blur
-                    'absolute z-[100] origin-top rounded-xl p-1.5',
-                    // Width
-                    widthClasses[width],
-                    // Glassmorphism background
-                    'bg-background-tertiary/95 backdrop-blur-xl',
-                    // Border with subtle glow
-                    'border border-white/[0.08]',
-                    'ring-1 ring-white/[0.05]',
-                    // Shadow for depth
-                    'shadow-2xl shadow-black/50',
-                    // Focus
-                    'focus:outline-none',
-                    // Alignment
-                    align === 'right' && 'right-0',
-                    align === 'left' && 'left-0',
-                    align === 'center' && 'left-1/2 -translate-x-1/2',
-                    className
-                )}
-            >
-                {children}
-            </MenuItems>
-        </Transition>
+            {children}
+        </MenuItems>
     );
 }
 
