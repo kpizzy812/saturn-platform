@@ -522,9 +522,11 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     const clearLogs = React.useCallback(() => {
         setLogs([]);
         lastLogIdRef.current = null;
-        lastTimestampRef.current = null;
+        // Set timestamp to now so only future logs are fetched
+        lastTimestampRef.current = Math.floor(Date.now() / 1000);
         seenLogHashesRef.current.clear();
-        isInitialLoadRef.current = true;
+        // Keep isInitialLoadRef false so we use incremental fetch
+        isInitialLoadRef.current = false;
     }, []);
 
     /**
