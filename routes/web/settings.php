@@ -25,13 +25,28 @@ Route::get('/settings/team', function () {
     $team = currentTeam();
     $user = auth()->user();
 
-    $members = $team->members->map(fn ($user) => [
-        'id' => $user->id,
-        'name' => $user->name,
-        'email' => $user->email,
-        'role' => $user->pivot->role ?? 'member',
-        'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
-    ]);
+    $members = $team->members->map(function ($user) {
+        // Get last activity from sessions table
+        $lastSession = \Illuminate\Support\Facades\DB::table('sessions')
+            ->where('user_id', $user->id)
+            ->orderByDesc('last_activity')
+            ->first();
+
+        $lastActive = $lastSession
+            ? \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->toISOString()
+            : $user->updated_at->toISOString();
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'avatar' => null, // Gravatar can be implemented later on frontend
+            'role' => $user->pivot->role ?? 'member',
+            'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
+            'lastActive' => $lastActive,
+            'hasRestrictedAccess' => $user->pivot->allowed_projects !== null,
+        ];
+    });
 
     // Invitations sent by this team (for admins/owners)
     $invitations = $team->invitations->map(fn ($invitation) => [
@@ -63,6 +78,12 @@ Route::get('/settings/team', function () {
         ]);
 
     return Inertia::render('Settings/Team', [
+        'team' => [
+            'id' => $team->id,
+            'name' => $team->name,
+            'avatar' => null, // Team avatar not implemented yet
+            'memberCount' => $members->count(),
+        ],
         'members' => $members,
         'invitations' => $invitations,
         'receivedInvitations' => $receivedInvitations,

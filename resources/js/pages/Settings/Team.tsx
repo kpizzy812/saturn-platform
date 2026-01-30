@@ -1,15 +1,37 @@
 import * as React from 'react';
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
-import { Mail, UserX, Crown, Shield, User as UserIcon, Lock, Code, Copy, Check } from 'lucide-react';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
+import { useToast } from '@/components/ui/Toast';
+import {
+    Mail,
+    UserX,
+    Crown,
+    Shield,
+    User as UserIcon,
+    Lock,
+    Code,
+    Copy,
+    Check,
+    MoreVertical,
+    UserCog,
+    FolderCog,
+    Settings,
+    Activity,
+    Clock
+} from 'lucide-react';
 
 interface TeamMember {
     id: number;
     name: string;
     email: string;
+    avatar?: string;
     role: 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
     joinedAt: string;
+    lastActive: string;
+    hasRestrictedAccess?: boolean;
 }
 
 interface Invitation {
@@ -29,24 +51,38 @@ interface ReceivedInvitation {
     expiresAt: string;
 }
 
+interface Team {
+    id: number;
+    name: string;
+    avatar?: string;
+    memberCount: number;
+}
+
 interface Props {
+    team: Team;
     members: TeamMember[];
     invitations: Invitation[];
     receivedInvitations: ReceivedInvitation[];
 }
 
-export default function TeamSettings({ members: initialMembers, invitations: initialInvitations, receivedInvitations: initialReceivedInvitations = [] }: Props) {
+export default function TeamSettings({ team, members: initialMembers, invitations: initialInvitations, receivedInvitations: initialReceivedInvitations = [] }: Props) {
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [invitations, setInvitations] = React.useState<Invitation[]>(initialInvitations);
     const [receivedInvitations, setReceivedInvitations] = React.useState<ReceivedInvitation[]>(initialReceivedInvitations);
     const [showInviteModal, setShowInviteModal] = React.useState(false);
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
-    const [memberToRemove, setMemberToRemove] = React.useState<TeamMember | null>(null);
+    const [showRoleModal, setShowRoleModal] = React.useState(false);
+    const [showProjectsModal, setShowProjectsModal] = React.useState(false);
+    const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);
     const [inviteEmail, setInviteEmail] = React.useState('');
     const [inviteRole, setInviteRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
+    const [newRole, setNewRole] = React.useState<TeamMember['role']>('member');
     const [isInviting, setIsInviting] = React.useState(false);
+    const [isChangingRole, setIsChangingRole] = React.useState(false);
+    const [isRemoving, setIsRemoving] = React.useState(false);
     const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
     const [processingInviteId, setProcessingInviteId] = React.useState<number | null>(null);
+    const { toast } = useToast();
 
     const handleCopyLink = (invitation: Invitation) => {
         // Fallback for HTTP (clipboard API requires HTTPS)
@@ -87,14 +123,60 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
         });
     };
 
-    const handleRemoveMember = () => {
-        if (memberToRemove) {
-            router.delete(`/api/v1/teams/members/${memberToRemove.id}`, {
+    const handleChangeRole = () => {
+        if (selectedMember) {
+            setIsChangingRole(true);
+
+            router.post(`/settings/team/members/${selectedMember.id}/role`, { role: newRole }, {
                 onSuccess: () => {
-                    setMemberToRemove(null);
-                    setShowRemoveModal(false);
-                    router.reload({ only: ['members'] });
+                    setMembers(members.map(m =>
+                        m.id === selectedMember.id ? { ...m, role: newRole } : m
+                    ));
+                    toast({
+                        title: 'Role updated',
+                        description: `${selectedMember.name}'s role has been updated to ${newRole}.`,
+                    });
+                    setShowRoleModal(false);
+                    setSelectedMember(null);
                 },
+                onError: () => {
+                    toast({
+                        title: 'Failed to update role',
+                        description: 'An error occurred while updating the member role.',
+                        variant: 'error',
+                    });
+                },
+                onFinish: () => {
+                    setIsChangingRole(false);
+                }
+            });
+        }
+    };
+
+    const handleRemoveMember = () => {
+        if (selectedMember) {
+            setIsRemoving(true);
+
+            router.delete(`/settings/team/members/${selectedMember.id}`, {
+                onSuccess: () => {
+                    setMembers(members.filter(m => m.id !== selectedMember.id));
+                    toast({
+                        title: 'Member removed',
+                        description: `${selectedMember.name} has been removed from the team.`,
+                    });
+                    setShowRemoveModal(false);
+                    setSelectedMember(null);
+                },
+                onError: () => {
+                    toast({
+                        title: 'Failed to remove member',
+                        description: 'An error occurred while removing the team member.',
+                        variant: 'error',
+                    });
+                },
+                onFinish: () => {
+                    setIsRemoving(false);
+                }
             });
         }
     };
@@ -159,9 +241,71 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
         }
     };
 
+    const formatLastActive = (timestamp: string) => {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMins < 5) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    };
+
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
     return (
         <SettingsLayout activeSection="team">
             <div className="space-y-6">
+                {/* Team Overview Card */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-2xl font-semibold text-white">
+                                    {team.avatar ? (
+                                        <img src={team.avatar} alt={team.name} className="h-full w-full rounded-lg object-cover" />
+                                    ) : (
+                                        getInitials(team.name)
+                                    )}
+                                </div>
+                                <div>
+                                    <CardTitle>{team.name}</CardTitle>
+                                    <CardDescription>
+                                        {members.length} member{members.length !== 1 ? 's' : ''}
+                                    </CardDescription>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Link href="/settings/team/activity">
+                                    <Button variant="secondary" size="sm">
+                                        <Activity className="mr-2 h-4 w-4" />
+                                        Activity
+                                    </Button>
+                                </Link>
+                                <Link href="/settings/team/roles">
+                                    <Button variant="secondary" size="sm">
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        Roles
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                    </CardHeader>
+                </Card>
+
                 {/* Team Members */}
                 <Card>
                     <CardHeader>
@@ -183,21 +327,38 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                             {members.map((member) => (
                                 <div
                                     key={member.id}
-                                    className="flex items-center justify-between rounded-lg border border-border bg-background p-4 transition-colors hover:border-border/80"
+                                    className="flex items-center justify-between rounded-lg border border-border bg-background p-4 transition-all hover:border-border/80 hover:shadow-sm"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white">
-                                            {member.name.charAt(0).toUpperCase()}
-                                        </div>
+                                        <Link href={`/settings/members/${member.id}`}>
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-semibold text-white transition-transform hover:scale-105">
+                                                {member.avatar ? (
+                                                    <img src={member.avatar} alt={member.name} className="h-full w-full rounded-full object-cover" />
+                                                ) : (
+                                                    getInitials(member.name)
+                                                )}
+                                            </div>
+                                        </Link>
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <p className="font-medium text-foreground">{member.name}</p>
+                                                <Link href={`/settings/members/${member.id}`}>
+                                                    <p className="font-medium text-foreground hover:text-primary transition-colors">
+                                                        {member.name}
+                                                    </p>
+                                                </Link>
                                                 <Badge variant={getRoleBadgeVariant(member.role)}>
                                                     <span className="mr-1">{getRoleIcon(member.role)}</span>
                                                     {member.role}
                                                 </Badge>
                                             </div>
-                                            <p className="text-sm text-foreground-muted">{member.email}</p>
+                                            <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                                                <span>{member.email}</span>
+                                                <span className="text-foreground-subtle">•</span>
+                                                <div className="flex items-center gap-1 text-foreground-subtle">
+                                                    <Clock className="h-3 w-3" />
+                                                    <span>{formatLastActive(member.lastActive)}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -205,16 +366,61 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                                             Joined {new Date(member.joinedAt).toLocaleDateString()}
                                         </p>
                                         {member.role !== 'owner' && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setMemberToRemove(member);
-                                                    setShowRemoveModal(true);
-                                                }}
-                                            >
-                                                <UserX className="h-4 w-4" />
-                                            </Button>
+                                            <Dropdown>
+                                                <DropdownTrigger>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownTrigger>
+                                                <DropdownContent>
+                                                    <Link href={`/settings/members/${member.id}`}>
+                                                        <DropdownItem>
+                                                            <UserIcon className="h-4 w-4" />
+                                                            View Profile
+                                                        </DropdownItem>
+                                                    </Link>
+                                                    <DropdownItem
+                                                        onClick={() => {
+                                                            setSelectedMember(member);
+                                                            setNewRole(member.role);
+                                                            setShowRoleModal(true);
+                                                        }}
+                                                    >
+                                                        <UserCog className="h-4 w-4" />
+                                                        Change Role
+                                                    </DropdownItem>
+                                                    {/* Configure Projects - only for developer/member/viewer */}
+                                                    {(member.role === 'developer' || member.role === 'member' || member.role === 'viewer') && (
+                                                        <DropdownItem
+                                                            onClick={() => {
+                                                                setSelectedMember(member);
+                                                                setShowProjectsModal(true);
+                                                            }}
+                                                        >
+                                                            <FolderCog className="h-4 w-4" />
+                                                            <span className="flex items-center gap-2">
+                                                                Configure Projects
+                                                                {member.hasRestrictedAccess && (
+                                                                    <Badge variant="warning" className="text-[10px] px-1 py-0">
+                                                                        Restricted
+                                                                    </Badge>
+                                                                )}
+                                                            </span>
+                                                        </DropdownItem>
+                                                    )}
+                                                    <DropdownDivider />
+                                                    <DropdownItem
+                                                        danger
+                                                        onClick={() => {
+                                                            setSelectedMember(member);
+                                                            setShowRemoveModal(true);
+                                                        }}
+                                                    >
+                                                        <UserX className="h-4 w-4" />
+                                                        Remove Member
+                                                    </DropdownItem>
+                                                </DropdownContent>
+                                            </Dropdown>
                                         )}
                                     </div>
                                 </div>
@@ -380,22 +586,86 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                 </form>
             </Modal>
 
+            {/* Change Role Modal */}
+            <Modal
+                isOpen={showRoleModal}
+                onClose={() => setShowRoleModal(false)}
+                title="Change Member Role"
+                description={`Update the role for ${selectedMember?.name}`}
+            >
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        {(['owner', 'admin', 'developer', 'member', 'viewer'] as const).map((role) => (
+                            <button
+                                key={role}
+                                type="button"
+                                onClick={() => setNewRole(role)}
+                                className={`flex w-full items-center gap-3 rounded-lg border p-3 transition-all ${
+                                    newRole === role
+                                        ? 'border-primary bg-primary/10'
+                                        : 'border-border hover:border-border/80'
+                                }`}
+                            >
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-background-tertiary">
+                                    {getRoleIcon(role)}
+                                </div>
+                                <div className="flex-1 text-left">
+                                    <p className="font-medium text-foreground capitalize">{role}</p>
+                                    <p className="text-xs text-foreground-muted">
+                                        {role === 'owner' && 'Full control of the team and billing'}
+                                        {role === 'admin' && 'Manage team members and settings'}
+                                        {role === 'developer' && 'Deploy and manage resources'}
+                                        {role === 'member' && 'View resources and basic operations'}
+                                        {role === 'viewer' && 'Read-only access to resources'}
+                                    </p>
+                                </div>
+                                {selectedMember?.role === role && role !== newRole && (
+                                    <Badge variant="default">Current</Badge>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowRoleModal(false)} disabled={isChangingRole}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleChangeRole} disabled={newRole === selectedMember?.role} loading={isChangingRole}>
+                        Update Role
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
             {/* Remove Member Modal */}
             <Modal
                 isOpen={showRemoveModal}
                 onClose={() => setShowRemoveModal(false)}
                 title="Remove Team Member"
-                description={`Are you sure you want to remove ${memberToRemove?.name} from the team? They will lose access to all team resources.`}
+                description={`Are you sure you want to remove ${selectedMember?.name} from the team? They will lose access to all team resources.`}
             >
                 <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)}>
+                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)} disabled={isRemoving}>
                         Cancel
                     </Button>
-                    <Button variant="danger" onClick={handleRemoveMember}>
+                    <Button variant="danger" onClick={handleRemoveMember} loading={isRemoving}>
                         Remove Member
                     </Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Configure Projects Modal */}
+            <ConfigureProjectsModal
+                isOpen={showProjectsModal}
+                onClose={() => setShowProjectsModal(false)}
+                member={selectedMember}
+                onSuccess={() => {
+                    toast({
+                        title: 'Project access updated',
+                        description: `${selectedMember?.name}'s project access has been updated.`,
+                    });
+                }}
+            />
         </SettingsLayout>
     );
 }
