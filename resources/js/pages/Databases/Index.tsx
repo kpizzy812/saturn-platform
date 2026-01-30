@@ -1,8 +1,9 @@
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { Plus, Database as DatabaseIcon } from 'lucide-react';
 import { DatabaseCard } from '@/components/features/DatabaseCard';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -10,6 +11,13 @@ interface Props {
 }
 
 export default function DatabasesIndex({ databases = [] }: Props) {
+    // Real-time status updates via WebSocket
+    useRealtimeStatus({
+        onDatabaseStatusChange: () => {
+            // Reload database list when any database status changes
+            router.reload({ only: ['databases'] });
+        },
+    });
     return (
         <AppLayout
             title="Databases"

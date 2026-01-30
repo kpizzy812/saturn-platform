@@ -7,6 +7,7 @@ use App\Actions\Shared\ComplexStatusCheck;
 use App\Events\ApplicationStatusChanged;
 use App\Events\DatabaseStatusChanged;
 use App\Events\ServiceChecked;
+use App\Events\ServiceStatusChanged;
 use App\Models\ApplicationPreview;
 use App\Models\Server;
 use App\Models\ServiceDatabase;
@@ -560,6 +561,12 @@ class GetContainersStatus
                     $statusFromDb = $subResource->status;
                     if ($statusFromDb !== $aggregatedStatus) {
                         $subResource->update(['status' => $aggregatedStatus]);
+
+                        // Dispatch event for service status change
+                        $teamId = $service->environment?->project?->team?->id;
+                        if ($teamId) {
+                            ServiceStatusChanged::dispatch($service->id, $aggregatedStatus, $teamId);
+                        }
                     } else {
                         $subResource->update(['last_online_at' => now()]);
                     }
@@ -578,6 +585,12 @@ class GetContainersStatus
                 $statusFromDb = $subResource->status;
                 if ($statusFromDb !== $aggregatedStatus) {
                     $subResource->update(['status' => $aggregatedStatus]);
+
+                    // Dispatch event for service status change
+                    $teamId = $service->environment?->project?->team?->id;
+                    if ($teamId) {
+                        ServiceStatusChanged::dispatch($service->id, $aggregatedStatus, $teamId);
+                    }
                 } else {
                     $subResource->update(['last_online_at' => now()]);
                 }

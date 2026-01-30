@@ -53,9 +53,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [newEnvName, setNewEnvName] = useState('');
     const [creatingEnv, setCreatingEnv] = useState(false);
 
-    // Real-time status tracking for applications and databases
+    // Real-time status tracking for applications, databases, and services
     const [appStatuses, setAppStatuses] = useState<Record<number, string>>({});
     const [dbStatuses, setDbStatuses] = useState<Record<number, string>>({});
+    const [serviceStatuses, setServiceStatuses] = useState<Record<number, string>>({});
 
     // Hooks - must be called before early return
     const { addToast } = useToast();
@@ -117,6 +118,16 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 setSelectedService((prev) => prev ? { ...prev, status: data.status } : null);
             }
         },
+        onServiceStatusChange: (data) => {
+            setServiceStatuses((prev) => ({
+                ...prev,
+                [data.serviceId]: data.status,
+            }));
+            // Update selected service status if it's the same service
+            if (selectedService?.type === 'service' && selectedService?.id === String(data.serviceId)) {
+                setSelectedService((prev) => prev ? { ...prev, status: data.status } : null);
+            }
+        },
     });
 
     // Compute environments with real-time statuses
@@ -133,8 +144,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 ...db,
                 status: dbStatuses[db.id] ?? db.status,
             })),
+            services: selectedEnv.services?.map((service) => ({
+                ...service,
+                status: serviceStatuses[service.id] ?? service.status,
+            })),
         };
-    }, [selectedEnv, appStatuses, dbStatuses]);
+    }, [selectedEnv, appStatuses, dbStatuses, serviceStatuses]);
 
     // Switch environment handler
     const handleSwitchEnv = (env: Environment) => {

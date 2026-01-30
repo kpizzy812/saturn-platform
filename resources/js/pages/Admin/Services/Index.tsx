@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import {
     Search,
     Layers,
@@ -101,6 +102,13 @@ export default function AdminServicesIndex({ services: servicesData }: Props) {
     const total = servicesData?.total ?? 0;
     const [searchQuery, setSearchQuery] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<string>('all');
+
+    // Real-time status updates via WebSocket
+    useRealtimeStatus({
+        onServiceStatusChange: () => {
+            router.reload({ only: ['services'] });
+        },
+    });
 
     const filteredServices = items.filter((service) => {
         const matchesSearch =
