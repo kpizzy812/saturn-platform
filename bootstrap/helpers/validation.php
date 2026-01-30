@@ -138,6 +138,133 @@ function isBase64Encoded($strValue)
 }
 
 /**
+ * Validate a webhook URL for SSRF protection.
+ *
+ * Checks that the URL is safe to send HTTP requests to by blocking:
+ * - Private IP ranges (10.x, 172.16-31.x, 192.168.x)
+ * - Localhost (127.x, ::1)
+ * - Cloud metadata endpoints (169.254.169.254)
+ * - Link-local addresses (169.254.x)
+ * - IPv6 local addresses
+ *
+ * @param  string  $url  The URL to validate
+ * @return array{valid: bool, error: string|null} Validation result with error message if invalid
+ */
+function validateWebhookUrl(string $url): array
+{
+    // Parse the URL
+    $parsed = parse_url($url);
+
+    if (! $parsed || ! isset($parsed['host'])) {
+        return ['valid' => false, 'error' => 'Invalid URL format'];
+    }
+
+    // Only allow http and https schemes
+    $scheme = strtolower($parsed['scheme'] ?? '');
+    if (! in_array($scheme, ['http', 'https'])) {
+        return ['valid' => false, 'error' => 'Only HTTP and HTTPS URLs are allowed'];
+    }
+
+    $host = strtolower($parsed['host']);
+
+    // Block localhost variations
+    $localhostPatterns = [
+        'localhost',
+        '127.0.0.1',
+        '::1',
+        '[::1]',
+        '0.0.0.0',
+        '0177.0.0.1', // Octal localhost
+        '2130706433', // Decimal localhost
+        '0x7f.0x0.0x0.0x1', // Hex localhost
+    ];
+
+    foreach ($localhostPatterns as $pattern) {
+        if ($host === $pattern || str_starts_with($host, $pattern.':')) {
+            return ['valid' => false, 'error' => 'Localhost URLs are not allowed'];
+        }
+    }
+
+    // Resolve hostname to IP address for further checks
+    $ip = $host;
+    if (! filter_var($host, FILTER_VALIDATE_IP)) {
+        // It's a hostname, try to resolve it
+        $resolved = gethostbyname($host);
+        if ($resolved === $host) {
+            // Resolution failed, but we'll allow it (might resolve later)
+            // For stricter security, uncomment below:
+            // return ['valid' => false, 'error' => 'Could not resolve hostname'];
+        } else {
+            $ip = $resolved;
+        }
+    }
+
+    // Validate IP address if we have one
+    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+        // Block private IP ranges (RFC 1918)
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE) === false) {
+            return ['valid' => false, 'error' => 'Private IP addresses are not allowed'];
+        }
+
+        // Block reserved IP ranges
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE) === false) {
+            return ['valid' => false, 'error' => 'Reserved IP addresses are not allowed'];
+        }
+
+        // Block link-local addresses (169.254.x.x) - includes AWS metadata endpoint
+        if (str_starts_with($ip, '169.254.')) {
+            return ['valid' => false, 'error' => 'Link-local addresses are not allowed'];
+        }
+
+        // Block loopback range (127.x.x.x)
+        if (str_starts_with($ip, '127.')) {
+            return ['valid' => false, 'error' => 'Loopback addresses are not allowed'];
+        }
+
+        // Block IPv6 private/reserved if applicable
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            // fe80::/10 - link-local
+            // fc00::/7 - unique local
+            $ipv6Prefix = strtolower(substr($ip, 0, 4));
+            if (in_array($ipv6Prefix, ['fe80', 'fc00', 'fd00'])) {
+                return ['valid' => false, 'error' => 'IPv6 local addresses are not allowed'];
+            }
+        }
+    }
+
+    // Additional checks for specific dangerous hosts
+    $dangerousHosts = [
+        'metadata.google.internal',
+        'metadata.google',
+        '169.254.169.254', // AWS/GCP/Azure metadata
+        'instance-data', // AWS instance data
+    ];
+
+    foreach ($dangerousHosts as $dangerous) {
+        if ($host === $dangerous || str_ends_with($host, '.'.$dangerous)) {
+            return ['valid' => false, 'error' => 'Cloud metadata endpoints are not allowed'];
+        }
+    }
+
+    return ['valid' => true, 'error' => null];
+}
+
+/**
+ * Check if a webhook URL is safe for SSRF.
+ *
+ * Convenience wrapper around validateWebhookUrl() that returns a boolean.
+ *
+ * @param  string  $url  The URL to check
+ * @return bool True if the URL is safe, false otherwise
+ */
+function isWebhookUrlSafe(string $url): bool
+{
+    $result = validateWebhookUrl($url);
+
+    return $result['valid'];
+}
+
+/**
  * Validates that a file path is safely within the /tmp/ directory.
  * Protects against path traversal attacks by resolving the real path
  * and verifying it stays within /tmp/.

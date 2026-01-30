@@ -40,6 +40,17 @@ class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
      */
     public function handle(): void
     {
+        // Security: Validate URL to prevent SSRF attacks
+        $validation = validateWebhookUrl($this->webhookUrl);
+        if (! $validation['valid']) {
+            ray('Webhook URL blocked for security reasons', [
+                'url' => $this->webhookUrl,
+                'reason' => $validation['error'],
+            ]);
+
+            return;
+        }
+
         if (isDev()) {
             ray('Sending webhook notification', [
                 'url' => $this->webhookUrl,

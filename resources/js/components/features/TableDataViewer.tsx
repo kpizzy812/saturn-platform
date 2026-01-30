@@ -129,13 +129,15 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
         fetchData();
     }, [fetchData]);
 
-    // Focus input when editing starts
+    // Focus input when editing starts (only on cell change, not value change)
+    const editingCellKey = editingCell ? `${editingCell.rowIndex}-${editingCell.columnName}` : null;
     useEffect(() => {
         if (editingCell && editInputRef.current) {
             editInputRef.current.focus();
             editInputRef.current.select();
         }
-    }, [editingCell]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editingCellKey]);
 
     // Global keyboard shortcuts
     useEffect(() => {

@@ -44,39 +44,54 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
 
     protected function cloneLocalVolume()
     {
+        // Security: Escape volume names to prevent command injection
+        $escapedSource = escapeshellarg($this->sourceVolume);
+        $escapedTarget = escapeshellarg($this->targetVolume);
+
         instant_remote_process([
-            "docker volume create $this->targetVolume",
-            "docker run --rm -v $this->sourceVolume:/source -v $this->targetVolume:/target alpine sh -c 'cp -a /source/. /target/ && chown -R 1000:1000 /target'",
+            "docker volume create {$escapedTarget}",
+            "docker run --rm -v {$escapedSource}:/source -v {$escapedTarget}:/target alpine sh -c 'cp -a /source/. /target/ && chown -R 1000:1000 /target'",
         ], $this->sourceServer);
     }
 
     protected function cloneRemoteVolume()
     {
-        $sourceCloneDir = "{$this->cloneDir}/{$this->sourceVolume}";
-        $targetCloneDir = "{$this->cloneDir}/{$this->targetVolume}";
+        // Security: Escape volume names to prevent command injection
+        $escapedSource = escapeshellarg($this->sourceVolume);
+        $escapedTarget = escapeshellarg($this->targetVolume);
+
+        // Sanitize volume names for directory paths (remove any path separators)
+        $sanitizedSourceName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $this->sourceVolume);
+        $sanitizedTargetName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $this->targetVolume);
+
+        $sourceCloneDir = "{$this->cloneDir}/{$sanitizedSourceName}";
+        $targetCloneDir = "{$this->cloneDir}/{$sanitizedTargetName}";
+
+        $escapedSourceCloneDir = escapeshellarg($sourceCloneDir);
+        $escapedTargetCloneDir = escapeshellarg($targetCloneDir);
 
         try {
             instant_remote_process([
-                "mkdir -p $sourceCloneDir",
-                "chmod 777 $sourceCloneDir",
-                "docker run --rm -v $this->sourceVolume:/source -v $sourceCloneDir:/clone alpine sh -c 'cd /source && tar czf /clone/volume-data.tar.gz .'",
+                "mkdir -p {$escapedSourceCloneDir}",
+                "chmod 777 {$escapedSourceCloneDir}",
+                "docker run --rm -v {$escapedSource}:/source -v {$escapedSourceCloneDir}:/clone alpine sh -c 'cd /source && tar czf /clone/volume-data.tar.gz .'",
             ], $this->sourceServer);
 
             instant_remote_process([
-                "mkdir -p $targetCloneDir",
-                "chmod 777 $targetCloneDir",
+                "mkdir -p {$escapedTargetCloneDir}",
+                "chmod 777 {$escapedTargetCloneDir}",
             ], $this->targetServer);
 
             instant_scp(
-                "$sourceCloneDir/volume-data.tar.gz",
-                "$targetCloneDir/volume-data.tar.gz",
+                "{$sourceCloneDir}/volume-data.tar.gz",
+                "{$targetCloneDir}/volume-data.tar.gz",
                 $this->sourceServer,
                 $this->targetServer
             );
 
             instant_remote_process([
-                "docker volume create $this->targetVolume",
-                "docker run --rm -v $this->targetVolume:/target -v $targetCloneDir:/clone alpine sh -c 'cd /target && tar xzf /clone/volume-data.tar.gz && chown -R 1000:1000 /target'",
+                "docker volume create {$escapedTarget}",
+                "docker run --rm -v {$escapedTarget}:/target -v {$escapedTargetCloneDir}:/clone alpine sh -c 'cd /target && tar xzf /clone/volume-data.tar.gz && chown -R 1000:1000 /target'",
             ], $this->targetServer);
 
         } catch (\Exception $e) {
@@ -85,7 +100,7 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
         } finally {
             try {
                 instant_remote_process([
-                    "rm -rf $sourceCloneDir",
+                    "rm -rf {$escapedSourceCloneDir}",
                 ], $this->sourceServer, false);
             } catch (\Exception $e) {
                 Log::warning('Failed to clean up source server clone directory: '.$e->getMessage());
@@ -94,7 +109,7 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
             try {
                 if ($this->targetServer) {
                     instant_remote_process([
-                        "rm -rf $targetCloneDir",
+                        "rm -rf {$escapedTargetCloneDir}",
                     ], $this->targetServer, false);
                 }
             } catch (\Exception $e) {

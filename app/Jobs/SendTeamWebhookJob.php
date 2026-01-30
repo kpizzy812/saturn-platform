@@ -45,6 +45,26 @@ class SendTeamWebhookJob implements ShouldBeEncrypted, ShouldQueue
     {
         $startTime = microtime(true);
 
+        // Security: Validate URL to prevent SSRF attacks
+        $validation = validateWebhookUrl($this->webhook->url);
+        if (! $validation['valid']) {
+            $this->delivery->markAsFailed(
+                0,
+                "URL blocked for security reasons: {$validation['error']}",
+                0
+            );
+
+            if (isDev()) {
+                ray('Team webhook URL blocked for security reasons', [
+                    'webhook_id' => $this->webhook->id,
+                    'url' => $this->webhook->url,
+                    'reason' => $validation['error'],
+                ]);
+            }
+
+            return;
+        }
+
         try {
             $payload = $this->delivery->payload;
 
