@@ -1843,18 +1843,22 @@ Route::prefix('admin')->group(function () {
         $allExecutions = \App\Models\ScheduledDatabaseBackupExecution::query();
         $recentExecutions = \App\Models\ScheduledDatabaseBackupExecution::where('created_at', '>=', now()->subDay());
 
-        // Calculate total storage used
-        $totalStorageLocal = \App\Models\ScheduledDatabaseBackupExecution::where('local_storage_deleted', false)
+        // Calculate total storage used (size is stored as text, need to cast)
+        $totalStorageLocal = (int) \App\Models\ScheduledDatabaseBackupExecution::where('local_storage_deleted', false)
             ->whereNotNull('size')
-            ->sum('size');
-        $totalStorageS3 = \App\Models\ScheduledDatabaseBackupExecution::where('s3_uploaded', true)
+            ->where('size', '!=', '')
+            ->selectRaw('COALESCE(SUM(CAST(size AS BIGINT)), 0) as total')
+            ->value('total');
+        $totalStorageS3 = (int) \App\Models\ScheduledDatabaseBackupExecution::where('s3_uploaded', true)
             ->where('s3_storage_deleted', false)
             ->whereNotNull('s3_file_size')
             ->sum('s3_file_size');
 
         // Estimate S3 costs (rough estimate: $0.023 per GB/month for S3 Standard)
         $s3CostPerGBMonth = 0.023;
-        $estimatedMonthlyCost = ($totalStorageS3 / (1024 * 1024 * 1024)) * $s3CostPerGBMonth;
+        $estimatedMonthlyCost = $totalStorageS3 > 0
+            ? ($totalStorageS3 / (1024 * 1024 * 1024)) * $s3CostPerGBMonth
+            : 0;
 
         $stats = [
             'total' => $backups->count(),
