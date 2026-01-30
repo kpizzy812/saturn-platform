@@ -50,7 +50,9 @@ class MonorepoDetector
             }
         }
 
-        return MonorepoInfo::notMonorepo();
+        // Fallback: detect "simple" monorepos without standard markers
+        // (repositories with multiple app directories in root)
+        return $this->detectSimpleMonorepo($repoPath);
     }
 
     /**
@@ -317,5 +319,107 @@ class MonorepoDetector
         }
 
         return $found;
+    }
+
+    /**
+     * Detect "simple" monorepos without standard markers.
+     *
+     * This handles repositories with multiple app directories at root level
+     * that don't use standard monorepo tools (turbo, nx, pnpm-workspaces, etc.).
+     *
+     * Example: a repo with /backend, /frontend, /admin folders each containing
+     * their own package.json or requirements.txt.
+     */
+    private function detectSimpleMonorepo(string $repoPath): MonorepoInfo
+    {
+        // App marker files that indicate a directory contains an application
+        // Note: docker-compose.yml is NOT included because it's often an
+        // infrastructure file in root, not an app marker in subdirectories
+        $appMarkers = [
+            'package.json',
+            'requirements.txt',
+            'pyproject.toml',
+            'go.mod',
+            'Cargo.toml',
+            'composer.json',
+            'Gemfile',
+            'mix.exs',
+            'pom.xml',
+            'build.gradle',
+            'Dockerfile',
+            'nixpacks.toml',
+            'nixpacks.json',
+            'Procfile',
+        ];
+
+        // Directories to ignore (common non-app directories)
+        $ignoreDirs = [
+            '.git',
+            '.github',
+            '.gitlab',
+            '.vscode',
+            '.idea',
+            'node_modules',
+            'vendor',
+            '__pycache__',
+            '.cache',
+            'dist',
+            'build',
+            'out',
+            'target',
+            'docs',
+            'documentation',
+            'assets',
+            'public',
+            'static',
+            'scripts',
+            'tools',
+            'config',
+            'configs',
+            '.devcontainer',
+        ];
+
+        $appDirs = [];
+        $entries = scandir($repoPath);
+
+        if ($entries === false) {
+            return MonorepoInfo::notMonorepo();
+        }
+
+        foreach ($entries as $entry) {
+            // Skip hidden dirs (except special cases) and ignored dirs
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            if (str_starts_with($entry, '.') || in_array($entry, $ignoreDirs, true)) {
+                continue;
+            }
+
+            $dirPath = $repoPath.'/'.$entry;
+
+            if (! is_dir($dirPath)) {
+                continue;
+            }
+
+            // Check if this directory contains any app markers
+            foreach ($appMarkers as $marker) {
+                if (file_exists($dirPath.'/'.$marker)) {
+                    $appDirs[] = $entry;
+                    break;
+                }
+            }
+        }
+
+        // Need at least 2 app directories to be considered a monorepo
+        if (count($appDirs) < 2) {
+            return MonorepoInfo::notMonorepo();
+        }
+
+        return new MonorepoInfo(
+            isMonorepo: true,
+            type: 'simple',
+            workspacePaths: $appDirs,
+        );
     }
 }

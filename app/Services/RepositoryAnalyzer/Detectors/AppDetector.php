@@ -333,6 +333,34 @@ class AppDetector
             );
         }
 
+        // Check for nixpacks config (explicit nixpacks configuration)
+        if (file_exists($appPath.'/nixpacks.toml') || file_exists($appPath.'/nixpacks.json')) {
+            $relativePath = $this->getRelativePath($appPath, $repoPath);
+
+            return new DetectedApp(
+                name: $this->inferAppName($appPath, $relativePath),
+                path: $relativePath,
+                framework: 'nixpacks',
+                buildPack: 'nixpacks',
+                defaultPort: 3000,
+                type: 'unknown',
+            );
+        }
+
+        // Check for Procfile (Heroku-style, works with nixpacks)
+        if (file_exists($appPath.'/Procfile')) {
+            $relativePath = $this->getRelativePath($appPath, $repoPath);
+
+            return new DetectedApp(
+                name: $this->inferAppName($appPath, $relativePath),
+                path: $relativePath,
+                framework: 'procfile',
+                buildPack: 'nixpacks',
+                defaultPort: $this->extractPortFromProcfile($appPath.'/Procfile'),
+                type: 'unknown',
+            );
+        }
+
         // Check for docker-compose.yml
         if (file_exists($appPath.'/docker-compose.yml') || file_exists($appPath.'/docker-compose.yaml')) {
             $relativePath = $this->getRelativePath($appPath, $repoPath);
@@ -695,6 +723,34 @@ class AppDetector
             // Sanity check port range
             if ($port > 0 && $port <= 65535) {
                 return $port;
+            }
+        }
+
+        return 3000; // Default fallback
+    }
+
+    private function extractPortFromProcfile(string $procfilePath): int
+    {
+        $content = file_get_contents($procfilePath);
+        $lines = explode("\n", $content);
+
+        foreach ($lines as $line) {
+            // Look for web: process definition
+            if (preg_match('/^web:\s*(.+)$/i', $line, $matches)) {
+                $command = $matches[1];
+
+                // Check for port flags: --port=3000, -p 8080, etc.
+                if (preg_match('/(?:--port|-p)\s*[=\s]*(\d+)/', $command, $portMatch)) {
+                    $port = (int) $portMatch[1];
+                    if ($port > 0 && $port <= 65535) {
+                        return $port;
+                    }
+                }
+
+                // Check for $PORT variable usage (common in Heroku-style apps)
+                if (str_contains($command, '$PORT') || str_contains($command, '${PORT}')) {
+                    return 3000; // Default for $PORT usage
+                }
             }
         }
 
