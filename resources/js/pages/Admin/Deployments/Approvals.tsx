@@ -1,9 +1,9 @@
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { CheckCircle, XCircle, Clock, GitBranch, Calendar } from 'lucide-react';
 import { router } from '@inertiajs/react';
 
