@@ -32,23 +32,23 @@
 | API Security (89+ endpoints) | 🔴 Critical | [backend/api-security.md](backend/api-security.md) | [🔍] 7 critical found |
 | SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 4 critical found |
 | Webhooks (GitHub, GitLab, etc.) | 🔴 Critical | [backend/webhooks.md](backend/webhooks.md) | [🔧] 5 critical FIXED |
-| Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [ ] |
+| Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [🔧] 3 critical FIXED |
 | File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
 | Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [🔍] 4 critical found |
 | **Frontend** ||||
-| XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [ ] |
+| XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [🔍] 1 critical, 1 high |
 | API Calls & Data Handling | 🟡 High | [frontend/api-calls.md](frontend/api-calls.md) | [ ] |
 | Authentication Flow | 🔴 Critical | [frontend/authentication-flow.md](frontend/authentication-flow.md) | [ ] |
 | Input Validation | 🟡 High | [frontend/input-validation.md](frontend/input-validation.md) | [ ] |
 | Sensitive Data Exposure | 🔴 Critical | [frontend/sensitive-data.md](frontend/sensitive-data.md) | [🔴] 2 critical found |
 | **Infrastructure** ||||
-| Docker Security | 🔴 Critical | [infrastructure/docker-security.md](infrastructure/docker-security.md) | [ ] |
+| Docker Security | 🔴 Critical | [infrastructure/docker-security.md](infrastructure/docker-security.md) | [🔍] 2 critical, 4 high |
 | Secrets Management | 🔴 Critical | [infrastructure/secrets-management.md](infrastructure/secrets-management.md) | [ ] |
 | Proxy Configuration (Traefik/Caddy) | 🟡 High | [infrastructure/proxy-configuration.md](infrastructure/proxy-configuration.md) | [ ] |
 | WebSocket Security | 🟡 High | [infrastructure/websocket-security.md](infrastructure/websocket-security.md) | [ ] |
 | **Database** ||||
 | SQL Injection | 🔴 Critical | [database/sql-injection.md](database/sql-injection.md) | [🔍] 4 critical found |
-| Data Exposure | 🔴 Critical | [database/data-exposure.md](database/data-exposure.md) | [ ] |
+| Data Exposure | 🔴 Critical | [database/data-exposure.md](database/data-exposure.md) | [🔧] 4 critical FIXED |
 | Migrations & Schema | 🟢 Medium | [database/migrations.md](database/migrations.md) | [ ] |
 
 ---
@@ -59,10 +59,10 @@
 
 ```
 Total Hypotheses: 258
-Checked: 125+
-Issues Found: 43+
-Critical: 31+
-Fixed: 18
+Checked: 188+
+Issues Found: 55+
+Critical: 38+
+Fixed: 22
 ```
 
 ### Breakdown по файлам
@@ -244,6 +244,10 @@ Fixed: 18
 | WH-003-F | Bitbucket/Gitea PR без проверки автора | `Bitbucket.php`, `Gitea.php` | ✅ Fixed |
 | WH-004-F | GitLab token non-timing-safe | `Gitlab.php` | ✅ Fixed |
 | WH-005-F | Stripe error message exposure | `Stripe.php` | ✅ Fixed |
+| JOB-001-F | SSRF в SendWebhookJob | `SendWebhookJob.php`, `SendTeamWebhookJob.php` | ✅ Fixed |
+| JOB-002-F | Command Injection в VolumeCloneJob | `VolumeCloneJob.php` | ✅ Fixed |
+| EXPOSE-001-F | Webhook secrets exposed in Inertia | `ApplicationController.php` | ✅ Fixed |
+| EXPOSE-002-F | Full models exposed to frontend | `Application.php`, `Server.php` | ✅ Fixed |
 
 ---
 

@@ -209,10 +209,10 @@ This is good practice and should be documented.
 
 | ID | Описание | Статус | PR/Commit |
 |----|----------|--------|-----------|
-| JOB-001-F | Add SSRF protection to webhook URLs | 🔧 To Fix | - |
-| JOB-002-F | Escape volume names in VolumeCloneJob | 🔧 To Fix | - |
+| JOB-001-F | Add SSRF protection to webhook URLs | ✅ Fixed | 4781f0f |
+| JOB-002-F | Escape volume names in VolumeCloneJob | ✅ Fixed | 4781f0f |
 | JOB-003-F | Document command escaping in ScheduledTaskJob | ✅ Acceptable | - |
-| JOB-004-F | Add URL validation to webhook models | 🔧 To Fix | - |
+| JOB-004-F | Add URL validation to webhook models | ✅ Fixed | 4781f0f |
 
 ---
 
