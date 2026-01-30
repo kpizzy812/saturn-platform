@@ -4,6 +4,12 @@ import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FilterBuilder, buildWhereClause, type FilterGroup } from './FilterBuilder';
 
+// Get CSRF token from meta tag
+const getCsrfToken = (): string => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta?.getAttribute('content') || '';
+};
+
 interface Column {
     name: string;
     type: string;
@@ -284,7 +290,10 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                     `/_internal/databases/${databaseUuid}/tables/${encodeURIComponent(tableName)}/rows`,
                     {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': getCsrfToken(),
+                        },
                         body: JSON.stringify({ primary_key: primaryKey, updates: changes }),
                     }
                 );
@@ -351,7 +360,10 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                     `/_internal/databases/${databaseUuid}/tables/${encodeURIComponent(tableName)}/rows`,
                     {
                         method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': getCsrfToken(),
+                        },
                         body: JSON.stringify({ primary_key: primaryKey }),
                     }
                 );
@@ -574,7 +586,10 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                         `/_internal/databases/${databaseUuid}/tables/${encodeURIComponent(tableName)}/rows`,
                         {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': getCsrfToken(),
+                            },
                             body: JSON.stringify({ data: rowData }),
                         }
                     );
@@ -609,7 +624,10 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                 `/_internal/databases/${databaseUuid}/tables/${encodeURIComponent(tableName)}/rows`,
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
                     body: JSON.stringify({ data: formData }),
                 }
             );
