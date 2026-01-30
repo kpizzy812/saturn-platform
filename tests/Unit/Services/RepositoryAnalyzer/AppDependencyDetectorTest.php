@@ -169,20 +169,94 @@ ENV);
     expect($webDeps->internalUrls['API_URL'])->toBe('api');
 });
 
-test('infers api url for frontend apps', function () {
+test('infers api url by app type not by name', function () {
+    // Test that frontend connects to backend based on TYPE, not name
+    mkdir($this->tempDir.'/apps/client', 0755, true);
+    mkdir($this->tempDir.'/apps/server', 0755, true);
+
+    file_put_contents($this->tempDir.'/apps/client/package.json', json_encode([
+        'name' => 'client',
+    ]));
+
+    file_put_contents($this->tempDir.'/apps/server/package.json', json_encode([
+        'name' => 'server',
+    ]));
+
+    $apps = [
+        new DetectedApp(
+            name: 'client',  // Not named 'web' or 'frontend'
+            path: 'apps/client',
+            framework: 'react',
+            buildPack: 'static',
+            defaultPort: 3000,
+            type: 'frontend',  // But TYPE is frontend
+        ),
+        new DetectedApp(
+            name: 'server',  // Not named 'api' or 'backend'
+            path: 'apps/server',
+            framework: 'express',
+            buildPack: 'node',
+            defaultPort: 4000,
+            type: 'backend',  // But TYPE is backend
+        ),
+    ];
+
+    $dependencies = $this->detector->analyze($this->tempDir, $apps);
+
+    $clientDeps = collect($dependencies)->first(fn ($d) => $d->appName === 'client');
+    // Should infer API_URL because client is frontend and server is the only backend
+    expect($clientDeps->internalUrls)->toHaveKey('API_URL');
+    expect($clientDeps->internalUrls['API_URL'])->toBe('server');
+});
+
+test('detects api need from env variable names', function () {
     mkdir($this->tempDir.'/apps/web', 0755, true);
-    mkdir($this->tempDir.'/apps/api', 0755, true);
+    mkdir($this->tempDir.'/apps/core', 0755, true);
 
-    file_put_contents($this->tempDir.'/apps/web/package.json', json_encode([
-        'name' => 'web',
-        'dependencies' => [
-            '@monorepo/api' => 'workspace:*',
-        ],
-    ]));
+    // Frontend with NEXT_PUBLIC_API_URL (even without value)
+    file_put_contents($this->tempDir.'/apps/web/package.json', '{}');
+    file_put_contents($this->tempDir.'/apps/web/.env.example', <<<'ENV'
+NEXT_PUBLIC_API_URL=
+DATABASE_URL=
+ENV);
 
-    file_put_contents($this->tempDir.'/apps/api/package.json', json_encode([
-        'name' => 'api',
-    ]));
+    file_put_contents($this->tempDir.'/apps/core/package.json', '{}');
+
+    $apps = [
+        new DetectedApp(
+            name: 'web',
+            path: 'apps/web',
+            framework: 'nextjs',
+            buildPack: 'node',
+            defaultPort: 3000,
+            type: 'unknown',  // Even if type is unknown
+        ),
+        new DetectedApp(
+            name: 'core',
+            path: 'apps/core',
+            framework: 'fastapi',
+            buildPack: 'python',
+            defaultPort: 8000,
+            type: 'backend',
+        ),
+    ];
+
+    $dependencies = $this->detector->analyze($this->tempDir, $apps);
+
+    $webDeps = collect($dependencies)->first(fn ($d) => $d->appName === 'web');
+    // Should detect API need from NEXT_PUBLIC_API_URL variable
+    expect($webDeps->internalUrls)->toHaveKey('API_URL');
+    expect($webDeps->internalUrls['API_URL'])->toBe('core');
+});
+
+test('does not infer api url when multiple backends exist', function () {
+    mkdir($this->tempDir.'/apps/web', 0755, true);
+    mkdir($this->tempDir.'/apps/api1', 0755, true);
+    mkdir($this->tempDir.'/apps/api2', 0755, true);
+
+    file_put_contents($this->tempDir.'/apps/web/package.json', '{}');
+    file_put_contents($this->tempDir.'/apps/api1/package.json', '{}');
+    file_put_contents($this->tempDir.'/apps/api2/package.json', '{}');
 
     $apps = [
         new DetectedApp(
@@ -194,11 +268,19 @@ test('infers api url for frontend apps', function () {
             type: 'frontend',
         ),
         new DetectedApp(
-            name: 'api',
-            path: 'apps/api',
+            name: 'api1',
+            path: 'apps/api1',
             framework: 'express',
             buildPack: 'node',
             defaultPort: 4000,
+            type: 'backend',
+        ),
+        new DetectedApp(
+            name: 'api2',
+            path: 'apps/api2',
+            framework: 'fastapi',
+            buildPack: 'python',
+            defaultPort: 8000,
             type: 'backend',
         ),
     ];
@@ -206,8 +288,8 @@ test('infers api url for frontend apps', function () {
     $dependencies = $this->detector->analyze($this->tempDir, $apps);
 
     $webDeps = collect($dependencies)->first(fn ($d) => $d->appName === 'web');
-    expect($webDeps->internalUrls)->toHaveKey('API_URL');
-    expect($webDeps->internalUrls['API_URL'])->toBe('api');
+    // Should NOT infer - ambiguous which backend to use
+    expect($webDeps->internalUrls)->toBeEmpty();
 });
 
 test('handles apps with no dependencies', function () {

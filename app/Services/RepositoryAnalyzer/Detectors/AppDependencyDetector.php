@@ -25,7 +25,7 @@ class AppDependencyDetector
 
         foreach ($apps as $app) {
             $appPath = $app->path === '.' ? $repoPath : $repoPath.'/'.$app->path;
-            $deps = $this->detectDependencies($appPath, $app, $appNames);
+            $deps = $this->detectDependencies($appPath, $app, $appNames, $apps);
             $dependencies[] = $deps;
         }
 
@@ -37,8 +37,10 @@ class AppDependencyDetector
 
     /**
      * Detect dependencies for a single app
+     *
+     * @param  DetectedApp[]  $allApps
      */
-    private function detectDependencies(string $appPath, DetectedApp $app, array $allAppNames): AppDependency
+    private function detectDependencies(string $appPath, DetectedApp $app, array $allAppNames, array $allApps): AppDependency
     {
         $dependsOn = [];
         $internalUrls = [];
@@ -52,13 +54,19 @@ class AppDependencyDetector
         $codeDeps = $this->detectFromSourceCode($appPath, $allAppNames);
         $dependsOn = array_merge($dependsOn, $codeDeps);
 
-        // Check environment variables for internal URLs
+        // Check environment variables for internal URLs (explicit references)
         $envDeps = $this->detectFromEnvFiles($appPath, $allAppNames);
         $internalUrls = array_merge($internalUrls, $envDeps);
 
-        // Infer internal URLs from app types
-        $inferredUrls = $this->inferInternalUrls($app, $dependsOn);
-        $internalUrls = array_merge($internalUrls, $inferredUrls);
+        // Check if app needs API connection (based on env var names, even if empty)
+        $needsApi = $this->detectApiNeed($appPath);
+
+        // Infer internal URLs based on app types (smart fallback)
+        // Only if no explicit URLs found and app is frontend or needs API
+        if (empty($internalUrls) && ($app->type === 'frontend' || $needsApi)) {
+            $inferredUrls = $this->inferInternalUrlsByType($allApps, $app->name);
+            $internalUrls = array_merge($internalUrls, $inferredUrls);
+        }
 
         return new AppDependency(
             appName: $app->name,
@@ -202,21 +210,60 @@ class AppDependencyDetector
     }
 
     /**
-     * Infer internal URLs based on app types
+     * Detect if app needs API connection based on env variable names
+     *
+     * Looks for API-related env variables even if they have no value
      */
-    private function inferInternalUrls(DetectedApp $app, array $dependsOn): array
+    private function detectApiNeed(string $appPath): bool
+    {
+        $envFiles = ['.env.example', '.env.sample', '.env.template'];
+        $apiPatterns = [
+            'API_URL',
+            'BACKEND_URL',
+            'NEXT_PUBLIC_API',
+            'VITE_API',
+            'REACT_APP_API',
+            'NUXT_PUBLIC_API',
+        ];
+
+        foreach ($envFiles as $envFile) {
+            $filePath = $appPath.'/'.$envFile;
+            if (! $this->isReadableFile($filePath)) {
+                continue;
+            }
+
+            $content = file_get_contents($filePath);
+            foreach ($apiPatterns as $pattern) {
+                if (str_contains($content, $pattern)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Infer internal URLs based on app types (smart fallback)
+     *
+     * Instead of matching hardcoded names, this looks at actual app types.
+     * If there's exactly one backend in the monorepo, we can reasonably
+     * assume it should be connected.
+     *
+     * @param  DetectedApp[]  $allApps
+     */
+    private function inferInternalUrlsByType(array $allApps, string $excludeAppName): array
     {
         $internalUrls = [];
 
-        // If frontend depends on backend, likely needs API_URL
-        if ($app->type === 'frontend' || $app->type === 'fullstack') {
-            foreach ($dependsOn as $depName) {
-                // Common naming conventions for API apps
-                if (in_array($depName, ['api', 'backend', 'server', 'core'], true)) {
-                    $internalUrls['API_URL'] = $depName;
-                    break;
-                }
-            }
+        // Find all backend apps in the monorepo (excluding current app)
+        $backends = array_filter($allApps, fn ($a) => $a->type === 'backend' && $a->name !== $excludeAppName);
+
+        // If exactly one backend exists, it's safe to assume the app needs it
+        // (caller already verified that app is frontend or needs API)
+        if (count($backends) === 1) {
+            $backend = reset($backends);
+            $internalUrls['API_URL'] = $backend->name;
         }
 
         return $internalUrls;
