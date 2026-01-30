@@ -2843,6 +2843,7 @@ class DatabaseMetricsController extends Controller
             $success = match ($type) {
                 'postgresql' => $this->deletePostgresRow($server, $database, $tableName, $request->input('primary_key')),
                 'mysql', 'mariadb' => $this->deleteMysqlRow($server, $database, $tableName, $request->input('primary_key')),
+                'mongodb' => $this->deleteMongoRow($server, $database, $tableName, $request->input('primary_key')),
                 default => false,
             };
 
@@ -2883,6 +2884,7 @@ class DatabaseMetricsController extends Controller
             $success = match ($type) {
                 'postgresql' => $this->createPostgresRow($server, $database, $tableName, $request->input('data')),
                 'mysql', 'mariadb' => $this->createMysqlRow($server, $database, $tableName, $request->input('data')),
+                'mongodb' => $this->createMongoRow($server, $database, $tableName, $request->input('data')),
                 default => false,
             };
 
