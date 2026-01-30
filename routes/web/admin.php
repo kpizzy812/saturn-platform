@@ -2031,6 +2031,181 @@ Route::prefix('admin')->group(function () {
         ]);
     })->name('admin.logs.index');
 
+    // Audit Logs - User activity tracking
+    Route::get('/audit-logs', function (\Illuminate\Http\Request $request) {
+        $query = \App\Models\AuditLog::with(['user', 'team']);
+
+        // Search filter
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('resource_name', 'like', "%{$search}%")
+                    ->orWhere('action', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Action filter
+        if ($action = $request->get('action')) {
+            $query->where('action', $action);
+        }
+
+        // Resource type filter
+        if ($resourceType = $request->get('resource_type')) {
+            $query->where('resource_type', 'like', "%{$resourceType}%");
+        }
+
+        // User filter
+        if ($userId = $request->get('user_id')) {
+            $query->where('user_id', $userId);
+        }
+
+        // Date range filter
+        if ($dateFrom = $request->get('date_from')) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo = $request->get('date_to')) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $logs = $query->latest()
+            ->paginate(50)
+            ->through(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'formatted_action' => $log->formatted_action,
+                    'resource_type' => $log->resource_type_name,
+                    'resource_id' => $log->resource_id,
+                    'resource_name' => $log->resource_name,
+                    'description' => $log->description,
+                    'metadata' => $log->metadata,
+                    'user_id' => $log->user_id,
+                    'user_name' => $log->user?->name,
+                    'user_email' => $log->user?->email,
+                    'team_id' => $log->team_id,
+                    'team_name' => $log->team?->name,
+                    'ip_address' => $log->ip_address,
+                    'user_agent' => $log->user_agent,
+                    'created_at' => $log->created_at?->toISOString(),
+                ];
+            });
+
+        // Get unique actions for filter dropdown
+        $actions = \App\Models\AuditLog::distinct()
+            ->pluck('action')
+            ->filter()
+            ->sort()
+            ->values();
+
+        // Get unique resource types for filter dropdown
+        $resourceTypes = \App\Models\AuditLog::distinct()
+            ->pluck('resource_type')
+            ->filter()
+            ->map(fn ($type) => class_basename($type))
+            ->unique()
+            ->sort()
+            ->values();
+
+        // Get users who have audit logs
+        $users = \App\Models\User::whereIn('id', \App\Models\AuditLog::distinct()->pluck('user_id'))
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Admin/AuditLogs/Index', [
+            'logs' => $logs,
+            'actions' => $actions,
+            'resourceTypes' => $resourceTypes,
+            'users' => $users,
+            'filters' => [
+                'search' => $request->get('search'),
+                'action' => $request->get('action'),
+                'resource_type' => $request->get('resource_type'),
+                'user_id' => $request->get('user_id'),
+                'date_from' => $request->get('date_from'),
+                'date_to' => $request->get('date_to'),
+            ],
+        ]);
+    })->name('admin.audit-logs.index');
+
+    // Audit Logs Export
+    Route::get('/audit-logs/export', function (\Illuminate\Http\Request $request) {
+        $query = \App\Models\AuditLog::with(['user', 'team']);
+
+        // Apply same filters as index
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('resource_name', 'like', "%{$search}%")
+                    ->orWhere('action', 'like', "%{$search}%");
+            });
+        }
+        if ($action = $request->get('action')) {
+            $query->where('action', $action);
+        }
+        if ($resourceType = $request->get('resource_type')) {
+            $query->where('resource_type', 'like', "%{$resourceType}%");
+        }
+        if ($userId = $request->get('user_id')) {
+            $query->where('user_id', $userId);
+        }
+        if ($dateFrom = $request->get('date_from')) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo = $request->get('date_to')) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $format = $request->get('format', 'csv');
+        $logs = $query->latest()->limit(10000)->get();
+
+        if ($format === 'json') {
+            $data = $logs->map(function ($log) {
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'resource_type' => $log->resource_type_name,
+                    'resource_name' => $log->resource_name,
+                    'description' => $log->description,
+                    'metadata' => $log->metadata,
+                    'user' => $log->user?->name,
+                    'user_email' => $log->user?->email,
+                    'team' => $log->team?->name,
+                    'ip_address' => $log->ip_address,
+                    'created_at' => $log->created_at?->toISOString(),
+                ];
+            });
+
+            return response()->json($data)
+                ->header('Content-Disposition', 'attachment; filename="audit-logs-'.now()->format('Y-m-d').'.json"');
+        }
+
+        // CSV export
+        $csv = "ID,Action,Resource Type,Resource Name,Description,User,Email,Team,IP Address,Created At\n";
+        foreach ($logs as $log) {
+            $csv .= implode(',', [
+                $log->id,
+                '"'.str_replace('"', '""', $log->action ?? '').'"',
+                '"'.str_replace('"', '""', $log->resource_type_name ?? '').'"',
+                '"'.str_replace('"', '""', $log->resource_name ?? '').'"',
+                '"'.str_replace('"', '""', $log->description ?? '').'"',
+                '"'.str_replace('"', '""', $log->user?->name ?? '').'"',
+                '"'.str_replace('"', '""', $log->user?->email ?? '').'"',
+                '"'.str_replace('"', '""', $log->team?->name ?? '').'"',
+                '"'.str_replace('"', '""', $log->ip_address ?? '').'"',
+                $log->created_at?->toISOString() ?? '',
+            ])."\n";
+        }
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="audit-logs-'.now()->format('Y-m-d').'.csv"');
+    })->name('admin.audit-logs.export');
+
     // System Health Dashboard
     Route::get('/health', function () {
         // Core services health checks

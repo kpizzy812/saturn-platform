@@ -18,6 +18,7 @@ import {
     MailPlus,
     Activity,
     CheckCircle,
+    ClipboardList,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -49,7 +50,8 @@ const adminNavItems: NavItem[] = [
     { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
     { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
     { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
-    { label: 'Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },
+    { label: 'System Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },
+    { label: 'Audit Logs', href: '/admin/audit-logs', icon: <ClipboardList className="h-4 w-4" /> },
 ];
 
 function AdminSidebar() {
