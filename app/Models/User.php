@@ -604,8 +604,8 @@ class User extends Authenticatable implements SendsEmail
             'suspension_reason' => $reason,
         ]);
 
-        // Revoke all active sessions
-        $this->deleteOtherSessions();
+        // Revoke all active sessions for this user
+        $this->deleteUserSessions();
 
         // Revoke all API tokens
         $this->tokens()->delete();
@@ -636,8 +636,8 @@ class User extends Authenticatable implements SendsEmail
             'suspension_reason' => $reason,
         ]);
 
-        // Revoke all active sessions
-        $this->deleteOtherSessions();
+        // Revoke all active sessions for this user
+        $this->deleteUserSessions();
 
         // Revoke all API tokens
         $this->tokens()->delete();

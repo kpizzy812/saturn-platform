@@ -20,6 +20,30 @@ trait DeletesUserSessions
     }
 
     /**
+     * Delete all other sessions for this user except the current one.
+     * Used when admin suspends/bans a user - deletes target user's sessions
+     * without affecting the admin's current session.
+     */
+    public function deleteOtherSessions(): void
+    {
+        $currentSessionId = Session::getId();
+
+        DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->where('id', '!=', $currentSessionId)
+            ->delete();
+    }
+
+    /**
+     * Delete ALL sessions for this user (including current if it belongs to them).
+     * Used when admin suspends/bans another user.
+     */
+    public function deleteUserSessions(): void
+    {
+        DB::table('sessions')->where('user_id', $this->id)->delete();
+    }
+
+    /**
      * Boot the trait.
      */
     protected static function bootDeletesUserSessions()
