@@ -188,6 +188,12 @@ class Server extends BaseModel
         });
     }
 
+    // Security: Hide sensitive API keys from serialization (Inertia, API responses)
+    protected $hidden = [
+        'logdrain_axiom_api_key',
+        'logdrain_newrelic_license_key',
+    ];
+
     protected $casts = [
         'proxy' => SchemalessAttributes::class,
         'traefik_outdated_info' => 'array',

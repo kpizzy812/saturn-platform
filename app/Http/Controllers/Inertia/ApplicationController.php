@@ -394,12 +394,13 @@ class ApplicationController extends Controller
         $environment = $application->environment;
 
         // Fetch actual preview settings from the application
+        // Security: Don't expose webhook secrets - only indicate if they're set
         $settings = [
             'preview_url_template' => $application->preview_url_template,
-            'manual_webhook_secret_github' => $application->manual_webhook_secret_github,
-            'manual_webhook_secret_gitlab' => $application->manual_webhook_secret_gitlab,
-            'manual_webhook_secret_bitbucket' => $application->manual_webhook_secret_bitbucket,
-            'manual_webhook_secret_gitea' => $application->manual_webhook_secret_gitea,
+            'has_webhook_secret_github' => ! empty($application->manual_webhook_secret_github),
+            'has_webhook_secret_gitlab' => ! empty($application->manual_webhook_secret_gitlab),
+            'has_webhook_secret_bitbucket' => ! empty($application->manual_webhook_secret_bitbucket),
+            'has_webhook_secret_gitea' => ! empty($application->manual_webhook_secret_gitea),
         ];
 
         return Inertia::render('Applications/Previews/Settings', [

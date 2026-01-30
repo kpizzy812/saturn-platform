@@ -62,7 +62,7 @@ function convertLogsToSteps(logs: LogEntry[], deploymentStatus?: string): BuildS
 
     // Group logs by build step (detect step markers like ╔══════════════════════════════════════════╗)
     const steps: BuildStep[] = [];
-    // eslint-disable-next-line prefer-const -- reassigned inside forEach callback
+     
     let currentStep: BuildStep | null = null as BuildStep | null;
     let stepId = 1;
 
