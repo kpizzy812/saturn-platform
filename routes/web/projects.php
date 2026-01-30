@@ -586,7 +586,19 @@ Route::get('/projects/{uuid}/members', function (string $uuid) {
         ]);
 
     // Get current user's role in the project
+    // First check project-level role, then fall back to team role for owners/admins
     $currentUserRole = $currentUser->roleInProject($project);
+
+    // If no project role, check team role - team owners/admins can manage project members
+    if (! $currentUserRole) {
+        $teamMembership = $currentUser->teamMembership($team->id);
+        $teamRole = $teamMembership?->role;
+
+        // Team owners and admins get equivalent project permissions
+        if ($teamRole === 'owner' || $teamRole === 'admin') {
+            $currentUserRole = $teamRole;
+        }
+    }
 
     return Inertia::render('Projects/Members', [
         'project' => [
