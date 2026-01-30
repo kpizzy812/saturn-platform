@@ -283,6 +283,37 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
+        // Check if deployment requires approval
+        if ($this->application_deployment_queue->requires_approval) {
+            if ($this->application_deployment_queue->approval_status === 'pending') {
+                $this->application_deployment_queue->addLogEntry('Deployment is waiting for approval. Please approve via admin panel or API.');
+                $this->application_deployment_queue->update([
+                    'status' => ApplicationDeploymentStatus::QUEUED->value,
+                ]);
+
+                // Release the job back to queue to retry later
+                $this->release(60); // Retry in 60 seconds
+
+                return;
+            }
+
+            if ($this->application_deployment_queue->approval_status === 'rejected') {
+                $this->application_deployment_queue->addLogEntry('Deployment was rejected by admin.');
+                $this->application_deployment_queue->update([
+                    'status' => ApplicationDeploymentStatus::CANCELLED_BY_USER->value,
+                ]);
+
+                return;
+            }
+
+            // If approved, log it and continue
+            if ($this->application_deployment_queue->approval_status === 'approved') {
+                $approver = $this->application_deployment_queue->approved_by ? " by user #{$this->application_deployment_queue->approved_by}" : '';
+                $note = $this->application_deployment_queue->approval_note ? " Note: {$this->application_deployment_queue->approval_note}" : '';
+                $this->application_deployment_queue->addLogEntry("Deployment approved{$approver}.{$note}");
+            }
+        }
+
         $this->application_deployment_queue->update([
             'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
             'started_at' => Carbon::now(),

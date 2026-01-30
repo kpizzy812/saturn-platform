@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('application_deployment_queue', function (Blueprint $table) {
+        Schema::table('application_deployment_queues', function (Blueprint $table) {
             $table->boolean('requires_approval')->default(false)->after('status');
             $table->string('approval_status', 20)->nullable()->after('requires_approval'); // 'pending', 'approved', 'rejected'
             $table->foreignId('approved_by')->nullable()->after('approval_status')->constrained('users')->nullOnDelete();
@@ -26,7 +26,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('application_deployment_queue', function (Blueprint $table) {
+        Schema::table('application_deployment_queues', function (Blueprint $table) {
             $table->dropForeign(['approved_by']);
             $table->dropColumn([
                 'requires_approval',

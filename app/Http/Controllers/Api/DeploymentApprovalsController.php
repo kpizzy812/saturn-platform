@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ApplicationDeploymentJob;
 use App\Models\ApplicationDeploymentQueue;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,14 +58,22 @@ class DeploymentApprovalsController extends Controller
             'approved_by' => auth()->id(),
             'approved_at' => now(),
             'approval_note' => $request->input('note'),
-            'status' => 'queued', // Change status from waiting_approval to queued
+            'status' => 'queued', // Change status to queued so job can pick it up
         ]);
 
-        // TODO: Dispatch deployment job here
-        // queue_application_deployment($deployment->application, $deployment->deployment_uuid);
+        // Dispatch deployment job to process the approved deployment
+        ApplicationDeploymentJob::dispatch(
+            $deployment->application_id,
+            $deployment->deployment_uuid,
+            $deployment->pull_request_id ?? 0,
+            $deployment->commit ?? '',
+            $deployment->rollback ?? false,
+            $deployment->restart_only ?? false,
+            $deployment->git_type ?? null
+        );
 
         return response()->json([
-            'message' => 'Deployment approved successfully.',
+            'message' => 'Deployment approved successfully and queued for processing.',
             'deployment' => $deployment,
         ]);
     }
