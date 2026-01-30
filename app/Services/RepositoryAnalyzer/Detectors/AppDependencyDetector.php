@@ -310,23 +310,27 @@ class AppDependencyDetector
      */
     private function findSourceFiles(string $appPath): array
     {
-        $patterns = [
-            $appPath.'/src/**/*.{ts,js,tsx,jsx}',
-            $appPath.'/app/**/*.{ts,js,tsx,jsx}',
-            $appPath.'/lib/**/*.{ts,js}',
-            $appPath.'/*.{ts,js}',
+        // Define patterns with explicit extensions (no GLOB_BRACE - not available in Alpine/musl)
+        $baseDirs = [
+            $appPath.'/src/*/',
+            $appPath.'/app/*/',
+            $appPath.'/lib/*/',
+            $appPath.'/',
         ];
 
+        $extensions = ['ts', 'js', 'tsx', 'jsx'];
+
         $files = [];
-        foreach ($patterns as $pattern) {
-            // Simple glob doesn't support **, so we'll check common locations
-            $simplePattern = str_replace('**/', '*/', $pattern);
-            $found = glob($simplePattern, GLOB_BRACE) ?: [];
-            $files = array_merge($files, $found);
+        foreach ($baseDirs as $baseDir) {
+            foreach ($extensions as $ext) {
+                $pattern = rtrim($baseDir, '/').'/*.'.$ext;
+                $found = glob($pattern) ?: [];
+                $files = array_merge($files, $found);
+            }
         }
 
         // Limit to first 20 files to avoid scanning too much
-        return array_slice($files, 0, 20);
+        return array_slice(array_unique($files), 0, 20);
     }
 
     /**

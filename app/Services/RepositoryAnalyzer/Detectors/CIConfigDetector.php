@@ -54,7 +54,11 @@ class CIConfigDetector
             return null;
         }
 
-        $files = glob($workflowsDir.'/*.{yml,yaml}', GLOB_BRACE) ?: [];
+        // Note: GLOB_BRACE not available in Alpine/musl, use separate globs
+        $files = array_merge(
+            glob($workflowsDir.'/*.yml') ?: [],
+            glob($workflowsDir.'/*.yaml') ?: []
+        );
 
         $installCommand = null;
         $buildCommand = null;
