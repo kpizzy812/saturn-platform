@@ -177,11 +177,20 @@
 
 ---
 
-### 12. Application Templates
-- [ ] Таблица `application_templates` (name, config JSON)
-- [ ] CRUD API
-- [ ] "Create from template" кнопка
-- [ ] Популярные стеки: Node.js, Laravel, Django, Rails
+### 12. Application Templates ✅ DONE
+- [x] Таблица `application_templates` (name, config JSON)
+- [x] CRUD API (routes/web/admin.php)
+- [x] UI страницы Admin/Templates/Index, Create, Show
+- [x] Популярные стеки: Node.js, Laravel, Django, Rails (Seeder)
+- [ ] "Create from template" кнопка в Application creation flow
+
+**Файлы:**
+- `database/migrations/2026_01_30_134706_create_application_templates_table.php`
+- `app/Models/ApplicationTemplate.php`
+- `database/seeders/ApplicationTemplateSeeder.php`
+- `resources/js/pages/Admin/Templates/Index.tsx`
+- `resources/js/pages/Admin/Templates/Create.tsx`
+- `resources/js/pages/Admin/Templates/Show.tsx`
 
 ### 13. Database Cloning
 - [ ] API endpoint POST /databases/{uuid}/clone
@@ -238,10 +247,10 @@
 |-----------|--------|---------|
 | Критические (1-6) | ✅ Завершено | 100% |
 | Высокий приоритет (7, 9, 10) | ✅ Завершено | 100% |
-| Средний приоритет (8, 11-15) | 🟡 В работе | 40% (8, 11 done) |
+| Средний приоритет (8, 11-15) | 🟡 В работе | 60% (8, 11, 12 done) |
 | Низкий приоритет (16-19) | 🔵 Планируется | 0% |
 
-**ОБЩИЙ ПРОГРЕСС: ~80%**
+**ОБЩИЙ ПРОГРЕСС: ~85%**
 
 ---
 

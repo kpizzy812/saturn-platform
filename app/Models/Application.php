@@ -119,11 +119,25 @@ class Application extends BaseModel
 
     protected $appends = ['server_status'];
 
+    // Security: Hide webhook secrets from serialization (Inertia, API responses)
+    protected $hidden = [
+        'manual_webhook_secret_github',
+        'manual_webhook_secret_gitlab',
+        'manual_webhook_secret_bitbucket',
+        'manual_webhook_secret_gitea',
+    ];
+
     protected $casts = [
         'http_basic_auth_password' => 'encrypted',
+        // Security: Encrypt webhook secrets at rest
+        'manual_webhook_secret_github' => 'encrypted',
+        'manual_webhook_secret_gitlab' => 'encrypted',
+        'manual_webhook_secret_bitbucket' => 'encrypted',
+        'manual_webhook_secret_gitea' => 'encrypted',
         'restart_count' => 'integer',
         'last_restart_at' => 'datetime',
         'build_pack_explicitly_set' => 'boolean',
+        'monorepo_group_id' => 'string',
     ];
 
     protected static function booted()
@@ -2159,5 +2173,78 @@ class Application extends BaseModel
                 ]
             );
         }
+    }
+
+    /**
+     * Get sibling applications in the same monorepo group
+     *
+     * Note: This returns a query builder, not a HasMany relationship,
+     * because we're querying by a non-foreign-key column.
+     */
+    public function monorepoSiblings(): \Illuminate\Database\Eloquent\Builder
+    {
+        if (! $this->monorepo_group_id) {
+            return static::query()->whereRaw('1=0'); // Empty query
+        }
+
+        return static::query()
+            ->where('monorepo_group_id', $this->monorepo_group_id)
+            ->where('id', '!=', $this->id);
+    }
+
+    /**
+     * Check if application is part of a monorepo group
+     */
+    public function isPartOfMonorepo(): bool
+    {
+        return $this->monorepo_group_id !== null;
+    }
+
+    /**
+     * Get all applications in the monorepo group (including this one)
+     */
+    public function getMonorepoGroup(): Collection
+    {
+        if (! $this->monorepo_group_id) {
+            return new Collection([$this]);
+        }
+
+        return static::where('monorepo_group_id', $this->monorepo_group_id)->get();
+    }
+
+    /**
+     * Get count of apps in monorepo group
+     */
+    public function getMonorepoGroupCount(): int
+    {
+        if (! $this->monorepo_group_id) {
+            return 1;
+        }
+
+        return static::where('monorepo_group_id', $this->monorepo_group_id)->count();
+    }
+
+    /**
+     * Scope to filter by monorepo group
+     */
+    public function scopeInMonorepoGroup(\Illuminate\Database\Eloquent\Builder $query, string $groupId): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('monorepo_group_id', $groupId);
+    }
+
+    /**
+     * Scope to get only monorepo apps
+     */
+    public function scopeMonorepoApps(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->whereNotNull('monorepo_group_id');
+    }
+
+    /**
+     * Scope to get standalone apps (not in monorepo)
+     */
+    public function scopeStandaloneApps(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->whereNull('monorepo_group_id');
     }
 }

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DatabaseCreateController;
 use App\Http\Controllers\Api\DatabasesController;
 use App\Http\Controllers\Api\DeployController;
 use App\Http\Controllers\Api\DeploymentApprovalController;
+use App\Http\Controllers\Api\GitAnalyzerController;
 use App\Http\Controllers\Api\GitController;
 use App\Http\Controllers\Api\GithubController;
 use App\Http\Controllers\Api\HetznerController;
@@ -353,6 +354,10 @@ Route::group([
 
     // Git operations for public repositories
     Route::get('/git/branches', [GitController::class, 'branches'])->middleware(['api.ability:read']);
+
+    // Git Repository Analysis & Auto-Provisioning
+    Route::post('/git/analyze', [GitAnalyzerController::class, 'analyze'])->middleware(['api.ability:read']);
+    Route::post('/git/provision', [GitAnalyzerController::class, 'provision'])->middleware(['api.ability:write']);
 
     // Database CRUD routes
     Route::get('/databases', [DatabasesController::class, 'index'])->middleware(['api.ability:read']);

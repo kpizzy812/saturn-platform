@@ -19,6 +19,7 @@ import {
     Activity,
     CheckCircle,
     ClipboardList,
+    LayoutTemplate,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -46,6 +47,7 @@ const adminNavItems: NavItem[] = [
     { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
     { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
     { label: 'Approvals', href: '/admin/deployments/approvals', icon: <CheckCircle className="h-4 w-4" /> },
+    { label: 'Templates', href: '/admin/templates', icon: <LayoutTemplate className="h-4 w-4" /> },
     { label: 'Queues', href: '/admin/queues', icon: <ListOrdered className="h-4 w-4" /> },
     { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
     { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
