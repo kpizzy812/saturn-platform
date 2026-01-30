@@ -2,18 +2,10 @@
 
 namespace App\Services\RepositoryAnalyzer\Exceptions;
 
-use Exception;
-
 /**
  * Exception thrown when infrastructure provisioning fails
+ *
+ * Extends RepositoryAnalysisException so it can be caught by the same
+ * catch block in controllers.
  */
-class ProvisioningException extends Exception
-{
-    public function __construct(
-        string $message,
-        int $code = 0,
-        ?Exception $previous = null,
-    ) {
-        parent::__construct($message, $code, $previous);
-    }
-}
+class ProvisioningException extends RepositoryAnalysisException {}
