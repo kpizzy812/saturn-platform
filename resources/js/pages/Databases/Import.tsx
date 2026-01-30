@@ -77,7 +77,7 @@ export default function DatabaseImport({ database }: Props) {
         const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
         try {
-            const response = await fetch(`/api/v1/databases/${database.uuid}/backups`, {
+            const response = await fetch(`/databases/${database.uuid}/export`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -86,16 +86,19 @@ export default function DatabaseImport({ database }: Props) {
                 },
                 credentials: 'include',
                 body: JSON.stringify({
-                    frequency: 'manual',
-                    save_s3: false,
+                    format: exportFormat,
+                    includeData: exportOptions.includeData,
+                    includeStructure: exportOptions.includeStructure,
+                    compress: exportOptions.compress,
                 }),
             });
 
-            if (response.ok) {
-                addToast('success', 'Backup initiated. Check the Backups tab for progress.');
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.success) {
+                addToast('success', data.message || 'Export initiated. Check the Backups tab for progress.');
             } else {
-                const data = await response.json().catch(() => ({}));
-                addToast('error', data.message || 'Failed to initiate backup.');
+                addToast('error', data.error || 'Failed to initiate export.');
             }
         } catch {
             addToast('error', 'Failed to connect to the server.');

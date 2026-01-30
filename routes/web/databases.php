@@ -562,6 +562,43 @@ Route::patch('/databases/{uuid}/settings/backups', function (string $uuid, Reque
     }
 })->name('databases.settings.backups.update');
 
+// Manual backup trigger endpoint
+Route::post('/databases/{uuid}/export', function (string $uuid, Request $request) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    try {
+        // Find or create a scheduled backup config for this database
+        $backup = ScheduledDatabaseBackup::where('database_id', $database->id)
+            ->where('database_type', $database->getMorphClass())
+            ->first();
+
+        if (! $backup) {
+            // Create a temporary backup configuration for one-time export
+            $backup = ScheduledDatabaseBackup::create([
+                'database_id' => $database->id,
+                'database_type' => $database->getMorphClass(),
+                'team_id' => currentTeam()->id,
+                'enabled' => false, // Disabled so it won't run on schedule
+                'frequency' => 'manual',
+                'save_s3' => false,
+            ]);
+        }
+
+        // Dispatch the backup job
+        \App\Jobs\DatabaseBackupJob::dispatch($backup);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Database export initiated. Check the Backups tab for progress.',
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to initiate export: '.$e->getMessage(),
+        ], 500);
+    }
+})->name('databases.export');
+
 Route::get('/databases/{uuid}/connections', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 
