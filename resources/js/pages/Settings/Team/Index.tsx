@@ -31,7 +31,13 @@ interface TeamMember {
     role: 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
     joinedAt: string;
     lastActive: string;
-    hasRestrictedAccess?: boolean;
+    projectAccess?: {
+        hasFullAccess: boolean;
+        hasNoAccess: boolean;
+        hasLimitedAccess: boolean;
+        count: number;
+        total: number;
+    };
 }
 
 interface Team {
@@ -292,25 +298,33 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                                         <UserCog className="h-4 w-4" />
                                                         Change Role
                                                     </DropdownItem>
-                                                    {/* Configure Projects - only for developer/member/viewer */}
-                                                    {(member.role === 'developer' || member.role === 'member' || member.role === 'viewer') && (
-                                                        <DropdownItem
-                                                            onClick={() => {
-                                                                setSelectedMember(member);
-                                                                setShowProjectsModal(true);
-                                                            }}
-                                                        >
-                                                            <FolderCog className="h-4 w-4" />
-                                                            <span className="flex items-center gap-2">
-                                                                Configure Projects
-                                                                {member.hasRestrictedAccess && (
-                                                                    <Badge variant="warning" className="text-[10px] px-1 py-0">
-                                                                        Restricted
-                                                                    </Badge>
-                                                                )}
-                                                            </span>
-                                                        </DropdownItem>
-                                                    )}
+                                                    {/* Configure Projects - available for all roles except owner */}
+                                                    <DropdownItem
+                                                        onClick={() => {
+                                                            setSelectedMember(member);
+                                                            setShowProjectsModal(true);
+                                                        }}
+                                                    >
+                                                        <FolderCog className="h-4 w-4" />
+                                                        <span className="flex items-center gap-2">
+                                                            Configure Projects
+                                                            {member.projectAccess?.hasNoAccess && (
+                                                                <Badge variant="danger" className="text-[10px] px-1 py-0">
+                                                                    No Access
+                                                                </Badge>
+                                                            )}
+                                                            {member.projectAccess?.hasLimitedAccess && (
+                                                                <Badge variant="warning" className="text-[10px] px-1 py-0">
+                                                                    {member.projectAccess.count}/{member.projectAccess.total}
+                                                                </Badge>
+                                                            )}
+                                                            {member.projectAccess?.hasFullAccess && (
+                                                                <Badge variant="success" className="text-[10px] px-1 py-0">
+                                                                    Full
+                                                                </Badge>
+                                                            )}
+                                                        </span>
+                                                    </DropdownItem>
                                                     <DropdownDivider />
                                                     <DropdownItem
                                                         danger

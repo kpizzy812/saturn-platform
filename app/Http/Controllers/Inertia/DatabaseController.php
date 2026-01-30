@@ -364,14 +364,31 @@ class DatabaseController extends Controller
         // Get connection details based on database type
         $connectionDetails = $this->getConnectionDetails($database, $type);
 
+        // Parse status into state and health
+        $statusString = $database->status();
+        $statusParts = explode(':', $statusString);
+        $state = $statusParts[0] ?? 'unknown';
+        $health = $statusParts[1] ?? 'unknown';
+
+        // Load environment relationship
+        $database->load('environment');
+
         return [
             'id' => $database->id,
             'uuid' => $database->uuid,
             'name' => $database->name,
             'description' => $database->description,
             'database_type' => $type,
-            'status' => $database->status(),
+            'status' => [
+                'state' => $state,
+                'health' => $health,
+            ],
             'environment_id' => $database->environment_id,
+            'environment' => $database->environment ? [
+                'id' => $database->environment->id,
+                'name' => $database->environment->name,
+                'type' => $database->environment->type ?? 'production',
+            ] : null,
             'created_at' => $database->created_at,
             'updated_at' => $database->updated_at,
             // Connection URLs for Railway-like experience

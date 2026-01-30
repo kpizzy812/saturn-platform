@@ -1,8 +1,8 @@
 import { Link, router } from '@inertiajs/react';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, Badge, StatusBadge } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Database, MoreVertical, Settings, Trash2, RotateCw } from 'lucide-react';
-import type { StandaloneDatabase, DatabaseType } from '@/types';
+import type { StandaloneDatabase, DatabaseType, EnvironmentType } from '@/types';
 import { getStatusColor } from '@/lib/statusUtils';
 
 interface DatabaseCardProps {
@@ -124,6 +124,20 @@ const formatDatabaseType = (type: DatabaseType): string => {
     return typeMap[type] || type;
 };
 
+// Get badge variant based on environment type
+const getEnvironmentVariant = (type: EnvironmentType): 'default' | 'primary' | 'success' | 'warning' | 'info' => {
+    switch (type) {
+        case 'production':
+            return 'danger';
+        case 'uat':
+            return 'warning';
+        case 'development':
+            return 'info';
+        default:
+            return 'default';
+    }
+};
+
 export function DatabaseCard({ database }: DatabaseCardProps) {
     const confirm = useConfirm();
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
@@ -192,10 +206,18 @@ export function DatabaseCard({ database }: DatabaseCardProps) {
                 </Dropdown>
             </div>
 
-            {/* Status */}
-            <div className="relative mt-4 flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${getStatusColor(database.status)}`} />
-                <span className="text-sm capitalize text-foreground-muted">{database.status}</span>
+            {/* Status and Environment badges */}
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+                <StatusBadge status={database.status.state} size="sm" />
+                <StatusBadge status={database.status.health} size="sm" />
+                {database.environment && (
+                    <Badge
+                        variant={getEnvironmentVariant(database.environment.type)}
+                        size="sm"
+                    >
+                        {database.environment.name}
+                    </Badge>
+                )}
             </div>
 
             {/* Last updated */}

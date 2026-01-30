@@ -522,7 +522,7 @@ Route::get('/projects/{uuid}/members', function (string $uuid) {
     $currentUser = auth()->user();
     $team = currentTeam();
 
-    // Get project-specific members
+    // Get project-specific members (explicitly added to project)
     $projectMembers = $project->members()
         ->get()
         ->map(fn ($m) => [
@@ -530,24 +530,48 @@ Route::get('/projects/{uuid}/members', function (string $uuid) {
             'name' => $m->name,
             'email' => $m->email,
             'role' => $m->pivot->role,
-            'is_team_fallback' => false,
+            'access_type' => 'project', // Direct project membership
+            'has_team_access' => false,
         ]);
 
-    // Get team members who are not project members (they inherit team-level access)
     $projectMemberIds = $projectMembers->pluck('id')->toArray();
-    $teamMembersWithFallback = $team->members()
-        ->whereNotIn('users.id', $projectMemberIds)
-        ->get()
-        ->map(fn ($m) => [
-            'id' => $m->id,
-            'name' => $m->name,
-            'email' => $m->email,
-            'role' => $m->pivot->role ?? 'member',
-            'is_team_fallback' => true,
-        ]);
 
-    // Combine and sort
-    $allMembers = $projectMembers->concat($teamMembersWithFallback)
+    // Get all team members
+    $allTeamMembers = $team->members()
+        ->get()
+        ->map(function ($member) use ($project, $projectMemberIds) {
+            // Skip if already a project member
+            if (in_array($member->id, $projectMemberIds)) {
+                return null;
+            }
+
+            $teamUser = $member->teamMembership($team->id);
+            $teamRole = $teamUser?->role ?? 'member';
+
+            // Check team-level access to this project
+            $hasTeamAccess = false;
+            if ($teamRole === 'owner') {
+                // Owners always have full access
+                $hasTeamAccess = true;
+            } elseif ($teamUser) {
+                // Check allowed_projects for other roles
+                $hasTeamAccess = $teamUser->canAccessProject($project->id);
+            }
+
+            return [
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
+                'role' => $teamRole,
+                'access_type' => 'team', // Team-level access
+                'has_team_access' => $hasTeamAccess,
+            ];
+        })
+        ->filter()
+        ->values();
+
+    // Combine project members and team members
+    $allMembers = $projectMembers->concat($allTeamMembers)
         ->sortBy('name')
         ->values();
 

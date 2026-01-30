@@ -113,38 +113,40 @@ const defaultRoles: Role[] = [
 ];
 
 export default function TeamRoles() {
-    const [roles, setRoles] = React.useState<Role[]>(defaultRoles);
-    const [showCreateModal, setShowCreateModal] = React.useState(false);
-    const [newRoleName, setNewRoleName] = React.useState('');
-    const [newRoleDescription, setNewRoleDescription] = React.useState('');
-    const [newRolePermissions, setNewRolePermissions] = React.useState<string[]>([]);
+    const [roles] = React.useState<Role[]>(defaultRoles);
+    // Custom role creation disabled - coming in Pro plan
+    // const [showCreateModal, setShowCreateModal] = React.useState(false);
+    // const [newRoleName, setNewRoleName] = React.useState('');
+    // const [newRoleDescription, setNewRoleDescription] = React.useState('');
+    // const [newRolePermissions, setNewRolePermissions] = React.useState<string[]>([]);
     const [expandedRole, setExpandedRole] = React.useState<string | null>(null);
 
-    const togglePermission = (permissionId: string) => {
-        setNewRolePermissions(prev =>
-            prev.includes(permissionId)
-                ? prev.filter(id => id !== permissionId)
-                : [...prev, permissionId]
-        );
-    };
+    // Custom role creation handlers - disabled for now
+    // const togglePermission = (permissionId: string) => {
+    //     setNewRolePermissions(prev =>
+    //         prev.includes(permissionId)
+    //             ? prev.filter(id => id !== permissionId)
+    //             : [...prev, permissionId]
+    //     );
+    // };
 
-    const handleCreateRole = () => {
-        const newRole: Role = {
-            id: `custom_${Date.now()}`,
-            name: newRoleName,
-            description: newRoleDescription,
-            isBuiltIn: false,
-            icon: <UserIcon className="h-4 w-4" />,
-            color: 'text-foreground',
-            permissions: newRolePermissions,
-        };
+    // const handleCreateRole = () => {
+    //     const newRole: Role = {
+    //         id: `custom_${Date.now()}`,
+    //         name: newRoleName,
+    //         description: newRoleDescription,
+    //         isBuiltIn: false,
+    //         icon: <UserIcon className="h-4 w-4" />,
+    //         color: 'text-foreground',
+    //         permissions: newRolePermissions,
+    //     };
 
-        setRoles([...roles, newRole]);
-        setShowCreateModal(false);
-        setNewRoleName('');
-        setNewRoleDescription('');
-        setNewRolePermissions([]);
-    };
+    //     setRoles([...roles, newRole]);
+    //     setShowCreateModal(false);
+    //     setNewRoleName('');
+    //     setNewRoleDescription('');
+    //     setNewRolePermissions([]);
+    // };
 
     const groupedPermissions = permissions.reduce((acc, permission) => {
         if (!acc[permission.category]) {
@@ -179,11 +181,27 @@ export default function TeamRoles() {
                             </p>
                         </div>
                     </div>
-                    <Button onClick={() => setShowCreateModal(true)}>
+                    {/* Custom roles feature - coming soon in Pro plan */}
+                    {/* <Button onClick={() => setShowCreateModal(true)}>
                         <Plus className="mr-2 h-4 w-4" />
                         Create Custom Role
                         <Badge variant="warning" className="ml-2">Pro</Badge>
-                    </Button>
+                    </Button> */}
+                </div>
+
+                {/* Coming Soon Notice */}
+                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                        <Sparkles className="h-5 w-5 text-warning mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium text-warning">
+                                Custom Roles - Coming Soon in Pro Plan
+                            </p>
+                            <p className="text-xs text-foreground-muted mt-1">
+                                Create custom roles with granular permissions tailored to your team's needs. This feature will be available in the Pro plan.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Roles List */}
@@ -337,90 +355,8 @@ export default function TeamRoles() {
                 </Card>
             </div>
 
-            {/* Create Custom Role Modal */}
-            <Modal
-                isOpen={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
-                title="Create Custom Role"
-                description="Define a custom role with specific permissions for your team"
-                size="lg"
-            >
-                <div className="space-y-4">
-                    <div className="rounded-lg border border-warning/30 bg-warning/10 p-4">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-warning" />
-                            <p className="text-sm font-medium text-warning">
-                                Pro Feature
-                            </p>
-                        </div>
-                        <p className="mt-1 text-xs text-foreground-muted">
-                            Custom roles are available on the Pro plan and higher.
-                        </p>
-                    </div>
-
-                    <Input
-                        label="Role Name"
-                        value={newRoleName}
-                        onChange={(e) => setNewRoleName(e.target.value)}
-                        placeholder="e.g., Developer, Contractor, QA"
-                    />
-
-                    <Input
-                        label="Description"
-                        value={newRoleDescription}
-                        onChange={(e) => setNewRoleDescription(e.target.value)}
-                        placeholder="Brief description of this role"
-                    />
-
-                    <div className="space-y-3">
-                        <label className="text-sm font-medium text-foreground">
-                            Permissions
-                        </label>
-                        <div className="max-h-96 space-y-4 overflow-y-auto rounded-lg border border-border p-4">
-                            {Object.entries(groupedPermissions).map(([category, perms]) => (
-                                <div key={category}>
-                                    <h4 className="mb-2 text-sm font-semibold text-foreground">
-                                        {categoryLabels[category]}
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {perms.map((permission) => (
-                                            <label
-                                                key={permission.id}
-                                                className="flex items-start gap-3 cursor-pointer"
-                                            >
-                                                <Checkbox
-                                                    checked={newRolePermissions.includes(permission.id)}
-                                                    onChange={() => togglePermission(permission.id)}
-                                                />
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-medium text-foreground">
-                                                        {permission.name}
-                                                    </p>
-                                                    <p className="text-xs text-foreground-muted">
-                                                        {permission.description}
-                                                    </p>
-                                                </div>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleCreateRole}
-                        disabled={!newRoleName || newRolePermissions.length === 0}
-                    >
-                        Create Role
-                    </Button>
-                </ModalFooter>
-            </Modal>
+            {/* Create Custom Role Modal - Disabled (Pro feature) */}
+            {/* Modal code commented out - will be implemented in Pro plan */}
         </SettingsLayout>
     );
 }

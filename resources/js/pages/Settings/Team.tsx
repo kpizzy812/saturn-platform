@@ -20,7 +20,9 @@ import {
     FolderCog,
     Settings,
     Activity,
-    Clock
+    Clock,
+    Search,
+    Filter
 } from 'lucide-react';
 
 interface TeamMember {
@@ -88,6 +90,8 @@ export default function TeamSettings({ team, members: initialMembers, invitation
     const [isRemoving, setIsRemoving] = React.useState(false);
     const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
     const [processingInviteId, setProcessingInviteId] = React.useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [roleFilter, setRoleFilter] = React.useState<string>('all');
     const { toast } = useToast();
 
     const handleCopyLink = (invitation: Invitation) => {
@@ -272,6 +276,24 @@ export default function TeamSettings({ team, members: initialMembers, invitation
             .slice(0, 2);
     };
 
+    const isOnline = (lastActive: string) => {
+        const diff = Date.now() - new Date(lastActive).getTime();
+        return diff < 5 * 60 * 1000; // 5 minutes
+    };
+
+    // Filter members based on search and role filter
+    const filteredMembers = React.useMemo(() => {
+        return members.filter(member => {
+            const matchesSearch = searchQuery === '' ||
+                member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                member.email.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesRole = roleFilter === 'all' || member.role === roleFilter;
+            return matchesSearch && matchesRole;
+        });
+    }, [members, searchQuery, roleFilter]);
+
+    const onlineMembers = members.filter(m => isOnline(m.lastActive)).length;
+
     return (
         <SettingsLayout activeSection="team">
             <div className="space-y-6">
@@ -310,6 +332,25 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                             </div>
                         </div>
                     </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="rounded-lg bg-background-tertiary p-4 text-center">
+                                <p className="text-2xl font-bold text-foreground">{members.length}</p>
+                                <p className="text-sm text-foreground-muted">Total Members</p>
+                            </div>
+                            <div className="rounded-lg bg-background-tertiary p-4 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                                    <p className="text-2xl font-bold text-foreground">{onlineMembers}</p>
+                                </div>
+                                <p className="text-sm text-foreground-muted">Online Now</p>
+                            </div>
+                            <div className="rounded-lg bg-background-tertiary p-4 text-center">
+                                <p className="text-2xl font-bold text-foreground">{invitations.length}</p>
+                                <p className="text-sm text-foreground-muted">Pending Invites</p>
+                            </div>
+                        </div>
+                    </CardContent>
                 </Card>
 
                 {/* Team Members */}
@@ -329,8 +370,41 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                         </div>
                     </CardHeader>
                     <CardContent>
+                        {/* Search and Filter */}
+                        <div className="mb-4 flex gap-3">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search members by name or email..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
+                            <Select
+                                value={roleFilter}
+                                onChange={(e) => setRoleFilter(e.target.value)}
+                                className="w-40"
+                            >
+                                <option value="all">All Roles</option>
+                                <option value="owner">Owner</option>
+                                <option value="admin">Admin</option>
+                                <option value="developer">Developer</option>
+                                <option value="member">Member</option>
+                                <option value="viewer">Viewer</option>
+                            </Select>
+                        </div>
+
+                        {/* Member count */}
+                        {searchQuery || roleFilter !== 'all' ? (
+                            <p className="mb-3 text-sm text-foreground-muted">
+                                Showing {filteredMembers.length} of {members.length} members
+                            </p>
+                        ) : null}
+
                         <div className="space-y-3">
-                            {members.map((member) => (
+                            {filteredMembers.map((member) => (
                                 <div
                                     key={member.id}
                                     className="flex items-center justify-between rounded-lg border border-border bg-background p-4 transition-all hover:border-border/80 hover:shadow-sm"

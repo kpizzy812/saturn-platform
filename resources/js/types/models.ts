@@ -162,8 +162,16 @@ export interface StandaloneDatabase {
     name: string;
     description: string | null;
     database_type: DatabaseType;
-    status: ResourceStatus;
+    status: {
+        state: string;
+        health: string;
+    };
     environment_id: number;
+    environment?: {
+        id: number;
+        name: string;
+        type: EnvironmentType;
+    };
     destination_id?: number;
     destination?: Destination;
     // Connection URLs (appended by backend)

@@ -226,6 +226,17 @@ class User extends Authenticatable implements SendsEmail
     }
 
     /**
+     * Get the TeamUser pivot model for a specific team.
+     * This provides access to allowed_projects and related methods.
+     */
+    public function teamMembership(int $teamId): ?TeamUser
+    {
+        return TeamUser::where('team_id', $teamId)
+            ->where('user_id', $this->id)
+            ->first();
+    }
+
+    /**
      * Get projects the user is a member of (via project_user pivot).
      */
     public function projectMemberships()

@@ -11,7 +11,8 @@ interface ProjectMember {
     name: string;
     email: string;
     role: ProjectRole;
-    is_team_fallback?: boolean;
+    access_type: 'project' | 'team';
+    has_team_access?: boolean;
 }
 
 interface TeamMember {
@@ -88,7 +89,8 @@ export default function ProjectMembers({
             }
 
             const member = await res.json();
-            setMembers([...members, member]);
+            // Add to members list with project access type
+            setMembers([...members, { ...member, access_type: 'project' as const }]);
             setShowAddMember(false);
             setSelectedUserId('');
             setSelectedRole('developer');
@@ -147,9 +149,13 @@ export default function ProjectMembers({
         }
     };
 
-    // Filter out users who are already members
-    const memberIds = new Set(members.map(m => m.id));
-    const availableUsers = availableTeamMembers.filter(u => !memberIds.has(u.id));
+    // Split members into project members and team members
+    const projectMembers = members.filter(m => m.access_type === 'project');
+    const teamMembers = members.filter(m => m.access_type === 'team');
+
+    // Filter out users who are already project members
+    const projectMemberIds = new Set(projectMembers.map(m => m.id));
+    const availableUsers = availableTeamMembers.filter(u => !projectMemberIds.has(u.id));
 
     return (
         <AppLayout
@@ -213,16 +219,16 @@ export default function ProjectMembers({
                     </CardContent>
                 </Card>
 
-                {/* Members List */}
+                {/* Project Members - explicitly added to project */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="flex items-center gap-2">
                                 <Users className="h-5 w-5" />
-                                Members ({members.length})
+                                Project Members ({projectMembers.length})
                             </CardTitle>
                             <CardDescription>
-                                Users with access to this project
+                                Users explicitly assigned to this project with specific roles
                             </CardDescription>
                         </div>
                         {canManageMembers && availableUsers.length > 0 && (
@@ -236,7 +242,7 @@ export default function ProjectMembers({
                         {/* Add member form */}
                         {showAddMember && (
                             <div className="mb-4 rounded-lg border border-border bg-background-secondary p-4">
-                                <h4 className="mb-3 text-sm font-medium text-foreground">Add Team Member</h4>
+                                <h4 className="mb-3 text-sm font-medium text-foreground">Add Team Member to Project</h4>
                                 <div className="flex flex-wrap items-end gap-3">
                                     <div className="min-w-[200px] flex-1">
                                         <label className="mb-1 block text-xs text-foreground-muted">User</label>
@@ -283,14 +289,14 @@ export default function ProjectMembers({
                             </div>
                         )}
 
-                        {/* Members table */}
+                        {/* Project members table */}
                         <div className="divide-y divide-border rounded-lg border border-border">
-                            {members.length === 0 ? (
+                            {projectMembers.length === 0 ? (
                                 <div className="p-8 text-center text-sm text-foreground-muted">
-                                    No project-specific members. Team members have access based on their team role.
+                                    No project-specific members. Add team members to give them specific roles in this project.
                                 </div>
                             ) : (
-                                members.map((member) => (
+                                projectMembers.map((member) => (
                                     <div key={member.id} className="flex items-center justify-between px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -302,15 +308,13 @@ export default function ProjectMembers({
                                                     {member.id === currentUserId && (
                                                         <Badge variant="secondary" size="sm">You</Badge>
                                                     )}
-                                                    {member.is_team_fallback && (
-                                                        <Badge variant="secondary" size="sm">Team</Badge>
-                                                    )}
+                                                    <Badge variant="info" size="sm">Project Member</Badge>
                                                 </div>
                                                 <span className="text-sm text-foreground-muted">{member.email}</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            {canManageMembers && !member.is_team_fallback && member.id !== currentUserId ? (
+                                            {canManageMembers && member.id !== currentUserId ? (
                                                 <>
                                                     <RoleSelector
                                                         value={member.role}
@@ -335,6 +339,63 @@ export default function ProjectMembers({
                                 ))
                             )}
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Team Access - team members with team-level access */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Shield className="h-5 w-5" />
+                            Team Access ({teamMembers.length})
+                        </CardTitle>
+                        <CardDescription>
+                            Team members with access configured at team level. Manage access in Team Settings.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="divide-y divide-border rounded-lg border border-border">
+                            {teamMembers.length === 0 ? (
+                                <div className="p-8 text-center text-sm text-foreground-muted">
+                                    All team members are added as project members.
+                                </div>
+                            ) : (
+                                teamMembers.map((member) => (
+                                    <div key={member.id} className="flex items-center justify-between px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                                                {getRoleIcon(member.role)}
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-foreground">{member.name}</span>
+                                                    {member.id === currentUserId && (
+                                                        <Badge variant="secondary" size="sm">You</Badge>
+                                                    )}
+                                                    <Badge variant="secondary" size="sm">Team Role</Badge>
+                                                </div>
+                                                <span className="text-sm text-foreground-muted">{member.email}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant={getRoleBadgeVariant(member.role)} size="sm">
+                                                {getRoleLabel(member.role)}
+                                            </Badge>
+                                            {member.has_team_access ? (
+                                                <Badge variant="success" size="sm">Has Access</Badge>
+                                            ) : (
+                                                <Badge variant="danger" size="sm">No Access</Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        {teamMembers.length > 0 && (
+                            <p className="mt-3 text-xs text-foreground-muted">
+                                To modify team-level access, go to Team Settings → Configure Projects for each member.
+                            </p>
+                        )}
                     </CardContent>
                 </Card>
             </div>

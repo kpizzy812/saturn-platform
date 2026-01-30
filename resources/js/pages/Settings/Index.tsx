@@ -19,7 +19,7 @@ const settingSections: SettingSection[] = [
     { id: 'notifications', label: 'Notifications', icon: Bell, href: '/settings/notifications' },
     { id: 'workspace', label: 'Workspace', icon: Building2, href: '/settings/workspace' },
     { id: 'audit-log', label: 'Audit Log', icon: FileText, href: '/settings/audit-log' },
-    { id: 'security', label: 'Security', icon: Shield, href: '/settings/security' },
+    // { id: 'security', label: 'Security', icon: Shield, href: '/settings/security' }, // TODO: Implement security features (sessions, IP allowlist, etc.)
 ];
 
 interface SettingsLayoutProps {
