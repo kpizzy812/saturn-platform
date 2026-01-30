@@ -46,7 +46,7 @@ export default function EnvironmentSettings({ environment, project, canManage, u
     // Auto-enable approval for production
     useEffect(() => {
         if (type === 'production' && !requiresApproval) {
-            // Suggest enabling approval for production, but don't force it
+            setRequiresApproval(true);
         }
     }, [type, requiresApproval]);
 
