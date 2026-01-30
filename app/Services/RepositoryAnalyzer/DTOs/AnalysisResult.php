@@ -12,6 +12,8 @@ class AnalysisResult
      * @param  DetectedDatabase[]  $databases
      * @param  DetectedService[]  $services
      * @param  DetectedEnvVariable[]  $envVariables
+     * @param  AppDependency[]  $appDependencies
+     * @param  DockerComposeService[]  $dockerComposeServices
      */
     public function __construct(
         public MonorepoInfo $monorepo,
@@ -19,6 +21,9 @@ class AnalysisResult
         public array $databases,
         public array $services,
         public array $envVariables,
+        public array $appDependencies = [],
+        public array $dockerComposeServices = [],
+        public ?CIConfig $ciConfig = null,
     ) {}
 
     public function toArray(): array
@@ -40,6 +45,26 @@ class AnalysisResult
                 'category' => $e->category,
                 'for_app' => $e->forApp,
             ], $this->envVariables),
+            'app_dependencies' => array_map(fn ($d) => [
+                'app_name' => $d->appName,
+                'depends_on' => $d->dependsOn,
+                'internal_urls' => $d->internalUrls,
+                'deploy_order' => $d->deployOrder,
+            ], $this->appDependencies),
+            'docker_compose_services' => array_map(fn ($s) => [
+                'name' => $s->name,
+                'image' => $s->image,
+                'ports' => $s->ports,
+                'is_database' => $s->isDatabase(),
+            ], $this->dockerComposeServices),
+            'ci_config' => $this->ciConfig ? [
+                'install_command' => $this->ciConfig->installCommand,
+                'build_command' => $this->ciConfig->buildCommand,
+                'test_command' => $this->ciConfig->testCommand,
+                'start_command' => $this->ciConfig->startCommand,
+                'node_version' => $this->ciConfig->nodeVersion,
+                'detected_from' => $this->ciConfig->detectedFrom,
+            ] : null,
         ];
     }
 }

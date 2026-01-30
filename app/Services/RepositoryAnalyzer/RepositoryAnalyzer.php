@@ -2,9 +2,14 @@
 
 namespace App\Services\RepositoryAnalyzer;
 
+use App\Services\RepositoryAnalyzer\Detectors\AppDependencyDetector;
 use App\Services\RepositoryAnalyzer\Detectors\AppDetector;
+use App\Services\RepositoryAnalyzer\Detectors\CIConfigDetector;
 use App\Services\RepositoryAnalyzer\Detectors\DependencyAnalyzer;
+use App\Services\RepositoryAnalyzer\Detectors\DockerComposeAnalyzer;
+use App\Services\RepositoryAnalyzer\Detectors\HealthCheckDetector;
 use App\Services\RepositoryAnalyzer\Detectors\MonorepoDetector;
+use App\Services\RepositoryAnalyzer\Detectors\PortDetector;
 use App\Services\RepositoryAnalyzer\DTOs\AnalysisResult;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase;
 use App\Services\RepositoryAnalyzer\Exceptions\RepositoryAnalysisException;
@@ -23,6 +28,11 @@ class RepositoryAnalyzer
         private MonorepoDetector $monorepoDetector,
         private AppDetector $appDetector,
         private DependencyAnalyzer $dependencyAnalyzer,
+        private DockerComposeAnalyzer $dockerComposeAnalyzer,
+        private PortDetector $portDetector,
+        private HealthCheckDetector $healthCheckDetector,
+        private CIConfigDetector $ciConfigDetector,
+        private AppDependencyDetector $appDependencyDetector,
         private LoggerInterface $logger,
     ) {}
 
@@ -45,27 +55,77 @@ class RepositoryAnalyzer
                 ? $this->appDetector->detectFromMonorepo($repoPath, $monorepoInfo)
                 : $this->appDetector->detectSingleApp($repoPath);
 
-            // Step 3: Analyze dependencies for each app
+            // Step 3: Analyze docker-compose if present
+            $dockerComposeResult = $this->dockerComposeAnalyzer->analyze($repoPath);
+            $dockerComposeServices = $dockerComposeResult['services'] ?? [];
+
+            // Step 4: Detect CI/CD configuration (repo-level)
+            $ciConfig = $this->ciConfigDetector->detect($repoPath);
+
+            // Step 5: Analyze dependencies for each app and enrich with additional info
             $databases = [];
             $services = [];
             $envVariables = [];
+            $enrichedApps = [];
 
             foreach ($apps as $app) {
+                $appPath = $app->path === '.' ? $repoPath : $repoPath.'/'.$app->path;
+
+                // Analyze dependencies (databases, services, env vars)
                 $deps = $this->dependencyAnalyzer->analyze($repoPath, $app);
                 $databases = array_merge($databases, $deps->databases);
                 $services = array_merge($services, $deps->services);
                 $envVariables = array_merge($envVariables, $deps->envVariables);
+
+                // Detect port from source code if not default
+                $detectedPort = $this->portDetector->detect($appPath, $app->framework);
+                if ($detectedPort !== null && $detectedPort !== $app->defaultPort) {
+                    $app = $app->withPort($detectedPort);
+                }
+
+                // Detect health check endpoints
+                $healthCheck = $this->healthCheckDetector->detect($appPath, $app->framework);
+                if ($healthCheck !== null) {
+                    $app = $app->withHealthCheck($healthCheck);
+                }
+
+                // Apply CI config to app (app-level CI config takes precedence)
+                $appCiConfig = $this->ciConfigDetector->detect($repoPath, $appPath);
+                if ($appCiConfig !== null) {
+                    $app = $app->withCIConfig($appCiConfig);
+                } elseif ($ciConfig !== null) {
+                    $app = $app->withCIConfig($ciConfig);
+                }
+
+                $enrichedApps[] = $app;
             }
+
+            // Step 6: Detect app dependencies and deploy order (for monorepos)
+            $appDependencies = [];
+            if ($monorepoInfo->isMonorepo && count($enrichedApps) > 1) {
+                $appDependencies = $this->appDependencyDetector->analyze($repoPath, $enrichedApps);
+            }
+
+            // Merge databases from docker-compose
+            $dockerComposeDatabases = $dockerComposeResult['databases'] ?? [];
+            $databases = array_merge($databases, $dockerComposeDatabases);
+
+            // Merge external services from docker-compose
+            $dockerComposeExternalServices = $dockerComposeResult['externalServices'] ?? [];
+            $services = array_merge($services, $dockerComposeExternalServices);
 
             // Deduplicate databases (e.g., if both apps need PostgreSQL)
             $databases = $this->deduplicateDatabases($databases);
 
             return new AnalysisResult(
                 monorepo: $monorepoInfo,
-                applications: $apps,
+                applications: $enrichedApps,
                 databases: $databases,
                 services: $services,
                 envVariables: $envVariables,
+                appDependencies: $appDependencies,
+                dockerComposeServices: $dockerComposeServices,
+                ciConfig: $ciConfig,
             );
         } catch (JsonException|YamlException $e) {
             $this->logger->warning('Failed to parse config file', [

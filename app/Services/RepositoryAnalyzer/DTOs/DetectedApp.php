@@ -14,9 +14,80 @@ readonly class DetectedApp
         public string $buildPack,
         public int $defaultPort,
         public ?string $buildCommand = null,
+        public ?string $installCommand = null,
+        public ?string $startCommand = null,
         public ?string $publishDirectory = null,
         public string $type = 'backend',  // backend, frontend, fullstack, unknown
+        public ?DetectedHealthCheck $healthCheck = null,
+        public ?string $nodeVersion = null,
+        public ?string $pythonVersion = null,
     ) {}
+
+    /**
+     * Create a new instance with additional properties
+     */
+    public function withHealthCheck(DetectedHealthCheck $healthCheck): self
+    {
+        return new self(
+            name: $this->name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $healthCheck,
+            nodeVersion: $this->nodeVersion,
+            pythonVersion: $this->pythonVersion,
+        );
+    }
+
+    /**
+     * Create a new instance with CI config
+     */
+    public function withCIConfig(CIConfig $ci): self
+    {
+        return new self(
+            name: $this->name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $ci->buildCommand ?? $this->buildCommand,
+            installCommand: $ci->installCommand ?? $this->installCommand,
+            startCommand: $ci->startCommand ?? $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $ci->nodeVersion ?? $this->nodeVersion,
+            pythonVersion: $ci->pythonVersion ?? $this->pythonVersion,
+        );
+    }
+
+    /**
+     * Create a new instance with custom port
+     */
+    public function withPort(int $port): self
+    {
+        return new self(
+            name: $this->name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $port,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $this->nodeVersion,
+            pythonVersion: $this->pythonVersion,
+        );
+    }
 
     public function toArray(): array
     {
@@ -27,8 +98,18 @@ readonly class DetectedApp
             'build_pack' => $this->buildPack,
             'default_port' => $this->defaultPort,
             'build_command' => $this->buildCommand,
+            'install_command' => $this->installCommand,
+            'start_command' => $this->startCommand,
             'publish_directory' => $this->publishDirectory,
             'type' => $this->type,
+            'health_check' => $this->healthCheck ? [
+                'path' => $this->healthCheck->path,
+                'method' => $this->healthCheck->method,
+                'interval' => $this->healthCheck->intervalSeconds,
+                'timeout' => $this->healthCheck->timeoutSeconds,
+            ] : null,
+            'node_version' => $this->nodeVersion,
+            'python_version' => $this->pythonVersion,
         ];
     }
 

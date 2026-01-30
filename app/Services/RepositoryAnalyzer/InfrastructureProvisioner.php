@@ -13,6 +13,7 @@ use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use App\Services\RepositoryAnalyzer\DTOs\AnalysisResult;
+use App\Services\RepositoryAnalyzer\DTOs\AppDependency;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase;
 use App\Services\RepositoryAnalyzer\Exceptions\ProvisioningException;
@@ -53,9 +54,10 @@ class InfrastructureProvisioner
                     $destinationUuid
                 );
 
-                // 2. Create applications
+                // 2. Create applications (sorted by deploy order for monorepos)
+                $sortedApps = $this->sortByDeployOrder($analysis->applications, $analysis->appDependencies);
                 $createdApps = $this->createApplications(
-                    $analysis->applications,
+                    $sortedApps,
                     $environment,
                     $destinationUuid,
                     $gitConfig,
@@ -244,16 +246,37 @@ class InfrastructureProvisioner
         $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
         $application->ports_exposes = (string) $app->defaultPort;
 
+        // Apply CI config commands (install, build, start)
+        if ($app->installCommand) {
+            $application->install_command = $app->installCommand;
+        }
+        if ($app->buildCommand) {
+            $application->build_command = $app->buildCommand;
+        }
+        if ($app->startCommand) {
+            $application->start_command = $app->startCommand;
+        }
+
         // Static site configuration
         if ($app->buildPack === 'static') {
             $application->static_image = 'nginx:alpine';
             if ($app->buildCommand) {
-                $application->install_command = 'npm ci';
+                $application->install_command = $app->installCommand ?? 'npm ci';
                 $application->build_command = $app->buildCommand;
             }
             if ($app->publishDirectory) {
                 $application->publish_directory = $app->publishDirectory;
             }
+        }
+
+        // Health check configuration
+        if ($app->healthCheck) {
+            $application->health_check_enabled = true;
+            $application->health_check_path = $app->healthCheck->path;
+            $application->health_check_method = $app->healthCheck->method ?? 'GET';
+            $application->health_check_interval = $app->healthCheck->intervalSeconds ?? 30;
+            $application->health_check_timeout = $app->healthCheck->timeoutSeconds ?? 5;
+            $application->health_check_retries = $app->healthCheck->retries ?? 3;
         }
 
         // Monorepo group
@@ -329,5 +352,35 @@ class InfrastructureProvisioner
                 ]
             );
         }
+    }
+
+    /**
+     * Sort applications by deploy order based on dependencies
+     *
+     * @param  DetectedApp[]  $apps
+     * @param  AppDependency[]  $dependencies
+     * @return DetectedApp[]
+     */
+    private function sortByDeployOrder(array $apps, array $dependencies): array
+    {
+        if (empty($dependencies)) {
+            return $apps;
+        }
+
+        // Build order map from dependencies
+        $orderMap = [];
+        foreach ($dependencies as $dep) {
+            $orderMap[$dep->appName] = $dep->deployOrder;
+        }
+
+        // Sort apps by deploy order
+        usort($apps, function (DetectedApp $a, DetectedApp $b) use ($orderMap) {
+            $orderA = $orderMap[$a->name] ?? PHP_INT_MAX;
+            $orderB = $orderMap[$b->name] ?? PHP_INT_MAX;
+
+            return $orderA <=> $orderB;
+        });
+
+        return $apps;
     }
 }

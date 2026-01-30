@@ -1,0 +1,342 @@
+<?php
+
+namespace App\Services\RepositoryAnalyzer\Detectors;
+
+use App\Services\RepositoryAnalyzer\DTOs\AppDependency;
+use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
+
+/**
+ * Detects dependencies between apps in a monorepo
+ */
+class AppDependencyDetector
+{
+    private const MAX_FILE_SIZE = 256 * 1024; // 256KB
+
+    /**
+     * Analyze dependencies between apps
+     *
+     * @param  DetectedApp[]  $apps
+     * @return AppDependency[]
+     */
+    public function analyze(string $repoPath, array $apps): array
+    {
+        $appNames = array_map(fn ($app) => $app->name, $apps);
+        $dependencies = [];
+
+        foreach ($apps as $app) {
+            $appPath = $app->path === '.' ? $repoPath : $repoPath.'/'.$app->path;
+            $deps = $this->detectDependencies($appPath, $app, $appNames);
+            $dependencies[] = $deps;
+        }
+
+        // Calculate deploy order based on dependencies
+        $dependencies = $this->calculateDeployOrder($dependencies);
+
+        return $dependencies;
+    }
+
+    /**
+     * Detect dependencies for a single app
+     */
+    private function detectDependencies(string $appPath, DetectedApp $app, array $allAppNames): AppDependency
+    {
+        $dependsOn = [];
+        $internalUrls = [];
+
+        // Check package.json for workspace dependencies
+        $packageDeps = $this->detectFromPackageJson($appPath, $allAppNames);
+        $dependsOn = array_merge($dependsOn, $packageDeps['dependsOn']);
+        $internalUrls = array_merge($internalUrls, $packageDeps['internalUrls']);
+
+        // Check imports in source code
+        $codeDeps = $this->detectFromSourceCode($appPath, $allAppNames);
+        $dependsOn = array_merge($dependsOn, $codeDeps);
+
+        // Check environment variables for internal URLs
+        $envDeps = $this->detectFromEnvFiles($appPath, $allAppNames);
+        $internalUrls = array_merge($internalUrls, $envDeps);
+
+        // Infer internal URLs from app types
+        $inferredUrls = $this->inferInternalUrls($app, $dependsOn);
+        $internalUrls = array_merge($internalUrls, $inferredUrls);
+
+        return new AppDependency(
+            appName: $app->name,
+            dependsOn: array_unique($dependsOn),
+            internalUrls: $internalUrls,
+        );
+    }
+
+    /**
+     * Detect dependencies from package.json
+     */
+    private function detectFromPackageJson(string $appPath, array $allAppNames): array
+    {
+        $packageJson = $appPath.'/package.json';
+        if (! $this->isReadableFile($packageJson)) {
+            return ['dependsOn' => [], 'internalUrls' => []];
+        }
+
+        try {
+            $content = file_get_contents($packageJson);
+            $json = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+
+            $dependsOn = [];
+            $internalUrls = [];
+
+            // Check dependencies for workspace references
+            $allDeps = array_merge(
+                $json['dependencies'] ?? [],
+                $json['devDependencies'] ?? [],
+            );
+
+            foreach ($allDeps as $dep => $version) {
+                // Check for workspace: protocol
+                if (str_starts_with($version, 'workspace:')) {
+                    // Extract app name from package name
+                    // e.g., @monorepo/api-client -> api
+                    $possibleAppName = $this->extractAppNameFromPackage($dep);
+                    if ($possibleAppName && in_array($possibleAppName, $allAppNames, true)) {
+                        $dependsOn[] = $possibleAppName;
+                    }
+                }
+
+                // Check if package name matches an app
+                foreach ($allAppNames as $appName) {
+                    if (str_contains($dep, $appName) || str_contains($dep, str_replace('-', '/', $appName))) {
+                        if (! in_array($appName, $dependsOn, true)) {
+                            $dependsOn[] = $appName;
+                        }
+                    }
+                }
+            }
+
+            return ['dependsOn' => $dependsOn, 'internalUrls' => $internalUrls];
+        } catch (\Exception) {
+            return ['dependsOn' => [], 'internalUrls' => []];
+        }
+    }
+
+    /**
+     * Detect dependencies from source code imports
+     */
+    private function detectFromSourceCode(string $appPath, array $allAppNames): array
+    {
+        $dependsOn = [];
+
+        // Check common import patterns
+        $sourceFiles = $this->findSourceFiles($appPath);
+
+        foreach ($sourceFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+
+            $content = file_get_contents($file);
+
+            foreach ($allAppNames as $appName) {
+                // Check for imports like:
+                // import { x } from '@monorepo/api'
+                // import { x } from '../api'
+                // require('@workspace/api')
+                $patterns = [
+                    '/@\w+\/'.$appName.'[\'"]/',
+                    '/from\s+[\'"]\.\.\/\w*'.$appName.'/',
+                    '/require\s*\(\s*[\'"]@\w+\/'.$appName.'[\'"]/',
+                ];
+
+                foreach ($patterns as $pattern) {
+                    if (preg_match($pattern, $content)) {
+                        if (! in_array($appName, $dependsOn, true)) {
+                            $dependsOn[] = $appName;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $dependsOn;
+    }
+
+    /**
+     * Detect internal URL references from env files
+     */
+    private function detectFromEnvFiles(string $appPath, array $allAppNames): array
+    {
+        $internalUrls = [];
+        $envFiles = ['.env.example', '.env.sample', '.env.template'];
+
+        foreach ($envFiles as $envFile) {
+            $filePath = $appPath.'/'.$envFile;
+            if (! $this->isReadableFile($filePath)) {
+                continue;
+            }
+
+            $content = file_get_contents($filePath);
+            $lines = explode("\n", $content);
+
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || str_starts_with($line, '#')) {
+                    continue;
+                }
+
+                // Look for URL variables that might reference other apps
+                // e.g., API_URL=http://api:3000
+                if (preg_match('/^(\w+_URL)\s*=\s*(.*)$/', $line, $matches)) {
+                    $varName = $matches[1];
+                    $value = $matches[2];
+
+                    foreach ($allAppNames as $appName) {
+                        if (str_contains(strtolower($value), $appName)) {
+                            $internalUrls[$varName] = $appName;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $internalUrls;
+    }
+
+    /**
+     * Infer internal URLs based on app types
+     */
+    private function inferInternalUrls(DetectedApp $app, array $dependsOn): array
+    {
+        $internalUrls = [];
+
+        // If frontend depends on backend, likely needs API_URL
+        if ($app->type === 'frontend' || $app->type === 'fullstack') {
+            foreach ($dependsOn as $depName) {
+                // Common naming conventions for API apps
+                if (in_array($depName, ['api', 'backend', 'server', 'core'], true)) {
+                    $internalUrls['API_URL'] = $depName;
+                    break;
+                }
+            }
+        }
+
+        return $internalUrls;
+    }
+
+    /**
+     * Calculate deploy order based on dependencies
+     *
+     * @param  AppDependency[]  $dependencies
+     * @return AppDependency[]
+     */
+    private function calculateDeployOrder(array $dependencies): array
+    {
+        // Build dependency graph
+        $graph = [];
+        foreach ($dependencies as $dep) {
+            $graph[$dep->appName] = $dep->dependsOn;
+        }
+
+        // Topological sort to determine order
+        $order = $this->topologicalSort($graph);
+
+        // Assign deploy order
+        $result = [];
+        foreach ($dependencies as $dep) {
+            $deployOrder = array_search($dep->appName, $order, true);
+            $result[] = new AppDependency(
+                appName: $dep->appName,
+                dependsOn: $dep->dependsOn,
+                internalUrls: $dep->internalUrls,
+                deployOrder: $deployOrder !== false ? $deployOrder : 0,
+            );
+        }
+
+        // Sort by deploy order
+        usort($result, fn ($a, $b) => $a->deployOrder <=> $b->deployOrder);
+
+        return $result;
+    }
+
+    /**
+     * Topological sort for dependency ordering
+     */
+    private function topologicalSort(array $graph): array
+    {
+        $visited = [];
+        $result = [];
+
+        $visit = function (string $node) use (&$visit, &$visited, &$result, $graph) {
+            if (isset($visited[$node])) {
+                return;
+            }
+            $visited[$node] = true;
+
+            foreach ($graph[$node] ?? [] as $dep) {
+                if (isset($graph[$dep])) {
+                    $visit($dep);
+                }
+            }
+
+            $result[] = $node;
+        };
+
+        foreach (array_keys($graph) as $node) {
+            $visit($node);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Extract app name from package name
+     */
+    private function extractAppNameFromPackage(string $packageName): ?string
+    {
+        // @monorepo/api-client -> api-client -> api
+        // @workspace/shared -> shared
+        if (preg_match('/@[\w-]+\/(.+)/', $packageName, $matches)) {
+            $name = $matches[1];
+            // Remove common suffixes
+            $name = preg_replace('/-(client|sdk|types|shared)$/', '', $name);
+
+            return $name;
+        }
+
+        return null;
+    }
+
+    /**
+     * Find source files in app directory
+     */
+    private function findSourceFiles(string $appPath): array
+    {
+        $patterns = [
+            $appPath.'/src/**/*.{ts,js,tsx,jsx}',
+            $appPath.'/app/**/*.{ts,js,tsx,jsx}',
+            $appPath.'/lib/**/*.{ts,js}',
+            $appPath.'/*.{ts,js}',
+        ];
+
+        $files = [];
+        foreach ($patterns as $pattern) {
+            // Simple glob doesn't support **, so we'll check common locations
+            $simplePattern = str_replace('**/', '*/', $pattern);
+            $found = glob($simplePattern, GLOB_BRACE) ?: [];
+            $files = array_merge($files, $found);
+        }
+
+        // Limit to first 20 files to avoid scanning too much
+        return array_slice($files, 0, 20);
+    }
+
+    /**
+     * Check if file is readable and within size limit
+     */
+    private function isReadableFile(string $path): bool
+    {
+        return file_exists($path)
+            && is_file($path)
+            && is_readable($path)
+            && filesize($path) <= self::MAX_FILE_SIZE;
+    }
+}
