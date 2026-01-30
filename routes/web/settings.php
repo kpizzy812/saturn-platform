@@ -1201,16 +1201,17 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
 
     $memberRole = $member->pivot->role;
 
-    // Admin cannot manage other admins or owners
+    // Only owner can manage everyone
+    // Admin cannot manage owner or other admins
     if ($currentUser->isAdmin() && ! $currentUser->isOwner()) {
         if (in_array($memberRole, ['owner', 'admin'])) {
-            return response()->json(['message' => 'Cannot configure project access for admins or owners'], 403);
+            return response()->json(['message' => 'Only owner can configure project access for admins'], 403);
         }
     }
 
-    // Owner/Admin always have full access - cannot be restricted
-    if (in_array($memberRole, ['owner', 'admin'])) {
-        return response()->json(['message' => 'Owners and admins always have full access and cannot be restricted'], 422);
+    // Owner always has full access - cannot be restricted
+    if ($memberRole === 'owner') {
+        return response()->json(['message' => 'Owner always has full access and cannot be restricted'], 422);
     }
 
     // Determine allowed_projects value based on new deny-by-default model

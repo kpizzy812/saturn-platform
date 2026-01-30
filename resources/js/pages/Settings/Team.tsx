@@ -395,8 +395,8 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                                                         <UserCog className="h-4 w-4" />
                                                         Change Role
                                                     </DropdownItem>
-                                                    {/* Configure Projects - only for developer/member/viewer */}
-                                                    {(member.role === 'developer' || member.role === 'member' || member.role === 'viewer') && (
+                                                    {/* Configure Projects - for all except owner */}
+                                                    {member.role !== 'owner' && (
                                                         <DropdownItem
                                                             onClick={() => {
                                                                 setSelectedMember(member);
