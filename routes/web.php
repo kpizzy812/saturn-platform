@@ -605,6 +605,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Database routes
     require __DIR__.'/web/databases.php';
 
+    // Git Repository Analysis routes
+    require __DIR__.'/web/git.php';
+
     // Admin routes
     require __DIR__.'/web/admin.php';
 

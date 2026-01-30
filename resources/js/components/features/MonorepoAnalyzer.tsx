@@ -168,7 +168,7 @@ export function MonorepoAnalyzer({
         setError(null);
 
         try {
-            const response = await axios.post('/api/v1/git/analyze', {
+            const response = await axios.post('/git/analyze', {
                 git_repository: gitRepository,
                 git_branch: gitBranch,
                 private_key_id: privateKeyId,
@@ -210,7 +210,7 @@ export function MonorepoAnalyzer({
         setError(null);
 
         try {
-            const response = await axios.post('/api/v1/git/provision', {
+            const response = await axios.post('/git/provision', {
                 environment_uuid: environmentUuid,
                 destination_uuid: destinationUuid,
                 git_repository: gitRepository,
