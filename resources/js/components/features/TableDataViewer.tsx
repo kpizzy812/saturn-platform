@@ -692,12 +692,15 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                         <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle" />
                         <input
                             type="text"
-                            placeholder="Search all columns (Enter to search)..."
+                            placeholder="Search all columns..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-16 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-background-secondary px-1.5 py-0.5 text-xs text-foreground-muted">
+                            Enter
+                        </kbd>
                     </div>
                     <FilterBuilder
                         columns={columns}
@@ -721,9 +724,9 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                         </Button>
                     )}
                     {hasChanges && (
-                        <Button size="sm" variant="warning" onClick={savePendingChanges}>
+                        <Button size="sm" variant="warning" onClick={savePendingChanges} className="whitespace-nowrap">
                             <Icons.Save className="mr-1.5 h-3.5 w-3.5" />
-                            Save Changes ({pendingChanges.size})
+                            Save ({pendingChanges.size})
                         </Button>
                     )}
                     <Button size="sm" variant="secondary" onClick={fetchData}>
