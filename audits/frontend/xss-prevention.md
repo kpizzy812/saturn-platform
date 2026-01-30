@@ -215,7 +215,7 @@ Uses DOMPurify with restricted whitelist - good practice.
 
 | ID | Описание | Статус | PR/Commit |
 |----|----------|--------|-----------|
-| XSS-001-F | Sanitize link.label in Admin Templates | 🔧 To Fix | - |
+| XSS-001-F | Sanitize link.label in Admin Templates | ✅ FIXED | c8ad4e1 |
 | XSS-002-F | Move SQL building to backend | 🔧 To Fix | - |
 | XSS-003-F | QR Code sanitization | ✅ Already OK | - |
 | XSS-004-F | Exception message display | ✅ Already OK | - |

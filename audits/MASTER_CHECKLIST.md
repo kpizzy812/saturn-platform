@@ -36,16 +36,16 @@
 | File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
 | Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [🔍] 4 critical found |
 | **Frontend** ||||
-| XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [🔍] 1 critical, 1 high |
-| API Calls & Data Handling | 🟡 High | [frontend/api-calls.md](frontend/api-calls.md) | [ ] |
+| XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [🔧] 1 critical FIXED, 1 high |
+| API Calls & Data Handling | 🟡 High | [frontend/api-calls.md](frontend/api-calls.md) | [🔍] 2 high, 5 medium |
 | Authentication Flow | 🔴 Critical | [frontend/authentication-flow.md](frontend/authentication-flow.md) | [ ] |
-| Input Validation | 🟡 High | [frontend/input-validation.md](frontend/input-validation.md) | [ ] |
+| Input Validation | 🟡 High | [frontend/input-validation.md](frontend/input-validation.md) | [🔍] 2 critical, 4 high |
 | Sensitive Data Exposure | 🔴 Critical | [frontend/sensitive-data.md](frontend/sensitive-data.md) | [🔴] 2 critical found |
 | **Infrastructure** ||||
 | Docker Security | 🔴 Critical | [infrastructure/docker-security.md](infrastructure/docker-security.md) | [🔍] 2 critical, 4 high |
-| Secrets Management | 🔴 Critical | [infrastructure/secrets-management.md](infrastructure/secrets-management.md) | [ ] |
-| Proxy Configuration (Traefik/Caddy) | 🟡 High | [infrastructure/proxy-configuration.md](infrastructure/proxy-configuration.md) | [ ] |
-| WebSocket Security | 🟡 High | [infrastructure/websocket-security.md](infrastructure/websocket-security.md) | [ ] |
+| Secrets Management | 🔴 Critical | [infrastructure/secrets-management.md](infrastructure/secrets-management.md) | [🔧] 1 critical FIXED, 2 critical, 2 high |
+| Proxy Configuration (Traefik/Caddy) | 🟡 High | [infrastructure/proxy-configuration.md](infrastructure/proxy-configuration.md) | [🔍] 2 critical, 5 high |
+| WebSocket Security | 🟡 High | [infrastructure/websocket-security.md](infrastructure/websocket-security.md) | [🔍] 3 critical, 3 high |
 | **Database** ||||
 | SQL Injection | 🔴 Critical | [database/sql-injection.md](database/sql-injection.md) | [🔍] 4 critical found |
 | Data Exposure | 🔴 Critical | [database/data-exposure.md](database/data-exposure.md) | [🔧] 4 critical FIXED |
