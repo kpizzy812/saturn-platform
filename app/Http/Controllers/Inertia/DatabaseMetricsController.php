@@ -3133,8 +3133,61 @@ class DatabaseMetricsController extends Controller
      */
     protected function getMysqlData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
     {
-        // TODO: Implement MySQL data retrieval
-        return ['rows' => [], 'total' => 0, 'columns' => []];
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $dbName = $database->mysql_database ?? 'mysql';
+        $offset = ($page - 1) * $perPage;
+
+        // Get columns first
+        $columns = $this->getMysqlColumns($server, $database, $tableName);
+        $columnNames = array_map(fn ($c) => $c['name'], $columns);
+
+        // Escape table name to prevent SQL injection
+        $escapedTableName = str_replace('`', '``', $tableName);
+
+        // Build WHERE clause for search (MySQL uses LIKE, case-insensitive via LOWER)
+        $whereClause = '';
+        if ($search !== '') {
+            $escapedSearch = str_replace("'", "''", $search);
+            $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $columnNames);
+            $whereClause = 'WHERE '.implode(' OR ', $searchConditions);
+        }
+
+        // Build ORDER BY clause
+        $orderClause = '';
+        if ($orderBy !== '' && in_array($orderBy, $columnNames)) {
+            $orderClause = "ORDER BY `{$orderBy}` {$orderDir}";
+        }
+
+        // Get total count
+        $countQuery = "SELECT COUNT(*) FROM `{$escapedTableName}` {$whereClause}";
+        $countCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$countQuery}\" 2>/dev/null || echo '0'";
+        $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
+
+        // Get data
+        $dataQuery = "SELECT * FROM `{$escapedTableName}` {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
+        $dataCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$dataQuery}\" 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
+        $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
+
+        $rows = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $values = explode('|', $line);
+                if (count($values) === count($columnNames)) {
+                    $row = [];
+                    foreach ($columnNames as $i => $colName) {
+                        $row[$colName] = $values[$i] !== '' && $values[$i] !== 'NULL' ? $values[$i] : null;
+                    }
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return [
+            'rows' => $rows,
+            'total' => $total,
+            'columns' => $columns,
+        ];
     }
 
     /**
@@ -3142,8 +3195,34 @@ class DatabaseMetricsController extends Controller
      */
     protected function updateMysqlRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
     {
-        // TODO: Implement MySQL row update
-        return false;
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $dbName = $database->mysql_database ?? 'mysql';
+
+        // Escape table name to prevent SQL injection
+        $escapedTableName = str_replace('`', '``', $tableName);
+
+        // Build SET clause
+        $setClauses = [];
+        foreach ($updates as $column => $value) {
+            $escapedValue = str_replace("'", "\\'", (string) $value);
+            $setClauses[] = "`{$column}` = '{$escapedValue}'";
+        }
+        $setClause = implode(', ', $setClauses);
+
+        // Build WHERE clause from primary key
+        $whereClauses = [];
+        foreach ($primaryKey as $column => $value) {
+            $escapedValue = str_replace("'", "\\'", (string) $value);
+            $whereClauses[] = "`{$column}` = '{$escapedValue}'";
+        }
+        $whereClause = implode(' AND ', $whereClauses);
+
+        $query = "UPDATE `{$escapedTableName}` SET {$setClause} WHERE {$whereClause}";
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -e \"{$query}\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return ! str_contains($result ?? '', 'ERROR');
     }
 
     /**
@@ -3151,8 +3230,26 @@ class DatabaseMetricsController extends Controller
      */
     protected function deleteMysqlRow(mixed $server, mixed $database, string $tableName, array $primaryKey): bool
     {
-        // TODO: Implement MySQL row deletion
-        return false;
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $dbName = $database->mysql_database ?? 'mysql';
+
+        // Escape table name to prevent SQL injection
+        $escapedTableName = str_replace('`', '``', $tableName);
+
+        // Build WHERE clause from primary key
+        $whereClauses = [];
+        foreach ($primaryKey as $column => $value) {
+            $escapedValue = str_replace("'", "\\'", (string) $value);
+            $whereClauses[] = "`{$column}` = '{$escapedValue}'";
+        }
+        $whereClause = implode(' AND ', $whereClauses);
+
+        $query = "DELETE FROM `{$escapedTableName}` WHERE {$whereClause}";
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -e \"{$query}\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return ! str_contains($result ?? '', 'ERROR');
     }
 
     /**
@@ -3160,7 +3257,31 @@ class DatabaseMetricsController extends Controller
      */
     protected function createMysqlRow(mixed $server, mixed $database, string $tableName, array $data): bool
     {
-        // TODO: Implement MySQL row creation
-        return false;
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $dbName = $database->mysql_database ?? 'mysql';
+
+        // Escape table name to prevent SQL injection
+        $escapedTableName = str_replace('`', '``', $tableName);
+
+        // Build columns and values
+        $columns = array_keys($data);
+        $values = array_map(function ($value) {
+            if ($value === null) {
+                return 'NULL';
+            }
+            $escapedValue = str_replace("'", "\\'", (string) $value);
+
+            return "'{$escapedValue}'";
+        }, array_values($data));
+
+        $columnsClause = '`'.implode('`, `', $columns).'`';
+        $valuesClause = implode(', ', $values);
+
+        $query = "INSERT INTO `{$escapedTableName}` ({$columnsClause}) VALUES ({$valuesClause})";
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -e \"{$query}\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return ! str_contains($result ?? '', 'ERROR');
     }
 }
