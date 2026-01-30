@@ -20,27 +20,36 @@ use Inertia\Inertia;
 // Databases
 Route::get('/databases', function () {
     // Collect all database types
+    // Status is stored as "state:health" string, parse it into object for frontend
     $formatDb = fn ($db, $type) => [
         'id' => $db->id,
         'uuid' => $db->uuid,
         'name' => $db->name,
         'description' => $db->description,
         'database_type' => $type,
-        'status' => $db->status,
+        'status' => [
+            'state' => str($db->status)->before(':')->value() ?: 'unknown',
+            'health' => str($db->status)->after(':')->value() ?: 'unknown',
+        ],
         'environment_id' => $db->environment_id,
+        'environment' => $db->environment ? [
+            'id' => $db->environment->id,
+            'name' => $db->environment->name,
+            'type' => $db->environment->type ?? 'development',
+        ] : null,
         'created_at' => $db->created_at,
         'updated_at' => $db->updated_at,
     ];
 
     $databases = collect()
-        ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
-        ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'mysql')))
-        ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
-        ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
-        ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'redis')))
-        ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'keydb')))
-        ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
-        ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
+        ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
+        ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mysql')))
+        ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
+        ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
+        ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'redis')))
+        ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'keydb')))
+        ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
+        ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
         ->sortByDesc('updated_at')
         ->values();
 
