@@ -104,11 +104,12 @@
 - [x] Сортировка по полям - реализовано
 - [ ] Фильтр по роли (superadmin, regular) - TODO
 
-**Bulk Operations** - TODO
-- [ ] Checkbox для выбора пользователей
-- [ ] Bulk suspend/activate
-- [ ] Bulk delete (с подтверждением)
-- [ ] Bulk export to CSV
+**Bulk Operations** ✅ DONE
+- [x] Checkbox для выбора пользователей (excludes superadmins)
+- [x] Bulk suspend/activate с confirmation dialogs
+- [x] Bulk delete с подтверждением
+- [x] Bulk export to CSV (с фильтрами)
+- [x] Feature tests написаны
 
 **User Activity Tracking** - PARTIAL
 - [x] Поле `last_login_at` в users - есть в модели
