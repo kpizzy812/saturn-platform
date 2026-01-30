@@ -650,6 +650,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         setLogsViewerOpen(true);
     }, []);
 
+    const handleQuickBrowseTables = useCallback((uuid: string) => {
+        router.visit(`/databases/${uuid}/tables?tab=data`);
+    }, []);
+
     // Canvas zoom controls
     const handleZoomIn = useCallback(() => {
         if (window.__projectCanvasZoomIn) {
@@ -1045,6 +1049,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 onQuickDeploy={handleQuickDeploy}
                                 onQuickOpenUrl={handleQuickOpenUrl}
                                 onQuickViewLogs={handleQuickViewLogs}
+                                onQuickBrowseTables={handleQuickBrowseTables}
                             />
                         )}
 
