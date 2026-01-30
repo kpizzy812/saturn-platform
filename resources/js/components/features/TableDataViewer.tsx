@@ -88,19 +88,40 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
     const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Inline column filters
+    const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            const whereClause = buildWhereClause(filters);
+            // Combine advanced filters with inline column filters
+            const advancedWhereClause = buildWhereClause(filters);
+
+            // Build inline column filters clause
+            const inlineFilterClauses = Object.entries(columnFilters)
+                .filter(([, value]) => value.trim() !== '')
+                .map(([col, value]) => {
+                    const escapedValue = value.replace(/'/g, "''");
+                    return `"${col}" ILIKE '%${escapedValue}%'`;
+                });
+
+            // Combine all filter clauses
+            const allClauses = [
+                advancedWhereClause,
+                ...inlineFilterClauses
+            ].filter(c => c.trim() !== '');
+
+            const combinedFilters = allClauses.join(' AND ');
+
             const params = new URLSearchParams({
                 page: currentPage.toString(),
                 per_page: perPage.toString(),
                 search: searchQuery,
                 order_by: orderBy,
                 order_dir: orderDir,
-                filters: whereClause,
+                filters: combinedFilters,
             });
 
             const response = await fetch(
@@ -123,7 +144,7 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
         } finally {
             setIsLoading(false);
         }
-    }, [databaseUuid, tableName, currentPage, perPage, searchQuery, orderBy, orderDir, filters]);
+    }, [databaseUuid, tableName, currentPage, perPage, searchQuery, orderBy, orderDir, filters, columnFilters]);
 
     useEffect(() => {
         fetchData();
@@ -199,7 +220,13 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
 
     const handleSort = (columnName: string) => {
         if (orderBy === columnName) {
-            setOrderDir(orderDir === 'asc' ? 'desc' : 'asc');
+            if (orderDir === 'asc') {
+                setOrderDir('desc');
+            } else {
+                // Third click - reset sorting
+                setOrderBy('');
+                setOrderDir('asc');
+            }
         } else {
             setOrderBy(columnName);
             setOrderDir('asc');
@@ -665,16 +692,13 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                         <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle" />
                         <input
                             type="text"
-                            placeholder="Search across all columns..."
+                            placeholder="Search all columns (Enter to search)..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                             className="h-10 w-full rounded-lg border border-border bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
-                    <Button size="sm" variant="secondary" onClick={handleSearch}>
-                        Search
-                    </Button>
                     <FilterBuilder
                         columns={columns}
                         filters={filters}
@@ -830,18 +854,49 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                                         {col.is_primary && (
                                             <Icons.Key className="h-3 w-3 text-amber-500" />
                                         )}
-                                        {orderBy === col.name && (
+                                        {orderBy === col.name ? (
                                             <Icons.ChevronDown
                                                 className={cn(
-                                                    'h-3.5 w-3.5',
+                                                    'h-3.5 w-3.5 text-primary',
                                                     orderDir === 'asc' && 'rotate-180'
                                                 )}
                                             />
+                                        ) : (
+                                            <Icons.ChevronsUpDown className="h-3 w-3 text-foreground-subtle" />
                                         )}
                                     </button>
                                     <div className="mt-0.5 text-xs font-normal text-foreground-muted">
                                         {col.type}
                                     </div>
+                                </th>
+                            ))}
+                        </tr>
+                        {/* Inline column filters */}
+                        <tr className="bg-background">
+                            <th className="border-b border-border px-4 py-1.5">
+                                {Object.values(columnFilters).some(v => v.trim() !== '') && (
+                                    <button
+                                        onClick={() => setColumnFilters({})}
+                                        className="text-foreground-muted hover:text-danger"
+                                        title="Clear all filters"
+                                    >
+                                        <Icons.X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </th>
+                            {columns.map((col) => (
+                                <th key={`filter-${col.name}`} className="border-b border-border px-2 py-1.5">
+                                    <input
+                                        type="text"
+                                        value={columnFilters[col.name] || ''}
+                                        onChange={(e) => setColumnFilters({
+                                            ...columnFilters,
+                                            [col.name]: e.target.value
+                                        })}
+                                        onKeyDown={(e) => e.key === 'Enter' && fetchData()}
+                                        placeholder="Filter..."
+                                        className="h-7 w-full min-w-[80px] rounded border border-border bg-background px-2 text-xs text-foreground placeholder:text-foreground-subtle focus:border-primary focus:outline-none"
+                                    />
                                 </th>
                             ))}
                         </tr>
