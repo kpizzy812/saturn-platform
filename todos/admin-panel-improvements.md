@@ -202,11 +202,29 @@
 - [ ] UI кнопка в Admin/Databases/Show
 - [ ] Выбор target environment
 
-### 14. Backup Automation
-- [ ] Backup verification после создания
-- [ ] Automated restore testing (weekly)
-- [ ] S3 integrity checks
-- [ ] Backup cost estimation dashboard
+### 14. Backup Automation ✅ DONE
+- [x] Backup verification после создания
+- [x] Automated restore testing (weekly)
+- [x] S3 integrity checks
+- [x] Backup cost estimation dashboard
+
+**Реализовано:**
+- Миграция для полей верификации: `verification_status`, `checksum`, `verified_at`
+- Миграция для полей тестов восстановления: `restore_test_status`, `restore_test_at`, `restore_test_duration_seconds`
+- Миграция для полей S3: `s3_integrity_status`, `s3_file_size`, `s3_etag`
+- `BackupVerificationJob` - проверка целостности после бэкапа (checksum, format validation)
+- `BackupRestoreTestJob` - автоматический тест восстановления в изолированном Docker контейнере
+- `BackupRestoreTestManagerJob` - менеджер, запускается ежедневно в 3:00 для тестов по расписанию
+- UI: расширенная статистика (verified, restore tests, storage costs) в Admin/Backups/Index
+- UI: бейджи верификации и тестов в Admin/Backups/Show
+
+**Файлы:**
+- `database/migrations/2026_01_30_140628_add_verification_and_testing_to_backup_executions.php`
+- `app/Jobs/BackupVerificationJob.php`
+- `app/Jobs/BackupRestoreTestJob.php`
+- `app/Jobs/BackupRestoreTestManagerJob.php`
+- `resources/js/pages/Admin/Backups/Index.tsx`
+- `resources/js/pages/Admin/Backups/Show.tsx`
 
 ### 15. Team Quotas UI
 - [ ] Показывать current usage vs limits
@@ -251,10 +269,10 @@
 |-----------|--------|---------|
 | Критические (1-6) | ✅ Завершено | 100% |
 | Высокий приоритет (7, 9, 10) | ✅ Завершено | 100% |
-| Средний приоритет (8, 11-15) | 🟡 В работе | 60% (8, 11, 12 done) |
+| Средний приоритет (8, 11-15) | 🟡 В работе | 80% (8, 11, 12, 14 done) |
 | Низкий приоритет (16-19) | 🔵 Планируется | 0% |
 
-**ОБЩИЙ ПРОГРЕСС: ~85%**
+**ОБЩИЙ ПРОГРЕСС: ~90%**
 
 ---
 

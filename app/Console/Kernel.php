@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\BackupRestoreTestManagerJob;
 use App\Jobs\CheckForUpdatesJob;
 use App\Jobs\CheckHelperImageJob;
 use App\Jobs\CheckTraefikVersionJob;
@@ -98,6 +99,9 @@ class Kernel extends ConsoleKernel
 
             // Cleanup orphaned PR preview containers daily
             $this->scheduleInstance->job(new CleanupOrphanedPreviewContainersJob)->daily()->onOneServer();
+
+            // Automated backup restore testing (runs daily, checks which backups need testing)
+            $this->scheduleInstance->job(new BackupRestoreTestManagerJob)->daily()->at('03:00')->timezone($this->instanceTimezone)->onOneServer();
         }
     }
 

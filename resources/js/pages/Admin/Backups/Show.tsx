@@ -29,6 +29,10 @@ import {
     RotateCcw,
     FileArchive,
     AlertTriangle,
+    Shield,
+    ShieldCheck,
+    ShieldX,
+    TestTube,
 } from 'lucide-react';
 
 interface BackupExecution {
@@ -40,6 +44,14 @@ interface BackupExecution {
     message?: string;
     s3_uploaded: boolean;
     local_storage_deleted: boolean;
+    verification_status?: 'pending' | 'verified' | 'failed' | 'skipped';
+    checksum?: string;
+    verified_at?: string;
+    restore_test_status?: 'pending' | 'success' | 'failed' | 'skipped';
+    restore_test_at?: string;
+    restore_test_duration_seconds?: number;
+    s3_integrity_status?: 'pending' | 'verified' | 'failed';
+    s3_file_size?: number;
     created_at: string;
     finished_at?: string;
 }
@@ -59,6 +71,9 @@ interface BackupSchedule {
     save_s3: boolean;
     s3_storage_name?: string;
     number_of_backups_locally: number;
+    verify_after_backup: boolean;
+    restore_test_enabled: boolean;
+    restore_test_frequency?: string;
     executions: BackupExecution[];
     created_at: string;
     updated_at: string;
@@ -91,6 +106,46 @@ function ExecutionRow({
                 return { variant: 'warning' as const, label: 'Running', icon: <RefreshCw className="h-4 w-4 animate-spin" /> };
             default:
                 return { variant: 'default' as const, label: status, icon: null };
+        }
+    };
+
+    const getVerificationBadge = () => {
+        switch (execution.verification_status) {
+            case 'verified':
+                return <Badge variant="success" size="sm"><ShieldCheck className="mr-1 h-3 w-3" />Verified</Badge>;
+            case 'failed':
+                return <Badge variant="danger" size="sm"><ShieldX className="mr-1 h-3 w-3" />Verify Failed</Badge>;
+            case 'pending':
+                return <Badge variant="warning" size="sm"><Shield className="mr-1 h-3 w-3" />Verifying...</Badge>;
+            default:
+                return null;
+        }
+    };
+
+    const getRestoreTestBadge = () => {
+        switch (execution.restore_test_status) {
+            case 'success':
+                return <Badge variant="success" size="sm"><TestTube className="mr-1 h-3 w-3" />Restore OK</Badge>;
+            case 'failed':
+                return <Badge variant="danger" size="sm"><TestTube className="mr-1 h-3 w-3" />Restore Failed</Badge>;
+            case 'pending':
+                return <Badge variant="warning" size="sm"><TestTube className="mr-1 h-3 w-3" />Testing...</Badge>;
+            default:
+                return null;
+        }
+    };
+
+    const getS3IntegrityBadge = () => {
+        if (!execution.s3_uploaded) return null;
+        switch (execution.s3_integrity_status) {
+            case 'verified':
+                return <Badge variant="success" size="sm"><Cloud className="mr-1 h-3 w-3" />S3 OK</Badge>;
+            case 'failed':
+                return <Badge variant="danger" size="sm"><Cloud className="mr-1 h-3 w-3" />S3 Failed</Badge>;
+            case 'pending':
+                return <Badge variant="warning" size="sm"><Cloud className="mr-1 h-3 w-3" />Checking S3...</Badge>;
+            default:
+                return <Badge variant="primary" size="sm" icon={<Cloud className="h-3 w-3" />}>S3</Badge>;
         }
     };
 
@@ -138,25 +193,31 @@ function ExecutionRow({
                 <div className="flex items-center gap-3">
                     <FileArchive className="h-5 w-5 text-foreground-muted" />
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium text-foreground">
                                 {execution.filename || `backup-${execution.id}`}
                             </span>
                             <Badge variant={statusConfig.variant} size="sm" icon={statusConfig.icon}>
                                 {statusConfig.label}
                             </Badge>
-                            {execution.s3_uploaded && (
-                                <Badge variant="primary" size="sm" icon={<Cloud className="h-3 w-3" />}>
-                                    S3
-                                </Badge>
-                            )}
+                            {getVerificationBadge()}
+                            {getRestoreTestBadge()}
+                            {getS3IntegrityBadge()}
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-foreground-subtle">
                             <span>Created: {new Date(execution.created_at).toLocaleString()}</span>
                             {execution.finished_at && (
                                 <span>Finished: {new Date(execution.finished_at).toLocaleString()}</span>
                             )}
                             {execution.size && <span>Size: {formatSize(execution.size)}</span>}
+                            {execution.checksum && (
+                                <span title={execution.checksum}>
+                                    Checksum: {execution.checksum.substring(0, 8)}...
+                                </span>
+                            )}
+                            {execution.restore_test_duration_seconds && (
+                                <span>Restore test: {execution.restore_test_duration_seconds}s</span>
+                            )}
                         </div>
                         {execution.status === 'failed' && execution.message && (
                             <p className="mt-2 text-xs text-danger">{execution.message}</p>
@@ -373,6 +434,26 @@ export default function AdminBackupShow({ backup }: Props) {
                                     </div>
                                 </div>
                             )}
+                            <div className="flex items-center gap-3">
+                                <ShieldCheck className="h-5 w-5 text-foreground-muted" />
+                                <div>
+                                    <p className="text-xs text-foreground-subtle">Verification</p>
+                                    <p className="font-medium text-foreground">
+                                        {backup.verify_after_backup ? 'Enabled' : 'Disabled'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <TestTube className="h-5 w-5 text-foreground-muted" />
+                                <div>
+                                    <p className="text-xs text-foreground-subtle">Restore Tests</p>
+                                    <p className="font-medium text-foreground">
+                                        {backup.restore_test_enabled
+                                            ? backup.restore_test_frequency || 'Enabled'
+                                            : 'Disabled'}
+                                    </p>
+                                </div>
+                            </div>
                             <div className="flex items-center gap-3">
                                 <Calendar className="h-5 w-5 text-foreground-muted" />
                                 <div>

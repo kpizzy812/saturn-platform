@@ -31,6 +31,10 @@ interface Props {
     database: StandaloneDatabase;
 }
 
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 500;
+const SIDEBAR_DEFAULT_WIDTH = 320;
+
 export default function DatabaseTables({ database }: Props) {
     const [tables, setTables] = useState<TableInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +43,17 @@ export default function DatabaseTables({ database }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'schema' | 'data'>('schema');
     const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Sidebar resize state
+    const [sidebarWidth, setSidebarWidth] = useState(() => {
+        const saved = localStorage.getItem('tables-sidebar-width');
+        return saved ? parseInt(saved, 10) : SIDEBAR_DEFAULT_WIDTH;
+    });
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+        return localStorage.getItem('tables-sidebar-collapsed') === 'true';
+    });
+    const [isResizing, setIsResizing] = useState(false);
+    const sidebarRef = useRef<HTMLDivElement>(null);
 
     // Parse size string to bytes for calculations
     const parseSizeToBytes = (size: string): number => {
@@ -130,6 +145,45 @@ export default function DatabaseTables({ database }: Props) {
         };
     }, [fetchTables]);
 
+    // Save sidebar width to localStorage
+    useEffect(() => {
+        localStorage.setItem('tables-sidebar-width', sidebarWidth.toString());
+    }, [sidebarWidth]);
+
+    // Save sidebar collapsed state to localStorage
+    useEffect(() => {
+        localStorage.setItem('tables-sidebar-collapsed', sidebarCollapsed.toString());
+    }, [sidebarCollapsed]);
+
+    // Handle sidebar resize
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing || !sidebarRef.current) return;
+            const containerRect = sidebarRef.current.parentElement?.getBoundingClientRect();
+            if (!containerRect) return;
+            const newWidth = e.clientX - containerRect.left;
+            setSidebarWidth(Math.min(Math.max(newWidth, SIDEBAR_MIN_WIDTH), SIDEBAR_MAX_WIDTH));
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        if (isResizing) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+    }, [isResizing]);
+
     // Handle URL query parameters for deep linking
     useEffect(() => {
         if (isLoading || tables.length === 0) return;
@@ -214,10 +268,17 @@ export default function DatabaseTables({ database }: Props) {
                     </div>
                 )}
 
-                <div className="grid gap-6 lg:grid-cols-12">
-                    {/* Tables List */}
-                    <div className="lg:col-span-4">
-                        <Card className="p-4">
+                <div className="flex gap-4">
+                    {/* Tables List - Resizable Sidebar */}
+                    <div
+                        ref={sidebarRef}
+                        className={cn(
+                            "relative flex-shrink-0 transition-all duration-200",
+                            sidebarCollapsed && "w-0 overflow-hidden"
+                        )}
+                        style={{ width: sidebarCollapsed ? 0 : sidebarWidth }}
+                    >
+                        <Card className="h-full p-4">
                             <div className="mb-4">
                                 <div className="relative">
                                     <Icons.Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle" />
@@ -301,10 +362,28 @@ export default function DatabaseTables({ database }: Props) {
                                 </div>
                             </div>
                         </Card>
+                        {/* Resize Handle */}
+                        <div
+                            className="absolute right-0 top-0 h-full w-1 cursor-col-resize bg-transparent hover:bg-primary/50 active:bg-primary"
+                            onMouseDown={() => setIsResizing(true)}
+                        />
                     </div>
 
+                    {/* Collapse/Expand Button */}
+                    <button
+                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground-muted hover:bg-background-secondary hover:text-foreground"
+                        title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+                    >
+                        {sidebarCollapsed ? (
+                            <Icons.PanelLeftOpen className="h-4 w-4" />
+                        ) : (
+                            <Icons.PanelLeftClose className="h-4 w-4" />
+                        )}
+                    </button>
+
                     {/* Table Details */}
-                    <div className="lg:col-span-8">
+                    <div className="min-w-0 flex-1">
                         {selectedTableInfo ? (
                             <Card className="p-6">
                                 {/* Table Header */}

@@ -457,6 +457,11 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             }
             if ($this->backup_log && $this->backup_log->status === 'success') {
                 removeOldBackups($this->backup);
+
+                // Dispatch verification job if enabled
+                if ($this->backup->verify_after_backup ?? true) {
+                    BackupVerificationJob::dispatch($this->backup_log);
+                }
             }
         } catch (\Throwable $e) {
             throw $e;

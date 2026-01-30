@@ -29,6 +29,11 @@ import {
     RefreshCw,
     Trash2,
     AlertTriangle,
+    Shield,
+    ShieldCheck,
+    ShieldX,
+    TestTube,
+    DollarSign,
 } from 'lucide-react';
 
 interface BackupExecution {
@@ -38,6 +43,9 @@ interface BackupExecution {
     size?: number;
     filename?: string;
     message?: string;
+    verification_status?: 'pending' | 'verified' | 'failed' | 'skipped';
+    restore_test_status?: 'pending' | 'success' | 'failed' | 'skipped';
+    s3_integrity_status?: 'pending' | 'verified' | 'failed';
     created_at: string;
 }
 
@@ -66,6 +74,14 @@ interface Props {
         enabled: number;
         with_s3: number;
         failed_last_24h: number;
+        verified_last_24h: number;
+        verification_failed_last_24h: number;
+        restore_test_enabled_count: number;
+        restore_tests_passed: number;
+        restore_tests_failed: number;
+        total_storage_local: number;
+        total_storage_s3: number;
+        estimated_monthly_cost: number;
     };
 }
 
@@ -84,6 +100,36 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: () 
                 return { variant: 'warning' as const, label: 'Running' };
             default:
                 return { variant: 'default' as const, label: status };
+        }
+    };
+
+    const getVerificationConfig = (status?: string) => {
+        switch (status) {
+            case 'verified':
+                return { variant: 'success' as const, label: 'Verified', icon: ShieldCheck };
+            case 'failed':
+                return { variant: 'danger' as const, label: 'Verification Failed', icon: ShieldX };
+            case 'pending':
+                return { variant: 'warning' as const, label: 'Verifying...', icon: Shield };
+            case 'skipped':
+                return { variant: 'default' as const, label: 'Skipped', icon: Shield };
+            default:
+                return null;
+        }
+    };
+
+    const getRestoreTestConfig = (status?: string) => {
+        switch (status) {
+            case 'success':
+                return { variant: 'success' as const, label: 'Restore OK', icon: TestTube };
+            case 'failed':
+                return { variant: 'danger' as const, label: 'Restore Failed', icon: TestTube };
+            case 'pending':
+                return { variant: 'warning' as const, label: 'Testing...', icon: TestTube };
+            case 'skipped':
+                return { variant: 'default' as const, label: 'Not Tested', icon: TestTube };
+            default:
+                return null;
         }
     };
 
@@ -168,18 +214,61 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: () 
 
                     {/* Last execution info */}
                     {backup.last_execution && (
-                        <div className="mt-2 flex items-center gap-4 text-xs text-foreground-muted">
-                            <span>
-                                Last run: {new Date(backup.last_execution.created_at).toLocaleString()}
-                            </span>
-                            {backup.last_execution.size && (
-                                <span>Size: {formatSize(backup.last_execution.size)}</span>
-                            )}
-                            {backup.last_execution.status === 'failed' && backup.last_execution.message && (
-                                <span className="text-danger">
-                                    Error: {backup.last_execution.message.substring(0, 50)}...
+                        <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-4 text-xs text-foreground-muted">
+                                <span>
+                                    Last run: {new Date(backup.last_execution.created_at).toLocaleString()}
                                 </span>
-                            )}
+                                {backup.last_execution.size && (
+                                    <span>Size: {formatSize(backup.last_execution.size)}</span>
+                                )}
+                                {backup.last_execution.status === 'failed' && backup.last_execution.message && (
+                                    <span className="text-danger">
+                                        Error: {backup.last_execution.message.substring(0, 50)}...
+                                    </span>
+                                )}
+                            </div>
+                            {/* Verification & Restore Test Status */}
+                            <div className="flex items-center gap-2">
+                                {(() => {
+                                    const verifyConfig = getVerificationConfig(backup.last_execution.verification_status);
+                                    if (verifyConfig) {
+                                        const Icon = verifyConfig.icon;
+                                        return (
+                                            <Badge variant={verifyConfig.variant} size="sm">
+                                                <Icon className="mr-1 h-3 w-3" />
+                                                {verifyConfig.label}
+                                            </Badge>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                                {(() => {
+                                    const restoreConfig = getRestoreTestConfig(backup.last_execution.restore_test_status);
+                                    if (restoreConfig && backup.last_execution.restore_test_status !== 'skipped') {
+                                        const Icon = restoreConfig.icon;
+                                        return (
+                                            <Badge variant={restoreConfig.variant} size="sm">
+                                                <Icon className="mr-1 h-3 w-3" />
+                                                {restoreConfig.label}
+                                            </Badge>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                                {backup.last_execution.s3_integrity_status === 'verified' && (
+                                    <Badge variant="success" size="sm">
+                                        <Cloud className="mr-1 h-3 w-3" />
+                                        S3 OK
+                                    </Badge>
+                                )}
+                                {backup.last_execution.s3_integrity_status === 'failed' && (
+                                    <Badge variant="danger" size="sm">
+                                        <Cloud className="mr-1 h-3 w-3" />
+                                        S3 Failed
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -212,9 +301,30 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: () 
     );
 }
 
+function formatStorageSize(bytes: number): string {
+    if (!bytes || bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = bytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+    }
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+    }).format(amount);
+}
+
 export default function AdminBackupsIndex({ backups: initialBackups, stats }: Props) {
     const [searchQuery, setSearchQuery] = React.useState('');
     const [typeFilter, setTypeFilter] = React.useState<string>('all');
+    const [showAdvancedStats, setShowAdvancedStats] = React.useState(false);
 
     const backups = initialBackups ?? [];
 
@@ -252,8 +362,8 @@ export default function AdminBackupsIndex({ backups: initialBackups, stats }: Pr
                     </p>
                 </div>
 
-                {/* Stats */}
-                <div className="mb-6 grid gap-4 sm:grid-cols-4">
+                {/* Basic Stats */}
+                <div className="mb-4 grid gap-4 sm:grid-cols-4">
                     <Card variant="glass">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
@@ -299,6 +409,95 @@ export default function AdminBackupsIndex({ backups: initialBackups, stats }: Pr
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Advanced Stats Toggle */}
+                <div className="mb-4">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAdvancedStats(!showAdvancedStats)}
+                        className="text-foreground-muted hover:text-foreground"
+                    >
+                        {showAdvancedStats ? 'Hide' : 'Show'} Advanced Stats
+                        <RefreshCw className={`ml-2 h-4 w-4 transition-transform ${showAdvancedStats ? 'rotate-180' : ''}`} />
+                    </Button>
+                </div>
+
+                {/* Advanced Stats */}
+                {showAdvancedStats && (
+                    <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {/* Verification Stats (24h) */}
+                        <Card variant="glass">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-foreground-subtle">Verified (24h)</p>
+                                        <p className="text-2xl font-bold text-success">{stats?.verified_last_24h ?? 0}</p>
+                                        {(stats?.verification_failed_last_24h ?? 0) > 0 && (
+                                            <p className="text-xs text-danger">{stats.verification_failed_last_24h} failed</p>
+                                        )}
+                                    </div>
+                                    <ShieldCheck className="h-8 w-8 text-success/50" />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Restore Tests */}
+                        <Card variant="glass">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-foreground-subtle">Restore Tests</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-2xl font-bold text-success">{stats?.restore_tests_passed ?? 0}</p>
+                                            {(stats?.restore_tests_failed ?? 0) > 0 && (
+                                                <p className="text-sm text-danger">/ {stats.restore_tests_failed} failed</p>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-foreground-muted">
+                                            {stats?.restore_test_enabled_count ?? 0} enabled
+                                        </p>
+                                    </div>
+                                    <TestTube className="h-8 w-8 text-info/50" />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Storage Usage */}
+                        <Card variant="glass">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-foreground-subtle">Total Storage</p>
+                                        <p className="text-lg font-bold text-foreground">
+                                            {formatStorageSize(stats?.total_storage_local ?? 0)}
+                                        </p>
+                                        <p className="text-xs text-foreground-muted">
+                                            S3: {formatStorageSize(stats?.total_storage_s3 ?? 0)}
+                                        </p>
+                                    </div>
+                                    <Server className="h-8 w-8 text-foreground-muted/50" />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Estimated Cost */}
+                        <Card variant="glass">
+                            <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-foreground-subtle">Est. Monthly Cost</p>
+                                        <p className="text-2xl font-bold text-warning">
+                                            {formatCurrency(stats?.estimated_monthly_cost ?? 0)}
+                                        </p>
+                                        <p className="text-xs text-foreground-muted">S3 storage</p>
+                                    </div>
+                                    <DollarSign className="h-8 w-8 text-warning/50" />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
 
                 {/* Filters */}
                 <Card variant="glass" className="mb-6">

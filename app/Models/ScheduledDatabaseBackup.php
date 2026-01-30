@@ -10,6 +10,19 @@ class ScheduledDatabaseBackup extends BaseModel
 {
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'enabled' => 'boolean',
+            'save_s3' => 'boolean',
+            'dump_all' => 'boolean',
+            'disable_local_backup' => 'boolean',
+            'verify_after_backup' => 'boolean',
+            'restore_test_enabled' => 'boolean',
+            'last_restore_test_at' => 'datetime',
+        ];
+    }
+
     public static function ownedByCurrentTeam()
     {
         return ScheduledDatabaseBackup::whereRelation('team', 'id', currentTeam()->id)->orderBy('created_at', 'desc');
