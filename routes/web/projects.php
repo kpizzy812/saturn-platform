@@ -539,7 +539,7 @@ Route::get('/projects/{uuid}/members', function (string $uuid) {
     // Get all team members
     $allTeamMembers = $team->members()
         ->get()
-        ->map(function ($member) use ($project, $projectMemberIds) {
+        ->map(function ($member) use ($team, $project, $projectMemberIds) {
             // Skip if already a project member
             if (in_array($member->id, $projectMemberIds)) {
                 return null;
