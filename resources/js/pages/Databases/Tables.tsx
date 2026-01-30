@@ -41,7 +41,7 @@ export default function DatabaseTables({ database }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'schema' | 'data'>('schema');
+    const [activeTab, setActiveTab] = useState<'schema' | 'data'>('data');
     const abortControllerRef = useRef<AbortController | null>(null);
 
     // Sidebar resize state

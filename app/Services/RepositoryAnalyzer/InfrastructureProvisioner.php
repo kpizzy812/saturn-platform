@@ -310,20 +310,21 @@ class InfrastructureProvisioner
                 continue;
             }
 
-            // Skip database-related variables (will be auto-injected)
+            // Skip database-related variables (will be auto-injected via ResourceLink)
             if ($envVar->category === 'database' || $envVar->category === 'cache') {
                 continue;
             }
 
-            // Skip if empty placeholder
-            if ($envVar->isRequired && empty($envVar->defaultValue)) {
-                continue; // User must fill these manually
+            // Create placeholder for required variables without value
+            $value = $envVar->defaultValue ?? '';
+            if ($envVar->isRequired && empty($value)) {
+                $value = '# TODO: Set value for '.$envVar->key;
             }
 
             $application->environment_variables()->updateOrCreate(
                 ['key' => $envVar->key],
                 [
-                    'value' => $envVar->defaultValue ?? '',
+                    'value' => $value,
                     'is_build_time' => false,
                 ]
             );
