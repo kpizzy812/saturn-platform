@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Environment;
 use App\Models\GithubApp;
 use App\Models\ResourceLink;
+use App\Models\Server;
 use App\Models\StandaloneClickhouse;
 use App\Models\StandaloneDocker;
 use App\Models\StandaloneMongodb;
@@ -38,15 +39,20 @@ class InfrastructureProvisioner
     public function provision(
         AnalysisResult $analysis,
         Environment $environment,
-        string $destinationUuid,
+        string $serverUuid,
         array $gitConfig,
         ?string $monorepoGroupId = null,
     ): ProvisioningResult {
         // Generate group ID for monorepo apps
         $groupId = $monorepoGroupId ?? ($analysis->monorepo->isMonorepo ? (string) Str::uuid() : null);
 
+        // Find server and its default StandaloneDocker destination
+        $server = Server::where('uuid', $serverUuid)->firstOrFail();
+        $destination = $server->standaloneDockers()->firstOrFail();
+        $destinationUuid = $destination->uuid;
+
         try {
-            return DB::transaction(function () use ($analysis, $environment, $destinationUuid, $gitConfig, $groupId) {
+            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId) {
                 // 1. Create databases first
                 $createdDatabases = $this->createDatabases(
                     $analysis->databases,
@@ -59,7 +65,8 @@ class InfrastructureProvisioner
                 $createdApps = $this->createApplications(
                     $sortedApps,
                     $environment,
-                    $destinationUuid,
+                    $server,
+                    $destination,
                     $gitConfig,
                     $groupId
                 );
@@ -194,7 +201,8 @@ class InfrastructureProvisioner
     private function createApplications(
         array $detectedApps,
         Environment $environment,
-        string $destinationUuid,
+        Server $server,
+        StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
     ): array {
@@ -204,7 +212,8 @@ class InfrastructureProvisioner
             $created[$app->name] = $this->createApplication(
                 $app,
                 $environment,
-                $destinationUuid,
+                $server,
+                $destination,
                 $gitConfig,
                 $groupId
             );
@@ -216,13 +225,11 @@ class InfrastructureProvisioner
     private function createApplication(
         DetectedApp $app,
         Environment $environment,
-        string $destinationUuid,
+        Server $server,
+        StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
     ): Application {
-        $destination = StandaloneDocker::where('uuid', $destinationUuid)->firstOrFail();
-        $server = $destination->server;
-
         $application = new Application;
         $application->uuid = (string) Str::uuid();
         $application->name = $app->name;

@@ -105,9 +105,11 @@ class GitAnalyzerController extends Controller
             default => null,
         };
 
-        $tempPath = $this->cloneRepository($validated);
+        $tempPath = null;
 
         try {
+            $tempPath = $this->cloneRepository($validated);
+
             $analysis = $this->analyzer->analyze($tempPath);
             $analysis = $this->filterAnalysis($analysis, $validated);
 
@@ -159,8 +161,23 @@ class GitAnalyzerController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\Throwable $e) {
+            // Log unexpected errors for debugging
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'An unexpected error occurred: '.$e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         } finally {
-            $this->cleanupTempDirectory($tempPath);
+            if ($tempPath !== null) {
+                $this->cleanupTempDirectory($tempPath);
+            }
         }
     }
 
