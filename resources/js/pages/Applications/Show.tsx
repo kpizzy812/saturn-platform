@@ -50,6 +50,9 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     const [envVarsLoading, setEnvVarsLoading] = useState(false);
     const [envVarsLoaded, setEnvVarsLoaded] = useState(false);
     const [revealedVarIds, setRevealedVarIds] = useState<Set<number>>(new Set());
+    const [showDeployModal, setShowDeployModal] = useState(false);
+    const [requiresApproval, setRequiresApproval] = useState(false);
+    const [forceRebuild, setForceRebuild] = useState(false);
 
     // Fetch real-time container metrics
     const isRunning = application.status?.startsWith('running') ?? false;
@@ -134,14 +137,34 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     const maskValue = (value: string) => '•'.repeat(Math.min(value.length || 8, 24));
 
     const handleAction = (action: 'start' | 'stop' | 'restart' | 'deploy') => {
-        router.post(`/applications/${application.uuid}/${action}`, {}, {
-            preserveScroll: true,
-        });
+        if (action === 'deploy') {
+            setShowDeployModal(true);
+            setRequiresApproval(false);
+            setForceRebuild(false);
+        } else {
+            router.post(`/applications/${application.uuid}/${action}`, {}, {
+                preserveScroll: true,
+            });
+        }
     };
 
     const handleForceRebuild = () => {
-        router.post(`/applications/${application.uuid}/deploy`, { force_rebuild: true }, {
+        setShowDeployModal(true);
+        setRequiresApproval(false);
+        setForceRebuild(true);
+    };
+
+    const confirmDeploy = () => {
+        router.post(`/applications/${application.uuid}/deploy`, {
+            force_rebuild: forceRebuild,
+            requires_approval: requiresApproval,
+        }, {
             preserveScroll: true,
+            onSuccess: () => {
+                setShowDeployModal(false);
+                setRequiresApproval(false);
+                setForceRebuild(false);
+            },
         });
     };
 
@@ -518,6 +541,56 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                     </div>
                 </div>
             </div>
+
+            {/* Deploy Confirmation Modal */}
+            {showDeployModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-semibold mb-4">
+                            {forceRebuild ? 'Force Rebuild & Deploy' : 'Deploy Application'}
+                        </h3>
+                        <p className="text-sm text-foreground-muted mb-4">
+                            {forceRebuild
+                                ? 'This will rebuild the application from scratch and deploy it.'
+                                : 'This will deploy the latest version of your application.'}
+                        </p>
+
+                        <div className="mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={requiresApproval}
+                                    onChange={(e) => setRequiresApproval(e.target.checked)}
+                                    className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                />
+                                <span className="text-sm font-medium">Require approval before deployment</span>
+                            </label>
+                            <p className="text-xs text-foreground-muted mt-1 ml-6">
+                                Deployment will wait for manual approval from an admin before proceeding
+                            </p>
+                        </div>
+
+                        <div className="flex gap-2 justify-end">
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    setShowDeployModal(false);
+                                    setRequiresApproval(false);
+                                    setForceRebuild(false);
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="default"
+                                onClick={confirmDeploy}
+                            >
+                                {forceRebuild ? 'Force Rebuild' : 'Deploy'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }

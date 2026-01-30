@@ -13,7 +13,7 @@ use App\Models\StandaloneDocker;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
-function queue_application_deployment(Application $application, string $deployment_uuid, ?int $pull_request_id = 0, string $commit = 'HEAD', bool $force_rebuild = false, bool $is_webhook = false, bool $is_api = false, bool $restart_only = false, ?string $git_type = null, bool $no_questions_asked = false, ?Server $server = null, ?StandaloneDocker $destination = null, bool $only_this_server = false, bool $rollback = false, ?int $user_id = null)
+function queue_application_deployment(Application $application, string $deployment_uuid, ?int $pull_request_id = 0, string $commit = 'HEAD', bool $force_rebuild = false, bool $is_webhook = false, bool $is_api = false, bool $restart_only = false, ?string $git_type = null, bool $no_questions_asked = false, ?Server $server = null, ?StandaloneDocker $destination = null, bool $only_this_server = false, bool $rollback = false, ?int $user_id = null, bool $requires_approval = false)
 {
     $application_id = $application->id;
     $deployment_link = Url::fromString($application->link()."/deployment/{$deployment_uuid}");
@@ -96,7 +96,24 @@ function queue_application_deployment(Application $application, string $deployme
         'rollback' => $rollback,
         'git_type' => $git_type,
         'only_this_server' => $only_this_server,
+        'requires_approval' => $requires_approval,
+        'approval_status' => $requires_approval ? 'pending' : null,
     ]);
+
+    // Send notification if deployment requires approval
+    if ($requires_approval) {
+        try {
+            $teamId = $application->environment?->project?->team_id;
+            if ($teamId) {
+                $team = \App\Models\Team::find($teamId);
+                if ($team) {
+                    $team->notify(new \App\Notifications\Application\DeploymentApprovalRequired($application, $deployment));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to send deployment approval notification: '.$e->getMessage());
+        }
+    }
 
     // Broadcast deployment created event for real-time updates
     try {

@@ -61,6 +61,23 @@ class DeploymentApprovalsController extends Controller
             'status' => 'queued', // Change status to queued so job can pick it up
         ]);
 
+        // Send notification to user who created deployment
+        try {
+            if ($deployment->user_id) {
+                $user = \App\Models\User::find($deployment->user_id);
+                $approver = \App\Models\User::find(auth()->id());
+                if ($user && $approver && $deployment->application) {
+                    $user->notify(new \App\Notifications\Application\DeploymentApproved(
+                        $deployment->application,
+                        $deployment,
+                        $approver
+                    ));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to send deployment approved notification: '.$e->getMessage());
+        }
+
         // Dispatch deployment job to process the approved deployment
         ApplicationDeploymentJob::dispatch(
             $deployment->application_id,
@@ -106,6 +123,23 @@ class DeploymentApprovalsController extends Controller
             'approval_note' => $request->input('note', 'Deployment rejected'),
             'status' => 'cancelled',
         ]);
+
+        // Send notification to user who created deployment
+        try {
+            if ($deployment->user_id) {
+                $user = \App\Models\User::find($deployment->user_id);
+                $rejecter = \App\Models\User::find(auth()->id());
+                if ($user && $rejecter && $deployment->application) {
+                    $user->notify(new \App\Notifications\Application\DeploymentRejected(
+                        $deployment->application,
+                        $deployment,
+                        $rejecter
+                    ));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to send deployment rejected notification: '.$e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Deployment rejected successfully.',

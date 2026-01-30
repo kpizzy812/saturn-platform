@@ -247,7 +247,7 @@ Route::get('/applications/{uuid}', function (string $uuid) {
 })->name('applications.show');
 
 // Application action routes
-Route::post('/applications/{uuid}/deploy', function (string $uuid) {
+Route::post('/applications/{uuid}/deploy', function (string $uuid, \Illuminate\Http\Request $request) {
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
@@ -257,8 +257,9 @@ Route::post('/applications/{uuid}/deploy', function (string $uuid) {
     $result = queue_application_deployment(
         application: $application,
         deployment_uuid: $deployment_uuid,
-        force_rebuild: false,
+        force_rebuild: (bool) $request->input('force_rebuild', false),
         is_api: false,
+        requires_approval: (bool) $request->input('requires_approval', false),
     );
 
     if ($result['status'] === 'skipped') {
