@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/layout';
 import { Button, Card, Badge } from '@/components/ui';
 import { Link } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StandaloneDatabase } from '@/types';
@@ -29,16 +29,111 @@ interface TableInfo {
 
 interface Props {
     database: StandaloneDatabase;
-    tables?: TableInfo[];
 }
 
-export default function DatabaseTables({ database, tables = [] }: Props) {
+export default function DatabaseTables({ database }: Props) {
+    const [tables, setTables] = useState<TableInfo[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'schema' | 'data'>('schema');
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    // Parse size string to bytes for calculations
+    const parseSizeToBytes = (size: string): number => {
+        const match = size.match(/^([\d.]+)\s*(bytes?|KB|MB|GB|TB)?$/i);
+        if (!match) return 0;
+        const value = parseFloat(match[1]);
+        const unit = (match[2] || 'bytes').toLowerCase();
+        const multipliers: Record<string, number> = {
+            bytes: 1, byte: 1, kb: 1024, mb: 1024 * 1024, gb: 1024 * 1024 * 1024, tb: 1024 * 1024 * 1024 * 1024,
+        };
+        return value * (multipliers[unit] || 1);
+    };
+
+    // Fetch tables list from API
+    const fetchTables = useCallback(async () => {
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch(`/_internal/databases/${database.uuid}/tables`, {
+                signal: controller.signal,
+            });
+            const data = await response.json();
+
+            if (controller.signal.aborted) return;
+
+            if (data.available && data.tables) {
+                // Transform API response to TableInfo format
+                const transformedTables: TableInfo[] = data.tables.map((t: { name: string; rows: number; size: string }) => ({
+                    name: t.name,
+                    rowCount: t.rows,
+                    sizeBytes: parseSizeToBytes(t.size),
+                    columns: [], // Will be loaded when table is selected
+                }));
+                setTables(transformedTables);
+            } else {
+                setError(data.error || 'Unable to fetch tables');
+                setTables([]);
+            }
+        } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') return;
+            setError('Failed to connect to database');
+            setTables([]);
+        } finally {
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
+        }
+    }, [database.uuid]);
+
+    // Fetch columns for a specific table
+    const fetchTableColumns = useCallback(async (tableName: string) => {
+        try {
+            const response = await fetch(`/_internal/databases/${database.uuid}/tables/${encodeURIComponent(tableName)}/columns`);
+            const data = await response.json();
+
+            if (data.success && data.columns) {
+                setTables(prev => prev.map(t => {
+                    if (t.name === tableName) {
+                        return {
+                            ...t,
+                            columns: data.columns.map((col: { name: string; type: string; nullable: boolean; default: string | null; is_primary: boolean }) => ({
+                                name: col.name,
+                                type: col.type,
+                                nullable: col.nullable,
+                                defaultValue: col.default,
+                                isPrimaryKey: col.is_primary,
+                                isForeignKey: false, // Not returned by current API
+                            })),
+                        };
+                    }
+                    return t;
+                }));
+            }
+        } catch (err) {
+            console.error('Failed to fetch columns:', err);
+        }
+    }, [database.uuid]);
+
+    // Load tables on mount
+    useEffect(() => {
+        fetchTables();
+        return () => {
+            abortControllerRef.current?.abort();
+        };
+    }, [fetchTables]);
 
     // Handle URL query parameters for deep linking
     useEffect(() => {
+        if (isLoading || tables.length === 0) return;
+
         const params = new URLSearchParams(window.location.search);
         const tableParam = params.get('table');
         const tabParam = params.get('tab');
@@ -53,7 +148,17 @@ export default function DatabaseTables({ database, tables = [] }: Props) {
                 }
             }
         }
-    }, [tables]);
+    }, [tables, isLoading]);
+
+    // Fetch columns when table is selected
+    useEffect(() => {
+        if (selectedTable) {
+            const table = tables.find(t => t.name === selectedTable);
+            if (table && table.columns.length === 0) {
+                fetchTableColumns(selectedTable);
+            }
+        }
+    }, [selectedTable, tables, fetchTableColumns]);
 
     const filteredTables = tables.filter((table) =>
         table.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -85,13 +190,29 @@ export default function DatabaseTables({ database, tables = [] }: Props) {
                         <h1 className="text-2xl font-bold text-foreground">Database Tables</h1>
                         <p className="text-foreground-muted">Browse tables and explore schemas</p>
                     </div>
-                    <Link href={`/databases/${database.uuid}/query`}>
-                        <Button>
-                            <Icons.Search className="mr-2 h-4 w-4" />
-                            Query Browser
+                    <div className="flex items-center gap-2">
+                        <Button size="sm" variant="secondary" onClick={fetchTables} disabled={isLoading}>
+                            <Icons.RefreshCw className={cn("mr-1 h-3 w-3", isLoading && "animate-spin")} />
+                            Refresh
                         </Button>
-                    </Link>
+                        <Link href={`/databases/${database.uuid}/query`}>
+                            <Button>
+                                <Icons.Search className="mr-2 h-4 w-4" />
+                                Query Browser
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
+
+                {/* Error State */}
+                {error && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
+                        <div className="flex items-center gap-2">
+                            <Icons.AlertCircle className="h-4 w-4" />
+                            <span>{error}</span>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid gap-6 lg:grid-cols-12">
                     {/* Tables List */}
@@ -147,9 +268,15 @@ export default function DatabaseTables({ database, tables = [] }: Props) {
                                 ))}
                             </div>
 
-                            {filteredTables.length === 0 && (
+                            {isLoading && (
+                                <div className="flex items-center justify-center py-8">
+                                    <Icons.RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+                                </div>
+                            )}
+
+                            {!isLoading && filteredTables.length === 0 && (
                                 <div className="py-8 text-center">
-                                    <Icons.Search className="mx-auto mb-2 h-8 w-8 text-foreground-subtle" />
+                                    <Icons.Database className="mx-auto mb-2 h-8 w-8 text-foreground-subtle" />
                                     <p className="text-sm text-foreground-muted">No tables found</p>
                                 </div>
                             )}
