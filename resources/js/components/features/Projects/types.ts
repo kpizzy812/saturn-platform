@@ -1,7 +1,7 @@
 export type SelectedService = {
     id: string;
     uuid: string;
-    type: 'app' | 'db';
+    type: 'app' | 'db' | 'service';
     name: string;
     status: string;
     fqdn?: string;
@@ -9,4 +9,5 @@ export type SelectedService = {
     serverUuid?: string;
     version?: string;
     image?: string;
+    description?: string | null;
 };

@@ -285,6 +285,18 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     serverUuid: db.destination?.server?.uuid,
                 };
             }
+        } else if (type === 'svc') {
+            const svc = selectedEnv.services?.find(s => String(s.id) === id);
+            if (svc) {
+                newService = {
+                    id: String(svc.id),
+                    uuid: svc.uuid,
+                    type: 'service',
+                    name: svc.name,
+                    status: svc.status || 'unknown',
+                    description: svc.description,
+                };
+            }
         }
 
         if (newService) {
@@ -295,8 +307,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         // Reset to default tab based on type
         if (type === 'app') {
             setActiveAppTab('deployments');
-        } else {
+        } else if (type === 'db') {
             setActiveDbTab('connect');
+        }
+        // For services, we'll navigate to the service page
+        if (type === 'svc' && newService) {
+            router.visit(`/services/${newService.uuid}`);
         }
     }, [selectedEnv, trackStateChange]);
 
@@ -657,13 +673,59 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         window.open(url.startsWith('http') ? url : `https://${url}`, '_blank');
     }, []);
 
-    const handleQuickViewLogs = useCallback((uuid: string, name: string, type: 'application' | 'database') => {
+    const handleQuickViewLogs = useCallback((uuid: string, name: string, type: 'application' | 'database' | 'service') => {
         setLogsViewerService(name);
         setLogsViewerServiceUuid(uuid);
         setLogsViewerServiceType(type);
         setLogsViewerContainerName(undefined);
         setLogsViewerOpen(true);
     }, []);
+
+    const handleQuickRestartService = useCallback(async (uuid: string) => {
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch(`/services/${uuid}/restart`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to restart');
+            }
+            addToast('success', 'Restart initiated', 'Service restart has been initiated.');
+            router.reload();
+        } catch (err) {
+            addToast('error', 'Restart failed', err instanceof Error ? err.message : 'Failed to restart service');
+        }
+    }, [addToast]);
+
+    const handleQuickStopService = useCallback(async (uuid: string) => {
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch(`/services/${uuid}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to stop');
+            }
+            addToast('success', 'Stop initiated', 'Service stop has been initiated.');
+            router.reload();
+        } catch (err) {
+            addToast('error', 'Stop failed', err instanceof Error ? err.message : 'Failed to stop service');
+        }
+    }, [addToast]);
 
     const handleQuickBrowseData = useCallback((uuid: string, databaseType: string) => {
         // Redis-like databases go to Keys tab, SQL databases go to Tables
@@ -1075,6 +1137,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 onQuickOpenUrl={handleQuickOpenUrl}
                                 onQuickViewLogs={handleQuickViewLogs}
                                 onQuickBrowseData={handleQuickBrowseData}
+                                onQuickRestartService={handleQuickRestartService}
+                                onQuickStopService={handleQuickStopService}
                             />
                         )}
 

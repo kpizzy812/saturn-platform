@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 
 import { ServiceNode } from './nodes/ServiceNode';
 import { DatabaseNode } from './nodes/DatabaseNode';
+import { ComposeServiceNode } from './nodes/ComposeServiceNode';
 import { VariableBadgeEdge } from './edges/VariableBadgeEdge';
 import type { Application, StandaloneDatabase, Service } from '@/types';
 import { useToast } from '@/components/ui/Toast';
@@ -27,6 +28,7 @@ import axios from 'axios';
 const nodeTypes: NodeTypes = {
     service: ServiceNode,
     database: DatabaseNode,
+    compose: ComposeServiceNode,
 } as NodeTypes;
 
 // Custom edge types
@@ -70,8 +72,11 @@ interface ProjectCanvasProps {
     /** Quick action callbacks for node hover buttons */
     onQuickDeploy?: (uuid: string) => void;
     onQuickOpenUrl?: (url: string) => void;
-    onQuickViewLogs?: (uuid: string, name: string, type: 'application' | 'database') => void;
+    onQuickViewLogs?: (uuid: string, name: string, type: 'application' | 'database' | 'service') => void;
     onQuickBrowseData?: (uuid: string, databaseType: string) => void;
+    /** Quick action callbacks for compose services */
+    onQuickRestartService?: (uuid: string) => void;
+    onQuickStopService?: (uuid: string) => void;
 }
 
 // Map database_type to API target_type
@@ -203,6 +208,8 @@ function ProjectCanvasInner({
     onQuickOpenUrl,
     onQuickViewLogs,
     onQuickBrowseData,
+    onQuickRestartService,
+    onQuickStopService,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
     const { addToast } = useToast();
@@ -310,8 +317,31 @@ function ProjectCanvasInner({
             });
         });
 
+        // Docker Compose service nodes - below databases
+        services.forEach((svc, index) => {
+            const nodeId = `svc-${svc.id}`;
+            const defaultPosition = { x: startX + index * horizontalSpacing, y: startY + verticalSpacing * 2 };
+            const position = savedPositions[nodeId] || defaultPosition;
+
+            nodes.push({
+                id: nodeId,
+                type: 'compose',
+                position,
+                data: {
+                    label: svc.name,
+                    status: svc.status || 'unknown',
+                    type: 'service',
+                    description: svc.description,
+                    uuid: svc.uuid,
+                    onQuickRestart: onQuickRestartService ? () => onQuickRestartService(svc.uuid) : undefined,
+                    onQuickStop: onQuickStopService ? () => onQuickStopService(svc.uuid) : undefined,
+                    onQuickViewLogs: onQuickViewLogs ? () => onQuickViewLogs(svc.uuid, svc.name, 'service') : undefined,
+                },
+            });
+        });
+
         return nodes;
-    }, [applications, databases, savedPositions, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs, onQuickBrowseData]);
+    }, [applications, databases, services, savedPositions, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs, onQuickBrowseData, onQuickRestartService, onQuickStopService]);
 
     // Convert resource links to edges, merging bidirectional app-to-app pairs into one edge
     const linkedEdges = useMemo(() => {
