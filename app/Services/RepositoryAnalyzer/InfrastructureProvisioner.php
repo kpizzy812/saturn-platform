@@ -357,7 +357,7 @@ class InfrastructureProvisioner
                 ['key' => $envVar->key],
                 [
                     'value' => $value,
-                    'is_build_time' => false,
+                    'is_buildtime' => false,
                 ]
             );
         }
