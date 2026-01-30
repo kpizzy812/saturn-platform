@@ -180,8 +180,11 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     };
 
     const handleMonorepoComplete = (result: { applications: Array<{ uuid: string; name: string }>; monorepo_group_id: string | null }) => {
-        // Redirect to the first application or to the project canvas
-        if (result.applications.length > 0) {
+        // Redirect to project page where all created apps are visible
+        if (formData.project_uuid) {
+            router.visit(`/projects/${formData.project_uuid}`);
+        } else if (result.applications.length === 1) {
+            // Single app - go directly to it
             router.visit(`/applications/${result.applications[0].uuid}`);
         } else {
             router.visit('/applications');
