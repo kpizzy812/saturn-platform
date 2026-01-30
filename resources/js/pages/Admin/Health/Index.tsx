@@ -93,8 +93,8 @@ function ServiceHealthCard({ service }: { service: ServiceHealth }) {
 }
 
 function ServerHealthRow({ server }: { server: ServerHealth }) {
-    const getMetricColor = (value?: number) => {
-        if (value === undefined) return 'text-foreground-muted';
+    const getMetricColor = (value?: number | null) => {
+        if (value == null) return 'text-foreground-muted';
         if (value >= 90) return 'text-danger';
         if (value >= 70) return 'text-warning';
         return 'text-success';
@@ -130,7 +130,7 @@ function ServerHealthRow({ server }: { server: ServerHealth }) {
                             <div className="flex items-center gap-1">
                                 <Cpu className="h-4 w-4 text-foreground-muted" />
                                 <span className={`text-sm font-medium ${getMetricColor(server.metrics.cpu_usage)}`}>
-                                    {server.metrics.cpu_usage !== undefined ? `${server.metrics.cpu_usage.toFixed(1)}%` : 'N/A'}
+                                    {server.metrics.cpu_usage != null ? `${server.metrics.cpu_usage.toFixed(1)}%` : 'N/A'}
                                 </span>
                             </div>
                             <p className="text-[10px] text-foreground-subtle">CPU</p>
@@ -139,7 +139,7 @@ function ServerHealthRow({ server }: { server: ServerHealth }) {
                             <div className="flex items-center gap-1">
                                 <MemoryStick className="h-4 w-4 text-foreground-muted" />
                                 <span className={`text-sm font-medium ${getMetricColor(server.metrics.memory_usage)}`}>
-                                    {server.metrics.memory_usage !== undefined ? `${server.metrics.memory_usage.toFixed(1)}%` : 'N/A'}
+                                    {server.metrics.memory_usage != null ? `${server.metrics.memory_usage.toFixed(1)}%` : 'N/A'}
                                 </span>
                             </div>
                             <p className="text-[10px] text-foreground-subtle">Memory</p>
@@ -148,7 +148,7 @@ function ServerHealthRow({ server }: { server: ServerHealth }) {
                             <div className="flex items-center gap-1">
                                 <HardDrive className="h-4 w-4 text-foreground-muted" />
                                 <span className={`text-sm font-medium ${getMetricColor(server.metrics.disk_usage)}`}>
-                                    {server.metrics.disk_usage !== undefined ? `${server.metrics.disk_usage.toFixed(1)}%` : 'N/A'}
+                                    {server.metrics.disk_usage != null ? `${server.metrics.disk_usage.toFixed(1)}%` : 'N/A'}
                                 </span>
                             </div>
                             <p className="text-[10px] text-foreground-subtle">Disk</p>
