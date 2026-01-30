@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Application\StopApplication;
+use App\Actions\Deployment\RequestDeploymentApprovalAction;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Events\DeploymentCreated;
 use App\Jobs\ApplicationDeploymentJob;
@@ -111,6 +112,29 @@ function queue_application_deployment(Application $application, string $deployme
     } catch (\Throwable $e) {
         // Don't break deployment if broadcasting fails
         \Log::warning('Failed to broadcast DeploymentCreated event: '.$e->getMessage());
+    }
+
+    // Check if deployment requires approval (unless no_questions_asked or is_webhook)
+    if (! $no_questions_asked && ! $is_webhook && $user_id) {
+        $user = \App\Models\User::find($user_id);
+        $approvalAction = new RequestDeploymentApprovalAction;
+
+        if ($user && $approvalAction->requiresApproval($deployment, $user)) {
+            // Create approval request
+            $approval = $approvalAction->handle($deployment, $user);
+
+            // Set deployment status to pending approval
+            $deployment->update([
+                'status' => ApplicationDeploymentStatus::PENDING_APPROVAL->value,
+            ]);
+
+            return [
+                'status' => 'approval_required',
+                'message' => 'Deployment requires approval from project admin or owner.',
+                'deployment_uuid' => $deployment_uuid,
+                'approval_uuid' => $approval->uuid,
+            ];
+        }
     }
 
     if ($no_questions_asked) {

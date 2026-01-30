@@ -200,6 +200,10 @@ class ApplicationController extends Controller
             return redirect()->back()->with('info', $result['message']);
         }
 
+        if ($result['status'] === 'approval_required') {
+            return redirect()->back()->with('warning', $result['message']);
+        }
+
         $message = $force_rebuild ? 'Force rebuild started' : 'Deployment started';
 
         return redirect()->back()->with('success', $message);

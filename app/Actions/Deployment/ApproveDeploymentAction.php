@@ -35,8 +35,8 @@ class ApproveDeploymentAction
 
         // Get the deployment and trigger it
         $deployment = $approval->deployment;
-        if ($deployment && $deployment->status === 'queued') {
-            // Update deployment status to indicate it's approved and ready
+        if ($deployment && $deployment->status === 'pending_approval') {
+            // Update deployment status to queued and dispatch
             $deployment->update(['status' => 'queued']);
 
             // Dispatch the deployment job
@@ -71,7 +71,7 @@ class ApproveDeploymentAction
 
         // Cancel the deployment
         $deployment = $approval->deployment;
-        if ($deployment && $deployment->status === 'queued') {
+        if ($deployment && $deployment->status === 'pending_approval') {
             $deployment->update([
                 'status' => 'cancelled',
                 'logs' => $deployment->logs."\n[Deployment rejected by {$approver->email}".($reason ? ": {$reason}" : '').']',
