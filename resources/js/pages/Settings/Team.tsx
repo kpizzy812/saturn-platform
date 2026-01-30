@@ -33,6 +33,11 @@ interface TeamMember {
     role: 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
     joinedAt: string;
     lastActive: string;
+    invitedBy?: {
+        id: number;
+        name: string;
+        email: string;
+    };
     projectAccess?: {
         hasFullAccess: boolean;
         hasNoAccess: boolean;
@@ -411,11 +416,17 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                                 >
                                     <div className="flex items-center gap-4">
                                         <Link href={`/settings/members/${member.id}`}>
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-semibold text-white transition-transform hover:scale-105">
-                                                {member.avatar ? (
-                                                    <img src={member.avatar} alt={member.name} className="h-full w-full rounded-full object-cover" />
-                                                ) : (
-                                                    getInitials(member.name)
+                                            <div className="relative">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-semibold text-white transition-transform hover:scale-105">
+                                                    {member.avatar ? (
+                                                        <img src={member.avatar} alt={member.name} className="h-full w-full rounded-full object-cover" />
+                                                    ) : (
+                                                        getInitials(member.name)
+                                                    )}
+                                                </div>
+                                                {/* Online status indicator */}
+                                                {isOnline(member.lastActive) && (
+                                                    <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-green-500 ring-2 ring-green-400/20" />
                                                 )}
                                             </div>
                                         </Link>
@@ -430,14 +441,63 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                                                     <span className="mr-1">{getRoleIcon(member.role)}</span>
                                                     {member.role}
                                                 </Badge>
+                                                {/* Project Access Badge */}
+                                                {member.role !== 'owner' && member.projectAccess && (
+                                                    <>
+                                                        {member.projectAccess.hasFullAccess && (
+                                                            <Badge
+                                                                variant="success"
+                                                                className="text-[10px] cursor-help"
+                                                                title="This member has access to all projects in the team"
+                                                            >
+                                                                <FolderCog className="h-3 w-3 mr-1" />
+                                                                All Projects
+                                                            </Badge>
+                                                        )}
+                                                        {member.projectAccess.hasLimitedAccess && (
+                                                            <Badge
+                                                                variant="warning"
+                                                                className="text-[10px] cursor-help"
+                                                                title={`This member has access to ${member.projectAccess.count} out of ${member.projectAccess.total} projects`}
+                                                            >
+                                                                <FolderCog className="h-3 w-3 mr-1" />
+                                                                {member.projectAccess.count}/{member.projectAccess.total} Projects
+                                                            </Badge>
+                                                        )}
+                                                        {member.projectAccess.hasNoAccess && (
+                                                            <Badge
+                                                                variant="danger"
+                                                                className="text-[10px] cursor-help"
+                                                                title="This member has no access to any projects"
+                                                            >
+                                                                <Lock className="h-3 w-3 mr-1" />
+                                                                No Access
+                                                            </Badge>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-3 text-sm text-foreground-muted">
-                                                <span>{member.email}</span>
-                                                <span className="text-foreground-subtle">•</span>
-                                                <div className="flex items-center gap-1 text-foreground-subtle">
-                                                    <Clock className="h-3 w-3" />
-                                                    <span>{formatLastActive(member.lastActive)}</span>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                                                    <span>{member.email}</span>
+                                                    <span className="text-foreground-subtle">•</span>
+                                                    <div className="flex items-center gap-1 text-foreground-subtle">
+                                                        <Clock className="h-3 w-3" />
+                                                        <span>{formatLastActive(member.lastActive)}</span>
+                                                    </div>
                                                 </div>
+                                                {/* Show inviter information */}
+                                                {member.invitedBy && (
+                                                    <div className="flex items-center gap-1 text-xs text-foreground-subtle">
+                                                        <UserIcon className="h-3 w-3" />
+                                                        <span>
+                                                            Invited by{' '}
+                                                            <span className="font-medium text-foreground-muted">
+                                                                {member.invitedBy.name}
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

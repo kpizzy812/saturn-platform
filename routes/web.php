@@ -250,6 +250,7 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
         // Add user to team
         $team->members()->attach($user->id, [
             'role' => $invitation->role ?? 'member',
+            'invited_by' => $invitation->invited_by,
         ]);
 
         // Delete the invitation

@@ -49,6 +49,19 @@ Route::get('/settings/team', function () {
             $accessibleProjectsCount = count($allowedProjects);
         }
 
+        // Get inviter information
+        $inviter = null;
+        if ($user->pivot->invited_by) {
+            $inviterUser = \App\Models\User::find($user->pivot->invited_by);
+            if ($inviterUser) {
+                $inviter = [
+                    'id' => $inviterUser->id,
+                    'name' => $inviterUser->name,
+                    'email' => $inviterUser->email,
+                ];
+            }
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -57,6 +70,7 @@ Route::get('/settings/team', function () {
             'role' => $user->pivot->role ?? 'member',
             'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
             'lastActive' => $lastActive,
+            'invitedBy' => $inviter,
             'projectAccess' => [
                 'hasFullAccess' => $hasFullAccess,
                 'hasNoAccess' => $hasNoAccess,

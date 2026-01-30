@@ -509,6 +509,7 @@ class SettingsController extends Controller
             'role' => $role,
             'link' => $link,
             'via' => 'link',
+            'invited_by' => auth()->id(),
         ]);
 
         // Try to send email notification if email settings are configured
