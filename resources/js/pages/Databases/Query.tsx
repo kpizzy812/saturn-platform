@@ -37,10 +37,11 @@ interface Props {
     savedQueries?: SavedQuery[];
 }
 
-// Local storage key for query history
+// Local storage keys
 const HISTORY_KEY = 'saturn_query_history';
+const SAVED_QUERIES_KEY = 'saturn_saved_queries';
 
-export default function DatabaseQuery({ database, databases = [], queryHistory: initialHistory = [], savedQueries = [] }: Props) {
+export default function DatabaseQuery({ database, databases = [], queryHistory: initialHistory = [], savedQueries: initialSavedQueries = [] }: Props) {
     const { addToast } = useToast();
     const [currentQuery, setCurrentQuery] = useState('SELECT 1;');
     const [isExecuting, setIsExecuting] = useState(false);
@@ -50,13 +51,20 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
     const [showSaved, setShowSaved] = useState(false);
     const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
     const [localHistory, setLocalHistory] = useState<QueryHistory[]>([]);
+    const [localSavedQueries, setLocalSavedQueries] = useState<SavedQuery[]>([]);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [saveQueryName, setSaveQueryName] = useState('');
 
     // Load history from localStorage on mount
     useEffect(() => {
         try {
-            const stored = localStorage.getItem(`${HISTORY_KEY}_${database.uuid}`);
-            if (stored) {
-                setLocalHistory(JSON.parse(stored));
+            const storedHistory = localStorage.getItem(`${HISTORY_KEY}_${database.uuid}`);
+            if (storedHistory) {
+                setLocalHistory(JSON.parse(storedHistory));
+            }
+            const storedSaved = localStorage.getItem(`${SAVED_QUERIES_KEY}_${database.uuid}`);
+            if (storedSaved) {
+                setLocalSavedQueries(JSON.parse(storedSaved));
             }
         } catch {
             // Ignore parse errors
@@ -84,6 +92,49 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
             return updated;
         });
     }, [database.uuid]);
+
+    // Save query to local storage
+    const saveQuery = useCallback(() => {
+        if (!currentQuery.trim() || !saveQueryName.trim()) {
+            addToast('error', 'Please enter a name for the query');
+            return;
+        }
+
+        const newSavedQuery: SavedQuery = {
+            id: Date.now().toString(),
+            name: saveQueryName.trim(),
+            query: currentQuery,
+            createdAt: new Date().toISOString(),
+        };
+
+        setLocalSavedQueries(prev => {
+            const updated = [newSavedQuery, ...prev];
+            try {
+                localStorage.setItem(`${SAVED_QUERIES_KEY}_${database.uuid}`, JSON.stringify(updated));
+            } catch {
+                // Ignore storage errors
+            }
+            return updated;
+        });
+
+        addToast('success', `Query "${saveQueryName}" saved successfully`);
+        setShowSaveModal(false);
+        setSaveQueryName('');
+    }, [currentQuery, saveQueryName, database.uuid, addToast]);
+
+    // Delete saved query
+    const deleteSavedQuery = useCallback((id: string) => {
+        setLocalSavedQueries(prev => {
+            const updated = prev.filter(q => q.id !== id);
+            try {
+                localStorage.setItem(`${SAVED_QUERIES_KEY}_${database.uuid}`, JSON.stringify(updated));
+            } catch {
+                // Ignore storage errors
+            }
+            return updated;
+        });
+        addToast('success', 'Query deleted');
+    }, [database.uuid, addToast]);
 
     const executeQuery = async () => {
         if (!currentQuery.trim()) return;
@@ -408,30 +459,51 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
                             </button>
                             {showSaved && (
                                 <div className="space-y-2">
-                                    {savedQueries.length === 0 ? (
+                                    {localSavedQueries.length === 0 ? (
                                         <p className="py-4 text-center text-xs text-foreground-muted">No saved queries yet</p>
                                     ) : (
-                                        savedQueries.map((item) => (
-                                            <button
+                                        localSavedQueries.map((item) => (
+                                            <div
                                                 key={item.id}
-                                                onClick={() => setCurrentQuery(item.query)}
-                                                className="w-full rounded-lg border border-border/50 bg-background-secondary/50 p-2 text-left transition-colors hover:bg-background-secondary"
+                                                className="group relative rounded-lg border border-border/50 bg-background-secondary/50 p-2 transition-colors hover:bg-background-secondary"
                                             >
-                                                <div className="mb-1 flex items-center justify-between">
-                                                    <span className="text-xs font-medium text-foreground">
-                                                        {item.name}
-                                                    </span>
-                                                </div>
-                                                <p className="line-clamp-2 font-mono text-xs text-foreground-muted">
-                                                    {item.query}
-                                                </p>
-                                            </button>
+                                                <button
+                                                    onClick={() => setCurrentQuery(item.query)}
+                                                    className="w-full text-left"
+                                                >
+                                                    <div className="mb-1 flex items-center justify-between pr-6">
+                                                        <span className="text-xs font-medium text-foreground">
+                                                            {item.name}
+                                                        </span>
+                                                    </div>
+                                                    <p className="line-clamp-2 font-mono text-xs text-foreground-muted">
+                                                        {item.query}
+                                                    </p>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        deleteSavedQuery(item.id);
+                                                    }}
+                                                    className="absolute right-2 top-2 rounded p-1 text-foreground-muted opacity-0 transition-opacity hover:bg-danger/20 hover:text-danger group-hover:opacity-100"
+                                                    title="Delete saved query"
+                                                >
+                                                    <Icons.Trash2 className="h-3 w-3" />
+                                                </button>
+                                            </div>
                                         ))
                                     )}
                                     <Button
                                         variant="secondary"
                                         size="sm"
                                         className="w-full"
+                                        onClick={() => {
+                                            if (!currentQuery.trim()) {
+                                                addToast('error', 'Write a query first');
+                                                return;
+                                            }
+                                            setShowSaveModal(true);
+                                        }}
                                     >
                                         <Icons.Plus className="mr-1.5 h-3.5 w-3.5" />
                                         Save Current Query
@@ -463,6 +535,65 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
                     </div>
                 </div>
             </div>
+
+            {/* Save Query Modal */}
+            {showSaveModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-xl">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-foreground">Save Query</h3>
+                            <button
+                                onClick={() => {
+                                    setShowSaveModal(false);
+                                    setSaveQueryName('');
+                                }}
+                                className="rounded p-1 text-foreground-muted hover:bg-background-secondary hover:text-foreground"
+                            >
+                                <Icons.X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                    Query Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={saveQueryName}
+                                    onChange={(e) => setSaveQueryName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && saveQuery()}
+                                    placeholder="e.g., Get all users, Monthly report..."
+                                    className="w-full rounded-lg border border-border bg-background-secondary px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    autoFocus
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-sm font-medium text-foreground-muted">
+                                    Query Preview
+                                </label>
+                                <pre className="max-h-32 overflow-auto rounded-lg border border-border bg-background-secondary p-3 font-mono text-xs text-foreground-muted">
+                                    {currentQuery}
+                                </pre>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setShowSaveModal(false);
+                                        setSaveQueryName('');
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button onClick={saveQuery} disabled={!saveQueryName.trim()}>
+                                    <Icons.Save className="mr-1.5 h-4 w-4" />
+                                    Save Query
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 }
