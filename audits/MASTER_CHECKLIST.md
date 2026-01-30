@@ -34,13 +34,13 @@
 | Webhooks (GitHub, GitLab, etc.) | 🟡 High | [backend/webhooks.md](backend/webhooks.md) | [ ] |
 | Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [ ] |
 | File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
-| Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [ ] |
+| Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [🔍] 4 critical found |
 | **Frontend** ||||
 | XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [ ] |
 | API Calls & Data Handling | 🟡 High | [frontend/api-calls.md](frontend/api-calls.md) | [ ] |
 | Authentication Flow | 🔴 Critical | [frontend/authentication-flow.md](frontend/authentication-flow.md) | [ ] |
 | Input Validation | 🟡 High | [frontend/input-validation.md](frontend/input-validation.md) | [ ] |
-| Sensitive Data Exposure | 🔴 Critical | [frontend/sensitive-data.md](frontend/sensitive-data.md) | [ ] |
+| Sensitive Data Exposure | 🔴 Critical | [frontend/sensitive-data.md](frontend/sensitive-data.md) | [🔴] 2 critical found |
 | **Infrastructure** ||||
 | Docker Security | 🔴 Critical | [infrastructure/docker-security.md](infrastructure/docker-security.md) | [ ] |
 | Secrets Management | 🔴 Critical | [infrastructure/secrets-management.md](infrastructure/secrets-management.md) | [ ] |
@@ -59,9 +59,9 @@
 
 ```
 Total Hypotheses: 258
-Checked: 85+
-Issues Found: 30+
-Critical: 20+
+Checked: 105+
+Issues Found: 38+
+Critical: 26+
 Fixed: 7
 ```
 
@@ -170,6 +170,32 @@ Fixed: 7
     - Используется `$request->all()` без валидации
     - **Severity: HIGH**
 
+14. **[ENV-006] EnvironmentVariablePolicy полностью отключена** - [environment-variables.md](backend/environment-variables.md) 🆕
+    - ВСЕ методы возвращают `true`
+    - Любой user может view/update/delete ЛЮБОЙ env var
+    - **Severity: CRITICAL**
+
+15. **[ENV-007] SharedEnvironmentVariablePolicy частично отключена** - [environment-variables.md](backend/environment-variables.md) 🆕
+    - Проверка team_id закомментирована для update/delete
+    - **Severity: CRITICAL**
+
+16. **[ENV-017] Injection через env variable name** - [environment-variables.md](backend/environment-variables.md) 🆕
+    - Файлы: `EnvironmentVariable.php:243`, `HandlesRuntimeEnvGeneration.php:119,198`
+    - Недостаточная валидация key - только `trim()` и `replace(' ', '_')`
+    - Возможно внедрение newlines, системных переменных
+    - **Severity: HIGH**
+
+17. **[SENS-009] Env values передаются в Inertia props** - [sensitive-data.md](frontend/sensitive-data.md) 🆕
+    - Файл: `ApplicationController.php:519`
+    - Все env var values видны в HTML page source
+    - `is_shown_once` НЕ проверяется при передаче
+    - **Severity: CRITICAL - data exposure**
+
+18. **[SENS-013] Export env vars без warning** - [sensitive-data.md](frontend/sensitive-data.md) 🆕
+    - Файл: `Variables.tsx:94-109`
+    - Plain text export без предупреждения о sensitive data
+    - **Severity: HIGH**
+
 ### ⚠️ Важные
 
 1. **[SSH-017] Host key verification отключена** - [ssh-operations.md](backend/ssh-operations.md)
@@ -209,6 +235,11 @@ Fixed: 7
 | API-011 | CORS открыт для всех | `config/cors.php` | ⏳ Pending |
 | API-033 | Webhook сигнатуры не проверяются | `app/Http/Controllers/Webhook/*` | ⏳ **СРОЧНО** |
 | API-015 | Mass Assignment уязвимость | `EnvironmentVariable.php`, Controllers | ⏳ Pending |
+| ENV-006 | EnvironmentVariablePolicy отключена | `app/Policies/EnvironmentVariablePolicy.php` | ⏳ **СРОЧНО** |
+| ENV-007 | SharedEnvironmentVariablePolicy отключена | `app/Policies/SharedEnvironmentVariablePolicy.php` | ⏳ **СРОЧНО** |
+| ENV-017 | Env key injection | `EnvironmentVariable.php`, `HandlesRuntimeEnvGeneration.php` | ⏳ Pending |
+| SENS-009 | Env values в Inertia props | `ApplicationController.php:519` | ⏳ **СРОЧНО** |
+| SENS-013 | Export без warning | `Variables.tsx:94-109` | ⏳ Pending |
 
 ---
 
