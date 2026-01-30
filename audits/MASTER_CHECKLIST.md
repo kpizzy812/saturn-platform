@@ -31,7 +31,7 @@
 | Авторизация & Policies | 🔴 Critical | [backend/authorization.md](backend/authorization.md) | [🔴] **КРИТИЧЕСКОЕ! 10+ policies отключены** |
 | API Security (89+ endpoints) | 🔴 Critical | [backend/api-security.md](backend/api-security.md) | [🔍] 7 critical found |
 | SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 4 critical found |
-| Webhooks (GitHub, GitLab, etc.) | 🟡 High | [backend/webhooks.md](backend/webhooks.md) | [ ] |
+| Webhooks (GitHub, GitLab, etc.) | 🔴 Critical | [backend/webhooks.md](backend/webhooks.md) | [🔧] 5 critical FIXED |
 | Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [ ] |
 | File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
 | Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [🔍] 4 critical found |
@@ -59,10 +59,10 @@
 
 ```
 Total Hypotheses: 258
-Checked: 105+
-Issues Found: 38+
-Critical: 26+
-Fixed: 7
+Checked: 125+
+Issues Found: 43+
+Critical: 31+
+Fixed: 18
 ```
 
 ### Breakdown по файлам
@@ -159,10 +159,10 @@ Fixed: 7
     - `'allowed_origins' => ['*']`
     - **Severity: HIGH - CSRF атаки**
 
-12. **[API-033] Webhook сигнатуры НЕ проверяются** - [api-security.md](backend/api-security.md) 🆕
-    - GitHub: пропускается в dev
-    - GitLab: только проверка на не-пустой токен
-    - Bitbucket: алгоритм берется из входных данных
+12. **[API-033] Webhook сигнатуры НЕ проверяются** - [api-security.md](backend/api-security.md) ✅ FIXED
+    - GitHub: пропускается в dev → Исправлено
+    - GitLab: только проверка на не-пустой токен → Используется hash_equals
+    - Bitbucket: алгоритм берется из входных данных → Валидация сигнатуры
     - **Severity: CRITICAL - поддельные deployments**
 
 13. **[API-015/017] Mass Assignment через $request->all()** - [api-security.md](backend/api-security.md) 🆕
@@ -170,30 +170,29 @@ Fixed: 7
     - Используется `$request->all()` без валидации
     - **Severity: HIGH**
 
-14. **[ENV-006] EnvironmentVariablePolicy полностью отключена** - [environment-variables.md](backend/environment-variables.md) 🆕
-    - ВСЕ методы возвращают `true`
-    - Любой user может view/update/delete ЛЮБОЙ env var
+14. **[ENV-006] EnvironmentVariablePolicy полностью отключена** - [environment-variables.md](backend/environment-variables.md) ✅ FIXED
+    - ВСЕ методы возвращают `true` → Добавлена team-based authorization
+    - Любой user может view/update/delete ЛЮБОЙ env var → Проверка через resourceable->team()
     - **Severity: CRITICAL**
 
-15. **[ENV-007] SharedEnvironmentVariablePolicy частично отключена** - [environment-variables.md](backend/environment-variables.md) 🆕
-    - Проверка team_id закомментирована для update/delete
+15. **[ENV-007] SharedEnvironmentVariablePolicy частично отключена** - [environment-variables.md](backend/environment-variables.md) ✅ FIXED
+    - Проверка team_id закомментирована → Добавлена belongsToTeam() проверка
     - **Severity: CRITICAL**
 
-16. **[ENV-017] Injection через env variable name** - [environment-variables.md](backend/environment-variables.md) 🆕
-    - Файлы: `EnvironmentVariable.php:243`, `HandlesRuntimeEnvGeneration.php:119,198`
-    - Недостаточная валидация key - только `trim()` и `replace(' ', '_')`
-    - Возможно внедрение newlines, системных переменных
+16. **[ENV-017] Injection через env variable name** - [environment-variables.md](backend/environment-variables.md) ✅ FIXED
+    - Файлы: `EnvironmentVariable.php`, `SharedEnvironmentVariable.php`
+    - Добавлена POSIX-валидация ключей и список PROTECTED_KEYS
+    - Блокируются: PATH, LD_PRELOAD, LD_LIBRARY_PATH и др.
     - **Severity: HIGH**
 
-17. **[SENS-009] Env values передаются в Inertia props** - [sensitive-data.md](frontend/sensitive-data.md) 🆕
+17. **[SENS-009] Env values передаются в Inertia props** - [sensitive-data.md](frontend/sensitive-data.md) ✅ FIXED
     - Файл: `ApplicationController.php:519`
-    - Все env var values видны в HTML page source
-    - `is_shown_once` НЕ проверяется при передаче
+    - Добавлена проверка is_shown_once - скрытые значения не передаются
     - **Severity: CRITICAL - data exposure**
 
-18. **[SENS-013] Export env vars без warning** - [sensitive-data.md](frontend/sensitive-data.md) 🆕
-    - Файл: `Variables.tsx:94-109`
-    - Plain text export без предупреждения о sensitive data
+18. **[SENS-013] Export env vars без warning** - [sensitive-data.md](frontend/sensitive-data.md) ✅ FIXED
+    - Файл: `Variables.tsx`
+    - Добавлен confirmation dialog с предупреждением о sensitive data
     - **Severity: HIGH**
 
 ### ⚠️ Важные
@@ -233,13 +232,18 @@ Fixed: 7
 | AUTHZ-ALL | 10+ Policies отключены | `app/Policies/*.php` | ⏳ **СРОЧНО** |
 | AUTH-015 | API Tokens никогда не истекают | `config/sanctum.php` | ⏳ Pending |
 | API-011 | CORS открыт для всех | `config/cors.php` | ⏳ Pending |
-| API-033 | Webhook сигнатуры не проверяются | `app/Http/Controllers/Webhook/*` | ⏳ **СРОЧНО** |
+| API-033 | Webhook сигнатуры не проверяются | `app/Http/Controllers/Webhook/*` | ✅ Fixed |
 | API-015 | Mass Assignment уязвимость | `EnvironmentVariable.php`, Controllers | ⏳ Pending |
-| ENV-006 | EnvironmentVariablePolicy отключена | `app/Policies/EnvironmentVariablePolicy.php` | ⏳ **СРОЧНО** |
-| ENV-007 | SharedEnvironmentVariablePolicy отключена | `app/Policies/SharedEnvironmentVariablePolicy.php` | ⏳ **СРОЧНО** |
-| ENV-017 | Env key injection | `EnvironmentVariable.php`, `HandlesRuntimeEnvGeneration.php` | ⏳ Pending |
-| SENS-009 | Env values в Inertia props | `ApplicationController.php:519` | ⏳ **СРОЧНО** |
-| SENS-013 | Export без warning | `Variables.tsx:94-109` | ⏳ Pending |
+| ENV-006 | EnvironmentVariablePolicy отключена | `app/Policies/EnvironmentVariablePolicy.php` | ✅ Fixed |
+| ENV-007 | SharedEnvironmentVariablePolicy отключена | `app/Policies/SharedEnvironmentVariablePolicy.php` | ✅ Fixed |
+| ENV-017 | Env key injection | `EnvironmentVariable.php`, `SharedEnvironmentVariable.php` | ✅ Fixed |
+| SENS-009 | Env values в Inertia props | `ApplicationController.php:519` | ✅ Fixed |
+| SENS-013 | Export без warning | `Variables.tsx:94-109` | ✅ Fixed |
+| WH-001-F | Webhook signature bypass в dev mode | `Github.php`, `Bitbucket.php`, `Gitea.php` | ✅ Fixed |
+| WH-002-F | GitLab MR без проверки автора | `Gitlab.php` | ✅ Fixed |
+| WH-003-F | Bitbucket/Gitea PR без проверки автора | `Bitbucket.php`, `Gitea.php` | ✅ Fixed |
+| WH-004-F | GitLab token non-timing-safe | `Gitlab.php` | ✅ Fixed |
+| WH-005-F | Stripe error message exposure | `Stripe.php` | ✅ Fixed |
 
 ---
 
