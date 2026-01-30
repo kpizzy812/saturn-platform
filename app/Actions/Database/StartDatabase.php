@@ -2,6 +2,8 @@
 
 namespace App\Actions\Database;
 
+use App\Events\DatabaseStatusChanged;
+use App\Jobs\ServerCheckJob;
 use App\Models\StandaloneClickhouse;
 use App\Models\StandaloneDragonfly;
 use App\Models\StandaloneKeydb;
@@ -50,9 +52,20 @@ class StartDatabase
                 $activity = StartClickhouse::run($database);
                 break;
         }
+
+        // Dispatch WebSocket event immediately so UI shows 'starting' status
+        $teamId = $database->environment?->project?->team?->id;
+        if ($teamId) {
+            DatabaseStatusChanged::dispatch($database->id, 'starting', $teamId);
+        }
+
         if ($database->is_public && $database->public_port) {
             StartDatabaseProxy::dispatch($database);
         }
+
+        // Schedule a delayed status check to update the database status in real-time
+        // after the container has started and passed its healthcheck
+        ServerCheckJob::dispatch($server)->delay(now()->addSeconds(20));
 
         return $activity;
     }

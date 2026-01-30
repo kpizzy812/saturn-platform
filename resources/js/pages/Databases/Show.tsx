@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -16,6 +16,39 @@ import { ClickHousePanel } from '@/components/features/databases/ClickHousePanel
 
 interface Props {
     database: StandaloneDatabase;
+}
+
+// Get initial tab index from URL parameter
+function getInitialTabFromUrl(databaseType: DatabaseType): number {
+    if (typeof window === 'undefined') return 0;
+
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab')?.toLowerCase();
+
+    if (!tabParam) return 0;
+
+    // Redis-like databases have: Overview, Keys, Settings, Logs
+    const isRedisLike = ['redis', 'keydb', 'dragonfly'].includes(databaseType);
+    if (isRedisLike) {
+        const redisTabMap: Record<string, number> = {
+            'overview': 0,
+            'keys': 1,
+            'settings': 2,
+            'logs': 3,
+        };
+        return redisTabMap[tabParam] ?? 0;
+    }
+
+    // SQL databases have different tab structures
+    // PostgreSQL: Overview, Query, Tables, Settings, Logs
+    const sqlTabMap: Record<string, number> = {
+        'overview': 0,
+        'query': 1,
+        'tables': 2,
+        'settings': 3,
+        'logs': 4,
+    };
+    return sqlTabMap[tabParam] ?? 0;
 }
 
 const databaseTypeConfig: Record<DatabaseType, { color: string; bgColor: string; displayName: string }> = {
@@ -60,22 +93,25 @@ export default function DatabaseShow({ database }: Props) {
         });
     };
 
+    // Get initial tab index from URL
+    const initialTab = useMemo(() => getInitialTabFromUrl(database.database_type), [database.database_type]);
+
     // Get database-specific panel based on type
     const getDatabasePanel = (type: DatabaseType) => {
         switch (type) {
             case 'postgresql':
-                return <PostgreSQLPanel database={database} />;
+                return <PostgreSQLPanel database={database} initialTab={initialTab} />;
             case 'mysql':
             case 'mariadb':
-                return <MySQLPanel database={database} />;
+                return <MySQLPanel database={database} initialTab={initialTab} />;
             case 'mongodb':
-                return <MongoDBPanel database={database} />;
+                return <MongoDBPanel database={database} initialTab={initialTab} />;
             case 'redis':
             case 'keydb':
             case 'dragonfly':
-                return <RedisPanel database={database} />;
+                return <RedisPanel database={database} initialTab={initialTab} />;
             case 'clickhouse':
-                return <ClickHousePanel database={database} />;
+                return <ClickHousePanel database={database} initialTab={initialTab} />;
             default:
                 // Fallback to generic tabs for unsupported types
                 return <Tabs tabs={[
@@ -83,7 +119,7 @@ export default function DatabaseShow({ database }: Props) {
                     { label: 'Metrics', content: <MetricsTab database={database} /> },
                     { label: 'Backups', content: <BackupsTab database={database} /> },
                     { label: 'Settings', content: <SettingsTab database={database} /> },
-                ]} />;
+                ]} defaultIndex={initialTab} />;
         }
     };
 

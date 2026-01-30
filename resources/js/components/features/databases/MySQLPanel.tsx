@@ -8,9 +8,10 @@ import type { StandaloneDatabase } from '@/types';
 
 interface Props {
     database: StandaloneDatabase;
+    initialTab?: number;
 }
 
-export function MySQLPanel({ database }: Props) {
+export function MySQLPanel({ database, initialTab = 0 }: Props) {
     const tabs = [
         { label: 'Overview', content: <OverviewTab database={database} /> },
         { label: 'Users', content: <UsersTab database={database} /> },
@@ -18,7 +19,7 @@ export function MySQLPanel({ database }: Props) {
         { label: 'Logs', content: <LogsTab database={database} /> },
     ];
 
-    return <Tabs tabs={tabs} />;
+    return <Tabs tabs={tabs} defaultIndex={initialTab} />;
 }
 
 function OverviewTab({ database }: { database: StandaloneDatabase }) {

@@ -24,6 +24,9 @@ class StartMariadb
     {
         $this->database = $database;
 
+        // Update status to 'starting' immediately so UI reflects the change
+        $this->database->update(['status' => 'starting']);
+
         $container_name = $this->database->uuid;
         $this->configuration_dir = database_configuration_dir().'/'.$container_name;
 

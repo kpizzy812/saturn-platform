@@ -71,7 +71,7 @@ interface ProjectCanvasProps {
     onQuickDeploy?: (uuid: string) => void;
     onQuickOpenUrl?: (url: string) => void;
     onQuickViewLogs?: (uuid: string, name: string, type: 'application' | 'database') => void;
-    onQuickBrowseTables?: (uuid: string) => void;
+    onQuickBrowseData?: (uuid: string, databaseType: string) => void;
 }
 
 // Map database_type to API target_type
@@ -202,7 +202,7 @@ function ProjectCanvasInner({
     onQuickDeploy,
     onQuickOpenUrl,
     onQuickViewLogs,
-    onQuickBrowseTables,
+    onQuickBrowseData,
 }: ProjectCanvasProps) {
     const reactFlowInstance = useReactFlow();
     const { addToast } = useToast();
@@ -305,13 +305,13 @@ function ProjectCanvasInner({
                     volume: `${db.name.toLowerCase().replace(/\s+/g, '-')}-volume`,
                     uuid: db.uuid,
                     onQuickViewLogs: onQuickViewLogs ? () => onQuickViewLogs(db.uuid, db.name, 'database') : undefined,
-                    onQuickBrowseTables: onQuickBrowseTables ? () => onQuickBrowseTables(db.uuid) : undefined,
+                    onQuickBrowseData: onQuickBrowseData ? () => onQuickBrowseData(db.uuid, db.database_type) : undefined,
                 },
             });
         });
 
         return nodes;
-    }, [applications, databases, savedPositions, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs, onQuickBrowseTables]);
+    }, [applications, databases, savedPositions, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs, onQuickBrowseData]);
 
     // Convert resource links to edges, merging bidirectional app-to-app pairs into one edge
     const linkedEdges = useMemo(() => {

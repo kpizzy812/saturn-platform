@@ -16,9 +16,10 @@ import type { StandaloneDatabase } from '@/types';
 
 interface Props {
     database: StandaloneDatabase;
+    initialTab?: number;
 }
 
-export function PostgreSQLPanel({ database }: Props) {
+export function PostgreSQLPanel({ database, initialTab = 0 }: Props) {
     const tabs = [
         { label: 'Overview', content: <OverviewTab database={database} /> },
         { label: 'Extensions', content: <ExtensionsTab database={database} /> },
@@ -27,7 +28,7 @@ export function PostgreSQLPanel({ database }: Props) {
         { label: 'Logs', content: <LogsTab database={database} /> },
     ];
 
-    return <Tabs tabs={tabs} />;
+    return <Tabs tabs={tabs} defaultIndex={initialTab} />;
 }
 
 function OverviewTab({ database }: { database: StandaloneDatabase }) {

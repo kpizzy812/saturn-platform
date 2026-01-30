@@ -24,6 +24,9 @@ class StartMongodb
     {
         $this->database = $database;
 
+        // Update status to 'starting' immediately so UI reflects the change
+        $this->database->update(['status' => 'starting']);
+
         $startCommand = 'mongod';
 
         $container_name = $this->database->uuid;

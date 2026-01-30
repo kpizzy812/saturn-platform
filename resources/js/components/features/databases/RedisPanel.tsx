@@ -20,9 +20,10 @@ import type { StandaloneDatabase } from '@/types';
 
 interface Props {
     database: StandaloneDatabase;
+    initialTab?: number;
 }
 
-export function RedisPanel({ database }: Props) {
+export function RedisPanel({ database, initialTab = 0 }: Props) {
     const tabs = [
         { label: 'Overview', content: <OverviewTab database={database} /> },
         { label: 'Keys', content: <KeysTab database={database} /> },
@@ -30,7 +31,7 @@ export function RedisPanel({ database }: Props) {
         { label: 'Logs', content: <LogsTab database={database} /> },
     ];
 
-    return <Tabs tabs={tabs} />;
+    return <Tabs tabs={tabs} defaultIndex={initialTab} />;
 }
 
 function OverviewTab({ database }: { database: StandaloneDatabase }) {

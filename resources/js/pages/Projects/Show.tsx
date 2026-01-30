@@ -650,8 +650,18 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         setLogsViewerOpen(true);
     }, []);
 
-    const handleQuickBrowseTables = useCallback((uuid: string) => {
-        router.visit(`/databases/${uuid}/tables?tab=data`);
+    const handleQuickBrowseData = useCallback((uuid: string, databaseType: string) => {
+        // Redis-like databases go to Keys tab, SQL databases go to Tables
+        const type = databaseType?.toLowerCase() || '';
+        const isRedisLike = type.includes('redis') || type.includes('keydb') || type.includes('dragonfly');
+
+        if (isRedisLike) {
+            // Navigate to database page with Keys tab active
+            router.visit(`/databases/${uuid}?tab=keys`);
+        } else {
+            // Navigate to table browser for SQL databases
+            router.visit(`/databases/${uuid}/tables?tab=data`);
+        }
     }, []);
 
     // Canvas zoom controls
@@ -1049,7 +1059,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 onQuickDeploy={handleQuickDeploy}
                                 onQuickOpenUrl={handleQuickOpenUrl}
                                 onQuickViewLogs={handleQuickViewLogs}
-                                onQuickBrowseTables={handleQuickBrowseTables}
+                                onQuickBrowseData={handleQuickBrowseData}
                             />
                         )}
 
