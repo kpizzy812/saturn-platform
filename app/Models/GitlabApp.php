@@ -4,6 +4,12 @@ namespace App\Models;
 
 class GitlabApp extends BaseModel
 {
+    // Security: Encrypt secrets at rest
+    protected $casts = [
+        'webhook_token' => 'encrypted',
+        'app_secret' => 'encrypted',
+    ];
+
     protected $hidden = [
         'webhook_token',
         'app_secret',

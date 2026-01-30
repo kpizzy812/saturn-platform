@@ -1,4 +1,5 @@
 import * as React from 'react';
+import DOMPurify from 'dompurify';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Link, router } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -403,12 +404,12 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                                                         ? 'bg-primary text-primary-foreground'
                                                         : 'bg-background text-foreground hover:bg-accent'
                                                 }`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(link.label) }}
                                             />
                                         ) : (
                                             <span
                                                 className="rounded-md px-3 py-2 text-sm text-foreground-muted"
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(link.label) }}
                                             />
                                         )}
                                     </React.Fragment>

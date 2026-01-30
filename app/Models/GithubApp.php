@@ -14,6 +14,9 @@ class GithubApp extends BaseModel
         'is_public' => 'boolean',
         'is_system_wide' => 'boolean',
         'type' => 'string',
+        // Security: Encrypt secrets at rest
+        'client_secret' => 'encrypted',
+        'webhook_secret' => 'encrypted',
     ];
 
     protected $hidden = [
