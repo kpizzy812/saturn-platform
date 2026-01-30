@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge, BranchSelector } from '@/components/ui';
-import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle } from 'lucide-react';
+import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle, Sparkles } from 'lucide-react';
 import { useGitBranches } from '@/hooks/useGitBranches';
+import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
 import type { Project, Environment, Server } from '@/types';
 
 interface Props {
@@ -31,7 +32,7 @@ interface FormData {
 }
 
 export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false }: Props) {
-    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [step, setStep] = useState<1 | 2 | 3 | 'analyze'>(1);
     const [projectList, setProjectList] = useState<Project[]>(projects);
     const [showCreateProject, setShowCreateProject] = useState(needsProject);
     const [newProjectName, setNewProjectName] = useState('');
@@ -39,6 +40,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     const [showCreateEnvironment, setShowCreateEnvironment] = useState(false);
     const [newEnvironmentName, setNewEnvironmentName] = useState('');
     const [isCreatingEnvironment, setIsCreatingEnvironment] = useState(false);
+    const [useMonorepoAnalyzer, setUseMonorepoAnalyzer] = useState(false);
 
     // Default to localhost server (platform's master server)
     const defaultServerUuid = localhost?.uuid || userServers[0]?.uuid || '';
@@ -177,6 +179,28 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         setStep(2);
     };
 
+    const handleMonorepoComplete = (result: { applications: Array<{ uuid: string; name: string }>; monorepo_group_id: string | null }) => {
+        // Redirect to the first application or to the project canvas
+        if (result.applications.length > 0) {
+            router.visit(`/applications/${result.applications[0].uuid}`);
+        } else {
+            router.visit('/applications');
+        }
+    };
+
+    const handleStartAnalysis = () => {
+        if (!formData.git_repository) {
+            setErrors({ git_repository: 'Repository URL is required for analysis' });
+            return;
+        }
+        if (!formData.project_uuid || !formData.environment_uuid) {
+            setErrors({ project_uuid: 'Please select project and environment first' });
+            return;
+        }
+        setUseMonorepoAnalyzer(true);
+        setStep('analyze');
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -225,12 +249,18 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                 </div>
 
                 {/* Progress Steps */}
-                <div className="mb-8 flex items-center justify-center gap-2">
-                    <StepIndicator number={1} label="Source" active={step >= 1} completed={step > 1} />
+                <div className="mb-8 flex items-center justify-center gap-2 flex-wrap">
+                    <StepIndicator number={1} label="Source" active={step === 1 || step === 2 || step === 3 || step === 'analyze'} completed={step !== 1} />
                     <ChevronRight className="h-4 w-4 text-foreground-subtle" />
-                    <StepIndicator number={2} label="Configure" active={step >= 2} completed={step > 2} />
+                    <StepIndicator number={2} label="Configure" active={step === 2 || step === 3 || step === 'analyze'} completed={step === 3 || step === 'analyze'} />
                     <ChevronRight className="h-4 w-4 text-foreground-subtle" />
-                    <StepIndicator number={3} label="Deploy" active={step >= 3} completed={false} />
+                    {useMonorepoAnalyzer ? (
+                        <>
+                            <StepIndicator number={3} label="Analyze" active={step === 'analyze'} completed={false} />
+                        </>
+                    ) : (
+                        <StepIndicator number={3} label="Deploy" active={step === 3} completed={false} />
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit}>
@@ -550,23 +580,72 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex items-center justify-between pt-4 border-t border-border">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setStep(1)}
-                                    >
-                                        Back
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        onClick={() => setStep(3)}
-                                    >
-                                        Continue
-                                    </Button>
+                                <div className="flex flex-col gap-4 pt-4 border-t border-border">
+                                    {/* Smart Deploy Option */}
+                                    {formData.source_type !== 'docker' && formData.git_repository && (
+                                        <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
+                                            <div className="flex items-start gap-3">
+                                                <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-foreground">Smart Deploy (Recommended)</p>
+                                                    <p className="text-sm text-foreground-muted mt-1">
+                                                        Automatically detect monorepo structure, frameworks, databases and create everything with one click.
+                                                    </p>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        className="mt-3"
+                                                        onClick={handleStartAnalysis}
+                                                    >
+                                                        <Sparkles className="h-4 w-4 mr-1" />
+                                                        Analyze & Auto-Deploy
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setStep(1)}
+                                        >
+                                            Back
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            onClick={() => setStep(3)}
+                                        >
+                                            Manual Setup
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
+                    )}
+
+                    {/* Step: Analyze (Monorepo) */}
+                    {step === 'analyze' && (
+                        <div className="space-y-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setUseMonorepoAnalyzer(false);
+                                    setStep(2);
+                                }}
+                            >
+                                ← Back to Configuration
+                            </Button>
+                            <MonorepoAnalyzer
+                                gitRepository={formData.git_repository}
+                                gitBranch={formData.git_branch}
+                                environmentUuid={formData.environment_uuid}
+                                destinationUuid={formData.server_uuid}
+                                onComplete={handleMonorepoComplete}
+                            />
+                        </div>
                     )}
 
                     {/* Step 3: Review & Deploy */}
