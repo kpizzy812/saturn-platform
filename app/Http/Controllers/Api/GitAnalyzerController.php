@@ -247,6 +247,12 @@ class GitAnalyzerController extends Controller
             );
         }
 
+        // Filter app dependencies to only include enabled apps
+        $filteredAppDeps = array_filter(
+            $analysis->appDependencies,
+            fn ($dep) => in_array($dep->appName, $enabledApps, true)
+        );
+
         // Return new AnalysisResult with filtered data
         return new AnalysisResult(
             monorepo: $analysis->monorepo,
@@ -254,6 +260,9 @@ class GitAnalyzerController extends Controller
             databases: array_values($filteredDbs),
             services: $analysis->services,
             envVariables: $analysis->envVariables,
+            appDependencies: array_values($filteredAppDeps),
+            dockerComposeServices: $analysis->dockerComposeServices,
+            ciConfig: $analysis->ciConfig,
         );
     }
 }
