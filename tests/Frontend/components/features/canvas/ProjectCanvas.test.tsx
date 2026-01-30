@@ -756,4 +756,167 @@ describe('ProjectCanvas', () => {
             expect(container.querySelector('[data-testid="react-flow"]')).toBeInTheDocument();
         });
     });
+
+    describe('Real-time Status Updates', () => {
+        it('updates node status when applications prop changes', () => {
+            // Use only applications, no databases to avoid multiple "Online" texts
+            const singleApp = [mockApplications[0]]; // running status
+
+            const { rerender } = render(
+                <ProjectCanvas
+                    applications={singleApp}
+                    databases={[]}
+                    services={[]}
+                />
+            );
+
+            // Initial render - app is running (shows "Online")
+            expect(screen.getByText('Online')).toBeInTheDocument();
+
+            // Update application status
+            const updatedApplications = singleApp.map((app) => ({
+                ...app,
+                status: 'deploying',
+            }));
+
+            rerender(
+                <ProjectCanvas
+                    applications={updatedApplications}
+                    databases={[]}
+                    services={[]}
+                />
+            );
+
+            // After update - app should show deploying status
+            expect(screen.getByText('deploying')).toBeInTheDocument();
+        });
+
+        it('updates database node status when databases prop changes', () => {
+            // Use only one database
+            const singleDb = [mockDatabases[0]]; // running status
+
+            const { rerender } = render(
+                <ProjectCanvas
+                    applications={[]}
+                    databases={singleDb}
+                    services={[]}
+                />
+            );
+
+            // Initial render - database is running
+            expect(screen.getByText('Online')).toBeInTheDocument();
+
+            // Update database status
+            const updatedDatabases = singleDb.map((db) => ({
+                ...db,
+                status: 'starting',
+            }));
+
+            rerender(
+                <ProjectCanvas
+                    applications={[]}
+                    databases={updatedDatabases}
+                    services={[]}
+                />
+            );
+
+            // After update - db should show starting status
+            expect(screen.getByText('starting')).toBeInTheDocument();
+        });
+
+        it('preserves node positions when status updates', () => {
+            const { rerender } = render(
+                <ProjectCanvas
+                    applications={mockApplications}
+                    databases={mockDatabases}
+                    services={[]}
+                />
+            );
+
+            // Get initial nodes
+            const node1 = screen.getByTestId('node-app-1');
+            const node2 = screen.getByTestId('node-app-2');
+            expect(node1).toBeInTheDocument();
+            expect(node2).toBeInTheDocument();
+
+            // Update application status
+            const updatedApplications = mockApplications.map((app) =>
+                app.id === 1 ? { ...app, status: 'deploying' } : app
+            );
+
+            rerender(
+                <ProjectCanvas
+                    applications={updatedApplications}
+                    databases={mockDatabases}
+                    services={[]}
+                />
+            );
+
+            // Nodes should still exist (not removed and re-created)
+            expect(screen.getByTestId('node-app-1')).toBeInTheDocument();
+            expect(screen.getByTestId('node-app-2')).toBeInTheDocument();
+        });
+
+        it('adds new nodes when new applications are added', () => {
+            const { rerender } = render(
+                <ProjectCanvas
+                    applications={mockApplications}
+                    databases={[]}
+                    services={[]}
+                />
+            );
+
+            // Initial render - 2 apps
+            expect(screen.getByTestId('node-app-1')).toBeInTheDocument();
+            expect(screen.getByTestId('node-app-2')).toBeInTheDocument();
+            expect(screen.queryByTestId('node-app-3')).not.toBeInTheDocument();
+
+            // Add new application
+            const newApp = {
+                id: 3,
+                name: 'new-service',
+                status: 'pending',
+                uuid: 'app-uuid-3',
+            } as Application;
+
+            rerender(
+                <ProjectCanvas
+                    applications={[...mockApplications, newApp]}
+                    databases={[]}
+                    services={[]}
+                />
+            );
+
+            // New node should appear
+            expect(screen.getByTestId('node-app-3')).toBeInTheDocument();
+            expect(screen.getByText('new-service')).toBeInTheDocument();
+        });
+
+        it('removes nodes when applications are removed', () => {
+            const { rerender } = render(
+                <ProjectCanvas
+                    applications={mockApplications}
+                    databases={[]}
+                    services={[]}
+                />
+            );
+
+            // Initial render - 2 apps
+            expect(screen.getByTestId('node-app-1')).toBeInTheDocument();
+            expect(screen.getByTestId('node-app-2')).toBeInTheDocument();
+
+            // Remove one application
+            rerender(
+                <ProjectCanvas
+                    applications={[mockApplications[0]]}
+                    databases={[]}
+                    services={[]}
+                />
+            );
+
+            // Only first app should remain
+            expect(screen.getByTestId('node-app-1')).toBeInTheDocument();
+            expect(screen.queryByTestId('node-app-2')).not.toBeInTheDocument();
+        });
+    });
 });

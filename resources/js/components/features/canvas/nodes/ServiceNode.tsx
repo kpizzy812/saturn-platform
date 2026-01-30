@@ -47,6 +47,16 @@ function QuickActionButton({ onClick, title, children }: { onClick: () => void; 
     );
 }
 
+// Custom comparison to ensure status changes trigger re-render
+const arePropsEqual = (prevProps: { data: ServiceNodeData; selected?: boolean }, nextProps: { data: ServiceNodeData; selected?: boolean }) => {
+    return (
+        prevProps.data.status === nextProps.data.status &&
+        prevProps.data.label === nextProps.data.label &&
+        prevProps.data.fqdn === nextProps.data.fqdn &&
+        prevProps.selected === nextProps.selected
+    );
+};
+
 export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
@@ -148,6 +158,6 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
             />
         </>
     );
-});
+}, arePropsEqual);
 
 ServiceNode.displayName = 'ServiceNode';

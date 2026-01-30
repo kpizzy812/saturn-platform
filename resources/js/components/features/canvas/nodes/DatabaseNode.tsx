@@ -153,6 +153,15 @@ const isRedisLike = (dbType?: string): boolean => {
     return type.includes('redis') || type.includes('keydb') || type.includes('dragonfly');
 };
 
+// Custom comparison to ensure status changes trigger re-render
+const arePropsEqual = (prevProps: { data: DatabaseNodeData; selected?: boolean }, nextProps: { data: DatabaseNodeData; selected?: boolean }) => {
+    return (
+        prevProps.data.status === nextProps.data.status &&
+        prevProps.data.label === nextProps.data.label &&
+        prevProps.selected === nextProps.selected
+    );
+};
+
 export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
@@ -260,6 +269,6 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
             />
         </>
     );
-});
+}, arePropsEqual);
 
 DatabaseNode.displayName = 'DatabaseNode';

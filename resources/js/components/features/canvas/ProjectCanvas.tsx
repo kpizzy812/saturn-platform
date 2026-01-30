@@ -438,10 +438,92 @@ function ProjectCanvasInner({
         setEdges(linkedEdges);
     }, [linkedEdges, setEdges]);
 
-    // Update nodes when applications/databases change
+    // Update node data (status, etc.) when applications/databases/services change
+    // This is more efficient than replacing all nodes - it preserves positions and only updates data
     useEffect(() => {
-        setNodes(initialNodes);
-    }, [initialNodes, setNodes]);
+        setNodes((currentNodes) => {
+            // If no existing nodes, initialize with initialNodes
+            if (currentNodes.length === 0) {
+                return initialNodes;
+            }
+
+            // Create lookup maps for quick access
+            const appMap = new Map(applications.map((app) => [`app-${app.id}`, app]));
+            const dbMap = new Map(databases.map((db) => [`db-${db.id}`, db]));
+            const svcMap = new Map(services.map((svc) => [`svc-${svc.id}`, svc]));
+
+            // Track which nodes still exist in the data
+            const existingNodeIds = new Set([
+                ...applications.map((app) => `app-${app.id}`),
+                ...databases.map((db) => `db-${db.id}`),
+                ...services.map((svc) => `svc-${svc.id}`),
+            ]);
+
+            // Update existing nodes and filter out removed ones
+            const updatedNodes = currentNodes
+                .filter((node) => existingNodeIds.has(node.id))
+                .map((node) => {
+                    const app = appMap.get(node.id);
+                    if (app) {
+                        // Only update if status actually changed
+                        if (node.data.status !== app.status) {
+                            return {
+                                ...node,
+                                data: {
+                                    ...node.data,
+                                    status: app.status,
+                                    label: app.name,
+                                    fqdn: app.fqdn,
+                                },
+                            };
+                        }
+                        return node;
+                    }
+
+                    const db = dbMap.get(node.id);
+                    if (db) {
+                        if (node.data.status !== db.status) {
+                            return {
+                                ...node,
+                                data: {
+                                    ...node.data,
+                                    status: db.status,
+                                    label: db.name,
+                                },
+                            };
+                        }
+                        return node;
+                    }
+
+                    const svc = svcMap.get(node.id);
+                    if (svc) {
+                        if (node.data.status !== (svc.status || 'unknown')) {
+                            return {
+                                ...node,
+                                data: {
+                                    ...node.data,
+                                    status: svc.status || 'unknown',
+                                    label: svc.name,
+                                },
+                            };
+                        }
+                        return node;
+                    }
+
+                    return node;
+                });
+
+            // Find and add new nodes that don't exist yet
+            const currentNodeIds = new Set(currentNodes.map((n) => n.id));
+            const newNodes = initialNodes.filter((node) => !currentNodeIds.has(node.id));
+
+            if (newNodes.length > 0) {
+                return [...updatedNodes, ...newNodes];
+            }
+
+            return updatedNodes;
+        });
+    }, [applications, databases, services, initialNodes, setNodes]);
 
     // Edge selection and context menu state
     const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
