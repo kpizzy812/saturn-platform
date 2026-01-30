@@ -85,6 +85,11 @@ Route::group([
     Route::put('/notification-channels/webhook', [NotificationChannelsController::class, 'updateWebhook'])->middleware(['api.ability:write']);
     Route::put('/notification-channels/pushover', [NotificationChannelsController::class, 'updatePushover'])->middleware(['api.ability:write']);
 
+    // Deployment Approvals
+    Route::get('/deployment-approvals', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/deployment-approvals/{deploymentUuid}/approve', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'approve'])->middleware(['api.ability:deploy']);
+    Route::post('/deployment-approvals/{deploymentUuid}/reject', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'reject'])->middleware(['api.ability:deploy']);
+
     // Webhooks
     Route::get('/webhooks', [TeamWebhooksController::class, 'index'])->middleware(['api.ability:read']);
     Route::post('/webhooks', [TeamWebhooksController::class, 'store'])->middleware(['api.ability:write']);

@@ -2712,6 +2712,7 @@ class DatabaseMetricsController extends Controller
             $columns = match ($type) {
                 'postgresql' => $this->getPostgresColumns($server, $database, $tableName),
                 'mysql', 'mariadb' => $this->getMysqlColumns($server, $database, $tableName),
+                'mongodb' => $this->getMongoColumns($server, $database, $tableName),
                 default => [],
             };
 
@@ -2753,6 +2754,7 @@ class DatabaseMetricsController extends Controller
             $result = match ($type) {
                 'postgresql' => $this->getPostgresData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
                 'mysql', 'mariadb' => $this->getMysqlData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
+                'mongodb' => $this->getMongoData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
                 default => ['rows' => [], 'total' => 0, 'columns' => []],
             };
 
@@ -2800,6 +2802,7 @@ class DatabaseMetricsController extends Controller
             $success = match ($type) {
                 'postgresql' => $this->updatePostgresRow($server, $database, $tableName, $request->input('primary_key'), $request->input('updates')),
                 'mysql', 'mariadb' => $this->updateMysqlRow($server, $database, $tableName, $request->input('primary_key'), $request->input('updates')),
+                'mongodb' => $this->updateMongoRow($server, $database, $tableName, $request->input('primary_key'), $request->input('updates')),
                 default => false,
             };
 
@@ -3283,5 +3286,234 @@ class DatabaseMetricsController extends Controller
         $result = instant_remote_process([$command], $server, false);
 
         return ! str_contains($result ?? '', 'ERROR');
+    }
+
+    /**
+     * Get MongoDB collection schema (dynamic - inferred from documents).
+     */
+    protected function getMongoColumns(mixed $server, mixed $database, string $collectionName): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->mongo_initdb_root_password ?? '';
+        $username = $database->mongo_initdb_root_username ?? 'root';
+        $dbName = $database->mongo_initdb_database ?? 'admin';
+
+        // Get unique fields from first 100 documents to infer schema
+        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.findOne()\" 2>/dev/null || echo '{}'";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '{}');
+
+        // Parse JSON to extract field names
+        $columns = [];
+        try {
+            $doc = json_decode($result, true);
+            if ($doc && is_array($doc)) {
+                foreach ($doc as $key => $value) {
+                    $columns[] = [
+                        'name' => $key,
+                        'type' => $this->inferMongoType($value),
+                        'nullable' => true, // MongoDB fields are always optional
+                        'default' => null,
+                        'is_primary' => $key === '_id',
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // Fallback: basic _id field
+            $columns = [
+                ['name' => '_id', 'type' => 'ObjectId', 'nullable' => false, 'default' => null, 'is_primary' => true],
+            ];
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Infer MongoDB field type from value.
+     */
+    private function inferMongoType(mixed $value): string
+    {
+        if (is_array($value)) {
+            return isset($value['$oid']) ? 'ObjectId' : 'Array';
+        }
+        if (is_string($value)) {
+            return 'String';
+        }
+        if (is_int($value)) {
+            return 'Int';
+        }
+        if (is_float($value)) {
+            return 'Double';
+        }
+        if (is_bool($value)) {
+            return 'Boolean';
+        }
+        if (is_null($value)) {
+            return 'Null';
+        }
+
+        return 'Mixed';
+    }
+
+    /**
+     * Get MongoDB collection data with pagination.
+     */
+    protected function getMongoData(mixed $server, mixed $database, string $collectionName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
+    {
+        $containerName = $database->uuid;
+        $password = $database->mongo_initdb_root_password ?? '';
+        $username = $database->mongo_initdb_root_username ?? 'root';
+        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $skip = ($page - 1) * $perPage;
+
+        // Get columns first
+        $columns = $this->getMongoColumns($server, $database, $collectionName);
+
+        // Build search query (text search across all fields)
+        $searchQuery = '{}';
+        if ($search !== '') {
+            $escapedSearch = str_replace("'", "\\'", $search);
+            $searchQuery = '{$or: ['.implode(',', array_map(fn ($col) => "{{$col['name']}: /.*{$escapedSearch}.*/i}}", $columns)).']}';
+        }
+
+        // Build sort query
+        $sortQuery = $orderBy !== '' ? "{{$orderBy}: ".($orderDir === 'asc' ? '1' : '-1').'}' : '{}';
+
+        // Get total count
+        $countCommand = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.countDocuments({$searchQuery})\" 2>/dev/null || echo '0'";
+        $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
+
+        // Get data
+        $dataCommand = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"JSON.stringify(db.{$collectionName}.find({$searchQuery}).sort({$sortQuery}).skip({$skip}).limit({$perPage}).toArray())\" 2>/dev/null || echo '[]'";
+        $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '[]');
+
+        $rows = [];
+        try {
+            $docs = json_decode($result, true);
+            if ($docs && is_array($docs)) {
+                foreach ($docs as $doc) {
+                    $row = [];
+                    foreach ($columns as $col) {
+                        $key = $col['name'];
+                        if (isset($doc[$key])) {
+                            // Handle MongoDB ObjectId and other special types
+                            if (is_array($doc[$key]) && isset($doc[$key]['$oid'])) {
+                                $row[$key] = $doc[$key]['$oid'];
+                            } else {
+                                $row[$key] = is_array($doc[$key]) ? json_encode($doc[$key]) : $doc[$key];
+                            }
+                        } else {
+                            $row[$key] = null;
+                        }
+                    }
+                    $rows[] = $row;
+                }
+            }
+        } catch (\Exception $e) {
+            // Return empty result on error
+        }
+
+        return [
+            'rows' => $rows,
+            'total' => $total,
+            'columns' => $columns,
+        ];
+    }
+
+    /**
+     * Update MongoDB document.
+     */
+    protected function updateMongoRow(mixed $server, mixed $database, string $collectionName, array $primaryKey, array $updates): bool
+    {
+        $containerName = $database->uuid;
+        $password = $database->mongo_initdb_root_password ?? '';
+        $username = $database->mongo_initdb_root_username ?? 'root';
+        $dbName = $database->mongo_initdb_database ?? 'admin';
+
+        // Build filter (usually by _id)
+        $filterParts = [];
+        foreach ($primaryKey as $key => $value) {
+            if ($key === '_id') {
+                $filterParts[] = "_id: ObjectId('{$value}')";
+            } else {
+                $escapedValue = str_replace("'", "\\'", (string) $value);
+                $filterParts[] = "{$key}: '{$escapedValue}'";
+            }
+        }
+        $filter = '{'.implode(', ', $filterParts).'}';
+
+        // Build update
+        $updateParts = [];
+        foreach ($updates as $key => $value) {
+            if ($key === '_id') {
+                continue; // Skip _id updates
+            }
+            $escapedValue = str_replace("'", "\\'", (string) $value);
+            $updateParts[] = "{$key}: '{$escapedValue}'";
+        }
+        $update = '{\$set: {'.implode(', ', $updateParts).'}}';
+
+        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.updateOne({$filter}, {$update})\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return str_contains($result ?? '', 'modifiedCount') && ! str_contains($result ?? '', 'error');
+    }
+
+    /**
+     * Delete MongoDB document.
+     */
+    protected function deleteMongoRow(mixed $server, mixed $database, string $collectionName, array $primaryKey): bool
+    {
+        $containerName = $database->uuid;
+        $password = $database->mongo_initdb_root_password ?? '';
+        $username = $database->mongo_initdb_root_username ?? 'root';
+        $dbName = $database->mongo_initdb_database ?? 'admin';
+
+        // Build filter (usually by _id)
+        $filterParts = [];
+        foreach ($primaryKey as $key => $value) {
+            if ($key === '_id') {
+                $filterParts[] = "_id: ObjectId('{$value}')";
+            } else {
+                $escapedValue = str_replace("'", "\\'", (string) $value);
+                $filterParts[] = "{$key}: '{$escapedValue}'";
+            }
+        }
+        $filter = '{'.implode(', ', $filterParts).'}';
+
+        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.deleteOne({$filter})\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return str_contains($result ?? '', 'deletedCount') && ! str_contains($result ?? '', 'error');
+    }
+
+    /**
+     * Create MongoDB document.
+     */
+    protected function createMongoRow(mixed $server, mixed $database, string $collectionName, array $data): bool
+    {
+        $containerName = $database->uuid;
+        $password = $database->mongo_initdb_root_password ?? '';
+        $username = $database->mongo_initdb_root_username ?? 'root';
+        $dbName = $database->mongo_initdb_database ?? 'admin';
+
+        // Build document
+        $docParts = [];
+        foreach ($data as $key => $value) {
+            if ($key === '_id') {
+                continue; // Let MongoDB generate _id
+            }
+            if ($value === null) {
+                $docParts[] = "{$key}: null";
+            } else {
+                $escapedValue = str_replace("'", "\\'", (string) $value);
+                $docParts[] = "{$key}: '{$escapedValue}'";
+            }
+        }
+        $document = '{'.implode(', ', $docParts).'}';
+
+        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.insertOne({$document})\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return str_contains($result ?? '', 'insertedId') && ! str_contains($result ?? '', 'error');
     }
 }
