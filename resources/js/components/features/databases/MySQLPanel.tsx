@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from '@inertiajs/react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Users, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft, Loader2 } from 'lucide-react';
+import { Users, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft, Loader2, Table, Search } from 'lucide-react';
 import { useDatabaseMetrics, useDatabaseUsers, useDatabaseLogs, useMysqlSettings, formatMetricValue, type MysqlMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 
@@ -91,6 +92,27 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
                     {copiedField === 'connectionString' && (
                         <p className="mt-2 text-sm text-success">Copied to clipboard!</p>
                     )}
+                </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+                <CardContent className="p-6">
+                    <h3 className="mb-4 text-lg font-medium text-foreground">Quick Actions</h3>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href={`/databases/${database.uuid}/tables?tab=data`}>
+                            <Button>
+                                <Table className="mr-2 h-4 w-4" />
+                                Browse Tables & Data
+                            </Button>
+                        </Link>
+                        <Link href={`/databases/${database.uuid}/query`}>
+                            <Button variant="secondary">
+                                <Search className="mr-2 h-4 w-4" />
+                                Query Browser
+                            </Button>
+                        </Link>
+                    </div>
                 </CardContent>
             </Card>
 
