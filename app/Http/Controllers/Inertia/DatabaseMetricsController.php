@@ -3008,10 +3008,10 @@ class DatabaseMetricsController extends Controller
 
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(100, max(10, (int) $request->input('per_page', 50)));
-        $search = $request->input('search', '');
-        $orderBy = $request->input('order_by', '');
+        $search = $request->input('search', '') ?? '';
+        $orderBy = $request->input('order_by', '') ?? '';
         $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
-        $filters = $request->input('filters', '');
+        $filters = $request->input('filters', '') ?? '';
 
         try {
             $result = match ($type) {
