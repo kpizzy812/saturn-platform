@@ -80,7 +80,8 @@ class Github extends Controller
                 foreach ($serverApplications as $application) {
                     $webhook_secret = data_get($application, 'manual_webhook_secret_github');
                     $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
-                    if (! hash_equals($x_hub_signature_256, $hmac) && ! isDev()) {
+                    // Security: Always validate signature - never skip in dev mode
+                    if (! hash_equals($x_hub_signature_256, $hmac)) {
                         $return_payloads->push([
                             'application' => $application->name,
                             'status' => 'failed',
@@ -272,10 +273,9 @@ class Github extends Controller
             }
             $webhook_secret = data_get($github_app, 'webhook_secret');
             $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
-            if (config('app.env') !== 'local') {
-                if (! hash_equals($x_hub_signature_256, $hmac)) {
-                    return response('Invalid signature.');
-                }
+            // Security: Always validate signature - never skip in any environment
+            if (! hash_equals($x_hub_signature_256, $hmac)) {
+                return response('Invalid signature.');
             }
             if ($x_github_event === 'installation' || $x_github_event === 'installation_repositories') {
                 // Installation handled by setup redirect url. Repositories queried on-demand.

@@ -23,7 +23,10 @@ class Stripe extends Controller
 
             return response('Webhook received. Cool cool cool cool cool.', 200);
         } catch (Exception $e) {
-            return response($e->getMessage(), 400);
+            // Security: Don't expose exception details - log for debugging instead
+            ray($e);
+
+            return response('Webhook processing failed.', 400);
         }
     }
 }

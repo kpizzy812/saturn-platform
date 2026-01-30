@@ -68,7 +68,8 @@ class Gitea extends Controller
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_gitea');
                 $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
-                if (! hash_equals($x_hub_signature_256, $hmac) && ! isDev()) {
+                // Security: Always validate signature - never skip in dev mode
+                if (! hash_equals($x_hub_signature_256, $hmac)) {
                     $return_payloads->push([
                         'application' => $application->name,
                         'status' => 'failed',
@@ -140,6 +141,18 @@ class Gitea extends Controller
                 if ($x_gitea_event === 'pull_request') {
                     if ($action === 'opened' || $action === 'synchronized' || $action === 'reopened') {
                         if ($application->isPRDeployable()) {
+                            // Security: Check if public PR deployments are allowed
+                            // Gitea doesn't provide author membership info in webhooks.
+                            // When public deployments are disabled, reject all PR deployments from webhooks.
+                            if (! $application->settings->is_pr_deployments_public_enabled) {
+                                $return_payloads->push([
+                                    'application' => $application->name,
+                                    'status' => 'failed',
+                                    'message' => 'PR deployments are restricted. Enable "Public PR Deployments" in application settings to allow deployments from Gitea webhooks.',
+                                ]);
+
+                                continue;
+                            }
                             $deployment_uuid = new Cuid2;
                             $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
                             if (! $found) {

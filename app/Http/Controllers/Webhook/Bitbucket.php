@@ -61,7 +61,8 @@ class Bitbucket extends Controller
 
                 [$algo, $hash] = explode('=', $x_bitbucket_token, 2);
                 $payloadHash = hash_hmac($algo, $payload, $webhook_secret);
-                if (! hash_equals($hash, $payloadHash) && ! isDev()) {
+                // Security: Always validate signature - never skip in dev mode
+                if (! hash_equals($hash, $payloadHash)) {
                     $return_payloads->push([
                         'application' => $application->name,
                         'status' => 'failed',
@@ -115,6 +116,18 @@ class Bitbucket extends Controller
                 }
                 if ($x_bitbucket_event === 'pullrequest:created' || $x_bitbucket_event === 'pullrequest:updated') {
                     if ($application->isPRDeployable()) {
+                        // Security: Check if public PR deployments are allowed
+                        // Bitbucket doesn't provide author membership info in webhooks.
+                        // When public deployments are disabled, reject all PR deployments from webhooks.
+                        if (! $application->settings->is_pr_deployments_public_enabled) {
+                            $return_payloads->push([
+                                'application' => $application->name,
+                                'status' => 'failed',
+                                'message' => 'PR deployments are restricted. Enable "Public PR Deployments" in application settings to allow deployments from Bitbucket webhooks.',
+                            ]);
+
+                            continue;
+                        }
                         $deployment_uuid = new Cuid2;
                         $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
                         if (! $found) {

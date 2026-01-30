@@ -100,7 +100,8 @@ class Gitlab extends Controller
             }
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_gitlab');
-                if ($webhook_secret !== $x_gitlab_token) {
+                // Security: Use timing-safe comparison to prevent timing attacks
+                if (! hash_equals($webhook_secret ?? '', $x_gitlab_token ?? '')) {
                     $return_payloads->push([
                         'application' => $application->name,
                         'status' => 'failed',
@@ -173,6 +174,19 @@ class Gitlab extends Controller
                 if ($x_gitlab_event === 'merge_request') {
                     if ($action === 'open' || $action === 'opened' || $action === 'synchronize' || $action === 'reopened' || $action === 'reopen' || $action === 'update') {
                         if ($application->isPRDeployable()) {
+                            // Security: Check if public MR deployments are allowed
+                            // GitLab doesn't provide author_association in webhooks,
+                            // so we can't verify contributor status like GitHub does.
+                            // When public deployments are disabled, reject all MR deployments from webhooks.
+                            if (! $application->settings->is_pr_deployments_public_enabled) {
+                                $return_payloads->push([
+                                    'application' => $application->name,
+                                    'status' => 'failed',
+                                    'message' => 'MR deployments are restricted. Enable "Public MR Deployments" in application settings to allow deployments from GitLab webhooks.',
+                                ]);
+
+                                continue;
+                            }
                             $deployment_uuid = new Cuid2;
                             $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
                             if (! $found) {
