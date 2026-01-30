@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Card, CardContent, Button, Input, useConfirm } from '@/components/ui';
 import { Key, Plus, Trash2, Eye, EyeOff, Download, Upload, Save, FileSearch } from 'lucide-react';
 import type { Application } from '@/types';
 import axios from 'axios';
@@ -28,6 +28,7 @@ interface EnvironmentVariable {
 }
 
 export default function ApplicationVariables({ application, variables: propVariables, projectUuid, environmentUuid }: Props) {
+    const confirm = useConfirm();
     const [variables, setVariables] = React.useState<EnvironmentVariable[]>(propVariables || []);
     const [revealedVars, setRevealedVars] = React.useState<Set<string | number>>(new Set());
     const [isSaving, setIsSaving] = React.useState(false);
@@ -91,10 +92,20 @@ export default function ApplicationVariables({ application, variables: propVaria
         }
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
+        // Security warning before exporting sensitive data
+        const confirmed = await confirm({
+            title: 'Export Environment Variables',
+            description: 'This will export all environment variables including sensitive values (passwords, API keys, secrets) in plain text. Make sure you store the exported file securely and delete it when no longer needed.',
+            confirmText: 'Export',
+            variant: 'warning',
+        });
+
+        if (!confirmed) return;
+
         const content = variables
             .filter(v => v.key.trim() !== '')
-            .map(v => `${v.key}=${v.value}`)
+            .map(v => `${v.key}=${v.value ?? ''}`)
             .join('\n');
 
         const blob = new Blob([content], { type: 'text/plain' });

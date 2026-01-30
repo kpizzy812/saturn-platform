@@ -8,6 +8,30 @@ use App\Models\User;
 class SharedEnvironmentVariablePolicy
 {
     /**
+     * Check if user belongs to the team that owns the shared variable.
+     */
+    private function belongsToTeam(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
+    {
+        return $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
+    }
+
+    /**
+     * Check if user is admin/owner in the team.
+     */
+    private function isAdminInTeam(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
+    {
+        $membership = $user->teams->find($sharedEnvironmentVariable->team_id);
+
+        if (! $membership) {
+            return false;
+        }
+
+        $role = $membership->pivot->role ?? 'member';
+
+        return in_array($role, ['admin', 'owner']);
+    }
+
+    /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
@@ -20,7 +44,7 @@ class SharedEnvironmentVariablePolicy
      */
     public function view(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
     {
-        return $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
+        return $this->belongsToTeam($user, $sharedEnvironmentVariable);
     }
 
     /**
@@ -28,7 +52,7 @@ class SharedEnvironmentVariablePolicy
      */
     public function create(User $user): bool
     {
-        // return $user->isAdmin();
+        // Creation is controlled at team level
         return true;
     }
 
@@ -37,8 +61,8 @@ class SharedEnvironmentVariablePolicy
      */
     public function update(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
-        return true;
+        // Only team members can update
+        return $this->belongsToTeam($user, $sharedEnvironmentVariable);
     }
 
     /**
@@ -46,8 +70,8 @@ class SharedEnvironmentVariablePolicy
      */
     public function delete(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
-        return true;
+        // Only team members can delete
+        return $this->belongsToTeam($user, $sharedEnvironmentVariable);
     }
 
     /**
@@ -55,8 +79,8 @@ class SharedEnvironmentVariablePolicy
      */
     public function restore(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
-        return true;
+        // Only admins can restore
+        return $this->isAdminInTeam($user, $sharedEnvironmentVariable);
     }
 
     /**
@@ -64,8 +88,8 @@ class SharedEnvironmentVariablePolicy
      */
     public function forceDelete(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
-        return true;
+        // Only admins can permanently delete
+        return $this->isAdminInTeam($user, $sharedEnvironmentVariable);
     }
 
     /**
@@ -73,7 +97,6 @@ class SharedEnvironmentVariablePolicy
      */
     public function manageEnvironment(User $user, SharedEnvironmentVariable $sharedEnvironmentVariable): bool
     {
-        // return $user->isAdmin() && $user->teams->contains('id', $sharedEnvironmentVariable->team_id);
-        return true;
+        return $this->belongsToTeam($user, $sharedEnvironmentVariable);
     }
 }

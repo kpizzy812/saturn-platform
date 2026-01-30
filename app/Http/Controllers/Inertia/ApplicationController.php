@@ -509,6 +509,7 @@ class ApplicationController extends Controller
         $environment = $application->environment;
 
         // Fetch actual environment variables from database
+        // Security: Don't expose values marked as is_shown_once in page source
         $variables = $application->environment_variables()
             ->get()
             ->map(function ($variable) {
@@ -516,7 +517,8 @@ class ApplicationController extends Controller
                     'id' => $variable->id,
                     'uuid' => $variable->uuid,
                     'key' => $variable->key,
-                    'value' => $variable->value,
+                    // Don't send value if is_shown_once - requires explicit reveal via API
+                    'value' => $variable->is_shown_once ? null : $variable->value,
                     'is_build_time' => $variable->is_build_time,
                     'is_literal' => $variable->is_literal,
                     'is_multiline' => $variable->is_multiline,

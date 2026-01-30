@@ -240,10 +240,53 @@ class EnvironmentVariable extends BaseModel
         return encrypt($environment_variable);
     }
 
+    /**
+     * System environment variables that cannot be overridden.
+     * These could be used for privilege escalation or system manipulation.
+     */
+    public const PROTECTED_KEYS = [
+        'PATH',
+        'LD_PRELOAD',
+        'LD_LIBRARY_PATH',
+        'LD_AUDIT',
+        'LD_DEBUG',
+        'SHELL',
+        'HOME',
+        'USER',
+        'LOGNAME',
+        'LANG',
+        'LC_ALL',
+        'IFS',
+        'TERM',
+        'DISPLAY',
+        'SSH_AUTH_SOCK',
+        'DOCKER_HOST',
+    ];
+
     protected function key(): Attribute
     {
         return Attribute::make(
-            set: fn (string $value) => str($value)->trim()->replace(' ', '_')->value,
+            set: function (string $value) {
+                // Sanitize: trim whitespace and replace spaces with underscores
+                $sanitized = str($value)->trim()->replace(' ', '_')->value;
+
+                // Security: Validate key format (POSIX standard for environment variable names)
+                // Must start with letter or underscore, followed by letters, digits, or underscores
+                if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $sanitized)) {
+                    throw new \InvalidArgumentException(
+                        'Environment variable key must start with a letter or underscore and contain only letters, digits, and underscores.'
+                    );
+                }
+
+                // Security: Block system environment variables that could be exploited
+                if (in_array(strtoupper($sanitized), self::PROTECTED_KEYS)) {
+                    throw new \InvalidArgumentException(
+                        "Cannot set protected system environment variable: {$sanitized}"
+                    );
+                }
+
+                return $sanitized;
+            },
         );
     }
 
