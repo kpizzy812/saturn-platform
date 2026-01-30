@@ -1197,7 +1197,12 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
     $request->validate([
         'grant_all' => 'boolean',
         'allowed_projects' => 'array',
-        'allowed_projects.*' => 'integer|string', // Allow integers and '*' for full access
+        'allowed_projects.*' => ['required', function ($attribute, $value, $fail) {
+            // Allow '*' for full access or numeric values for project IDs
+            if ($value !== '*' && ! is_numeric($value)) {
+                $fail('The '.$attribute.' must be a project ID or "*" for full access.');
+            }
+        }],
     ]);
 
     $team = currentTeam();

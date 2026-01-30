@@ -40,7 +40,111 @@ class SettingsController extends Controller
      */
     public function team(): Response
     {
-        return Inertia::render('Settings/Team');
+        $team = auth()->user()->currentTeam();
+        $user = auth()->user();
+
+        // Get all team members with their roles and additional info
+        $members = $team->members->map(function ($member) use ($team) {
+            $pivot = $member->pivot;
+
+            // Calculate project access for non-owners using TeamUser pivot
+            $projectAccess = null;
+            if ($pivot->role !== 'owner') {
+                $totalProjects = $team->projects()->count();
+                $allowedProjects = $pivot->allowed_projects ?? [];
+
+                // Check for full access ('*' in array) or admin role
+                $hasFullAccess = $pivot->role === 'admin' ||
+                    (is_array($allowedProjects) && in_array('*', $allowedProjects, true));
+
+                // Count accessible projects
+                $accessibleCount = 0;
+                if ($hasFullAccess) {
+                    $accessibleCount = $totalProjects;
+                } elseif (is_array($allowedProjects)) {
+                    // Filter out '*' and count valid project IDs that actually exist
+                    $projectIds = array_filter($allowedProjects, fn ($id) => is_int($id));
+                    $accessibleCount = $team->projects()->whereIn('id', $projectIds)->count();
+                }
+
+                $projectAccess = [
+                    'hasFullAccess' => $hasFullAccess || ($totalProjects > 0 && $accessibleCount >= $totalProjects),
+                    'hasNoAccess' => $accessibleCount === 0 && ! $hasFullAccess,
+                    'hasLimitedAccess' => ! $hasFullAccess && $accessibleCount > 0 && $accessibleCount < $totalProjects,
+                    'count' => $accessibleCount,
+                    'total' => $totalProjects,
+                ];
+            }
+
+            // Find who invited this member
+            $invitedBy = null;
+            $invitation = TeamInvitation::where('email', $member->email)
+                ->where('team_id', $team->id)
+                ->first();
+            if ($invitation && $invitation->invited_by) {
+                $inviter = \App\Models\User::find($invitation->invited_by);
+                if ($inviter) {
+                    $invitedBy = [
+                        'id' => $inviter->id,
+                        'name' => $inviter->name,
+                        'email' => $inviter->email,
+                    ];
+                }
+            }
+
+            return [
+                'id' => $member->id,
+                'name' => $member->name,
+                'email' => $member->email,
+                'avatar' => null,
+                'role' => $pivot->role ?? 'member',
+                'joinedAt' => $pivot->created_at ?? $member->created_at,
+                'lastActive' => $member->updated_at ?? now(),
+                'invitedBy' => $invitedBy,
+                'projectAccess' => $projectAccess,
+            ];
+        });
+
+        // Get pending invitations sent by the team
+        $invitations = TeamInvitation::where('team_id', $team->id)
+            ->get()
+            ->map(function ($invitation) {
+                return [
+                    'id' => $invitation->id,
+                    'email' => $invitation->email,
+                    'role' => $invitation->role ?? 'member',
+                    'sentAt' => $invitation->created_at,
+                    'link' => $invitation->link,
+                ];
+            });
+
+        // Get invitations received by the current user for other teams
+        $receivedInvitations = TeamInvitation::where('email', $user->email)
+            ->where('team_id', '!=', $team->id)
+            ->with('team')
+            ->get()
+            ->map(function ($invitation) {
+                return [
+                    'id' => $invitation->id,
+                    'uuid' => $invitation->uuid,
+                    'teamName' => $invitation->team->name ?? 'Unknown Team',
+                    'role' => $invitation->role ?? 'member',
+                    'sentAt' => $invitation->created_at,
+                    'expiresAt' => $invitation->created_at->addDays(7),
+                ];
+            });
+
+        return Inertia::render('Settings/Team', [
+            'team' => [
+                'id' => $team->id,
+                'name' => $team->name,
+                'avatar' => null,
+                'memberCount' => $team->members->count(),
+            ],
+            'members' => $members,
+            'invitations' => $invitations,
+            'receivedInvitations' => $receivedInvitations,
+        ]);
     }
 
     /**
