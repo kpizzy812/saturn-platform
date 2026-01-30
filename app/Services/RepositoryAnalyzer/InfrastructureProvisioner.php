@@ -74,7 +74,10 @@ class InfrastructureProvisioner
                 // 3. Link databases to applications (ResourceLink with auto_inject)
                 $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment);
 
-                // 4. Create environment variables from .env.example
+                // 4. Create internal URLs between apps (e.g., API_URL for frontend → backend)
+                $this->createInternalAppLinks($createdApps, $analysis->appDependencies);
+
+                // 5. Create environment variables from .env.example
                 $this->createEnvVariables($createdApps, $analysis->envVariables);
 
                 return new ProvisioningResult(
@@ -330,6 +333,51 @@ class InfrastructureProvisioner
                     'inject_as' => null, // Use default (DATABASE_URL, REDIS_URL, etc.)
                     'use_external_url' => false,
                 ]);
+            }
+        }
+    }
+
+    /**
+     * Create internal URL environment variables between apps
+     *
+     * For example, if frontend depends on backend, creates API_URL=http://backend:port
+     *
+     * @param  AppDependency[]  $appDependencies
+     */
+    private function createInternalAppLinks(array $createdApps, array $appDependencies): void
+    {
+        foreach ($appDependencies as $dependency) {
+            $sourceApp = $createdApps[$dependency->appName] ?? null;
+            if (! $sourceApp || empty($dependency->internalUrls)) {
+                continue;
+            }
+
+            foreach ($dependency->internalUrls as $envVarName => $targetAppName) {
+                $targetApp = $createdApps[$targetAppName] ?? null;
+                if (! $targetApp) {
+                    continue;
+                }
+
+                // Build internal URL using docker network DNS
+                // Format: http://container-name:port
+                $containerName = $targetApp->uuid;
+                $port = $targetApp->ports_exposes ?? 3000;
+
+                // Use first exposed port if multiple
+                if (str_contains((string) $port, ',')) {
+                    $port = explode(',', (string) $port)[0];
+                }
+
+                $internalUrl = "http://{$containerName}:{$port}";
+
+                // Create environment variable
+                $sourceApp->environment_variables()->updateOrCreate(
+                    ['key' => $envVarName],
+                    [
+                        'value' => $internalUrl,
+                        'is_buildtime' => false,
+                    ]
+                );
             }
         }
     }
