@@ -12,13 +12,39 @@ interface Props {
         inviter_email: string;
         role: string;
         expires_at: string;
-    };
+    } | null;
+    error?: string;
     isAuthenticated: boolean;
 }
 
-export default function AcceptInvite({ invitation, isAuthenticated }: Props) {
+export default function AcceptInvite({ invitation, error, isAuthenticated }: Props) {
     const confirm = useConfirm();
     const { post, processing } = useForm();
+
+    // Handle expired or invalid invitation
+    if (!invitation || error) {
+        return (
+            <AuthLayout
+                title="Invalid Invitation"
+                subtitle="This invitation is no longer valid."
+            >
+                <div className="space-y-6">
+                    <div className="rounded-lg border border-danger/30 bg-danger/5 p-6">
+                        <p className="text-center text-foreground">
+                            {error || 'This invitation has expired or is no longer valid.'}
+                        </p>
+                    </div>
+                    <div className="text-center">
+                        <Link href={isAuthenticated ? '/dashboard' : '/login'}>
+                            <Button variant="default">
+                                {isAuthenticated ? 'Go to Dashboard' : 'Go to Login'}
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+            </AuthLayout>
+        );
+    }
 
     const handleAccept = () => {
         post(`/invitations/${invitation.id}/accept`, {

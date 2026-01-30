@@ -75,13 +75,15 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
         e.preventDefault();
         setIsSending(true);
 
-        const validEmails = emails.filter(email => email.trim() !== '');
+        const email = emails[0]?.trim();
+        if (!email) {
+            setIsSending(false);
+            return;
+        }
 
-        router.post('/api/v1/teams/invitations/bulk', {
-            emails: validEmails,
+        router.post('/settings/team/invite', {
+            email,
             role,
-            project_access: projectAccess === 'all' ? 'all' : selectedProjects,
-            message: message || undefined,
         }, {
             onSuccess: () => {
                 // Reset form
@@ -90,7 +92,6 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
                 setProjectAccess('all');
                 setSelectedProjects([]);
                 setMessage('');
-                router.reload({ only: ['pendingInvitations'] });
             },
             onFinish: () => {
                 setIsSending(false);
@@ -99,7 +100,7 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
     };
 
     const handleResendInvitation = (invitationId: number) => {
-        router.post(`/api/v1/teams/invitations/${invitationId}/resend`, {}, {
+        router.post(`/settings/team/invitations/${invitationId}/resend`, {}, {
             onSuccess: () => {
                 router.reload({ only: ['pendingInvitations'] });
             },
@@ -107,7 +108,7 @@ export default function TeamInvite({ projects = [], pendingInvitations = [] }: P
     };
 
     const handleCancelInvitation = (invitationId: number) => {
-        router.delete(`/api/v1/teams/invitations/${invitationId}`, {
+        router.delete(`/settings/team/invitations/${invitationId}`, {
             onSuccess: () => {
                 router.reload({ only: ['pendingInvitations'] });
             },

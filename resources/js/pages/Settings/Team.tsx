@@ -20,14 +20,25 @@ interface Invitation {
     link: string;
 }
 
+interface ReceivedInvitation {
+    id: number;
+    uuid: string;
+    teamName: string;
+    role: 'admin' | 'developer' | 'member' | 'viewer';
+    sentAt: string;
+    expiresAt: string;
+}
+
 interface Props {
     members: TeamMember[];
     invitations: Invitation[];
+    receivedInvitations: ReceivedInvitation[];
 }
 
-export default function TeamSettings({ members: initialMembers, invitations: initialInvitations }: Props) {
+export default function TeamSettings({ members: initialMembers, invitations: initialInvitations, receivedInvitations: initialReceivedInvitations = [] }: Props) {
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [invitations, setInvitations] = React.useState<Invitation[]>(initialInvitations);
+    const [receivedInvitations, setReceivedInvitations] = React.useState<ReceivedInvitation[]>(initialReceivedInvitations);
     const [showInviteModal, setShowInviteModal] = React.useState(false);
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [memberToRemove, setMemberToRemove] = React.useState<TeamMember | null>(null);
@@ -35,6 +46,7 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
     const [inviteRole, setInviteRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
     const [isInviting, setIsInviting] = React.useState(false);
     const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
+    const [processingInviteId, setProcessingInviteId] = React.useState<number | null>(null);
 
     const handleCopyLink = (invitation: Invitation) => {
         // Fallback for HTTP (clipboard API requires HTTPS)
@@ -91,6 +103,30 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
         router.delete(`/settings/team/invitations/${invitationId}`, {
             onSuccess: () => {
                 router.reload();
+            },
+        });
+    };
+
+    const handleAcceptInvitation = (uuid: string, invitationId: number) => {
+        setProcessingInviteId(invitationId);
+        router.post(`/invitations/${uuid}/accept`, {}, {
+            onSuccess: () => {
+                router.reload();
+            },
+            onFinish: () => {
+                setProcessingInviteId(null);
+            },
+        });
+    };
+
+    const handleDeclineInvitation = (uuid: string, invitationId: number) => {
+        setProcessingInviteId(invitationId);
+        router.post(`/invitations/${uuid}/decline`, {}, {
+            onSuccess: () => {
+                router.reload({ only: ['receivedInvitations'] });
+            },
+            onFinish: () => {
+                setProcessingInviteId(null);
             },
         });
     };
@@ -236,6 +272,63 @@ export default function TeamSettings({ members: initialMembers, invitations: ini
                                                 onClick={() => handleRevokeInvitation(invitation.id)}
                                             >
                                                 Revoke
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Received Invitations */}
+                {receivedInvitations.length > 0 && (
+                    <Card className="border-primary/30 bg-primary/5">
+                        <CardHeader>
+                            <CardTitle>Team Invitations</CardTitle>
+                            <CardDescription>
+                                You have been invited to join {receivedInvitations.length} {receivedInvitations.length === 1 ? 'team' : 'teams'}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {receivedInvitations.map((invitation) => (
+                                    <div
+                                        key={invitation.id}
+                                        className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20">
+                                                <Mail className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-medium text-foreground">{invitation.teamName}</p>
+                                                    <Badge variant="default">
+                                                        {invitation.role}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Invited {new Date(invitation.sentAt).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => handleDeclineInvitation(invitation.uuid, invitation.id)}
+                                                disabled={processingInviteId === invitation.id}
+                                            >
+                                                Decline
+                                            </Button>
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => handleAcceptInvitation(invitation.uuid, invitation.id)}
+                                                loading={processingInviteId === invitation.id}
+                                            >
+                                                Accept
                                             </Button>
                                         </div>
                                     </div>

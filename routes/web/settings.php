@@ -23,6 +23,7 @@ Route::get('/settings/account', function () {
 
 Route::get('/settings/team', function () {
     $team = currentTeam();
+    $user = auth()->user();
 
     $members = $team->members->map(fn ($user) => [
         'id' => $user->id,
@@ -32,6 +33,7 @@ Route::get('/settings/team', function () {
         'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
     ]);
 
+    // Invitations sent by this team (for admins/owners)
     $invitations = $team->invitations->map(fn ($invitation) => [
         'id' => $invitation->id,
         'email' => $invitation->email,
@@ -40,9 +42,30 @@ Route::get('/settings/team', function () {
         'link' => $invitation->link,
     ]);
 
+    // Invitations received by current user (pending invitations to join other teams)
+    $receivedInvitations = \App\Models\TeamInvitation::where('email', $user->email)
+        ->whereHas('team', function ($query) use ($user) {
+            // Exclude teams user is already a member of
+            $query->whereNotIn('id', $user->teams->pluck('id'));
+        })
+        ->with('team')
+        ->get()
+        ->filter(fn ($invitation) => $invitation->isValid())
+        ->map(fn ($invitation) => [
+            'id' => $invitation->id,
+            'uuid' => $invitation->uuid,
+            'teamName' => $invitation->team->name,
+            'role' => $invitation->role ?? 'member',
+            'sentAt' => $invitation->created_at->toISOString(),
+            'expiresAt' => $invitation->created_at->addDays(
+                config('constants.invitation.link.expiration_days', 7)
+            )->toISOString(),
+        ]);
+
     return Inertia::render('Settings/Team', [
         'members' => $members,
         'invitations' => $invitations,
+        'receivedInvitations' => $receivedInvitations,
     ]);
 })->name('settings.team');
 

@@ -54,10 +54,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Legacy team redirects
     Route::get('/team', fn () => redirect()->route('settings.team'))->name('team.index');
     Route::get('/team/members', fn () => redirect()->route('settings.team.members'))->name('team.member.index');
-    Route::prefix('invitations')->group(function () {
-        Route::get('/{uuid}', [Controller::class, 'acceptInvitation'])->name('team.invitation.accept');
-        Route::get('/{uuid}/revoke', [Controller::class, 'revokeInvitation'])->name('team.invitation.revoke');
-    });
+    // Legacy invitation routes - commented out in favor of new auth-based invitation flow
+    // Route::prefix('invitations')->group(function () {
+    //     Route::get('/{uuid}', [Controller::class, 'acceptInvitation'])->name('team.invitation.accept');
+    //     Route::get('/{uuid}/revoke', [Controller::class, 'revokeInvitation'])->name('team.invitation.revoke');
+    // });
 
     // Legacy project redirects
     Route::get('/projects', fn () => redirect()->route('projects.index'))->name('project.index');
