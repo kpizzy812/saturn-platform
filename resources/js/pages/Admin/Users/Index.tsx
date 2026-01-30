@@ -15,6 +15,8 @@ import {
     Mail,
     Shield,
     Ban,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 
@@ -33,8 +35,15 @@ interface User {
 interface Props {
     users: User[];
     total: number;
-    currentPage?: number;
-    perPage?: number;
+    currentPage: number;
+    perPage: number;
+    lastPage: number;
+    filters: {
+        search: string;
+        status: string;
+        sort_by: string;
+        sort_direction: string;
+    };
 }
 
 const defaultUsers: User[] = [];
@@ -147,16 +156,51 @@ function UserRow({ user }: { user: User }) {
     );
 }
 
-export default function AdminUsersIndex({ users = defaultUsers, total = 3 }: Props) {
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'suspended' | 'pending'>('all');
+export default function AdminUsersIndex({
+    users = defaultUsers,
+    total = 0,
+    currentPage = 1,
+    lastPage = 1,
+    filters
+}: Props) {
+    const [searchQuery, setSearchQuery] = React.useState(filters.search || '');
+    const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'suspended' | 'pending'>(
+        (filters.status as 'all' | 'active' | 'suspended' | 'pending') || 'all'
+    );
 
-    const filteredUsers = users.filter((user) => {
-        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            user.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    // Debounced search to avoid excessive requests
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            updateFilters({ search: searchQuery });
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Update filters and fetch new data
+    const updateFilters = (newFilters: Record<string, string>) => {
+        router.get('/admin/users', {
+            ...filters,
+            ...newFilters,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handleStatusFilter = (status: 'all' | 'active' | 'suspended' | 'pending') => {
+        setStatusFilter(status);
+        updateFilters({ status });
+    };
+
+    const handlePageChange = (page: number) => {
+        router.get('/admin/users', {
+            ...filters,
+            page: page.toString(),
+        }, {
+            preserveState: true,
+            preserveScroll: false,
+        });
+    };
 
     return (
         <AdminLayout
@@ -192,28 +236,28 @@ export default function AdminUsersIndex({ users = defaultUsers, total = 3 }: Pro
                                 <Button
                                     variant={statusFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('all')}
+                                    onClick={() => handleStatusFilter('all')}
                                 >
                                     All
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'active' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('active')}
+                                    onClick={() => handleStatusFilter('active')}
                                 >
                                     Active
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'suspended' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('suspended')}
+                                    onClick={() => handleStatusFilter('suspended')}
                                 >
                                     Suspended
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'pending' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('pending')}
+                                    onClick={() => handleStatusFilter('pending')}
                                 >
                                     Pending
                                 </Button>
@@ -227,11 +271,36 @@ export default function AdminUsersIndex({ users = defaultUsers, total = 3 }: Pro
                     <CardContent className="p-6">
                         <div className="mb-4 flex items-center justify-between">
                             <p className="text-sm text-foreground-muted">
-                                Showing {filteredUsers.length} of {total} users
+                                Showing {users.length} of {total} users
                             </p>
+                            {lastPage > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-foreground-muted">
+                                        Page {currentPage} of {lastPage}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === lastPage}
+                                    >
+                                        Next
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
-                        {filteredUsers.length === 0 ? (
+                        {users.length === 0 ? (
                             <div className="py-12 text-center">
                                 <UserX className="mx-auto h-12 w-12 text-foreground-muted" />
                                 <p className="mt-4 text-sm text-foreground-muted">No users found</p>
@@ -239,7 +308,7 @@ export default function AdminUsersIndex({ users = defaultUsers, total = 3 }: Pro
                             </div>
                         ) : (
                             <div>
-                                {filteredUsers.map((user) => (
+                                {users.map((user) => (
                                     <UserRow key={user.id} user={user} />
                                 ))}
                             </div>

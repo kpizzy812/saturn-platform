@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Server;
+use App\Models\ServerHealthCheck;
 use App\Services\ConfigurationRepository;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
@@ -39,6 +40,13 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
 
     public function handle()
     {
+        $startTime = microtime(true);
+        $isReachable = false;
+        $isUsable = false;
+        $errorMessage = null;
+        $dockerVersion = null;
+        $responseTimeMs = null;
+
         try {
             // Check if server is disabled
             if ($this->server->settings->force_disabled) {
@@ -50,6 +58,9 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                     'server_id' => $this->server->id,
                     'server_name' => $this->server->name,
                 ]);
+
+                $errorMessage = 'Server is manually disabled';
+                $this->logHealthCheck($isReachable, $isUsable, $responseTimeMs, $errorMessage, $dockerVersion);
 
                 return;
             }
@@ -66,6 +77,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
 
             // Check basic connectivity first
             $isReachable = $this->checkConnection();
+            $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
             if (! $isReachable) {
                 $this->server->settings->update([
@@ -79,16 +91,26 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                     'server_ip' => $this->server->ip,
                 ]);
 
+                $errorMessage = 'Server not reachable via SSH';
+                $this->logHealthCheck($isReachable, $isUsable, $responseTimeMs, $errorMessage, $dockerVersion);
+
                 return;
             }
 
             // Server is reachable, check if Docker is available
-            $isUsable = $this->checkDockerAvailability();
+            [$isUsable, $dockerVersion] = $this->checkDockerAvailability();
 
             $this->server->settings->update([
                 'is_reachable' => true,
                 'is_usable' => $isUsable,
             ]);
+
+            if (! $isUsable) {
+                $errorMessage = 'Docker not available or not responding';
+            }
+
+            // Log successful health check
+            $this->logHealthCheck($isReachable, $isUsable, $responseTimeMs, $errorMessage, $dockerVersion);
 
         } catch (\Throwable $e) {
 
@@ -101,7 +123,76 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                 'is_usable' => false,
             ]);
 
+            $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+            $errorMessage = get_class($e).': '.$e->getMessage();
+            $this->logHealthCheck($isReachable, $isUsable, $responseTimeMs, $errorMessage, $dockerVersion);
+
             throw $e;
+        }
+    }
+
+    private function logHealthCheck(
+        bool $isReachable,
+        bool $isUsable,
+        ?int $responseTimeMs,
+        ?string $errorMessage,
+        ?string $dockerVersion
+    ): void {
+        try {
+            // Get additional metrics if server is usable
+            $diskUsage = null;
+            $containerCounts = null;
+
+            if ($isUsable) {
+                // Try to get disk usage
+                try {
+                    $diskUsageStr = $this->server->getDiskUsage();
+                    if ($diskUsageStr) {
+                        $diskUsage = (float) $diskUsageStr;
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore disk usage errors
+                }
+
+                // Try to get container counts
+                try {
+                    ['containers' => $containers] = $this->server->getContainers();
+                    if ($containers) {
+                        $running = $containers->filter(fn ($c) => data_get($c, 'State.Status') === 'running')->count();
+                        $stopped = $containers->filter(fn ($c) => data_get($c, 'State.Status') !== 'running')->count();
+                        $containerCounts = [
+                            'running' => $running,
+                            'stopped' => $stopped,
+                            'total' => $running + $stopped,
+                        ];
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore container count errors
+                }
+            }
+
+            // Determine overall status
+            $status = ServerHealthCheck::determineStatus($isReachable, $isUsable, $diskUsage);
+
+            // Create health check record
+            ServerHealthCheck::create([
+                'server_id' => $this->server->id,
+                'status' => $status,
+                'is_reachable' => $isReachable,
+                'is_usable' => $isUsable,
+                'response_time_ms' => $responseTimeMs,
+                'disk_usage_percent' => $diskUsage,
+                'error_message' => $errorMessage,
+                'docker_version' => $dockerVersion,
+                'container_counts' => $containerCounts,
+                'checked_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Don't fail the job if health check logging fails
+            Log::warning('Failed to log server health check', [
+                'server_id' => $this->server->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -151,7 +242,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
-    private function checkDockerAvailability(): bool
+    private function checkDockerAvailability(): array
     {
         try {
             // Use instant_remote_process to check Docker
@@ -163,25 +254,27 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             );
 
             if ($output === null) {
-                return false;
+                return [false, null];
             }
 
             // Try to parse the JSON output to ensure Docker is really working
             $output = trim($output);
             if (! empty($output)) {
                 $dockerInfo = json_decode($output, true);
+                $isAvailable = isset($dockerInfo['Server']['Version']);
+                $version = $isAvailable ? $dockerInfo['Server']['Version'] : null;
 
-                return isset($dockerInfo['Server']['Version']);
+                return [$isAvailable, $version];
             }
 
-            return false;
+            return [false, null];
         } catch (\Throwable $e) {
             Log::debug('ServerConnectionCheck: Docker check failed', [
                 'server_id' => $this->server->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return false;
+            return [false, null];
         }
     }
 }

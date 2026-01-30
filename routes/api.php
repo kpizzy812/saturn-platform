@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\DeploymentApprovalController;
 use App\Http\Controllers\Api\GitController;
 use App\Http\Controllers\Api\GithubController;
 use App\Http\Controllers\Api\HetznerController;
+use App\Http\Controllers\Api\NotificationChannelsController;
 use App\Http\Controllers\Api\NotificationsController;
 use App\Http\Controllers\Api\OtherController;
 use App\Http\Controllers\Api\ProjectController;
@@ -74,6 +75,15 @@ Route::group([
     Route::get('/notifications/{id}', [NotificationsController::class, 'show'])->middleware(['api.ability:read']);
     Route::post('/notifications/{id}/read', [NotificationsController::class, 'markAsRead'])->middleware(['api.ability:write']);
     Route::delete('/notifications/{id}', [NotificationsController::class, 'destroy'])->middleware(['api.ability:write']);
+
+    // Notification Channels
+    Route::get('/notification-channels', [NotificationChannelsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::put('/notification-channels/email', [NotificationChannelsController::class, 'updateEmail'])->middleware(['api.ability:write']);
+    Route::put('/notification-channels/slack', [NotificationChannelsController::class, 'updateSlack'])->middleware(['api.ability:write']);
+    Route::put('/notification-channels/discord', [NotificationChannelsController::class, 'updateDiscord'])->middleware(['api.ability:write']);
+    Route::put('/notification-channels/telegram', [NotificationChannelsController::class, 'updateTelegram'])->middleware(['api.ability:write']);
+    Route::put('/notification-channels/webhook', [NotificationChannelsController::class, 'updateWebhook'])->middleware(['api.ability:write']);
+    Route::put('/notification-channels/pushover', [NotificationChannelsController::class, 'updatePushover'])->middleware(['api.ability:write']);
 
     // Webhooks
     Route::get('/webhooks', [TeamWebhooksController::class, 'index'])->middleware(['api.ability:read']);

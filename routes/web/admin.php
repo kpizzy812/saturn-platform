@@ -114,11 +114,45 @@ Route::prefix('admin')->group(function () {
     })->name('admin.index');
 
     Route::get('/users', function () {
-        // Fetch all users with their teams and count servers through teams
-        $paginator = \App\Models\User::with(['teams'])
-            ->withCount(['teams'])
-            ->latest()
-            ->paginate(50);
+        // Get search and filter parameters
+        $search = request()->input('search', '');
+        $statusFilter = request()->input('status', 'all');
+        $sortBy = request()->input('sort_by', 'created_at');
+        $sortDirection = request()->input('sort_direction', 'desc');
+
+        // Build query with search and filters
+        $query = \App\Models\User::with(['teams'])
+            ->withCount(['teams']);
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ILIKE', "%{$search}%")
+                    ->orWhere('email', 'ILIKE', "%{$search}%");
+            });
+        }
+
+        // Apply status filter
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'pending') {
+                // Pending = active status but email not verified
+                $query->where('status', 'active')
+                    ->whereNull('email_verified_at');
+            } else {
+                $query->where('status', $statusFilter);
+            }
+        }
+
+        // Apply sorting
+        $validSortFields = ['name', 'email', 'created_at', 'last_login_at', 'teams_count'];
+        if (in_array($sortBy, $validSortFields)) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->latest();
+        }
+
+        // Paginate results
+        $paginator = $query->paginate(50)->withQueryString();
 
         $users = $paginator->through(function ($user) {
             // Count servers across all user's teams
@@ -154,6 +188,13 @@ Route::prefix('admin')->group(function () {
             'total' => $paginator->total(),
             'currentPage' => $paginator->currentPage(),
             'perPage' => $paginator->perPage(),
+            'lastPage' => $paginator->lastPage(),
+            'filters' => [
+                'search' => $search,
+                'status' => $statusFilter,
+                'sort_by' => $sortBy,
+                'sort_direction' => $sortDirection,
+            ],
         ]);
     })->name('admin.users.index');
 

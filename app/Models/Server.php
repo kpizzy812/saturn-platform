@@ -310,6 +310,16 @@ class Server extends BaseModel
         return $this->hasMany(DockerCleanupExecution::class);
     }
 
+    public function healthChecks()
+    {
+        return $this->hasMany(ServerHealthCheck::class);
+    }
+
+    public function latestHealthCheck()
+    {
+        return $this->hasOne(ServerHealthCheck::class)->latestOfMany('checked_at');
+    }
+
     public function proxySet()
     {
         return $this->proxyType() && $this->proxyType() !== 'NONE' && $this->isFunctional() && ! $this->isSwarmWorker() && ! $this->settings->is_build_server;
