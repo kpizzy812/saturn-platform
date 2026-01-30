@@ -1769,15 +1769,12 @@ Route::prefix('admin')->group(function () {
         }
     })->name('admin.queues.retry');
 
-    Route::delete('/queues/failed/{id}', function (int $id) {
-        $deleted = \Illuminate\Support\Facades\DB::table('failed_jobs')->where('id', $id)->delete();
+    // Flush must be before {id} route to avoid "flush" being interpreted as an id
+    Route::delete('/queues/failed/flush', function () {
+        \Illuminate\Support\Facades\Artisan::call('queue:flush');
 
-        if ($deleted) {
-            return back()->with('success', 'Failed job deleted');
-        }
-
-        return back()->with('error', 'Failed job not found');
-    })->name('admin.queues.delete');
+        return back()->with('success', 'All failed jobs deleted');
+    })->name('admin.queues.flush');
 
     Route::post('/queues/failed/retry-all', function () {
         try {
@@ -1789,11 +1786,15 @@ Route::prefix('admin')->group(function () {
         }
     })->name('admin.queues.retry-all');
 
-    Route::delete('/queues/failed/flush', function () {
-        \Illuminate\Support\Facades\Artisan::call('queue:flush');
+    Route::delete('/queues/failed/{id}', function (string $id) {
+        $deleted = \Illuminate\Support\Facades\DB::table('failed_jobs')->where('id', (int) $id)->delete();
 
-        return back()->with('success', 'All failed jobs deleted');
-    })->name('admin.queues.flush');
+        if ($deleted) {
+            return back()->with('success', 'Failed job deleted');
+        }
+
+        return back()->with('error', 'Failed job not found');
+    })->name('admin.queues.delete');
 
     // Backup Management routes
     Route::get('/backups', function () {
