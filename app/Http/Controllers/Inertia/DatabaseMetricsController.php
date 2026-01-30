@@ -3096,8 +3096,36 @@ class DatabaseMetricsController extends Controller
      */
     protected function getMysqlColumns(mixed $server, mixed $database, string $tableName): array
     {
-        // TODO: Implement MySQL column schema retrieval
-        return [];
+        $containerName = $database->uuid;
+        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $dbName = $database->mysql_database ?? 'mysql';
+
+        // Escape table and database names to prevent SQL injection
+        $escapedDbName = str_replace("'", "''", $dbName);
+        $escapedTableName = str_replace("'", "''", $tableName);
+
+        $query = "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, (CASE WHEN COLUMN_KEY = 'PRI' THEN 1 ELSE 0 END) as is_primary FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{$escapedDbName}' AND TABLE_NAME = '{$escapedTableName}' ORDER BY ORDINAL_POSITION";
+
+        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$query}\" 2>/dev/null | awk -F'\\t' '{print \$1\"|\"\$2\"|\"\$3\"|\"\$4\"|\"\$5}' || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $columns = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $parts = explode('|', trim($line));
+                if (count($parts) >= 5) {
+                    $columns[] = [
+                        'name' => $parts[0],
+                        'type' => $parts[1],
+                        'nullable' => $parts[2] === 'YES',
+                        'default' => $parts[3] !== 'NULL' && $parts[3] !== '' ? $parts[3] : null,
+                        'is_primary' => (int) $parts[4] > 0,
+                    ];
+                }
+            }
+        }
+
+        return $columns;
     }
 
     /**
