@@ -126,16 +126,26 @@ Route::prefix('admin')->group(function () {
                 return $team->servers()->count();
             });
 
+            // Determine real status from database
+            $status = $user->status ?? 'active';
+
+            // If email not verified and status is default, set to pending
+            if ($status === 'active' && is_null($user->email_verified_at)) {
+                $status = 'pending';
+            }
+
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'status' => 'active', // Default status, can be extended later
+                'status' => $status,
                 'is_root_user' => $user->id === 0 || $user->is_superadmin,
                 'teams_count' => $user->teams_count,
                 'servers_count' => $serversCount,
                 'created_at' => $user->created_at->toISOString(),
-                'last_login_at' => $user->updated_at?->toISOString(),
+                'last_login_at' => $user->last_login_at?->toISOString() ?? $user->updated_at?->toISOString(),
+                'suspended_at' => $user->suspended_at?->toISOString(),
+                'suspension_reason' => $user->suspension_reason,
             ];
         });
 
@@ -157,6 +167,104 @@ Route::prefix('admin')->group(function () {
             'user' => $user,
         ]);
     })->name('admin.users.show');
+
+    Route::post('/users/{id}/impersonate', function (int $id) {
+        $adminUser = Auth::user();
+
+        // Only superadmins can impersonate
+        if (! $adminUser->isSuperAdmin()) {
+            return back()->with('error', 'Unauthorized: Only superadmins can impersonate users');
+        }
+
+        $targetUser = \App\Models\User::findOrFail($id);
+
+        // Cannot impersonate root user (id=0) or other superadmins
+        if ($targetUser->id === 0 || $targetUser->isSuperAdmin()) {
+            return back()->with('error', 'Cannot impersonate root user or other superadmins');
+        }
+
+        // Cannot impersonate suspended/banned users
+        if ($targetUser->isSuspended() || $targetUser->isBanned()) {
+            return back()->with('error', 'Cannot impersonate suspended or banned users');
+        }
+
+        // Store original user ID in session for returning later
+        session(['impersonating_user_id' => $adminUser->id]);
+
+        // Log the impersonation event
+        \App\Models\AuditLog::create([
+            'user_id' => $adminUser->id,
+            'team_id' => $targetUser->currentTeam()?->id,
+            'action' => 'user_impersonated',
+            'resource_type' => 'User',
+            'resource_id' => $targetUser->id,
+            'resource_name' => $targetUser->name,
+            'description' => "Admin {$adminUser->name} impersonated user {$targetUser->name}",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        // Login as target user
+        Auth::login($targetUser);
+
+        return redirect()->route('dashboard')->with('success', "Now impersonating {$targetUser->name}. You will be automatically logged back as admin after 30 minutes or when you logout.");
+    })->name('admin.users.impersonate');
+
+    Route::post('/users/{id}/toggle-suspension', function (int $id) {
+        $adminUser = Auth::user();
+
+        // Only superadmins can suspend users
+        if (! $adminUser->isSuperAdmin()) {
+            return back()->with('error', 'Unauthorized: Only superadmins can suspend users');
+        }
+
+        $targetUser = \App\Models\User::findOrFail($id);
+
+        // Cannot suspend root user (id=0) or other superadmins
+        if ($targetUser->id === 0 || $targetUser->isSuperAdmin()) {
+            return back()->with('error', 'Cannot suspend root user or other superadmins');
+        }
+
+        // Toggle suspension status
+        if ($targetUser->isSuspended()) {
+            // Activate user
+            $targetUser->activate();
+
+            // Log the activation
+            \App\Models\AuditLog::create([
+                'user_id' => $adminUser->id,
+                'team_id' => null,
+                'action' => 'user_activated',
+                'resource_type' => 'User',
+                'resource_id' => $targetUser->id,
+                'resource_name' => $targetUser->name,
+                'description' => "Admin {$adminUser->name} activated user {$targetUser->name}",
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return back()->with('success', "User {$targetUser->name} has been activated");
+        } else {
+            // Suspend user
+            $reason = request()->input('reason', 'No reason provided');
+            $targetUser->suspend($reason, $adminUser->id);
+
+            // Log the suspension
+            \App\Models\AuditLog::create([
+                'user_id' => $adminUser->id,
+                'team_id' => null,
+                'action' => 'user_suspended',
+                'resource_type' => 'User',
+                'resource_id' => $targetUser->id,
+                'resource_name' => $targetUser->name,
+                'description' => "Admin {$adminUser->name} suspended user {$targetUser->name}. Reason: {$reason}",
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            return back()->with('success', "User {$targetUser->name} has been suspended");
+        }
+    })->name('admin.users.toggle-suspension');
 
     Route::get('/applications', function () {
         // Fetch all applications across all teams (admin view)

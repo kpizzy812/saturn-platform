@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RefreshCw, Table, Database } from 'lucide-react';
+import { RefreshCw, Table, Database, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { Link } from '@inertiajs/react';
 import type { SelectedService } from '../../types';
 
 interface DatabaseDataTabProps {
@@ -89,19 +90,24 @@ export function DatabaseDataTab({ service }: DatabaseDataTabProps) {
             {tables.length > 0 ? (
                 <div className="space-y-2">
                     {tables.map((table) => (
-                        <div
+                        <Link
                             key={table.name}
-                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3"
+                            href={`/databases/${service.uuid}/tables?table=${encodeURIComponent(table.name)}&tab=data`}
+                            className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3 transition-all hover:border-primary hover:bg-background-secondary/80 hover:shadow-sm group cursor-pointer"
                         >
                             <div className="flex items-center gap-3">
-                                <Table className="h-4 w-4 text-foreground-muted" />
+                                <Table className="h-4 w-4 text-foreground-muted group-hover:text-primary transition-colors" />
                                 <div>
-                                    <p className="text-sm font-medium text-foreground">{table.name}</p>
-                                    <p className="text-xs text-foreground-muted">{table.rows.toLocaleString()} {rowLabel}</p>
+                                    <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                                        {table.name}
+                                    </p>
+                                    <p className="text-xs text-foreground-muted">
+                                        {table.rows.toLocaleString()} {rowLabel} • {table.size}
+                                    </p>
                                 </div>
                             </div>
-                            <span className="text-xs text-foreground-muted">{table.size}</span>
-                        </div>
+                            <ExternalLink className="h-3.5 w-3.5 text-foreground-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
                     ))}
                 </div>
             ) : !error ? (

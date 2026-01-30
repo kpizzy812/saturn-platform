@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/layout';
 import { Button, Card, Badge } from '@/components/ui';
 import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StandaloneDatabase } from '@/types';
@@ -36,6 +36,24 @@ export default function DatabaseTables({ database, tables = [] }: Props) {
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'schema' | 'data'>('schema');
+
+    // Handle URL query parameters for deep linking
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const tableParam = params.get('table');
+        const tabParam = params.get('tab');
+
+        if (tableParam) {
+            const decodedTable = decodeURIComponent(tableParam);
+            const tableExists = tables.some((t) => t.name === decodedTable);
+            if (tableExists) {
+                setSelectedTable(decodedTable);
+                if (tabParam === 'data' || tabParam === 'schema') {
+                    setActiveTab(tabParam);
+                }
+            }
+        }
+    }, [tables]);
 
     const filteredTables = tables.filter((table) =>
         table.name.toLowerCase().includes(searchQuery.toLowerCase())

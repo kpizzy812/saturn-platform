@@ -38,3 +38,4 @@ docker/saturn-realtime/node_modules
 CHANGELOG.md
 /.workspaces
 .claude/settings.local.json
+.claudeignore

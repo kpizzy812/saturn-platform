@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
+            \App\Http\Middleware\CheckUserStatus::class,
             \App\Http\Middleware\CheckForcePasswordReset::class,
             \App\Http\Middleware\DecideWhatToDoWithUser::class,
 

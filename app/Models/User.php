@@ -57,6 +57,8 @@ class User extends Authenticatable implements SendsEmail
         'email_change_code_expires_at' => 'datetime',
         'is_superadmin' => 'boolean',
         'platform_role' => 'string',
+        'suspended_at' => 'datetime',
+        'last_login_at' => 'datetime',
     ];
 
     /**
@@ -545,6 +547,99 @@ class User extends Authenticatable implements SendsEmail
 
         // Check if user is admin or owner of root team
         return $this->isAdminOfTeam(0);
+    }
+
+    /**
+     * Check if the user account is active
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    /**
+     * Check if the user account is suspended
+     */
+    public function isSuspended(): bool
+    {
+        return $this->status === 'suspended';
+    }
+
+    /**
+     * Check if the user account is banned
+     */
+    public function isBanned(): bool
+    {
+        return $this->status === 'banned';
+    }
+
+    /**
+     * Check if the user account is pending (email not verified)
+     */
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    /**
+     * Suspend the user account
+     */
+    public function suspend(?string $reason = null, ?int $suspendedBy = null): void
+    {
+        $this->update([
+            'status' => 'suspended',
+            'suspended_at' => now(),
+            'suspended_by' => $suspendedBy ?? Auth::id(),
+            'suspension_reason' => $reason,
+        ]);
+
+        // Revoke all active sessions
+        $this->deleteOtherSessions();
+
+        // Revoke all API tokens
+        $this->tokens()->delete();
+    }
+
+    /**
+     * Activate/unsuspend the user account
+     */
+    public function activate(): void
+    {
+        $this->update([
+            'status' => 'active',
+            'suspended_at' => null,
+            'suspended_by' => null,
+            'suspension_reason' => null,
+        ]);
+    }
+
+    /**
+     * Ban the user account (permanent suspension)
+     */
+    public function ban(?string $reason = null, ?int $bannedBy = null): void
+    {
+        $this->update([
+            'status' => 'banned',
+            'suspended_at' => now(),
+            'suspended_by' => $bannedBy ?? Auth::id(),
+            'suspension_reason' => $reason,
+        ]);
+
+        // Revoke all active sessions
+        $this->deleteOtherSessions();
+
+        // Revoke all API tokens
+        $this->tokens()->delete();
+    }
+
+    /**
+     * Update last login timestamp
+     */
+    public function updateLastLogin(): void
+    {
+        $this->update([
+            'last_login_at' => now(),
+        ]);
     }
 
     public function requestEmailChange(string $newEmail): void
