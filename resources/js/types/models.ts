@@ -279,7 +279,8 @@ export type DeploymentStatus =
     | 'in_progress'
     | 'finished'
     | 'failed'
-    | 'cancelled';
+    | 'cancelled'
+    | 'pending_approval';
 
 export type DeploymentTrigger = 'push' | 'manual' | 'rollback' | 'scheduled';
 

@@ -228,6 +228,15 @@ export default function DeploymentDetails({
                     textColor: 'text-foreground-muted',
                     borderColor: 'border-foreground-muted/30',
                 };
+            case 'pending_approval':
+                return {
+                    icon: <AlertCircle className="h-5 w-5" />,
+                    label: 'Pending Approval',
+                    variant: 'warning' as const,
+                    bgColor: 'bg-warning/10',
+                    textColor: 'text-warning',
+                    borderColor: 'border-warning/30',
+                };
         }
     };
 

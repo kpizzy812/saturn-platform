@@ -65,6 +65,8 @@ export default function ApplicationDeployments({ application, deployments: propD
                 return <Badge variant="warning">Queued</Badge>;
             case 'cancelled':
                 return <Badge variant="default">Cancelled</Badge>;
+            case 'pending_approval':
+                return <Badge variant="warning">Pending Approval</Badge>;
         }
     };
 
