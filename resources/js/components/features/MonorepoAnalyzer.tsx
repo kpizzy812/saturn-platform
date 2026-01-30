@@ -25,6 +25,7 @@ interface DetectedApp {
     health_check?: DetectedHealthCheck;
     node_version?: string;
     python_version?: string;
+    dockerfile_info?: DockerfileInfo;
 }
 
 interface DetectedDatabase {
@@ -70,6 +71,21 @@ interface DockerComposeService {
     image: string;
     ports: string[];
     is_database: boolean;
+}
+
+interface DockerfileInfo {
+    base_image?: string;
+    env_variables?: Record<string, string | null>;
+    exposed_ports?: number[];
+    build_args?: Record<string, string | null>;
+    workdir?: string;
+    healthcheck?: string;
+    entrypoint?: string;
+    cmd?: string;
+    labels?: Record<string, string>;
+    node_version?: string;
+    python_version?: string;
+    go_version?: string;
 }
 
 interface AnalysisResult {
@@ -458,6 +474,50 @@ export function MonorepoAnalyzer({
                                                 <span className="text-foreground-muted">Runtime:</span>
                                                 {app.node_version && <Badge variant="outline" size="sm">Node {app.node_version}</Badge>}
                                                 {app.python_version && <Badge variant="outline" size="sm">Python {app.python_version}</Badge>}
+                                            </div>
+                                        )}
+
+                                        {/* Dockerfile Info */}
+                                        {app.dockerfile_info && (
+                                            <div className="space-y-1 mt-2 pt-2 border-t border-white/[0.06]">
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    <svg className="h-4 w-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                                                    </svg>
+                                                    <span className="text-foreground-muted">Dockerfile</span>
+                                                </div>
+                                                {app.dockerfile_info.base_image && (
+                                                    <div className="flex items-center gap-2 text-sm pl-6">
+                                                        <span className="text-foreground-muted">Base:</span>
+                                                        <code className="text-xs bg-background-secondary px-2 py-0.5 rounded">
+                                                            {app.dockerfile_info.base_image}
+                                                        </code>
+                                                    </div>
+                                                )}
+                                                {app.dockerfile_info.workdir && (
+                                                    <div className="flex items-center gap-2 text-sm pl-6">
+                                                        <span className="text-foreground-muted">Workdir:</span>
+                                                        <code className="text-xs bg-background-secondary px-2 py-0.5 rounded">
+                                                            {app.dockerfile_info.workdir}
+                                                        </code>
+                                                    </div>
+                                                )}
+                                                {app.dockerfile_info.cmd && (
+                                                    <div className="flex items-center gap-2 text-sm pl-6">
+                                                        <span className="text-foreground-muted">CMD:</span>
+                                                        <code className="text-xs bg-background-secondary px-2 py-0.5 rounded">
+                                                            {app.dockerfile_info.cmd}
+                                                        </code>
+                                                    </div>
+                                                )}
+                                                {app.dockerfile_info.exposed_ports && app.dockerfile_info.exposed_ports.length > 0 && (
+                                                    <div className="flex items-center gap-2 text-sm pl-6">
+                                                        <span className="text-foreground-muted">Ports:</span>
+                                                        {app.dockerfile_info.exposed_ports.map(port => (
+                                                            <Badge key={port} variant="secondary" size="sm">{port}</Badge>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
