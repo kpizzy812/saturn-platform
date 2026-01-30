@@ -21,6 +21,7 @@ readonly class DetectedApp
         public ?DetectedHealthCheck $healthCheck = null,
         public ?string $nodeVersion = null,
         public ?string $pythonVersion = null,
+        public ?DockerfileInfo $dockerfileInfo = null,
     ) {}
 
     /**
@@ -42,6 +43,7 @@ readonly class DetectedApp
             healthCheck: $healthCheck,
             nodeVersion: $this->nodeVersion,
             pythonVersion: $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
         );
     }
 
@@ -64,6 +66,7 @@ readonly class DetectedApp
             healthCheck: $this->healthCheck,
             nodeVersion: $ci->nodeVersion ?? $this->nodeVersion,
             pythonVersion: $ci->pythonVersion ?? $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
         );
     }
 
@@ -86,6 +89,30 @@ readonly class DetectedApp
             healthCheck: $this->healthCheck,
             nodeVersion: $this->nodeVersion,
             pythonVersion: $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
+        );
+    }
+
+    /**
+     * Create a new instance with Dockerfile info
+     */
+    public function withDockerfileInfo(DockerfileInfo $dockerfileInfo): self
+    {
+        return new self(
+            name: $this->name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $dockerfileInfo->getNodeVersion() ?? $this->nodeVersion,
+            pythonVersion: $dockerfileInfo->getPythonVersion() ?? $this->pythonVersion,
+            dockerfileInfo: $dockerfileInfo,
         );
     }
 
@@ -110,6 +137,7 @@ readonly class DetectedApp
             ] : null,
             'node_version' => $this->nodeVersion,
             'python_version' => $this->pythonVersion,
+            'dockerfile_info' => $this->dockerfileInfo?->toArray(),
         ];
     }
 

@@ -166,7 +166,7 @@ packages/
    - [x] DockerComposeAnalyzer
    - [x] PortDetector
    - [x] HealthCheckDetector
-   - [ ] DockerfileAnalyzer enhancement (partial - HEALTHCHECK parsing done)
+   - [x] DockerfileAnalyzer enhancement (ENV, EXPOSE, ARG, WORKDIR, HEALTHCHECK, ENTRYPOINT, CMD, LABEL parsing)
 
 2. **Phase 2: CI/CD & Dependencies** (Medium Priority) ✅
    - [x] CIConfigDetector
@@ -179,7 +179,7 @@ packages/
 4. **Phase 4: Integration & Testing** ✅
    - [x] Update RepositoryAnalyzer to use new detectors
    - [ ] Update frontend to show new information
-   - [x] Add unit tests (67 tests passing)
+   - [x] Add unit tests (93 tests passing)
 
 ---
 

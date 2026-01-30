@@ -7,6 +7,7 @@ use App\Services\RepositoryAnalyzer\Detectors\AppDetector;
 use App\Services\RepositoryAnalyzer\Detectors\CIConfigDetector;
 use App\Services\RepositoryAnalyzer\Detectors\DependencyAnalyzer;
 use App\Services\RepositoryAnalyzer\Detectors\DockerComposeAnalyzer;
+use App\Services\RepositoryAnalyzer\Detectors\DockerfileAnalyzer;
 use App\Services\RepositoryAnalyzer\Detectors\HealthCheckDetector;
 use App\Services\RepositoryAnalyzer\Detectors\MonorepoDetector;
 use App\Services\RepositoryAnalyzer\Detectors\PortDetector;
@@ -33,6 +34,7 @@ class RepositoryAnalyzer
         private HealthCheckDetector $healthCheckDetector,
         private CIConfigDetector $ciConfigDetector,
         private AppDependencyDetector $appDependencyDetector,
+        private DockerfileAnalyzer $dockerfileAnalyzer,
         private LoggerInterface $logger,
     ) {}
 
@@ -76,6 +78,18 @@ class RepositoryAnalyzer
                 $databases = array_merge($databases, $deps->databases);
                 $services = array_merge($services, $deps->services);
                 $envVariables = array_merge($envVariables, $deps->envVariables);
+
+                // Analyze Dockerfile if present
+                $dockerfileInfo = $this->dockerfileAnalyzer->analyze($appPath);
+                if ($dockerfileInfo !== null) {
+                    $app = $app->withDockerfileInfo($dockerfileInfo);
+
+                    // Use Dockerfile's EXPOSE port if no port detected yet
+                    $dockerfilePort = $dockerfileInfo->getPrimaryPort();
+                    if ($dockerfilePort !== null && $dockerfilePort !== $app->defaultPort) {
+                        $app = $app->withPort($dockerfilePort);
+                    }
+                }
 
                 // Detect port from source code if not default
                 $detectedPort = $this->portDetector->detect($appPath, $app->framework);
