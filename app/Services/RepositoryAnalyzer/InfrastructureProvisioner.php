@@ -72,7 +72,7 @@ class InfrastructureProvisioner
                 );
 
                 // 3. Link databases to applications (ResourceLink with auto_inject)
-                $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases);
+                $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment);
 
                 // 4. Create environment variables from .env.example
                 $this->createEnvVariables($createdApps, $analysis->envVariables);
@@ -305,7 +305,8 @@ class InfrastructureProvisioner
     private function createResourceLinks(
         array $createdApps,
         array $createdDatabases,
-        array $detectedDatabases
+        array $detectedDatabases,
+        Environment $environment
     ): void {
         foreach ($detectedDatabases as $dbInfo) {
             $database = $createdDatabases[$dbInfo->type] ?? null;
@@ -320,6 +321,7 @@ class InfrastructureProvisioner
                 }
 
                 ResourceLink::create([
+                    'environment_id' => $environment->id,
                     'source_type' => Application::class,
                     'source_id' => $application->id,
                     'target_type' => get_class($database),
