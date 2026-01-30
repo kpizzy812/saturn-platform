@@ -1237,10 +1237,38 @@ Route::prefix('admin')->group(function () {
         }
     })->name('admin.services.start');
 
-    Route::get('/servers', function () {
+    Route::get('/servers', function (\Illuminate\Http\Request $request) {
         // Fetch all servers across all teams (admin view)
-        $servers = \App\Models\Server::with(['team', 'settings'])
-            ->latest()
+        $query = \App\Models\Server::with(['team', 'settings']);
+
+        // Search filter
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('ip', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Status filter
+        if ($status = $request->get('status')) {
+            $query->whereHas('settings', function ($q) use ($status) {
+                if ($status === 'reachable') {
+                    $q->where('is_reachable', true)->where('is_usable', true);
+                } elseif ($status === 'unreachable') {
+                    $q->where('is_reachable', false);
+                } elseif ($status === 'degraded') {
+                    $q->where('is_reachable', true)->where('is_usable', false);
+                }
+            });
+        }
+
+        // Tag filter
+        if ($tag = $request->get('tag')) {
+            $query->whereJsonContains('tags', $tag);
+        }
+
+        $servers = $query->latest()
             ->paginate(50)
             ->through(function ($server) {
                 return [
@@ -1253,6 +1281,7 @@ Route::prefix('admin')->group(function () {
                     'user' => $server->user,
                     'is_reachable' => $server->settings?->is_reachable ?? false,
                     'is_usable' => $server->settings?->is_usable ?? false,
+                    'tags' => $server->tags ?? [],
                     'team_name' => $server->team?->name ?? 'Unknown',
                     'team_id' => $server->team_id,
                     'created_at' => $server->created_at,
@@ -1260,8 +1289,22 @@ Route::prefix('admin')->group(function () {
                 ];
             });
 
+        // Get all unique tags for filter dropdown
+        $allTags = \App\Models\Server::whereNotNull('tags')
+            ->get()
+            ->pluck('tags')
+            ->flatten()
+            ->unique()
+            ->values();
+
         return Inertia::render('Admin/Servers/Index', [
             'servers' => $servers,
+            'allTags' => $allTags,
+            'filters' => [
+                'search' => $request->get('search'),
+                'status' => $request->get('status'),
+                'tag' => $request->get('tag'),
+            ],
         ]);
     })->name('admin.servers.index');
 
@@ -1353,6 +1396,7 @@ Route::prefix('admin')->group(function () {
                 'is_localhost' => $server->is_localhost,
                 'team_id' => $server->team_id,
                 'team_name' => $server->team?->name ?? 'Unknown',
+                'tags' => $server->tags ?? [],
                 'settings' => [
                     'is_reachable' => $server->settings?->is_reachable ?? false,
                     'is_usable' => $server->settings?->is_usable ?? false,
@@ -1414,6 +1458,70 @@ Route::prefix('admin')->group(function () {
 
         return redirect()->route('admin.servers.index')->with('success', "Server '{$serverName}' deleted");
     })->name('admin.servers.delete');
+
+    // Server health history API
+    Route::get('/servers/{uuid}/health-history', function (string $uuid, \Illuminate\Http\Request $request) {
+        $server = \App\Models\Server::where('uuid', $uuid)->firstOrFail();
+
+        $period = $request->get('period', '24h');
+        $limit = match ($period) {
+            '1h' => 60,
+            '6h' => 72,
+            '24h' => 288,
+            '7d' => 336,
+            '30d' => 720,
+            default => 288,
+        };
+
+        $history = \App\Models\ServerHealthCheck::where('server_id', $server->id)
+            ->orderByDesc('checked_at')
+            ->limit($limit)
+            ->get()
+            ->map(function ($check) {
+                return [
+                    'status' => $check->status,
+                    'cpu_usage' => $check->cpu_usage_percent,
+                    'memory_usage' => $check->memory_usage_percent,
+                    'disk_usage' => $check->disk_usage_percent,
+                    'response_time_ms' => $check->response_time_ms,
+                    'checked_at' => $check->checked_at?->toISOString(),
+                ];
+            })
+            ->reverse()
+            ->values();
+
+        return response()->json([
+            'server_id' => $server->id,
+            'server_name' => $server->name,
+            'period' => $period,
+            'data' => $history,
+        ]);
+    })->name('admin.servers.health-history');
+
+    // Server tags management
+    Route::put('/servers/{uuid}/tags', function (string $uuid, \Illuminate\Http\Request $request) {
+        $server = \App\Models\Server::where('uuid', $uuid)->firstOrFail();
+
+        $validated = $request->validate([
+            'tags' => 'nullable|array',
+            'tags.*' => 'string|max:50',
+        ]);
+
+        $server->update([
+            'tags' => array_values(array_unique($validated['tags'] ?? [])),
+        ]);
+
+        \App\Models\AuditLog::log(
+            action: 'server_tags_updated',
+            resourceType: 'server',
+            resourceId: $server->id,
+            resourceName: $server->name,
+            description: 'Updated server tags',
+            metadata: ['tags' => $server->tags]
+        );
+
+        return back()->with('success', 'Server tags updated');
+    })->name('admin.servers.update-tags');
 
     Route::get('/deployments', function () {
         // Fetch all deployments across all teams (admin view)

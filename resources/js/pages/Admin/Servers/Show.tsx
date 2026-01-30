@@ -24,7 +24,12 @@ import {
     Globe,
     Terminal,
     Gauge,
+    Tag,
+    Plus,
+    X,
+    TrendingUp,
 } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
 
 interface ServerResource {
     id: number;
@@ -32,6 +37,15 @@ interface ServerResource {
     name: string;
     status: string;
     type?: string;
+}
+
+interface HealthDataPoint {
+    status: string;
+    cpu_usage?: number;
+    memory_usage?: number;
+    disk_usage?: number;
+    response_time_ms?: number;
+    checked_at: string;
 }
 
 interface ServerDetails {
@@ -48,6 +62,7 @@ interface ServerDetails {
     is_localhost: boolean;
     team_id: number;
     team_name: string;
+    tags?: string[];
     settings: {
         is_reachable: boolean;
         is_usable: boolean;
@@ -173,11 +188,54 @@ export default function AdminServerShow({ server }: Props) {
     const confirm = useConfirm();
     const [isValidating, setIsValidating] = React.useState(false);
     const [isCleaningDocker, setIsCleaningDocker] = React.useState(false);
+    const [healthHistory, setHealthHistory] = React.useState<HealthDataPoint[]>([]);
+    const [historyPeriod, setHistoryPeriod] = React.useState('24h');
+    const [isLoadingHistory, setIsLoadingHistory] = React.useState(false);
+    const [tags, setTags] = React.useState<string[]>(server.tags ?? []);
+    const [newTag, setNewTag] = React.useState('');
+    const [isSavingTags, setIsSavingTags] = React.useState(false);
 
     const applications = server.resources?.applications ?? [];
     const databases = server.resources?.databases ?? [];
     const services = server.resources?.services ?? [];
     const totalResources = applications.length + databases.length + services.length;
+
+    // Load health history
+    React.useEffect(() => {
+        const fetchHistory = async () => {
+            setIsLoadingHistory(true);
+            try {
+                const response = await fetch(`/admin/servers/${server.uuid}/health-history?period=${historyPeriod}`);
+                const data = await response.json();
+                setHealthHistory(data.data ?? []);
+            } catch (error) {
+                console.error('Failed to load health history:', error);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+        fetchHistory();
+    }, [server.uuid, historyPeriod]);
+
+    const handleAddTag = () => {
+        const trimmed = newTag.trim().toLowerCase();
+        if (trimmed && !tags.includes(trimmed)) {
+            setTags([...tags, trimmed]);
+            setNewTag('');
+        }
+    };
+
+    const handleRemoveTag = (tag: string) => {
+        setTags(tags.filter(t => t !== tag));
+    };
+
+    const handleSaveTags = () => {
+        setIsSavingTags(true);
+        router.put(`/admin/servers/${server.uuid}/tags`, { tags }, {
+            preserveScroll: true,
+            onFinish: () => setIsSavingTags(false),
+        });
+    };
 
     const handleValidateConnection = async () => {
         setIsValidating(true);
@@ -385,6 +443,191 @@ export default function AdminServerShow({ server }: Props) {
                         </div>
                     </div>
                 )}
+
+                {/* Metrics History */}
+                <Card variant="glass" className="mb-6">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <TrendingUp className="h-5 w-5" />
+                                    Metrics History
+                                </CardTitle>
+                                <CardDescription>Server health over time</CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                                {['1h', '6h', '24h', '7d'].map((period) => (
+                                    <Button
+                                        key={period}
+                                        variant={historyPeriod === period ? 'primary' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setHistoryPeriod(period)}
+                                    >
+                                        {period}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingHistory ? (
+                            <div className="flex items-center justify-center py-8">
+                                <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+                            </div>
+                        ) : healthHistory.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-foreground-muted">
+                                No health data available for this period
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {/* Simple sparkline-style visualization */}
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    {/* CPU History */}
+                                    <div className="rounded-lg border border-border/50 p-4">
+                                        <p className="mb-2 text-xs font-medium text-foreground-subtle">CPU Usage</p>
+                                        <div className="flex h-16 items-end gap-0.5">
+                                            {healthHistory.slice(-48).map((point, i) => {
+                                                const height = point.cpu_usage ?? 0;
+                                                const color = height > 90 ? 'bg-danger' : height > 70 ? 'bg-warning' : 'bg-success';
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`flex-1 rounded-t ${color}`}
+                                                        style={{ height: `${Math.max(height, 2)}%` }}
+                                                        title={`${height.toFixed(1)}% at ${new Date(point.checked_at).toLocaleTimeString()}`}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="mt-2 text-right text-xs text-foreground-muted">
+                                            Avg: {(healthHistory.reduce((acc, p) => acc + (p.cpu_usage ?? 0), 0) / healthHistory.length).toFixed(1)}%
+                                        </p>
+                                    </div>
+
+                                    {/* Memory History */}
+                                    <div className="rounded-lg border border-border/50 p-4">
+                                        <p className="mb-2 text-xs font-medium text-foreground-subtle">Memory Usage</p>
+                                        <div className="flex h-16 items-end gap-0.5">
+                                            {healthHistory.slice(-48).map((point, i) => {
+                                                const height = point.memory_usage ?? 0;
+                                                const color = height > 90 ? 'bg-danger' : height > 70 ? 'bg-warning' : 'bg-primary';
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`flex-1 rounded-t ${color}`}
+                                                        style={{ height: `${Math.max(height, 2)}%` }}
+                                                        title={`${height.toFixed(1)}% at ${new Date(point.checked_at).toLocaleTimeString()}`}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="mt-2 text-right text-xs text-foreground-muted">
+                                            Avg: {(healthHistory.reduce((acc, p) => acc + (p.memory_usage ?? 0), 0) / healthHistory.length).toFixed(1)}%
+                                        </p>
+                                    </div>
+
+                                    {/* Disk History */}
+                                    <div className="rounded-lg border border-border/50 p-4">
+                                        <p className="mb-2 text-xs font-medium text-foreground-subtle">Disk Usage</p>
+                                        <div className="flex h-16 items-end gap-0.5">
+                                            {healthHistory.slice(-48).map((point, i) => {
+                                                const height = point.disk_usage ?? 0;
+                                                const color = height > 90 ? 'bg-danger' : height > 70 ? 'bg-warning' : 'bg-success';
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`flex-1 rounded-t ${color}`}
+                                                        style={{ height: `${Math.max(height, 2)}%` }}
+                                                        title={`${height.toFixed(1)}% at ${new Date(point.checked_at).toLocaleTimeString()}`}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="mt-2 text-right text-xs text-foreground-muted">
+                                            Avg: {(healthHistory.reduce((acc, p) => acc + (p.disk_usage ?? 0), 0) / healthHistory.length).toFixed(1)}%
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Status timeline */}
+                                <div className="rounded-lg border border-border/50 p-4">
+                                    <p className="mb-2 text-xs font-medium text-foreground-subtle">Status Timeline</p>
+                                    <div className="flex h-6 gap-0.5 overflow-hidden rounded">
+                                        {healthHistory.slice(-96).map((point, i) => {
+                                            const color = point.status === 'healthy' ? 'bg-success' :
+                                                         point.status === 'degraded' ? 'bg-warning' :
+                                                         point.status === 'down' ? 'bg-danger' : 'bg-foreground-muted';
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    className={`flex-1 ${color}`}
+                                                    title={`${point.status} at ${new Date(point.checked_at).toLocaleString()}`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="mt-2 flex justify-between text-xs text-foreground-muted">
+                                        <span>{healthHistory[0] ? new Date(healthHistory[0].checked_at).toLocaleTimeString() : ''}</span>
+                                        <span>{healthHistory[healthHistory.length - 1] ? new Date(healthHistory[healthHistory.length - 1].checked_at).toLocaleTimeString() : ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Server Tags */}
+                <Card variant="glass" className="mb-6">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Tag className="h-5 w-5" />
+                            Server Tags
+                        </CardTitle>
+                        <CardDescription>Organize servers with tags for easy filtering</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="flex flex-wrap gap-2">
+                                {tags.map((tag) => (
+                                    <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                                        {tag}
+                                        <button
+                                            onClick={() => handleRemoveTag(tag)}
+                                            className="ml-1 rounded-full p-0.5 hover:bg-foreground/10"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                                {tags.length === 0 && (
+                                    <span className="text-sm text-foreground-muted">No tags assigned</span>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="Add a tag..."
+                                    value={newTag}
+                                    onChange={(e) => setNewTag(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                                    className="max-w-xs"
+                                />
+                                <Button variant="secondary" onClick={handleAddTag}>
+                                    <Plus className="h-4 w-4" />
+                                    Add
+                                </Button>
+                                {JSON.stringify(tags) !== JSON.stringify(server.tags ?? []) && (
+                                    <Button
+                                        variant="primary"
+                                        onClick={handleSaveTags}
+                                        disabled={isSavingTags}
+                                    >
+                                        {isSavingTags ? 'Saving...' : 'Save Tags'}
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Server Info */}
                 <Card variant="glass" className="mb-6">

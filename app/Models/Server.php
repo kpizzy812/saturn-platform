@@ -191,6 +191,7 @@ class Server extends BaseModel
     protected $casts = [
         'proxy' => SchemalessAttributes::class,
         'traefik_outdated_info' => 'array',
+        'tags' => 'array',
         'logdrain_axiom_api_key' => 'encrypted',
         'logdrain_newrelic_license_key' => 'encrypted',
         'delete_unused_volumes' => 'boolean',
