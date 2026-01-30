@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, Button, Badge, Tabs } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { RefreshCw, Eye, EyeOff, Copy, Layers, TrendingUp, Loader2, Database, Search } from 'lucide-react';
@@ -188,8 +188,6 @@ function OverviewTab({ database }: { database: StandaloneDatabase }) {
 }
 
 function CollectionsTab({ database }: { database: StandaloneDatabase }) {
-    const { addToast } = useToast();
-
     // Fetch collections from API
     const { collections, isLoading, refetch } = useMongoCollections({
         uuid: database.uuid,
@@ -197,7 +195,8 @@ function CollectionsTab({ database }: { database: StandaloneDatabase }) {
     });
 
     const handleViewCollection = (name: string) => {
-        addToast('info', `Opening collection: ${name}`);
+        // Navigate to Tables page with the collection selected and data tab active
+        router.visit(`/databases/${database.uuid}/tables?table=${encodeURIComponent(name)}&tab=data`);
     };
 
     return (

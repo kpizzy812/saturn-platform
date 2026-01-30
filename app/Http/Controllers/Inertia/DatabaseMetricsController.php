@@ -2438,6 +2438,268 @@ class DatabaseMetricsController extends Controller
     }
 
     /**
+     * Get Redis key value.
+     */
+    public function getRedisKeyValue(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'key' => 'required|string|max:1024',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['success' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = escapeshellarg($database->uuid);
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
+            $keyName = $request->input('key');
+            $escapedKey = escapeshellarg($keyName);
+
+            // Get key type first
+            $typeCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TYPE {$escapedKey} 2>/dev/null";
+            $keyType = trim(instant_remote_process([$typeCmd], $server, false) ?? 'none');
+
+            if ($keyType === 'none') {
+                return response()->json(['success' => false, 'error' => 'Key not found']);
+            }
+
+            // Get TTL
+            $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning TTL {$escapedKey} 2>/dev/null";
+            $ttl = (int) trim(instant_remote_process([$ttlCmd], $server, false) ?? '-1');
+
+            // Get value based on type
+            $value = null;
+            $length = 0;
+
+            switch ($keyType) {
+                case 'string':
+                    $valueCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning GET {$escapedKey} 2>/dev/null";
+                    $value = instant_remote_process([$valueCmd], $server, false) ?? '';
+                    $length = strlen($value);
+                    break;
+
+                case 'list':
+                    $lenCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning LLEN {$escapedKey} 2>/dev/null";
+                    $length = (int) trim(instant_remote_process([$lenCmd], $server, false) ?? '0');
+                    // Get first 100 items
+                    $limit = min($length, 100);
+                    $valueCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning LRANGE {$escapedKey} 0 {$limit} 2>/dev/null";
+                    $result = instant_remote_process([$valueCmd], $server, false) ?? '';
+                    $value = array_filter(explode("\n", trim($result)), fn ($v) => $v !== '');
+                    break;
+
+                case 'set':
+                    $lenCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning SCARD {$escapedKey} 2>/dev/null";
+                    $length = (int) trim(instant_remote_process([$lenCmd], $server, false) ?? '0');
+                    // Get members (limited to 100)
+                    $valueCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning SSCAN {$escapedKey} 0 COUNT 100 2>/dev/null";
+                    $result = instant_remote_process([$valueCmd], $server, false) ?? '';
+                    $lines = array_filter(explode("\n", trim($result)), fn ($v) => $v !== '');
+                    // Skip first line (cursor) and take remaining as members
+                    $value = array_slice($lines, 1);
+                    break;
+
+                case 'zset':
+                    $lenCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning ZCARD {$escapedKey} 2>/dev/null";
+                    $length = (int) trim(instant_remote_process([$lenCmd], $server, false) ?? '0');
+                    // Get members with scores (limited to 100)
+                    $valueCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning ZRANGE {$escapedKey} 0 99 WITHSCORES 2>/dev/null";
+                    $result = instant_remote_process([$valueCmd], $server, false) ?? '';
+                    $lines = array_filter(explode("\n", trim($result)), fn ($v) => $v !== '');
+                    // Parse member-score pairs
+                    $value = [];
+                    for ($i = 0; $i < count($lines) - 1; $i += 2) {
+                        $value[] = ['member' => $lines[$i], 'score' => $lines[$i + 1] ?? '0'];
+                    }
+                    break;
+
+                case 'hash':
+                    $lenCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning HLEN {$escapedKey} 2>/dev/null";
+                    $length = (int) trim(instant_remote_process([$lenCmd], $server, false) ?? '0');
+                    // Get all fields and values
+                    $valueCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning HGETALL {$escapedKey} 2>/dev/null";
+                    $result = instant_remote_process([$valueCmd], $server, false) ?? '';
+                    $lines = array_filter(explode("\n", trim($result)), fn ($v) => $v !== '');
+                    // Parse field-value pairs
+                    $value = [];
+                    for ($i = 0; $i < count($lines) - 1; $i += 2) {
+                        $value[$lines[$i]] = $lines[$i + 1] ?? '';
+                    }
+                    break;
+
+                case 'stream':
+                    $lenCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning XLEN {$escapedKey} 2>/dev/null";
+                    $length = (int) trim(instant_remote_process([$lenCmd], $server, false) ?? '0');
+                    $value = ['message' => 'Stream type viewing not fully supported'];
+                    break;
+
+                default:
+                    $value = null;
+            }
+
+            return response()->json([
+                'success' => true,
+                'key' => $keyName,
+                'type' => $keyType,
+                'value' => $value,
+                'length' => $length,
+                'ttl' => $ttl,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to get key value: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Set Redis key value.
+     */
+    public function setRedisKeyValue(Request $request, string $uuid): JsonResponse
+    {
+        $request->validate([
+            'key' => 'required|string|max:1024',
+            'type' => 'required|string|in:string,list,set,zset,hash',
+            'value' => 'required',
+            'ttl' => 'nullable|integer|min:-1',
+        ]);
+
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database || ! in_array($type, ['redis', 'keydb', 'dragonfly'])) {
+            return response()->json(['success' => false, 'error' => 'Redis database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable']);
+        }
+
+        try {
+            $containerName = escapeshellarg($database->uuid);
+            $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
+            $keyName = $request->input('key');
+            $keyType = $request->input('type');
+            $value = $request->input('value');
+            $ttl = $request->input('ttl', -1);
+            $escapedKey = escapeshellarg($keyName);
+
+            $command = '';
+
+            switch ($keyType) {
+                case 'string':
+                    $escapedValue = escapeshellarg($value);
+                    $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning SET {$escapedKey} {$escapedValue} 2>&1";
+                    break;
+
+                case 'list':
+                    // Delete old list and create new one
+                    $deleteCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL {$escapedKey} 2>/dev/null";
+                    instant_remote_process([$deleteCmd], $server, false);
+
+                    if (is_array($value) && count($value) > 0) {
+                        $escapedValues = implode(' ', array_map('escapeshellarg', $value));
+                        $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning RPUSH {$escapedKey} {$escapedValues} 2>&1";
+                    } else {
+                        return response()->json(['success' => true, 'message' => 'Empty list created']);
+                    }
+                    break;
+
+                case 'set':
+                    // Delete old set and create new one
+                    $deleteCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL {$escapedKey} 2>/dev/null";
+                    instant_remote_process([$deleteCmd], $server, false);
+
+                    if (is_array($value) && count($value) > 0) {
+                        $escapedValues = implode(' ', array_map('escapeshellarg', $value));
+                        $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning SADD {$escapedKey} {$escapedValues} 2>&1";
+                    } else {
+                        return response()->json(['success' => true, 'message' => 'Empty set created']);
+                    }
+                    break;
+
+                case 'zset':
+                    // Delete old sorted set and create new one
+                    $deleteCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL {$escapedKey} 2>/dev/null";
+                    instant_remote_process([$deleteCmd], $server, false);
+
+                    if (is_array($value) && count($value) > 0) {
+                        // Value should be array of {member, score}
+                        $args = [];
+                        foreach ($value as $item) {
+                            $args[] = escapeshellarg((string) ($item['score'] ?? 0));
+                            $args[] = escapeshellarg($item['member'] ?? '');
+                        }
+                        $escapedValues = implode(' ', $args);
+                        $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning ZADD {$escapedKey} {$escapedValues} 2>&1";
+                    } else {
+                        return response()->json(['success' => true, 'message' => 'Empty sorted set created']);
+                    }
+                    break;
+
+                case 'hash':
+                    // Delete old hash and create new one
+                    $deleteCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning DEL {$escapedKey} 2>/dev/null";
+                    instant_remote_process([$deleteCmd], $server, false);
+
+                    if (is_array($value) && count($value) > 0) {
+                        $args = [];
+                        foreach ($value as $field => $fieldValue) {
+                            $args[] = escapeshellarg($field);
+                            $args[] = escapeshellarg($fieldValue);
+                        }
+                        $escapedValues = implode(' ', $args);
+                        $command = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning HSET {$escapedKey} {$escapedValues} 2>&1";
+                    } else {
+                        return response()->json(['success' => true, 'message' => 'Empty hash created']);
+                    }
+                    break;
+
+                default:
+                    return response()->json(['success' => false, 'error' => 'Unsupported key type']);
+            }
+
+            if ($command) {
+                $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+                // Check for errors
+                if (stripos($result, 'ERR') !== false || stripos($result, 'error') !== false) {
+                    return response()->json(['success' => false, 'error' => $result]);
+                }
+
+                // Set TTL if specified
+                if ($ttl > 0) {
+                    $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning EXPIRE {$escapedKey} {$ttl} 2>/dev/null";
+                    instant_remote_process([$ttlCmd], $server, false);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Key '{$keyName}' updated successfully",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to set key value: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Get list of tables/collections for a database.
      */
     public function getTablesList(string $uuid): JsonResponse

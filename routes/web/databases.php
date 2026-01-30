@@ -467,6 +467,14 @@ Route::post('/_internal/databases/{uuid}/mongodb/indexes/create', [\App\Http\Con
 Route::post('/_internal/databases/{uuid}/redis/keys/delete', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteRedisKey'])
     ->name('databases.redis.keys.delete.api');
 
+// Redis get key value endpoint
+Route::get('/_internal/databases/{uuid}/redis/keys/value', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getRedisKeyValue'])
+    ->name('databases.redis.keys.value.api');
+
+// Redis set key value endpoint
+Route::post('/_internal/databases/{uuid}/redis/keys/value', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'setRedisKeyValue'])
+    ->name('databases.redis.keys.value.set.api');
+
 // Database tables/collections list endpoint
 Route::get('/_internal/databases/{uuid}/tables', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTablesList'])
     ->name('databases.tables.api');

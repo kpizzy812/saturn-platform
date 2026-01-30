@@ -114,10 +114,13 @@ export {
     useRedisMemory,
     useRedisFlush,
     usePostgresMaintenance,
+    useRedisKeyValue,
+    useRedisSetKeyValue,
 } from './useRedisExtended';
 export type {
     RedisKey,
     RedisMemoryInfo,
+    RedisKeyValue,
 } from './useRedisExtended';
 
 export {

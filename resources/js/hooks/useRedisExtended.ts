@@ -234,3 +234,125 @@ export function usePostgresMaintenance(uuid: string) {
 
     return { runMaintenance, isLoading, error };
 }
+
+export interface RedisKeyValue {
+    key: string;
+    type: string;
+    value: string | string[] | { member: string; score: string }[] | Record<string, string>;
+    length: number;
+    ttl: number;
+}
+
+/**
+ * Hook for fetching Redis key value.
+ */
+export function useRedisKeyValue(uuid: string) {
+    const [keyValue, setKeyValue] = React.useState<RedisKeyValue | null>(null);
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+
+    const fetchKeyValue = React.useCallback(async (keyName: string): Promise<RedisKeyValue | null> => {
+        if (!uuid || !keyName) return null;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const params = new URLSearchParams({ key: keyName });
+            const response = await fetch(`/_internal/databases/${uuid}/redis/keys/value?${params}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch key value: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                const result: RedisKeyValue = {
+                    key: data.key,
+                    type: data.type,
+                    value: data.value,
+                    length: data.length,
+                    ttl: data.ttl,
+                };
+                setKeyValue(result);
+                return result;
+            } else {
+                setError(data.error || 'Key not found');
+                return null;
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch key value');
+            return null;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [uuid]);
+
+    const clearValue = React.useCallback(() => {
+        setKeyValue(null);
+        setError(null);
+    }, []);
+
+    return { keyValue, isLoading, error, fetchKeyValue, clearValue };
+}
+
+/**
+ * Hook for setting Redis key value.
+ */
+export function useRedisSetKeyValue(uuid: string) {
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+
+    const setKeyValue = React.useCallback(async (
+        keyName: string,
+        type: string,
+        value: string | string[] | { member: string; score: string }[] | Record<string, string>,
+        ttl?: number
+    ): Promise<boolean> => {
+        if (!uuid || !keyName) return false;
+
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch(`/_internal/databases/${uuid}/redis/keys/value`, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    key: keyName,
+                    type,
+                    value,
+                    ttl: ttl ?? -1,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                return true;
+            } else {
+                setError(data.error || 'Failed to set key value');
+                return false;
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to set key value');
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [uuid]);
+
+    return { setKeyValue, isLoading, error };
+}

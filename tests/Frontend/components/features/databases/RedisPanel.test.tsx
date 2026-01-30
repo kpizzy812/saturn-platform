@@ -21,6 +21,7 @@ const mockDatabase: StandaloneDatabase = {
     uuid: 'db-1',
     name: 'test-redis',
     type: 'redis',
+    database_type: 'redis',
     description: 'Test Redis database',
     environment_id: 1,
     destination_id: 1,
@@ -28,6 +29,12 @@ const mockDatabase: StandaloneDatabase = {
     created_at: '2024-01-01',
     updated_at: '2024-01-01',
     config: {},
+    internal_db_url: 'redis://:password@localhost:6379',
+    connection: {
+        internal_host: 'localhost',
+        port: '6379',
+    },
+    redis_password: 'test-password',
 };
 
 describe('RedisPanel', () => {
@@ -101,6 +108,38 @@ describe('RedisPanel', () => {
 
             await waitFor(() => {
                 expect(screen.getByText('Key Browser')).toBeInTheDocument();
+            });
+        });
+
+        it('should display Create Key button', async () => {
+            const { user } = render(<RedisPanel database={mockDatabase} />);
+
+            await user.click(screen.getByText('Keys'));
+
+            await waitFor(() => {
+                expect(screen.getByText('Create Key')).toBeInTheDocument();
+            });
+        });
+
+        it('should display search input for keys', async () => {
+            const { user } = render(<RedisPanel database={mockDatabase} />);
+
+            await user.click(screen.getByText('Keys'));
+
+            await waitFor(() => {
+                const searchInput = screen.getByPlaceholderText(/Search keys/);
+                expect(searchInput).toBeInTheDocument();
+            });
+        });
+
+        it('should display Refresh button in keys tab', async () => {
+            const { user } = render(<RedisPanel database={mockDatabase} />);
+
+            await user.click(screen.getByText('Keys'));
+
+            await waitFor(() => {
+                const refreshButtons = screen.getAllByRole('button', { name: /Refresh/i });
+                expect(refreshButtons.length).toBeGreaterThan(0);
             });
         });
     });
