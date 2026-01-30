@@ -5,6 +5,7 @@ import { useState } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { StandaloneDatabase } from '@/types';
+import { TableDataViewer } from '@/components/features/TableDataViewer';
 
 interface TableColumn {
     name: string;
@@ -34,6 +35,7 @@ interface Props {
 export default function DatabaseTables({ database, tables = [] }: Props) {
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeTab, setActiveTab] = useState<'schema' | 'data'>('schema');
 
     const filteredTables = tables.filter((table) =>
         table.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -183,11 +185,42 @@ export default function DatabaseTables({ database, tables = [] }: Props) {
                                     </Button>
                                 </div>
 
-                                {/* Columns Table */}
-                                <div>
-                                    <h3 className="mb-3 text-sm font-semibold text-foreground">
-                                        Columns
-                                    </h3>
+                                {/* Tabs */}
+                                <div className="mb-6 flex gap-1 border-b border-border">
+                                    <button
+                                        onClick={() => setActiveTab('schema')}
+                                        className={cn(
+                                            'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                                            activeTab === 'schema'
+                                                ? 'border-primary text-primary'
+                                                : 'border-transparent text-foreground-muted hover:text-foreground'
+                                        )}
+                                    >
+                                        <Icons.Database className="h-4 w-4" />
+                                        Schema
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('data')}
+                                        className={cn(
+                                            'flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                                            activeTab === 'data'
+                                                ? 'border-primary text-primary'
+                                                : 'border-transparent text-foreground-muted hover:text-foreground'
+                                        )}
+                                    >
+                                        <Icons.Table className="h-4 w-4" />
+                                        Data
+                                    </button>
+                                </div>
+
+                                {/* Tab Content */}
+                                {activeTab === 'schema' ? (
+                                    <>
+                                        {/* Columns Table */}
+                                        <div>
+                                            <h3 className="mb-3 text-sm font-semibold text-foreground">
+                                                Columns
+                                            </h3>
                                     <div className="overflow-hidden rounded-lg border border-border">
                                         <table className="w-full">
                                             <thead className="bg-background-secondary">
@@ -274,35 +307,42 @@ export default function DatabaseTables({ database, tables = [] }: Props) {
                                     </div>
                                 </div>
 
-                                {/* Foreign Key Relationships */}
-                                {selectedTableInfo.columns.some((c) => c.isForeignKey) && (
-                                    <div className="mt-6">
-                                        <h3 className="mb-3 text-sm font-semibold text-foreground">
-                                            Foreign Key Relationships
-                                        </h3>
-                                        <div className="space-y-2">
-                                            {selectedTableInfo.columns
-                                                .filter((c) => c.isForeignKey)
-                                                .map((col) => (
-                                                    <div
-                                                        key={col.name}
-                                                        className="rounded-lg border border-border/50 bg-background-secondary/50 p-3"
-                                                    >
-                                                        <div className="flex items-center gap-2 text-sm">
-                                                            <Icons.Link className="h-4 w-4 text-blue-500" />
-                                                            <span className="font-mono text-foreground">
-                                                                {col.name}
-                                                            </span>
-                                                            <Icons.ArrowRight className="h-3.5 w-3.5 text-foreground-subtle" />
-                                                            <span className="font-mono text-foreground-muted">
-                                                                {col.foreignKeyReference?.table}.
-                                                                {col.foreignKeyReference?.column}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    </div>
+                                        {/* Foreign Key Relationships */}
+                                        {selectedTableInfo.columns.some((c) => c.isForeignKey) && (
+                                            <div className="mt-6">
+                                                <h3 className="mb-3 text-sm font-semibold text-foreground">
+                                                    Foreign Key Relationships
+                                                </h3>
+                                                <div className="space-y-2">
+                                                    {selectedTableInfo.columns
+                                                        .filter((c) => c.isForeignKey)
+                                                        .map((col) => (
+                                                            <div
+                                                                key={col.name}
+                                                                className="rounded-lg border border-border/50 bg-background-secondary/50 p-3"
+                                                            >
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <Icons.Link className="h-4 w-4 text-blue-500" />
+                                                                    <span className="font-mono text-foreground">
+                                                                        {col.name}
+                                                                    </span>
+                                                                    <Icons.ArrowRight className="h-3.5 w-3.5 text-foreground-subtle" />
+                                                                    <span className="font-mono text-foreground-muted">
+                                                                        {col.foreignKeyReference?.table}.
+                                                                        {col.foreignKeyReference?.column}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <TableDataViewer
+                                        databaseUuid={database.uuid}
+                                        tableName={selectedTableInfo.name}
+                                    />
                                 )}
                             </Card>
                         ) : (

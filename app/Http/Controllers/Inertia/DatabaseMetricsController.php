@@ -2691,4 +2691,448 @@ class DatabaseMetricsController extends Controller
             ]);
         }
     }
+
+    /**
+     * Get table columns schema.
+     */
+    public function getTableColumns(string $uuid, string $tableName): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable'], 503);
+        }
+
+        try {
+            $columns = match ($type) {
+                'postgresql' => $this->getPostgresColumns($server, $database, $tableName),
+                'mysql', 'mariadb' => $this->getMysqlColumns($server, $database, $tableName),
+                default => [],
+            };
+
+            return response()->json([
+                'success' => true,
+                'columns' => $columns,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch columns: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get table data with pagination and filtering.
+     */
+    public function getTableData(Request $request, string $uuid, string $tableName): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable'], 503);
+        }
+
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = min(100, max(10, (int) $request->input('per_page', 50)));
+        $search = $request->input('search', '');
+        $orderBy = $request->input('order_by', '');
+        $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
+
+        try {
+            $result = match ($type) {
+                'postgresql' => $this->getPostgresData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
+                'mysql', 'mariadb' => $this->getMysqlData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
+                default => ['rows' => [], 'total' => 0, 'columns' => []],
+            };
+
+            return response()->json([
+                'success' => true,
+                'data' => $result['rows'],
+                'columns' => $result['columns'],
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'total' => $result['total'],
+                    'last_page' => ceil($result['total'] / $perPage),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to fetch data: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a table row.
+     */
+    public function updateTableRow(Request $request, string $uuid, string $tableName): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable'], 503);
+        }
+
+        $request->validate([
+            'primary_key' => 'required|array',
+            'updates' => 'required|array',
+        ]);
+
+        try {
+            $success = match ($type) {
+                'postgresql' => $this->updatePostgresRow($server, $database, $tableName, $request->input('primary_key'), $request->input('updates')),
+                'mysql', 'mariadb' => $this->updateMysqlRow($server, $database, $tableName, $request->input('primary_key'), $request->input('updates')),
+                default => false,
+            };
+
+            if ($success) {
+                return response()->json(['success' => true, 'message' => 'Row updated successfully']);
+            }
+
+            return response()->json(['success' => false, 'error' => 'Failed to update row'], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to update row: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a table row.
+     */
+    public function deleteTableRow(Request $request, string $uuid, string $tableName): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable'], 503);
+        }
+
+        $request->validate([
+            'primary_key' => 'required|array',
+        ]);
+
+        try {
+            $success = match ($type) {
+                'postgresql' => $this->deletePostgresRow($server, $database, $tableName, $request->input('primary_key')),
+                'mysql', 'mariadb' => $this->deleteMysqlRow($server, $database, $tableName, $request->input('primary_key')),
+                default => false,
+            };
+
+            if ($success) {
+                return response()->json(['success' => true, 'message' => 'Row deleted successfully']);
+            }
+
+            return response()->json(['success' => false, 'error' => 'Failed to delete row'], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete row: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new table row.
+     */
+    public function createTableRow(Request $request, string $uuid, string $tableName): JsonResponse
+    {
+        [$database, $type] = $this->findDatabase($uuid);
+
+        if (! $database) {
+            return response()->json(['success' => false, 'error' => 'Database not found'], 404);
+        }
+
+        $server = $database->destination?->server;
+        if (! $server || ! $server->isFunctional()) {
+            return response()->json(['success' => false, 'error' => 'Server not reachable'], 503);
+        }
+
+        $request->validate([
+            'data' => 'required|array',
+        ]);
+
+        try {
+            $success = match ($type) {
+                'postgresql' => $this->createPostgresRow($server, $database, $tableName, $request->input('data')),
+                'mysql', 'mariadb' => $this->createMysqlRow($server, $database, $tableName, $request->input('data')),
+                default => false,
+            };
+
+            if ($success) {
+                return response()->json(['success' => true, 'message' => 'Row created successfully']);
+            }
+
+            return response()->json(['success' => false, 'error' => 'Failed to create row'], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to create row: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get PostgreSQL column schema.
+     */
+    protected function getPostgresColumns(mixed $server, mixed $database, string $tableName): array
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Escape table name for schema.table format
+        $escapedTable = str_contains($tableName, '.') ? $tableName : "public.{$tableName}";
+        [$schema, $table] = str_contains($tableName, '.') ? explode('.', $tableName, 2) : ['public', $tableName];
+
+        $query = "SELECT
+            column_name,
+            data_type,
+            is_nullable,
+            column_default,
+            (SELECT count(*) FROM information_schema.key_column_usage kcu
+             JOIN information_schema.table_constraints tc
+             ON kcu.constraint_name = tc.constraint_name
+             WHERE tc.constraint_type = 'PRIMARY KEY'
+             AND kcu.table_schema = '{$schema}'
+             AND kcu.table_name = '{$table}'
+             AND kcu.column_name = c.column_name) as is_primary
+        FROM information_schema.columns c
+        WHERE table_schema = '{$schema}' AND table_name = '{$table}'
+        ORDER BY ordinal_position";
+
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"{$query}\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
+
+        $columns = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $parts = explode('|', trim($line));
+                if (count($parts) >= 5) {
+                    $columns[] = [
+                        'name' => $parts[0],
+                        'type' => $parts[1],
+                        'nullable' => $parts[2] === 'YES',
+                        'default' => $parts[3] !== '' ? $parts[3] : null,
+                        'is_primary' => (int) $parts[4] > 0,
+                    ];
+                }
+            }
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Get PostgreSQL table data with pagination.
+     */
+    protected function getPostgresData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+        $offset = ($page - 1) * $perPage;
+
+        // Get columns first
+        $columns = $this->getPostgresColumns($server, $database, $tableName);
+        $columnNames = array_map(fn ($c) => $c['name'], $columns);
+
+        // Build WHERE clause for search if provided
+        $whereClause = '';
+        if ($search !== '') {
+            $searchConditions = array_map(fn ($col) => "CAST({$col} AS TEXT) ILIKE '%{$search}%'", $columnNames);
+            $whereClause = 'WHERE '.implode(' OR ', $searchConditions);
+        }
+
+        // Build ORDER BY clause
+        $orderClause = '';
+        if ($orderBy !== '' && in_array($orderBy, $columnNames)) {
+            $orderClause = "ORDER BY \"{$orderBy}\" {$orderDir}";
+        }
+
+        // Get total count
+        $countQuery = "SELECT COUNT(*) FROM {$tableName} {$whereClause}";
+        $countCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -c \"{$countQuery}\" 2>/dev/null || echo '0'";
+        $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
+
+        // Get data
+        $dataQuery = "SELECT * FROM {$tableName} {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
+        $dataCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"{$dataQuery}\" 2>/dev/null || echo ''";
+        $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
+
+        $rows = [];
+        if ($result) {
+            foreach (explode("\n", $result) as $line) {
+                $values = explode('|', $line);
+                if (count($values) === count($columnNames)) {
+                    $row = [];
+                    foreach ($columnNames as $i => $colName) {
+                        $row[$colName] = $values[$i] !== '' ? $values[$i] : null;
+                    }
+                    $rows[] = $row;
+                }
+            }
+        }
+
+        return [
+            'rows' => $rows,
+            'total' => $total,
+            'columns' => $columns,
+        ];
+    }
+
+    /**
+     * Update PostgreSQL row.
+     */
+    protected function updatePostgresRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Build SET clause
+        $setClauses = [];
+        foreach ($updates as $column => $value) {
+            $escapedValue = str_replace("'", "''", (string) $value);
+            $setClauses[] = "\"{$column}\" = '{$escapedValue}'";
+        }
+        $setClause = implode(', ', $setClauses);
+
+        // Build WHERE clause from primary key
+        $whereClauses = [];
+        foreach ($primaryKey as $column => $value) {
+            $escapedValue = str_replace("'", "''", (string) $value);
+            $whereClauses[] = "\"{$column}\" = '{$escapedValue}'";
+        }
+        $whereClause = implode(' AND ', $whereClauses);
+
+        $query = "UPDATE {$tableName} SET {$setClause} WHERE {$whereClause}";
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$query}\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return str_contains($result ?? '', 'UPDATE');
+    }
+
+    /**
+     * Delete PostgreSQL row.
+     */
+    protected function deletePostgresRow(mixed $server, mixed $database, string $tableName, array $primaryKey): bool
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Build WHERE clause from primary key
+        $whereClauses = [];
+        foreach ($primaryKey as $column => $value) {
+            $escapedValue = str_replace("'", "''", (string) $value);
+            $whereClauses[] = "\"{$column}\" = '{$escapedValue}'";
+        }
+        $whereClause = implode(' AND ', $whereClauses);
+
+        $query = "DELETE FROM {$tableName} WHERE {$whereClause}";
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$query}\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return str_contains($result ?? '', 'DELETE');
+    }
+
+    /**
+     * Create PostgreSQL row.
+     */
+    protected function createPostgresRow(mixed $server, mixed $database, string $tableName, array $data): bool
+    {
+        $containerName = $database->uuid;
+        $user = $database->postgres_user ?? 'postgres';
+        $dbName = $database->postgres_db ?? 'postgres';
+
+        // Build columns and values
+        $columns = array_keys($data);
+        $values = array_map(function ($value) {
+            if ($value === null) {
+                return 'NULL';
+            }
+            $escapedValue = str_replace("'", "''", (string) $value);
+
+            return "'{$escapedValue}'";
+        }, array_values($data));
+
+        $columnsClause = '"'.implode('", "', $columns).'"';
+        $valuesClause = implode(', ', $values);
+
+        $query = "INSERT INTO {$tableName} ({$columnsClause}) VALUES ({$valuesClause})";
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$query}\" 2>&1";
+        $result = instant_remote_process([$command], $server, false);
+
+        return str_contains($result ?? '', 'INSERT');
+    }
+
+    /**
+     * Get MySQL column schema (placeholder for future implementation).
+     */
+    protected function getMysqlColumns(mixed $server, mixed $database, string $tableName): array
+    {
+        // TODO: Implement MySQL column schema retrieval
+        return [];
+    }
+
+    /**
+     * Get MySQL table data (placeholder for future implementation).
+     */
+    protected function getMysqlData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
+    {
+        // TODO: Implement MySQL data retrieval
+        return ['rows' => [], 'total' => 0, 'columns' => []];
+    }
+
+    /**
+     * Update MySQL row (placeholder for future implementation).
+     */
+    protected function updateMysqlRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
+    {
+        // TODO: Implement MySQL row update
+        return false;
+    }
+
+    /**
+     * Delete MySQL row (placeholder for future implementation).
+     */
+    protected function deleteMysqlRow(mixed $server, mixed $database, string $tableName, array $primaryKey): bool
+    {
+        // TODO: Implement MySQL row deletion
+        return false;
+    }
+
+    /**
+     * Create MySQL row (placeholder for future implementation).
+     */
+    protected function createMysqlRow(mixed $server, mixed $database, string $tableName, array $data): bool
+    {
+        // TODO: Implement MySQL row creation
+        return false;
+    }
 }

@@ -462,6 +462,22 @@ Route::post('/_internal/databases/{uuid}/redis/keys/delete', [\App\Http\Controll
 Route::get('/_internal/databases/{uuid}/tables', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTablesList'])
     ->name('databases.tables.api');
 
+// Table data management endpoints
+Route::get('/_internal/databases/{uuid}/tables/{tableName}/columns', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTableColumns'])
+    ->name('databases.tables.columns.api');
+
+Route::get('/_internal/databases/{uuid}/tables/{tableName}/data', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'getTableData'])
+    ->name('databases.tables.data.api');
+
+Route::patch('/_internal/databases/{uuid}/tables/{tableName}/rows', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'updateTableRow'])
+    ->name('databases.tables.rows.update.api');
+
+Route::delete('/_internal/databases/{uuid}/tables/{tableName}/rows', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'deleteTableRow'])
+    ->name('databases.tables.rows.delete.api');
+
+Route::post('/_internal/databases/{uuid}/tables/{tableName}/rows', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'createTableRow'])
+    ->name('databases.tables.rows.create.api');
+
 // S3 connection test endpoint
 Route::post('/_internal/databases/s3/test', [\App\Http\Controllers\Inertia\DatabaseMetricsController::class, 'testS3Connection'])
     ->name('databases.s3.test.api');
