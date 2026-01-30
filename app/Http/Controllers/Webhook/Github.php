@@ -168,52 +168,65 @@ class Github extends Controller
                                         continue;
                                     }
                                 }
-                                $deployment_uuid = new Cuid2;
-                                $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
-                                if (! $found) {
-                                    if ($application->build_pack === 'dockercompose') {
-                                        $pr_app = ApplicationPreview::create([
-                                            'git_type' => 'github',
-                                            'application_id' => $application->id,
-                                            'pull_request_id' => $pull_request_id,
-                                            'pull_request_html_url' => $pull_request_html_url,
-                                            'docker_compose_domains' => $application->docker_compose_domains,
-                                        ]);
-                                        $pr_app->generate_preview_fqdn_compose();
-                                    } else {
-                                        $pr_app = ApplicationPreview::create([
-                                            'git_type' => 'github',
-                                            'application_id' => $application->id,
-                                            'pull_request_id' => $pull_request_id,
-                                            'pull_request_html_url' => $pull_request_html_url,
-                                        ]);
-                                        $pr_app->generate_preview_fqdn();
-                                    }
-                                }
 
-                                $result = queue_application_deployment(
-                                    application: $application,
-                                    pull_request_id: $pull_request_id,
-                                    deployment_uuid: $deployment_uuid,
-                                    force_rebuild: false,
-                                    commit: data_get($payload, 'head.sha', 'HEAD'),
-                                    is_webhook: true,
-                                    git_type: 'github'
-                                );
-                                if ($result['status'] === 'queue_full') {
-                                    return response($result['message'], 429)->header('Retry-After', 60);
-                                } elseif ($result['status'] === 'skipped') {
-                                    $return_payloads->push([
-                                        'application' => $application->name,
-                                        'status' => 'skipped',
-                                        'message' => $result['message'],
-                                    ]);
-                                } else {
-                                    $return_payloads->push([
-                                        'application' => $application->name,
-                                        'status' => 'success',
-                                        'message' => 'Preview deployment queued.',
-                                    ]);
+                                // Get all apps to deploy (for monorepos, deploy all apps in the group)
+                                $appsToDeploy = $application->isPartOfMonorepo()
+                                    ? $application->getMonorepoGroup()
+                                    : collect([$application]);
+
+                                foreach ($appsToDeploy as $appToDeploy) {
+                                    // Skip apps that don't have PR deployments enabled
+                                    if (! $appToDeploy->isPRDeployable()) {
+                                        continue;
+                                    }
+
+                                    $deployment_uuid = new Cuid2;
+                                    $found = ApplicationPreview::where('application_id', $appToDeploy->id)->where('pull_request_id', $pull_request_id)->first();
+                                    if (! $found) {
+                                        if ($appToDeploy->build_pack === 'dockercompose') {
+                                            $pr_app = ApplicationPreview::create([
+                                                'git_type' => 'github',
+                                                'application_id' => $appToDeploy->id,
+                                                'pull_request_id' => $pull_request_id,
+                                                'pull_request_html_url' => $pull_request_html_url,
+                                                'docker_compose_domains' => $appToDeploy->docker_compose_domains,
+                                            ]);
+                                            $pr_app->generate_preview_fqdn_compose();
+                                        } else {
+                                            $pr_app = ApplicationPreview::create([
+                                                'git_type' => 'github',
+                                                'application_id' => $appToDeploy->id,
+                                                'pull_request_id' => $pull_request_id,
+                                                'pull_request_html_url' => $pull_request_html_url,
+                                            ]);
+                                            $pr_app->generate_preview_fqdn();
+                                        }
+                                    }
+
+                                    $result = queue_application_deployment(
+                                        application: $appToDeploy,
+                                        pull_request_id: $pull_request_id,
+                                        deployment_uuid: $deployment_uuid,
+                                        force_rebuild: false,
+                                        commit: data_get($payload, 'head.sha', 'HEAD'),
+                                        is_webhook: true,
+                                        git_type: 'github'
+                                    );
+                                    if ($result['status'] === 'queue_full') {
+                                        return response($result['message'], 429)->header('Retry-After', 60);
+                                    } elseif ($result['status'] === 'skipped') {
+                                        $return_payloads->push([
+                                            'application' => $appToDeploy->name,
+                                            'status' => 'skipped',
+                                            'message' => $result['message'],
+                                        ]);
+                                    } else {
+                                        $return_payloads->push([
+                                            'application' => $appToDeploy->name,
+                                            'status' => 'success',
+                                            'message' => 'Preview deployment queued.',
+                                        ]);
+                                    }
                                 }
                             } else {
                                 $return_payloads->push([
@@ -224,18 +237,28 @@ class Github extends Controller
                             }
                         }
                         if ($action === 'closed') {
-                            $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
-                            if ($found) {
-                                // Use comprehensive cleanup that cancels active deployments,
-                                // kills helper containers, and removes all PR containers
-                                CleanupPreviewDeployment::run($application, $pull_request_id, $found);
+                            // For monorepos, clean up all apps in the group
+                            $appsToCleanup = $application->isPartOfMonorepo()
+                                ? $application->getMonorepoGroup()
+                                : collect([$application]);
 
-                                $return_payloads->push([
-                                    'application' => $application->name,
-                                    'status' => 'success',
-                                    'message' => 'Preview deployment closed.',
-                                ]);
-                            } else {
+                            foreach ($appsToCleanup as $appToCleanup) {
+                                $found = ApplicationPreview::where('application_id', $appToCleanup->id)->where('pull_request_id', $pull_request_id)->first();
+                                if ($found) {
+                                    // Use comprehensive cleanup that cancels active deployments,
+                                    // kills helper containers, and removes all PR containers
+                                    CleanupPreviewDeployment::run($appToCleanup, $pull_request_id, $found);
+
+                                    $return_payloads->push([
+                                        'application' => $appToCleanup->name,
+                                        'status' => 'success',
+                                        'message' => 'Preview deployment closed.',
+                                    ]);
+                                }
+                            }
+
+                            // If no previews were found for any app in the group
+                            if ($return_payloads->where('status', 'success')->isEmpty()) {
                                 $return_payloads->push([
                                     'application' => $application->name,
                                     'status' => 'failed',
@@ -401,39 +424,52 @@ class Github extends Controller
                                         continue;
                                     }
                                 }
-                                $deployment_uuid = new Cuid2;
-                                $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
-                                if (! $found) {
-                                    ApplicationPreview::create([
-                                        'git_type' => 'github',
-                                        'application_id' => $application->id,
-                                        'pull_request_id' => $pull_request_id,
-                                        'pull_request_html_url' => $pull_request_html_url,
-                                    ]);
-                                }
-                                $result = queue_application_deployment(
-                                    application: $application,
-                                    pull_request_id: $pull_request_id,
-                                    deployment_uuid: $deployment_uuid,
-                                    force_rebuild: false,
-                                    commit: data_get($payload, 'head.sha', 'HEAD'),
-                                    is_webhook: true,
-                                    git_type: 'github'
-                                );
-                                if ($result['status'] === 'queue_full') {
-                                    return response($result['message'], 429)->header('Retry-After', 60);
-                                } elseif ($result['status'] === 'skipped') {
-                                    $return_payloads->push([
-                                        'application' => $application->name,
-                                        'status' => 'skipped',
-                                        'message' => $result['message'],
-                                    ]);
-                                } else {
-                                    $return_payloads->push([
-                                        'application' => $application->name,
-                                        'status' => 'success',
-                                        'message' => 'Preview deployment queued.',
-                                    ]);
+
+                                // Get all apps to deploy (for monorepos, deploy all apps in the group)
+                                $appsToDeploy = $application->isPartOfMonorepo()
+                                    ? $application->getMonorepoGroup()
+                                    : collect([$application]);
+
+                                foreach ($appsToDeploy as $appToDeploy) {
+                                    // Skip apps that don't have PR deployments enabled
+                                    if (! $appToDeploy->isPRDeployable()) {
+                                        continue;
+                                    }
+
+                                    $deployment_uuid = new Cuid2;
+                                    $found = ApplicationPreview::where('application_id', $appToDeploy->id)->where('pull_request_id', $pull_request_id)->first();
+                                    if (! $found) {
+                                        ApplicationPreview::create([
+                                            'git_type' => 'github',
+                                            'application_id' => $appToDeploy->id,
+                                            'pull_request_id' => $pull_request_id,
+                                            'pull_request_html_url' => $pull_request_html_url,
+                                        ]);
+                                    }
+                                    $result = queue_application_deployment(
+                                        application: $appToDeploy,
+                                        pull_request_id: $pull_request_id,
+                                        deployment_uuid: $deployment_uuid,
+                                        force_rebuild: false,
+                                        commit: data_get($payload, 'head.sha', 'HEAD'),
+                                        is_webhook: true,
+                                        git_type: 'github'
+                                    );
+                                    if ($result['status'] === 'queue_full') {
+                                        return response($result['message'], 429)->header('Retry-After', 60);
+                                    } elseif ($result['status'] === 'skipped') {
+                                        $return_payloads->push([
+                                            'application' => $appToDeploy->name,
+                                            'status' => 'skipped',
+                                            'message' => $result['message'],
+                                        ]);
+                                    } else {
+                                        $return_payloads->push([
+                                            'application' => $appToDeploy->name,
+                                            'status' => 'success',
+                                            'message' => 'Preview deployment queued.',
+                                        ]);
+                                    }
                                 }
                             } else {
                                 $return_payloads->push([
@@ -444,21 +480,31 @@ class Github extends Controller
                             }
                         }
                         if ($action === 'closed' || $action === 'close') {
-                            $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
-                            if ($found) {
-                                // Delete the PR comment on GitHub (GitHub-specific feature)
-                                ApplicationPullRequestUpdateJob::dispatchSync(application: $application, preview: $found, status: ProcessStatus::CLOSED);
+                            // For monorepos, clean up all apps in the group
+                            $appsToCleanup = $application->isPartOfMonorepo()
+                                ? $application->getMonorepoGroup()
+                                : collect([$application]);
 
-                                // Use comprehensive cleanup that cancels active deployments,
-                                // kills helper containers, and removes all PR containers
-                                CleanupPreviewDeployment::run($application, $pull_request_id, $found);
+                            foreach ($appsToCleanup as $appToCleanup) {
+                                $found = ApplicationPreview::where('application_id', $appToCleanup->id)->where('pull_request_id', $pull_request_id)->first();
+                                if ($found) {
+                                    // Delete the PR comment on GitHub (GitHub-specific feature)
+                                    ApplicationPullRequestUpdateJob::dispatchSync(application: $appToCleanup, preview: $found, status: ProcessStatus::CLOSED);
 
-                                $return_payloads->push([
-                                    'application' => $application->name,
-                                    'status' => 'success',
-                                    'message' => 'Preview deployment closed.',
-                                ]);
-                            } else {
+                                    // Use comprehensive cleanup that cancels active deployments,
+                                    // kills helper containers, and removes all PR containers
+                                    CleanupPreviewDeployment::run($appToCleanup, $pull_request_id, $found);
+
+                                    $return_payloads->push([
+                                        'application' => $appToCleanup->name,
+                                        'status' => 'success',
+                                        'message' => 'Preview deployment closed.',
+                                    ]);
+                                }
+                            }
+
+                            // If no previews were found for any app in the group
+                            if ($return_payloads->where('status', 'success')->isEmpty()) {
                                 $return_payloads->push([
                                     'application' => $application->name,
                                     'status' => 'failed',
