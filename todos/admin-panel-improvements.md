@@ -182,7 +182,11 @@
 - [x] CRUD API (routes/web/admin.php)
 - [x] UI страницы Admin/Templates/Index, Create, Show
 - [x] Популярные стеки: Node.js, Laravel, Django, Rails (Seeder)
-- [ ] "Create from template" кнопка в Application creation flow
+- [x] "Create from template" - уже есть через TemplateService (/templates)
+
+**Примечание:** Есть две системы шаблонов:
+- `TemplateService` + `/templates` — пользовательский marketplace (YAML-based сервисы)
+- `ApplicationTemplate` + `/admin/templates` — кастомные шаблоны в БД (админ-управление)
 
 **Файлы:**
 - `database/migrations/2026_01_30_134706_create_application_templates_table.php`
