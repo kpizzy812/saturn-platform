@@ -1,7 +1,7 @@
 # Monorepo Detection v2 - Improvements
 
 **Started:** 2026-01-30
-**Status:** In Progress
+**Status:** Complete ✅
 
 ## Overview
 
@@ -171,14 +171,14 @@ packages/
 2. **Phase 2: CI/CD & Dependencies** (Medium Priority) ✅
    - [x] CIConfigDetector
    - [x] AppDependencyDetector
-   - [ ] SharedPackageDetector (integrated into AppDependencyDetector)
+   - [x] SharedPackageDetector (integrated into AppDependencyDetector - handles workspace: refs)
 
 3. **Phase 3: Preview Deployments** (Medium Priority) ✅
    - [x] Monorepo preview deployment support
 
 4. **Phase 4: Integration & Testing** ✅
    - [x] Update RepositoryAnalyzer to use new detectors
-   - [ ] Update frontend to show new information
+   - [x] Update frontend to show new information (Dockerfile info display)
    - [x] Add unit tests (93 tests passing)
 
 ---
