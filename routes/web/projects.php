@@ -625,7 +625,18 @@ Route::post('/projects/{uuid}/members', function (Request $request, string $uuid
         ->firstOrFail();
 
     $currentUser = auth()->user();
+    $team = currentTeam();
     $currentUserRole = $currentUser->roleInProject($project);
+
+    // Fallback to team role - team owners/admins can manage project members
+    if (! $currentUserRole) {
+        $teamMembership = $currentUser->teamMembership($team->id);
+        $teamRole = $teamMembership?->role;
+
+        if ($teamRole === 'owner' || $teamRole === 'admin') {
+            $currentUserRole = $teamRole;
+        }
+    }
 
     // Check if current user can manage members
     if (! in_array($currentUserRole, ['owner', 'admin'])) {
@@ -672,7 +683,18 @@ Route::patch('/projects/{uuid}/members/{memberId}', function (Request $request, 
         ->firstOrFail();
 
     $currentUser = auth()->user();
+    $team = currentTeam();
     $currentUserRole = $currentUser->roleInProject($project);
+
+    // Fallback to team role - team owners/admins can manage project members
+    if (! $currentUserRole) {
+        $teamMembership = $currentUser->teamMembership($team->id);
+        $teamRole = $teamMembership?->role;
+
+        if ($teamRole === 'owner' || $teamRole === 'admin') {
+            $currentUserRole = $teamRole;
+        }
+    }
 
     // Check if current user can manage members
     if (! in_array($currentUserRole, ['owner', 'admin'])) {
@@ -708,7 +730,18 @@ Route::delete('/projects/{uuid}/members/{memberId}', function (string $uuid, int
         ->firstOrFail();
 
     $currentUser = auth()->user();
+    $team = currentTeam();
     $currentUserRole = $currentUser->roleInProject($project);
+
+    // Fallback to team role - team owners/admins can manage project members
+    if (! $currentUserRole) {
+        $teamMembership = $currentUser->teamMembership($team->id);
+        $teamRole = $teamMembership?->role;
+
+        if ($teamRole === 'owner' || $teamRole === 'admin') {
+            $currentUserRole = $teamRole;
+        }
+    }
 
     // Check if current user can manage members
     if (! in_array($currentUserRole, ['owner', 'admin'])) {
