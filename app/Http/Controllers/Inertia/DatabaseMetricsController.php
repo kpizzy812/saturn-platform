@@ -3011,12 +3011,13 @@ class DatabaseMetricsController extends Controller
         $search = $request->input('search', '');
         $orderBy = $request->input('order_by', '');
         $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
+        $filters = $request->input('filters', '');
 
         try {
             $result = match ($type) {
-                'postgresql' => $this->getPostgresData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
-                'mysql', 'mariadb' => $this->getMysqlData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
-                'mongodb' => $this->getMongoData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir),
+                'postgresql' => $this->getPostgresData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir, $filters),
+                'mysql', 'mariadb' => $this->getMysqlData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir, $filters),
+                'mongodb' => $this->getMongoData($server, $database, $tableName, $page, $perPage, $search, $orderBy, $orderDir, $filters),
                 default => ['rows' => [], 'total' => 0, 'columns' => []],
             };
 
@@ -3217,7 +3218,7 @@ class DatabaseMetricsController extends Controller
     /**
      * Get PostgreSQL table data with pagination.
      */
-    protected function getPostgresData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
+    protected function getPostgresData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir, string $filters = ''): array
     {
         $containerName = $database->uuid;
         $user = $database->postgres_user ?? 'postgres';
@@ -3228,12 +3229,21 @@ class DatabaseMetricsController extends Controller
         $columns = $this->getPostgresColumns($server, $database, $tableName);
         $columnNames = array_map(fn ($c) => $c['name'], $columns);
 
-        // Build WHERE clause for search if provided
-        $whereClause = '';
+        // Build WHERE clause
+        $whereConditions = [];
+
+        // Add search condition if provided
         if ($search !== '') {
-            $searchConditions = array_map(fn ($col) => "CAST({$col} AS TEXT) ILIKE '%{$search}%'", $columnNames);
-            $whereClause = 'WHERE '.implode(' OR ', $searchConditions);
+            $searchConditions = array_map(fn ($col) => "CAST(\"{$col}\" AS TEXT) ILIKE '%{$search}%'", $columnNames);
+            $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
         }
+
+        // Add filter conditions if provided
+        if ($filters !== '') {
+            $whereConditions[] = "({$filters})";
+        }
+
+        $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 
         // Build ORDER BY clause
         $orderClause = '';
@@ -3396,9 +3406,9 @@ class DatabaseMetricsController extends Controller
     }
 
     /**
-     * Get MySQL table data (placeholder for future implementation).
+     * Get MySQL table data with pagination and filters.
      */
-    protected function getMysqlData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
+    protected function getMysqlData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir, string $filters = ''): array
     {
         $containerName = $database->uuid;
         $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
@@ -3412,13 +3422,26 @@ class DatabaseMetricsController extends Controller
         // Escape table name to prevent SQL injection
         $escapedTableName = str_replace('`', '``', $tableName);
 
-        // Build WHERE clause for search (MySQL uses LIKE, case-insensitive via LOWER)
-        $whereClause = '';
+        // Build WHERE clause
+        $whereConditions = [];
+
+        // Add search condition if provided
         if ($search !== '') {
             $escapedSearch = str_replace("'", "''", $search);
             $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $columnNames);
-            $whereClause = 'WHERE '.implode(' OR ', $searchConditions);
+            $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
         }
+
+        // Add filter conditions if provided (convert PostgreSQL syntax to MySQL)
+        if ($filters !== '') {
+            // Convert PostgreSQL ILIKE to MySQL LIKE
+            $mysqlFilters = str_replace('ILIKE', 'LIKE', $filters);
+            // Convert double quotes to backticks for column names
+            $mysqlFilters = preg_replace('/"([^"]+)"/', '`$1`', $mysqlFilters);
+            $whereConditions[] = "({$mysqlFilters})";
+        }
+
+        $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 
         // Build ORDER BY clause
         $orderClause = '';
@@ -3621,8 +3644,10 @@ class DatabaseMetricsController extends Controller
     /**
      * Get MongoDB collection data with pagination.
      */
-    protected function getMongoData(mixed $server, mixed $database, string $collectionName, int $page, int $perPage, string $search, string $orderBy, string $orderDir): array
+    protected function getMongoData(mixed $server, mixed $database, string $collectionName, int $page, int $perPage, string $search, string $orderBy, string $orderDir, string $filters = ''): array
     {
+        // Note: SQL-style filters are not fully supported for MongoDB yet
+        // They would need to be converted to MongoDB query syntax
         $containerName = $database->uuid;
         $password = $database->mongo_initdb_root_password ?? '';
         $username = $database->mongo_initdb_root_username ?? 'root';

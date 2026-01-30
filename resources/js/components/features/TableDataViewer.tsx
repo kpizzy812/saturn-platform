@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button, Badge, Modal, Input } from '@/components/ui';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FilterBuilder, buildWhereClause, type FilterGroup } from './FilterBuilder';
 
 interface Column {
     name: string;
@@ -57,6 +58,7 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
     const [searchQuery, setSearchQuery] = useState('');
     const [orderBy, setOrderBy] = useState('');
     const [orderDir, setOrderDir] = useState<'asc' | 'desc'>('asc');
+    const [filters, setFilters] = useState<FilterGroup>({ logic: 'AND', conditions: [] });
 
     // Context menu
     const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -66,17 +68,33 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [formData, setFormData] = useState<Record<string, string>>({});
 
+    // Export
+    const [showExportMenu, setShowExportMenu] = useState(false);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
+
+    // Import
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importData, setImportData] = useState<TableData[]>([]);
+    const [importColumns, setImportColumns] = useState<string[]>([]);
+    const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+    const [importStep, setImportStep] = useState<'upload' | 'preview'>('upload');
+    const [isImporting, setIsImporting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
 
         try {
+            const whereClause = buildWhereClause(filters);
             const params = new URLSearchParams({
                 page: currentPage.toString(),
                 per_page: perPage.toString(),
                 search: searchQuery,
                 order_by: orderBy,
                 order_dir: orderDir,
+                filters: whereClause,
             });
 
             const response = await fetch(
@@ -99,7 +117,7 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
         } finally {
             setIsLoading(false);
         }
-    }, [databaseUuid, tableName, currentPage, perPage, searchQuery, orderBy, orderDir]);
+    }, [databaseUuid, tableName, currentPage, perPage, searchQuery, orderBy, orderDir, filters]);
 
     useEffect(() => {
         fetchData();
@@ -157,6 +175,19 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
             return () => document.removeEventListener('click', handleClick);
         }
     }, [contextMenu]);
+
+    // Close export menu on click outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+                setShowExportMenu(false);
+            }
+        };
+        if (showExportMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showExportMenu]);
 
     const handleSort = (columnName: string) => {
         if (orderBy === columnName) {
@@ -349,6 +380,229 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
         setShowCreateModal(true);
     };
 
+    // Export functions
+    const escapeCSVValue = (value: string | null): string => {
+        if (value === null) return '';
+        const stringValue = String(value);
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+    };
+
+    const exportToCSV = (exportData: TableData[]) => {
+        const headers = columns.map(c => c.name);
+        const csvContent = [
+            headers.map(escapeCSVValue).join(','),
+            ...exportData.map(row =>
+                headers.map(col => escapeCSVValue(row[col])).join(',')
+            )
+        ].join('\n');
+
+        downloadFile(csvContent, `${tableName}_export.csv`, 'text/csv');
+    };
+
+    const exportToJSON = (exportData: TableData[], pretty: boolean = true) => {
+        const jsonContent = pretty
+            ? JSON.stringify(exportData, null, 2)
+            : JSON.stringify(exportData);
+
+        downloadFile(jsonContent, `${tableName}_export.json`, 'application/json');
+    };
+
+    const downloadFile = (content: string, filename: string, mimeType: string) => {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setShowExportMenu(false);
+    };
+
+    const handleExport = (format: 'csv' | 'json', selection: 'selected' | 'all') => {
+        const exportData = selection === 'selected' && selectedRows.size > 0
+            ? Array.from(selectedRows).map(idx => data[idx])
+            : data;
+
+        if (format === 'csv') {
+            exportToCSV(exportData);
+        } else {
+            exportToJSON(exportData);
+        }
+    };
+
+    // Import functions
+    const parseCSV = (text: string): { headers: string[]; rows: TableData[] } => {
+        const lines = text.split('\n').filter(line => line.trim());
+        if (lines.length === 0) return { headers: [], rows: [] };
+
+        // Parse CSV with proper quote handling
+        const parseLine = (line: string): string[] => {
+            const result: string[] = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
+        };
+
+        const headers = parseLine(lines[0]);
+        const rows = lines.slice(1).map(line => {
+            const values = parseLine(line);
+            const row: TableData = {};
+            headers.forEach((header, idx) => {
+                row[header] = values[idx] || null;
+            });
+            return row;
+        });
+
+        return { headers, rows };
+    };
+
+    const parseJSON = (text: string): { headers: string[]; rows: TableData[] } => {
+        const parsed = JSON.parse(text);
+        const rows = Array.isArray(parsed) ? parsed : [parsed];
+        if (rows.length === 0) return { headers: [], rows: [] };
+
+        // Get all unique keys from all rows
+        const headers = Array.from(new Set(rows.flatMap(row => Object.keys(row))));
+        return { headers, rows };
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImportFile(file);
+        setError(null);
+
+        try {
+            const text = await file.text();
+            const isJSON = file.name.endsWith('.json') || text.trim().startsWith('[') || text.trim().startsWith('{');
+
+            const { headers, rows } = isJSON ? parseJSON(text) : parseCSV(text);
+
+            if (headers.length === 0 || rows.length === 0) {
+                setError('No data found in file');
+                return;
+            }
+
+            setImportColumns(headers);
+            setImportData(rows);
+
+            // Auto-map columns by matching names
+            const mapping: Record<string, string> = {};
+            headers.forEach(header => {
+                const matchingColumn = columns.find(
+                    c => c.name.toLowerCase() === header.toLowerCase()
+                );
+                if (matchingColumn) {
+                    mapping[header] = matchingColumn.name;
+                }
+            });
+            setColumnMapping(mapping);
+            setImportStep('preview');
+        } catch (err) {
+            setError('Failed to parse file. Please check the format.');
+        }
+    };
+
+    const resetImport = () => {
+        setShowImportModal(false);
+        setImportFile(null);
+        setImportData([]);
+        setImportColumns([]);
+        setColumnMapping({});
+        setImportStep('upload');
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleImport = async () => {
+        if (importData.length === 0) return;
+
+        setIsImporting(true);
+        setError(null);
+
+        try {
+            // Transform data according to column mapping
+            const mappedData = importData.map(row => {
+                const mappedRow: TableData = {};
+                Object.entries(columnMapping).forEach(([sourceCol, targetCol]) => {
+                    if (targetCol) {
+                        mappedRow[targetCol] = row[sourceCol];
+                    }
+                });
+                return mappedRow;
+            }).filter(row => Object.keys(row).length > 0);
+
+            if (mappedData.length === 0) {
+                setError('No valid data to import. Please map at least one column.');
+                setIsImporting(false);
+                return;
+            }
+
+            // Import rows one by one
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const rowData of mappedData) {
+                try {
+                    const response = await fetch(
+                        `/_internal/databases/${databaseUuid}/tables/${encodeURIComponent(tableName)}/rows`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ data: rowData }),
+                        }
+                    );
+
+                    const result = await response.json();
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch {
+                    errorCount++;
+                }
+            }
+
+            if (errorCount > 0) {
+                setError(`Imported ${successCount} rows. Failed to import ${errorCount} rows.`);
+            }
+
+            resetImport();
+            fetchData();
+        } catch (err) {
+            setError('Failed to import data');
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
     const handleCreate = async () => {
         try {
             const response = await fetch(
@@ -401,6 +655,15 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                     <Button size="sm" variant="secondary" onClick={handleSearch}>
                         Search
                     </Button>
+                    <FilterBuilder
+                        columns={columns}
+                        filters={filters}
+                        onFiltersChange={setFilters}
+                        onApply={() => {
+                            setCurrentPage(1);
+                            fetchData();
+                        }}
+                    />
                 </div>
                 <div className="flex items-center gap-2">
                     {selectedRows.size > 0 && (
@@ -422,6 +685,72 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                     <Button size="sm" variant="secondary" onClick={fetchData}>
                         <Icons.RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                         Refresh
+                    </Button>
+                    {/* Export Dropdown */}
+                    <div className="relative" ref={exportMenuRef}>
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setShowExportMenu(!showExportMenu)}
+                        >
+                            <Icons.Download className="mr-1.5 h-3.5 w-3.5" />
+                            Export
+                            <Icons.ChevronDown className="ml-1.5 h-3 w-3" />
+                        </Button>
+                        {showExportMenu && (
+                            <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-border bg-background shadow-lg">
+                                <div className="p-1">
+                                    <div className="px-3 py-1.5 text-xs font-medium text-foreground-muted">
+                                        Export All ({data.length} rows)
+                                    </div>
+                                    <button
+                                        onClick={() => handleExport('csv', 'all')}
+                                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-background-secondary"
+                                    >
+                                        <Icons.FileSpreadsheet className="h-4 w-4" />
+                                        Export as CSV
+                                    </button>
+                                    <button
+                                        onClick={() => handleExport('json', 'all')}
+                                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-background-secondary"
+                                    >
+                                        <Icons.FileJson className="h-4 w-4" />
+                                        Export as JSON
+                                    </button>
+                                    {selectedRows.size > 0 && (
+                                        <>
+                                            <div className="my-1 border-t border-border" />
+                                            <div className="px-3 py-1.5 text-xs font-medium text-foreground-muted">
+                                                Export Selected ({selectedRows.size} rows)
+                                            </div>
+                                            <button
+                                                onClick={() => handleExport('csv', 'selected')}
+                                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-background-secondary"
+                                            >
+                                                <Icons.FileSpreadsheet className="h-4 w-4" />
+                                                Selected as CSV
+                                            </button>
+                                            <button
+                                                onClick={() => handleExport('json', 'selected')}
+                                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-background-secondary"
+                                            >
+                                                <Icons.FileJson className="h-4 w-4" />
+                                                Selected as JSON
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    {/* Import Button */}
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setShowImportModal(true)}
+                    >
+                        <Icons.Upload className="mr-1.5 h-3.5 w-3.5" />
+                        Import
                     </Button>
                     <Button size="sm" onClick={openCreateModal}>
                         <Icons.Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -721,6 +1050,210 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                             <Button variant="danger" onClick={handleDeleteSelected}>
                                 Delete {selectedRows.size} Row{selectedRows.size > 1 ? 's' : ''}
                             </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Import Modal */}
+            {showImportModal && (
+                <Modal
+                    isOpen={true}
+                    onClose={resetImport}
+                    title={`Import Data to ${tableName}`}
+                    size="xl"
+                >
+                    <div className="space-y-4">
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv,.json"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
+
+                        {importStep === 'upload' && (
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary hover:bg-background-secondary/50"
+                            >
+                                <Icons.Upload className="mb-4 h-12 w-12 text-foreground-muted" />
+                                <p className="text-lg font-medium text-foreground">
+                                    Click to select a file
+                                </p>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    Supported formats: CSV, JSON
+                                </p>
+                            </div>
+                        )}
+
+                        {importStep === 'preview' && (
+                            <>
+                                {/* File info */}
+                                <div className="flex items-center justify-between rounded-lg bg-background-secondary p-3">
+                                    <div className="flex items-center gap-3">
+                                        <Icons.File className="h-8 w-8 text-foreground-muted" />
+                                        <div>
+                                            <p className="font-medium text-foreground">
+                                                {importFile?.name}
+                                            </p>
+                                            <p className="text-sm text-foreground-muted">
+                                                {importData.length} rows found
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => {
+                                            setImportStep('upload');
+                                            setImportData([]);
+                                            setImportColumns([]);
+                                            setColumnMapping({});
+                                            if (fileInputRef.current) {
+                                                fileInputRef.current.value = '';
+                                            }
+                                        }}
+                                    >
+                                        <Icons.X className="mr-1.5 h-3.5 w-3.5" />
+                                        Change File
+                                    </Button>
+                                </div>
+
+                                {/* Column mapping */}
+                                <div>
+                                    <h4 className="mb-3 font-medium text-foreground">
+                                        Column Mapping
+                                    </h4>
+                                    <p className="mb-3 text-sm text-foreground-muted">
+                                        Map source columns to database columns. Unmapped columns will be skipped.
+                                    </p>
+                                    <div className="max-h-[200px] overflow-y-auto rounded-lg border border-border">
+                                        <table className="w-full">
+                                            <thead className="bg-background-secondary">
+                                                <tr>
+                                                    <th className="border-b border-border px-4 py-2 text-left text-xs font-semibold text-foreground">
+                                                        Source Column
+                                                    </th>
+                                                    <th className="border-b border-border px-4 py-2 text-center text-xs font-semibold text-foreground">
+                                                        →
+                                                    </th>
+                                                    <th className="border-b border-border px-4 py-2 text-left text-xs font-semibold text-foreground">
+                                                        Target Column
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {importColumns.map((sourceCol) => (
+                                                    <tr key={sourceCol} className="border-b border-border/50">
+                                                        <td className="px-4 py-2 font-mono text-sm text-foreground">
+                                                            {sourceCol}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center text-foreground-muted">
+                                                            <Icons.ArrowRight className="inline h-4 w-4" />
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            <select
+                                                                value={columnMapping[sourceCol] || ''}
+                                                                onChange={(e) =>
+                                                                    setColumnMapping({
+                                                                        ...columnMapping,
+                                                                        [sourceCol]: e.target.value,
+                                                                    })
+                                                                }
+                                                                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none"
+                                                            >
+                                                                <option value="">-- Skip --</option>
+                                                                {columns.map((col) => (
+                                                                    <option key={col.name} value={col.name}>
+                                                                        {col.name} ({col.type})
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Data preview */}
+                                <div>
+                                    <h4 className="mb-3 font-medium text-foreground">
+                                        Data Preview (first 5 rows)
+                                    </h4>
+                                    <div className="max-h-[200px] overflow-auto rounded-lg border border-border">
+                                        <table className="w-full">
+                                            <thead className="bg-background-secondary">
+                                                <tr>
+                                                    {importColumns.map((col) => (
+                                                        <th
+                                                            key={col}
+                                                            className="border-b border-border px-3 py-2 text-left text-xs font-semibold text-foreground"
+                                                        >
+                                                            {col}
+                                                            {columnMapping[col] && (
+                                                                <span className="ml-1 text-primary">
+                                                                    → {columnMapping[col]}
+                                                                </span>
+                                                            )}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {importData.slice(0, 5).map((row, idx) => (
+                                                    <tr key={idx} className="border-b border-border/50">
+                                                        {importColumns.map((col) => (
+                                                            <td
+                                                                key={col}
+                                                                className="px-3 py-2 font-mono text-xs text-foreground"
+                                                            >
+                                                                {row[col] || (
+                                                                    <span className="italic text-foreground-subtle">
+                                                                        null
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2 border-t border-border pt-4">
+                            <Button variant="secondary" onClick={resetImport}>
+                                Cancel
+                            </Button>
+                            {importStep === 'preview' && (
+                                <Button
+                                    onClick={handleImport}
+                                    disabled={
+                                        isImporting ||
+                                        importData.length === 0 ||
+                                        Object.values(columnMapping).filter(Boolean).length === 0
+                                    }
+                                >
+                                    {isImporting ? (
+                                        <>
+                                            <Icons.RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                            Importing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icons.Upload className="mr-1.5 h-3.5 w-3.5" />
+                                            Import {importData.length} Rows
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </Modal>
