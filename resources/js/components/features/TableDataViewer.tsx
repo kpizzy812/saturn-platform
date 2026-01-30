@@ -724,9 +724,12 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                         </Button>
                     )}
                     {hasChanges && (
-                        <Button size="sm" variant="warning" onClick={savePendingChanges} className="whitespace-nowrap">
-                            <Icons.Save className="mr-1.5 h-3.5 w-3.5" />
+                        <Button size="sm" variant="warning" onClick={savePendingChanges} className="whitespace-nowrap gap-2">
+                            <Icons.Save className="h-3.5 w-3.5" />
                             Save ({pendingChanges.size})
+                            <kbd className="ml-1 flex items-center gap-0.5 rounded border border-amber-600/50 bg-amber-600/20 px-1 py-0.5 text-xs">
+                                <Icons.Command className="h-2.5 w-2.5" />S
+                            </kbd>
                         </Button>
                     )}
                     <Button size="sm" variant="secondary" onClick={fetchData}>

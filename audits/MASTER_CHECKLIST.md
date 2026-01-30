@@ -33,12 +33,12 @@
 | SSH Operations | 🔴 Critical | [backend/ssh-operations.md](backend/ssh-operations.md) | [🔍] 4 critical found |
 | Webhooks (GitHub, GitLab, etc.) | 🔴 Critical | [backend/webhooks.md](backend/webhooks.md) | [🔧] 5 critical FIXED |
 | Jobs & Queues (49+ jobs) | 🟡 High | [backend/jobs-queues.md](backend/jobs-queues.md) | [🔧] 3 critical FIXED |
-| File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [ ] |
+| File Uploads | 🟡 High | [backend/file-uploads.md](backend/file-uploads.md) | [🔍] 3 critical, 4 high |
 | Environment Variables | 🔴 Critical | [backend/environment-variables.md](backend/environment-variables.md) | [🔍] 4 critical found |
 | **Frontend** ||||
 | XSS Prevention | 🔴 Critical | [frontend/xss-prevention.md](frontend/xss-prevention.md) | [🔧] 1 critical FIXED, 1 high |
 | API Calls & Data Handling | 🟡 High | [frontend/api-calls.md](frontend/api-calls.md) | [🔍] 2 high, 5 medium |
-| Authentication Flow | 🔴 Critical | [frontend/authentication-flow.md](frontend/authentication-flow.md) | [ ] |
+| Authentication Flow | 🔴 Critical | [frontend/authentication-flow.md](frontend/authentication-flow.md) | [🔍] 1 critical, 8 high |
 | Input Validation | 🟡 High | [frontend/input-validation.md](frontend/input-validation.md) | [🔍] 2 critical, 4 high |
 | Sensitive Data Exposure | 🔴 Critical | [frontend/sensitive-data.md](frontend/sensitive-data.md) | [🔴] 2 critical found |
 | **Infrastructure** ||||
