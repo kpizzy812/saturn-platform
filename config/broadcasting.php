@@ -32,9 +32,11 @@ return [
 
         'pusher' => [
             'driver' => 'pusher',
-            'key' => env('PUSHER_APP_KEY', 'saturn'),
-            'secret' => env('PUSHER_APP_SECRET', 'saturn'),
-            'app_id' => env('PUSHER_APP_ID', 'saturn'),
+            // SECURITY: Credentials MUST be set via environment variables
+            // No fallback defaults to prevent accidental use of weak credentials
+            'key' => env('PUSHER_APP_KEY'),
+            'secret' => env('PUSHER_APP_SECRET'),
+            'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'host' => env('PUSHER_BACKEND_HOST', 'saturn-realtime'),
                 'port' => env('PUSHER_BACKEND_PORT', 6001),
