@@ -11,6 +11,7 @@ interface DatabaseNodeData {
     volume?: string;
     uuid?: string;
     onQuickViewLogs?: () => void;
+    onQuickBrowseTables?: () => void;
 }
 
 // PostgreSQL Logo - Elephant head simplified
@@ -150,7 +151,7 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const bgColor = getDbBgColor(data.databaseType);
-    const hasQuickActions = !!data.onQuickViewLogs;
+    const hasQuickActions = !!(data.onQuickViewLogs || data.onQuickBrowseTables);
 
     return (
         <>
@@ -172,6 +173,16 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
                 {/* Quick Actions - visible on hover */}
                 {hasQuickActions && (
                     <div className="absolute -top-3.5 right-2 z-10 flex items-center gap-1 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
+                        {data.onQuickBrowseTables && (
+                            <QuickActionButton onClick={data.onQuickBrowseTables} title="Browse Tables">
+                                {/* Table icon */}
+                                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="3" y1="9" x2="21" y2="9"/>
+                                    <line x1="9" y1="21" x2="9" y2="9"/>
+                                </svg>
+                            </QuickActionButton>
+                        )}
                         {data.onQuickViewLogs && (
                             <QuickActionButton onClick={data.onQuickViewLogs} title="View Logs">
                                 {/* Terminal icon */}
