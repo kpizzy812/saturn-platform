@@ -31,7 +31,13 @@ interface TeamMember {
     role: 'owner' | 'admin' | 'developer' | 'member' | 'viewer';
     joinedAt: string;
     lastActive: string;
-    hasRestrictedAccess?: boolean;
+    projectAccess?: {
+        hasFullAccess: boolean;
+        hasNoAccess: boolean;
+        hasLimitedAccess: boolean;
+        count: number;
+        total: number;
+    };
 }
 
 interface Invitation {
@@ -400,9 +406,19 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                                                             <FolderCog className="h-4 w-4" />
                                                             <span className="flex items-center gap-2">
                                                                 Configure Projects
-                                                                {member.hasRestrictedAccess && (
+                                                                {member.projectAccess?.hasNoAccess && (
+                                                                    <Badge variant="danger" className="text-[10px] px-1 py-0">
+                                                                        No Access
+                                                                    </Badge>
+                                                                )}
+                                                                {member.projectAccess?.hasLimitedAccess && (
                                                                     <Badge variant="warning" className="text-[10px] px-1 py-0">
-                                                                        Restricted
+                                                                        {member.projectAccess.count}/{member.projectAccess.total}
+                                                                    </Badge>
+                                                                )}
+                                                                {member.projectAccess?.hasFullAccess && (
+                                                                    <Badge variant="success" className="text-[10px] px-1 py-0">
+                                                                        Full
                                                                     </Badge>
                                                                 )}
                                                             </span>

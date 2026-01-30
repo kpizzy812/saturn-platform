@@ -25,7 +25,7 @@ Route::get('/settings/team', function () {
     $team = currentTeam();
     $user = auth()->user();
 
-    $members = $team->members->map(function ($user) {
+    $members = $team->members->map(function ($user) use ($team) {
         // Get last activity from sessions table
         $lastSession = \Illuminate\Support\Facades\DB::table('sessions')
             ->where('user_id', $user->id)
@@ -36,6 +36,19 @@ Route::get('/settings/team', function () {
             ? \Carbon\Carbon::createFromTimestamp($lastSession->last_activity)->toISOString()
             : $user->updated_at->toISOString();
 
+        $allowedProjects = $user->pivot->allowed_projects;
+
+        // Determine access type based on deny-by-default model
+        $hasFullAccess = is_array($allowedProjects) && in_array('*', $allowedProjects, true);
+        $hasNoAccess = $allowedProjects === null || (is_array($allowedProjects) && empty($allowedProjects));
+        $hasLimitedAccess = ! $hasFullAccess && ! $hasNoAccess;
+
+        // Count accessible projects for limited access
+        $accessibleProjectsCount = 0;
+        if ($hasLimitedAccess && is_array($allowedProjects)) {
+            $accessibleProjectsCount = count($allowedProjects);
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -44,7 +57,13 @@ Route::get('/settings/team', function () {
             'role' => $user->pivot->role ?? 'member',
             'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
             'lastActive' => $lastActive,
-            'hasRestrictedAccess' => $user->pivot->allowed_projects !== null,
+            'projectAccess' => [
+                'hasFullAccess' => $hasFullAccess,
+                'hasNoAccess' => $hasNoAccess,
+                'hasLimitedAccess' => $hasLimitedAccess,
+                'count' => $accessibleProjectsCount,
+                'total' => $team->projects()->count(),
+            ],
         ];
     });
 
@@ -1142,6 +1161,10 @@ Route::get('/settings/team/members/{id}/projects', function (string $id) {
 
     $allowedProjects = $member->pivot->allowed_projects;
 
+    // Determine access type for frontend
+    $hasFullAccess = is_array($allowedProjects) && in_array('*', $allowedProjects, true);
+    $hasNoAccess = $allowedProjects === null || (is_array($allowedProjects) && empty($allowedProjects));
+
     return response()->json([
         'member' => [
             'id' => $member->id,
@@ -1151,15 +1174,16 @@ Route::get('/settings/team/members/{id}/projects', function (string $id) {
         ],
         'projects' => $projects,
         'allowed_projects' => $allowedProjects,
-        'has_restricted_access' => $allowedProjects !== null,
+        'has_full_access' => $hasFullAccess,
+        'has_no_access' => $hasNoAccess,
     ]);
 })->name('settings.team.members.projects');
 
 Route::post('/settings/team/members/{id}/projects', function (Request $request, string $id) {
     $request->validate([
-        'access_type' => 'required|in:all,restricted',
+        'grant_all' => 'boolean',
         'allowed_projects' => 'array',
-        'allowed_projects.*' => 'integer',
+        'allowed_projects.*' => 'integer|string', // Allow integers and '*' for full access
     ]);
 
     $team = currentTeam();
@@ -1189,17 +1213,31 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
         return response()->json(['message' => 'Owners and admins always have full access and cannot be restricted'], 422);
     }
 
-    // Determine allowed_projects value
-    $allowedProjects = null; // default: all projects
+    // Determine allowed_projects value based on new deny-by-default model
+    // null or [] = no access (default)
+    // ['*'] = full access to all projects
+    // [1, 2, 3] = access to specific projects
 
-    if ($request->access_type === 'restricted') {
-        $allowedProjects = $request->allowed_projects ?? [];
+    $allowedProjects = null; // default: no access
 
-        // Validate that all project IDs belong to this team
-        $teamProjectIds = $team->projects()->pluck('id')->toArray();
-        $invalidIds = array_diff($allowedProjects, $teamProjectIds);
-        if (! empty($invalidIds)) {
-            return response()->json(['message' => 'Invalid project IDs'], 422);
+    if ($request->has('grant_all') && $request->grant_all === true) {
+        // Grant access to all projects
+        $allowedProjects = ['*'];
+    } elseif ($request->has('allowed_projects')) {
+        $allowedProjects = $request->allowed_projects;
+
+        // If empty array provided, it means no access (explicit deny)
+        if (empty($allowedProjects)) {
+            $allowedProjects = null;
+        } else {
+            // Validate that all project IDs belong to this team (unless '*')
+            if (! in_array('*', $allowedProjects, true)) {
+                $teamProjectIds = $team->projects()->pluck('id')->toArray();
+                $invalidIds = array_diff($allowedProjects, $teamProjectIds);
+                if (! empty($invalidIds)) {
+                    return response()->json(['message' => 'Invalid project IDs'], 422);
+                }
+            }
         }
     }
 

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Badge } from '@/components/ui/Badge';
 import { router } from '@inertiajs/react';
-import { Folder, Lock, Unlock, AlertTriangle } from 'lucide-react';
+import { Folder, Lock, Unlock, Globe, AlertTriangle } from 'lucide-react';
 
 interface Project {
     id: number;
@@ -27,7 +27,7 @@ interface Props {
 
 export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: Props) {
     const [projects, setProjects] = React.useState<Project[]>([]);
-    const [accessType, setAccessType] = React.useState<'all' | 'restricted'>('all');
+    const [grantAll, setGrantAll] = React.useState(false);
     const [selectedProjects, setSelectedProjects] = React.useState<number[]>([]);
     const [isLoading, setIsLoading] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
@@ -53,12 +53,22 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                 })
                 .then(data => {
                     setProjects(data.projects);
-                    if (data.allowed_projects === null) {
-                        setAccessType('all');
+
+                    // Determine current state based on new deny-by-default model
+                    const allowedProjects = data.allowed_projects;
+
+                    if (allowedProjects && Array.isArray(allowedProjects) && allowedProjects.includes('*')) {
+                        // Full access to all projects
+                        setGrantAll(true);
                         setSelectedProjects(data.projects.map((p: Project) => p.id));
+                    } else if (!allowedProjects || (Array.isArray(allowedProjects) && allowedProjects.length === 0)) {
+                        // No access
+                        setGrantAll(false);
+                        setSelectedProjects([]);
                     } else {
-                        setAccessType('restricted');
-                        setSelectedProjects(data.allowed_projects);
+                        // Specific projects
+                        setGrantAll(false);
+                        setSelectedProjects(allowedProjects);
                     }
                 })
                 .catch(err => {
@@ -69,6 +79,8 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
     }, [isOpen, member]);
 
     const toggleProject = (projectId: number) => {
+        if (grantAll) return; // Can't toggle if grant all is enabled
+
         setSelectedProjects(prev =>
             prev.includes(projectId)
                 ? prev.filter(id => id !== projectId)
@@ -76,12 +88,25 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
         );
     };
 
+    const handleGrantAllChange = (checked: boolean) => {
+        setGrantAll(checked);
+        if (checked) {
+            // When granting all access, visually select all projects
+            setSelectedProjects(projects.map(p => p.id));
+        }
+    };
+
     const selectAll = () => {
-        setSelectedProjects(projects.map(p => p.id));
+        if (!grantAll) {
+            setSelectedProjects(projects.map(p => p.id));
+        }
     };
 
     const selectNone = () => {
-        setSelectedProjects([]);
+        if (!grantAll) {
+            setSelectedProjects([]);
+            setGrantAll(false);
+        }
     };
 
     const handleSave = () => {
@@ -89,6 +114,10 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
 
         setIsSaving(true);
         setError(null);
+
+        const payload = grantAll
+            ? { grant_all: true, allowed_projects: ['*'] }
+            : { grant_all: false, allowed_projects: selectedProjects };
 
         fetch(`/settings/team/members/${member.id}/projects`, {
             method: 'POST',
@@ -99,10 +128,7 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                 'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
             },
             credentials: 'include',
-            body: JSON.stringify({
-                access_type: accessType,
-                allowed_projects: accessType === 'restricted' ? selectedProjects : [],
-            }),
+            body: JSON.stringify(payload),
         })
             .then(res => {
                 if (!res.ok) {
@@ -133,6 +159,21 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
 
     if (!member) return null;
 
+    // Calculate access status
+    const getAccessStatus = () => {
+        if (grantAll) {
+            return { label: 'Full Access', variant: 'success' as const, icon: <Unlock className="h-4 w-4" /> };
+        } else if (selectedProjects.length === 0) {
+            return { label: 'No Access', variant: 'danger' as const, icon: <Lock className="h-4 w-4" /> };
+        } else if (selectedProjects.length === projects.length && projects.length > 0) {
+            return { label: `All Projects (${projects.length})`, variant: 'success' as const, icon: <Globe className="h-4 w-4" /> };
+        } else {
+            return { label: `${selectedProjects.length} of ${projects.length} projects`, variant: 'warning' as const, icon: <Folder className="h-4 w-4" /> };
+        }
+    };
+
+    const accessStatus = getAccessStatus();
+
     return (
         <Modal
             isOpen={isOpen}
@@ -151,56 +192,41 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {/* Access Type Selection */}
-                    <div className="space-y-3">
-                        <label className="text-sm font-medium text-foreground">
-                            Access Level
-                        </label>
-                        <div className="space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => setAccessType('all')}
-                                className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                                    accessType === 'all'
-                                        ? 'border-primary bg-primary/10'
-                                        : 'border-border hover:border-border/80'
-                                }`}
-                            >
-                                <Unlock className="h-5 w-5 text-success" />
-                                <div className="flex-1">
-                                    <p className="font-medium text-foreground">All Projects</p>
-                                    <p className="text-xs text-foreground-muted">
-                                        Access to all current and future projects
-                                    </p>
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAccessType('restricted')}
-                                className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all ${
-                                    accessType === 'restricted'
-                                        ? 'border-primary bg-primary/10'
-                                        : 'border-border hover:border-border/80'
-                                }`}
-                            >
-                                <Lock className="h-5 w-5 text-warning" />
-                                <div className="flex-1">
-                                    <p className="font-medium text-foreground">Restricted Access</p>
-                                    <p className="text-xs text-foreground-muted">
-                                        Only access to selected projects below
-                                    </p>
-                                </div>
-                            </button>
-                        </div>
+                    {/* Current Access Status */}
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3">
+                        <span className="text-sm font-medium text-foreground">Current Access:</span>
+                        <Badge variant={accessStatus.variant} className="flex items-center gap-1.5">
+                            {accessStatus.icon}
+                            {accessStatus.label}
+                        </Badge>
                     </div>
 
-                    {/* Project Selection (only when restricted) */}
-                    {accessType === 'restricted' && (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-foreground">
-                                    Select Projects
-                                </label>
+                    {/* Grant All Access Toggle */}
+                    <div className="space-y-3">
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-all hover:border-border/80 hover:bg-background-secondary">
+                            <Checkbox
+                                checked={grantAll}
+                                onChange={(checked) => handleGrantAllChange(checked)}
+                            />
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <Unlock className="h-4 w-4 text-success" />
+                                    <p className="font-medium text-foreground">Grant Access to All Projects</p>
+                                </div>
+                                <p className="text-xs text-foreground-muted">
+                                    Access to all current and future projects in this team
+                                </p>
+                            </div>
+                        </label>
+                    </div>
+
+                    {/* Project Selection */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-foreground">
+                                Specific Projects
+                            </label>
+                            {!grantAll && (
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
@@ -218,39 +244,50 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                                         Clear
                                     </button>
                                 </div>
-                            </div>
-                            <Badge variant={selectedProjects.length > 0 ? 'success' : 'warning'}>
-                                {selectedProjects.length} of {projects.length} selected
-                            </Badge>
-                            <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border p-3">
-                                {projects.length === 0 ? (
-                                    <p className="py-4 text-center text-sm text-foreground-muted">
-                                        No projects in this team
-                                    </p>
-                                ) : (
-                                    projects.map((project) => (
-                                        <label
-                                            key={project.id}
-                                            className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-background-tertiary"
-                                        >
-                                            <Checkbox
-                                                checked={selectedProjects.includes(project.id)}
-                                                onChange={() => toggleProject(project.id)}
-                                            />
-                                            <Folder className="h-4 w-4 text-foreground-muted" />
-                                            <span className="text-sm text-foreground">{project.name}</span>
-                                        </label>
-                                    ))
-                                )}
-                            </div>
-                            {selectedProjects.length === 0 && (
-                                <div className="flex items-center gap-2 text-xs text-warning">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <span>User will have no project access</span>
-                                </div>
                             )}
                         </div>
-                    )}
+
+                        {grantAll && (
+                            <div className="flex items-center gap-2 rounded-lg border border-info/50 bg-info/10 p-2 text-xs text-info">
+                                <Globe className="h-4 w-4 flex-shrink-0" />
+                                <span>Full access granted - individual selections disabled</span>
+                            </div>
+                        )}
+
+                        <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-border p-3">
+                            {projects.length === 0 ? (
+                                <p className="py-4 text-center text-sm text-foreground-muted">
+                                    No projects in this team
+                                </p>
+                            ) : (
+                                projects.map((project) => (
+                                    <label
+                                        key={project.id}
+                                        className={`flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors ${
+                                            grantAll
+                                                ? 'cursor-not-allowed opacity-60'
+                                                : 'hover:bg-background-tertiary'
+                                        }`}
+                                    >
+                                        <Checkbox
+                                            checked={selectedProjects.includes(project.id)}
+                                            onChange={() => toggleProject(project.id)}
+                                            disabled={grantAll}
+                                        />
+                                        <Folder className="h-4 w-4 text-foreground-muted" />
+                                        <span className="text-sm text-foreground">{project.name}</span>
+                                    </label>
+                                ))
+                            )}
+                        </div>
+
+                        {!grantAll && selectedProjects.length === 0 && (
+                            <div className="flex items-center gap-2 text-xs text-warning">
+                                <AlertTriangle className="h-4 w-4" />
+                                <span>No access - user will not see any projects</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
