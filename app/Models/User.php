@@ -492,7 +492,8 @@ class User extends Authenticatable implements SendsEmail
      */
     public function isSuperAdmin(): bool
     {
-        if (Auth::id() === 0) {
+        // Check if this user is root (id=0) or has superadmin flag
+        if ($this->id === 0) {
             return true;
         }
 
