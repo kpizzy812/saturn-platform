@@ -307,6 +307,206 @@ Route::prefix('admin')->group(function () {
         }
     })->name('admin.users.toggle-suspension');
 
+    // Bulk user operations
+    Route::post('/users/bulk-suspend', function () {
+        $adminUser = Auth::user();
+
+        if (! $adminUser->isSuperAdmin()) {
+            return back()->with('error', 'Unauthorized: Only superadmins can suspend users');
+        }
+
+        $userIds = request()->input('user_ids', []);
+        if (empty($userIds)) {
+            return back()->with('error', 'No users selected');
+        }
+
+        $reason = request()->input('reason', 'Bulk suspension by admin');
+        $suspendedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($userIds as $userId) {
+            $user = \App\Models\User::find($userId);
+            if (! $user || $user->id === 0 || $user->isSuperAdmin()) {
+                $skippedCount++;
+
+                continue;
+            }
+
+            if (! $user->isSuspended()) {
+                $user->suspend($reason, $adminUser->id);
+                $suspendedCount++;
+            }
+        }
+
+        // Log bulk action
+        \App\Models\AuditLog::create([
+            'user_id' => $adminUser->id,
+            'team_id' => null,
+            'action' => 'users_bulk_suspended',
+            'resource_type' => 'User',
+            'resource_id' => null,
+            'resource_name' => "{$suspendedCount} users",
+            'description' => "Admin {$adminUser->name} bulk suspended {$suspendedCount} users",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        return back()->with('success', "Suspended {$suspendedCount} users".($skippedCount > 0 ? " ({$skippedCount} skipped)" : ''));
+    })->name('admin.users.bulk-suspend');
+
+    Route::post('/users/bulk-activate', function () {
+        $adminUser = Auth::user();
+
+        if (! $adminUser->isSuperAdmin()) {
+            return back()->with('error', 'Unauthorized: Only superadmins can activate users');
+        }
+
+        $userIds = request()->input('user_ids', []);
+        if (empty($userIds)) {
+            return back()->with('error', 'No users selected');
+        }
+
+        $activatedCount = 0;
+
+        foreach ($userIds as $userId) {
+            $user = \App\Models\User::find($userId);
+            if (! $user) {
+                continue;
+            }
+
+            if ($user->isSuspended()) {
+                $user->activate();
+                $activatedCount++;
+            }
+        }
+
+        // Log bulk action
+        \App\Models\AuditLog::create([
+            'user_id' => $adminUser->id,
+            'team_id' => null,
+            'action' => 'users_bulk_activated',
+            'resource_type' => 'User',
+            'resource_id' => null,
+            'resource_name' => "{$activatedCount} users",
+            'description' => "Admin {$adminUser->name} bulk activated {$activatedCount} users",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        return back()->with('success', "Activated {$activatedCount} users");
+    })->name('admin.users.bulk-activate');
+
+    Route::delete('/users/bulk-delete', function () {
+        $adminUser = Auth::user();
+
+        if (! $adminUser->isSuperAdmin()) {
+            return back()->with('error', 'Unauthorized: Only superadmins can delete users');
+        }
+
+        $userIds = request()->input('user_ids', []);
+        if (empty($userIds)) {
+            return back()->with('error', 'No users selected');
+        }
+
+        $deletedCount = 0;
+        $skippedCount = 0;
+
+        foreach ($userIds as $userId) {
+            $user = \App\Models\User::find($userId);
+            if (! $user || $user->id === 0 || $user->isSuperAdmin()) {
+                $skippedCount++;
+
+                continue;
+            }
+
+            // Store name for logging before deletion
+            $userName = $user->name;
+            $user->delete();
+            $deletedCount++;
+        }
+
+        // Log bulk action
+        \App\Models\AuditLog::create([
+            'user_id' => $adminUser->id,
+            'team_id' => null,
+            'action' => 'users_bulk_deleted',
+            'resource_type' => 'User',
+            'resource_id' => null,
+            'resource_name' => "{$deletedCount} users",
+            'description' => "Admin {$adminUser->name} bulk deleted {$deletedCount} users",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        return back()->with('success', "Deleted {$deletedCount} users".($skippedCount > 0 ? " ({$skippedCount} skipped)" : ''));
+    })->name('admin.users.bulk-delete');
+
+    Route::get('/users/export', function () {
+        $adminUser = Auth::user();
+
+        if (! $adminUser->isSuperAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Get filter parameters
+        $search = request()->input('search', '');
+        $statusFilter = request()->input('status', 'all');
+
+        // Build query
+        $query = \App\Models\User::with(['teams'])
+            ->withCount(['teams']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ILIKE', "%{$search}%")
+                    ->orWhere('email', 'ILIKE', "%{$search}%");
+            });
+        }
+
+        if ($statusFilter !== 'all') {
+            $query->where('status', $statusFilter);
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->get();
+
+        // Generate CSV
+        $csv = "ID,Name,Email,Status,Teams,Created At,Last Login\n";
+        foreach ($users as $user) {
+            $status = $user->status ?? 'active';
+            if ($status === 'active' && is_null($user->email_verified_at)) {
+                $status = 'pending';
+            }
+            $csv .= sprintf(
+                "%d,\"%s\",\"%s\",%s,%d,%s,%s\n",
+                $user->id,
+                str_replace('"', '""', $user->name),
+                str_replace('"', '""', $user->email),
+                $status,
+                $user->teams_count,
+                $user->created_at->format('Y-m-d H:i:s'),
+                $user->last_login_at?->format('Y-m-d H:i:s') ?? 'Never'
+            );
+        }
+
+        // Log export
+        \App\Models\AuditLog::create([
+            'user_id' => $adminUser->id,
+            'team_id' => null,
+            'action' => 'users_exported',
+            'resource_type' => 'User',
+            'resource_id' => null,
+            'resource_name' => "{$users->count()} users",
+            'description' => "Admin {$adminUser->name} exported {$users->count()} users to CSV",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="users-export-'.now()->format('Y-m-d').'.csv"',
+        ]);
+    })->name('admin.users.export');
+
     Route::get('/applications', function () {
         // Fetch all applications across all teams (admin view)
         $applications = \App\Models\Application::with(['environment.project.team', 'destination'])

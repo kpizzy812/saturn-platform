@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { useConfirm } from '@/components/ui';
 import {
     Search,
@@ -12,11 +13,14 @@ import {
     UserCheck,
     UserX,
     Eye,
-    Mail,
     Shield,
     Ban,
     ChevronLeft,
     ChevronRight,
+    Download,
+    Trash2,
+    CheckSquare,
+    Square,
 } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 
@@ -48,7 +52,13 @@ interface Props {
 
 const defaultUsers: User[] = [];
 
-function UserRow({ user }: { user: User }) {
+interface UserRowProps {
+    user: User;
+    isSelected: boolean;
+    onToggleSelect: (id: number) => void;
+}
+
+function UserRow({ user, isSelected, onToggleSelect }: UserRowProps) {
     const confirm = useConfirm();
 
     const handleImpersonate = async () => {
@@ -83,10 +93,23 @@ function UserRow({ user }: { user: User }) {
     };
 
     const config = statusConfig[user.status];
+    const canSelect = !user.is_root_user;
 
     return (
         <div className="flex items-center justify-between border-b border-border/50 py-4 last:border-0">
             <div className="flex items-center gap-4">
+                {/* Checkbox */}
+                <div className="flex items-center">
+                    {canSelect ? (
+                        <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => onToggleSelect(user.id)}
+                        />
+                    ) : (
+                        <div className="h-4 w-4" /> // Placeholder for alignment
+                    )}
+                </div>
+
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-medium text-white">
                     {user.name.charAt(0).toUpperCase()}
                 </div>
@@ -131,24 +154,28 @@ function UserRow({ user }: { user: User }) {
                             <Eye className="h-4 w-4" />
                             View Details
                         </DropdownItem>
-                        <DropdownItem onClick={handleImpersonate}>
-                            <UserCheck className="h-4 w-4" />
-                            Impersonate User
-                        </DropdownItem>
-                        <DropdownDivider />
-                        <DropdownItem onClick={handleSuspend}>
-                            {user.status === 'suspended' ? (
-                                <>
+                        {!user.is_root_user && (
+                            <>
+                                <DropdownItem onClick={handleImpersonate}>
                                     <UserCheck className="h-4 w-4" />
-                                    Activate User
-                                </>
-                            ) : (
-                                <>
-                                    <Ban className="h-4 w-4" />
-                                    Suspend User
-                                </>
-                            )}
-                        </DropdownItem>
+                                    Impersonate User
+                                </DropdownItem>
+                                <DropdownDivider />
+                                <DropdownItem onClick={handleSuspend}>
+                                    {user.status === 'suspended' ? (
+                                        <>
+                                            <UserCheck className="h-4 w-4" />
+                                            Activate User
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Ban className="h-4 w-4" />
+                                            Suspend User
+                                        </>
+                                    )}
+                                </DropdownItem>
+                            </>
+                        )}
                     </DropdownContent>
                 </Dropdown>
             </div>
@@ -163,10 +190,26 @@ export default function AdminUsersIndex({
     lastPage = 1,
     filters
 }: Props) {
+    const confirm = useConfirm();
     const [searchQuery, setSearchQuery] = React.useState(filters.search || '');
     const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'suspended' | 'pending'>(
         (filters.status as 'all' | 'active' | 'suspended' | 'pending') || 'all'
     );
+    const [selectedUserIds, setSelectedUserIds] = React.useState<Set<number>>(new Set());
+
+    // Get selectable users (exclude root/superadmin)
+    const selectableUsers = React.useMemo(
+        () => users.filter(u => !u.is_root_user),
+        [users]
+    );
+
+    const allSelected = selectableUsers.length > 0 && selectableUsers.every(u => selectedUserIds.has(u.id));
+    const someSelected = selectedUserIds.size > 0;
+
+    // Clear selection when users change (page change, filter, etc.)
+    React.useEffect(() => {
+        setSelectedUserIds(new Set());
+    }, [users]);
 
     // Debounced search to avoid excessive requests
     React.useEffect(() => {
@@ -176,7 +219,6 @@ export default function AdminUsersIndex({
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Update filters and fetch new data
     const updateFilters = (newFilters: Record<string, string>) => {
         router.get('/admin/users', {
             ...filters,
@@ -202,6 +244,83 @@ export default function AdminUsersIndex({
         });
     };
 
+    const toggleSelectUser = (id: number) => {
+        setSelectedUserIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            setSelectedUserIds(new Set());
+        } else {
+            setSelectedUserIds(new Set(selectableUsers.map(u => u.id)));
+        }
+    };
+
+    const handleBulkSuspend = async () => {
+        const confirmed = await confirm({
+            title: 'Suspend Selected Users',
+            description: `Are you sure you want to suspend ${selectedUserIds.size} user(s)? They will not be able to log in.`,
+            confirmText: 'Suspend All',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.post('/admin/users/bulk-suspend', {
+                user_ids: Array.from(selectedUserIds),
+                reason: 'Bulk suspension by admin',
+            }, {
+                onSuccess: () => setSelectedUserIds(new Set()),
+            });
+        }
+    };
+
+    const handleBulkActivate = async () => {
+        const confirmed = await confirm({
+            title: 'Activate Selected Users',
+            description: `Are you sure you want to activate ${selectedUserIds.size} user(s)?`,
+            confirmText: 'Activate All',
+            variant: 'warning',
+        });
+        if (confirmed) {
+            router.post('/admin/users/bulk-activate', {
+                user_ids: Array.from(selectedUserIds),
+            }, {
+                onSuccess: () => setSelectedUserIds(new Set()),
+            });
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        const confirmed = await confirm({
+            title: 'Delete Selected Users',
+            description: `Are you sure you want to permanently delete ${selectedUserIds.size} user(s)? This action cannot be undone.`,
+            confirmText: 'Delete All',
+            variant: 'danger',
+        });
+        if (confirmed) {
+            router.delete('/admin/users/bulk-delete', {
+                data: { user_ids: Array.from(selectedUserIds) },
+                onSuccess: () => setSelectedUserIds(new Set()),
+            });
+        }
+    };
+
+    const handleExport = () => {
+        // Build URL with current filters
+        const params = new URLSearchParams();
+        if (filters.search) params.set('search', filters.search);
+        if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+
+        window.location.href = `/admin/users/export?${params.toString()}`;
+    };
+
     return (
         <AdminLayout
             title="Users"
@@ -212,12 +331,67 @@ export default function AdminUsersIndex({
         >
             <div className="mx-auto max-w-7xl">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-2xl font-semibold text-foreground">User Management</h1>
-                    <p className="mt-1 text-sm text-foreground-muted">
-                        Manage all users across your Saturn Platform instance
-                    </p>
+                <div className="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-foreground">User Management</h1>
+                        <p className="mt-1 text-sm text-foreground-muted">
+                            Manage all users across your Saturn Platform instance
+                        </p>
+                    </div>
+                    <Button variant="secondary" onClick={handleExport}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export CSV
+                    </Button>
                 </div>
+
+                {/* Bulk Action Bar */}
+                {someSelected && (
+                    <Card variant="glass" className="mb-4 border-primary/50 bg-primary/5">
+                        <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <CheckSquare className="h-5 w-5 text-primary" />
+                                    <span className="font-medium text-foreground">
+                                        {selectedUserIds.size} user{selectedUserIds.size !== 1 ? 's' : ''} selected
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={handleBulkActivate}
+                                    >
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        Activate
+                                    </Button>
+                                    <Button
+                                        variant="warning"
+                                        size="sm"
+                                        onClick={handleBulkSuspend}
+                                    >
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Suspend
+                                    </Button>
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={handleBulkDelete}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSelectedUserIds(new Set())}
+                                    >
+                                        Clear
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Filters */}
                 <Card variant="glass" className="mb-6">
@@ -270,9 +444,24 @@ export default function AdminUsersIndex({
                 <Card variant="glass">
                     <CardContent className="p-6">
                         <div className="mb-4 flex items-center justify-between">
-                            <p className="text-sm text-foreground-muted">
-                                Showing {users.length} of {total} users
-                            </p>
+                            <div className="flex items-center gap-4">
+                                {selectableUsers.length > 0 && (
+                                    <button
+                                        onClick={toggleSelectAll}
+                                        className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground"
+                                    >
+                                        {allSelected ? (
+                                            <CheckSquare className="h-4 w-4 text-primary" />
+                                        ) : (
+                                            <Square className="h-4 w-4" />
+                                        )}
+                                        {allSelected ? 'Deselect all' : 'Select all'}
+                                    </button>
+                                )}
+                                <p className="text-sm text-foreground-muted">
+                                    Showing {users.length} of {total} users
+                                </p>
+                            </div>
                             {lastPage > 1 && (
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -309,7 +498,12 @@ export default function AdminUsersIndex({
                         ) : (
                             <div>
                                 {users.map((user) => (
-                                    <UserRow key={user.id} user={user} />
+                                    <UserRow
+                                        key={user.id}
+                                        user={user}
+                                        isSelected={selectedUserIds.has(user.id)}
+                                        onToggleSelect={toggleSelectUser}
+                                    />
                                 ))}
                             </div>
                         )}
