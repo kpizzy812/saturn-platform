@@ -3,27 +3,23 @@ import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Checkbox } from '@/components/ui/Checkbox';
 import { Link } from '@inertiajs/react';
 import {
     Crown,
     Shield,
     User as UserIcon,
-    Lock,
     ArrowLeft,
     Check,
     X,
-    Plus,
-    Sparkles
+    Code2,
+    Eye
 } from 'lucide-react';
 
 type Permission = {
     id: string;
     name: string;
     description: string;
-    category: 'resources' | 'team' | 'settings' | 'billing';
+    category: 'resources' | 'team' | 'settings';
 };
 
 type Role = {
@@ -56,17 +52,13 @@ const permissions: Permission[] = [
     { id: 'edit_settings', name: 'Edit Settings', description: 'Modify team and project settings', category: 'settings' },
     { id: 'manage_integrations', name: 'Manage Integrations', description: 'Connect and configure integrations', category: 'settings' },
     { id: 'manage_tokens', name: 'Manage API Tokens', description: 'Create and revoke API tokens', category: 'settings' },
-
-    // Billing
-    { id: 'view_billing', name: 'View Billing', description: 'See billing information and usage', category: 'billing' },
-    { id: 'manage_billing', name: 'Manage Billing', description: 'Update payment methods and plans', category: 'billing' },
 ];
 
 const defaultRoles: Role[] = [
     {
         id: 'owner',
         name: 'Owner',
-        description: 'Full control of the team and billing',
+        description: 'Full control of the team and all resources',
         isBuiltIn: true,
         icon: <Crown className="h-4 w-4" />,
         color: 'text-warning',
@@ -83,19 +75,31 @@ const defaultRoles: Role[] = [
             'view_resources', 'deploy_resources', 'edit_resources', 'delete_resources',
             'manage_env_vars', 'view_logs', 'view_team', 'invite_members',
             'manage_members', 'view_activity', 'view_settings', 'edit_settings',
-            'manage_integrations', 'manage_tokens', 'view_billing'
+            'manage_integrations', 'manage_tokens'
+        ],
+    },
+    {
+        id: 'developer',
+        name: 'Developer',
+        description: 'Deploy applications and manage resources',
+        isBuiltIn: true,
+        icon: <Code2 className="h-4 w-4" />,
+        color: 'text-success',
+        permissions: [
+            'view_resources', 'deploy_resources', 'edit_resources',
+            'manage_env_vars', 'view_logs', 'view_team', 'view_activity',
+            'view_settings'
         ],
     },
     {
         id: 'member',
         name: 'Member',
-        description: 'Deploy and manage resources',
+        description: 'View resources and basic operations',
         isBuiltIn: true,
         icon: <UserIcon className="h-4 w-4" />,
         color: 'text-foreground-muted',
         permissions: [
-            'view_resources', 'deploy_resources', 'edit_resources',
-            'manage_env_vars', 'view_logs', 'view_team', 'view_activity',
+            'view_resources', 'view_logs', 'view_team', 'view_activity',
             'view_settings'
         ],
     },
@@ -104,7 +108,7 @@ const defaultRoles: Role[] = [
         name: 'Viewer',
         description: 'Read-only access to resources',
         isBuiltIn: true,
-        icon: <Lock className="h-4 w-4" />,
+        icon: <Eye className="h-4 w-4" />,
         color: 'text-info',
         permissions: [
             'view_resources', 'view_logs', 'view_team', 'view_activity', 'view_settings'
@@ -114,39 +118,7 @@ const defaultRoles: Role[] = [
 
 export default function TeamRoles() {
     const [roles] = React.useState<Role[]>(defaultRoles);
-    // Custom role creation disabled - coming in Pro plan
-    // const [showCreateModal, setShowCreateModal] = React.useState(false);
-    // const [newRoleName, setNewRoleName] = React.useState('');
-    // const [newRoleDescription, setNewRoleDescription] = React.useState('');
-    // const [newRolePermissions, setNewRolePermissions] = React.useState<string[]>([]);
     const [expandedRole, setExpandedRole] = React.useState<string | null>(null);
-
-    // Custom role creation handlers - disabled for now
-    // const togglePermission = (permissionId: string) => {
-    //     setNewRolePermissions(prev =>
-    //         prev.includes(permissionId)
-    //             ? prev.filter(id => id !== permissionId)
-    //             : [...prev, permissionId]
-    //     );
-    // };
-
-    // const handleCreateRole = () => {
-    //     const newRole: Role = {
-    //         id: `custom_${Date.now()}`,
-    //         name: newRoleName,
-    //         description: newRoleDescription,
-    //         isBuiltIn: false,
-    //         icon: <UserIcon className="h-4 w-4" />,
-    //         color: 'text-foreground',
-    //         permissions: newRolePermissions,
-    //     };
-
-    //     setRoles([...roles, newRole]);
-    //     setShowCreateModal(false);
-    //     setNewRoleName('');
-    //     setNewRoleDescription('');
-    //     setNewRolePermissions([]);
-    // };
 
     const groupedPermissions = permissions.reduce((acc, permission) => {
         if (!acc[permission.category]) {
@@ -160,7 +132,6 @@ export default function TeamRoles() {
         resources: 'Resources',
         team: 'Team Management',
         settings: 'Settings',
-        billing: 'Billing',
     };
 
     return (
@@ -178,27 +149,6 @@ export default function TeamRoles() {
                             <h2 className="text-2xl font-semibold text-foreground">Roles & Permissions</h2>
                             <p className="text-sm text-foreground-muted">
                                 Manage team roles and their permissions
-                            </p>
-                        </div>
-                    </div>
-                    {/* Custom roles feature - coming soon in Pro plan */}
-                    {/* <Button onClick={() => setShowCreateModal(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create Custom Role
-                        <Badge variant="warning" className="ml-2">Pro</Badge>
-                    </Button> */}
-                </div>
-
-                {/* Coming Soon Notice */}
-                <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 mb-6">
-                    <div className="flex items-start gap-3">
-                        <Sparkles className="h-5 w-5 text-warning mt-0.5" />
-                        <div>
-                            <p className="text-sm font-medium text-warning">
-                                Custom Roles - Coming Soon in Pro Plan
-                            </p>
-                            <p className="text-xs text-foreground-muted mt-1">
-                                Create custom roles with granular permissions tailored to your team's needs. This feature will be available in the Pro plan.
                             </p>
                         </div>
                     </div>
@@ -354,9 +304,6 @@ export default function TeamRoles() {
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Create Custom Role Modal - Disabled (Pro feature) */}
-            {/* Modal code commented out - will be implemented in Pro plan */}
         </SettingsLayout>
     );
 }
