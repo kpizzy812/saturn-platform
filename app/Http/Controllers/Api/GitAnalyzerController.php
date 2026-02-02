@@ -46,15 +46,26 @@ class GitAnalyzerController extends Controller
             'source_type' => ['nullable', 'string', 'in:github,gitlab,bitbucket'],
         ]);
 
+        // Validate repository URL format
+        try {
+            $this->validateRepositoryUrl($validated['git_repository']);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         // Validate private key access if provided
         if (isset($validated['private_key_id'])) {
             $privateKey = PrivateKey::findOrFail($validated['private_key_id']);
             Gate::authorize('view', $privateKey);
         }
 
-        $tempPath = $this->cloneRepository($validated);
+        $tempPath = null;
 
         try {
+            $tempPath = $this->cloneRepository($validated);
             $result = $this->analyzer->analyze($tempPath);
 
             return response()->json([
@@ -66,8 +77,15 @@ class GitAnalyzerController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } finally {
-            $this->cleanupTempDirectory($tempPath);
+            if ($tempPath !== null) {
+                $this->cleanupTempDirectory($tempPath);
+            }
         }
     }
 
@@ -93,6 +111,16 @@ class GitAnalyzerController extends Controller
             'databases.*.type' => ['required', 'string', 'in:postgresql,mysql,mongodb,redis,clickhouse'],
             'databases.*.enabled' => ['required', 'boolean'],
         ]);
+
+        // Validate repository URL format
+        try {
+            $this->validateRepositoryUrl($validated['git_repository']);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
 
         // Authorize access to environment
         $environment = Environment::where('uuid', $validated['environment_uuid'])->firstOrFail();
@@ -177,6 +205,59 @@ class GitAnalyzerController extends Controller
         } finally {
             if ($tempPath !== null) {
                 $this->cleanupTempDirectory($tempPath);
+            }
+        }
+    }
+
+    /**
+     * Validate that the URL is a proper git repository URL
+     *
+     * Rejects URLs that are user profile pages, contain query parameters,
+     * or don't have the proper owner/repo format.
+     *
+     * @throws \RuntimeException
+     */
+    private function validateRepositoryUrl(string $url): void
+    {
+        // Check for query parameters (e.g., ?tab=repositories)
+        if (str_contains($url, '?')) {
+            throw new \RuntimeException(
+                'Invalid repository URL: URL contains query parameters. Please provide a direct repository URL like https://github.com/owner/repo'
+            );
+        }
+
+        // Parse HTTPS URLs for GitHub/GitLab/Bitbucket
+        if (preg_match('#^https?://([^/]+)/(.+)$#', $url, $matches)) {
+            $host = $matches[1];
+            $path = trim($matches[2], '/');
+
+            // Remove .git suffix for validation
+            $path = preg_replace('/\.git$/', '', $path);
+
+            // Count path segments
+            $segments = explode('/', $path);
+
+            // GitHub, GitLab, Bitbucket require at least owner/repo
+            $knownHosts = ['github.com', 'gitlab.com', 'bitbucket.org'];
+            if (in_array($host, $knownHosts, true)) {
+                if (count($segments) < 2 || empty($segments[1])) {
+                    throw new \RuntimeException(
+                        "Invalid repository URL: This appears to be a user profile page, not a repository. Please provide a URL in the format https://{$host}/owner/repository"
+                    );
+                }
+            }
+        }
+
+        // Parse SSH URLs (git@host:owner/repo.git)
+        if (preg_match('#^git@([^:]+):(.+)$#', $url, $matches)) {
+            $path = trim($matches[2], '/');
+            $path = preg_replace('/\.git$/', '', $path);
+
+            $segments = explode('/', $path);
+            if (count($segments) < 2 || empty($segments[1])) {
+                throw new \RuntimeException(
+                    'Invalid repository URL: SSH URL must be in format git@host:owner/repository'
+                );
             }
         }
     }

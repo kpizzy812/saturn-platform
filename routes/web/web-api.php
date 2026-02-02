@@ -309,3 +309,121 @@ Route::get('/web-api/git/branches', function (Request $request) {
 
     return response()->json($responseData);
 })->name('web-api.git.branches');
+
+// Deployment AI Analysis routes (web-session authenticated)
+Route::get('/web-api/deployments/{uuid}/analysis', function (string $uuid) {
+    $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+
+    if (! $deployment) {
+        return response()->json([
+            'status' => 'not_found',
+            'message' => 'Deployment not found',
+        ], 404);
+    }
+
+    // Check authorization via team ownership
+    $application = $deployment->application;
+    if (! $application || ! \App\Models\Application::ownedByCurrentTeam()->where('id', $application->id)->exists()) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    $analysis = $deployment->logAnalysis;
+
+    if ($analysis === null) {
+        return response()->json([
+            'status' => 'not_found',
+            'message' => 'No analysis available for this deployment',
+        ], 404);
+    }
+
+    return response()->json([
+        'status' => $analysis->status,
+        'analysis' => [
+            'id' => $analysis->id,
+            'root_cause' => $analysis->root_cause,
+            'root_cause_details' => $analysis->root_cause_details,
+            'solution' => $analysis->solution,
+            'prevention' => $analysis->prevention,
+            'error_category' => $analysis->error_category,
+            'category_label' => $analysis->category_label,
+            'severity' => $analysis->severity,
+            'severity_color' => $analysis->severity_color,
+            'confidence' => $analysis->confidence,
+            'confidence_percent' => round($analysis->confidence * 100),
+            'provider' => $analysis->provider,
+            'model' => $analysis->model,
+            'tokens_used' => $analysis->tokens_used,
+            'status' => $analysis->status,
+            'error_message' => $analysis->error_message,
+            'created_at' => $analysis->created_at->toISOString(),
+            'updated_at' => $analysis->updated_at->toISOString(),
+        ],
+    ]);
+})->name('web-api.deployments.analysis');
+
+Route::post('/web-api/deployments/{uuid}/analyze', function (string $uuid) {
+    if (! config('ai.enabled', true)) {
+        return response()->json([
+            'error' => 'AI analysis is disabled',
+            'hint' => 'Enable AI analysis by setting AI_ANALYSIS_ENABLED=true',
+        ], 503);
+    }
+
+    $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
+    if (! $analyzer->isAvailable()) {
+        return response()->json([
+            'error' => 'No AI provider available',
+            'hint' => 'Configure at least one AI provider (ANTHROPIC_API_KEY, OPENAI_API_KEY, or Ollama)',
+        ], 503);
+    }
+
+    $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+
+    if (! $deployment) {
+        return response()->json(['error' => 'Deployment not found'], 404);
+    }
+
+    // Check authorization via team ownership
+    $application = $deployment->application;
+    if (! $application || ! \App\Models\Application::ownedByCurrentTeam()->where('id', $application->id)->exists()) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    // Check if already analyzing
+    $existingAnalysis = $deployment->logAnalysis;
+    if ($existingAnalysis?->isAnalyzing()) {
+        return response()->json([
+            'status' => 'analyzing',
+            'message' => 'Analysis is already in progress',
+        ]);
+    }
+
+    // Dispatch job
+    \App\Jobs\AnalyzeDeploymentLogsJob::dispatch($deployment->id);
+
+    return response()->json([
+        'status' => 'queued',
+        'message' => 'Analysis has been queued',
+    ]);
+})->name('web-api.deployments.analyze');
+
+Route::get('/web-api/ai/status', function () {
+    $isEnabled = config('ai.enabled', true);
+    $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
+    $isAvailable = $analyzer->isAvailable();
+    $provider = $analyzer->getAvailableProvider();
+
+    return response()->json([
+        'enabled' => $isEnabled,
+        'available' => $isAvailable,
+        'provider' => $provider?->getName(),
+        'model' => $provider?->getModel(),
+    ]);
+})->name('web-api.ai.status');
+
+// Git Repository Analyzer (web-session authenticated)
+Route::post('/git/analyze', [\App\Http\Controllers\Api\GitAnalyzerController::class, 'analyze'])
+    ->name('web-api.git.analyze');
+
+Route::post('/git/provision', [\App\Http\Controllers\Api\GitAnalyzerController::class, 'provision'])
+    ->name('web-api.git.provision');
