@@ -24,6 +24,7 @@ import {
 import { Link } from '@inertiajs/react';
 import { useLogStream, type LogEntry } from '@/hooks/useLogStream';
 import { getStatusIcon } from '@/lib/statusUtils';
+import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
 
 interface Props {
     deploymentUuid: string;
@@ -258,6 +259,12 @@ export default function BuildLogsView({ deploymentUuid, deployment }: Props) {
 
     const content = (
         <div className="space-y-4">
+            {/* AI Analysis Card - shown for failed deployments */}
+            <AIAnalysisCard
+                deploymentUuid={deploymentUuid}
+                deploymentStatus={deployment?.status}
+            />
+
             {/* Loading State */}
             {loading && logs.length === 0 && (
                 <Card>

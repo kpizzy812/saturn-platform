@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, Badge, Button, useConfirm } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
+import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { useLogStream } from '@/hooks/useLogStream';
@@ -331,6 +332,14 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* AI Analysis Card - shown for failed deployments */}
+            {deployment.uuid && (
+                <AIAnalysisCard
+                    deploymentUuid={deployment.uuid}
+                    deploymentStatus={deployment.status}
+                />
+            )}
 
             {/* Tabs */}
             <Card>
