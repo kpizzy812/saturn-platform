@@ -14,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('deployment_approvals', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uuid')->unique();
+            $table->string('uuid')->unique(); // Using string for CUID2 (not standard UUID format)
             $table->foreignId('application_deployment_queue_id')->constrained()->cascadeOnDelete();
             $table->foreignId('requested_by')->constrained('users')->cascadeOnDelete();
             $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();
