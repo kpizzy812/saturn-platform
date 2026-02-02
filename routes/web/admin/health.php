@@ -81,12 +81,37 @@ Route::get('/health', function () {
         ->get()
         ->map(function ($server) {
             $metrics = null;
-            if ($server->settings?->is_metrics_enabled) {
+            if ($server->settings?->is_metrics_enabled && $server->isFunctional()) {
                 try {
                     $diskUsage = $server->getDiskUsage();
+                    $cpuUsage = null;
+                    $memoryUsage = null;
+
+                    // Try to get CPU and Memory metrics from Sentinel
+                    if ($server->isServerApiEnabled()) {
+                        try {
+                            $cpuData = $server->getCpuMetrics(5);
+                            if ($cpuData && $cpuData->isNotEmpty()) {
+                                $cpuUsage = (float) ($cpuData->last()[1] ?? 0);
+                            }
+                        } catch (\Exception $e) {
+                            // CPU metrics unavailable
+                        }
+
+                        try {
+                            $memoryData = $server->getMemoryMetrics(5);
+                            if ($memoryData && count($memoryData) > 0) {
+                                $lastMemory = end($memoryData);
+                                $memoryUsage = (float) ($lastMemory[1] ?? 0);
+                            }
+                        } catch (\Exception $e) {
+                            // Memory metrics unavailable
+                        }
+                    }
+
                     $metrics = [
-                        'cpu_usage' => null,
-                        'memory_usage' => null,
+                        'cpu_usage' => $cpuUsage,
+                        'memory_usage' => $memoryUsage,
                         'disk_usage' => $diskUsage ? (float) $diskUsage : null,
                     ];
                 } catch (\Exception $e) {
