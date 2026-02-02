@@ -4,6 +4,7 @@ namespace App\Notifications\Application;
 
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\CustomEmailNotification;
 use App\Notifications\Dto\DiscordMessage;
 use App\Notifications\Dto\PushoverMessage;
@@ -46,7 +47,11 @@ class DeploymentApprovalRequired extends CustomEmailNotification
 
     public function via(object $notifiable): array
     {
-        return $notifiable->getEnabledChannels('deployment_success');
+        // Exclude InAppChannel - in-app notifications are created directly for approvers
+        // in queue_application_deployment() to target only users who can approve
+        $channels = $notifiable->getEnabledChannels('deployment_approval_required');
+
+        return array_filter($channels, fn ($channel) => $channel !== InAppChannel::class);
     }
 
     public function toMail(object $notifiable): MailMessage

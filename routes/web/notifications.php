@@ -14,9 +14,15 @@ use Inertia\Inertia;
 
 Route::get('/notifications', function () {
     $team = auth()->user()->currentTeam();
+    $userId = auth()->id();
     // Exclude system notifications (type='info') - those are shown in admin panel only
+    // Show notifications that are either team-wide (user_id IS NULL) or targeted to current user
     $notifications = \App\Models\UserNotification::where('team_id', $team->id)
         ->where('type', '!=', 'info')
+        ->where(function ($query) use ($userId) {
+            $query->whereNull('user_id')
+                ->orWhere('user_id', $userId);
+        })
         ->orderBy('created_at', 'desc')
         ->take(50)
         ->get()
@@ -29,8 +35,13 @@ Route::get('/notifications', function () {
 
 Route::post('/notifications/{id}/read', function (string $id) {
     $team = auth()->user()->currentTeam();
+    $userId = auth()->id();
     $notification = \App\Models\UserNotification::where('team_id', $team->id)
         ->where('id', $id)
+        ->where(function ($query) use ($userId) {
+            $query->whereNull('user_id')
+                ->orWhere('user_id', $userId);
+        })
         ->firstOrFail();
 
     $notification->markAsRead();
@@ -40,8 +51,13 @@ Route::post('/notifications/{id}/read', function (string $id) {
 
 Route::post('/notifications/read-all', function () {
     $team = auth()->user()->currentTeam();
+    $userId = auth()->id();
     \App\Models\UserNotification::where('team_id', $team->id)
         ->where('is_read', false)
+        ->where(function ($query) use ($userId) {
+            $query->whereNull('user_id')
+                ->orWhere('user_id', $userId);
+        })
         ->update([
             'is_read' => true,
             'read_at' => now(),
@@ -52,8 +68,13 @@ Route::post('/notifications/read-all', function () {
 
 Route::delete('/notifications/{id}', function (string $id) {
     $team = auth()->user()->currentTeam();
+    $userId = auth()->id();
     $notification = \App\Models\UserNotification::where('team_id', $team->id)
         ->where('id', $id)
+        ->where(function ($query) use ($userId) {
+            $query->whereNull('user_id')
+                ->orWhere('user_id', $userId);
+        })
         ->firstOrFail();
 
     $notification->delete();

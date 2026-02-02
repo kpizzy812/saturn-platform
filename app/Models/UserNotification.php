@@ -78,6 +78,7 @@ class UserNotification extends Model
     public const TYPES = [
         'deployment_success',
         'deployment_failure',
+        'deployment_approval',
         'team_invite',
         'billing_alert',
         'security_alert',

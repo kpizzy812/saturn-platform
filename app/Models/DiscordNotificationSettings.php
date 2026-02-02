@@ -19,6 +19,7 @@ class DiscordNotificationSettings extends Model
 
         'deployment_success_discord_notifications',
         'deployment_failure_discord_notifications',
+        'deployment_approval_required_discord_notifications',
         'status_change_discord_notifications',
         'backup_success_discord_notifications',
         'backup_failure_discord_notifications',
@@ -39,6 +40,7 @@ class DiscordNotificationSettings extends Model
 
         'deployment_success_discord_notifications' => 'boolean',
         'deployment_failure_discord_notifications' => 'boolean',
+        'deployment_approval_required_discord_notifications' => 'boolean',
         'status_change_discord_notifications' => 'boolean',
         'backup_success_discord_notifications' => 'boolean',
         'backup_failure_discord_notifications' => 'boolean',

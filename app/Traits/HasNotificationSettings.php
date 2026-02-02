@@ -29,6 +29,7 @@ trait HasNotificationSettings
     protected $inAppEvents = [
         'deployment_success',
         'deployment_failure',
+        'deployment_approval_required',
         'backup_success',
         'backup_failure',
         'server_unreachable',

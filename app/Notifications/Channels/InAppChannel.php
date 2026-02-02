@@ -17,6 +17,7 @@ class InAppChannel
     protected array $typeMapping = [
         'deployment_success' => 'deployment_success',
         'deployment_failure' => 'deployment_failure',
+        'deployment_approval_required' => 'deployment_approval',
         'backup_success' => 'backup_success',
         'backup_failure' => 'backup_failure',
         'server_unreachable' => 'server_alert',
@@ -95,6 +96,9 @@ class InAppChannel
      */
     protected function determineType(string $class): string
     {
+        if (str_contains($class, 'DeploymentApprovalRequired')) {
+            return 'deployment_approval';
+        }
         if (str_contains($class, 'DeploymentSuccess') || str_contains($class, 'DeploymentApproved')) {
             return 'deployment_success';
         }

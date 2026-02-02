@@ -20,6 +20,7 @@ class TelegramNotificationSettings extends Model
 
         'deployment_success_telegram_notifications',
         'deployment_failure_telegram_notifications',
+        'deployment_approval_required_telegram_notifications',
         'status_change_telegram_notifications',
         'backup_success_telegram_notifications',
         'backup_failure_telegram_notifications',
@@ -34,6 +35,7 @@ class TelegramNotificationSettings extends Model
 
         'telegram_notifications_deployment_success_thread_id',
         'telegram_notifications_deployment_failure_thread_id',
+        'telegram_notifications_deployment_approval_required_thread_id',
         'telegram_notifications_status_change_thread_id',
         'telegram_notifications_backup_success_thread_id',
         'telegram_notifications_backup_failure_thread_id',
@@ -54,6 +56,7 @@ class TelegramNotificationSettings extends Model
 
         'deployment_success_telegram_notifications' => 'boolean',
         'deployment_failure_telegram_notifications' => 'boolean',
+        'deployment_approval_required_telegram_notifications' => 'boolean',
         'status_change_telegram_notifications' => 'boolean',
         'backup_success_telegram_notifications' => 'boolean',
         'backup_failure_telegram_notifications' => 'boolean',
@@ -68,6 +71,7 @@ class TelegramNotificationSettings extends Model
 
         'telegram_notifications_deployment_success_thread_id' => 'encrypted',
         'telegram_notifications_deployment_failure_thread_id' => 'encrypted',
+        'telegram_notifications_deployment_approval_required_thread_id' => 'encrypted',
         'telegram_notifications_status_change_thread_id' => 'encrypted',
         'telegram_notifications_backup_success_thread_id' => 'encrypted',
         'telegram_notifications_backup_failure_thread_id' => 'encrypted',

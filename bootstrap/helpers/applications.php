@@ -104,11 +104,31 @@ function queue_application_deployment(Application $application, string $deployme
     // Send notification if deployment requires approval
     if ($requires_approval) {
         try {
-            $teamId = $application->environment?->project?->team_id;
-            if ($teamId) {
-                $team = \App\Models\Team::find($teamId);
-                if ($team) {
-                    $team->notify(new \App\Notifications\Application\DeploymentApprovalRequired($application, $deployment));
+            $project = $application->environment?->project;
+            $team = $project?->team;
+
+            if ($project && $team) {
+                // Send external notifications (email, discord, etc.) to team
+                $team->notify(new \App\Notifications\Application\DeploymentApprovalRequired($application, $deployment));
+
+                // Send in-app notifications only to users who can approve
+                $approvers = $project->getApprovers();
+                $deploymentUrl = base_url()."/project/{$project->uuid}/environment/{$application->environment->uuid}/application/{$application->uuid}/deployment/{$deployment->deployment_uuid}";
+
+                foreach ($approvers as $approver) {
+                    \App\Models\UserNotification::createForTeam(
+                        team: $team,
+                        type: 'deployment_approval',
+                        title: "Deployment approval required: {$application->name}",
+                        description: "A deployment to {$application->environment->name} is waiting for your approval",
+                        actionUrl: $deploymentUrl,
+                        metadata: [
+                            'deployment_uuid' => $deployment->deployment_uuid,
+                            'application_uuid' => $application->uuid,
+                            'environment_name' => $application->environment->name,
+                        ],
+                        user: $approver
+                    );
                 }
             }
         } catch (\Throwable $e) {

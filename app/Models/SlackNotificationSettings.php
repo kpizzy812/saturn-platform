@@ -19,6 +19,7 @@ class SlackNotificationSettings extends Model
 
         'deployment_success_slack_notifications',
         'deployment_failure_slack_notifications',
+        'deployment_approval_required_slack_notifications',
         'status_change_slack_notifications',
         'backup_success_slack_notifications',
         'backup_failure_slack_notifications',
@@ -38,6 +39,7 @@ class SlackNotificationSettings extends Model
 
         'deployment_success_slack_notifications' => 'boolean',
         'deployment_failure_slack_notifications' => 'boolean',
+        'deployment_approval_required_slack_notifications' => 'boolean',
         'status_change_slack_notifications' => 'boolean',
         'backup_success_slack_notifications' => 'boolean',
         'backup_failure_slack_notifications' => 'boolean',

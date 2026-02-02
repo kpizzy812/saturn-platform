@@ -29,6 +29,7 @@ class EmailNotificationSettings extends Model
 
         'deployment_success_email_notifications',
         'deployment_failure_email_notifications',
+        'deployment_approval_required_email_notifications',
         'status_change_email_notifications',
         'backup_success_email_notifications',
         'backup_failure_email_notifications',
@@ -57,6 +58,7 @@ class EmailNotificationSettings extends Model
 
         'deployment_success_email_notifications' => 'boolean',
         'deployment_failure_email_notifications' => 'boolean',
+        'deployment_approval_required_email_notifications' => 'boolean',
         'status_change_email_notifications' => 'boolean',
         'backup_success_email_notifications' => 'boolean',
         'backup_failure_email_notifications' => 'boolean',

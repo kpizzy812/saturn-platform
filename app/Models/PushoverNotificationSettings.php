@@ -20,6 +20,7 @@ class PushoverNotificationSettings extends Model
 
         'deployment_success_pushover_notifications',
         'deployment_failure_pushover_notifications',
+        'deployment_approval_required_pushover_notifications',
         'status_change_pushover_notifications',
         'backup_success_pushover_notifications',
         'backup_failure_pushover_notifications',
@@ -40,6 +41,7 @@ class PushoverNotificationSettings extends Model
 
         'deployment_success_pushover_notifications' => 'boolean',
         'deployment_failure_pushover_notifications' => 'boolean',
+        'deployment_approval_required_pushover_notifications' => 'boolean',
         'status_change_pushover_notifications' => 'boolean',
         'backup_success_pushover_notifications' => 'boolean',
         'backup_failure_pushover_notifications' => 'boolean',

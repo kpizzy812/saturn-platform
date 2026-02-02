@@ -19,6 +19,7 @@ class WebhookNotificationSettings extends Model
 
         'deployment_success_webhook_notifications',
         'deployment_failure_webhook_notifications',
+        'deployment_approval_required_webhook_notifications',
         'status_change_webhook_notifications',
         'backup_success_webhook_notifications',
         'backup_failure_webhook_notifications',
@@ -41,6 +42,7 @@ class WebhookNotificationSettings extends Model
 
             'deployment_success_webhook_notifications' => 'boolean',
             'deployment_failure_webhook_notifications' => 'boolean',
+            'deployment_approval_required_webhook_notifications' => 'boolean',
             'status_change_webhook_notifications' => 'boolean',
             'backup_success_webhook_notifications' => 'boolean',
             'backup_failure_webhook_notifications' => 'boolean',

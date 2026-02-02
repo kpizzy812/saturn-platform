@@ -196,6 +196,26 @@ class Project extends BaseModel
     }
 
     /**
+     * Get all users who can approve deployments for this project.
+     * Includes project admins/owners and team admins/owners.
+     *
+     * @return \Illuminate\Support\Collection<User>
+     */
+    public function getApprovers(): \Illuminate\Support\Collection
+    {
+        // Get project admins/owners
+        $projectApprovers = $this->admins()->get();
+
+        // Get team admins/owners
+        $teamApprovers = $this->team->members()
+            ->wherePivotIn('role', ['owner', 'admin'])
+            ->get();
+
+        // Merge and deduplicate
+        return $projectApprovers->merge($teamApprovers)->unique('id');
+    }
+
+    /**
      * Add a user as a member of this project.
      */
     public function addMember(User $user, string $role = 'developer', ?array $envPermissions = null): void
