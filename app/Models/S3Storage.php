@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class S3Storage extends BaseModel
 {
-    use Auditable, HasFactory, HasSafeStringAttribute;
+    use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity;
 
     protected $guarded = [];
 
@@ -20,6 +22,14 @@ class S3Storage extends BaseModel
         'key' => 'encrypted',
         'secret' => 'encrypted',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'description', 'endpoint', 'bucket', 'region'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * Boot the model and register event listeners.

@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Traits\Auditable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class GitlabApp extends BaseModel
 {
-    use Auditable;
+    use Auditable, LogsActivity;
 
     // Security: Encrypt secrets at rest
     protected $casts = [
@@ -18,6 +20,14 @@ class GitlabApp extends BaseModel
         'webhook_token',
         'app_secret',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'api_url', 'is_system_wide'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     public static function ownedByCurrentTeam()
     {

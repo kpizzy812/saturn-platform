@@ -29,6 +29,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Stringable;
 use League\Flysystem\UnableToCreateDirectory;
 use OpenApi\Attributes as OA;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\SchemalessAttributes\Casts\SchemalessAttributes;
 use Spatie\SchemalessAttributes\SchemalessAttributesTrait;
 use Spatie\Url\Url;
@@ -105,11 +107,19 @@ use Visus\Cuid2\Cuid2;
 
 class Server extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasFactory, SchemalessAttributesTrait, SoftDeletes;
+    use Auditable, ClearsGlobalSearchCache, HasFactory, LogsActivity, SchemalessAttributesTrait, SoftDeletes;
 
     public static $batch_counter = 0;
 
     protected $appends = ['is_saturn_host', 'is_localhost', 'is_reachable', 'is_usable'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'description', 'ip', 'user', 'port'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted()
     {

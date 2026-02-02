@@ -7,6 +7,8 @@ use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Attributes as OA;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 #[OA\Schema(
     description: 'Environment model',
@@ -26,12 +28,21 @@ class Environment extends BaseModel
     use ClearsGlobalSearchCache;
     use HasFactory;
     use HasSafeStringAttribute;
+    use LogsActivity;
 
     protected $guarded = [];
 
     protected $casts = [
         'requires_approval' => 'boolean',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'description'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted()
     {

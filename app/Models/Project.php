@@ -7,6 +7,8 @@ use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Attributes as OA;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Visus\Cuid2\Cuid2;
 
 #[OA\Schema(
@@ -31,8 +33,17 @@ class Project extends BaseModel
     use ClearsGlobalSearchCache;
     use HasFactory;
     use HasSafeStringAttribute;
+    use LogsActivity;
 
     protected $guarded = [];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'description'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * Get query builder for projects owned by current team.

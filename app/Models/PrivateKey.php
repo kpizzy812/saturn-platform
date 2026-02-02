@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use OpenApi\Attributes as OA;
 use phpseclib3\Crypt\PublicKeyLoader;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 #[OA\Schema(
     description: 'Private Key model',
@@ -31,7 +33,7 @@ use phpseclib3\Crypt\PublicKeyLoader;
 )]
 class PrivateKey extends BaseModel
 {
-    use Auditable, HasFactory, HasSafeStringAttribute, WithRateLimiting;
+    use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity, WithRateLimiting;
 
     protected $fillable = [
         'name',
@@ -47,6 +49,14 @@ class PrivateKey extends BaseModel
     ];
 
     protected $appends = ['public_key'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'description', 'is_git_related'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted()
     {

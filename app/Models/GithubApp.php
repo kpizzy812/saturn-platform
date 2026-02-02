@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class GithubApp extends BaseModel
 {
-    use Auditable;
+    use Auditable, LogsActivity;
 
     protected $guarded = [];
 
@@ -26,6 +28,14 @@ class GithubApp extends BaseModel
         'client_secret',
         'webhook_secret',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'organization', 'is_public'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted(): void
     {

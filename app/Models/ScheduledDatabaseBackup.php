@@ -6,10 +6,12 @@ use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ScheduledDatabaseBackup extends BaseModel
 {
-    use Auditable;
+    use Auditable, LogsActivity;
 
     protected $guarded = [];
 
@@ -24,6 +26,14 @@ class ScheduledDatabaseBackup extends BaseModel
             'restore_test_enabled' => 'boolean',
             'last_restore_test_at' => 'datetime',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['enabled', 'frequency', 'save_s3', 'databases_to_backup'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public static function ownedByCurrentTeam()

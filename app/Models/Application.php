@@ -17,7 +17,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 use RuntimeException;
+use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
@@ -112,7 +114,7 @@ use Visus\Cuid2\Cuid2;
 
 class Application extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasConfiguration, HasFactory, HasSafeStringAttribute, SoftDeletes;
+    use Auditable, ClearsGlobalSearchCache, HasConfiguration, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes;
 
     private static $parserVersion = '5';
 
@@ -140,6 +142,14 @@ class Application extends BaseModel
         'build_pack_explicitly_set' => 'boolean',
         'monorepo_group_id' => 'string',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'fqdn', 'git_repository', 'git_branch', 'build_pack', 'status'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted()
     {
