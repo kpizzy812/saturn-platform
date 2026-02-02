@@ -6,6 +6,8 @@ import { useDeployments } from '@/hooks/useDeployments';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmationModal';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
+import { CodeReviewCard } from '@/components/features/CodeReviewCard';
 import type { Deployment } from '@/types';
 import type { SelectedService } from '../../types';
 
@@ -204,6 +206,9 @@ export function DeploymentsTab({ service }: DeploymentsTabProps) {
         );
     }
 
+    // Get the latest deployment for AI cards
+    const latestDeployment = deployments[0];
+
     return (
         <div className="space-y-4">
             {/* Deploy Button */}
@@ -211,6 +216,22 @@ export function DeploymentsTab({ service }: DeploymentsTabProps) {
                 <Play className="mr-2 h-4 w-4" />
                 {isDeploying ? 'Starting...' : 'Deploy Now'}
             </Button>
+
+            {/* AI Analysis Card - shown for latest failed deployment */}
+            {latestDeployment && (
+                <AIAnalysisCard
+                    deploymentUuid={latestDeployment.deployment_uuid || latestDeployment.uuid}
+                    deploymentStatus={latestDeployment.status}
+                />
+            )}
+
+            {/* Code Review Card - shown for latest deployment with commit */}
+            {latestDeployment?.commit && (
+                <CodeReviewCard
+                    deploymentUuid={latestDeployment.deployment_uuid || latestDeployment.uuid}
+                    commitSha={latestDeployment.commit}
+                />
+            )}
 
             {/* Deployments List */}
             <div className="space-y-4">
