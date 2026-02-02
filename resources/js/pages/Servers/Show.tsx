@@ -1,10 +1,10 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
 import {
     Server, Settings, RefreshCw, Terminal, Activity,
     HardDrive, Cpu, MemoryStick, Network, Clock,
-    CheckCircle, XCircle, AlertTriangle, Globe, Loader2
+    CheckCircle, XCircle, AlertTriangle, Globe, Loader2, Trash2
 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
@@ -394,20 +394,90 @@ function ProxyTab({ server }: { server: ServerType }) {
 }
 
 function SettingsTab({ server }: { server: ServerType }) {
+    const confirm = useConfirm();
+
+    const settingsSections = [
+        {
+            title: 'General Settings',
+            description: 'Configure server name, description, and basic information',
+            icon: <Settings className="h-6 w-6" />,
+            href: `/servers/${server.uuid}/settings/general`,
+            iconBg: 'bg-primary/10',
+            iconColor: 'text-primary',
+        },
+        {
+            title: 'Docker Configuration',
+            description: 'Manage Docker settings and build configurations',
+            icon: <HardDrive className="h-6 w-6" />,
+            href: `/servers/${server.uuid}/settings/docker`,
+            iconBg: 'bg-info/10',
+            iconColor: 'text-info',
+        },
+        {
+            title: 'Network Settings',
+            description: 'Configure network, firewall, and connectivity settings',
+            icon: <Network className="h-6 w-6" />,
+            href: `/servers/${server.uuid}/settings/network`,
+            iconBg: 'bg-success/10',
+            iconColor: 'text-success',
+        },
+    ];
+
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Server Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-foreground-muted">
-                    Configure server settings here.
-                </p>
-                <Link href={`/servers/${server.uuid}/settings`} className="mt-4 inline-block">
-                    <Button>Open Settings</Button>
-                </Link>
-            </CardContent>
-        </Card>
+        <div className="space-y-6">
+            {/* Settings Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {settingsSections.map((section) => (
+                    <Link key={section.href} href={section.href}>
+                        <Card className="cursor-pointer transition-all hover:border-primary/50">
+                            <CardContent className="p-6">
+                                <div className="mb-4 flex items-center gap-3">
+                                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${section.iconBg}`}>
+                                        <div className={section.iconColor}>{section.icon}</div>
+                                    </div>
+                                </div>
+                                <h3 className="font-semibold text-foreground">{section.title}</h3>
+                                <p className="mt-1 text-sm text-foreground-muted">{section.description}</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                ))}
+            </div>
+
+            {/* Danger Zone */}
+            <Card className="border-danger/50">
+                <CardHeader>
+                    <CardTitle className="text-danger">Danger Zone</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className="font-medium text-foreground">Delete this server</h4>
+                            <p className="mt-1 text-sm text-foreground-muted">
+                                Once you delete a server, there is no going back. Please be certain.
+                            </p>
+                        </div>
+                        <Button
+                            variant="danger"
+                            onClick={async () => {
+                                const confirmed = await confirm({
+                                    title: 'Delete Server',
+                                    description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
+                                    confirmText: 'Delete',
+                                    variant: 'danger',
+                                });
+                                if (confirmed) {
+                                    router.delete(`/servers/${server.uuid}`);
+                                }
+                            }}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Server
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
