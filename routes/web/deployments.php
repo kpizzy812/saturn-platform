@@ -306,3 +306,102 @@ Route::post('/web-api/applications/{uuid}/scan-env-example', function (string $u
         return response()->json(['message' => 'Failed to scan: '.$e->getMessage()], 500);
     }
 })->name('web-api.applications.scan-env-example');
+
+// Deployment AI Analysis web routes (for frontend session-based auth)
+Route::get('/web-api/deployments/{uuid}/analysis', function (string $uuid) {
+    $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+
+    if (! $deployment) {
+        return response()->json(['status' => 'not_found', 'message' => 'Deployment not found'], 404);
+    }
+
+    // Verify the deployment belongs to the current team
+    $application = $deployment->application;
+    if (! $application || $application->team()?->id !== currentTeam()->id) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    $analysis = $deployment->logAnalysis;
+
+    if ($analysis === null) {
+        return response()->json([
+            'status' => 'not_found',
+            'message' => 'No analysis available for this deployment',
+        ], 404);
+    }
+
+    return response()->json([
+        'status' => $analysis->status,
+        'analysis' => [
+            'id' => $analysis->id,
+            'status' => $analysis->status,
+            'severity' => $analysis->severity,
+            'category' => $analysis->category,
+            'root_cause' => $analysis->root_cause,
+            'root_cause_details' => $analysis->root_cause_details,
+            'solution' => $analysis->solution,
+            'affected_files' => $analysis->affected_files,
+            'prevention' => $analysis->prevention,
+            'confidence' => $analysis->confidence,
+            'ai_provider' => $analysis->ai_provider,
+            'created_at' => $analysis->created_at?->toISOString(),
+            'updated_at' => $analysis->updated_at?->toISOString(),
+        ],
+    ]);
+})->name('web-api.deployments.analysis');
+
+Route::post('/web-api/deployments/{uuid}/analyze', function (string $uuid) {
+    if (! config('ai.enabled', true)) {
+        return response()->json([
+            'error' => 'AI analysis is disabled',
+            'hint' => 'Enable AI analysis by setting AI_ANALYSIS_ENABLED=true',
+        ], 503);
+    }
+
+    $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
+    if (! $analyzer->isAvailable()) {
+        return response()->json([
+            'error' => 'No AI provider available',
+            'hint' => 'Configure at least one AI provider (ANTHROPIC_API_KEY, OPENAI_API_KEY, or Ollama)',
+        ], 503);
+    }
+
+    $deployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+
+    if (! $deployment) {
+        return response()->json(['error' => 'Deployment not found'], 404);
+    }
+
+    // Verify the deployment belongs to the current team
+    $application = $deployment->application;
+    if (! $application || $application->team()?->id !== currentTeam()->id) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    // Check if already analyzing
+    $existingAnalysis = $deployment->logAnalysis;
+    if ($existingAnalysis?->isAnalyzing()) {
+        return response()->json([
+            'status' => 'analyzing',
+            'message' => 'Analysis is already in progress',
+        ]);
+    }
+
+    // Dispatch job
+    \App\Jobs\AnalyzeDeploymentLogsJob::dispatch($deployment->id);
+
+    return response()->json([
+        'status' => 'analyzing',
+        'message' => 'Analysis started',
+    ]);
+})->name('web-api.deployments.analyze');
+
+Route::get('/web-api/ai/status', function () {
+    $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
+
+    return response()->json([
+        'enabled' => config('ai.enabled', true),
+        'available' => $analyzer->isAvailable(),
+        'provider' => $analyzer->getActiveProvider(),
+    ]);
+})->name('web-api.ai.status');

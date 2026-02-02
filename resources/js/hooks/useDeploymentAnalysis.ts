@@ -48,7 +48,7 @@ export function useDeploymentAnalysis({
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/v1/deployments/${deploymentUuid}/analysis`, {
+            const response = await fetch(`/web-api/deployments/${deploymentUuid}/analysis`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -82,7 +82,7 @@ export function useDeploymentAnalysis({
             setIsAnalyzing(true);
             setError(null);
 
-            const response = await fetch(`/api/v1/deployments/${deploymentUuid}/analyze`, {
+            const response = await fetch(`/web-api/deployments/${deploymentUuid}/analyze`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -145,7 +145,7 @@ export function useAIServiceStatus(): UseAIServiceStatusReturn {
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch('/api/v1/ai/status', {
+            const response = await fetch('/web-api/ai/status', {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
