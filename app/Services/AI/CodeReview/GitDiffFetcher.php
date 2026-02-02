@@ -160,7 +160,7 @@ class GitDiffFetcher
         return $this->buildDiffResult(
             commitSha: $head,
             baseCommitSha: $base,
-            files: $files,
+            apiFiles: $files,
         );
     }
 
@@ -180,7 +180,7 @@ class GitDiffFetcher
         return $this->buildDiffResult(
             commitSha: $commitSha,
             baseCommitSha: null,
-            files: $files,
+            apiFiles: $files,
         );
     }
 
