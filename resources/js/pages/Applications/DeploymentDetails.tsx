@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Badge, useConfirm } f
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '@/components/ui/Dropdown';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
+import { CodeReviewCard } from '@/components/features/CodeReviewCard';
 import {
     Rocket,
     GitCommit,
@@ -336,6 +337,14 @@ export default function DeploymentDetails({
                             deploymentUuid={deployment.deployment_uuid}
                             deploymentStatus={deployment.status}
                         />
+
+                        {/* Code Review Card - security vulnerability scanner */}
+                        {deployment.commit && (
+                            <CodeReviewCard
+                                deploymentUuid={deployment.deployment_uuid}
+                                commitSha={deployment.commit}
+                            />
+                        )}
 
                         {/* Logs Card */}
                         <Card className="overflow-hidden">

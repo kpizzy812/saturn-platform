@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, Badge, Button, useConfirm } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
+import { CodeReviewCard } from '@/components/features/CodeReviewCard';
 import { DeploymentGraph, parseDeploymentLogs } from '@/components/features/DeploymentGraph';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
@@ -356,6 +357,15 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                 <AIAnalysisCard
                     deploymentUuid={deployment.uuid}
                     deploymentStatus={deployment.status}
+                />
+            )}
+
+            {/* Code Review Card - security vulnerability scanner */}
+            {deployment.uuid && deployment.commit && (
+                <CodeReviewCard
+                    deploymentUuid={deployment.uuid}
+                    commitSha={deployment.commit}
+                    className="mb-6"
                 />
             )}
 
