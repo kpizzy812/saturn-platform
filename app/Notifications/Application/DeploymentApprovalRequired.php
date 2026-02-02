@@ -4,6 +4,9 @@ namespace App\Notifications\Application;
 
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
+use App\Models\Team;
+use App\Models\User;
+use App\Notifications\Channels\EmailChannel;
 use App\Notifications\Channels\InAppChannel;
 use App\Notifications\CustomEmailNotification;
 use App\Notifications\Dto\DiscordMessage;
@@ -21,6 +24,8 @@ class DeploymentApprovalRequired extends CustomEmailNotification
 
     public string $application_name;
 
+    public string $project_name;
+
     public string $project_uuid;
 
     public string $environment_uuid;
@@ -31,6 +36,8 @@ class DeploymentApprovalRequired extends CustomEmailNotification
 
     public ?string $approval_url = null;
 
+    public ?string $requested_by = null;
+
     public function __construct(Application $application, ApplicationDeploymentQueue $deployment)
     {
         $this->onQueue('high');
@@ -38,20 +45,36 @@ class DeploymentApprovalRequired extends CustomEmailNotification
         $this->deployment = $deployment;
         $this->deployment_uuid = $deployment->deployment_uuid;
         $this->application_name = data_get($application, 'name');
+        $this->project_name = data_get($application, 'environment.project.name');
         $this->project_uuid = data_get($application, 'environment.project.uuid');
         $this->environment_uuid = data_get($application, 'environment.uuid');
         $this->environment_name = data_get($application, 'environment.name');
         $this->deployment_url = base_url()."/project/{$this->project_uuid}/environment/{$this->environment_uuid}/application/{$this->application->uuid}/deployment/{$this->deployment_uuid}";
-        $this->approval_url = base_url().'/admin/deployments/approvals';
+        $this->approval_url = base_url().'/approvals';
+
+        // Get who requested the deployment
+        if ($deployment->user_id) {
+            $this->requested_by = User::find($deployment->user_id)?->name;
+        }
     }
 
     public function via(object $notifiable): array
     {
-        // Exclude InAppChannel - in-app notifications are created directly for approvers
-        // in queue_application_deployment() to target only users who can approve
-        $channels = $notifiable->getEnabledChannels('deployment_approval_required');
+        // For User: send only email (personal notification)
+        if ($notifiable instanceof User) {
+            return ['mail'];
+        }
 
-        return array_filter($channels, fn ($channel) => $channel !== InAppChannel::class);
+        // For Team: send to team channels (Discord, Telegram, etc.) but NOT email or InApp
+        // Email goes to individual approvers, InApp is created directly
+        if ($notifiable instanceof Team) {
+            $channels = $notifiable->getEnabledChannels('deployment_approval_required');
+
+            // Exclude email (sent to individual approvers) and InApp (created directly)
+            return array_filter($channels, fn ($channel) => $channel !== EmailChannel::class && $channel !== InAppChannel::class);
+        }
+
+        return [];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -60,9 +83,11 @@ class DeploymentApprovalRequired extends CustomEmailNotification
         $mail->subject("Saturn Platform: Deployment approval required for {$this->application_name}");
         $mail->view('emails.application-deployment-approval-required', [
             'name' => $this->application_name,
+            'project' => $this->project_name,
             'environment' => $this->environment_name,
             'deployment_url' => $this->deployment_url,
             'approval_url' => $this->approval_url,
+            'requested_by' => $this->requested_by,
         ]);
 
         return $mail;
@@ -76,25 +101,38 @@ class DeploymentApprovalRequired extends CustomEmailNotification
             color: DiscordMessage::warningColor(),
         );
 
-        $message->addField('Project', data_get($this->application, 'environment.project.name'), true);
+        $message->addField('Application', $this->application_name, true);
+        $message->addField('Project', $this->project_name, true);
         $message->addField('Environment', $this->environment_name, true);
-        $message->addField('Name', $this->application_name, true);
-        $message->addField('Deployment logs', '[Link]('.$this->deployment_url.')');
-        $message->addField('Approve/Reject', '[Admin Panel]('.$this->approval_url.')');
+
+        if ($this->requested_by) {
+            $message->addField('Requested by', $this->requested_by, true);
+        }
+
+        $message->addField('Deployment logs', '[View Deployment]('.$this->deployment_url.')');
+        $message->addField('Approve/Reject', '[Open Approvals]('.$this->approval_url.')');
 
         return $message;
     }
 
     public function toTelegram(): array
     {
-        $message = '⏳ Deployment approval required for '.$this->application_name;
+        $message = "⏳ *Deployment approval required*\n\n";
+        $message .= "📦 *Application:* {$this->application_name}\n";
+        $message .= "📁 *Project:* {$this->project_name}\n";
+        $message .= "🌍 *Environment:* {$this->environment_name}\n";
+
+        if ($this->requested_by) {
+            $message .= "👤 *Requested by:* {$this->requested_by}\n";
+        }
+
         $buttons = [
             [
-                'text' => 'View Deployment',
+                'text' => '📋 View Deployment',
                 'url' => $this->deployment_url,
             ],
             [
-                'text' => 'Approve/Reject',
+                'text' => '✅ Approve/Reject',
                 'url' => $this->approval_url,
             ],
         ];
@@ -108,7 +146,14 @@ class DeploymentApprovalRequired extends CustomEmailNotification
     public function toPushover(): PushoverMessage
     {
         $title = 'Deployment approval required';
-        $message = "Deployment approval required for {$this->application_name}";
+        $message = "📦 {$this->application_name}\n";
+        $message .= "📁 Project: {$this->project_name}\n";
+        $message .= "🌍 Environment: {$this->environment_name}";
+
+        if ($this->requested_by) {
+            $message .= "\n👤 Requested by: {$this->requested_by}";
+        }
+
         $buttons = [
             [
                 'text' => 'View Deployment',
@@ -131,11 +176,17 @@ class DeploymentApprovalRequired extends CustomEmailNotification
     public function toSlack(): SlackMessage
     {
         $title = 'Deployment approval required';
-        $description = "Deployment approval required for {$this->application_name}";
-        $description .= "\n\n*Project:* ".data_get($this->application, 'environment.project.name');
-        $description .= "\n*Environment:* {$this->environment_name}";
-        $description .= "\n*<{$this->deployment_url}|Deployment Logs>*";
-        $description .= "\n*<{$this->approval_url}|Approve/Reject>*";
+        $description = "A deployment is waiting for your approval\n\n";
+        $description .= "*Application:* {$this->application_name}\n";
+        $description .= "*Project:* {$this->project_name}\n";
+        $description .= "*Environment:* {$this->environment_name}";
+
+        if ($this->requested_by) {
+            $description .= "\n*Requested by:* {$this->requested_by}";
+        }
+
+        $description .= "\n\n*<{$this->deployment_url}|View Deployment>*";
+        $description .= " | *<{$this->approval_url}|Approve/Reject>*";
 
         return new SlackMessage(
             title: $title,
@@ -152,11 +203,14 @@ class DeploymentApprovalRequired extends CustomEmailNotification
             'event' => 'deployment_approval_required',
             'application_name' => $this->application_name,
             'application_uuid' => $this->application->uuid,
+            'project_name' => $this->project_name,
+            'project_uuid' => $this->project_uuid,
+            'environment_name' => $this->environment_name,
+            'environment_uuid' => $this->environment_uuid,
             'deployment_uuid' => $this->deployment_uuid,
             'deployment_url' => $this->deployment_url,
             'approval_url' => $this->approval_url,
-            'project' => data_get($this->application, 'environment.project.name'),
-            'environment' => $this->environment_name,
+            'requested_by' => $this->requested_by,
         ];
     }
 }

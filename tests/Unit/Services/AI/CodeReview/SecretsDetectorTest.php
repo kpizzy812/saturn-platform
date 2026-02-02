@@ -72,7 +72,8 @@ describe('SecretsDetector', function () {
     describe('OpenAI/AI provider tokens', function () {
         it('detects OpenAI API key', function () {
             // sk- tokens have 48 characters after prefix
-            $diff = createDiff(['const apiKey = "sk-123456789012345678901234567890123456789012345678";']);
+            // Use 'openaiToken' to avoid matching SEC001's apiKey pattern
+            $diff = createDiff(['const openaiToken = "sk-123456789012345678901234567890123456789012345678";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -84,7 +85,8 @@ describe('SecretsDetector', function () {
 
     describe('AWS credentials', function () {
         it('detects AWS Access Key ID', function () {
-            $diff = createDiff(['AWS_ACCESS_KEY = "AKIAIOSFODNN7EXAMPLE";']);
+            // Use realistic AWS key without "example" in it (which is a false positive trigger)
+            $diff = createDiff(['AWS_ACCESS_KEY = "AKIAJ5GN6PQWVLNK4TYZ";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -191,7 +193,8 @@ describe('SecretsDetector', function () {
 
         it('detects Stripe test secret key', function () {
             // sk_test_ tokens have 24+ characters after prefix
-            $diff = createDiff(['STRIPE_KEY = "sk_test_123456789012345678901234";']);
+            // Note: "test" in sk_test_ prefix should not trigger false positive
+            $diff = createDiff(['const stripeKey = "sk_test_4eC39HqLyjWDarjtT1zdp7dc";']);
 
             $violations = $this->detector->detect($diff);
 

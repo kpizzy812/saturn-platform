@@ -101,35 +101,42 @@ function queue_application_deployment(Application $application, string $deployme
         'approval_status' => $requires_approval ? 'pending' : null,
     ]);
 
-    // Send notification if deployment requires approval
+    // Send notification if deployment requires approval - ONLY to approvers
     if ($requires_approval) {
         try {
             $project = $application->environment?->project;
             $team = $project?->team;
 
             if ($project && $team) {
-                // Send external notifications (email, discord, etc.) to team
-                $team->notify(new \App\Notifications\Application\DeploymentApprovalRequired($application, $deployment));
-
-                // Send in-app notifications only to users who can approve
                 $approvers = $project->getApprovers();
+                $projectName = $project->name;
+                $environmentName = $application->environment->name;
                 $deploymentUrl = base_url()."/project/{$project->uuid}/environment/{$application->environment->uuid}/application/{$application->uuid}/deployment/{$deployment->deployment_uuid}";
 
                 foreach ($approvers as $approver) {
+                    // Send email notification directly to each approver
+                    $approver->notify(new \App\Notifications\Application\DeploymentApprovalRequired($application, $deployment));
+
+                    // Send in-app notification to each approver
                     \App\Models\UserNotification::createForTeam(
                         team: $team,
                         type: 'deployment_approval',
                         title: "Deployment approval required: {$application->name}",
-                        description: "A deployment to {$application->environment->name} is waiting for your approval",
+                        description: "Project: {$projectName} | Environment: {$environmentName}",
                         actionUrl: $deploymentUrl,
                         metadata: [
                             'deployment_uuid' => $deployment->deployment_uuid,
                             'application_uuid' => $application->uuid,
-                            'environment_name' => $application->environment->name,
+                            'project_name' => $projectName,
+                            'environment_name' => $environmentName,
                         ],
                         user: $approver
                     );
                 }
+
+                // Also send to team's external channels (Discord, Telegram, etc.)
+                // These are team-wide channels where admins typically monitor
+                $team->notify(new \App\Notifications\Application\DeploymentApprovalRequired($application, $deployment));
             }
         } catch (\Throwable $e) {
             \Log::warning('Failed to send deployment approval notification: '.$e->getMessage());

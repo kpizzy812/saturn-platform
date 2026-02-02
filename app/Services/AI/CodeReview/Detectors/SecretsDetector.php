@@ -26,16 +26,16 @@ class SecretsDetector implements StaticDetectorInterface
             'name' => 'API Key/Token',
             'severity' => 'critical',
             'patterns' => [
-                // Generic API key patterns (with word boundary for matching in variable declarations)
-                '/\b(?:api[_-]?key|apikey)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/' => 'API key',
-                '/\b(?:api[_-]?secret|apisecret)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/' => 'API secret',
+                // Generic API key patterns (case-insensitive with word boundary)
+                '/\b(?:api[_-]?key|apikey)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/'.'i' => 'API key',
+                '/\b(?:api[_-]?secret|apisecret)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/'.'i' => 'API secret',
             ],
         ],
         'SEC002' => [
             'name' => 'Hardcoded Password',
             'severity' => 'critical',
             'patterns' => [
-                '/\b(?:password|passwd|pwd)\s*[:=]\s*["\']([^"\']{8,})["\']/' => 'password',
+                '/\b(?:password|passwd|pwd)\s*[:=]\s*["\']([^"\']{8,})["\']/'.'i' => 'password',
             ],
         ],
         'SEC003' => [
@@ -227,6 +227,17 @@ class SecretsDetector implements StaticDetectorInterface
     private function isFalsePositive(string $content, array $matches): bool
     {
         $lowerContent = strtolower($content);
+        $matchedValue = $matches[0] ?? '';
+
+        // Don't flag known token formats with "test" prefix as false positives
+        // e.g., sk_test_ is a valid Stripe test mode key
+        $knownTestFormats = ['sk_test_', 'pk_test_', 'rk_test_'];
+        foreach ($knownTestFormats as $format) {
+            if (stripos($matchedValue, $format) !== false) {
+                // This is a known token format, not a placeholder
+                return false;
+            }
+        }
 
         // Placeholder patterns
         $placeholders = [
@@ -237,7 +248,6 @@ class SecretsDetector implements StaticDetectorInterface
             'placeholder',
             'example',
             'sample',
-            'test',
             'dummy',
             'fake',
             'mock',
