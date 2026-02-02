@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,6 +22,7 @@ use OpenApi\Attributes as OA;
 )]
 class Environment extends BaseModel
 {
+    use Auditable;
     use ClearsGlobalSearchCache;
     use HasFactory;
     use HasSafeStringAttribute;

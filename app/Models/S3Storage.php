@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class S3Storage extends BaseModel
 {
-    use HasFactory, HasSafeStringAttribute;
+    use Auditable, HasFactory, HasSafeStringAttribute;
 
     protected $guarded = [];
 

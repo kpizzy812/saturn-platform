@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class GithubApp extends BaseModel
 {
+    use Auditable;
+
     protected $guarded = [];
 
     protected $appends = ['type'];

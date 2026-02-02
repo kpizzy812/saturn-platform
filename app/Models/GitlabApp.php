@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
+
 class GitlabApp extends BaseModel
 {
+    use Auditable;
+
     // Security: Encrypt secrets at rest
     protected $casts = [
         'webhook_token' => 'encrypted',
