@@ -398,10 +398,11 @@ Route::post('/web-api/deployments/{uuid}/analyze', function (string $uuid) {
 
 Route::get('/web-api/ai/status', function () {
     $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
+    $provider = $analyzer->getAvailableProvider();
 
     return response()->json([
         'enabled' => config('ai.enabled', true),
         'available' => $analyzer->isAvailable(),
-        'provider' => $analyzer->getActiveProvider(),
+        'provider' => $provider ? $provider->getName() : null,
     ]);
 })->name('web-api.ai.status');
