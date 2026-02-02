@@ -54,15 +54,16 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                 .then(data => {
                     setProjects(data.projects);
 
-                    // Determine current state based on new deny-by-default model
+                    // Determine current state based on allow-by-default model
+                    // null = all projects (full access), [] = no access, [1,2,3] = specific
                     const allowedProjects = data.allowed_projects;
 
-                    if (allowedProjects && Array.isArray(allowedProjects) && allowedProjects.includes('*')) {
-                        // Full access to all projects
+                    if (allowedProjects === null || (Array.isArray(allowedProjects) && allowedProjects.includes('*'))) {
+                        // Full access to all projects (null or ['*'])
                         setGrantAll(true);
                         setSelectedProjects(data.projects.map((p: Project) => p.id));
-                    } else if (!allowedProjects || (Array.isArray(allowedProjects) && allowedProjects.length === 0)) {
-                        // No access
+                    } else if (Array.isArray(allowedProjects) && allowedProjects.length === 0) {
+                        // No access (empty array)
                         setGrantAll(false);
                         setSelectedProjects([]);
                     } else {
