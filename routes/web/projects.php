@@ -14,8 +14,26 @@ use Inertia\Inertia;
 // Projects
 Route::get('/projects', function () {
     $projects = \App\Models\Project::ownedByCurrentTeam()
-        ->with(['environments.applications'])
+        ->with([
+            'environments.applications',
+            // Load all database types (databases() is not a relationship)
+            'environments.postgresqls',
+            'environments.redis',
+            'environments.mongodbs',
+            'environments.mysqls',
+            'environments.mariadbs',
+            'environments.keydbs',
+            'environments.dragonflies',
+            'environments.clickhouses',
+        ])
         ->get();
+
+    // Add computed databases to each environment
+    $projects->each(function ($project) {
+        $project->environments->each(function ($env) {
+            $env->databases = $env->databases();
+        });
+    });
 
     return Inertia::render('Projects/Index', [
         'projects' => $projects,
@@ -274,19 +292,73 @@ Route::patch('/projects/{uuid}', function (Request $request, string $uuid) {
     return redirect()->back()->with('success', 'Project updated successfully');
 })->name('projects.update');
 
-// Delete project
+// Delete project (with cascade deletion of all resources)
 Route::delete('/projects/{uuid}', function (string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
+        ->with([
+            'environments.applications',
+            'environments.services',
+            'environments.postgresqls',
+            'environments.redis',
+            'environments.mongodbs',
+            'environments.mysqls',
+            'environments.mariadbs',
+            'environments.keydbs',
+            'environments.dragonflies',
+            'environments.clickhouses',
+        ])
         ->firstOrFail();
 
-    if (! $project->isEmpty()) {
-        return redirect()->back()->with('error', 'Cannot delete project with active resources. Please remove all applications and databases first.');
+    // Delete all resources in all environments
+    foreach ($project->environments as $environment) {
+        // Delete applications
+        foreach ($environment->applications as $application) {
+            \App\Jobs\DeleteResourceJob::dispatch(
+                resource: $application,
+                deleteVolumes: true,
+                deleteConnectedNetworks: true,
+                deleteConfigurations: true,
+                dockerCleanup: true
+            );
+        }
+
+        // Delete all database types
+        $databases = collect()
+            ->merge($environment->postgresqls)
+            ->merge($environment->redis)
+            ->merge($environment->mongodbs)
+            ->merge($environment->mysqls)
+            ->merge($environment->mariadbs)
+            ->merge($environment->keydbs)
+            ->merge($environment->dragonflies)
+            ->merge($environment->clickhouses);
+
+        foreach ($databases as $database) {
+            \App\Jobs\DeleteResourceJob::dispatch(
+                resource: $database,
+                deleteVolumes: true,
+                deleteConnectedNetworks: true,
+                deleteConfigurations: true,
+                dockerCleanup: true
+            );
+        }
+
+        // Delete services
+        foreach ($environment->services as $service) {
+            \App\Jobs\DeleteResourceJob::dispatch(
+                resource: $service,
+                deleteVolumes: true,
+                deleteConnectedNetworks: true,
+                deleteConfigurations: true,
+                dockerCleanup: true
+            );
+        }
     }
 
     $project->delete();
 
-    return redirect()->route('projects.index')->with('success', 'Project deleted successfully');
+    return redirect()->route('projects.index')->with('success', 'Project and all resources scheduled for deletion');
 })->name('projects.destroy');
 
 // Projects additional routes

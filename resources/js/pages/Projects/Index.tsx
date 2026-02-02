@@ -58,20 +58,14 @@ function ProjectCard({ project }: { project: Project }) {
         e.preventDefault();
         e.stopPropagation();
 
-        // Check if project has resources
-        if (serviceCount > 0) {
-            toast({
-                title: 'Cannot delete project',
-                description: `This project has ${serviceCount} resource(s). Delete all applications and databases first.`,
-                variant: 'error',
-            });
-            return;
-        }
+        const warningMessage = serviceCount > 0
+            ? `This project has ${serviceCount} resource(s) that will be permanently deleted along with all containers and data. This action cannot be undone.`
+            : `Are you sure you want to delete "${project.name}"? This action cannot be undone.`;
 
         const confirmed = await confirm({
             title: 'Delete Project',
-            description: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
-            confirmText: 'Delete',
+            description: warningMessage,
+            confirmText: serviceCount > 0 ? 'Delete All' : 'Delete',
             variant: 'danger',
         });
         if (confirmed) {
