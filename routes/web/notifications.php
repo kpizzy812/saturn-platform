@@ -69,4 +69,13 @@ Route::get('/notifications/preferences', function () {
     ]);
 })->name('notifications.preferences');
 
-Route::get('/notifications/{uuid}', fn (string $uuid) => Inertia::render('Notifications/NotificationDetail', ['uuid' => $uuid]))->name('notifications.detail');
+Route::get('/notifications/{uuid}', function (string $uuid) {
+    $team = auth()->user()->currentTeam();
+    $notification = \App\Models\UserNotification::where('team_id', $team->id)
+        ->where('id', $uuid)
+        ->first();
+
+    return Inertia::render('Notifications/NotificationDetail', [
+        'notification' => $notification?->toFrontendArray(),
+    ]);
+})->name('notifications.detail');
