@@ -1,18 +1,26 @@
 import * as React from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { HelpCircle, Bell, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
+import { HelpCircle, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
 import { useTheme } from '@/components/ui/ThemeProvider';
+import type { Notification } from '@/types';
 
 interface HeaderProps {
     showNewProject?: boolean;
     onCommandPalette?: () => void;
 }
 
+interface NotificationsData {
+    unreadCount: number;
+    recent: Notification[];
+}
+
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
     const user = (props as any).auth as { name?: string; email?: string } | undefined;
+    const notificationsData = (props as any).notifications as NotificationsData | undefined;
     const { isDark, toggleTheme } = useTheme();
 
     // Detect OS for keyboard shortcut display
@@ -81,13 +89,10 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                 </Dropdown>
 
                 {/* Notifications */}
-                <Link href="/notifications">
-                    <button className="relative rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground">
-                        <Bell className="h-5 w-5" />
-                        {/* Notification dot */}
-                        <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
-                    </button>
-                </Link>
+                <NotificationDropdown
+                    unreadCount={notificationsData?.unreadCount ?? 0}
+                    notifications={notificationsData?.recent ?? []}
+                />
 
                 {/* User Menu */}
                 <Dropdown>

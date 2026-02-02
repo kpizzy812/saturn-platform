@@ -24,5 +24,6 @@ export { ToastProvider, useToast } from './Toast';
 export { ThemeProvider, useTheme } from './ThemeProvider';
 export { CommandPalette, useCommandPalette } from './CommandPalette';
 export { NotificationItem } from './NotificationItem';
+export { NotificationDropdown } from './NotificationDropdown';
 export { ActivityTimeline } from './ActivityTimeline';
 export { SaturnLogo, SaturnBrand, SaturnIcon } from './SaturnLogo';

@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Notifications\Channels\DiscordChannel;
 use App\Notifications\Channels\EmailChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\PushoverChannel;
 use App\Notifications\Channels\SlackChannel;
 use App\Notifications\Channels\TelegramChannel;
@@ -19,6 +20,22 @@ trait HasNotificationSettings
         'test',
         'ssl_certificate_renewal',
         'hetzner_deletion_failure',
+    ];
+
+    /**
+     * Events that should always create in-app notifications.
+     */
+    protected $inAppEvents = [
+        'deployment_success',
+        'deployment_failure',
+        'backup_success',
+        'backup_failure',
+        'server_unreachable',
+        'server_reachable',
+        'server_disk_usage',
+        'status_change',
+        'security_alert',
+        'ssl_certificate_renewal',
     ];
 
     /**
@@ -73,6 +90,11 @@ trait HasNotificationSettings
     public function getEnabledChannels(string $event): array
     {
         $channels = [];
+
+        // Always add InAppChannel for supported events to store in-app notifications
+        if (in_array($event, $this->inAppEvents) || in_array($event, $this->alwaysSendEvents)) {
+            $channels[] = InAppChannel::class;
+        }
 
         $channelMap = [
             'email' => EmailChannel::class,

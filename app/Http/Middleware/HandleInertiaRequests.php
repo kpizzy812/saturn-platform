@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,6 +37,10 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $team = $user?->currentTeam();
+
+        // Get notifications data for the header dropdown
+        $notificationsData = $this->getNotificationsData($team);
 
         return [
             ...parent::share($request),
@@ -56,11 +61,12 @@ class HandleInertiaRequests extends Middleware
                     'isViewer' => $user->isViewer(),
                 ],
             ] : null,
-            'team' => $user?->currentTeam() ? [
-                'id' => $user->currentTeam()->id,
-                'name' => $user->currentTeam()->name,
-                'personal_team' => $user->currentTeam()->personal_team ?? false,
+            'team' => $team ? [
+                'id' => $team->id,
+                'name' => $team->name,
+                'personal_team' => $team->personal_team ?? false,
             ] : null,
+            'notifications' => $notificationsData,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
@@ -68,6 +74,36 @@ class HandleInertiaRequests extends Middleware
                 'info' => $request->session()->get('info'),
             ],
             'appName' => config('app.name'),
+        ];
+    }
+
+    /**
+     * Get notifications data for the header dropdown.
+     *
+     * @return array{unreadCount: int, recent: array}
+     */
+    private function getNotificationsData($team): array
+    {
+        if (! $team) {
+            return [
+                'unreadCount' => 0,
+                'recent' => [],
+            ];
+        }
+
+        $unreadCount = UserNotification::where('team_id', $team->id)
+            ->where('is_read', false)
+            ->count();
+
+        $recent = UserNotification::where('team_id', $team->id)
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get()
+            ->map(fn ($n) => $n->toFrontendArray());
+
+        return [
+            'unreadCount' => $unreadCount,
+            'recent' => $recent,
         ];
     }
 }
