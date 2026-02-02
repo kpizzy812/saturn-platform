@@ -359,6 +359,17 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                 />
             )}
 
+            {/* Live Deployment Graph */}
+            <Card className="mb-6">
+                <CardContent className="p-6">
+                    <DeploymentGraph
+                        stages={deploymentStages}
+                        currentStage={currentStage}
+                        isLive={deployment.status === 'in_progress' && isStreaming}
+                    />
+                </CardContent>
+            </Card>
+
             {/* Tabs */}
             <Card>
                 <CardHeader className="border-b border-border">
