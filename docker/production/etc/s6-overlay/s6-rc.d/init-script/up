@@ -4,6 +4,26 @@
 with-contenv
 cd /var/www/html
 foreground {
+    mkdir
+    -p
+    /var/www/html/storage/logs
+}
+foreground {
+    chmod
+    -R
+    777
+    /var/www/html/storage/logs
+}
+foreground {
+    touch
+    /var/www/html/storage/logs/laravel.log
+}
+foreground {
+    chmod
+    666
+    /var/www/html/storage/logs/laravel.log
+}
+foreground {
     php
     artisan
     app:init

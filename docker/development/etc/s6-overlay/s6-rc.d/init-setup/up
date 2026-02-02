@@ -26,6 +26,26 @@ foreground {
     /var/www/html/storage/app/ssh
 }
 foreground {
+    mkdir
+    -p
+    /var/www/html/storage/logs
+}
+foreground {
+    chmod
+    -R
+    777
+    /var/www/html/storage/logs
+}
+foreground {
+    touch
+    /var/www/html/storage/logs/laravel.log
+}
+foreground {
+    chmod
+    666
+    /var/www/html/storage/logs/laravel.log
+}
+foreground {
     composer
     install
 }
