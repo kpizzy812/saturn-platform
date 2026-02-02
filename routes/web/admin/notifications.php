@@ -29,6 +29,25 @@ Route::get('/notifications', function () {
     ]);
 })->name('admin.notifications.index');
 
+// Show notification details
+Route::get('/notifications/{id}', function (string $id) {
+    $notification = \App\Models\UserNotification::where('team_id', 0)
+        ->where('id', $id)
+        ->first();
+
+    if (! $notification) {
+        return Inertia::render('Admin/Notifications/Show', [
+            'notification' => null,
+        ]);
+    }
+
+    return Inertia::render('Admin/Notifications/Show', [
+        'notification' => array_merge($notification->toFrontendArray(), [
+            'metadata' => $notification->metadata,
+        ]),
+    ]);
+})->name('admin.notifications.show');
+
 // Mark notification as read
 Route::post('/notifications/{id}/read', function (string $id) {
     $notification = \App\Models\UserNotification::where('team_id', 0)
@@ -39,6 +58,17 @@ Route::post('/notifications/{id}/read', function (string $id) {
 
     return back();
 })->name('admin.notifications.read');
+
+// Mark notification as unread
+Route::post('/notifications/{id}/unread', function (string $id) {
+    $notification = \App\Models\UserNotification::where('team_id', 0)
+        ->where('id', $id)
+        ->firstOrFail();
+
+    $notification->markAsUnread();
+
+    return back();
+})->name('admin.notifications.unread');
 
 // Mark all as read
 Route::post('/notifications/read-all', function () {

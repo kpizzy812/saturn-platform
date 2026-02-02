@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
 import {
@@ -11,6 +11,7 @@ import {
     Info,
     RefreshCw,
     Clock,
+    ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/types';
@@ -68,12 +69,15 @@ function NotificationRow({
                 )}
             </div>
 
-            {/* Content */}
-            <div className="min-w-0 flex-1">
+            {/* Content - Clickable */}
+            <Link
+                href={`/admin/notifications/${notification.id}`}
+                className="min-w-0 flex-1 cursor-pointer"
+            >
                 <div className="flex items-start justify-between gap-2">
                     <div>
                         <h3 className={cn(
-                            'text-sm',
+                            'text-sm transition-colors hover:text-primary',
                             notification.isRead ? 'text-foreground-muted' : 'font-medium text-foreground'
                         )}>
                             {notification.title}
@@ -92,12 +96,15 @@ function NotificationRow({
                         </div>
                     </div>
 
-                    {/* Unread indicator */}
-                    {!notification.isRead && (
-                        <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
-                    )}
+                    <div className="flex items-center gap-2">
+                        {/* Unread indicator */}
+                        {!notification.isRead && (
+                            <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary" />
+                        )}
+                        <ChevronRight className="h-4 w-4 text-foreground-muted" />
+                    </div>
                 </div>
-            </div>
+            </Link>
 
             {/* Actions */}
             <div className="flex flex-shrink-0 items-center gap-1">
@@ -105,7 +112,11 @@ function NotificationRow({
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onMarkAsRead(notification.id)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onMarkAsRead(notification.id);
+                        }}
                         title="Mark as read"
                     >
                         <Check className="h-4 w-4" />
@@ -114,7 +125,11 @@ function NotificationRow({
                 <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onDelete(notification.id)}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onDelete(notification.id);
+                    }}
                     className="text-danger hover:bg-danger/10 hover:text-danger"
                     title="Delete"
                 >
