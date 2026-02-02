@@ -136,7 +136,8 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
     const [isExpanded, setIsExpanded] = React.useState(true);
 
     // Only fetch for failed deployments to avoid unnecessary requests
-    const isFailed = deploymentStatus === 'failed';
+    // Check both raw status ('failed') and display status ('crashed') for compatibility
+    const isFailed = deploymentStatus === 'failed' || deploymentStatus === 'crashed';
 
     const {
         analysis,

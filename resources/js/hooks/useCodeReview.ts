@@ -133,7 +133,7 @@ export function useCodeReview({
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/v1/deployments/${deploymentUuid}/code-review`, {
+            const response = await fetch(`/web-api/deployments/${deploymentUuid}/code-review`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ export function useCodeReview({
             setIsAnalyzing(true);
             setError(null);
 
-            const response = await fetch(`/api/v1/deployments/${deploymentUuid}/code-review`, {
+            const response = await fetch(`/web-api/deployments/${deploymentUuid}/code-review`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -239,7 +239,7 @@ export function useCodeReviewStatus(): UseCodeReviewStatusReturn {
             setIsLoading(true);
             setError(null);
 
-            const response = await fetch('/api/v1/code-review/status', {
+            const response = await fetch('/web-api/code-review/status', {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
