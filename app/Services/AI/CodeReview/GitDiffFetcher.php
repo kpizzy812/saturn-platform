@@ -8,12 +8,13 @@ use App\Services\AI\CodeReview\DTOs\DiffFile;
 use App\Services\AI\CodeReview\DTOs\DiffLine;
 use App\Services\AI\CodeReview\DTOs\DiffResult;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Fetches git diff from GitHub API.
  *
- * Supports both commit comparison and single commit diffs.
+ * Supports both GitHub App (authenticated) and public repositories.
  */
 class GitDiffFetcher
 {
@@ -55,39 +56,78 @@ class GitDiffFetcher
     {
         $source = $application->source;
 
-        if (! $source instanceof GithubApp) {
-            throw new \InvalidArgumentException('Code review currently only supports GitHub repositories');
-        }
+        // Get repository path (owner/repo format)
+        $repository = $this->resolveRepository($application);
 
-        // Get repository info
-        $repository = $application->git_repository;
         if (empty($repository)) {
             throw new \InvalidArgumentException('Application has no git repository configured');
         }
 
+        // Determine if we use authenticated or public API
+        $useAuthenticatedApi = $source instanceof GithubApp;
+
         // Determine base commit
         if ($baseCommit === null) {
-            $baseCommit = $this->getParentCommit($source, $repository, $commitSha);
+            $baseCommit = $this->getParentCommit($source, $repository, $commitSha, $useAuthenticatedApi);
         }
 
         // Fetch the comparison
         if ($baseCommit) {
-            return $this->fetchComparison($source, $repository, $baseCommit, $commitSha);
+            return $this->fetchComparison($source, $repository, $baseCommit, $commitSha, $useAuthenticatedApi);
         }
 
         // For initial commits, get the commit itself
-        return $this->fetchSingleCommit($source, $repository, $commitSha);
+        return $this->fetchSingleCommit($source, $repository, $commitSha, $useAuthenticatedApi);
+    }
+
+    /**
+     * Resolve repository path from application.
+     *
+     * Returns owner/repo format (e.g., "kpizzy812/pixelpets")
+     */
+    private function resolveRepository(Application $application): ?string
+    {
+        $gitRepository = $application->git_repository;
+
+        if (empty($gitRepository)) {
+            return null;
+        }
+
+        // If already in owner/repo format
+        if (preg_match('#^[\w.-]+/[\w.-]+$#', $gitRepository)) {
+            return $gitRepository;
+        }
+
+        // Parse GitHub URL (https://github.com/owner/repo or https://github.com/owner/repo.git)
+        if (preg_match('#^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?$#', $gitRepository, $matches)) {
+            return $matches[1].'/'.$matches[2];
+        }
+
+        // Parse git@ URL (git@github.com:owner/repo.git)
+        if (preg_match('#^git@github\.com:([^/]+)/([^/]+?)(?:\.git)?$#', $gitRepository, $matches)) {
+            return $matches[1].'/'.$matches[2];
+        }
+
+        Log::warning('Could not parse GitHub repository URL', [
+            'git_repository' => $gitRepository,
+        ]);
+
+        return null;
     }
 
     /**
      * Get parent commit SHA.
      */
-    private function getParentCommit(GithubApp $source, string $repository, string $commitSha): ?string
+    private function getParentCommit(?GithubApp $source, string $repository, string $commitSha, bool $useAuthenticatedApi): ?string
     {
         try {
-            $response = $this->makeApiRequest($source, "/repos/{$repository}/commits/{$commitSha}");
+            $response = $this->makeApiRequest(
+                $source,
+                "/repos/{$repository}/commits/{$commitSha}",
+                $useAuthenticatedApi
+            );
 
-            $parents = data_get($response, 'data.parents', []);
+            $parents = data_get($response, 'parents', []);
             if (! empty($parents)) {
                 return $parents[0]['sha'] ?? null;
             }
@@ -107,12 +147,15 @@ class GitDiffFetcher
     /**
      * Fetch comparison between two commits.
      */
-    private function fetchComparison(GithubApp $source, string $repository, string $base, string $head): DiffResult
+    private function fetchComparison(?GithubApp $source, string $repository, string $base, string $head, bool $useAuthenticatedApi): DiffResult
     {
-        $response = $this->makeApiRequest($source, "/repos/{$repository}/compare/{$base}...{$head}");
-        $data = $response['data'];
+        $data = $this->makeApiRequest(
+            $source,
+            "/repos/{$repository}/compare/{$base}...{$head}",
+            $useAuthenticatedApi
+        );
 
-        $files = collect($data->get('files', []));
+        $files = collect($data['files'] ?? []);
 
         return $this->buildDiffResult(
             commitSha: $head,
@@ -124,12 +167,15 @@ class GitDiffFetcher
     /**
      * Fetch a single commit (for initial commits without parent).
      */
-    private function fetchSingleCommit(GithubApp $source, string $repository, string $commitSha): DiffResult
+    private function fetchSingleCommit(?GithubApp $source, string $repository, string $commitSha, bool $useAuthenticatedApi): DiffResult
     {
-        $response = $this->makeApiRequest($source, "/repos/{$repository}/commits/{$commitSha}");
-        $data = $response['data'];
+        $data = $this->makeApiRequest(
+            $source,
+            "/repos/{$repository}/commits/{$commitSha}",
+            $useAuthenticatedApi
+        );
 
-        $files = collect($data->get('files', []));
+        $files = collect($data['files'] ?? []);
 
         return $this->buildDiffResult(
             commitSha: $commitSha,
@@ -289,11 +335,46 @@ class GitDiffFetcher
     }
 
     /**
-     * Make authenticated API request to GitHub.
+     * Make API request to GitHub.
+     *
+     * Uses authenticated API for GitHub App sources, public API otherwise.
      */
-    private function makeApiRequest(GithubApp $source, string $endpoint): array
+    private function makeApiRequest(?GithubApp $source, string $endpoint, bool $useAuthenticatedApi): array
     {
-        // Use the existing githubApi helper
-        return githubApi($source, $endpoint);
+        if ($useAuthenticatedApi && $source instanceof GithubApp) {
+            // Use authenticated GitHub API
+            $response = githubApi($source, $endpoint);
+
+            // githubApi returns ['data' => Collection], normalize to array
+            $data = $response['data'] ?? $response;
+
+            return $data instanceof Collection ? $data->toArray() : (array) $data;
+        }
+
+        // Use public GitHub API (rate limited to 60 requests/hour without auth)
+        $response = Http::withHeaders([
+            'Accept' => 'application/vnd.github.v3+json',
+            'User-Agent' => 'Saturn-Platform',
+        ])
+            ->timeout(30)
+            ->retry(2, 500, throw: false)
+            ->get("https://api.github.com{$endpoint}");
+
+        if ($response->failed()) {
+            $status = $response->status();
+            $message = $response->json('message', 'GitHub API request failed');
+
+            if ($status === 404) {
+                throw new \InvalidArgumentException("Repository or commit not found: {$message}");
+            }
+
+            if ($status === 403) {
+                throw new \RuntimeException("GitHub API rate limit exceeded or access denied: {$message}");
+            }
+
+            throw new \RuntimeException("GitHub API error ({$status}): {$message}");
+        }
+
+        return $response->json();
     }
 }
