@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 #[OA\Schema(
     description: 'Server Settings model',
@@ -53,6 +56,8 @@ use OpenApi\Attributes as OA;
 )]
 class ServerSetting extends Model
 {
+    use Auditable, LogsActivity;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -64,6 +69,14 @@ class ServerSetting extends Model
         'is_terminal_enabled' => 'boolean',
         'disable_application_image_retention' => 'boolean',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['is_build_server', 'is_metrics_enabled', 'is_sentinel_enabled', 'force_docker_cleanup'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted()
     {

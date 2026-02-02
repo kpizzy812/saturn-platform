@@ -21,6 +21,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\NewAccessToken;
 use OpenApi\Attributes as OA;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 #[OA\Schema(
     description: 'User model',
@@ -39,7 +41,7 @@ use OpenApi\Attributes as OA;
 )]
 class User extends Authenticatable implements SendsEmail
 {
-    use DeletesUserSessions, HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use DeletesUserSessions, HasApiTokens, HasFactory, LogsActivity, Notifiable, TwoFactorAuthenticatable;
 
     protected $guarded = [];
 
@@ -60,6 +62,14 @@ class User extends Authenticatable implements SendsEmail
         'suspended_at' => 'datetime',
         'last_login_at' => 'datetime',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'is_superadmin', 'platform_role', 'suspended_at'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * Set the email attribute to lowercase.

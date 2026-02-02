@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ScheduledTask extends BaseModel
 {
-    use HasSafeStringAttribute;
+    use Auditable, HasSafeStringAttribute, LogsActivity;
 
     protected $guarded = [];
 
@@ -18,6 +21,14 @@ class ScheduledTask extends BaseModel
             'enabled' => 'boolean',
             'timeout' => 'integer',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'command', 'frequency', 'enabled'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function service()

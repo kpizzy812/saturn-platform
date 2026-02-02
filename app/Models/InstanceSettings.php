@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Url\Url;
 
 class InstanceSettings extends Model
 {
+    use Auditable, LogsActivity;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -57,6 +62,14 @@ class InstanceSettings extends Model
                 Cache::forget('instance_settings_fqdn_host');
             }
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['fqdn', 'is_auto_update_enabled', 'is_registration_enabled', 'is_dns_validation_enabled'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function fqdn(): Attribute

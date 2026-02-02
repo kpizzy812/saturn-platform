@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Alert extends BaseModel
 {
+    use Auditable, LogsActivity;
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -19,6 +24,14 @@ class Alert extends BaseModel
             'triggered_count' => 'integer',
             'last_triggered_at' => 'datetime',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'type', 'threshold', 'enabled', 'channels'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public static function ownedByCurrentTeam()

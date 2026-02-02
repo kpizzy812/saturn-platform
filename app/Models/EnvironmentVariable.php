@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Models\EnvironmentVariable as ModelsEnvironmentVariable;
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use OpenApi\Attributes as OA;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 #[OA\Schema(
     description: 'Environment Variable model',
@@ -32,6 +35,8 @@ use OpenApi\Attributes as OA;
 )]
 class EnvironmentVariable extends BaseModel
 {
+    use Auditable, LogsActivity;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -47,6 +52,14 @@ class EnvironmentVariable extends BaseModel
     ];
 
     protected $appends = ['real_value', 'is_shared', 'is_really_required', 'is_nixpacks', 'is_saturn'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['key', 'is_preview', 'is_runtime', 'is_buildtime'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected static function booted()
     {

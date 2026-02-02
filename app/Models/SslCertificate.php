@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SslCertificate extends Model
 {
+    use Auditable, LogsActivity;
+
     protected $fillable = [
         'ssl_certificate',
         'ssl_private_key',
@@ -26,6 +31,14 @@ class SslCertificate extends Model
         'subject_alternative_names' => 'array',
         'valid_until' => 'datetime',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['common_name', 'valid_until', 'is_ca_certificate'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     public function application()
     {

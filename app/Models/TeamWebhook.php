@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class TeamWebhook extends Model
 {
-    use HasFactory;
+    use Auditable, HasFactory, LogsActivity;
 
     protected $fillable = [
         'uuid',
@@ -32,6 +35,14 @@ class TeamWebhook extends Model
             'enabled' => 'boolean',
             'last_triggered_at' => 'datetime',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'events', 'enabled'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     protected static function booted(): void

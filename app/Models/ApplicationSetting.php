@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ApplicationSetting extends Model
 {
+    use Auditable, LogsActivity;
+
     protected $casts = [
         'is_static' => 'boolean',
         'is_spa' => 'boolean',
@@ -35,6 +40,14 @@ class ApplicationSetting extends Model
     ];
 
     protected $guarded = [];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['is_auto_deploy_enabled', 'is_force_https_enabled', 'is_debug_enabled', 'auto_rollback_enabled'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     public function isStatic(): Attribute
     {

@@ -2,17 +2,30 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SharedEnvironmentVariable extends Model
 {
+    use Auditable, LogsActivity;
+
     protected $guarded = [];
 
     protected $casts = [
         'key' => 'string',
         'value' => 'encrypted',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['key', 'type'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * Validate and sanitize the key attribute.

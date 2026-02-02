@@ -2,9 +2,23 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+
 class CloudProviderToken extends BaseModel
 {
+    use Auditable, LogsActivity;
+
     protected $guarded = [];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'provider'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     protected $casts = [
         'token' => 'encrypted',

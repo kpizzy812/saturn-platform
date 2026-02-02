@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class TeamInvitation extends Model
 {
+    use Auditable, LogsActivity;
+
     protected $fillable = [
         'team_id',
         'uuid',
@@ -15,6 +20,14 @@ class TeamInvitation extends Model
         'via',
         'invited_by',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['email', 'role', 'via'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * Set the email attribute to lowercase.
