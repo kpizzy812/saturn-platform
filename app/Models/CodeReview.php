@@ -260,7 +260,7 @@ class CodeReview extends Model
         $this->update(array_merge([
             'status' => self::STATUS_COMPLETED,
             'finished_at' => now(),
-            'duration_ms' => $this->started_at ? now()->diffInMilliseconds($this->started_at) : null,
+            'duration_ms' => $this->calculateDurationMs(),
         ], $data));
     }
 
@@ -273,7 +273,22 @@ class CodeReview extends Model
             'status' => self::STATUS_FAILED,
             'error_message' => $errorMessage,
             'finished_at' => now(),
-            'duration_ms' => $this->started_at ? now()->diffInMilliseconds($this->started_at) : null,
+            'duration_ms' => $this->calculateDurationMs(),
         ]);
+    }
+
+    /**
+     * Calculate duration in milliseconds as integer.
+     */
+    private function calculateDurationMs(): ?int
+    {
+        if (! $this->started_at) {
+            return null;
+        }
+
+        $durationMs = now()->diffInMilliseconds($this->started_at, false);
+
+        // Ensure non-negative integer
+        return max(0, (int) abs($durationMs));
     }
 }
