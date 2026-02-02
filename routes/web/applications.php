@@ -964,3 +964,47 @@ Route::get('/applications/{uuid}/metrics', function (string $uuid) {
 // API endpoint for application request stats (parsed from container logs)
 Route::get('/_internal/applications/{uuid}/request-stats', [\App\Http\Controllers\Inertia\ApplicationMetricsController::class, 'getRequestStats'])
     ->name('applications.request-stats.api');
+
+// Incident Timeline API endpoint
+Route::get('/applications/{uuid}/incidents', function (string $uuid, \Illuminate\Http\Request $request) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $service = new \App\Services\IncidentTimelineService;
+
+    // Parse time range from request
+    $hours = (int) $request->input('hours', 24);
+    $from = now()->subHours($hours);
+    $to = now();
+
+    $timeline = $service->getApplicationTimeline(
+        application: $application,
+        from: $from,
+        to: $to,
+        limit: (int) $request->input('limit', 100)
+    );
+
+    return response()->json($timeline);
+})->name('applications.incidents');
+
+// Incident Timeline Page
+Route::get('/applications/{uuid}/incidents/view', function (string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $project = $application->environment->project;
+    $environment = $application->environment;
+
+    return Inertia::render('Applications/Incidents', [
+        'application' => [
+            'id' => $application->id,
+            'uuid' => $application->uuid,
+            'name' => $application->name,
+            'status' => $application->status,
+        ],
+        'projectUuid' => $project->uuid,
+        'environmentUuid' => $environment->uuid,
+    ]);
+})->name('applications.incidents.view');

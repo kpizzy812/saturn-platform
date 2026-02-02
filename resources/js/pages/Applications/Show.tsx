@@ -26,6 +26,7 @@ import {
     XCircle,
     Loader2,
     History,
+    AlertTriangle,
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
@@ -351,9 +352,9 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                     onClick={() => router.visit(`/applications/${application.uuid}/logs`)}
                                 />
                                 <ActionButton
-                                    icon={<Activity className="h-5 w-5" />}
-                                    label="Metrics"
-                                    onClick={() => router.visit(`/applications/${application.uuid}/metrics`)}
+                                    icon={<AlertTriangle className="h-5 w-5" />}
+                                    label="Incidents"
+                                    onClick={() => router.visit(`/applications/${application.uuid}/incidents/view`)}
                                 />
                                 <ActionButton
                                     icon={<Settings className="h-5 w-5" />}
