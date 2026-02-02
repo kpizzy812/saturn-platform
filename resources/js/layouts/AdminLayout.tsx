@@ -20,6 +20,7 @@ import {
     CheckCircle,
     ClipboardList,
     LayoutTemplate,
+    Bell,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -42,6 +43,7 @@ interface NavItem {
 const adminNavItems: NavItem[] = [
     { label: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Health', href: '/admin/health', icon: <Activity className="h-4 w-4" /> },
+    { label: 'Notifications', href: '/admin/notifications', icon: <Bell className="h-4 w-4" /> },
     { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
     { label: 'Teams', href: '/admin/teams', icon: <Teams className="h-4 w-4" /> },
     { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
@@ -59,6 +61,7 @@ const adminNavItems: NavItem[] = [
 function AdminSidebar() {
     const { url, props } = usePage();
     const user = (props as any).auth as { name?: string; email?: string; is_root_user?: boolean } | undefined;
+    const systemNotifications = (props as any).systemNotifications as { unreadCount: number } | undefined;
 
     const isActive = (href: string) => {
         if (href === '/admin') {
@@ -69,15 +72,29 @@ function AdminSidebar() {
 
     return (
         <aside className="flex h-screen w-64 flex-col border-r border-primary/20 bg-gradient-to-b from-primary/5 via-background to-background">
-            {/* Admin Logo */}
-            <div className="flex h-16 items-center gap-3 border-b border-primary/20 bg-gradient-to-r from-primary/10 to-purple-500/5 px-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-500 shadow-lg shadow-primary/25">
-                    <Shield className="h-5 w-5 text-white" />
+            {/* Admin Logo with Notification Bell */}
+            <div className="flex h-16 items-center justify-between border-b border-primary/20 bg-gradient-to-r from-primary/10 to-purple-500/5 px-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-500 shadow-lg shadow-primary/25">
+                        <Shield className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                        <span className="text-base font-bold text-foreground">Admin Panel</span>
+                        <div className="text-[11px] font-medium text-primary">Saturn Platform</div>
+                    </div>
                 </div>
-                <div>
-                    <span className="text-base font-bold text-foreground">Admin Panel</span>
-                    <div className="text-[11px] font-medium text-primary">Saturn Platform</div>
-                </div>
+                {/* Notification Bell */}
+                <Link
+                    href="/admin/notifications"
+                    className="relative rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                >
+                    <Bell className="h-5 w-5" />
+                    {(systemNotifications?.unreadCount ?? 0) > 0 && (
+                        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
+                            {systemNotifications!.unreadCount > 9 ? '9+' : systemNotifications!.unreadCount}
+                        </span>
+                    )}
+                </Link>
             </div>
 
             {/* Admin Navigation */}

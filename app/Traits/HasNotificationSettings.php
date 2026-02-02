@@ -92,8 +92,9 @@ trait HasNotificationSettings
     {
         $channels = [];
 
-        // Add InAppChannel for user-facing events only (exclude system events like 'general', 'test')
-        if (in_array($event, $this->inAppEvents)) {
+        // Add InAppChannel for user-facing events and system events (for admin panel)
+        // System events (general, test) will be filtered in the UI - shown only in admin panel
+        if (in_array($event, $this->inAppEvents) || in_array($event, ['general', 'test'])) {
             $channels[] = InAppChannel::class;
         }
 

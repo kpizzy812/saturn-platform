@@ -14,7 +14,9 @@ use Inertia\Inertia;
 
 Route::get('/notifications', function () {
     $team = auth()->user()->currentTeam();
+    // Exclude system notifications (type='info') - those are shown in admin panel only
     $notifications = \App\Models\UserNotification::where('team_id', $team->id)
+        ->where('type', '!=', 'info')
         ->orderBy('created_at', 'desc')
         ->take(50)
         ->get()

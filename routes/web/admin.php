@@ -68,6 +68,9 @@ Route::prefix('admin')->group(function () {
     // Invitations management
     require __DIR__.'/admin/invitations.php';
 
+    // System notifications
+    require __DIR__.'/admin/notifications.php';
+
     // System logs and Audit logs
     require __DIR__.'/admin/logs.php';
 

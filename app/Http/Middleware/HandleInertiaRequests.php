@@ -42,6 +42,9 @@ class HandleInertiaRequests extends Middleware
         // Get notifications data for the header dropdown
         $notificationsData = $this->getNotificationsData($team);
 
+        // Get system notifications count for admins (Team 0)
+        $systemNotificationsData = $this->getSystemNotificationsData($user);
+
         return [
             ...parent::share($request),
             'auth' => $user ? [
@@ -67,6 +70,7 @@ class HandleInertiaRequests extends Middleware
                 'personal_team' => $team->personal_team ?? false,
             ] : null,
             'notifications' => $notificationsData,
+            'systemNotifications' => $systemNotificationsData,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
@@ -79,6 +83,7 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * Get notifications data for the header dropdown.
+     * Excludes system notifications (type='info') - those are shown in admin panel only.
      *
      * @return array{unreadCount: int, recent: array}
      */
@@ -91,11 +96,14 @@ class HandleInertiaRequests extends Middleware
             ];
         }
 
+        // Exclude system notifications (type='info') from regular UI
         $unreadCount = UserNotification::where('team_id', $team->id)
             ->where('is_read', false)
+            ->where('type', '!=', 'info')
             ->count();
 
         $recent = UserNotification::where('team_id', $team->id)
+            ->where('type', '!=', 'info')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get()
@@ -104,6 +112,28 @@ class HandleInertiaRequests extends Middleware
         return [
             'unreadCount' => $unreadCount,
             'recent' => $recent,
+        ];
+    }
+
+    /**
+     * Get system notifications data for admin panel.
+     * System notifications are stored for Team 0 (root team).
+     *
+     * @return array{unreadCount: int}|null
+     */
+    private function getSystemNotificationsData($user): ?array
+    {
+        // Only provide system notifications data to superadmins
+        if (! $user || ! ($user->is_superadmin ?? false)) {
+            return null;
+        }
+
+        $unreadCount = UserNotification::where('team_id', 0)
+            ->where('is_read', false)
+            ->count();
+
+        return [
+            'unreadCount' => $unreadCount,
         ];
     }
 }
