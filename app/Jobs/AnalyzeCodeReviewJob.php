@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\CodeReviewCompleted;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\CodeReview;
+use App\Services\AI\CodeReview\AICodeAnalyzer;
 use App\Services\AI\CodeReview\Detectors\DangerousFunctionsDetector;
 use App\Services\AI\CodeReview\Detectors\SecretsDetector;
 use App\Services\AI\CodeReview\GitDiffFetcher;
@@ -58,6 +59,7 @@ class AnalyzeCodeReviewJob implements ShouldQueue
         GitDiffFetcher $diffFetcher,
         SecretsDetector $secretsDetector,
         DangerousFunctionsDetector $dangerousDetector,
+        AICodeAnalyzer $aiAnalyzer,
         LLMEnricher $llmEnricher
     ): void {
         if (! config('ai.code_review.enabled', false)) {
@@ -153,7 +155,7 @@ class AnalyzeCodeReviewJob implements ShouldQueue
                 ]);
             }
 
-            // Run deterministic detectors
+            // Run deterministic detectors (fast, regex-based)
             $violations = collect();
 
             if ($secretsDetector->isEnabled()) {
@@ -168,20 +170,47 @@ class AnalyzeCodeReviewJob implements ShouldQueue
                 Log::debug('Dangerous functions detector found violations', ['count' => $dangerousViolations->count()]);
             }
 
-            // LLM enrichment (optional, for explanations only)
+            // AI-powered code analysis (finds bugs, security issues, bad practices)
             $llmFailed = false;
             $llmProvider = null;
             $llmModel = null;
             $llmTokensUsed = null;
 
-            if ($violations->isNotEmpty() && config('ai.code_review.llm_enrichment', true) && $llmEnricher->isAvailable()) {
+            if (config('ai.code_review.ai_analysis', true) && $aiAnalyzer->isAvailable()) {
                 try {
-                    Log::info('Enriching violations with LLM', ['count' => $violations->count()]);
-                    $violations = $llmEnricher->enrich($violations, $diff);
+                    Log::info('Running AI code analysis', ['files' => count($diff->getFilePaths())]);
+                    $aiViolations = $aiAnalyzer->analyze($diff);
+                    $violations = $violations->merge($aiViolations);
 
-                    $providerInfo = $llmEnricher->getProviderInfo();
+                    $providerInfo = $aiAnalyzer->getProviderInfo();
                     $llmProvider = $providerInfo['provider'];
                     $llmModel = $providerInfo['model'];
+
+                    Log::debug('AI analysis found violations', ['count' => $aiViolations->count()]);
+                } catch (\Throwable $e) {
+                    Log::warning('AI code analysis failed, continuing with deterministic results', [
+                        'error' => $e->getMessage(),
+                    ]);
+                    $llmFailed = true;
+                }
+            }
+
+            // LLM enrichment for deterministic violations (adds explanations)
+            if ($violations->where('source', '!=', 'llm')->isNotEmpty() && config('ai.code_review.llm_enrichment', true) && $llmEnricher->isAvailable()) {
+                try {
+                    $deterministicViolations = $violations->where('source', '!=', 'llm');
+                    Log::info('Enriching deterministic violations with LLM', ['count' => $deterministicViolations->count()]);
+                    $enrichedViolations = $llmEnricher->enrich($deterministicViolations, $diff);
+
+                    // Replace deterministic violations with enriched ones
+                    $aiViolations = $violations->where('source', 'llm');
+                    $violations = $enrichedViolations->merge($aiViolations);
+
+                    if ($llmProvider === null) {
+                        $providerInfo = $llmEnricher->getProviderInfo();
+                        $llmProvider = $providerInfo['provider'];
+                        $llmModel = $providerInfo['model'];
+                    }
                 } catch (\Throwable $e) {
                     Log::warning('LLM enrichment failed, continuing without it', [
                         'error' => $e->getMessage(),

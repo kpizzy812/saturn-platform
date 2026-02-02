@@ -120,8 +120,11 @@ return [
         // Version for cache invalidation when detectors change
         'detectors_version' => '1.0.0',
 
-        // LLM enrichment for explanations (not for finding violations)
-        'llm_enrichment' => env('AI_CODE_REVIEW_LLM', true),
+        // AI-powered analysis (LLM finds bugs, security issues, bad practices)
+        'ai_analysis' => env('AI_CODE_REVIEW_AI_ANALYSIS', true),
+
+        // LLM enrichment for deterministic violations (adds explanations)
+        'llm_enrichment' => env('AI_CODE_REVIEW_LLM_ENRICHMENT', true),
 
         // Diff processing limits
         'max_diff_lines' => env('AI_CODE_REVIEW_MAX_LINES', 3000),
