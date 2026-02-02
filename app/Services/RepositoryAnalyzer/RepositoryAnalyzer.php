@@ -190,6 +190,9 @@ class RepositoryAnalyzer
     /**
      * Deduplicate databases, merging consumers from duplicates
      *
+     * For most use cases, one database per type is enough.
+     * Deduplicates by type only, keeping the one with more info (name, port).
+     *
      * @param  DetectedDatabase[]  $databases
      * @return DetectedDatabase[]
      */
@@ -197,15 +200,48 @@ class RepositoryAnalyzer
     {
         $unique = [];
         foreach ($databases as $db) {
-            $key = $db->type.'_'.($db->name ?? 'default');
+            // Deduplicate by type only (one PostgreSQL, one Redis, etc.)
+            $key = $db->type;
+
             if (! isset($unique[$key])) {
                 $unique[$key] = $db;
             } else {
-                // Create new DTO with merged consumers (DTOs are immutable)
-                $unique[$key] = $unique[$key]->withMergedConsumers($db->consumers);
+                // Merge: keep better name, merge consumers
+                $existing = $unique[$key];
+
+                // Prefer the entry with a specific name over generic ones
+                $betterName = $this->pickBetterDbName($existing->name, $db->name);
+                $betterPort = $existing->port ?? $db->port;
+                $mergedConsumers = array_unique(array_merge($existing->consumers, $db->consumers));
+
+                $unique[$key] = new DetectedDatabase(
+                    type: $db->type,
+                    name: $betterName,
+                    envVarName: $existing->envVarName,
+                    consumers: $mergedConsumers,
+                    detectedVia: $existing->detectedVia ?? $db->detectedVia,
+                    port: $betterPort,
+                );
             }
         }
 
         return array_values($unique);
+    }
+
+    /**
+     * Pick the better database name (prefer specific names over defaults)
+     */
+    private function pickBetterDbName(string $name1, string $name2): string
+    {
+        $defaults = ['default', 'db', 'database'];
+
+        $isDefault1 = in_array(strtolower($name1), $defaults, true);
+        $isDefault2 = in_array(strtolower($name2), $defaults, true);
+
+        if ($isDefault1 && ! $isDefault2) {
+            return $name2;
+        }
+
+        return $name1;
     }
 }
