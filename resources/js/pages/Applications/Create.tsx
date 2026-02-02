@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge, BranchSelector } from '@/components/ui';
-import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle, Sparkles } from 'lucide-react';
+import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink } from 'lucide-react';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
 import type { Project, Environment, Server } from '@/types';
@@ -276,6 +276,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     icon={<Github className="h-6 w-6" />}
                                     title="GitHub"
                                     description="Deploy from GitHub repository"
+                                    hint="Private repos require GitHub App connection"
                                     onClick={() => handleSourceSelect('github')}
                                     selected={formData.source_type === 'github'}
                                 />
@@ -372,6 +373,48 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                 placeholder="main"
                                             />
                                         </div>
+
+                                        {/* Private Repository Help */}
+                                        {branchesError && branchesError.toLowerCase().includes('private') && (
+                                            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
+                                                <div className="flex items-start gap-3">
+                                                    <Key className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                                    <div className="flex-1 space-y-3">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-foreground">Private Repository?</p>
+                                                            <p className="text-sm text-foreground-muted mt-1">
+                                                                Connect your GitHub account to access private repositories with automatic webhooks.
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            <a
+                                                                href="/sources/github/create"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                                                            >
+                                                                <Github className="h-4 w-4" />
+                                                                Connect GitHub
+                                                                <ExternalLink className="h-3 w-3" />
+                                                            </a>
+                                                            <a
+                                                                href="/sources/gitlab/create"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1.5 rounded-md bg-background-tertiary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background-secondary transition-colors border border-border"
+                                                            >
+                                                                <Gitlab className="h-4 w-4" />
+                                                                Connect GitLab
+                                                                <ExternalLink className="h-3 w-3" />
+                                                            </a>
+                                                        </div>
+                                                        <p className="text-xs text-foreground-subtle">
+                                                            Or type branch name manually above and use SSH deploy key
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div>
                                             <label className="block text-sm font-medium text-foreground mb-2">
@@ -751,11 +794,12 @@ interface SourceCardProps {
     icon: React.ReactNode;
     title: string;
     description: string;
+    hint?: string;
     onClick: () => void;
     selected: boolean;
 }
 
-function SourceCard({ icon, title, description, onClick, selected }: SourceCardProps) {
+function SourceCard({ icon, title, description, hint, onClick, selected }: SourceCardProps) {
     return (
         <button
             type="button"
@@ -775,6 +819,9 @@ function SourceCard({ icon, title, description, onClick, selected }: SourceCardP
             <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-foreground">{title}</h3>
                 <p className="mt-1 text-sm text-foreground-muted">{description}</p>
+                {hint && (
+                    <p className="mt-1 text-xs text-foreground-subtle">{hint}</p>
+                )}
             </div>
         </button>
     );
