@@ -57,7 +57,14 @@ final class OllamaProvider implements AIProviderInterface
 
     public function analyze(string $prompt, string $logContent): AIAnalysisResult
     {
-        $fullPrompt = $prompt."\n\n".$logContent;
+        $content = $this->rawAnalyze($prompt, $logContent);
+
+        return AIAnalysisResult::fromJson($content, $this->getName(), $this->model, null);
+    }
+
+    public function rawAnalyze(string $systemPrompt, string $userPrompt): string
+    {
+        $fullPrompt = $systemPrompt."\n\n".$userPrompt;
 
         try {
             $response = Http::timeout($this->timeout)->post($this->baseUrl.'/api/generate', [
@@ -80,10 +87,7 @@ final class OllamaProvider implements AIProviderInterface
             $data = $response->json();
             $content = $data['response'] ?? '';
 
-            // Extract JSON from response
-            $jsonContent = $this->extractJson($content);
-
-            return AIAnalysisResult::fromJson($jsonContent, $this->getName(), $this->model, null);
+            return $this->extractJson($content);
         } catch (RuntimeException $e) {
             throw $e;
         } catch (\Throwable $e) {

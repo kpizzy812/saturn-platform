@@ -50,6 +50,7 @@ export interface CodeReview {
     status: CodeReviewStatus;
     status_label: string;
     status_color: string;
+    summary: string | null;
     files_analyzed: string[];
     files_count: number;
     violations_count: number;

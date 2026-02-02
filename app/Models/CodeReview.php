@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $commit_sha
  * @property string|null $base_commit_sha
  * @property string $status
+ * @property string|null $summary
  * @property array|null $files_analyzed
  * @property int $violations_count
  * @property int $critical_count
@@ -42,6 +43,7 @@ class CodeReview extends Model
         'commit_sha',
         'base_commit_sha',
         'status',
+        'summary',
         'files_analyzed',
         'violations_count',
         'critical_count',

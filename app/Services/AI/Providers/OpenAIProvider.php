@@ -46,17 +46,23 @@ final class OpenAIProvider implements AIProviderInterface
 
     public function analyze(string $prompt, string $logContent): AIAnalysisResult
     {
+        $content = $this->rawAnalyze($prompt, $logContent);
+        $tokensUsed = null; // Token count not available in rawAnalyze
+
+        return AIAnalysisResult::fromJson($content, $this->getName(), $this->model, $tokensUsed);
+    }
+
+    public function rawAnalyze(string $systemPrompt, string $userPrompt): string
+    {
         if (! $this->isAvailable()) {
             throw new RuntimeException('OpenAI API key is not configured');
         }
-
-        $fullPrompt = $prompt."\n\n".$logContent;
 
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer '.$this->apiKey,
                 'Content-Type' => 'application/json',
-            ])->timeout(60)->post(self::API_URL, [
+            ])->timeout(90)->post(self::API_URL, [
                 'model' => $this->model,
                 'max_tokens' => $this->maxTokens,
                 'temperature' => $this->temperature,
@@ -64,11 +70,11 @@ final class OpenAIProvider implements AIProviderInterface
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'You are an expert DevOps engineer. Always respond with valid JSON.',
+                        'content' => $systemPrompt,
                     ],
                     [
                         'role' => 'user',
-                        'content' => $fullPrompt,
+                        'content' => $userPrompt,
                     ],
                 ],
             ]);
@@ -80,10 +86,8 @@ final class OpenAIProvider implements AIProviderInterface
             }
 
             $data = $response->json();
-            $content = $data['choices'][0]['message']['content'] ?? '';
-            $tokensUsed = $data['usage']['total_tokens'] ?? null;
 
-            return AIAnalysisResult::fromJson($content, $this->getName(), $this->model, $tokensUsed);
+            return $data['choices'][0]['message']['content'] ?? '';
         } catch (RuntimeException $e) {
             throw $e;
         } catch (\Throwable $e) {

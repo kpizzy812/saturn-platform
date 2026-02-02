@@ -175,6 +175,7 @@ class AnalyzeCodeReviewJob implements ShouldQueue
             $llmProvider = null;
             $llmModel = null;
             $llmTokensUsed = null;
+            $summary = null;
 
             if (config('ai.code_review.ai_analysis', true) && $aiAnalyzer->isAvailable()) {
                 try {
@@ -182,11 +183,14 @@ class AnalyzeCodeReviewJob implements ShouldQueue
                     $aiViolations = $aiAnalyzer->analyze($diff);
                     $violations = $violations->merge($aiViolations);
 
+                    // Get summary from AI analysis
+                    $summary = $aiAnalyzer->getLastSummary();
+
                     $providerInfo = $aiAnalyzer->getProviderInfo();
                     $llmProvider = $providerInfo['provider'];
                     $llmModel = $providerInfo['model'];
 
-                    Log::debug('AI analysis found violations', ['count' => $aiViolations->count()]);
+                    Log::debug('AI analysis found violations', ['count' => $aiViolations->count(), 'summary' => $summary]);
                 } catch (\Throwable $e) {
                     Log::warning('AI code analysis failed, continuing with deterministic results', [
                         'error' => $e->getMessage(),
@@ -226,6 +230,7 @@ class AnalyzeCodeReviewJob implements ShouldQueue
 
             // Complete review
             $review->markAsCompleted([
+                'summary' => $summary,
                 'files_analyzed' => $diff->getFilePaths(),
                 'violations_count' => $violations->count(),
                 'critical_count' => $violations->where('severity', 'critical')->count(),

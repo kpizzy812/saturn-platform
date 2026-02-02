@@ -479,6 +479,7 @@ Route::get('/web-api/deployments/{uuid}/code-review', function (string $uuid) {
             'status' => $review->status,
             'status_label' => $review->status_label,
             'status_color' => $review->status_color,
+            'summary' => $review->summary,
             'files_analyzed' => $review->files_analyzed ?? [],
             'files_count' => count($review->files_analyzed ?? []),
             'violations_count' => $review->violations_count,

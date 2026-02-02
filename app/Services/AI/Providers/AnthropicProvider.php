@@ -46,25 +46,31 @@ final class AnthropicProvider implements AIProviderInterface
 
     public function analyze(string $prompt, string $logContent): AIAnalysisResult
     {
+        $content = $this->rawAnalyze($prompt, $logContent);
+
+        return AIAnalysisResult::fromJson($content, $this->getName(), $this->model, null);
+    }
+
+    public function rawAnalyze(string $systemPrompt, string $userPrompt): string
+    {
         if (! $this->isAvailable()) {
             throw new RuntimeException('Anthropic API key is not configured');
         }
-
-        $fullPrompt = $prompt."\n\n".$logContent;
 
         try {
             $response = Http::withHeaders([
                 'x-api-key' => $this->apiKey,
                 'anthropic-version' => '2023-06-01',
                 'content-type' => 'application/json',
-            ])->timeout(60)->post(self::API_URL, [
+            ])->timeout(90)->post(self::API_URL, [
                 'model' => $this->model,
                 'max_tokens' => $this->maxTokens,
                 'temperature' => $this->temperature,
+                'system' => $systemPrompt,
                 'messages' => [
                     [
                         'role' => 'user',
-                        'content' => $fullPrompt,
+                        'content' => $userPrompt,
                     ],
                 ],
             ]);
@@ -77,12 +83,9 @@ final class AnthropicProvider implements AIProviderInterface
 
             $data = $response->json();
             $content = $data['content'][0]['text'] ?? '';
-            $tokensUsed = ($data['usage']['input_tokens'] ?? 0) + ($data['usage']['output_tokens'] ?? 0);
 
             // Extract JSON from response (it might be wrapped in markdown code blocks)
-            $jsonContent = $this->extractJson($content);
-
-            return AIAnalysisResult::fromJson($jsonContent, $this->getName(), $this->model, $tokensUsed);
+            return $this->extractJson($content);
         } catch (RuntimeException $e) {
             throw $e;
         } catch (\Throwable $e) {

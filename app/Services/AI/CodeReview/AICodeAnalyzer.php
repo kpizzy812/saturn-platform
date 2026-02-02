@@ -27,6 +27,8 @@ class AICodeAnalyzer
 
     private ?AIProviderInterface $provider = null;
 
+    private ?string $lastSummary = null;
+
     /**
      * @var array<string, class-string<AIProviderInterface>>
      */
@@ -39,6 +41,14 @@ class AICodeAnalyzer
     public function __construct()
     {
         $this->redactor = new DiffRedactor;
+    }
+
+    /**
+     * Get the summary from the last analysis.
+     */
+    public function getLastSummary(): ?string
+    {
+        return $this->lastSummary;
     }
 
     /**
@@ -63,11 +73,11 @@ class AICodeAnalyzer
             $systemPrompt = $this->getSystemPrompt();
             $userPrompt = $this->buildPrompt($redactedDiff, $diff->getFilePaths());
 
-            // Call LLM
-            $result = $provider->analyze($systemPrompt, $userPrompt);
+            // Call LLM with raw response (not parsed into AIAnalysisResult)
+            $response = $provider->rawAnalyze($systemPrompt, $userPrompt);
 
             // Parse response into violations
-            $violations = $this->parseResponse($result->rootCause ?? '');
+            $violations = $this->parseResponse($response);
 
             Log::info('AI code analysis completed', [
                 'violations_found' => $violations->count(),
@@ -145,6 +155,7 @@ SEVERITY LEVELS:
 
 RESPONSE FORMAT (JSON only):
 {
+    "summary": "Brief 1-2 sentence summary of what changes were made in this commit",
     "issues": [
         {
             "severity": "high",
@@ -158,7 +169,8 @@ RESPONSE FORMAT (JSON only):
     ]
 }
 
-If no issues found, return: {"issues": []}
+IMPORTANT: Always include a "summary" field describing the changes, even if no issues are found.
+If no issues found, return: {"summary": "Description of changes...", "issues": []}
 PROMPT;
     }
 
@@ -194,9 +206,15 @@ PROMPT;
     private function parseResponse(string $response): Collection
     {
         $violations = collect();
+        $this->lastSummary = null;
 
         // Try to parse JSON
         $data = $this->extractJson($response);
+
+        // Extract summary if present
+        if (isset($data['summary']) && is_string($data['summary'])) {
+            $this->lastSummary = $data['summary'];
+        }
 
         if (! isset($data['issues']) || ! is_array($data['issues'])) {
             Log::warning('AI response missing issues array', ['response' => substr($response, 0, 500)]);

@@ -200,6 +200,21 @@ function ReviewContent({ review }: { review: CodeReview }) {
                 )}
             </div>
 
+            {/* Summary */}
+            {review.summary && (
+                <div className="rounded-lg p-4 bg-blue-500/10 border border-blue-500/20">
+                    <div className="flex items-start gap-3">
+                        <Sparkles className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-medium text-blue-400 text-sm">AI Summary</h4>
+                            <p className="text-sm text-foreground-secondary mt-1">
+                                {review.summary}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* No violations */}
             {!review.has_violations && (
                 <div className="rounded-lg p-4 bg-green-500/10 border border-green-500/20">

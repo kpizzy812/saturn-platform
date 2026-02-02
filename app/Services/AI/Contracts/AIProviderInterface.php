@@ -22,6 +22,11 @@ interface AIProviderInterface
     public function analyze(string $prompt, string $logContent): AIAnalysisResult;
 
     /**
+     * Get raw JSON response from AI (for custom parsing).
+     */
+    public function rawAnalyze(string $systemPrompt, string $userPrompt): string;
+
+    /**
      * Get the model being used.
      */
     public function getModel(): string;
