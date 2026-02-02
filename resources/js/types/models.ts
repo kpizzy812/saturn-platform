@@ -648,3 +648,37 @@ export interface S3Storage {
     created_at: string;
     updated_at: string;
 }
+
+// AI Analysis types
+export type AIAnalysisStatus = 'pending' | 'analyzing' | 'completed' | 'failed';
+export type AIErrorCategory = 'dockerfile' | 'dependency' | 'build' | 'runtime' | 'network' | 'resource' | 'config' | 'unknown';
+export type AISeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface DeploymentLogAnalysis {
+    id: number;
+    deployment_id: number;
+    root_cause: string | null;
+    root_cause_details: string | null;
+    solution: string[] | null;
+    prevention: string[] | null;
+    error_category: AIErrorCategory;
+    category_label: string;
+    severity: AISeverity;
+    severity_color: string;
+    confidence: number;
+    confidence_percent: number;
+    provider: string | null;
+    model: string | null;
+    tokens_used: number | null;
+    status: AIAnalysisStatus;
+    error_message: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface AIServiceStatus {
+    enabled: boolean;
+    available: boolean;
+    provider: string | null;
+    model: string | null;
+}

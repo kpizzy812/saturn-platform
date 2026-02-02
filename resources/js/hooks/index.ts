@@ -16,6 +16,11 @@ export {
 } from './useDeployments';
 
 export {
+    useDeploymentAnalysis,
+    useAIServiceStatus,
+} from './useDeploymentAnalysis';
+
+export {
     useDatabases,
     useDatabase,
     useDatabaseBackups,

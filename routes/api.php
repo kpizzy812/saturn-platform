@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\DatabaseBackupsController;
 use App\Http\Controllers\Api\DatabaseCreateController;
 use App\Http\Controllers\Api\DatabasesController;
 use App\Http\Controllers\Api\DeployController;
+use App\Http\Controllers\Api\DeploymentAnalysisController;
 use App\Http\Controllers\Api\DeploymentApprovalController;
 use App\Http\Controllers\Api\GitAnalyzerController;
 use App\Http\Controllers\Api\GitController;
@@ -207,6 +208,11 @@ Route::group([
     })->middleware(['api.ability:read', 'throttle:60,1']);
     Route::post('/deployments/{uuid}/cancel', [DeployController::class, 'cancel_deployment'])->middleware(['api.ability:deploy']);
     Route::get('/deployments/applications/{uuid}', [DeployController::class, 'get_application_deployments'])->middleware(['api.ability:read']);
+
+    // Deployment AI Analysis
+    Route::get('/deployments/{uuid}/analysis', [DeploymentAnalysisController::class, 'show'])->middleware(['api.ability:read']);
+    Route::post('/deployments/{uuid}/analyze', [DeploymentAnalysisController::class, 'analyze'])->middleware(['api.ability:write']);
+    Route::get('/ai/status', [DeploymentAnalysisController::class, 'status'])->middleware(['api.ability:read']);
 
     // Deployment Approval Routes
     Route::post('/deployments/{uuid}/request-approval', [DeploymentApprovalController::class, 'requestApproval'])->middleware(['api.ability:deploy']);

@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '@/components/ui/Dropdown';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
+import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
 import {
     Rocket,
     GitCommit,
@@ -330,6 +331,12 @@ export default function DeploymentDetails({
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Main content - Logs */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* AI Analysis Card - shown for failed deployments */}
+                        <AIAnalysisCard
+                            deploymentUuid={deployment.deployment_uuid}
+                            deploymentStatus={deployment.status}
+                        />
+
                         {/* Logs Card */}
                         <Card className="overflow-hidden">
                             <LogsContainer

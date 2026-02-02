@@ -59,6 +59,11 @@ class ApplicationDeploymentQueue extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function logAnalysis()
+    {
+        return $this->hasOne(DeploymentLogAnalysis::class, 'deployment_id');
+    }
+
     public function server(): Attribute
     {
         return Attribute::make(
