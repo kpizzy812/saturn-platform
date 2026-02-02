@@ -207,7 +207,7 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                         <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-all hover:border-border/80 hover:bg-background-secondary">
                             <Checkbox
                                 checked={grantAll}
-                                onChange={(checked) => handleGrantAllChange(checked)}
+                                onCheckedChange={(checked) => handleGrantAllChange(checked)}
                             />
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
@@ -272,7 +272,7 @@ export function ConfigureProjectsModal({ isOpen, onClose, member, onSuccess }: P
                                     >
                                         <Checkbox
                                             checked={selectedProjects.includes(project.id)}
-                                            onChange={() => toggleProject(project.id)}
+                                            onCheckedChange={() => toggleProject(project.id)}
                                             disabled={grantAll}
                                         />
                                         <Folder className="h-4 w-4 text-foreground-muted" />
