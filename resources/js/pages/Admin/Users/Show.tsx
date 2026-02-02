@@ -17,6 +17,16 @@ import {
     Trash2,
 } from 'lucide-react';
 
+interface UserTeam {
+    id: number;
+    name: string;
+    personal_team: boolean;
+    user_id: number;
+    is_owner: boolean;
+    role: string;
+    created_at: string;
+}
+
 interface UserDetails {
     id: number;
     name: string;
@@ -26,12 +36,7 @@ interface UserDetails {
     force_password_reset?: boolean;
     created_at: string;
     updated_at: string;
-    teams: {
-        id: number;
-        name: string;
-        personal_team: boolean;
-        role: string;
-    }[];
+    teams: UserTeam[];
 }
 
 interface Props {
@@ -184,7 +189,6 @@ export default function AdminUserShow({
                     </CardContent>
                 </Card>
 
-                {/* Tabs */}
                 {/* Teams */}
                 <Card variant="glass">
                     <CardHeader>
@@ -195,25 +199,85 @@ export default function AdminUserShow({
                         {teams.length === 0 ? (
                             <p className="py-4 text-center text-sm text-foreground-muted">No teams</p>
                         ) : (
-                            teams.map((team) => (
-                                <div
-                                    key={team.id}
-                                    className="flex items-center justify-between border-b border-border/50 py-3 last:border-0"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <Users className="h-5 w-5 text-foreground-muted" />
-                                        <div>
-                                            <p className="font-medium text-foreground">{team.name}</p>
-                                            {team.personal_team && (
-                                                <p className="text-sm text-foreground-muted">Personal team</p>
-                                            )}
-                                        </div>
+                            <>
+                                {/* Personal/Owned Teams */}
+                                {teams.filter(t => t.is_owner || t.personal_team).length > 0 && (
+                                    <div className="mb-4">
+                                        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-foreground-subtle">
+                                            Own Teams
+                                        </p>
+                                        {teams.filter(t => t.is_owner || t.personal_team).map((team) => (
+                                            <div
+                                                key={team.id}
+                                                className="flex items-center justify-between border-b border-border/50 py-3 last:border-0"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-500">
+                                                        <Users className="h-4 w-4 text-white" />
+                                                    </div>
+                                                    <div>
+                                                        <Link
+                                                            href={`/admin/teams/${team.id}`}
+                                                            className="font-medium text-foreground hover:text-primary"
+                                                        >
+                                                            {team.name}
+                                                        </Link>
+                                                        <p className="text-xs text-foreground-muted">
+                                                            {team.personal_team ? 'Personal team' : 'Team owner'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Badge variant="primary" size="sm" icon={<Shield className="h-3 w-3" />}>
+                                                    owner
+                                                </Badge>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <Badge variant="primary" size="sm">
-                                        {team.role}
-                                    </Badge>
-                                </div>
-                            ))
+                                )}
+
+                                {/* Invited Teams */}
+                                {teams.filter(t => !t.is_owner && !t.personal_team).length > 0 && (
+                                    <div>
+                                        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-foreground-subtle">
+                                            Member Of
+                                        </p>
+                                        {teams.filter(t => !t.is_owner && !t.personal_team).map((team) => {
+                                            const roleConfig: Record<string, { variant: 'primary' | 'success' | 'warning' | 'default'; label: string }> = {
+                                                admin: { variant: 'warning', label: 'admin' },
+                                                developer: { variant: 'success', label: 'developer' },
+                                                member: { variant: 'default', label: 'member' },
+                                                viewer: { variant: 'default', label: 'viewer' },
+                                            };
+                                            const config = roleConfig[team.role] || roleConfig.member;
+
+                                            return (
+                                                <div
+                                                    key={team.id}
+                                                    className="flex items-center justify-between border-b border-border/50 py-3 last:border-0"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background-tertiary">
+                                                            <Users className="h-4 w-4 text-foreground-muted" />
+                                                        </div>
+                                                        <div>
+                                                            <Link
+                                                                href={`/admin/teams/${team.id}`}
+                                                                className="font-medium text-foreground hover:text-primary"
+                                                            >
+                                                                {team.name}
+                                                            </Link>
+                                                            <p className="text-xs text-foreground-muted">Invited member</p>
+                                                        </div>
+                                                    </div>
+                                                    <Badge variant={config.variant} size="sm">
+                                                        {config.label}
+                                                    </Badge>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </CardContent>
                 </Card>

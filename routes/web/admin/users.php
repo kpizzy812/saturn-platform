@@ -97,12 +97,35 @@ Route::get('/users', function () {
 
 Route::get('/users/{id}', function (int $id) {
     // Fetch specific user with all relationships
-    $user = \App\Models\User::with(['teams.projects.environments'])
+    $user = \App\Models\User::with(['teams'])
         ->withCount(['teams'])
         ->findOrFail($id);
 
+    // Map teams with proper role from pivot table
+    $teams = $user->teams->map(function ($team) use ($user) {
+        return [
+            'id' => $team->id,
+            'name' => $team->name,
+            'personal_team' => $team->personal_team,
+            'user_id' => $team->user_id, // Owner of the team
+            'is_owner' => $team->user_id === $user->id, // Is this user the team owner?
+            'role' => $team->pivot->role ?? 'member',
+            'created_at' => $team->created_at,
+        ];
+    });
+
     return Inertia::render('Admin/Users/Show', [
-        'user' => $user,
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at,
+            'is_superadmin' => $user->isSuperAdmin(),
+            'force_password_reset' => $user->force_password_reset ?? false,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'teams' => $teams,
+        ],
     ]);
 })->name('admin.users.show');
 
