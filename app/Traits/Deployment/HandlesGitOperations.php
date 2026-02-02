@@ -2,6 +2,8 @@
 
 namespace App\Traits\Deployment;
 
+use App\Models\ApplicationDeploymentQueue;
+
 /**
  * Trait for handling Git operations during deployment.
  *
@@ -116,6 +118,7 @@ trait HandlesGitOperations
      */
     private function clone_repository(): void
     {
+        $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_CLONE);
         $importCommands = $this->generate_git_import_commands();
         $this->application_deployment_queue->addLogEntry("\n----------------------------------------");
         $this->application_deployment_queue->addLogEntry("Importing {$this->customRepository}:{$this->application->git_branch} (commit sha {$this->commit}) to {$this->basedir}.");

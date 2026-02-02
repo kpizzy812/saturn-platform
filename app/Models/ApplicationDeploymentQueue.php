@@ -40,6 +40,19 @@ use OpenApi\Attributes as OA;
 )]
 class ApplicationDeploymentQueue extends Model
 {
+    // Deployment stage constants
+    public const STAGE_PREPARE = 'prepare';
+
+    public const STAGE_CLONE = 'clone';
+
+    public const STAGE_BUILD = 'build';
+
+    public const STAGE_PUSH = 'push';
+
+    public const STAGE_DEPLOY = 'deploy';
+
+    public const STAGE_HEALTHCHECK = 'healthcheck';
+
     protected $guarded = [];
 
     protected $casts = [
@@ -48,6 +61,19 @@ class ApplicationDeploymentQueue extends Model
         'requires_approval' => 'boolean',
         'approved_at' => 'datetime',
     ];
+
+    // Current deployment stage (not persisted, used for log entries)
+    public ?string $currentStage = null;
+
+    /**
+     * Set the current deployment stage. All subsequent log entries will include this stage.
+     */
+    public function setStage(string $stage): self
+    {
+        $this->currentStage = $stage;
+
+        return $this;
+    }
 
     public function application()
     {
@@ -147,7 +173,7 @@ class ApplicationDeploymentQueue extends Model
         return $text;
     }
 
-    public function addLogEntry(string $message, string $type = 'stdout', bool $hidden = false)
+    public function addLogEntry(string $message, string $type = 'stdout', bool $hidden = false, ?string $stage = null)
     {
         if ($type === 'error') {
             $type = 'stderr';
@@ -158,6 +184,10 @@ class ApplicationDeploymentQueue extends Model
         }
         $redactedMessage = $this->redactSensitiveInfo($message);
         $timestamp = Carbon::now('UTC');
+
+        // Use explicitly passed stage, or fall back to currentStage property
+        $effectiveStage = $stage ?? $this->currentStage;
+
         $newLogEntry = [
             'command' => null,
             'output' => $redactedMessage,
@@ -165,6 +195,7 @@ class ApplicationDeploymentQueue extends Model
             'timestamp' => $timestamp,
             'hidden' => $hidden,
             'batch' => 1,
+            'stage' => $effectiveStage,
         ];
 
         $order = 1;
@@ -196,7 +227,8 @@ class ApplicationDeploymentQueue extends Model
                     message: (string) $redactedMessage,
                     timestamp: $timestamp->toIso8601String(),
                     type: $type,
-                    order: $order
+                    order: $order,
+                    stage: $effectiveStage
                 ));
             } catch (\Throwable) {
                 // Silently fail broadcasting - don't break deployment for WebSocket issues

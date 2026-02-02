@@ -2,6 +2,8 @@
 
 namespace App\Traits\Deployment;
 
+use App\Models\ApplicationDeploymentQueue;
+
 /**
  * Trait for handling Docker image building during deployment.
  *
@@ -25,6 +27,8 @@ trait HandlesImageBuilding
      */
     private function build_image(): void
     {
+        $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_BUILD);
+
         // Add Saturn Platform related variables to the build args/secrets
         if ($this->dockerBuildkitSupported) {
             // Saturn Platform variables are already included in the secrets from generate_build_env_variables

@@ -813,6 +813,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function prepare_builder_image(bool $firstTry = true)
     {
+        $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_PREPARE);
         $this->checkForCancellation();
         $helperImage = config('constants.saturn.helper_image');
         $helperImage = "{$helperImage}:".getHelperVersion();

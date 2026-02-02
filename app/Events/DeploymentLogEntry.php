@@ -17,7 +17,8 @@ class DeploymentLogEntry implements ShouldBroadcast
         public string $message,
         public string $timestamp,
         public string $type = 'stdout',
-        public int $order = 1
+        public int $order = 1,
+        public ?string $stage = null
     ) {}
 
     public function broadcastWith(): array
@@ -27,6 +28,7 @@ class DeploymentLogEntry implements ShouldBroadcast
             'timestamp' => $this->timestamp,
             'type' => $this->type,
             'order' => $this->order,
+            'stage' => $this->stage,
         ];
     }
 

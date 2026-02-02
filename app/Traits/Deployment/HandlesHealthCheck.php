@@ -3,6 +3,7 @@
 namespace App\Traits\Deployment;
 
 use App\Exceptions\DeploymentException;
+use App\Models\ApplicationDeploymentQueue;
 use Exception;
 use Illuminate\Support\Sleep;
 
@@ -27,6 +28,8 @@ trait HandlesHealthCheck
      */
     private function rolling_update()
     {
+        $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_DEPLOY);
+
         try {
             $this->checkForCancellation();
             if ($this->server->isSwarm()) {
@@ -81,6 +84,8 @@ trait HandlesHealthCheck
      */
     private function health_check()
     {
+        $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_HEALTHCHECK);
+
         try {
             if ($this->server->isSwarm()) {
                 // Implement healthcheck for swarm

@@ -359,8 +359,17 @@ export function DeploymentGraph({
     );
 }
 
+// Extended log entry with optional stage field from backend
+interface LogEntry {
+    output: string;
+    timestamp?: string;
+    stage?: string | null;
+    type?: string;
+}
+
 // Utility to parse logs and detect stages
-export function parseDeploymentLogs(logs: Array<{ output: string; timestamp?: string }>): DeploymentStage[] {
+// Uses structured stage field from backend if available, falls back to regex for legacy logs
+export function parseDeploymentLogs(logs: Array<LogEntry>): DeploymentStage[] {
     const stages: DeploymentStage[] = [
         { id: 'prepare', name: 'Prepare', status: 'pending' },
         { id: 'clone', name: 'Clone', status: 'pending' },
@@ -370,41 +379,19 @@ export function parseDeploymentLogs(logs: Array<{ output: string; timestamp?: st
         { id: 'healthcheck', name: 'Health Check', status: 'pending' },
     ];
 
-    const stagePatterns: Record<string, { start: RegExp; end?: RegExp; fail?: RegExp }> = {
-        prepare: {
-            start: /Preparing container|Starting deployment|Deployment started/i,
-            end: /helper image.*ready|preparation complete/i,
-        },
-        clone: {
-            start: /Importing|Cloning|Checking out|git clone/i,
-            end: /Creating build-time|Clone complete|commit sha/i,
-            fail: /Failed to clone|git.*error/i,
-        },
-        build: {
-            start: /Building docker image started|docker build|nixpacks build/i,
-            end: /Building docker image completed|Successfully built|build complete/i,
-            fail: /Build failed|error during build/i,
-        },
-        push: {
-            start: /Pushing image|docker push/i,
-            end: /Successfully pushed|push complete/i,
-            fail: /Failed to push|push error/i,
-        },
-        deploy: {
-            start: /Rolling update started|Starting container|docker-compose up|up --build/i,
-            end: /New container started|Container created/i,
-            fail: /Failed to start|Container.*exit/i,
-        },
-        healthcheck: {
-            start: /Waiting for healthcheck|Health check started/i,
-            end: /New container is healthy|Rolling update completed|Container is stable/i,
-            fail: /unhealthy|healthcheck.*fail/i,
-        },
+    const stageIndex: Record<string, number> = {
+        prepare: 0,
+        clone: 1,
+        build: 2,
+        push: 3,
+        deploy: 4,
+        healthcheck: 5,
     };
 
-    let currentStageIndex = -1;
     const stageLogs: Record<string, string[]> = {};
     const stageTimes: Record<string, { start?: string; end?: string }> = {};
+    let lastSeenStage: string | null = null;
+    let hasStructuredStages = false;
 
     // Initialize logs arrays
     stages.forEach(s => {
@@ -412,48 +399,125 @@ export function parseDeploymentLogs(logs: Array<{ output: string; timestamp?: st
         stageTimes[s.id] = {};
     });
 
-    // Parse each log entry
+    // First pass: check if logs have structured stage data
     for (const log of logs) {
-        const output = log.output || '';
+        if (log.stage) {
+            hasStructuredStages = true;
+            break;
+        }
+    }
 
-        // Check each stage pattern
-        for (let i = 0; i < stages.length; i++) {
-            const stage = stages[i];
-            const patterns = stagePatterns[stage.id];
-            if (!patterns) continue;
+    // Parse using structured stage field if available
+    if (hasStructuredStages) {
+        for (const log of logs) {
+            const output = log.output || '';
+            const stage = log.stage;
 
-            // Check for stage start
-            if (patterns.start.test(output)) {
-                if (currentStageIndex < i) {
-                    // Mark all previous stages as completed
-                    for (let j = 0; j <= currentStageIndex; j++) {
-                        if (stages[j].status === 'running') {
-                            stages[j].status = 'completed';
-                            stageTimes[stages[j].id].end = log.timestamp;
-                        }
-                    }
-                    currentStageIndex = i;
-                    stages[i].status = 'running';
-                    stageTimes[stage.id].start = log.timestamp;
+            if (stage && stageIndex[stage] !== undefined) {
+                // Mark this stage as running if not already completed/failed
+                if (stages[stageIndex[stage]].status === 'pending') {
+                    stages[stageIndex[stage]].status = 'running';
+                    stageTimes[stage].start = log.timestamp;
                 }
-            }
 
-            // Check for stage end
-            if (patterns.end?.test(output) && stages[i].status === 'running') {
-                stages[i].status = 'completed';
-                stageTimes[stage.id].end = log.timestamp;
-            }
+                // Mark previous stages as completed
+                if (lastSeenStage && lastSeenStage !== stage) {
+                    const lastIdx = stageIndex[lastSeenStage];
+                    if (stages[lastIdx].status === 'running') {
+                        stages[lastIdx].status = 'completed';
+                        stageTimes[lastSeenStage].end = log.timestamp;
+                    }
+                }
 
-            // Check for failure
-            if (patterns.fail?.test(output)) {
-                stages[i].status = 'failed';
-                stages[i].error = output.substring(0, 200);
+                lastSeenStage = stage;
+                stageLogs[stage].push(output);
+
+                // Check for failure indicators in output
+                if (log.type === 'stderr' || /error|failed|exception/i.test(output)) {
+                    if (/fatal|error:|failed to|exception/i.test(output)) {
+                        stages[stageIndex[stage]].status = 'failed';
+                        stages[stageIndex[stage]].error = output.substring(0, 200);
+                    }
+                }
             }
         }
 
-        // Add log to current stage
-        if (currentStageIndex >= 0) {
-            stageLogs[stages[currentStageIndex].id].push(output);
+        // Mark the last seen stage as completed if deployment finished successfully
+        if (lastSeenStage && stages[stageIndex[lastSeenStage]].status === 'running') {
+            // Keep as running - the last stage might still be in progress
+        }
+    } else {
+        // Fallback: regex-based detection for legacy logs without stage field
+        const stagePatterns: Record<string, { start: RegExp; end?: RegExp; fail?: RegExp }> = {
+            prepare: {
+                start: /Preparing container|Starting deployment|Deployment started/i,
+                end: /helper image.*ready|preparation complete/i,
+            },
+            clone: {
+                start: /Importing|Cloning|Checking out|git clone/i,
+                end: /Creating build-time|Clone complete|commit sha/i,
+                fail: /Failed to clone|git.*error/i,
+            },
+            build: {
+                start: /Building docker image started|docker build|nixpacks build/i,
+                end: /Building docker image completed|Successfully built|build complete/i,
+                fail: /Build failed|error during build/i,
+            },
+            push: {
+                start: /Pushing image|docker push/i,
+                end: /Successfully pushed|push complete/i,
+                fail: /Failed to push|push error/i,
+            },
+            deploy: {
+                start: /Rolling update started|Starting container|docker-compose up|up --build/i,
+                end: /New container started|Container created/i,
+                fail: /Failed to start|Container.*exit/i,
+            },
+            healthcheck: {
+                start: /Waiting for healthcheck|Health check started/i,
+                end: /New container is healthy|Rolling update completed|Container is stable/i,
+                fail: /unhealthy|healthcheck.*fail/i,
+            },
+        };
+
+        let currentStageIndex = -1;
+
+        for (const log of logs) {
+            const output = log.output || '';
+
+            for (let i = 0; i < stages.length; i++) {
+                const stage = stages[i];
+                const patterns = stagePatterns[stage.id];
+                if (!patterns) continue;
+
+                if (patterns.start.test(output)) {
+                    if (currentStageIndex < i) {
+                        for (let j = 0; j <= currentStageIndex; j++) {
+                            if (stages[j].status === 'running') {
+                                stages[j].status = 'completed';
+                                stageTimes[stages[j].id].end = log.timestamp;
+                            }
+                        }
+                        currentStageIndex = i;
+                        stages[i].status = 'running';
+                        stageTimes[stage.id].start = log.timestamp;
+                    }
+                }
+
+                if (patterns.end?.test(output) && stages[i].status === 'running') {
+                    stages[i].status = 'completed';
+                    stageTimes[stage.id].end = log.timestamp;
+                }
+
+                if (patterns.fail?.test(output)) {
+                    stages[i].status = 'failed';
+                    stages[i].error = output.substring(0, 200);
+                }
+            }
+
+            if (currentStageIndex >= 0) {
+                stageLogs[stages[currentStageIndex].id].push(output);
+            }
         }
     }
 

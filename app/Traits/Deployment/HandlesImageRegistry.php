@@ -3,6 +3,7 @@
 namespace App\Traits\Deployment;
 
 use App\Exceptions\DeploymentException;
+use App\Models\ApplicationDeploymentQueue;
 use Exception;
 
 /**
@@ -24,6 +25,8 @@ trait HandlesImageRegistry
      */
     private function push_to_docker_registry()
     {
+        $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_PUSH);
+
         $forceFail = true;
         if (str($this->application->docker_registry_image_name)->isEmpty()) {
             return;
