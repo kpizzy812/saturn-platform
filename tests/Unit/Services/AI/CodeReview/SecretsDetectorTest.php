@@ -36,7 +36,8 @@ describe('SecretsDetector', function () {
 
     describe('GitHub tokens', function () {
         it('detects GitHub Personal Access Token (ghp_)', function () {
-            $diff = createDiff(['const token = "ghp_1234567890abcdefghijklmnopqrstuvwx";']);
+            // ghp_ tokens have 36 characters after prefix
+            $diff = createDiff(['const token = "ghp_123456789012345678901234567890123456";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -48,7 +49,8 @@ describe('SecretsDetector', function () {
         });
 
         it('detects GitHub OAuth Token (gho_)', function () {
-            $diff = createDiff(['$token = "gho_1234567890abcdefghijklmnopqrstuvwx";']);
+            // gho_ tokens have 36 characters after prefix
+            $diff = createDiff(['$token = "gho_123456789012345678901234567890123456";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -57,7 +59,8 @@ describe('SecretsDetector', function () {
         });
 
         it('detects GitHub fine-grained PAT', function () {
-            $diff = createDiff(['const token = "github_pat_1234567890abcdefghij_1234567890abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrst";']);
+            // github_pat_ has 22 chars + _ + 59 chars
+            $diff = createDiff(['const token = "github_pat_1234567890123456789012_12345678901234567890123456789012345678901234567890123456789";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -68,7 +71,8 @@ describe('SecretsDetector', function () {
 
     describe('OpenAI/AI provider tokens', function () {
         it('detects OpenAI API key', function () {
-            $diff = createDiff(['const apiKey = "sk-1234567890abcdefghijklmnopqrstuvwxyzabcdefgh";']);
+            // sk- tokens have 48 characters after prefix
+            $diff = createDiff(['const apiKey = "sk-123456789012345678901234567890123456789012345678";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -92,7 +96,8 @@ describe('SecretsDetector', function () {
 
     describe('Generic API keys', function () {
         it('detects hardcoded api_key', function () {
-            $diff = createDiff(['$api_key = "my-super-secret-api-key-12345678";']);
+            // api_key pattern requires 20+ alphanumeric characters
+            $diff = createDiff(['$api_key = "abcdef12345678901234567890";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -101,7 +106,8 @@ describe('SecretsDetector', function () {
         });
 
         it('detects hardcoded apiKey with camelCase', function () {
-            $diff = createDiff(['const apiKey = "abcdefghijklmnopqrstuvwxyz1234";']);
+            // apiKey pattern requires 20+ alphanumeric characters
+            $diff = createDiff(['const apiKey = "abcdefghij12345678901234567890";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -173,7 +179,8 @@ describe('SecretsDetector', function () {
 
     describe('Stripe tokens', function () {
         it('detects Stripe live secret key', function () {
-            $diff = createDiff(['const key = "sk_live_1234567890abcdefghijklmn";']);
+            // sk_live_ tokens have 24+ characters after prefix
+            $diff = createDiff(['const key = "sk_live_123456789012345678901234";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -183,7 +190,8 @@ describe('SecretsDetector', function () {
         });
 
         it('detects Stripe test secret key', function () {
-            $diff = createDiff(['STRIPE_KEY = "sk_test_1234567890abcdefghijklmn";']);
+            // sk_test_ tokens have 24+ characters after prefix
+            $diff = createDiff(['STRIPE_KEY = "sk_test_123456789012345678901234";']);
 
             $violations = $this->detector->detect($diff);
 
@@ -252,8 +260,9 @@ describe('SecretsDetector', function () {
         });
 
         it('ignores short values (likely not real secrets)', function () {
+            // Values less than 20 chars are ignored for generic api_key pattern
             $diff = createDiff([
-                'api_key = "short";',
+                'api_key = "shortvalue";',
             ]);
 
             $violations = $this->detector->detect($diff);
@@ -264,12 +273,12 @@ describe('SecretsDetector', function () {
 
     describe('Secret masking', function () {
         it('masks detected secrets in snippet', function () {
-            $diff = createDiff(['const token = "ghp_1234567890abcdefghijklmnopqrstuvwx";']);
+            $diff = createDiff(['const token = "ghp_123456789012345678901234567890123456";']);
 
             $violations = $this->detector->detect($diff);
 
             expect($violations->first()->snippet)->toContain('[REDACTED]')
-                ->and($violations->first()->snippet)->not->toContain('ghp_1234567890abcdefghijklmnopqrstuvwx');
+                ->and($violations->first()->snippet)->not->toContain('ghp_123456789012345678901234567890123456');
         });
     });
 

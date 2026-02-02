@@ -26,16 +26,16 @@ class SecretsDetector implements StaticDetectorInterface
             'name' => 'API Key/Token',
             'severity' => 'critical',
             'patterns' => [
-                // Generic API key patterns
-                '/(?:api[_-]?key|apikey)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/' => 'API key',
-                '/(?:api[_-]?secret|apisecret)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/' => 'API secret',
+                // Generic API key patterns (with word boundary for matching in variable declarations)
+                '/\b(?:api[_-]?key|apikey)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/' => 'API key',
+                '/\b(?:api[_-]?secret|apisecret)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,})["\']/' => 'API secret',
             ],
         ],
         'SEC002' => [
             'name' => 'Hardcoded Password',
             'severity' => 'critical',
             'patterns' => [
-                '/(?:password|passwd|pwd)\s*[:=]\s*["\']([^"\']{8,})["\']/' => 'password',
+                '/\b(?:password|passwd|pwd)\s*[:=]\s*["\']([^"\']{8,})["\']/' => 'password',
             ],
         ],
         'SEC003' => [

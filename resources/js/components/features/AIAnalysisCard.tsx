@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useDeploymentAnalysis, useAIServiceStatus } from '@/hooks/useDeploymentAnalysis';
 import {
@@ -12,11 +11,11 @@ import {
     Shield,
     Loader2,
     RefreshCw,
-    Sparkles,
     ChevronDown,
-    ChevronUp,
+    ChevronRight,
     Zap,
     Target,
+    Info,
 } from 'lucide-react';
 import type { DeploymentLogAnalysis, AISeverity, AIErrorCategory } from '@/types';
 
@@ -26,280 +25,123 @@ interface AIAnalysisCardProps {
     className?: string;
 }
 
-const severityConfig: Record<AISeverity, { color: string; bgColor: string; icon: React.ReactNode }> = {
-    critical: {
-        color: 'text-red-400',
-        bgColor: 'bg-red-500/15 border-red-500/30',
-        icon: <AlertCircle className="h-4 w-4" />,
-    },
-    high: {
-        color: 'text-orange-400',
-        bgColor: 'bg-orange-500/15 border-orange-500/30',
-        icon: <AlertCircle className="h-4 w-4" />,
-    },
-    medium: {
-        color: 'text-yellow-400',
-        bgColor: 'bg-yellow-500/15 border-yellow-500/30',
-        icon: <AlertCircle className="h-4 w-4" />,
-    },
-    low: {
-        color: 'text-green-400',
-        bgColor: 'bg-green-500/15 border-green-500/30',
-        icon: <CheckCircle2 className="h-4 w-4" />,
-    },
+const severityConfig: Record<AISeverity, { color: string; bg: string; border: string }> = {
+    critical: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+    high: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
+    medium: { color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
+    low: { color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
 };
 
-const categoryConfig: Record<AIErrorCategory, { label: string; icon: React.ReactNode }> = {
-    dockerfile: { label: 'Dockerfile Issue', icon: <Target className="h-4 w-4" /> },
-    dependency: { label: 'Dependency Error', icon: <Zap className="h-4 w-4" /> },
-    build: { label: 'Build Failure', icon: <Zap className="h-4 w-4" /> },
-    runtime: { label: 'Runtime Error', icon: <AlertCircle className="h-4 w-4" /> },
-    network: { label: 'Network Issue', icon: <AlertCircle className="h-4 w-4" /> },
-    resource: { label: 'Resource Limit', icon: <AlertCircle className="h-4 w-4" /> },
-    config: { label: 'Configuration Error', icon: <AlertCircle className="h-4 w-4" /> },
-    unknown: { label: 'Unknown', icon: <AlertCircle className="h-4 w-4" /> },
+const categoryLabels: Record<AIErrorCategory, string> = {
+    dockerfile: 'Dockerfile',
+    dependency: 'Dependency',
+    build: 'Build',
+    runtime: 'Runtime',
+    network: 'Network',
+    resource: 'Resource',
+    config: 'Config',
+    unknown: 'Unknown',
 };
 
 function AnalysisContent({ analysis }: { analysis: DeploymentLogAnalysis }) {
-    const [expanded, setExpanded] = React.useState(true);
+    const [showSolution, setShowSolution] = React.useState(false);
+    const [showPrevention, setShowPrevention] = React.useState(false);
     const severity = severityConfig[analysis.severity];
-    const category = categoryConfig[analysis.error_category];
 
     return (
-        <div className="space-y-4">
-            {/* Header with severity and category */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Badge
-                        className={cn(
-                            'border px-2.5 py-0.5 text-xs font-medium',
-                            severity.bgColor,
-                            severity.color
-                        )}
-                    >
-                        {severity.icon}
-                        <span className="ml-1.5 capitalize">{analysis.severity}</span>
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                        {category.icon}
-                        <span className="ml-1.5">{category.label}</span>
-                    </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-foreground-muted">
-                    <span>Confidence: {analysis.confidence_percent}%</span>
-                    <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${analysis.confidence_percent}%` }}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Root Cause */}
-            <div className={cn('rounded-lg p-4 border', severity.bgColor)}>
-                <div className="flex items-start gap-3">
-                    <div className={cn('mt-0.5', severity.color)}>
-                        <Target className="h-5 w-5" />
-                    </div>
+        <div className="space-y-3">
+            {/* Root Cause - always visible */}
+            <div className={cn('rounded-md p-3 border', severity.bg, severity.border)}>
+                <div className="flex items-start gap-2">
+                    <Target className={cn('h-4 w-4 mt-0.5 flex-shrink-0', severity.color)} />
                     <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-foreground mb-1">Root Cause</h4>
-                        <p className={cn('text-sm', severity.color)}>{analysis.root_cause}</p>
+                        <p className={cn('text-sm font-medium', severity.color)}>{analysis.root_cause}</p>
                         {analysis.root_cause_details && (
-                            <p className="text-sm text-foreground-muted mt-2">{analysis.root_cause_details}</p>
+                            <p className="text-xs text-foreground-muted mt-1">{analysis.root_cause_details}</p>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Expandable details */}
-            <button
-                onClick={() => setExpanded(!expanded)}
-                className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground transition-colors w-full"
-            >
-                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                <span>{expanded ? 'Hide' : 'Show'} solution and prevention tips</span>
-            </button>
-
-            {expanded && (
-                <>
-                    {/* Solution Steps */}
-                    {analysis.solution && analysis.solution.length > 0 && (
-                        <div className="rounded-lg p-4 bg-blue-500/10 border border-blue-500/20">
-                            <div className="flex items-start gap-3">
-                                <div className="mt-0.5 text-blue-400">
-                                    <Lightbulb className="h-5 w-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-foreground mb-2">Solution</h4>
-                                    <ol className="space-y-2">
-                                        {analysis.solution.map((step, index) => (
-                                            <li key={index} className="flex items-start gap-2 text-sm text-foreground-secondary">
-                                                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-medium">
-                                                    {index + 1}
-                                                </span>
-                                                <span>{step}</span>
-                                            </li>
-                                        ))}
-                                    </ol>
-                                </div>
-                            </div>
+            {/* Solution - collapsible */}
+            {analysis.solution && analysis.solution.length > 0 && (
+                <div className="border border-white/5 rounded-md overflow-hidden">
+                    <button
+                        onClick={() => setShowSolution(!showSolution)}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-white/5 transition-colors"
+                    >
+                        {showSolution ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        <Lightbulb className="h-4 w-4 text-blue-400" />
+                        <span className="font-medium">Solution</span>
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                            {analysis.solution.length} step{analysis.solution.length > 1 ? 's' : ''}
+                        </Badge>
+                    </button>
+                    {showSolution && (
+                        <div className="px-3 pb-3 pt-1 border-t border-white/5">
+                            <ol className="space-y-1.5">
+                                {analysis.solution.map((step, i) => (
+                                    <li key={i} className="flex items-start gap-2 text-xs text-foreground-secondary">
+                                        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-medium mt-0.5">
+                                            {i + 1}
+                                        </span>
+                                        <span>{step}</span>
+                                    </li>
+                                ))}
+                            </ol>
                         </div>
                     )}
-
-                    {/* Prevention Tips */}
-                    {analysis.prevention && analysis.prevention.length > 0 && (
-                        <div className="rounded-lg p-4 bg-green-500/10 border border-green-500/20">
-                            <div className="flex items-start gap-3">
-                                <div className="mt-0.5 text-green-400">
-                                    <Shield className="h-5 w-5" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-medium text-foreground mb-2">Prevention</h4>
-                                    <ul className="space-y-1.5">
-                                        {analysis.prevention.map((tip, index) => (
-                                            <li key={index} className="flex items-start gap-2 text-sm text-foreground-secondary">
-                                                <CheckCircle2 className="h-4 w-4 text-green-400 flex-shrink-0 mt-0.5" />
-                                                <span>{tip}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </>
+                </div>
             )}
 
-            {/* Footer with provider info */}
-            <div className="flex items-center justify-between text-xs text-foreground-muted pt-2 border-t border-white/5">
-                <span>
-                    Analyzed by {analysis.provider} ({analysis.model})
-                </span>
-                {analysis.tokens_used && (
-                    <span>{analysis.tokens_used.toLocaleString()} tokens used</span>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function AnalyzingState() {
-    return (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="relative mb-4">
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-                <div className="relative rounded-full bg-primary/10 p-4">
-                    <Brain className="h-8 w-8 text-primary animate-pulse" />
+            {/* Prevention - collapsible */}
+            {analysis.prevention && analysis.prevention.length > 0 && (
+                <div className="border border-white/5 rounded-md overflow-hidden">
+                    <button
+                        onClick={() => setShowPrevention(!showPrevention)}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-white/5 transition-colors"
+                    >
+                        {showPrevention ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        <Shield className="h-4 w-4 text-green-400" />
+                        <span className="font-medium">Prevention</span>
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                            {analysis.prevention.length} tip{analysis.prevention.length > 1 ? 's' : ''}
+                        </Badge>
+                    </button>
+                    {showPrevention && (
+                        <div className="px-3 pb-3 pt-1 border-t border-white/5">
+                            <ul className="space-y-1">
+                                {analysis.prevention.map((tip, i) => (
+                                    <li key={i} className="flex items-start gap-2 text-xs text-foreground-secondary">
+                                        <CheckCircle2 className="h-3 w-3 text-green-400 flex-shrink-0 mt-0.5" />
+                                        <span>{tip}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
-            </div>
-            <h4 className="text-lg font-medium text-foreground mb-2">Analyzing Deployment Logs</h4>
-            <p className="text-sm text-foreground-muted max-w-sm">
-                AI is analyzing the deployment logs to identify the root cause and suggest solutions...
-            </p>
-            <div className="flex items-center gap-2 mt-4 text-xs text-foreground-muted">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>This may take a few moments</span>
-            </div>
-        </div>
-    );
-}
+            )}
 
-function EmptyState({
-    onAnalyze,
-    isLoading,
-    aiAvailable,
-}: {
-    onAnalyze: () => void;
-    isLoading: boolean;
-    aiAvailable: boolean;
-}) {
-    if (!aiAvailable) {
-        return (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="rounded-full bg-yellow-500/10 p-4 mb-4">
-                    <AlertCircle className="h-8 w-8 text-yellow-400" />
-                </div>
-                <h4 className="text-lg font-medium text-foreground mb-2">AI Analysis Unavailable</h4>
-                <p className="text-sm text-foreground-muted max-w-sm">
-                    No AI provider is configured. Configure ANTHROPIC_API_KEY, OPENAI_API_KEY, or Ollama to enable AI analysis.
-                </p>
+            {/* Footer */}
+            <div className="flex items-center justify-between text-[10px] text-foreground-muted pt-1">
+                <span>{analysis.provider} &middot; {analysis.model}</span>
+                <span>{analysis.confidence_percent}% confidence</span>
             </div>
-        );
-    }
-
-    return (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="rounded-full bg-primary/10 p-4 mb-4">
-                <Sparkles className="h-8 w-8 text-primary" />
-            </div>
-            <h4 className="text-lg font-medium text-foreground mb-2">AI Analysis Available</h4>
-            <p className="text-sm text-foreground-muted max-w-sm mb-4">
-                Let AI analyze the deployment logs to identify the root cause and suggest solutions.
-            </p>
-            <Button onClick={onAnalyze} disabled={isLoading}>
-                {isLoading ? (
-                    <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Starting Analysis...
-                    </>
-                ) : (
-                    <>
-                        <Brain className="h-4 w-4 mr-2" />
-                        Analyze with AI
-                    </>
-                )}
-            </Button>
-        </div>
-    );
-}
-
-function FailedState({
-    errorMessage,
-    onRetry,
-    isLoading,
-}: {
-    errorMessage: string | null;
-    onRetry: () => void;
-    isLoading: boolean;
-}) {
-    return (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="rounded-full bg-red-500/10 p-4 mb-4">
-                <AlertCircle className="h-8 w-8 text-red-400" />
-            </div>
-            <h4 className="text-lg font-medium text-foreground mb-2">Analysis Failed</h4>
-            <p className="text-sm text-foreground-muted max-w-sm mb-4">
-                {errorMessage || 'An error occurred while analyzing the deployment logs.'}
-            </p>
-            <Button variant="secondary" onClick={onRetry} disabled={isLoading}>
-                {isLoading ? (
-                    <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Retrying...
-                    </>
-                ) : (
-                    <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Retry Analysis
-                    </>
-                )}
-            </Button>
         </div>
     );
 }
 
 export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: AIAnalysisCardProps) {
+    const [isExpanded, setIsExpanded] = React.useState(true);
     const {
         analysis,
         isLoading,
         isAnalyzing,
-        error,
         triggerAnalysis,
-        refetch,
     } = useDeploymentAnalysis({
         deploymentUuid,
-        autoRefresh: true, // Will auto-refresh when status is 'analyzing'
+        autoRefresh: true,
     });
 
     const { status: aiStatus } = useAIServiceStatus();
@@ -309,74 +151,137 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
         return null;
     }
 
-    // Don't show if AI is disabled
+    // AI disabled globally
     if (aiStatus && !aiStatus.enabled) {
         return null;
     }
 
-    const renderContent = () => {
-        if (isLoading && !analysis) {
-            return (
-                <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-foreground-muted" />
-                </div>
-            );
-        }
-
-        if (analysis?.status === 'analyzing' || isAnalyzing) {
-            return <AnalyzingState />;
-        }
-
-        if (analysis?.status === 'completed') {
-            return <AnalysisContent analysis={analysis} />;
-        }
-
-        if (analysis?.status === 'failed') {
-            return (
-                <FailedState
-                    errorMessage={analysis.error_message}
-                    onRetry={triggerAnalysis}
-                    isLoading={isLoading}
-                />
-            );
-        }
-
+    // AI not configured - show minimal hint
+    if (aiStatus && !aiStatus.available && !analysis) {
         return (
-            <EmptyState
-                onAnalyze={triggerAnalysis}
-                isLoading={isLoading}
-                aiAvailable={aiStatus?.available ?? false}
-            />
+            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-500/5 border border-yellow-500/10 text-xs text-yellow-400/80', className)}>
+                <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>AI analysis available with ANTHROPIC_API_KEY or OPENAI_API_KEY</span>
+            </div>
         );
-    };
+    }
+
+    // Loading initial state
+    if (isLoading && !analysis) {
+        return (
+            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-background-secondary border border-white/5 text-xs text-foreground-muted', className)}>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Checking AI analysis...</span>
+            </div>
+        );
+    }
+
+    // Currently analyzing
+    if (analysis?.status === 'analyzing' || isAnalyzing) {
+        return (
+            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 text-xs', className)}>
+                <Brain className="h-3.5 w-3.5 text-primary animate-pulse" />
+                <span className="text-primary">Analyzing deployment logs...</span>
+                <Loader2 className="h-3 w-3 animate-spin text-primary ml-auto" />
+            </div>
+        );
+    }
+
+    // Analysis failed
+    if (analysis?.status === 'failed') {
+        return (
+            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-red-500/5 border border-red-500/10 text-xs', className)}>
+                <AlertCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+                <span className="text-red-400/80 truncate">{analysis.error_message || 'Analysis failed'}</span>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto h-6 px-2 text-xs"
+                    onClick={triggerAnalysis}
+                    disabled={isLoading}
+                >
+                    <RefreshCw className={cn('h-3 w-3', isLoading && 'animate-spin')} />
+                </Button>
+            </div>
+        );
+    }
+
+    // No analysis yet - offer to analyze
+    if (!analysis || analysis.status === 'pending') {
+        return (
+            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-background-secondary border border-white/5 text-xs', className)}>
+                <Brain className="h-3.5 w-3.5 text-foreground-muted" />
+                <span className="text-foreground-muted">AI can analyze this failure</span>
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="ml-auto h-6 px-2 text-xs"
+                    onClick={triggerAnalysis}
+                    disabled={isLoading}
+                >
+                    {isLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                        <>
+                            <Zap className="h-3 w-3 mr-1" />
+                            Analyze
+                        </>
+                    )}
+                </Button>
+            </div>
+        );
+    }
+
+    // Analysis completed - show full card
+    const severity = severityConfig[analysis.severity];
 
     return (
-        <Card className={cn('overflow-hidden', className)}>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="rounded-lg bg-primary/10 p-2">
-                            <Brain className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-base">AI Error Analysis</CardTitle>
-                            <CardDescription>Automated root cause analysis</CardDescription>
-                        </div>
-                    </div>
-                    {analysis?.status === 'completed' && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={triggerAnalysis}
-                            disabled={isLoading || isAnalyzing}
-                        >
-                            <RefreshCw className={cn('h-4 w-4', (isLoading || isAnalyzing) && 'animate-spin')} />
-                        </Button>
-                    )}
+        <div className={cn('rounded-lg border overflow-hidden', severity.border, severity.bg, className)}>
+            {/* Header - clickable */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-white/5 transition-colors"
+            >
+                <div className={cn('rounded-md p-1.5', severity.bg)}>
+                    <Brain className={cn('h-4 w-4', severity.color)} />
                 </div>
-            </CardHeader>
-            <CardContent>{renderContent()}</CardContent>
-        </Card>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">AI Analysis</span>
+                        <Badge className={cn('text-[10px] px-1.5 py-0', severity.bg, severity.color, 'border', severity.border)}>
+                            {analysis.severity}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {categoryLabels[analysis.error_category]}
+                        </Badge>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            triggerAnalysis();
+                        }}
+                        disabled={isLoading || isAnalyzing}
+                    >
+                        <RefreshCw className={cn('h-3.5 w-3.5', (isLoading || isAnalyzing) && 'animate-spin')} />
+                    </Button>
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </div>
+            </button>
+
+            {/* Content */}
+            {isExpanded && (
+                <div className="px-4 pb-4 border-t border-white/5">
+                    <div className="pt-3">
+                        <AnalysisContent analysis={analysis} />
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
 
