@@ -4,9 +4,10 @@ import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs } from '@
 import {
     Server, Settings, RefreshCw, Terminal, Activity,
     HardDrive, Cpu, MemoryStick, Network, Clock,
-    CheckCircle, XCircle, AlertTriangle, Globe
+    CheckCircle, XCircle, AlertTriangle, Globe, Loader2
 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
+import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
 
 interface Props {
     server: ServerType;
@@ -154,49 +155,148 @@ function OverviewTab({ server }: { server: ServerType }) {
 }
 
 function ResourcesTab({ server }: { server: ServerType }) {
+    const { metrics, isLoading, error, refetch } = useSentinelMetrics({
+        serverUuid: server.uuid,
+        autoRefresh: true,
+        refreshInterval: 10000,
+    });
+
+    const getStatusColor = (percentage: number) => {
+        if (percentage >= 90) return 'danger';
+        if (percentage >= 75) return 'warning';
+        return 'success';
+    };
+
+    if (error) {
+        return (
+            <div className="space-y-4">
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                        <AlertTriangle className="h-8 w-8 text-warning" />
+                        <p className="mt-2 text-sm text-foreground-muted">
+                            {error.message.includes('503') || error.message.includes('Sentinel')
+                                ? 'Sentinel is not enabled on this server'
+                                : 'Failed to load metrics'}
+                        </p>
+                        <Button variant="secondary" size="sm" className="mt-3" onClick={() => refetch()}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
-        <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
-                            <Cpu className="h-5 w-5 text-info" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-foreground-muted">CPU Usage</p>
-                            <p className="text-2xl font-bold text-foreground">--</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+        <div className="space-y-4">
+            <div className="flex justify-end">
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => refetch()}
+                    disabled={isLoading}
+                >
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                </Button>
+            </div>
 
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
-                            <MemoryStick className="h-5 w-5 text-warning" />
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/10">
+                                    <Cpu className="h-5 w-5 text-info" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">CPU Usage</p>
+                                    {isLoading && !metrics ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />
+                                        </div>
+                                    ) : (
+                                        <p className="text-2xl font-bold text-foreground">
+                                            {metrics?.cpu.current || '--'}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            {metrics && (
+                                <Badge variant={getStatusColor(metrics.cpu.percentage)}>
+                                    {metrics.cpu.percentage}%
+                                </Badge>
+                            )}
                         </div>
-                        <div>
-                            <p className="text-sm text-foreground-muted">Memory</p>
-                            <p className="text-2xl font-bold text-foreground">--</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <HardDrive className="h-5 w-5 text-primary" />
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                                    <MemoryStick className="h-5 w-5 text-warning" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">Memory</p>
+                                    {isLoading && !metrics ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />
+                                        </div>
+                                    ) : (
+                                        <p className="text-2xl font-bold text-foreground">
+                                            {metrics?.memory.current || '--'}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            {metrics && (
+                                <Badge variant={getStatusColor(metrics.memory.percentage)}>
+                                    {metrics.memory.percentage}%
+                                </Badge>
+                            )}
                         </div>
-                        <div>
-                            <p className="text-sm text-foreground-muted">Disk</p>
-                            <p className="text-2xl font-bold text-foreground">--</p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                    <HardDrive className="h-5 w-5 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-foreground-muted">Disk</p>
+                                    {isLoading && !metrics ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />
+                                        </div>
+                                    ) : (
+                                        <p className="text-2xl font-bold text-foreground">
+                                            {metrics?.disk.current || '--'}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            {metrics && (
+                                <Badge variant={getStatusColor(metrics.disk.percentage)}>
+                                    {metrics.disk.percentage}%
+                                </Badge>
+                            )}
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Link href={`/servers/${server.uuid}/metrics`} className="inline-block">
+                <Button variant="secondary" size="sm">
+                    <Activity className="mr-2 h-4 w-4" />
+                    View Detailed Metrics
+                </Button>
+            </Link>
         </div>
     );
 }
