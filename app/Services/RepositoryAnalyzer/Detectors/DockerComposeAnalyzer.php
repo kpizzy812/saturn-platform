@@ -171,13 +171,46 @@ class DockerComposeAnalyzer
     {
         return new DockerComposeService(
             name: $name,
-            image: $config['image'] ?? $config['build'] ?? 'unknown',
+            image: $this->parseImage($config),
             ports: $this->parsePorts($config['ports'] ?? []),
             environment: $this->parseEnvironment($config['environment'] ?? []),
             healthcheck: $this->parseHealthcheck($config['healthcheck'] ?? null),
             dependsOn: $this->parseDependsOn($config['depends_on'] ?? []),
             volumes: $config['volumes'] ?? [],
         );
+    }
+
+    /**
+     * Parse image from service config (handles both string and array formats)
+     */
+    private function parseImage(array $config): string
+    {
+        // Handle image field
+        if (isset($config['image'])) {
+            if (is_string($config['image'])) {
+                return $config['image'];
+            }
+            // Array format like {name: "image", tag: "latest"}
+            if (is_array($config['image'])) {
+                return $config['image']['name'] ?? 'unknown';
+            }
+        }
+
+        // Handle build field
+        if (isset($config['build'])) {
+            if (is_string($config['build'])) {
+                return 'build:'.$config['build'];
+            }
+            // Array format like {context: ".", dockerfile: "Dockerfile"}
+            if (is_array($config['build'])) {
+                $context = $config['build']['context'] ?? '.';
+                $dockerfile = $config['build']['dockerfile'] ?? 'Dockerfile';
+
+                return 'build:'.$context.'/'.$dockerfile;
+            }
+        }
+
+        return 'unknown';
     }
 
     /**
