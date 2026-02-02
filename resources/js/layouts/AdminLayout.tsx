@@ -68,42 +68,47 @@ function AdminSidebar() {
     };
 
     return (
-        <aside className="flex h-screen w-64 flex-col border-r border-red-500/20 bg-background">
+        <aside className="flex h-screen w-64 flex-col border-r border-red-500/30 bg-gradient-to-b from-red-950/20 via-background to-background">
             {/* Admin Logo */}
-            <div className="flex h-14 items-center gap-2 border-b border-red-500/20 bg-gradient-to-r from-red-500/10 to-transparent px-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-red-500 to-red-600">
-                    <Shield className="h-4 w-4 text-white" />
+            <div className="flex h-16 items-center gap-3 border-b border-red-500/30 bg-gradient-to-r from-red-500/15 to-red-600/5 px-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/25">
+                    <Shield className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                    <span className="text-sm font-bold text-foreground">Admin Panel</span>
-                    <div className="text-[10px] text-red-400">Super Admin</div>
+                    <span className="text-base font-bold text-foreground">Admin Panel</span>
+                    <div className="text-[11px] font-medium text-red-400">Saturn Platform</div>
                 </div>
             </div>
 
             {/* Admin Navigation */}
-            <nav className="flex-1 space-y-1 px-2 py-4">
+            <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
                 {adminNavItems.map((item) => (
                     <Link
                         key={item.href}
                         href={item.href}
                         className={cn(
-                            'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                             isActive(item.href)
-                                ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                                : 'text-foreground-muted hover:bg-background-secondary hover:text-foreground'
+                                ? 'bg-gradient-to-r from-red-500/20 to-red-600/10 text-red-400 border border-red-500/30 shadow-sm shadow-red-500/10'
+                                : 'text-foreground-muted hover:bg-red-500/10 hover:text-foreground hover:border-red-500/20 border border-transparent'
                         )}
                     >
-                        {item.icon}
+                        <span className={cn(
+                            'transition-colors',
+                            isActive(item.href) ? 'text-red-400' : ''
+                        )}>
+                            {item.icon}
+                        </span>
                         {item.label}
                     </Link>
                 ))}
             </nav>
 
             {/* Back to Main App */}
-            <div className="border-t border-border px-2 py-4">
+            <div className="border-t border-red-500/20 px-3 py-3">
                 <Link
                     href="/dashboard"
-                    className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground-muted transition-all duration-200 hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20"
                 >
                     <LayoutDashboard className="h-4 w-4" />
                     Back to App
@@ -111,16 +116,16 @@ function AdminSidebar() {
             </div>
 
             {/* Admin User Section */}
-            <div className="border-t border-red-500/20 bg-gradient-to-r from-red-500/5 to-transparent p-4">
+            <div className="border-t border-red-500/30 bg-gradient-to-r from-red-500/10 to-transparent p-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-sm font-medium text-white">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-sm font-bold text-white shadow-lg shadow-red-500/25">
                         {user?.name?.charAt(0).toUpperCase() || 'A'}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                        <p className="text-sm font-semibold text-foreground truncate">
                             {user?.name || 'Admin'}
                         </p>
-                        <p className="text-xs text-red-400 truncate">
+                        <p className="text-xs font-medium text-red-400 truncate">
                             Super Administrator
                         </p>
                     </div>
@@ -128,7 +133,7 @@ function AdminSidebar() {
                         href="/logout"
                         method="post"
                         as="button"
-                        className="text-foreground-muted hover:text-foreground"
+                        className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-red-500/10 hover:text-red-400"
                     >
                         <LogOut className="h-4 w-4" />
                     </Link>
@@ -144,7 +149,7 @@ function AdminBreadcrumbs({ items }: { items: AdminBreadcrumb[] }) {
     }
 
     return (
-        <nav className="border-b border-border bg-background px-6 py-3">
+        <nav className="border-b border-red-500/20 bg-gradient-to-r from-red-500/5 to-transparent px-6 lg:px-8 py-3">
             <ol className="flex items-center gap-2 text-sm">
                 {items.map((breadcrumb, index) => {
                     const isLast = index === items.length - 1;
@@ -154,17 +159,17 @@ function AdminBreadcrumbs({ items }: { items: AdminBreadcrumb[] }) {
                             {breadcrumb.href && !isLast ? (
                                 <Link
                                     href={breadcrumb.href}
-                                    className="text-foreground-muted transition-colors duration-200 hover:text-foreground"
+                                    className="text-foreground-muted transition-colors duration-200 hover:text-red-400"
                                 >
                                     {breadcrumb.label}
                                 </Link>
                             ) : (
-                                <span className={isLast ? 'text-foreground' : 'text-foreground-muted'}>
+                                <span className={isLast ? 'text-foreground font-medium' : 'text-foreground-muted'}>
                                     {breadcrumb.label}
                                 </span>
                             )}
                             {!isLast && (
-                                <span className="text-foreground-muted">/</span>
+                                <span className="text-red-500/50">/</span>
                             )}
                         </li>
                     );
@@ -183,7 +188,7 @@ export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) 
                 <AdminSidebar />
                 <div className="flex flex-1 flex-col overflow-hidden">
                     {breadcrumbs && breadcrumbs.length > 0 && <AdminBreadcrumbs items={breadcrumbs} />}
-                    <main className="flex-1 overflow-auto">
+                    <main className="flex-1 overflow-auto p-6 lg:p-8">
                         {children}
                     </main>
                 </div>
