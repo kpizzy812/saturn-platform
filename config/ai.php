@@ -95,6 +95,64 @@ return [
     | System Prompts
     |--------------------------------------------------------------------------
     */
+    /*
+    |--------------------------------------------------------------------------
+    | Code Review Configuration
+    |--------------------------------------------------------------------------
+    |
+    | AI-powered code review for security vulnerabilities and code quality.
+    | MVP: report-only mode, no deployment blocking.
+    |
+    */
+    'code_review' => [
+        // Master toggle for code review feature
+        'enabled' => env('AI_CODE_REVIEW_ENABLED', false),
+
+        // Mode: 'report_only' (MVP), 'warn' (Phase 2), 'block' (Phase 3)
+        'mode' => env('AI_CODE_REVIEW_MODE', 'report_only'),
+
+        // Detectors configuration
+        'detectors' => [
+            'secrets' => env('AI_CODE_REVIEW_SECRETS', true),
+            'dangerous_functions' => env('AI_CODE_REVIEW_DANGEROUS_FUNCTIONS', true),
+        ],
+
+        // Version for cache invalidation when detectors change
+        'detectors_version' => '1.0.0',
+
+        // LLM enrichment for explanations (not for finding violations)
+        'llm_enrichment' => env('AI_CODE_REVIEW_LLM', true),
+
+        // Diff processing limits
+        'max_diff_lines' => env('AI_CODE_REVIEW_MAX_LINES', 3000),
+
+        // File patterns to exclude from analysis
+        'exclude_patterns' => [
+            'vendor/*',
+            'node_modules/*',
+            '*.lock',
+            'package-lock.json',
+            'composer.lock',
+            'yarn.lock',
+            'pnpm-lock.yaml',
+            '*.min.js',
+            '*.min.css',
+            'public/build/*',
+            'dist/*',
+        ],
+
+        // Cache settings
+        'cache_ttl' => env('AI_CODE_REVIEW_CACHE_TTL', 604800), // 7 days
+
+        // Data retention (violations older than this will be deleted)
+        'retention_days' => env('AI_CODE_REVIEW_RETENTION_DAYS', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | System Prompts
+    |--------------------------------------------------------------------------
+    */
     'prompts' => [
         'deployment_analysis' => <<<'PROMPT'
 You are an expert DevOps engineer analyzing deployment logs for a self-hosted PaaS platform (similar to Heroku/Vercel).

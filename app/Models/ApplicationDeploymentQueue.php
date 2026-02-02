@@ -64,6 +64,11 @@ class ApplicationDeploymentQueue extends Model
         return $this->hasOne(DeploymentLogAnalysis::class, 'deployment_id');
     }
 
+    public function codeReview()
+    {
+        return $this->hasOne(CodeReview::class, 'deployment_id');
+    }
+
     public function server(): Attribute
     {
         return Attribute::make(

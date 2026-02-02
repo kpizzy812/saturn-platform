@@ -112,7 +112,8 @@ export function useDeploymentAnalysis({
 
     // Auto-refresh when analyzing
     React.useEffect(() => {
-        if (!autoRefresh && !isAnalyzing) return;
+        // Only auto-refresh when enabled AND currently analyzing
+        if (!autoRefresh || !isAnalyzing) return;
 
         const interval = setInterval(() => {
             fetchAnalysis();

@@ -4,6 +4,7 @@ use App\Actions\Application\StopApplication;
 use App\Actions\Deployment\RequestDeploymentApprovalAction;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Events\DeploymentCreated;
+use App\Jobs\AnalyzeCodeReviewJob;
 use App\Jobs\ApplicationDeploymentJob;
 use App\Jobs\VolumeCloneJob;
 use App\Models\Application;
@@ -129,6 +130,15 @@ function queue_application_deployment(Application $application, string $deployme
     } catch (\Throwable $e) {
         // Don't break deployment if broadcasting fails
         \Log::warning('Failed to broadcast DeploymentCreated event: '.$e->getMessage());
+    }
+
+    // Dispatch code review job if enabled and commit is available
+    if (config('ai.code_review.enabled', false) && $commit && $commit !== 'HEAD') {
+        try {
+            AnalyzeCodeReviewJob::dispatch($deployment->id)->delay(now()->addSeconds(5));
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to dispatch code review job: '.$e->getMessage());
+        }
     }
 
     // Check if deployment requires approval (unless no_questions_asked or is_webhook)

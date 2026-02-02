@@ -299,7 +299,7 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
         refetch,
     } = useDeploymentAnalysis({
         deploymentUuid,
-        autoRefresh: isAnalyzing,
+        autoRefresh: true, // Will auto-refresh when status is 'analyzing'
     });
 
     const { status: aiStatus } = useAIServiceStatus();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ApplicationDeploymentsController;
 use App\Http\Controllers\Api\ApplicationEnvsController;
 use App\Http\Controllers\Api\ApplicationsController;
 use App\Http\Controllers\Api\CloudProviderTokensController;
+use App\Http\Controllers\Api\CodeReviewController;
 use App\Http\Controllers\Api\DatabaseActionsController;
 use App\Http\Controllers\Api\DatabaseBackupsController;
 use App\Http\Controllers\Api\DatabaseCreateController;
@@ -213,6 +214,12 @@ Route::group([
     Route::get('/deployments/{uuid}/analysis', [DeploymentAnalysisController::class, 'show'])->middleware(['api.ability:read']);
     Route::post('/deployments/{uuid}/analyze', [DeploymentAnalysisController::class, 'analyze'])->middleware(['api.ability:write']);
     Route::get('/ai/status', [DeploymentAnalysisController::class, 'status'])->middleware(['api.ability:read']);
+
+    // Code Review
+    Route::get('/deployments/{uuid}/code-review', [CodeReviewController::class, 'show'])->middleware(['api.ability:read']);
+    Route::post('/deployments/{uuid}/code-review', [CodeReviewController::class, 'trigger'])->middleware(['api.ability:write']);
+    Route::get('/deployments/{uuid}/code-review/violations', [CodeReviewController::class, 'violations'])->middleware(['api.ability:read']);
+    Route::get('/code-review/status', [CodeReviewController::class, 'status'])->middleware(['api.ability:read']);
 
     // Deployment Approval Routes
     Route::post('/deployments/{uuid}/request-approval', [DeploymentApprovalController::class, 'requestApproval'])->middleware(['api.ability:deploy']);
