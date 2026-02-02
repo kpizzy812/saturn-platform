@@ -34,31 +34,36 @@ class TeamUser extends Pivot
 
     /**
      * Check if user has access to all projects.
-     * '*' in array means full access to all projects.
+     * null = all projects (default), '*' in array = also full access.
      */
     public function hasFullProjectAccess(): bool
     {
-        return is_array($this->allowed_projects) && in_array('*', $this->allowed_projects, true);
+        return $this->allowed_projects === null ||
+               (is_array($this->allowed_projects) && in_array('*', $this->allowed_projects, true));
     }
 
     /**
      * Check if user has no access to any projects.
-     * null or empty array means no access.
+     * Empty array [] means no access.
      */
     public function hasNoProjectAccess(): bool
     {
-        return $this->allowed_projects === null ||
-               (is_array($this->allowed_projects) && empty($this->allowed_projects));
+        return is_array($this->allowed_projects) && empty($this->allowed_projects);
     }
 
     /**
      * Check if user can access a specific project.
-     * Returns false by default (deny-by-default security model).
+     * null = all projects (allow-by-default for existing members).
      */
     public function canAccessProject(int $projectId): bool
     {
-        // No access by default (null or empty array)
-        if ($this->allowed_projects === null || empty($this->allowed_projects)) {
+        // null means access to all projects
+        if ($this->allowed_projects === null) {
+            return true;
+        }
+
+        // Empty array means no access
+        if (empty($this->allowed_projects)) {
             return false;
         }
 

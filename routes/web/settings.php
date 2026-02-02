@@ -38,9 +38,10 @@ Route::get('/settings/team', function () {
 
         $allowedProjects = $user->pivot->allowed_projects;
 
-        // Determine access type based on deny-by-default model
-        $hasFullAccess = is_array($allowedProjects) && in_array('*', $allowedProjects, true);
-        $hasNoAccess = $allowedProjects === null || (is_array($allowedProjects) && empty($allowedProjects));
+        // Determine access type based on allow-by-default model
+        // null = all projects (full access), [] = no access, [1,2,3] = specific projects
+        $hasFullAccess = $allowedProjects === null || (is_array($allowedProjects) && in_array('*', $allowedProjects, true));
+        $hasNoAccess = is_array($allowedProjects) && empty($allowedProjects);
         $hasLimitedAccess = ! $hasFullAccess && ! $hasNoAccess;
 
         // Count accessible projects for limited access
@@ -1176,8 +1177,9 @@ Route::get('/settings/team/members/{id}/projects', function (string $id) {
     $allowedProjects = $member->pivot->allowed_projects;
 
     // Determine access type for frontend
-    $hasFullAccess = is_array($allowedProjects) && in_array('*', $allowedProjects, true);
-    $hasNoAccess = $allowedProjects === null || (is_array($allowedProjects) && empty($allowedProjects));
+    // null = all projects (full access), [] = no access, [1,2,3] = specific projects
+    $hasFullAccess = $allowedProjects === null || (is_array($allowedProjects) && in_array('*', $allowedProjects, true));
+    $hasNoAccess = is_array($allowedProjects) && empty($allowedProjects);
 
     return response()->json([
         'member' => [
@@ -1233,32 +1235,31 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
         return response()->json(['message' => 'Owner always has full access and cannot be restricted'], 422);
     }
 
-    // Determine allowed_projects value based on new deny-by-default model
-    // null or [] = no access (default)
-    // ['*'] = full access to all projects
-    // [1, 2, 3] = access to specific projects
+    // Determine allowed_projects value based on allow-by-default model
+    // null = all projects (full access, default for existing members)
+    // [] = no access (explicit deny)
+    // [1, 2, 3] = access to specific projects only
 
-    $allowedProjects = null; // default: no access
+    $allowedProjects = []; // default: no access when explicitly setting
 
     if ($request->has('grant_all') && $request->grant_all === true) {
-        // Grant access to all projects
-        $allowedProjects = ['*'];
+        // Grant access to all projects (null means all)
+        $allowedProjects = null;
     } elseif ($request->has('allowed_projects')) {
         $allowedProjects = $request->allowed_projects;
 
-        // If empty array provided, it means no access (explicit deny)
-        if (empty($allowedProjects)) {
+        // If '*' is in array, treat as full access (null)
+        if (is_array($allowedProjects) && in_array('*', $allowedProjects, true)) {
             $allowedProjects = null;
-        } else {
-            // Validate that all project IDs belong to this team (unless '*')
-            if (! in_array('*', $allowedProjects, true)) {
-                $teamProjectIds = $team->projects()->pluck('id')->toArray();
-                $invalidIds = array_diff($allowedProjects, $teamProjectIds);
-                if (! empty($invalidIds)) {
-                    return response()->json(['message' => 'Invalid project IDs'], 422);
-                }
+        } elseif (! empty($allowedProjects)) {
+            // Validate that all project IDs belong to this team
+            $teamProjectIds = $team->projects()->pluck('id')->toArray();
+            $invalidIds = array_diff($allowedProjects, $teamProjectIds);
+            if (! empty($invalidIds)) {
+                return response()->json(['message' => 'Invalid project IDs'], 422);
             }
         }
+        // If empty array, keep it as [] - means no access
     }
 
     $team->members()->updateExistingPivot($id, [

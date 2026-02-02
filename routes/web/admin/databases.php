@@ -13,16 +13,18 @@ use Inertia\Inertia;
 /**
  * Database model classes mapping for admin routes
  */
-define('ADMIN_DATABASE_MODELS', [
-    'postgresql' => \App\Models\StandalonePostgresql::class,
-    'mysql' => \App\Models\StandaloneMysql::class,
-    'mariadb' => \App\Models\StandaloneMariadb::class,
-    'mongodb' => \App\Models\StandaloneMongodb::class,
-    'redis' => \App\Models\StandaloneRedis::class,
-    'keydb' => \App\Models\StandaloneKeydb::class,
-    'dragonfly' => \App\Models\StandaloneDragonfly::class,
-    'clickhouse' => \App\Models\StandaloneClickhouse::class,
-]);
+if (! defined('ADMIN_DATABASE_MODELS')) {
+    define('ADMIN_DATABASE_MODELS', [
+        'postgresql' => \App\Models\StandalonePostgresql::class,
+        'mysql' => \App\Models\StandaloneMysql::class,
+        'mariadb' => \App\Models\StandaloneMariadb::class,
+        'mongodb' => \App\Models\StandaloneMongodb::class,
+        'redis' => \App\Models\StandaloneRedis::class,
+        'keydb' => \App\Models\StandaloneKeydb::class,
+        'dragonfly' => \App\Models\StandaloneDragonfly::class,
+        'clickhouse' => \App\Models\StandaloneClickhouse::class,
+    ]);
+}
 
 /**
  * Find a database by UUID across all types (admin version - no team restriction)
