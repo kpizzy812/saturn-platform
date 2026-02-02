@@ -80,6 +80,28 @@ Route::get('/servers/{uuid}/settings', function (string $uuid) {
     return Inertia::render('Servers/Settings/Index', ['server' => $server]);
 })->name('servers.settings');
 
+Route::get('/servers/{uuid}/settings/general', function (string $uuid) {
+    $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+    return Inertia::render('Servers/Settings/General', ['server' => $server]);
+})->name('servers.settings.general');
+
+Route::patch('/servers/{uuid}/settings/general', function (string $uuid, Request $request) {
+    $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string|max:500',
+        'ip' => 'required|string|max:255',
+        'port' => 'required|integer|min:1|max:65535',
+        'user' => 'required|string|max:255',
+    ]);
+
+    $server->update($validated);
+
+    return redirect()->back()->with('success', 'Server settings updated successfully');
+})->name('servers.settings.general.update');
+
 Route::get('/servers/{uuid}/settings/docker', function (string $uuid) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
