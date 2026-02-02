@@ -204,9 +204,10 @@ export function useCodeReview({
         fetchReview();
     }, [fetchReview]);
 
-    // Auto-refresh when analyzing
+    // Auto-refresh only when analyzing (polling for results)
     React.useEffect(() => {
-        if (!autoRefresh && !isAnalyzing) return;
+        // Only poll when autoRefresh is enabled AND currently analyzing
+        if (!autoRefresh || !isAnalyzing) return;
 
         const interval = setInterval(() => {
             fetchReview();

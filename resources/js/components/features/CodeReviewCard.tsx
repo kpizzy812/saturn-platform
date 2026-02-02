@@ -380,7 +380,7 @@ export function CodeReviewCard({ deploymentUuid, commitSha, className }: CodeRev
         refetch,
     } = useCodeReview({
         deploymentUuid,
-        autoRefresh: isAnalyzing,
+        autoRefresh: true, // Hook handles auto-refresh internally based on isAnalyzing
     });
 
     const { status: serviceStatus } = useCodeReviewStatus();
