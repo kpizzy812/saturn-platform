@@ -47,9 +47,10 @@ export function initializeEcho(): Echo<'pusher'> | null {
         const isAutoDetected = !import.meta.env.VITE_PUSHER_HOST;
         const wsScheme = import.meta.env.VITE_PUSHER_SCHEME || (window.location.protocol === 'https:' ? 'wss' : 'ws');
         const forceTLS = wsScheme === 'wss' || wsScheme === 'https';
-        // In production with auto-detection, use standard HTTPS port (Traefik handles routing)
-        // Otherwise use configured port
-        const wsPort = isAutoDetected && forceTLS ? 443 : (import.meta.env.VITE_PUSHER_PORT || 6001);
+        // In production with auto-detection, use the same port as the page (nginx proxies WebSocket)
+        // For HTTPS: 443, for HTTP: current port or 80
+        const currentPort = window.location.port ? parseInt(window.location.port, 10) : (forceTLS ? 443 : 80);
+        const wsPort = import.meta.env.VITE_PUSHER_PORT || (isAutoDetected ? currentPort : 6001);
         const wssPort = import.meta.env.VITE_PUSHER_WSS_PORT || wsPort;
         const wsKey = import.meta.env.VITE_PUSHER_APP_KEY || 'saturn';
 
