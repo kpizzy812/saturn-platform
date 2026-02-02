@@ -5,6 +5,7 @@ interface UseDeploymentAnalysisOptions {
     deploymentUuid: string;
     autoRefresh?: boolean;
     refreshInterval?: number;
+    enabled?: boolean; // Skip fetching when false (useful for conditional loading)
 }
 
 interface UseDeploymentAnalysisReturn {
@@ -37,9 +38,10 @@ export function useDeploymentAnalysis({
     deploymentUuid,
     autoRefresh = false,
     refreshInterval = 5000,
+    enabled = true,
 }: UseDeploymentAnalysisOptions): UseDeploymentAnalysisReturn {
     const [analysis, setAnalysis] = React.useState<DeploymentLogAnalysis | null>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
+    const [isLoading, setIsLoading] = React.useState(enabled);
     const [isAnalyzing, setIsAnalyzing] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
 
@@ -105,10 +107,12 @@ export function useDeploymentAnalysis({
         }
     }, [deploymentUuid, fetchAnalysis]);
 
-    // Initial fetch
+    // Initial fetch (only when enabled)
     React.useEffect(() => {
-        fetchAnalysis();
-    }, [fetchAnalysis]);
+        if (enabled) {
+            fetchAnalysis();
+        }
+    }, [fetchAnalysis, enabled]);
 
     // Auto-refresh when analyzing
     React.useEffect(() => {

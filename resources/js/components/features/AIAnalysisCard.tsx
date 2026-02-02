@@ -134,6 +134,10 @@ function AnalysisContent({ analysis }: { analysis: DeploymentLogAnalysis }) {
 
 export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: AIAnalysisCardProps) {
     const [isExpanded, setIsExpanded] = React.useState(true);
+
+    // Only fetch for failed deployments to avoid unnecessary requests
+    const isFailed = deploymentStatus === 'failed';
+
     const {
         analysis,
         isLoading,
@@ -141,13 +145,14 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
         triggerAnalysis,
     } = useDeploymentAnalysis({
         deploymentUuid,
-        autoRefresh: true,
+        autoRefresh: isFailed, // Only auto-refresh for failed deployments
+        enabled: isFailed, // Only fetch when deployment is failed
     });
 
     const { status: aiStatus, isLoading: aiStatusLoading } = useAIServiceStatus();
 
     // Only show for failed deployments
-    if (deploymentStatus !== 'failed') {
+    if (!isFailed) {
         return null;
     }
 
