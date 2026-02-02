@@ -142,18 +142,19 @@ export function useCodeReview({
                 credentials: 'include',
             });
 
-            if (response.status === 404) {
-                // No review available yet
-                setReview(null);
-                setIsAnalyzing(false);
-                return;
-            }
-
             if (!response.ok) {
                 throw new Error(`Failed to fetch code review: ${response.statusText}`);
             }
 
             const data = await response.json();
+
+            // Handle 'not_found' status (no review yet)
+            if (data.status === 'not_found' || data.review === null) {
+                setReview(null);
+                setIsAnalyzing(false);
+                return;
+            }
+
             setReview(data.review);
             setIsAnalyzing(data.status === 'analyzing');
         } catch (err) {

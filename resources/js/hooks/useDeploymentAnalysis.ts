@@ -59,18 +59,19 @@ export function useDeploymentAnalysis({
                 credentials: 'include',
             });
 
-            if (response.status === 404) {
-                // No analysis available yet - stop polling
-                setAnalysis(null);
-                setIsAnalyzing(false);
-                return;
-            }
-
             if (!response.ok) {
                 throw new Error(`Failed to fetch analysis: ${response.statusText}`);
             }
 
             const data = await response.json();
+
+            // Handle 'not_found' status (no analysis yet)
+            if (data.status === 'not_found' || data.analysis === null) {
+                setAnalysis(null);
+                setIsAnalyzing(false);
+                return;
+            }
+
             setAnalysis(data.analysis);
             setIsAnalyzing(data.status === 'analyzing');
         } catch (err) {

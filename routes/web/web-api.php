@@ -330,10 +330,12 @@ Route::get('/web-api/deployments/{uuid}/analysis', function (string $uuid) {
     $analysis = $deployment->logAnalysis;
 
     if ($analysis === null) {
+        // Return 200 with status instead of 404 to avoid console errors
         return response()->json([
             'status' => 'not_found',
+            'analysis' => null,
             'message' => 'No analysis available for this deployment',
-        ], 404);
+        ]);
     }
 
     return response()->json([
@@ -458,10 +460,12 @@ Route::get('/web-api/deployments/{uuid}/code-review', function (string $uuid) {
     }
 
     if ($review === null) {
+        // Return 200 with status instead of 404 to avoid console errors
         return response()->json([
             'status' => 'not_found',
+            'review' => null,
             'message' => 'No code review available for this deployment',
-        ], 404);
+        ]);
     }
 
     return response()->json([
