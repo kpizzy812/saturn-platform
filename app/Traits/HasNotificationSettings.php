@@ -24,6 +24,7 @@ trait HasNotificationSettings
 
     /**
      * Events that should always create in-app notifications.
+     * NOTE: 'general' and 'test' are excluded - system notifications go to admin logs.
      */
     protected $inAppEvents = [
         'deployment_success',
@@ -91,8 +92,8 @@ trait HasNotificationSettings
     {
         $channels = [];
 
-        // Always add InAppChannel for supported events to store in-app notifications
-        if (in_array($event, $this->inAppEvents) || in_array($event, $this->alwaysSendEvents)) {
+        // Add InAppChannel for user-facing events only (exclude system events like 'general', 'test')
+        if (in_array($event, $this->inAppEvents)) {
             $channels[] = InAppChannel::class;
         }
 
