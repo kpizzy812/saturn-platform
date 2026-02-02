@@ -60,8 +60,9 @@ export function useDeploymentAnalysis({
             });
 
             if (response.status === 404) {
-                // No analysis available yet
+                // No analysis available yet - stop polling
                 setAnalysis(null);
+                setIsAnalyzing(false);
                 return;
             }
 
