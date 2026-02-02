@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, Badge, Button, useConfirm } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
+import { DeploymentGraph, parseDeploymentLogs } from '@/components/features/DeploymentGraph';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { useLogStream } from '@/hooks/useLogStream';
@@ -163,6 +164,23 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
             content: log,
         }));
     }, [isStreaming, streamedLogs, deployment?.deploy_logs]);
+
+    // Parse deployment stages from logs for the visual graph
+    const deploymentStages = React.useMemo(() => {
+        const allLogs = isStreaming && streamedLogs.length > 0
+            ? streamedLogs.map(log => ({ output: log.message, timestamp: log.timestamp }))
+            : [
+                ...(deployment?.build_logs || []).map(log => ({ output: log })),
+                ...(deployment?.deploy_logs || []).map(log => ({ output: log })),
+            ];
+        return parseDeploymentLogs(allLogs);
+    }, [isStreaming, streamedLogs, deployment?.build_logs, deployment?.deploy_logs]);
+
+    // Determine current stage for the graph
+    const currentStage = React.useMemo(() => {
+        const runningStage = deploymentStages.find(s => s.status === 'running');
+        return runningStage?.id;
+    }, [deploymentStages]);
 
     if (!deployment) {
         return (

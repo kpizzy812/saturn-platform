@@ -144,11 +144,21 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
         autoRefresh: true,
     });
 
-    const { status: aiStatus } = useAIServiceStatus();
+    const { status: aiStatus, isLoading: aiStatusLoading } = useAIServiceStatus();
 
     // Only show for failed deployments
     if (deploymentStatus !== 'failed') {
         return null;
+    }
+
+    // Loading AI status or analysis
+    if ((aiStatusLoading || isLoading) && !analysis) {
+        return (
+            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-background-secondary border border-white/5 text-xs text-foreground-muted', className)}>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Checking AI analysis...</span>
+            </div>
+        );
     }
 
     // AI disabled globally
@@ -157,21 +167,11 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
     }
 
     // AI not configured - show minimal hint
-    if (aiStatus && !aiStatus.available && !analysis) {
+    if (!aiStatus?.available && !analysis) {
         return (
             <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-yellow-500/5 border border-yellow-500/10 text-xs text-yellow-400/80', className)}>
                 <Info className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>AI analysis available with ANTHROPIC_API_KEY or OPENAI_API_KEY</span>
-            </div>
-        );
-    }
-
-    // Loading initial state
-    if (isLoading && !analysis) {
-        return (
-            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-background-secondary border border-white/5 text-xs text-foreground-muted', className)}>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Checking AI analysis...</span>
             </div>
         );
     }
