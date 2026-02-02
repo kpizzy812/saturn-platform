@@ -1267,8 +1267,15 @@ class Application extends BaseModel
         }
 
         if ($this->deploymentType() === 'other') {
-            $fullRepoUrl = $customRepository;
-            $escapedCustomRepository = escapeshellarg($customRepository);
+            // For public HTTPS repositories, use the original full URL (not the extracted path)
+            $originalGitRepo = $this->git_repository;
+            if (str($originalGitRepo)->startsWith('http://') || str($originalGitRepo)->startsWith('https://')) {
+                $fullRepoUrl = $originalGitRepo;
+                $escapedCustomRepository = escapeshellarg($originalGitRepo);
+            } else {
+                $fullRepoUrl = $customRepository;
+                $escapedCustomRepository = escapeshellarg($customRepository);
+            }
             $base_command = "{$base_command} {$escapedCustomRepository}";
 
             if ($exec_in_docker) {
@@ -1443,8 +1450,15 @@ class Application extends BaseModel
             ];
         }
         if ($this->deploymentType() === 'other') {
-            $fullRepoUrl = $customRepository;
-            $escapedCustomRepository = escapeshellarg($customRepository);
+            // For public HTTPS repositories, use the original full URL (not the extracted path)
+            $originalGitRepo = $this->git_repository;
+            if (str($originalGitRepo)->startsWith('http://') || str($originalGitRepo)->startsWith('https://')) {
+                $fullRepoUrl = $originalGitRepo;
+                $escapedCustomRepository = escapeshellarg($originalGitRepo);
+            } else {
+                $fullRepoUrl = $customRepository;
+                $escapedCustomRepository = escapeshellarg($customRepository);
+            }
             $git_clone_command = "{$git_clone_command} {$escapedCustomRepository} {$escapedBaseDir}";
             $git_clone_command = $this->setGitImportSettings($deployment_uuid, $git_clone_command, public: true);
 
