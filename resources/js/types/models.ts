@@ -804,3 +804,98 @@ export interface TeamResourceTransfer {
     resource_name?: string;
     resource_type_name?: string;
 }
+
+// Environment Migration types
+export type EnvironmentMigrationStatus =
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'in_progress'
+    | 'completed'
+    | 'failed'
+    | 'rolled_back';
+
+export interface EnvironmentMigrationOptions {
+    copy_env_vars?: boolean;
+    copy_volumes?: boolean;
+    update_existing?: boolean;
+    config_only?: boolean;
+}
+
+export interface EnvironmentMigration {
+    id: number;
+    uuid: string;
+    source_type: string;
+    source_id: number;
+    source_environment_id: number;
+    target_environment_id: number;
+    target_server_id: number;
+    target_type: string | null;
+    target_id: number | null;
+    options: EnvironmentMigrationOptions | null;
+    status: EnvironmentMigrationStatus;
+    requires_approval: boolean;
+    requested_by: number;
+    approved_by: number | null;
+    approved_at: string | null;
+    rejection_reason: string | null;
+    rollback_snapshot: Record<string, unknown> | null;
+    progress: number;
+    current_step: string | null;
+    logs: string | null;
+    error_message: string | null;
+    team_id: number;
+    started_at: string | null;
+    completed_at: string | null;
+    rolled_back_at: string | null;
+    created_at: string;
+    updated_at: string;
+    // Relations
+    source?: Application | Service | StandaloneDatabase;
+    target?: Application | Service | StandaloneDatabase;
+    source_environment?: Environment;
+    target_environment?: Environment;
+    target_server?: Server;
+    requested_by_user?: User;
+    approved_by_user?: User;
+    // Computed attributes
+    status_label?: string;
+    source_type_name?: string;
+    migration_direction?: string;
+}
+
+export interface MigrationCheckResult {
+    allowed: boolean;
+    requires_approval: boolean;
+    reason: string | null;
+    source: {
+        name: string;
+        type: string;
+        environment: string;
+        environment_type: EnvironmentType;
+    };
+    target: {
+        environment: string;
+        environment_type: EnvironmentType;
+    };
+    target_servers: Array<{
+        id: number;
+        name: string;
+        ip: string;
+    }>;
+}
+
+export interface MigrationTargets {
+    source: {
+        name: string;
+        type: string;
+        environment: string;
+        environment_type: EnvironmentType;
+    };
+    target_environments: Environment[];
+    servers: Array<{
+        id: number;
+        name: string;
+        ip: string;
+    }>;
+}

@@ -61,6 +61,9 @@ class AuthServiceProvider extends ServiceProvider
 
         // Deployment approval policy
         \App\Models\DeploymentApproval::class => \App\Policies\DeploymentApprovalPolicy::class,
+
+        // Environment migration policy
+        \App\Models\EnvironmentMigration::class => \App\Policies\EnvironmentMigrationPolicy::class,
     ];
 
     /**

@@ -149,3 +149,10 @@ export {
 export {
     useDatabaseStructure,
 } from './useDatabaseStructure';
+
+export {
+    useMigrations,
+    usePendingMigrations,
+    useMigrationCheck,
+    useMigrationTargets,
+} from './useMigrations';

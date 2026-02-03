@@ -1,0 +1,170 @@
+import * as React from 'react';
+import { Database, Box, Settings2 } from 'lucide-react';
+import { Button, Select, Checkbox, Alert, Spinner } from '@/components/ui';
+import type { EnvironmentMigrationOptions, MigrationTargets } from '@/types';
+
+interface MigrateConfigureStepProps {
+    sourceType: 'application' | 'service' | 'database';
+    sourceName: string;
+    targets: MigrationTargets | null;
+    isLoading: boolean;
+    error: string | null;
+    selectedEnvironmentId: number | null;
+    selectedServerId: number | null;
+    options: EnvironmentMigrationOptions;
+    onEnvironmentChange: (id: number) => void;
+    onServerChange: (id: number) => void;
+    onOptionsChange: (options: EnvironmentMigrationOptions) => void;
+    onNext: () => void;
+    onCancel: () => void;
+}
+
+export function MigrateConfigureStep({
+    sourceType,
+    sourceName,
+    targets,
+    isLoading,
+    error,
+    selectedEnvironmentId,
+    selectedServerId,
+    options,
+    onEnvironmentChange,
+    onServerChange,
+    onOptionsChange,
+    onNext,
+    onCancel,
+}: MigrateConfigureStepProps) {
+    const isDatabase = sourceType === 'database';
+    const hasTargets = targets?.target_environments && targets.target_environments.length > 0;
+    const hasServers = targets?.servers && targets.servers.length > 0;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Spinner className="h-8 w-8" />
+            </div>
+        );
+    }
+
+    if (!hasTargets) {
+        return (
+            <div className="space-y-4">
+                <Alert variant="danger">
+                    No target environments available for migration. The resource may already be in the final
+                    environment (production) or no environments of the next type exist.
+                </Alert>
+                <div className="flex justify-end">
+                    <Button variant="secondary" onClick={onCancel}>
+                        Close
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    const SourceIcon = sourceType === 'application' ? Box : sourceType === 'service' ? Settings2 : Database;
+
+    return (
+        <div className="space-y-6">
+            {/* Source info */}
+            <div className="flex items-center gap-3 rounded-lg border border-border p-3 bg-background-secondary">
+                <SourceIcon className="h-5 w-5 text-foreground-muted" />
+                <div>
+                    <p className="text-sm font-medium text-foreground">{sourceName}</p>
+                    <p className="text-xs text-foreground-muted">
+                        From: {targets?.source.environment} ({targets?.source.environment_type})
+                    </p>
+                </div>
+            </div>
+
+            {error && <Alert variant="danger">{error}</Alert>}
+
+            {/* Target environment */}
+            <Select
+                label="Target Environment"
+                value={selectedEnvironmentId?.toString() || ''}
+                onChange={(e) => onEnvironmentChange(Number(e.target.value))}
+            >
+                <option value="">Select target environment</option>
+                {targets?.target_environments.map((env) => (
+                    <option key={env.id} value={env.id.toString()}>
+                        {env.name}
+                    </option>
+                ))}
+            </Select>
+
+            {/* Target server */}
+            {hasServers ? (
+                <Select
+                    label="Target Server"
+                    value={selectedServerId?.toString() || ''}
+                    onChange={(e) => onServerChange(Number(e.target.value))}
+                >
+                    <option value="">Select target server</option>
+                    {targets?.servers.map((server) => (
+                        <option key={server.id} value={server.id.toString()}>
+                            {server.name} ({server.ip})
+                        </option>
+                    ))}
+                </Select>
+            ) : (
+                <Alert>No servers available. Please add a server first.</Alert>
+            )}
+
+            {/* Options */}
+            <div className="space-y-4">
+                <p className="text-sm font-medium text-foreground">Migration Options</p>
+
+                <div className="space-y-3 rounded-lg border border-border p-3">
+                    <Checkbox
+                        label="Copy environment variables"
+                        hint="Include all environment variables"
+                        checked={options.copy_env_vars}
+                        onCheckedChange={(checked) =>
+                            onOptionsChange({ ...options, copy_env_vars: checked })
+                        }
+                    />
+
+                    <Checkbox
+                        label="Copy volume configurations"
+                        hint="Include persistent storage settings (not data)"
+                        checked={options.copy_volumes}
+                        onCheckedChange={(checked) =>
+                            onOptionsChange({ ...options, copy_volumes: checked })
+                        }
+                    />
+
+                    <Checkbox
+                        label="Update existing resource"
+                        hint="Update if resource with same name exists"
+                        checked={options.update_existing}
+                        onCheckedChange={(checked) =>
+                            onOptionsChange({ ...options, update_existing: checked })
+                        }
+                    />
+
+                    {isDatabase && (
+                        <Checkbox
+                            label="Configuration only"
+                            hint="Update config without recreating container"
+                            checked={options.config_only}
+                            onCheckedChange={(checked) =>
+                                onOptionsChange({ ...options, config_only: checked })
+                            }
+                        />
+                    )}
+                </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={onCancel}>
+                    Cancel
+                </Button>
+                <Button onClick={onNext} disabled={!selectedEnvironmentId || !selectedServerId}>
+                    Continue
+                </Button>
+            </div>
+        </div>
+    );
+}

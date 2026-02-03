@@ -33,6 +33,9 @@ import {
     LocalSetupModal,
 } from '@/components/features/Projects';
 import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
+import { MigrateButton, MigrateModal } from '@/components/features/migration';
+import { useMigrationTargets } from '@/hooks/useMigrations';
+import type { EnvironmentMigration, EnvironmentMigrationOptions } from '@/types';
 
 interface Props {
     project?: Project;
@@ -87,6 +90,14 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [logsViewerServiceUuid, setLogsViewerServiceUuid] = useState<string>('');
     const [logsViewerServiceType, setLogsViewerServiceType] = useState<'application' | 'deployment' | 'database' | 'service'>('application');
     const [logsViewerContainerName, setLogsViewerContainerName] = useState<string | undefined>(undefined);
+
+    // Migration modal state
+    const [showMigrateModal, setShowMigrateModal] = useState(false);
+    const [migrateSource, setMigrateSource] = useState<{
+        type: 'application' | 'service' | 'database';
+        uuid: string;
+        name: string;
+    } | null>(null);
 
     // Undo/Redo history for canvas state
     const historyRef = useRef<{ past: SelectedService[][]; future: SelectedService[][] }>({
@@ -150,6 +161,60 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
             })),
         };
     }, [selectedEnv, appStatuses, dbStatuses, serviceStatuses]);
+
+    // Migration targets hook - load when migration modal is open
+    const { targets: migrationTargets, isLoading: isLoadingMigrationTargets } = useMigrationTargets(
+        migrateSource?.type || 'application',
+        migrateSource?.uuid || '',
+        showMigrateModal && !!migrateSource
+    );
+
+    // Handle migration submission
+    const handleMigrate = useCallback(async (data: {
+        targetEnvironmentId: number;
+        targetServerId: number;
+        options: EnvironmentMigrationOptions;
+    }): Promise<{ migration: EnvironmentMigration; requires_approval: boolean }> => {
+        if (!migrateSource) {
+            throw new Error('No source selected for migration');
+        }
+
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+        const response = await fetch('/api/v1/migrations', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                source_type: migrateSource.type,
+                source_uuid: migrateSource.uuid,
+                target_environment_id: data.targetEnvironmentId,
+                target_server_id: data.targetServerId,
+                options: data.options,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to start migration');
+        }
+
+        const result = await response.json();
+        addToast('success', 'Migration Started', result.requires_approval
+            ? 'Migration request submitted for approval'
+            : 'Migration is being processed');
+
+        return result;
+    }, [migrateSource, addToast]);
+
+    // Open migration modal for a specific resource
+    const openMigrationModal = useCallback((type: 'application' | 'service' | 'database', uuid: string, name: string) => {
+        setMigrateSource({ type, uuid, name });
+        setShowMigrateModal(true);
+    }, []);
 
     // Switch environment handler
     const handleSwitchEnv = (env: Environment) => {
@@ -1608,6 +1673,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 onOpenUrl={handleOpenUrl}
                 onCreateBackup={handleCreateBackup}
                 onRestoreBackup={handleRestoreBackup}
+                onMigrate={(_nodeId, uuid, name, type) => {
+                    openMigrationModal(type === 'app' ? 'application' : 'database', uuid, name);
+                }}
+                canMigrate={selectedEnv?.type !== 'production'}
             />
 
             {/* Local Setup Modal */}
@@ -1681,6 +1750,23 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 environmentType={approvalPendingApp?.environmentType || 'development'}
                 applicationName={approvalPendingApp?.name || ''}
             />
+
+            {/* Migration Modal */}
+            {migrateSource && (
+                <MigrateModal
+                    open={showMigrateModal}
+                    onOpenChange={(open) => {
+                        setShowMigrateModal(open);
+                        if (!open) setMigrateSource(null);
+                    }}
+                    sourceType={migrateSource.type}
+                    sourceUuid={migrateSource.uuid}
+                    sourceName={migrateSource.name}
+                    targets={migrationTargets}
+                    isLoadingTargets={isLoadingMigrationTargets}
+                    onMigrate={handleMigrate}
+                />
+            )}
         </>
     );
 }

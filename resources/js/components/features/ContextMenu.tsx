@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import {
     Play,
     RefreshCw,
@@ -8,13 +8,13 @@ import {
     Trash2,
     Copy,
     ExternalLink,
-    GitBranch,
     Variable,
     Database,
     Gauge,
     Link2,
     Download,
     RotateCcw,
+    ArrowUpRight,
 } from 'lucide-react';
 
 export interface ContextMenuPosition {
@@ -54,6 +54,8 @@ interface ContextMenuProps {
     onOpenUrl?: (url: string) => void;
     onCreateBackup?: (nodeId: string) => void;
     onRestoreBackup?: (nodeId: string) => void;
+    onMigrate?: (nodeId: string, uuid: string, name: string, type: 'app' | 'db') => void;
+    canMigrate?: boolean;
 }
 
 export function ContextMenu({
@@ -70,6 +72,8 @@ export function ContextMenu({
     onOpenUrl,
     onCreateBackup,
     onRestoreBackup,
+    onMigrate,
+    canMigrate = true,
 }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -128,6 +132,13 @@ export function ContextMenu({
             action: () => onViewLogs?.(node.id),
             divider: true,
         },
+        ...(canMigrate && onMigrate ? [{
+            id: 'migrate',
+            label: 'Migrate to Next Env',
+            icon: <ArrowUpRight className="h-4 w-4" />,
+            action: () => onMigrate(node.id, node.uuid, node.name, node.type),
+            divider: true,
+        }] : []),
         {
             id: 'settings',
             label: 'Settings',
@@ -203,6 +214,13 @@ export function ContextMenu({
             action: () => onViewLogs?.(node.id),
             divider: true,
         },
+        ...(canMigrate && onMigrate ? [{
+            id: 'migrate',
+            label: 'Migrate to Next Env',
+            icon: <ArrowUpRight className="h-4 w-4" />,
+            action: () => onMigrate(node.id, node.uuid, node.name, node.type),
+            divider: true,
+        }] : []),
         {
             id: 'connect',
             label: 'Connection Info',
