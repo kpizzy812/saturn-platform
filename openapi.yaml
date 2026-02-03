@@ -4777,6 +4777,163 @@ paths:
       security:
         -
           bearerAuth: []
+  /transfers:
+    get:
+      tags:
+        - Transfers
+      summary: 'List Transfers'
+      description: 'List all resource transfers for the current team.'
+      operationId: list-transfers
+      parameters:
+        -
+          name: status
+          in: query
+          description: 'Filter by status'
+          required: false
+          schema:
+            type: string
+            enum:
+              - pending
+              - preparing
+              - transferring
+              - restoring
+              - completed
+              - failed
+              - cancelled
+      responses:
+        '200':
+          description: 'List of transfers'
+        '401':
+          $ref: '#/components/responses/401'
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Transfers
+      summary: 'Create Transfer'
+      description: 'Create a new resource transfer.'
+      operationId: create-transfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required:
+                - source_uuid
+                - source_type
+                - target_environment_uuid
+                - target_server_uuid
+              properties:
+                source_uuid:
+                  type: string
+                  description: 'UUID of the source database'
+                source_type:
+                  type: string
+                  description: 'Type of source (standalone-postgresql, standalone-mysql, etc.)'
+                target_environment_uuid:
+                  type: string
+                  description: 'UUID of the target environment'
+                target_server_uuid:
+                  type: string
+                  description: 'UUID of the target server'
+                transfer_mode:
+                  type: string
+                  enum: [clone, data_only, partial]
+                  default: clone
+                transfer_options:
+                  type: object
+                  description: 'Options for partial transfer'
+                existing_target_uuid:
+                  type: string
+                  description: 'UUID of existing target database (for data_only mode)'
+              type: object
+      responses:
+        '201':
+          description: 'Transfer created'
+        '401':
+          $ref: '#/components/responses/401'
+        '400':
+          $ref: '#/components/responses/400'
+        '422':
+          $ref: '#/components/responses/422'
+      security:
+        -
+          bearerAuth: []
+  '/transfers/{uuid}':
+    get:
+      tags:
+        - Transfers
+      summary: 'Get Transfer'
+      description: 'Get a transfer by UUID.'
+      operationId: get-transfer
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Transfer details'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/transfers/{uuid}/cancel':
+    post:
+      tags:
+        - Transfers
+      summary: 'Cancel Transfer'
+      description: 'Cancel a transfer that is in progress.'
+      operationId: cancel-transfer
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Transfer cancelled'
+        '400':
+          description: 'Transfer cannot be cancelled'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
+  '/databases/{uuid}/structure':
+    get:
+      tags:
+        - Transfers
+      summary: 'Get Database Structure'
+      description: 'Get the structure (tables/collections/keys) of a database for partial transfer selection.'
+      operationId: get-database-structure
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Database structure'
+        '401':
+          $ref: '#/components/responses/401'
+        '404':
+          $ref: '#/components/responses/404'
+      security:
+        -
+          bearerAuth: []
   /resources:
     get:
       tags:
@@ -7561,6 +7718,9 @@ tags:
   -
     name: 'Resource Links'
     description: 'Resource Links'
+  -
+    name: Transfers
+    description: Transfers
   -
     name: Resources
     description: Resources

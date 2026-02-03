@@ -389,8 +389,9 @@ Route::get('/users/export', function () {
 
     $users = $query->orderBy('created_at', 'desc')->get();
 
-    // Generate CSV
-    $csv = "ID,Name,Email,Status,Teams,Created At,Last Login\n";
+    // Generate CSV with UTF-8 BOM for Excel compatibility
+    $bom = "\xEF\xBB\xBF"; // UTF-8 BOM for Excel to recognize encoding and delimiter
+    $csv = $bom."ID,Name,Email,Status,Teams,Created At,Last Login\n";
     foreach ($users as $user) {
         $status = $user->status ?? 'active';
         if ($status === 'active' && is_null($user->email_verified_at)) {

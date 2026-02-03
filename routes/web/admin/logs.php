@@ -230,8 +230,9 @@ Route::get('/audit-logs/export', function (Request $request) {
             ->header('Content-Disposition', 'attachment; filename="audit-logs-'.now()->format('Y-m-d').'.json"');
     }
 
-    // CSV export
-    $csv = "ID,Action,Resource Type,Resource Name,Description,User,Email,Team,IP Address,Created At\n";
+    // CSV export with UTF-8 BOM for Excel compatibility
+    $bom = "\xEF\xBB\xBF"; // UTF-8 BOM for Excel to recognize encoding and delimiter
+    $csv = $bom."ID,Action,Resource Type,Resource Name,Description,User,Email,Team,IP Address,Created At\n";
     foreach ($logs as $log) {
         $csv .= implode(',', [
             $log->id,
