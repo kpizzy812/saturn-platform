@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button, Badge, Modal, Input } from '@/components/ui';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toCSV, downloadFile } from '@/lib/csv';
+import { toCSV, downloadFile, stripBOM } from '@/lib/csv';
 import { FilterBuilder, buildWhereClause, type FilterGroup } from './FilterBuilder';
 
 // Get CSRF token from meta tag
@@ -453,7 +453,9 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
 
     // Import functions
     const parseCSV = (text: string): { headers: string[]; rows: TableData[] } => {
-        const lines = text.split('\n').filter(line => line.trim());
+        // Remove BOM if present (for files exported from Excel or our own export)
+        const cleanText = stripBOM(text);
+        const lines = cleanText.split('\n').filter(line => line.trim());
         if (lines.length === 0) return { headers: [], rows: [] };
 
         // Parse CSV with proper quote handling

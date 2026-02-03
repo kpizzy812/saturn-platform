@@ -1,9 +1,20 @@
 /**
- * CSV export utilities with proper Excel compatibility
+ * CSV export/import utilities with proper Excel compatibility
  */
 
 // UTF-8 BOM for Excel to correctly recognize encoding and use comma as delimiter
 export const CSV_BOM = '\uFEFF';
+
+/**
+ * Remove BOM from the beginning of a string (for import compatibility)
+ */
+export function stripBOM(text: string): string {
+    // Remove UTF-8 BOM if present
+    if (text.charCodeAt(0) === 0xFEFF) {
+        return text.slice(1);
+    }
+    return text;
+}
 
 /**
  * Escape a value for CSV format

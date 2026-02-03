@@ -6844,6 +6844,499 @@
                 }
             }
         },
+        "\/permission-sets": {
+            "get": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "List Permission Sets",
+                "description": "Get all permission sets for the current team.",
+                "operationId": "list-permission-sets",
+                "responses": {
+                    "200": {
+                        "description": "List of permission sets.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#\/components\/schemas\/PermissionSet"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Create Permission Set",
+                "description": "Create a new custom permission set.",
+                "operationId": "create-permission-set",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "name"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "QA Engineer"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Quality assurance team member"
+                                    },
+                                    "color": {
+                                        "type": "string",
+                                        "example": "purple"
+                                    },
+                                    "icon": {
+                                        "type": "string",
+                                        "example": "flask"
+                                    },
+                                    "parent_id": {
+                                        "description": "ID of parent permission set to inherit from",
+                                        "type": "integer"
+                                    },
+                                    "permissions": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "permission_id": {
+                                                    "type": "integer"
+                                                },
+                                                "environment_restrictions": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Permission set created."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "403": {
+                        "$ref": "#\/components\/responses\/403"
+                    },
+                    "422": {
+                        "description": "Validation error."
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/permission-sets\/permissions": {
+            "get": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "List All Permissions",
+                "description": "Get all available permissions in the system.",
+                "operationId": "list-all-permissions",
+                "responses": {
+                    "200": {
+                        "description": "List of all permissions grouped by category.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/permission-sets\/{id}": {
+            "get": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Get Permission Set",
+                "description": "Get a specific permission set by ID.",
+                "operationId": "get-permission-set",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Permission set details.",
+                        "content": {
+                            "application\/json": {
+                                "schema": {
+                                    "$ref": "#\/components\/schemas\/PermissionSet"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Update Permission Set",
+                "description": "Update an existing permission set.",
+                "operationId": "update-permission-set",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "color": {
+                                        "type": "string"
+                                    },
+                                    "icon": {
+                                        "type": "string"
+                                    },
+                                    "parent_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Permission set updated."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "403": {
+                        "$ref": "#\/components\/responses\/403"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Delete Permission Set",
+                "description": "Delete a custom permission set.",
+                "operationId": "delete-permission-set",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Permission set deleted."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "403": {
+                        "$ref": "#\/components\/responses\/403"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/permission-sets\/{id}\/permissions": {
+            "post": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Sync Permissions",
+                "description": "Sync permissions for a permission set.",
+                "operationId": "sync-permission-set-permissions",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "permissions"
+                                ],
+                                "properties": {
+                                    "permissions": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "permission_id": {
+                                                    "type": "integer"
+                                                },
+                                                "environment_restrictions": {
+                                                    "type": "object",
+                                                    "example": {
+                                                        "production": false
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Permissions synced."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "403": {
+                        "$ref": "#\/components\/responses\/403"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/permission-sets\/{id}\/users": {
+            "post": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Assign User",
+                "description": "Assign a permission set to a user.",
+                "operationId": "assign-permission-set-user",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application\/json": {
+                            "schema": {
+                                "required": [
+                                    "user_id"
+                                ],
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer"
+                                    },
+                                    "environment_overrides": {
+                                        "description": "Per-user environment overrides",
+                                        "type": "object",
+                                        "example": {
+                                            "production": false
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "User assigned to permission set."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "403": {
+                        "$ref": "#\/components\/responses\/403"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/permission-sets\/{id}\/users\/{userId}": {
+            "delete": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Remove User Assignment",
+                "description": "Remove a user from a permission set.",
+                "operationId": "remove-permission-set-user",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User removed from permission set."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    },
+                    "403": {
+                        "$ref": "#\/components\/responses\/403"
+                    },
+                    "404": {
+                        "$ref": "#\/components\/responses\/404"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "\/permission-sets\/my-permissions": {
+            "get": {
+                "tags": [
+                    "Permission Sets"
+                ],
+                "summary": "Get My Permissions",
+                "description": "Get current user effective permissions.",
+                "operationId": "get-my-permissions",
+                "responses": {
+                    "200": {
+                        "description": "User permissions."
+                    },
+                    "401": {
+                        "$ref": "#\/components\/responses\/401"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/projects": {
             "get": {
                 "tags": [
@@ -12208,6 +12701,10 @@
         {
             "name": "Notifications",
             "description": "Notifications"
+        },
+        {
+            "name": "Permission Sets",
+            "description": "Permission Sets"
         },
         {
             "name": "Projects",
