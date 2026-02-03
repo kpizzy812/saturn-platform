@@ -20,7 +20,7 @@ interface NotificationsData {
 
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string } | undefined;
+    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null } | undefined;
     const notificationsData = (props as any).notifications as NotificationsData | undefined;
     const { isDark, toggleTheme } = useTheme();
 
@@ -102,9 +102,17 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                 <Dropdown>
                     <DropdownTrigger>
                         <button className="flex items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-background-secondary">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-medium text-white shadow-sm">
-                                {user?.name?.charAt(0).toUpperCase() || 'U'}
-                            </div>
+                            {user?.avatar ? (
+                                <img
+                                    src={`/storage/${user.avatar}`}
+                                    alt={user.name || 'User'}
+                                    className="h-8 w-8 rounded-full object-cover shadow-sm"
+                                />
+                            ) : (
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-medium text-white shadow-sm">
+                                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                            )}
                             <ChevronDown className="h-4 w-4 text-foreground-muted transition-transform duration-200" />
                         </button>
                     </DropdownTrigger>
