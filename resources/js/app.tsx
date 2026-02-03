@@ -27,9 +27,12 @@ createInertiaApp({
         // Auth is directly on props, not nested under 'user'
         const auth = props.initialPage.props.auth as { id?: number; email?: string; name?: string } | undefined;
 
+        // Check if user is authenticated (id can be 0, so check for undefined/null explicitly)
+        const isAuthenticated = auth?.id !== undefined && auth?.id !== null;
+
         // Set Sentry user context if authenticated
-        if (auth?.id) {
-            setUser({ id: auth.id, email: auth.email, name: auth.name });
+        if (isAuthenticated) {
+            setUser({ id: auth.id!, email: auth.email, name: auth.name });
         }
 
         const root = createRoot(el);
@@ -40,7 +43,7 @@ createInertiaApp({
                         <ConfirmationProvider>
                             <App {...props} />
                             <AiChatGlobal
-                                isAuthenticated={!!auth?.id}
+                                isAuthenticated={isAuthenticated}
                                 isAvailable={true}
                             />
                         </ConfirmationProvider>
