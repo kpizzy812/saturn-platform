@@ -1146,6 +1146,22 @@ Route::get('/settings/team/roles', function () {
     return Inertia::render('Settings/Team/Roles');
 })->name('settings.team.roles');
 
+// Permission Sets (CRUD routes)
+Route::get('/settings/team/permission-sets', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'index'])
+    ->name('settings.team.permission-sets.index');
+Route::get('/settings/team/permission-sets/create', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'create'])
+    ->name('settings.team.permission-sets.create');
+Route::post('/settings/team/permission-sets', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'store'])
+    ->name('settings.team.permission-sets.store');
+Route::get('/settings/team/permission-sets/{id}', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'show'])
+    ->name('settings.team.permission-sets.show');
+Route::get('/settings/team/permission-sets/{id}/edit', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'edit'])
+    ->name('settings.team.permission-sets.edit');
+Route::put('/settings/team/permission-sets/{id}', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'update'])
+    ->name('settings.team.permission-sets.update');
+Route::delete('/settings/team/permission-sets/{id}', [\App\Http\Controllers\Inertia\PermissionSetController::class, 'destroy'])
+    ->name('settings.team.permission-sets.destroy');
+
 // Team Member Project Access Routes
 Route::get('/settings/team/members/{id}/projects', function (string $id) {
     $team = currentTeam();

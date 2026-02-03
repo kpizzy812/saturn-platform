@@ -328,10 +328,10 @@ export default function TeamSettings({ team, members: initialMembers, invitation
                                         Activity
                                     </Button>
                                 </Link>
-                                <Link href="/settings/team/roles">
+                                <Link href="/settings/team/permission-sets">
                                     <Button variant="secondary" size="sm">
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        Roles
+                                        <Shield className="mr-2 h-4 w-4" />
+                                        Permission Sets
                                     </Button>
                                 </Link>
                             </div>

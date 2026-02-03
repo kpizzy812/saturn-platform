@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
@@ -12,8 +13,12 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property int $user_id
  * @property string $role
  * @property array<int>|null $allowed_projects
+ * @property int|null $permission_set_id
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
+ * @property-read PermissionSet|null $permissionSet
+ * @property-read Team $team
+ * @property-read User $user
  */
 class TeamUser extends Pivot
 {
@@ -23,6 +28,7 @@ class TeamUser extends Pivot
 
     protected $casts = [
         'allowed_projects' => 'array',
+        'permission_set_id' => 'integer',
     ];
 
     protected $fillable = [
@@ -30,6 +36,7 @@ class TeamUser extends Pivot
         'user_id',
         'role',
         'allowed_projects',
+        'permission_set_id',
     ];
 
     /**
@@ -74,5 +81,51 @@ class TeamUser extends Pivot
 
         // Check if specific project ID is in the allowed list
         return in_array($projectId, $this->allowed_projects, true);
+    }
+
+    /**
+     * Get the permission set assigned to this team membership.
+     */
+    public function permissionSet(): BelongsTo
+    {
+        return $this->belongsTo(PermissionSet::class);
+    }
+
+    /**
+     * Get the team.
+     */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * Get the user.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Check if this membership uses permission set based authorization.
+     */
+    public function usesPermissionSet(): bool
+    {
+        return $this->permission_set_id !== null;
+    }
+
+    /**
+     * Check if user has a specific permission through this team membership.
+     * Falls back to role-based check if no permission set is assigned.
+     */
+    public function hasPermission(string $permissionKey, ?string $environment = null): bool
+    {
+        if ($this->usesPermissionSet() && $this->permissionSet) {
+            return $this->permissionSet->hasPermission($permissionKey, $environment);
+        }
+
+        // Fallback to role-based permission (handled by PermissionService)
+        return false;
     }
 }

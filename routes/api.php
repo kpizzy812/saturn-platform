@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\HetznerController;
 use App\Http\Controllers\Api\NotificationChannelsController;
 use App\Http\Controllers\Api\NotificationsController;
 use App\Http\Controllers\Api\OtherController;
+use App\Http\Controllers\Api\PermissionSetController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ResourceLinkController;
 use App\Http\Controllers\Api\ResourcesController;
@@ -69,6 +70,18 @@ Route::group([
     Route::get('/teams/current/activities/export', [TeamController::class, 'export_team_activities'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}', [TeamController::class, 'team_by_id'])->middleware(['api.ability:read']);
     Route::get('/teams/{id}/members', [TeamController::class, 'members_by_id'])->middleware(['api.ability:read']);
+
+    // Permission Sets
+    Route::get('/permission-sets', [PermissionSetController::class, 'index'])->middleware(['api.ability:read']);
+    Route::get('/permission-sets/permissions', [PermissionSetController::class, 'permissions'])->middleware(['api.ability:read']);
+    Route::get('/permission-sets/my-permissions', [PermissionSetController::class, 'myPermissions'])->middleware(['api.ability:read']);
+    Route::get('/permission-sets/{id}', [PermissionSetController::class, 'show'])->middleware(['api.ability:read']);
+    Route::post('/permission-sets', [PermissionSetController::class, 'store'])->middleware(['api.ability:write']);
+    Route::put('/permission-sets/{id}', [PermissionSetController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/permission-sets/{id}', [PermissionSetController::class, 'destroy'])->middleware(['api.ability:write']);
+    Route::post('/permission-sets/{id}/permissions', [PermissionSetController::class, 'syncPermissions'])->middleware(['api.ability:write']);
+    Route::post('/permission-sets/{id}/users', [PermissionSetController::class, 'assignUser'])->middleware(['api.ability:write']);
+    Route::delete('/permission-sets/{id}/users/{userId}', [PermissionSetController::class, 'removeUser'])->middleware(['api.ability:write']);
 
     // Notifications
     Route::get('/notifications', [NotificationsController::class, 'index'])->middleware(['api.ability:read']);
