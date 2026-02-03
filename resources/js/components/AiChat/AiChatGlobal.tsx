@@ -1,11 +1,11 @@
-import React, { lazy, Suspense, useMemo } from 'react';
-import { usePage } from '@inertiajs/react';
-import type { PageProps as InertiaPageProps } from '@inertiajs/core';
+import React, { lazy, Suspense, useState, useEffect, useCallback } from 'react';
+import { router } from '@inertiajs/react';
+import type { ChatContext } from '@/types/ai-chat';
 
 // Lazy load the widget to avoid initial bundle size impact
 const AiChatWidget = lazy(() => import('./AiChatWidget'));
 
-interface AiChatPageProps extends InertiaPageProps {
+interface PageProps {
     auth?: {
         user?: {
             id: number;
@@ -15,28 +15,38 @@ interface AiChatPageProps extends InertiaPageProps {
         enabled: boolean;
         available: boolean;
     };
-    // For context-aware chat
     application?: { uuid: string; name: string; id: number };
     service?: { uuid: string; name: string; id: number };
     database?: { uuid: string; name: string; id: number };
     server?: { uuid: string; name: string; id: number };
-    [key: string]: unknown;
 }
 
 /**
  * Global AI Chat component that renders the floating widget
  * based on authentication and feature availability.
+ *
+ * Uses Inertia router events to stay in sync with page navigation,
+ * avoiding usePage() hook which requires Inertia context.
  */
-export function AiChatGlobal() {
-    const { props } = usePage<AiChatPageProps>();
+export function AiChatGlobal({ initialProps }: { initialProps?: PageProps }) {
+    const [props, setProps] = useState<PageProps>(initialProps || {});
 
-    // Only render if user is authenticated and AI chat is available
-    const shouldRender = useMemo(() => {
-        return props.auth?.user && props.aiChat?.available !== false;
-    }, [props.auth?.user, props.aiChat?.available]);
+    // Update props on Inertia navigation
+    useEffect(() => {
+        const handleNavigate = (event: { detail: { page: { props: PageProps } } }) => {
+            setProps(event.detail.page.props);
+        };
 
-    // Build context from page props
-    const context = useMemo(() => {
+        // Listen for successful navigation
+        const removeListener = router.on('navigate', handleNavigate as unknown as () => void);
+
+        return () => {
+            removeListener();
+        };
+    }, []);
+
+    // Build context from current page props
+    const getContext = useCallback((): ChatContext | undefined => {
         if (props.application) {
             return {
                 type: 'application',
@@ -72,13 +82,16 @@ export function AiChatGlobal() {
         return undefined;
     }, [props.application, props.service, props.database, props.server]);
 
+    // Only render if user is authenticated and AI chat is available
+    const shouldRender = props.auth?.user && props.aiChat?.available !== false;
+
     if (!shouldRender) {
         return null;
     }
 
     return (
         <Suspense fallback={null}>
-            <AiChatWidget context={context} />
+            <AiChatWidget context={getContext()} />
         </Suspense>
     );
 }

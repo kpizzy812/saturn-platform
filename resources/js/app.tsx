@@ -37,7 +37,7 @@ createInertiaApp({
                     <ToastProvider>
                         <ConfirmationProvider>
                             <App {...props} />
-                            <AiChatGlobal />
+                            <AiChatGlobal initialProps={props.initialPage.props} />
                         </ConfirmationProvider>
                     </ToastProvider>
                 </ThemeProvider>
