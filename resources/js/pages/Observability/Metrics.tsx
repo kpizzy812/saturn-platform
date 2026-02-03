@@ -2,6 +2,7 @@ import { AppLayout } from '@/components/layout';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useToast } from '@/components/ui';
 import { LineChart } from '@/components/ui/Chart';
+import { CSV_BOM, downloadFile } from '@/lib/csv';
 import {
     Download,
     RefreshCw,
@@ -228,16 +229,9 @@ export default function ObservabilityMetrics({ servers = [] }: Props) {
                 });
             });
 
-            const csv = csvLines.join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `saturn-metrics-${selectedTimeRange}-${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Add BOM for Excel compatibility
+            const csv = CSV_BOM + csvLines.join('\n');
+            downloadFile(csv, `saturn-metrics-${selectedTimeRange}-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv;charset=utf-8');
 
             addToastRef.current('success', 'Metrics exported to CSV');
         } catch (exportError) {

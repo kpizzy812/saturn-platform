@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button, Badge, Modal, Input } from '@/components/ui';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toCSV, downloadFile } from '@/lib/csv';
 import { FilterBuilder, buildWhereClause, type FilterGroup } from './FilterBuilder';
 
 // Get CSRF token from meta tag
@@ -422,46 +423,19 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
     };
 
     // Export functions
-    const escapeCSVValue = (value: string | null): string => {
-        if (value === null) return '';
-        const stringValue = String(value);
-        // Escape quotes and wrap in quotes if contains comma, quote, or newline
-        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-            return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-    };
-
-    const exportToCSV = (exportData: TableData[]) => {
+    const handleExportCSV = (exportData: TableData[]) => {
         const headers = columns.map(c => c.name);
-        const csvContent = [
-            headers.map(escapeCSVValue).join(','),
-            ...exportData.map(row =>
-                headers.map(col => escapeCSVValue(row[col])).join(',')
-            )
-        ].join('\n');
-
-        downloadFile(csvContent, `${tableName}_export.csv`, 'text/csv');
+        const csvContent = toCSV(headers, exportData);
+        downloadFile(csvContent, `${tableName}_export.csv`, 'text/csv;charset=utf-8');
+        setShowExportMenu(false);
     };
 
-    const exportToJSON = (exportData: TableData[], pretty: boolean = true) => {
+    const handleExportJSON = (exportData: TableData[], pretty: boolean = true) => {
         const jsonContent = pretty
             ? JSON.stringify(exportData, null, 2)
             : JSON.stringify(exportData);
 
         downloadFile(jsonContent, `${tableName}_export.json`, 'application/json');
-    };
-
-    const downloadFile = (content: string, filename: string, mimeType: string) => {
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
         setShowExportMenu(false);
     };
 
@@ -471,9 +445,9 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
             : data;
 
         if (format === 'csv') {
-            exportToCSV(exportData);
+            handleExportCSV(exportData);
         } else {
-            exportToJSON(exportData);
+            handleExportJSON(exportData);
         }
     };
 

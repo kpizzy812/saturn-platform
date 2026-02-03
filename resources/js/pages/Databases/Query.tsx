@@ -5,6 +5,7 @@ import { Link, router } from '@inertiajs/react';
 import { useState, useCallback, useEffect } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { exportToCSV, exportToJSON } from '@/lib/csv';
 import type { StandaloneDatabase } from '@/types';
 
 interface QueryResult {
@@ -192,28 +193,11 @@ export default function DatabaseQuery({ database, databases = [], queryHistory: 
     const exportResults = () => {
         if (!queryResult) return;
 
+        const timestamp = Date.now();
         if (exportFormat === 'csv') {
-            const csv = [
-                queryResult.columns.join(','),
-                ...queryResult.rows.map((row) =>
-                    queryResult.columns.map((col) => row[col]).join(',')
-                ),
-            ].join('\n');
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `query-results-${Date.now()}.csv`;
-            a.click();
+            exportToCSV(queryResult.columns, queryResult.rows, `query-results-${timestamp}.csv`);
         } else {
-            const json = JSON.stringify(queryResult.rows, null, 2);
-            const blob = new Blob([json], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `query-results-${Date.now()}.json`;
-            a.click();
+            exportToJSON(queryResult.rows, `query-results-${timestamp}.json`);
         }
     };
 

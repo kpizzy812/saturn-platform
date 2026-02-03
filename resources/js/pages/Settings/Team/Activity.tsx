@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { ActivityTimeline } from '@/components/ui/ActivityTimeline';
 import { Link } from '@inertiajs/react';
 import { useTeamActivity } from '@/hooks/useTeamActivity';
+import { escapeCSVValue, CSV_BOM, downloadFile } from '@/lib/csv';
 import type { ActivityLog } from '@/types';
 import {
     ArrowLeft,
@@ -107,26 +108,23 @@ export default function TeamActivity() {
     }, [activities]);
 
     const handleExport = () => {
-        // Export to CSV
-        const csv = [
-            ['Timestamp', 'User', 'Action', 'Description', 'Resource Type', 'Resource Name'],
-            ...activities.map((activity: ActivityLog) => [
-                new Date(activity.timestamp).toLocaleString(),
-                activity.user.name,
-                activity.action,
-                activity.description,
-                activity.resource?.type || '',
-                activity.resource?.name || ''
-            ])
-        ].map(row => row.join(',')).join('\n');
+        // Export to CSV with proper escaping and BOM for Excel
+        const headers = ['Timestamp', 'User', 'Action', 'Description', 'Resource Type', 'Resource Name'];
+        const rows = activities.map((activity: ActivityLog) => [
+            new Date(activity.timestamp).toLocaleString(),
+            activity.user.name,
+            activity.action,
+            activity.description,
+            activity.resource?.type || '',
+            activity.resource?.name || ''
+        ]);
 
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `team-activity-${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const csv = CSV_BOM + [
+            headers.map(escapeCSVValue).join(','),
+            ...rows.map(row => row.map(escapeCSVValue).join(','))
+        ].join('\n');
+
+        downloadFile(csv, `team-activity-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv;charset=utf-8');
     };
 
     const clearFilters = () => {
