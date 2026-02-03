@@ -89,6 +89,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Storage (S3, backups, snapshots)
     require __DIR__.'/web/storage-routes.php';
 
+    // Resource Transfers
+    require __DIR__.'/web/transfers.php';
+
     // Domains and SSL
     require __DIR__.'/web/domains.php';
 

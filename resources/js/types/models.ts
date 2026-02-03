@@ -682,3 +682,95 @@ export interface AIServiceStatus {
     provider: string | null;
     model: string | null;
 }
+
+// Resource Transfer types
+export type TransferStatus = 'pending' | 'preparing' | 'transferring' | 'restoring' | 'completed' | 'failed' | 'cancelled';
+export type TransferMode = 'clone' | 'data_only' | 'partial';
+
+export interface ResourceTransfer {
+    id: number;
+    uuid: string;
+    source_type: string;
+    source_id: number;
+    source?: StandaloneDatabase;
+    target_environment_id: number;
+    target_server_id: number;
+    target_environment?: Environment;
+    target_server?: Server;
+    target_type?: string;
+    target_id?: number;
+    target?: StandaloneDatabase;
+    transfer_mode: TransferMode;
+    transfer_options?: {
+        tables?: string[];
+        collections?: string[];
+        key_patterns?: string[];
+    };
+    existing_target_uuid?: string;
+    status: TransferStatus;
+    progress: number;
+    current_step?: string;
+    transferred_bytes: number;
+    total_bytes?: number;
+    error_message?: string;
+    error_details?: Record<string, unknown>;
+    logs?: string;
+    user_id?: number;
+    user?: User;
+    team_id: number;
+    started_at?: string;
+    completed_at?: string;
+    created_at: string;
+    updated_at: string;
+    // Computed attributes from backend
+    status_label?: string;
+    mode_label?: string;
+    source_type_name?: string;
+    formatted_progress?: string;
+    estimated_time_remaining?: string;
+}
+
+export interface DatabaseStructure {
+    success: boolean;
+    error?: string;
+    database_type?: string;
+    supports_partial?: boolean;
+    items: DatabaseStructureItem[];
+    total_size?: string;
+    total_size_bytes?: number;
+    item_label?: string;
+}
+
+export interface DatabaseStructureItem {
+    name: string;
+    size?: string;
+    size_formatted?: string;
+    size_bytes?: number;
+    row_count?: number;
+    count?: number;
+}
+
+export interface TransferTargets {
+    environments: {
+        id: number;
+        uuid: string;
+        name: string;
+        project_name: string;
+        project_uuid: string;
+    }[];
+    servers: {
+        id: number;
+        uuid: string;
+        name: string;
+        ip: string;
+        environment_id: number;
+        is_functional: boolean;
+    }[];
+    existing_databases: {
+        id: number;
+        uuid: string;
+        name: string;
+        database_type: string;
+        server_id: number;
+    }[];
+}

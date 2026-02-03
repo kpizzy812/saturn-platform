@@ -5,7 +5,8 @@ import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
-import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity, Loader2 } from 'lucide-react';
+import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity, Loader2, ArrowRightLeft } from 'lucide-react';
+import { TransferModal } from '@/components/transfer';
 import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 import { PostgreSQLPanel } from '@/components/features/databases/PostgreSQLPanel';
@@ -66,6 +67,7 @@ export default function DatabaseShow({ database }: Props) {
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const [isRestarting, setIsRestarting] = useState(false);
     const [currentStatus, setCurrentStatus] = useState(database.status);
+    const [showTransferModal, setShowTransferModal] = useState(false);
     const { addToast } = useToast();
 
     // Real-time database status updates
@@ -159,6 +161,10 @@ export default function DatabaseShow({ database }: Props) {
                         <RotateCw className={`mr-2 h-4 w-4 ${isRestarting ? 'animate-spin' : ''}`} />
                         {isRestarting ? 'Restarting...' : 'Restart'}
                     </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setShowTransferModal(true)}>
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Transfer
+                    </Button>
                     <Link href={`/databases/${database.uuid}/backups`}>
                         <Button variant="secondary" size="sm">
                             <Download className="mr-2 h-4 w-4" />
@@ -170,6 +176,13 @@ export default function DatabaseShow({ database }: Props) {
 
             {/* Database-specific panel */}
             {getDatabasePanel(database.database_type)}
+
+            {/* Transfer Modal */}
+            <TransferModal
+                isOpen={showTransferModal}
+                onClose={() => setShowTransferModal(false)}
+                database={database}
+            />
         </AppLayout>
     );
 }

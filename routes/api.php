@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\OtherController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ResourceLinkController;
 use App\Http\Controllers\Api\ResourcesController;
+use App\Http\Controllers\Api\ResourceTransferController;
 use App\Http\Controllers\Api\SecurityController;
 use App\Http\Controllers\Api\SentinelMetricsController;
 use App\Http\Controllers\Api\ServersController;
@@ -436,6 +437,15 @@ Route::group([
     Route::match(['get', 'post'], '/databases/{uuid}/start', [DatabaseActionsController::class, 'start'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/databases/{uuid}/restart', [DatabaseActionsController::class, 'restart'])->middleware(['api.ability:write']);
     Route::match(['get', 'post'], '/databases/{uuid}/stop', [DatabaseActionsController::class, 'stop'])->middleware(['api.ability:write']);
+
+    // Database structure for transfers
+    Route::get('/databases/{uuid}/structure', [ResourceTransferController::class, 'structure'])->middleware(['api.ability:read']);
+
+    // Resource Transfers
+    Route::get('/transfers', [ResourceTransferController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/transfers', [ResourceTransferController::class, 'store'])->middleware(['api.ability:write']);
+    Route::get('/transfers/{uuid}', [ResourceTransferController::class, 'show'])->middleware(['api.ability:read']);
+    Route::post('/transfers/{uuid}/cancel', [ResourceTransferController::class, 'cancel'])->middleware(['api.ability:write']);
 
     Route::get('/services', [ServicesController::class, 'services'])->middleware(['api.ability:read']);
     Route::post('/services', [ServicesController::class, 'create_service'])->middleware(['api.ability:write']);

@@ -140,3 +140,12 @@ export type {
     RedisPersistence,
     MongoStorageSettings,
 } from './useDatabaseSettings';
+
+export {
+    useTransfers,
+    useTransferTargets,
+} from './useTransfers';
+
+export {
+    useDatabaseStructure,
+} from './useDatabaseStructure';
