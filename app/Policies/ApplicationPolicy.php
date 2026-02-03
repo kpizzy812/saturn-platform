@@ -146,6 +146,21 @@ class ApplicationPolicy
     }
 
     /**
+     * Determine whether the user can view sensitive environment variables (values, secrets).
+     * Requires: admin+ role
+     */
+    public function viewSensitiveEnvironment(User $user, Application $application): bool
+    {
+        $environment = $application->environment;
+        if (! $environment) {
+            return true;
+        }
+
+        // Only admins and above can view sensitive data
+        return $this->authService->hasMinimumRole($user, $environment->project, 'admin');
+    }
+
+    /**
      * Determine whether the user can cleanup deployment queue.
      */
     public function cleanupDeploymentQueue(User $user): bool
