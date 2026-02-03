@@ -157,14 +157,11 @@ class AiChatService
     ): AiChatMessage {
         $startTime = microtime(true);
 
-        // Save user message
+        // Save user message (no broadcast needed - frontend adds optimistically)
         $userMessage = $session->messages()->create([
             'role' => 'user',
             'content' => $content,
         ]);
-
-        // Broadcast user message
-        broadcast(new AiChatMessageReceived($session, $userMessage))->toOthers();
 
         // Get context for command parsing
         $context = $this->buildContext($session);

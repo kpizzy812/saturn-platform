@@ -304,13 +304,15 @@ class CommandExecutor
     }
 
     /**
-     * Get status of a resource.
+     * Get status of a resource or overview of all resources.
      */
     private function executeStatus(IntentResult $intent): CommandResult
     {
         $resource = $this->resolveResource($intent);
+
+        // If no specific resource, show overview
         if (! $resource) {
-            return CommandResult::notFound($intent->getResourceType() ?? 'resource');
+            return $this->executeStatusOverview();
         }
 
         if (! $this->authorize('view', $resource)) {
@@ -328,6 +330,71 @@ class CommandExecutor
             Log::error('AI Chat status failed', ['error' => $e->getMessage()]);
 
             return CommandResult::failed("Failed to get status: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Show status overview of all resources.
+     */
+    private function executeStatusOverview(): CommandResult
+    {
+        try {
+            $apps = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->select('name', 'status', 'uuid')
+                ->take(10)
+                ->get();
+
+            $services = Service::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->select('name', 'uuid')
+                ->take(10)
+                ->get();
+
+            $servers = Server::where('team_id', $this->teamId)
+                ->select('name', 'uuid', 'ip')
+                ->take(10)
+                ->get();
+
+            $output = "**Resources Overview:**\n\n";
+
+            if ($apps->count() > 0) {
+                $output .= "**Applications:**\n";
+                foreach ($apps as $app) {
+                    $statusEmoji = $app->status === 'running' ? '🟢' : ($app->status === 'stopped' ? '🔴' : '🟡');
+                    $output .= "- {$statusEmoji} **{$app->name}** - {$app->status}\n";
+                }
+                $output .= "\n";
+            }
+
+            if ($services->count() > 0) {
+                $output .= "**Services:**\n";
+                foreach ($services as $service) {
+                    $output .= "- **{$service->name}**\n";
+                }
+                $output .= "\n";
+            }
+
+            if ($servers->count() > 0) {
+                $output .= "**Servers:**\n";
+                foreach ($servers as $server) {
+                    $output .= "- **{$server->name}** ({$server->ip})\n";
+                }
+            }
+
+            if ($apps->count() === 0 && $services->count() === 0 && $servers->count() === 0) {
+                $output = 'No resources found in your team. Try creating an application or adding a server first.';
+            }
+
+            $output .= "\n\n*To check a specific resource, say: \"status of [resource name]\"*";
+
+            return CommandResult::success($output, [
+                'applications' => $apps->count(),
+                'services' => $services->count(),
+                'servers' => $servers->count(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat status overview failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Failed to get status overview: {$e->getMessage()}");
         }
     }
 

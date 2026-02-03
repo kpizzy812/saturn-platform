@@ -87,6 +87,7 @@ export function AiChatPanel({
                         <AiChatSuggestions
                             context={context}
                             onSelect={handleSuggestionClick}
+                            disabled={isSending}
                         />
                     </div>
                 ) : (

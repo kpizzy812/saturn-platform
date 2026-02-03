@@ -6,6 +6,7 @@ import type { ChatContext } from '@/types/ai-chat';
 interface AiChatSuggestionsProps {
     context?: ChatContext;
     onSelect: (suggestion: string) => void;
+    disabled?: boolean;
 }
 
 interface Suggestion {
@@ -17,18 +18,18 @@ interface Suggestion {
 const defaultSuggestions: Suggestion[] = [
     {
         icon: Activity,
-        text: 'Check status',
-        query: 'What is the status of my resources?',
-    },
-    {
-        icon: FileText,
-        text: 'View logs',
-        query: 'Show me the latest logs',
+        text: 'Get help',
+        query: 'What can you help me with?',
     },
     {
         icon: Rocket,
         text: 'Deploy help',
         query: 'How do I deploy an application?',
+    },
+    {
+        icon: FileText,
+        text: 'Commands',
+        query: 'Show me available commands',
     },
 ];
 
@@ -119,7 +120,7 @@ function getSuggestionsForContext(context?: ChatContext): Suggestion[] {
     }
 }
 
-export function AiChatSuggestions({ context, onSelect }: AiChatSuggestionsProps) {
+export function AiChatSuggestions({ context, onSelect, disabled = false }: AiChatSuggestionsProps) {
     const suggestions = getSuggestionsForContext(context);
 
     return (
@@ -129,13 +130,16 @@ export function AiChatSuggestions({ context, onSelect }: AiChatSuggestionsProps)
                 return (
                     <button
                         key={suggestion.text}
-                        onClick={() => onSelect(suggestion.query)}
+                        onClick={() => !disabled && onSelect(suggestion.query)}
+                        disabled={disabled}
                         className={cn(
                             'flex items-center gap-2 rounded-full',
                             'bg-background-secondary/50 border border-white/10',
                             'px-3 py-2 text-xs text-foreground-muted',
                             'transition-all duration-200',
-                            'hover:border-primary/50 hover:bg-primary/10 hover:text-foreground'
+                            disabled
+                                ? 'cursor-not-allowed opacity-50'
+                                : 'hover:border-primary/50 hover:bg-primary/10 hover:text-foreground'
                         )}
                     >
                         <Icon className="h-3.5 w-3.5" />
