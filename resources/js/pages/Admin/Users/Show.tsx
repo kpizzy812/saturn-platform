@@ -57,7 +57,9 @@ export default function AdminUserShow({
             variant: 'warning',
         });
         if (confirmed) {
-            router.post(`/admin/users/${user.id}/impersonate`);
+            router.post(`/admin/users/${user.id}/impersonate`, {}, {
+                preserveState: false,
+            });
         }
     };
 
@@ -69,20 +71,16 @@ export default function AdminUserShow({
             variant: 'warning',
         });
         if (confirmed) {
-            router.post(`/admin/users/${user.id}/toggle-suspension`);
+            router.post(`/admin/users/${user.id}/toggle-suspension`, {}, {
+                preserveState: false,
+                preserveScroll: true,
+            });
         }
     };
 
-    const handleDelete = async () => {
-        const confirmed = await confirm({
-            title: 'Delete User',
-            description: `Are you sure you want to delete ${user.name}? This action cannot be undone.`,
-            confirmText: 'Delete',
-            variant: 'danger',
-        });
-        if (confirmed) {
-            router.delete(`/admin/users/${user.id}`);
-        }
+    const handleDelete = () => {
+        // Redirect to delete page with resource transfer options
+        router.visit(`/admin/users/${user.id}/resources`);
     };
 
     const isVerified = !!user.email_verified_at;
