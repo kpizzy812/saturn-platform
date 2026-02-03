@@ -10,25 +10,14 @@ use Illuminate\Database\Eloquent\Model;
  * Service for handling team-level resource authorization.
  * Centralizes authorization logic for servers, databases, and other team resources.
  *
- * Role hierarchy for team resources:
- * - owner: Full access (create, update, delete, manage)
- * - admin: Most operations (create, update, manage) but not delete critical resources
- * - developer: Read access, limited operations
- * - member: Read-only access
- * - viewer: Read-only access
+ * This service integrates with PermissionService for granular permission control
+ * via Permission Sets, while maintaining backward compatibility with role-based checks.
  */
 class ResourceAuthorizationService
 {
-    /**
-     * Role hierarchy levels for team resources.
-     */
-    private const ROLE_HIERARCHY = [
-        'viewer' => 1,
-        'member' => 2,
-        'developer' => 3,
-        'admin' => 4,
-        'owner' => 5,
-    ];
+    public function __construct(
+        protected PermissionService $permissionService
+    ) {}
 
     /**
      * Get user's role in a team.
@@ -44,24 +33,21 @@ class ResourceAuthorizationService
     }
 
     /**
-     * Check if user has at least the specified role level in a team.
+     * Check if user has a specific permission.
+     * Uses PermissionService which respects Permission Sets configuration.
+     *
+     * Note: teamId is accepted for context but PermissionService
+     * determines the team from currentTeam() or the permission context.
      */
-    public function hasMinimumTeamRole(User $user, int $teamId, string $minimumRole): bool
+    public function hasPermission(User $user, string $permissionKey, ?int $teamId = null): bool
     {
         // Platform admins bypass all checks
         if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
             return true;
         }
 
-        $userRole = $this->getUserTeamRole($user, $teamId);
-        if (! $userRole) {
-            return false;
-        }
-
-        $userLevel = self::ROLE_HIERARCHY[$userRole] ?? 0;
-        $requiredLevel = self::ROLE_HIERARCHY[$minimumRole] ?? 0;
-
-        return $userLevel >= $requiredLevel;
+        // PermissionService handles team context resolution internally
+        return $this->permissionService->userHasPermission($user, $permissionKey);
     }
 
     /**
@@ -111,7 +97,7 @@ class ResourceAuthorizationService
 
     /**
      * Check if user can view a server.
-     * Requires: team membership
+     * Permission: servers.view
      */
     public function canViewServer(User $user, Server $server): bool
     {
@@ -119,12 +105,16 @@ class ResourceAuthorizationService
             return true;
         }
 
-        return $this->userBelongsToResourceTeam($user, $server);
+        if (! $this->userBelongsToResourceTeam($user, $server)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'servers.view', $server->team_id);
     }
 
     /**
      * Check if user can create servers.
-     * Requires: admin+ role in current team
+     * Permission: servers.create
      */
     public function canCreateServer(User $user, int $teamId): bool
     {
@@ -132,12 +122,12 @@ class ResourceAuthorizationService
             return true;
         }
 
-        return $this->hasMinimumTeamRole($user, $teamId, 'admin');
+        return $this->hasPermission($user, 'servers.create', $teamId);
     }
 
     /**
      * Check if user can update a server.
-     * Requires: admin+ role in server's team
+     * Permission: servers.update
      */
     public function canUpdateServer(User $user, Server $server): bool
     {
@@ -149,12 +139,12 @@ class ResourceAuthorizationService
             return false;
         }
 
-        return $this->hasMinimumTeamRole($user, $server->team_id, 'admin');
+        return $this->hasPermission($user, 'servers.update', $server->team_id);
     }
 
     /**
      * Check if user can delete a server.
-     * Requires: owner role in server's team (critical operation)
+     * Permission: servers.delete (critical operation)
      */
     public function canDeleteServer(User $user, Server $server): bool
     {
@@ -166,21 +156,29 @@ class ResourceAuthorizationService
             return false;
         }
 
-        return $this->hasMinimumTeamRole($user, $server->team_id, 'owner');
+        return $this->hasPermission($user, 'servers.delete', $server->team_id);
     }
 
     /**
      * Check if user can manage server proxy (start/stop/restart).
-     * Requires: admin+ role
+     * Permission: servers.proxy
      */
     public function canManageServerProxy(User $user, Server $server): bool
     {
-        return $this->canUpdateServer($user, $server);
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        if (! $this->userBelongsToResourceTeam($user, $server)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'servers.proxy', $server->team_id);
     }
 
     /**
      * Check if user can manage server sentinel.
-     * Requires: admin+ role
+     * Permission: servers.update
      */
     public function canManageServerSentinel(User $user, Server $server): bool
     {
@@ -189,7 +187,7 @@ class ResourceAuthorizationService
 
     /**
      * Check if user can manage server CA certificates.
-     * Requires: admin+ role
+     * Permission: servers.update
      */
     public function canManageServerCaCertificate(User $user, Server $server): bool
     {
@@ -198,11 +196,19 @@ class ResourceAuthorizationService
 
     /**
      * Check if user can view server security settings.
-     * Requires: admin+ role (contains sensitive information)
+     * Permission: servers.security (sensitive)
      */
     public function canViewServerSecurity(User $user, Server $server): bool
     {
-        return $this->canUpdateServer($user, $server);
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        if (! $this->userBelongsToResourceTeam($user, $server)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'servers.security', $server->team_id);
     }
 
     // ==========================================
@@ -211,7 +217,7 @@ class ResourceAuthorizationService
 
     /**
      * Check if user can view a database.
-     * Requires: team membership
+     * Permission: databases.view
      */
     public function canViewDatabase(User $user, Model $database): bool
     {
@@ -219,12 +225,17 @@ class ResourceAuthorizationService
             return true;
         }
 
-        return $this->userBelongsToResourceTeam($user, $database);
+        $teamId = $this->getResourceTeamId($database);
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'databases.view', $teamId);
     }
 
     /**
      * Check if user can view database credentials (connection strings, passwords).
-     * Requires: admin+ role (sensitive data)
+     * Permission: databases.credentials (sensitive)
      */
     public function canViewDatabaseCredentials(User $user, Model $database): bool
     {
@@ -233,20 +244,16 @@ class ResourceAuthorizationService
         }
 
         $teamId = $this->getResourceTeamId($database);
-        if ($teamId === null) {
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
             return false;
         }
 
-        if (! $this->userBelongsToResourceTeam($user, $database)) {
-            return false;
-        }
-
-        return $this->hasMinimumTeamRole($user, $teamId, 'admin');
+        return $this->hasPermission($user, 'databases.credentials', $teamId);
     }
 
     /**
      * Check if user can create databases.
-     * Requires: admin+ role
+     * Permission: databases.create
      */
     public function canCreateDatabase(User $user, int $teamId): bool
     {
@@ -254,12 +261,12 @@ class ResourceAuthorizationService
             return true;
         }
 
-        return $this->hasMinimumTeamRole($user, $teamId, 'admin');
+        return $this->hasPermission($user, 'databases.create', $teamId);
     }
 
     /**
      * Check if user can update a database.
-     * Requires: admin+ role
+     * Permission: databases.update
      */
     public function canUpdateDatabase(User $user, Model $database): bool
     {
@@ -268,20 +275,16 @@ class ResourceAuthorizationService
         }
 
         $teamId = $this->getResourceTeamId($database);
-        if ($teamId === null) {
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
             return false;
         }
 
-        if (! $this->userBelongsToResourceTeam($user, $database)) {
-            return false;
-        }
-
-        return $this->hasMinimumTeamRole($user, $teamId, 'admin');
+        return $this->hasPermission($user, 'databases.update', $teamId);
     }
 
     /**
      * Check if user can delete a database.
-     * Requires: owner role (critical operation - data loss)
+     * Permission: databases.delete (critical operation - data loss)
      */
     public function canDeleteDatabase(User $user, Model $database): bool
     {
@@ -290,42 +293,65 @@ class ResourceAuthorizationService
         }
 
         $teamId = $this->getResourceTeamId($database);
-        if ($teamId === null) {
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
             return false;
         }
 
-        if (! $this->userBelongsToResourceTeam($user, $database)) {
-            return false;
-        }
-
-        return $this->hasMinimumTeamRole($user, $teamId, 'owner');
+        return $this->hasPermission($user, 'databases.delete', $teamId);
     }
 
     /**
      * Check if user can manage a database (start/stop).
-     * Requires: admin+ role
+     * Permission: databases.manage
      */
     public function canManageDatabase(User $user, Model $database): bool
     {
-        return $this->canUpdateDatabase($user, $database);
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        $teamId = $this->getResourceTeamId($database);
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'databases.manage', $teamId);
     }
 
     /**
      * Check if user can manage database backups.
-     * Requires: admin+ role
+     * Permission: databases.backups
      */
     public function canManageDatabaseBackups(User $user, Model $database): bool
     {
-        return $this->canUpdateDatabase($user, $database);
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        $teamId = $this->getResourceTeamId($database);
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'databases.backups', $teamId);
     }
 
     /**
      * Check if user can manage database environment variables.
-     * Requires: admin+ role
+     * Permission: databases.env_vars
      */
     public function canManageDatabaseEnvironment(User $user, Model $database): bool
     {
-        return $this->canUpdateDatabase($user, $database);
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        $teamId = $this->getResourceTeamId($database);
+        if ($teamId === null || ! $this->userBelongsToResourceTeam($user, $database)) {
+            return false;
+        }
+
+        return $this->hasPermission($user, 'databases.env_vars', $teamId);
     }
 
     // ==========================================
@@ -334,7 +360,7 @@ class ResourceAuthorizationService
 
     /**
      * Check if user can access sensitive data (env vars, credentials, secrets).
-     * Requires: admin+ role in the team
+     * Permission: applications.env_vars_sensitive
      */
     public function canAccessSensitiveData(User $user, int $teamId): bool
     {
@@ -342,7 +368,7 @@ class ResourceAuthorizationService
             return true;
         }
 
-        return $this->hasMinimumTeamRole($user, $teamId, 'admin');
+        return $this->hasPermission($user, 'applications.env_vars_sensitive', $teamId);
     }
 
     /**

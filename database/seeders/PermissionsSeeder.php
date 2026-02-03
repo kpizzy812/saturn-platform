@@ -110,6 +110,15 @@ class PermissionsSeeder extends Seeder
                 'category' => 'resources',
                 'is_sensitive' => true,
             ],
+            [
+                'key' => 'applications.terminal',
+                'name' => 'Access Application Terminal',
+                'description' => 'Access terminal/shell inside application containers',
+                'resource' => 'applications',
+                'action' => 'terminal',
+                'category' => 'resources',
+                'is_sensitive' => true,
+            ],
 
             // ===================
             // DATABASES
@@ -162,6 +171,23 @@ class PermissionsSeeder extends Seeder
                 'action' => 'backups',
                 'category' => 'resources',
             ],
+            [
+                'key' => 'databases.credentials',
+                'name' => 'View Database Credentials',
+                'description' => 'View database passwords and connection strings',
+                'resource' => 'databases',
+                'action' => 'credentials',
+                'category' => 'resources',
+                'is_sensitive' => true,
+            ],
+            [
+                'key' => 'databases.env_vars',
+                'name' => 'Manage Database Variables',
+                'description' => 'View and edit database environment variables',
+                'resource' => 'databases',
+                'action' => 'env_vars',
+                'category' => 'resources',
+            ],
 
             // ===================
             // SERVICES
@@ -205,6 +231,32 @@ class PermissionsSeeder extends Seeder
                 'resource' => 'services',
                 'action' => 'manage',
                 'category' => 'resources',
+            ],
+            [
+                'key' => 'services.env_vars',
+                'name' => 'Manage Service Variables',
+                'description' => 'View and edit service environment variables',
+                'resource' => 'services',
+                'action' => 'env_vars',
+                'category' => 'resources',
+            ],
+            [
+                'key' => 'services.env_vars_sensitive',
+                'name' => 'View Sensitive Service Variables',
+                'description' => 'View sensitive/secret service environment variables',
+                'resource' => 'services',
+                'action' => 'env_vars_sensitive',
+                'category' => 'resources',
+                'is_sensitive' => true,
+            ],
+            [
+                'key' => 'services.terminal',
+                'name' => 'Access Service Terminal',
+                'description' => 'Access terminal/shell inside service containers',
+                'resource' => 'services',
+                'action' => 'terminal',
+                'category' => 'resources',
+                'is_sensitive' => true,
             ],
 
             // ===================

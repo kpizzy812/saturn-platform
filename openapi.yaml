@@ -3320,6 +3320,201 @@ paths:
       security:
         -
           bearerAuth: []
+  /api/v1/migrations:
+    get:
+      tags:
+        - Migrations
+      summary: 'List migrations'
+      description: 'Get all migrations for the current team.'
+      operationId: ad48f6ae9841826114d95869d6446efb
+      responses:
+        '200':
+          description: 'List of migrations'
+        '401':
+          description: Unauthorized
+      security:
+        -
+          bearerAuth: []
+    post:
+      tags:
+        - Migrations
+      summary: 'Create migration request'
+      description: 'Create a new migration request.'
+      operationId: 244cedbafd2d1f04cab8f6caa6705c70
+      responses:
+        '201':
+          description: 'Migration created'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      security:
+        -
+          bearerAuth: []
+  /api/v1/migrations/pending:
+    get:
+      tags:
+        - Migrations
+      summary: 'List pending migrations requiring approval'
+      description: 'Get pending migrations that require approval.'
+      operationId: 69bacf6c6ecb135647b3609dc89e4a9e
+      responses:
+        '200':
+          description: 'List of pending migrations'
+        '401':
+          description: Unauthorized
+      security:
+        -
+          bearerAuth: []
+  /api/v1/migrations/check:
+    post:
+      tags:
+        - Migrations
+      summary: 'Check migration feasibility'
+      description: 'Check if a migration is possible and what approval requirements apply.'
+      operationId: ffe1d93c434372f6ba283ebc1280d929
+      responses:
+        '200':
+          description: 'Migration check result'
+        '401':
+          description: Unauthorized
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/migrations/{uuid}':
+    get:
+      tags:
+        - Migrations
+      summary: 'Get migration details'
+      description: 'Get migration details.'
+      operationId: a42df58bca22af7087bdcfe61373ebc8
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Migration details'
+        '401':
+          description: Unauthorized
+        '404':
+          description: 'Not found'
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/migrations/{uuid}/approve':
+    post:
+      tags:
+        - Migrations
+      summary: 'Approve migration'
+      description: 'Approve a pending migration.'
+      operationId: d9bdeab82b39a7499fc82c1c12a9ccc6
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Migration approved'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/migrations/{uuid}/reject':
+    post:
+      tags:
+        - Migrations
+      summary: 'Reject migration'
+      description: 'Reject a pending migration.'
+      operationId: 0eeebdc11b647746738bbd6553b40b1e
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Migration rejected'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/migrations/{uuid}/rollback':
+    post:
+      tags:
+        - Migrations
+      summary: 'Rollback migration'
+      description: 'Rollback a completed migration.'
+      operationId: 52c69a09d6d8c1c021f3c7e2de6031f8
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Migration rolled back'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/migrations/targets/{source_type}/{source_uuid}':
+    get:
+      tags:
+        - Migrations
+      summary: 'Get available migration targets'
+      description: 'Get available target environments for a resource.'
+      operationId: 68020038b01ccdc7be2d10813a9de3ff
+      parameters:
+        -
+          name: source_type
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: source_uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Available targets'
+        '401':
+          description: Unauthorized
+        '404':
+          description: 'Not found'
+      security:
+        -
+          bearerAuth: []
   /git/branches:
     get:
       tags:
@@ -8008,6 +8203,9 @@ tags:
   -
     name: 'Deployment Approvals'
     description: 'Deployment Approvals'
+  -
+    name: Migrations
+    description: Migrations
   -
     name: Git
     description: Git

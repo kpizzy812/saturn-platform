@@ -69,11 +69,13 @@ class PermissionSetsSeeder extends Seeder
             // Applications
             'applications.view', 'applications.create', 'applications.update', 'applications.delete',
             'applications.deploy', 'applications.logs', 'applications.env_vars', 'applications.env_vars_sensitive',
+            'applications.terminal',
             // Databases
             'databases.view', 'databases.create', 'databases.update', 'databases.delete',
-            'databases.manage', 'databases.backups',
+            'databases.manage', 'databases.backups', 'databases.credentials', 'databases.env_vars',
             // Services
             'services.view', 'services.create', 'services.update', 'services.delete', 'services.manage',
+            'services.env_vars', 'services.env_vars_sensitive', 'services.terminal',
             // Servers
             'servers.view', 'servers.create', 'servers.update', 'servers.delete', 'servers.proxy', 'servers.security',
             // Team
@@ -86,19 +88,43 @@ class PermissionSetsSeeder extends Seeder
             'environments.view', 'environments.create', 'environments.update', 'environments.delete',
         ];
 
-        // Admin permissions (same as owner for most cases)
-        $adminPermissions = $allPermissions;
+        // Admin permissions - all except owner-only (billing, manage_roles, delete servers/databases)
+        $adminPermissions = [
+            // Applications - full access
+            'applications.view', 'applications.create', 'applications.update', 'applications.delete',
+            'applications.deploy', 'applications.logs', 'applications.env_vars', 'applications.env_vars_sensitive',
+            'applications.terminal',
+            // Databases - full except delete (owner only for data safety)
+            'databases.view', 'databases.create', 'databases.update',
+            'databases.manage', 'databases.backups', 'databases.credentials', 'databases.env_vars',
+            // Services - full access
+            'services.view', 'services.create', 'services.update', 'services.delete', 'services.manage',
+            'services.env_vars', 'services.env_vars_sensitive', 'services.terminal',
+            // Servers - full except delete (owner only for infrastructure safety)
+            'servers.view', 'servers.create', 'servers.update', 'servers.proxy', 'servers.security',
+            // Team - manage members but not roles (owner only)
+            'team.view', 'team.invite', 'team.manage_members', 'team.activity',
+            // Settings - full except billing (owner only)
+            'settings.view', 'settings.update', 'settings.integrations', 'settings.tokens', 'settings.notifications',
+            // Projects - full access
+            'projects.view', 'projects.create', 'projects.update', 'projects.delete', 'projects.members',
+            // Environments - full access
+            'environments.view', 'environments.create', 'environments.update', 'environments.delete',
+        ];
 
         // Developer permissions - can deploy and manage resources, but not delete or manage team
+        // NO access to: sensitive env vars, credentials, terminal, delete operations, server management
         $developerPermissions = [
-            // Applications - full except delete
+            // Applications - full except delete, sensitive, terminal
             'applications.view', 'applications.create', 'applications.update',
             'applications.deploy', 'applications.logs', 'applications.env_vars',
-            // Databases - full except delete and backups
+            // Databases - full except delete, backups, credentials
             'databases.view', 'databases.create', 'databases.update', 'databases.manage',
-            // Services - full except delete
+            'databases.env_vars',
+            // Services - full except delete, sensitive, terminal
             'services.view', 'services.create', 'services.update', 'services.manage',
-            // Servers - view only
+            'services.env_vars',
+            // Servers - view only (no create/update/delete/proxy/security)
             'servers.view',
             // Team - view only
             'team.view', 'team.activity',
@@ -106,8 +132,8 @@ class PermissionSetsSeeder extends Seeder
             'settings.view',
             // Projects - view and update
             'projects.view', 'projects.update',
-            // Environments - view and update
-            'environments.view', 'environments.create', 'environments.update',
+            // Environments - view and update (no create/delete for production restriction)
+            'environments.view', 'environments.update',
         ];
 
         // Member permissions - basic operations, no create/delete
