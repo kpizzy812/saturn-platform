@@ -42,9 +42,20 @@ export function initializeEcho(): Echo<'pusher'> | null {
         }
 
         // Get WebSocket configuration from environment
-        // If VITE_PUSHER_HOST not set, use current domain (production auto-detection)
-        const wsHost = import.meta.env.VITE_PUSHER_HOST || window.location.hostname;
-        const isAutoDetected = !import.meta.env.VITE_PUSHER_HOST;
+        // Auto-detect hostname if not set or if set to internal Docker hostname
+        const configuredHost = import.meta.env.VITE_PUSHER_HOST;
+        const isInternalDockerHost = configuredHost === 'saturn-realtime' ||
+                                     configuredHost?.endsWith('-realtime') ||
+                                     configuredHost?.includes('localhost') && window.location.hostname !== 'localhost';
+
+        // Use current domain if auto-detecting or if configured host is internal Docker name
+        const wsHost = (!configuredHost || isInternalDockerHost) ? window.location.hostname : configuredHost;
+        const isAutoDetected = !configuredHost || isInternalDockerHost;
+
+        if (isInternalDockerHost) {
+            console.debug('Echo: VITE_PUSHER_HOST is internal Docker hostname, using auto-detection instead:', wsHost);
+        }
+
         const wsScheme = import.meta.env.VITE_PUSHER_SCHEME || (window.location.protocol === 'https:' ? 'wss' : 'ws');
         const forceTLS = wsScheme === 'wss' || wsScheme === 'https';
         // In production with auto-detection, use the same port as the page (nginx proxies WebSocket)
@@ -53,13 +64,6 @@ export function initializeEcho(): Echo<'pusher'> | null {
         const wsPort = import.meta.env.VITE_PUSHER_PORT || (isAutoDetected ? currentPort : 6001);
         const wssPort = import.meta.env.VITE_PUSHER_WSS_PORT || wsPort;
         const wsKey = import.meta.env.VITE_PUSHER_APP_KEY || 'saturn';
-
-        // Skip if hostname is internal Docker name (misconfiguration)
-        if (wsHost === 'saturn-realtime' || wsHost.endsWith('-realtime')) {
-            console.error('Echo initialization failed: VITE_PUSHER_HOST is set to internal Docker hostname. Set it to your public domain or leave empty for auto-detection.');
-            window.Echo = null;
-            return null;
-        }
 
         // Get CSRF token - if not available, we're probably in a test environment
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');

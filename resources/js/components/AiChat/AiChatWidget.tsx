@@ -48,8 +48,9 @@ export function AiChatWidget({
         setIsMinimized(false);
     }, []);
 
-    // Don't render if AI is not available
-    if (!chat.status?.available) {
+    // Don't render only if explicitly disabled (status checked and not available)
+    // Show widget by default while status is loading
+    if (chat.status !== null && chat.status.available === false) {
         return null;
     }
 
