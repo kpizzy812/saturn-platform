@@ -46,6 +46,7 @@ interface PermissionSet {
 
 interface Props {
     permissionSets: PermissionSet[];
+    canManageRoles: boolean;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -64,7 +65,7 @@ const colorMap: Record<string, string> = {
     'foreground-muted': 'text-foreground-muted',
 };
 
-export default function PermissionSetsIndex({ permissionSets }: Props) {
+export default function PermissionSetsIndex({ permissionSets, canManageRoles }: Props) {
     const { toast } = useToast();
     const [showDeleteModal, setShowDeleteModal] = React.useState(false);
     const [selectedSet, setSelectedSet] = React.useState<PermissionSet | null>(null);
@@ -122,12 +123,14 @@ export default function PermissionSetsIndex({ permissionSets }: Props) {
                             </p>
                         </div>
                     </div>
-                    <Link href="/settings/team/permission-sets/create">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Permission Set
-                        </Button>
-                    </Link>
+                    {canManageRoles && (
+                        <Link href="/settings/team/permission-sets/create">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Permission Set
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* System Permission Sets */}

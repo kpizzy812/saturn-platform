@@ -23,9 +23,20 @@ class PermissionSetController extends Controller
     /**
      * Display permission sets list.
      */
-    public function index(): Response
+    public function index(): Response|RedirectResponse
     {
-        $team = auth()->user()->currentTeam();
+        $user = auth()->user();
+        $team = $user->currentTeam();
+
+        // Check if user can view permission sets (admin+ can view, manage_roles permission to edit)
+        $canManageRoles = $this->permissionService->userHasPermission($user, 'team.manage_roles');
+        $canViewPermissionSets = $this->permissionService->userHasPermission($user, 'team.manage_members')
+            || $canManageRoles;
+
+        if (! $canViewPermissionSets) {
+            return redirect()->route('settings.team')
+                ->with('error', 'You do not have permission to view permission sets.');
+        }
 
         $permissionSets = PermissionSet::forTeam($team->id)
             ->with(['permissions', 'users'])
@@ -36,6 +47,7 @@ class PermissionSetController extends Controller
 
         return Inertia::render('Settings/Team/PermissionSets/Index', [
             'permissionSets' => $permissionSets,
+            'canManageRoles' => $canManageRoles,
         ]);
     }
 
@@ -72,9 +84,16 @@ class PermissionSetController extends Controller
     /**
      * Display create permission set form.
      */
-    public function create(): Response
+    public function create(): Response|RedirectResponse
     {
-        $team = auth()->user()->currentTeam();
+        $user = auth()->user();
+        $team = $user->currentTeam();
+
+        // Check permission
+        if (! $this->permissionService->userHasPermission($user, 'team.manage_roles')) {
+            return redirect()->route('settings.team.permission-sets.index')
+                ->with('error', 'You do not have permission to create permission sets.');
+        }
 
         $allPermissions = Permission::orderBy('sort_order')
             ->get()
@@ -170,9 +189,16 @@ class PermissionSetController extends Controller
     /**
      * Display edit permission set form.
      */
-    public function edit(int $id): Response
+    public function edit(int $id): Response|RedirectResponse
     {
-        $team = auth()->user()->currentTeam();
+        $user = auth()->user();
+        $team = $user->currentTeam();
+
+        // Check permission
+        if (! $this->permissionService->userHasPermission($user, 'team.manage_roles')) {
+            return redirect()->route('settings.team.permission-sets.show', $id)
+                ->with('error', 'You do not have permission to edit permission sets.');
+        }
 
         $permissionSet = PermissionSet::forTeam($team->id)
             ->with(['permissions', 'parent'])

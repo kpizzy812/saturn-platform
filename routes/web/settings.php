@@ -111,6 +111,11 @@ Route::get('/settings/team', function () {
             )->toISOString(),
         ]);
 
+    // Get current user's role and permissions
+    $currentUserRole = $user->teams()->where('team_id', $team->id)->first()?->pivot->role ?? 'member';
+    $canManageTeam = in_array($currentUserRole, ['owner', 'admin']);
+    $canManageRoles = $currentUserRole === 'owner';
+
     return Inertia::render('Settings/Team', [
         'team' => [
             'id' => $team->id,
@@ -119,8 +124,11 @@ Route::get('/settings/team', function () {
             'memberCount' => $members->count(),
         ],
         'members' => $members,
-        'invitations' => $invitations,
+        'invitations' => $canManageTeam ? $invitations : collect([]), // Only show invitations to admins
         'receivedInvitations' => $receivedInvitations,
+        'currentUserRole' => $currentUserRole,
+        'canManageTeam' => $canManageTeam,
+        'canManageRoles' => $canManageRoles,
     ]);
 })->name('settings.team');
 
