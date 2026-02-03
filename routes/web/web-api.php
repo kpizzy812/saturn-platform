@@ -498,8 +498,6 @@ Route::get('/web-api/deployments/{uuid}/code-review', function (string $uuid) {
             'violations' => $review->violations->map(fn ($v) => [
                 'id' => $v->id,
                 'rule_id' => $v->rule_id,
-                'rule_description' => $v->rule_description,
-                'rule_category' => $v->rule_category,
                 'source' => $v->source,
                 'severity' => $v->severity,
                 'severity_color' => $v->severity_color,

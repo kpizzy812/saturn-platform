@@ -78,8 +78,8 @@ function ViolationItem({ violation }: { violation: CodeReviewViolation }) {
                                 <Badge variant="secondary" className="text-xs font-mono">
                                     {violation.rule_id}
                                 </Badge>
-                                <span className="text-xs text-foreground-muted">
-                                    {violation.rule_category}
+                                <span className="text-xs text-foreground-muted capitalize">
+                                    {violation.source}
                                 </span>
                                 {violation.contains_secret && (
                                     <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">

@@ -229,8 +229,6 @@ PROMPT;
 
             $violations->push(new Violation(
                 ruleId: $issue['rule_id'] ?? $this->generateRuleId($issue['category'] ?? 'general'),
-                ruleDescription: $issue['message'] ?? 'AI-detected issue',
-                ruleCategory: $issue['category'] ?? 'ai-analysis',
                 source: 'llm',
                 severity: $this->normalizeSeverity($issue['severity'] ?? 'medium'),
                 confidence: 0.8, // AI findings have 80% confidence

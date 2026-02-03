@@ -21,8 +21,6 @@ export type ViolationSource = 'regex' | 'ast' | 'llm';
 export interface CodeReviewViolation {
     id: number;
     rule_id: string;
-    rule_description: string;
-    rule_category: string;
     source: ViolationSource;
     severity: ViolationSeverity;
     severity_color: string;
