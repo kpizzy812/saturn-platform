@@ -14,6 +14,7 @@ import {
     Layers,
     Box,
     ClipboardCheck,
+    ArrowRightLeft,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -35,6 +36,7 @@ const commands: CommandItem[] = [
     { id: 'services', name: 'Services', icon: <Box className="h-4 w-4" />, href: '/services', group: 'navigation' },
     { id: 'databases', name: 'Databases', icon: <Database className="h-4 w-4" />, href: '/databases', group: 'navigation' },
     { id: 'activity', name: 'Activity', icon: <Activity className="h-4 w-4" />, href: '/activity', group: 'navigation' },
+    { id: 'transfers', name: 'Transfers', description: 'Resource transfers between environments', icon: <ArrowRightLeft className="h-4 w-4" />, href: '/transfers', group: 'navigation' },
     { id: 'approvals', name: 'Approvals', description: 'Pending deployment approvals', icon: <ClipboardCheck className="h-4 w-4" />, href: '/approvals', group: 'navigation' },
 
     // Actions

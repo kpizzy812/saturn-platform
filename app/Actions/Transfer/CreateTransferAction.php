@@ -92,20 +92,6 @@ class CreateTransferAction
             ];
         }
 
-        // Check for existing in-progress transfers for same source
-        $existingTransfer = ResourceTransfer::where('source_type', get_class($sourceDatabase))
-            ->where('source_id', $sourceDatabase->id)
-            ->inProgress()
-            ->first();
-
-        if ($existingTransfer) {
-            return [
-                'success' => false,
-                'error' => 'A transfer is already in progress for this database',
-                'existing_transfer' => $existingTransfer,
-            ];
-        }
-
         // Validate data_only mode requirements
         $targetDatabase = null;
         if ($transferMode === ResourceTransfer::MODE_DATA_ONLY) {
@@ -141,6 +127,14 @@ class CreateTransferAction
             }
         }
 
+        // Validate target server is functional
+        if (! $targetServer->isFunctional()) {
+            return [
+                'success' => false,
+                'error' => 'Target server is not functional',
+            ];
+        }
+
         // Validate partial mode requirements
         if ($transferMode === ResourceTransfer::MODE_PARTIAL) {
             if (empty($transferOptions)) {
@@ -161,6 +155,20 @@ class CreateTransferAction
                     'error' => 'At least one table, collection, or key pattern must be specified',
                 ];
             }
+        }
+
+        // Check for existing in-progress transfers for same source
+        $existingTransfer = ResourceTransfer::where('source_type', get_class($sourceDatabase))
+            ->where('source_id', $sourceDatabase->id)
+            ->inProgress()
+            ->first();
+
+        if ($existingTransfer) {
+            return [
+                'success' => false,
+                'error' => 'A transfer is already in progress for this database',
+                'existing_transfer' => $existingTransfer,
+            ];
         }
 
         // Create transfer record
