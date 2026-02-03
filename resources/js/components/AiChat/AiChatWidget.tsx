@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { MessageSquare, X, Minimize2, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -48,9 +48,13 @@ export function AiChatWidget({
         setIsMinimized(false);
     }, []);
 
+    // Debug logging
+    console.log('[AiChatWidget] Status:', chat.status, 'Error:', chat.error);
+
     // Don't render only if explicitly disabled (status checked and not available)
     // Show widget by default while status is loading
     if (chat.status !== null && chat.status.available === false) {
+        console.log('[AiChatWidget] Not rendering - explicitly disabled');
         return null;
     }
 
