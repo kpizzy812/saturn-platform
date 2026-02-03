@@ -5,7 +5,6 @@ namespace App\Traits\Deployment;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Events\ApplicationConfigurationChanged;
 use App\Exceptions\DeploymentException;
-use App\Jobs\AnalyzeDeploymentLogsJob;
 use App\Notifications\Application\DeploymentFailed;
 use App\Notifications\Application\DeploymentSuccess;
 
@@ -112,13 +111,8 @@ trait HandlesDeploymentStatus
     {
         $this->sendDeploymentNotification(DeploymentFailed::class);
 
-        // Dispatch AI analysis job
-        if (config('ai.enabled', true)) {
-            $delay = config('ai.log_processing.analysis_delay', 5);
-            AnalyzeDeploymentLogsJob::dispatch(
-                $this->application_deployment_queue->id
-            )->delay(now()->addSeconds($delay));
-        }
+        // AI analysis is triggered manually from UI via AIAnalysisCard component
+        // No automatic dispatch - user clicks "Analyze" button when needed
     }
 
     /**
