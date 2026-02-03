@@ -30,8 +30,9 @@ createInertiaApp({
             setUser({ id: auth.user.id, email: auth.user.email, name: auth.user.name });
         }
 
-        // Debug: log auth status for AI chat
-        console.log('[App] Auth for AiChat:', { auth, isAuthenticated: !!auth?.user });
+        // Debug: log auth structure
+        console.log('[App] Auth object:', props.initialPage.props.auth);
+        console.log('[App] Auth keys:', props.initialPage.props.auth ? Object.keys(props.initialPage.props.auth) : 'no auth');
 
         const root = createRoot(el);
         root.render(
