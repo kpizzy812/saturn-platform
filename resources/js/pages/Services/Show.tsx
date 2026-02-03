@@ -7,10 +7,11 @@ import { Link, router } from '@inertiajs/react';
 import {
     Play, RotateCw, Trash2, Settings, Activity,
     Cpu, MemoryStick, Network, GitCommit, Clock,
-    CheckCircle, XCircle, AlertCircle, ArrowLeft
+    CheckCircle, XCircle, AlertCircle, ArrowLeft, Copy
 } from 'lucide-react';
 import type { Service, ServiceContainer } from '@/types';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
+import { CloneModal } from '@/components/transfer';
 import { formatRelativeTime, formatBytes } from '@/lib/utils';
 
 // Map activity log status to deployment status
@@ -38,6 +39,7 @@ export default function ServiceShow({ service, containers = [] }: Props) {
     const [isDeploying, setIsDeploying] = useState(false);
     const [isRestarting, setIsRestarting] = useState(false);
     const [currentStatus, setCurrentStatus] = useState(service?.status || 'running');
+    const [showCloneModal, setShowCloneModal] = useState(false);
     const { addToast } = useToast();
 
     // Real-time service status updates
@@ -189,6 +191,10 @@ export default function ServiceShow({ service, containers = [] }: Props) {
                         <RotateCw className={`mr-2 h-4 w-4 ${isRestarting ? 'animate-spin' : ''}`} />
                         {isRestarting ? 'Restarting...' : 'Restart'}
                     </Button>
+                    <Button variant="secondary" size="sm" onClick={() => setShowCloneModal(true)}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Clone
+                    </Button>
                     <Button variant="danger" size="sm" onClick={handleDelete}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
@@ -203,6 +209,14 @@ export default function ServiceShow({ service, containers = [] }: Props) {
 
             {/* Tabs */}
             <Tabs tabs={tabs} />
+
+            {/* Clone Modal */}
+            <CloneModal
+                isOpen={showCloneModal}
+                onClose={() => setShowCloneModal(false)}
+                resource={service}
+                resourceType="service"
+            />
         </AppLayout>
     );
 }

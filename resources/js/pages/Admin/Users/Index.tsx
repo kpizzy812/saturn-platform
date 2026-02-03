@@ -69,7 +69,9 @@ function UserRow({ user, isSelected, onToggleSelect }: UserRowProps) {
             variant: 'warning',
         });
         if (confirmed) {
-            router.post(`/admin/users/${user.id}/impersonate`);
+            router.post(`/admin/users/${user.id}/impersonate`, {}, {
+                preserveState: false,
+            });
         }
     };
 
@@ -82,7 +84,10 @@ function UserRow({ user, isSelected, onToggleSelect }: UserRowProps) {
             variant: isSuspended ? 'warning' : 'danger',
         });
         if (confirmed) {
-            router.post(`/admin/users/${user.id}/toggle-suspension`);
+            router.post(`/admin/users/${user.id}/toggle-suspension`, {}, {
+                preserveState: false,
+                preserveScroll: true,
+            });
         }
     };
 
@@ -173,6 +178,14 @@ function UserRow({ user, isSelected, onToggleSelect }: UserRowProps) {
                                             Suspend User
                                         </>
                                     )}
+                                </DropdownItem>
+                                <DropdownDivider />
+                                <DropdownItem
+                                    onClick={() => router.visit(`/admin/users/${user.id}/resources`)}
+                                    className="text-danger"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete User
                                 </DropdownItem>
                             </>
                         )}
@@ -276,6 +289,8 @@ export default function AdminUsersIndex({
                 user_ids: Array.from(selectedUserIds),
                 reason: 'Bulk suspension by admin',
             }, {
+                preserveState: false,
+                preserveScroll: true,
                 onSuccess: () => setSelectedUserIds(new Set()),
             });
         }
@@ -292,6 +307,8 @@ export default function AdminUsersIndex({
             router.post('/admin/users/bulk-activate', {
                 user_ids: Array.from(selectedUserIds),
             }, {
+                preserveState: false,
+                preserveScroll: true,
                 onSuccess: () => setSelectedUserIds(new Set()),
             });
         }
@@ -307,6 +324,8 @@ export default function AdminUsersIndex({
         if (confirmed) {
             router.delete('/admin/users/bulk-delete', {
                 data: { user_ids: Array.from(selectedUserIds) },
+                preserveState: false,
+                preserveScroll: true,
                 onSuccess: () => setSelectedUserIds(new Set()),
             });
         }

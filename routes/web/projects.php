@@ -7,6 +7,8 @@
  * All routes require authentication and email verification.
  */
 
+use App\Models\Environment;
+use App\Services\Authorization\ProjectAuthorizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -28,8 +30,16 @@ Route::get('/projects', function () {
         ])
         ->get();
 
-    // Add computed databases to each environment
-    $projects->each(function ($project) {
+    $currentUser = auth()->user();
+    $authService = app(ProjectAuthorizationService::class);
+
+    // Filter environments visible to user (hide production from developers)
+    $projects->each(function ($project) use ($currentUser, $authService) {
+        $project->setRelation(
+            'environments',
+            $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+        );
+        // Add computed databases to each environment
         $project->environments->each(function ($env) {
             $env->databases = $env->databases();
         });
@@ -123,15 +133,22 @@ Route::get('/projects/{uuid}', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
-    // Add computed databases to each environment
-    $project->environments->each(function ($env) {
-        $env->databases = $env->databases();
-    });
-
     // Get user's role in this project
     $currentUser = auth()->user();
     $userRole = $currentUser->roleInProject($project);
     $canManageEnvironments = in_array($userRole, ['owner', 'admin']);
+
+    // Filter environments visible to user (hide production from developers)
+    $authService = app(ProjectAuthorizationService::class);
+    $project->setRelation(
+        'environments',
+        $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+    );
+
+    // Add computed databases to each environment
+    $project->environments->each(function ($env) {
+        $env->databases = $env->databases();
+    });
 
     return Inertia::render('Projects/Show', [
         'project' => $project,
@@ -146,7 +163,12 @@ Route::get('/projects/{uuid}/environments', function (string $uuid) {
         ->with('environments')
         ->firstOrFail();
 
-    $environments = $project->environments->map(function ($env) {
+    // Filter environments visible to user (hide production from developers)
+    $currentUser = auth()->user();
+    $authService = app(ProjectAuthorizationService::class);
+    $visibleEnvironments = $authService->filterVisibleEnvironments($currentUser, $project, $project->environments);
+
+    $environments = $visibleEnvironments->map(function ($env) {
         return [
             'id' => $env->id,
             'uuid' => $env->uuid,
@@ -191,8 +213,13 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
     ];
     $totalResources = array_sum($resourcesCount);
 
+    // Filter environments visible to user (hide production from developers)
+    $currentUser = auth()->user();
+    $authService = app(ProjectAuthorizationService::class);
+    $visibleEnvironments = $authService->filterVisibleEnvironments($currentUser, $project, $project->environments);
+
     // Environments with isEmpty check
-    $environments = $project->environments->map(fn ($env) => [
+    $environments = $visibleEnvironments->map(fn ($env) => [
         'id' => $env->id,
         'uuid' => $env->uuid,
         'name' => $env->name,
@@ -391,6 +418,13 @@ Route::post('/projects/{uuid}/environments', function (Request $request, string 
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    // Check authorization: only owner/admin can create environments
+    if (auth()->user()->cannot('create', [Environment::class, $project])) {
+        return response()->json([
+            'message' => 'You do not have permission to create environments',
+        ], 403);
+    }
+
     // Check if environment with this name already exists
     if ($project->environments()->where('name', $request->name)->exists()) {
         return response()->json([
@@ -419,6 +453,11 @@ Route::patch('/projects/{uuid}/environments/{env_uuid}', function (Request $requ
         ->where('uuid', $env_uuid)
         ->firstOrFail();
 
+    // Check authorization: only owner/admin can update environments
+    if (auth()->user()->cannot('update', $environment)) {
+        return response()->json(['message' => 'You do not have permission to update environments'], 403);
+    }
+
     // Check uniqueness within the project
     if ($project->environments()
         ->where('name', $request->name)
@@ -441,6 +480,11 @@ Route::delete('/projects/{uuid}/environments/{env_uuid}', function (string $uuid
     $environment = $project->environments()
         ->where('uuid', $env_uuid)
         ->firstOrFail();
+
+    // Check authorization: only owner/admin can delete environments
+    if (auth()->user()->cannot('delete', $environment)) {
+        return response()->json(['message' => 'You do not have permission to delete environments'], 403);
+    }
 
     if (! $environment->isEmpty()) {
         return response()->json(['message' => 'Environment has resources and cannot be deleted.'], 400);

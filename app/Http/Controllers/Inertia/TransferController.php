@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Inertia;
 
+use App\Actions\Transfer\CloneApplicationAction;
+use App\Actions\Transfer\CloneServiceAction;
 use App\Actions\Transfer\CreateTransferAction;
 use App\Actions\Transfer\GetDatabaseStructureAction;
 use App\Http\Controllers\Controller;
+use App\Models\Application;
 use App\Models\Environment;
 use App\Models\ResourceTransfer;
 use App\Models\Server;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -58,6 +62,7 @@ class TransferController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'source_type' => 'nullable|string|in:application,service,database',
             'source_uuid' => 'required|string',
             'target_environment_id' => 'required|integer',
             'target_server_id' => 'required|integer',
@@ -66,24 +71,184 @@ class TransferController extends Controller
             'target_uuid' => 'nullable|string',
         ]);
 
-        // Find source database
-        $sourceDatabase = queryDatabaseByUuidWithinTeam($validated['source_uuid'], currentTeam()->id);
-        if (! $sourceDatabase) {
-            return back()->withErrors(['source_uuid' => 'Source database not found']);
-        }
-
         // Find target environment
         $targetEnvironment = Environment::ownedByCurrentTeam()
             ->find($validated['target_environment_id']);
         if (! $targetEnvironment) {
-            return back()->withErrors(['target_environment_id' => 'Target environment not found']);
+            return response()->json(['message' => 'Target environment not found'], 404);
         }
 
         // Find target server
         $targetServer = Server::ownedByCurrentTeamCached()
             ->firstWhere('id', $validated['target_server_id']);
         if (! $targetServer) {
-            return back()->withErrors(['target_server_id' => 'Target server not found']);
+            return response()->json(['message' => 'Target server not found'], 404);
+        }
+
+        $sourceType = $validated['source_type'] ?? 'database';
+        $options = $validated['transfer_options'] ?? [];
+
+        // Handle different source types
+        switch ($sourceType) {
+            case 'application':
+                return $this->cloneApplication(
+                    $validated['source_uuid'],
+                    $targetEnvironment,
+                    $targetServer,
+                    $options
+                );
+
+            case 'service':
+                return $this->cloneService(
+                    $validated['source_uuid'],
+                    $targetEnvironment,
+                    $targetServer,
+                    $options
+                );
+
+            default:
+                return $this->transferDatabase(
+                    $validated['source_uuid'],
+                    $targetEnvironment,
+                    $targetServer,
+                    $validated['transfer_mode'],
+                    $options,
+                    $validated['target_uuid'] ?? null
+                );
+        }
+    }
+
+    /**
+     * Clone an application to a different environment.
+     */
+    protected function cloneApplication(
+        string $sourceUuid,
+        Environment $targetEnvironment,
+        Server $targetServer,
+        array $options
+    ) {
+        $sourceApplication = Application::ownedByCurrentTeam()
+            ->where('uuid', $sourceUuid)
+            ->first();
+
+        if (! $sourceApplication) {
+            return response()->json(['message' => 'Source application not found'], 404);
+        }
+
+        // Create transfer record for tracking
+        $transfer = ResourceTransfer::create([
+            'team_id' => currentTeam()->id,
+            'user_id' => auth()->id(),
+            'source_type' => $sourceApplication->getMorphClass(),
+            'source_id' => $sourceApplication->id,
+            'target_environment_id' => $targetEnvironment->id,
+            'target_server_id' => $targetServer->id,
+            'transfer_mode' => ResourceTransfer::MODE_CLONE,
+            'transfer_options' => $options,
+            'status' => ResourceTransfer::STATUS_PENDING,
+        ]);
+
+        // Execute clone action
+        $action = new CloneApplicationAction;
+        $result = $action->handle(
+            sourceApplication: $sourceApplication,
+            targetEnvironment: $targetEnvironment,
+            targetServer: $targetServer,
+            options: [
+                'copyEnvVars' => $options['copy_env_vars'] ?? true,
+                'copyVolumes' => $options['copy_volumes'] ?? true,
+                'copyTags' => $options['copy_tags'] ?? true,
+                'instantDeploy' => $options['instant_deploy'] ?? false,
+                'newName' => $options['new_name'] ?? null,
+                'transferId' => $transfer->id,
+            ]
+        );
+
+        if (! $result['success']) {
+            $transfer->markAsFailed($result['error']);
+
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'uuid' => $transfer->uuid,
+            'application_uuid' => $result['application']->uuid ?? null,
+        ]);
+    }
+
+    /**
+     * Clone a service to a different environment.
+     */
+    protected function cloneService(
+        string $sourceUuid,
+        Environment $targetEnvironment,
+        Server $targetServer,
+        array $options
+    ) {
+        $sourceService = Service::ownedByCurrentTeam()
+            ->where('uuid', $sourceUuid)
+            ->first();
+
+        if (! $sourceService) {
+            return response()->json(['message' => 'Source service not found'], 404);
+        }
+
+        // Create transfer record for tracking
+        $transfer = ResourceTransfer::create([
+            'team_id' => currentTeam()->id,
+            'user_id' => auth()->id(),
+            'source_type' => $sourceService->getMorphClass(),
+            'source_id' => $sourceService->id,
+            'target_environment_id' => $targetEnvironment->id,
+            'target_server_id' => $targetServer->id,
+            'transfer_mode' => ResourceTransfer::MODE_CLONE,
+            'transfer_options' => $options,
+            'status' => ResourceTransfer::STATUS_PENDING,
+        ]);
+
+        // Execute clone action
+        $action = new CloneServiceAction;
+        $result = $action->handle(
+            sourceService: $sourceService,
+            targetEnvironment: $targetEnvironment,
+            targetServer: $targetServer,
+            options: [
+                'copyEnvVars' => $options['copy_env_vars'] ?? true,
+                'copyVolumes' => $options['copy_volumes'] ?? true,
+                'copyTags' => $options['copy_tags'] ?? true,
+                'newName' => $options['new_name'] ?? null,
+                'transferId' => $transfer->id,
+            ]
+        );
+
+        if (! $result['success']) {
+            $transfer->markAsFailed($result['error']);
+
+            return response()->json(['message' => $result['error']], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'uuid' => $transfer->uuid,
+            'service_uuid' => $result['service']->uuid ?? null,
+        ]);
+    }
+
+    /**
+     * Transfer database data.
+     */
+    protected function transferDatabase(
+        string $sourceUuid,
+        Environment $targetEnvironment,
+        Server $targetServer,
+        string $transferMode,
+        ?array $options,
+        ?string $existingTargetUuid
+    ) {
+        $sourceDatabase = queryDatabaseByUuidWithinTeam($sourceUuid, currentTeam()->id);
+        if (! $sourceDatabase) {
+            return response()->json(['message' => 'Source database not found'], 404);
         }
 
         // Create transfer
@@ -92,17 +257,19 @@ class TransferController extends Controller
             sourceDatabase: $sourceDatabase,
             targetEnvironment: $targetEnvironment,
             targetServer: $targetServer,
-            transferMode: $validated['transfer_mode'],
-            transferOptions: $validated['transfer_options'] ?? null,
-            existingTargetUuid: $validated['target_uuid'] ?? null
+            transferMode: $transferMode,
+            transferOptions: $options,
+            existingTargetUuid: $existingTargetUuid
         );
 
         if (! $result['success']) {
-            return back()->withErrors(['general' => $result['error']]);
+            return response()->json(['message' => $result['error']], 422);
         }
 
-        return redirect()->route('transfers.show', $result['transfer']->uuid)
-            ->with('success', 'Transfer started successfully');
+        return response()->json([
+            'success' => true,
+            'uuid' => $result['transfer']->uuid,
+        ]);
     }
 
     /**

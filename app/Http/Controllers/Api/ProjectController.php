@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Environment;
 use App\Models\Project;
+use App\Services\Authorization\ProjectAuthorizationService;
 use App\Support\ValidationPatterns;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +13,10 @@ use OpenApi\Attributes as OA;
 
 class ProjectController extends Controller
 {
+    public function __construct(
+        protected ProjectAuthorizationService $authService
+    ) {}
+
     #[OA\Get(
         summary: 'List',
         description: 'List projects.',
@@ -163,6 +169,13 @@ class ProjectController extends Controller
         if (! $environment) {
             return response()->json(['message' => 'Environment not found.'], 404);
         }
+
+        // Check if user can view this environment (production is hidden from developers)
+        $currentUser = auth()->user();
+        if (! $this->authService->canViewProductionEnvironment($currentUser, $environment)) {
+            return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
         $environment = $environment->load(['applications', 'postgresqls', 'redis', 'mongodbs', 'mysqls', 'mariadbs', 'services']);
 
         return response()->json(serializeApiResponse($environment));
@@ -525,9 +538,13 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Project not found.'], 404);
         }
 
-        $environments = $project->environments()->select('id', 'name', 'uuid')->get();
+        $environments = $project->environments()->select('id', 'name', 'uuid', 'type')->get();
 
-        return response()->json(serializeApiResponse($environments));
+        // Filter environments visible to user (hide production from developers)
+        $currentUser = auth()->user();
+        $visibleEnvironments = $this->authService->filterVisibleEnvironments($currentUser, $project, $environments);
+
+        return response()->json(serializeApiResponse($visibleEnvironments));
     }
 
     #[OA\Post(
@@ -633,6 +650,12 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Project not found.'], 404);
         }
 
+        // Check authorization: only owner/admin can create environments
+        $currentUser = auth()->user();
+        if ($currentUser->cannot('create', [Environment::class, $project])) {
+            return response()->json(['message' => 'You do not have permission to create environments.'], 403);
+        }
+
         $existingEnvironment = $project->environments()->where('name', $request->name)->first();
         if ($existingEnvironment) {
             return response()->json(['message' => 'Environment with this name already exists.'], 409);
@@ -718,6 +741,12 @@ class ProjectController extends Controller
         }
         if (! $environment) {
             return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
+        // Check authorization: only owner/admin can delete environments
+        $currentUser = auth()->user();
+        if ($currentUser->cannot('delete', $environment)) {
+            return response()->json(['message' => 'You do not have permission to delete environments.'], 403);
         }
 
         if (! $environment->isEmpty()) {

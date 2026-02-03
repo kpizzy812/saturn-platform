@@ -31,6 +31,7 @@ import {
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
+import { CloneModal } from '@/components/transfer';
 import type { Application, ApplicationStatus, Deployment, Environment, Project } from '@/types';
 
 interface ApplicationWithRelations extends Application {
@@ -54,6 +55,7 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     const [showDeployModal, setShowDeployModal] = useState(false);
     const [requiresApproval, setRequiresApproval] = useState(false);
     const [forceRebuild, setForceRebuild] = useState(false);
+    const [showCloneModal, setShowCloneModal] = useState(false);
 
     // Fetch real-time container metrics
     const isRunning = application.status?.startsWith('running') ?? false;
@@ -242,6 +244,11 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                         Start
                                     </DropdownItem>
                                 )}
+                                <DropdownDivider />
+                                <DropdownItem onClick={() => setShowCloneModal(true)}>
+                                    <Copy className="h-4 w-4" />
+                                    Clone
+                                </DropdownItem>
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => router.visit(`/applications/${application.uuid}/settings`)}>
                                     <Settings className="h-4 w-4" />
@@ -592,6 +599,14 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                     </div>
                 </div>
             )}
+
+            {/* Clone Modal */}
+            <CloneModal
+                isOpen={showCloneModal}
+                onClose={() => setShowCloneModal(false)}
+                resource={application}
+                resourceType="application"
+            />
         </AppLayout>
     );
 }

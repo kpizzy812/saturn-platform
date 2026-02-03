@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Environment;
+use App\Models\Project;
 use App\Models\User;
 use App\Services\Authorization\ProjectAuthorizationService;
 
@@ -22,19 +23,30 @@ class EnvironmentPolicy
 
     /**
      * Determine whether the user can view the model.
+     * Checks both project access AND production environment visibility.
      */
     public function view(User $user, Environment $environment): bool
     {
-        return $this->authService->canViewEnvironment($user, $environment);
+        // First check basic project access
+        if (! $this->authService->canViewProject($user, $environment->project)) {
+            return false;
+        }
+
+        // Then check production environment visibility (developers cannot see production)
+        return $this->authService->canViewProductionEnvironment($user, $environment);
     }
 
     /**
      * Determine whether the user can create models.
+     * Only owner/admin can create environments.
      */
-    public function create(User $user): bool
+    public function create(User $user, ?Project $project = null): bool
     {
-        // Any authenticated team member can create environments
-        return true;
+        if (! $project) {
+            return false;
+        }
+
+        return $this->authService->canCreateEnvironment($user, $project);
     }
 
     /**

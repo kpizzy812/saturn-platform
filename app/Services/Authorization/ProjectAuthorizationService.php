@@ -10,9 +10,34 @@ use App\Models\User;
 /**
  * Service for handling project-level authorization.
  * Centralizes authorization logic for projects, environments, and deployments.
+ *
+ * This service integrates with PermissionService for permission-set-based
+ * authorization while maintaining backward compatibility with role-based checks.
  */
 class ProjectAuthorizationService
 {
+    private ?PermissionService $permissionService = null;
+
+    /**
+     * Get the PermissionService instance (lazy loaded).
+     */
+    private function getPermissionService(): PermissionService
+    {
+        if ($this->permissionService === null) {
+            $this->permissionService = app(PermissionService::class);
+        }
+
+        return $this->permissionService;
+    }
+
+    /**
+     * Check permission using the new Permission Sets system with fallback to legacy.
+     */
+    private function checkPermission(User $user, string $permissionKey, ?Project $project = null, ?Environment $environment = null): bool
+    {
+        return $this->getPermissionService()->userHasPermission($user, $permissionKey, $project, $environment);
+    }
+
     /**
      * Check if a user can view a project.
      * User can view if they are:
@@ -195,6 +220,62 @@ class ProjectAuthorizationService
     public function canManageEnvironment(User $user, Environment $environment): bool
     {
         return $this->canManageProject($user, $environment->project);
+    }
+
+    /**
+     * Check if user can view a production environment.
+     * Developers and below cannot view production environments.
+     */
+    public function canViewProductionEnvironment(User $user, Environment $environment): bool
+    {
+        // Platform admins can view everything
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        // Non-production environments are visible to everyone with project access
+        if (! $environment->isProduction()) {
+            return true;
+        }
+
+        // Production environments require admin+ role
+        return $this->hasMinimumRole($user, $environment->project, 'admin');
+    }
+
+    /**
+     * Check if user can create environments.
+     * Only owner/admin can create environments.
+     */
+    public function canCreateEnvironment(User $user, Project $project): bool
+    {
+        // Platform admins can create environments
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasMinimumRole($user, $project, 'admin');
+    }
+
+    /**
+     * Filter environments visible to user (hide production from developers).
+     *
+     * @param  \Illuminate\Support\Collection  $environments
+     * @return \Illuminate\Support\Collection
+     */
+    public function filterVisibleEnvironments(User $user, Project $project, $environments)
+    {
+        // Platform admins can see everything
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return $environments;
+        }
+
+        // Admins and above can see all environments
+        if ($this->hasMinimumRole($user, $project, 'admin')) {
+            return $environments;
+        }
+
+        // Developers and below cannot see production environments
+        return $environments->filter(fn ($env) => ! $env->isProduction());
     }
 
     /**

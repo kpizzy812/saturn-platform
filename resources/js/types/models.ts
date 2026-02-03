@@ -774,3 +774,33 @@ export interface TransferTargets {
         server_id: number;
     }[];
 }
+
+// Team Resource Transfer (for user deletion/resource management)
+export type TeamResourceTransferStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'rolled_back';
+export type TeamResourceTransferType = 'project_transfer' | 'team_ownership' | 'team_merge' | 'user_deletion' | 'archive';
+
+export interface TeamResourceTransfer {
+    id: number;
+    uuid: string;
+    transferable_type: string;
+    transferable_id: number;
+    from_team_id: number | null;
+    to_team_id: number | null;
+    from_user_id: number | null;
+    to_user_id: number | null;
+    initiated_by: number | null;
+    transfer_type: TeamResourceTransferType;
+    reason: string | null;
+    status: TeamResourceTransferStatus;
+    resource_snapshot: Record<string, unknown> | null;
+    related_transfers: Record<string, unknown[]> | null;
+    error_message: string | null;
+    completed_at: string | null;
+    created_at: string;
+    updated_at: string;
+    // Computed attributes
+    status_label?: string;
+    type_label?: string;
+    resource_name?: string;
+    resource_type_name?: string;
+}

@@ -427,3 +427,135 @@ Route::get('/users/export', function () {
         'Content-Disposition' => 'attachment; filename="users-export-'.now()->format('Y-m-d').'.csv"',
     ]);
 })->name('admin.users.export');
+
+// User resource management for deletion
+Route::get('/users/{id}/resources', function (int $id) {
+    $adminUser = Auth::user();
+
+    if (! $adminUser->isSuperAdmin()) {
+        return back()->with('error', 'Unauthorized: Only superadmins can manage user resources');
+    }
+
+    $user = \App\Models\User::findOrFail($id);
+
+    // Cannot delete root user
+    if ($user->id === 0 || $user->isSuperAdmin()) {
+        return back()->with('error', 'Cannot delete root user or superadmins');
+    }
+
+    $transferService = app(\App\Services\Transfer\UserResourceTransferService::class);
+
+    // Get resource tree
+    $resourceTree = $transferService->getResourceTree($user);
+
+    // Get transfer destinations
+    $destinations = $transferService->getTransferDestinations($user);
+
+    // Check if can safely delete
+    $deleteCheck = $transferService->canSafelyDeleteUser($user);
+
+    return Inertia::render('Admin/Users/DeleteWithTransfer', [
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'created_at' => $user->created_at->toISOString(),
+        ],
+        'resourceTree' => $resourceTree,
+        'destinations' => [
+            'teams' => $destinations['teams']->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'personal_team' => $t->personal_team,
+                'members_count' => $t->members()->count(),
+            ]),
+            'users' => $destinations['users']->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+            ]),
+        ],
+        'deleteCheck' => $deleteCheck,
+    ]);
+})->name('admin.users.resources');
+
+Route::post('/users/{id}/transfer-and-delete', function (int $id) {
+    $adminUser = Auth::user();
+
+    if (! $adminUser->isSuperAdmin()) {
+        return back()->with('error', 'Unauthorized: Only superadmins can delete users');
+    }
+
+    $user = \App\Models\User::findOrFail($id);
+
+    // Cannot delete root user or superadmins
+    if ($user->id === 0 || $user->isSuperAdmin()) {
+        return back()->with('error', 'Cannot delete root user or superadmins');
+    }
+
+    $transferType = request()->input('transfer_type'); // 'team', 'user', 'archive', 'delete_all'
+    $targetTeamId = request()->input('target_team_id');
+    $targetUserId = request()->input('target_user_id');
+    $reason = request()->input('reason', 'User account deletion');
+
+    $transferService = app(\App\Services\Transfer\UserResourceTransferService::class);
+
+    try {
+        $transfers = collect();
+
+        switch ($transferType) {
+            case 'team':
+                if (! $targetTeamId) {
+                    return back()->with('error', 'Target team is required');
+                }
+                $targetTeam = \App\Models\Team::findOrFail($targetTeamId);
+                $transfers = $transferService->transferAllToTeam($user, $targetTeam, $adminUser, $reason);
+                break;
+
+            case 'user':
+                if (! $targetUserId) {
+                    return back()->with('error', 'Target user is required');
+                }
+                $targetUser = \App\Models\User::findOrFail($targetUserId);
+                $transfers = $transferService->transferOwnershipToUser($user, $targetUser, $adminUser, $reason);
+                break;
+
+            case 'archive':
+                $transfers = $transferService->archiveUserResources($user, $adminUser);
+                break;
+
+            case 'delete_all':
+                // Just proceed with deletion, resources will be cascade deleted
+                break;
+
+            default:
+                return back()->with('error', 'Invalid transfer type');
+        }
+
+        // Store user info before deletion
+        $userName = $user->name;
+        $userEmail = $user->email;
+
+        // Delete the user
+        $user->delete();
+
+        // Log the deletion
+        \App\Models\AuditLog::create([
+            'user_id' => $adminUser->id,
+            'team_id' => null,
+            'action' => 'user_deleted_with_transfer',
+            'resource_type' => 'User',
+            'resource_id' => $id,
+            'resource_name' => $userName,
+            'description' => "Admin {$adminUser->name} deleted user {$userName} ({$userEmail}). Transfer type: {$transferType}. Transfers: {$transfers->count()}",
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User {$userName} deleted successfully. {$transfers->count()} resources transferred.");
+
+    } catch (\Exception $e) {
+        return back()->with('error', 'Failed to delete user: '.$e->getMessage());
+    }
+})->name('admin.users.transfer-and-delete');
