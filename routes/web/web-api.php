@@ -587,3 +587,329 @@ Route::get('/web-api/code-review/status', function () {
         ],
     ]);
 })->name('web-api.code-review.status');
+
+// AI Chat routes
+Route::prefix('web-api/ai-chat')->group(function () {
+    // Get chat status
+    Route::get('/status', function () {
+        $chatService = app(\App\Services\AI\Chat\AiChatService::class);
+        $providerInfo = $chatService->getProviderInfo();
+
+        return response()->json([
+            'enabled' => $chatService->isEnabled(),
+            'available' => $chatService->isAvailable(),
+            'provider' => $providerInfo['provider'],
+            'model' => $providerInfo['model'],
+        ]);
+    })->name('web-api.ai-chat.status');
+
+    // List sessions
+    Route::get('/sessions', function () {
+        $sessions = \App\Models\AiChatSession::where('user_id', auth()->id())
+            ->where('team_id', currentTeam()->id)
+            ->active()
+            ->with(['messages' => fn ($q) => $q->latest()->take(1)])
+            ->latest()
+            ->take(20)
+            ->get();
+
+        return response()->json([
+            'sessions' => $sessions->map(fn ($s) => [
+                'uuid' => $s->uuid,
+                'title' => $s->title ?? 'New conversation',
+                'context_type' => $s->context_type,
+                'context_name' => $s->context_name,
+                'last_message' => $s->messages->first()?->content,
+                'created_at' => $s->created_at->toIso8601String(),
+                'updated_at' => $s->updated_at->toIso8601String(),
+            ]),
+        ]);
+    })->name('web-api.ai-chat.sessions.index');
+
+    // Create new session
+    Route::post('/sessions', function (Request $request) {
+        $chatService = app(\App\Services\AI\Chat\AiChatService::class);
+
+        if (! $chatService->isEnabledAndAvailable()) {
+            return response()->json([
+                'error' => 'AI Chat is not available',
+            ], 503);
+        }
+
+        $session = $chatService->getOrCreateSession(
+            user: auth()->user(),
+            teamId: currentTeam()->id,
+            contextType: $request->input('context_type'),
+            contextId: $request->input('context_id'),
+            contextName: $request->input('context_name'),
+        );
+
+        return response()->json([
+            'session' => [
+                'uuid' => $session->uuid,
+                'title' => $session->title,
+                'context_type' => $session->context_type,
+                'context_id' => $session->context_id,
+                'context_name' => $session->context_name,
+            ],
+        ]);
+    })->name('web-api.ai-chat.sessions.store');
+
+    // Get session messages
+    Route::get('/sessions/{uuid}/messages', function (string $uuid) {
+        $session = \App\Models\AiChatSession::where('uuid', $uuid)
+            ->where('user_id', auth()->id())
+            ->where('team_id', currentTeam()->id)
+            ->first();
+
+        if (! $session) {
+            return response()->json(['error' => 'Session not found'], 404);
+        }
+
+        $messages = $session->messages()
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json([
+            'session' => [
+                'uuid' => $session->uuid,
+                'title' => $session->title,
+                'context_type' => $session->context_type,
+                'context_name' => $session->context_name,
+            ],
+            'messages' => $messages->map(fn ($m) => [
+                'uuid' => $m->uuid,
+                'role' => $m->role,
+                'content' => $m->content,
+                'intent' => $m->intent,
+                'intent_label' => $m->intent_label,
+                'command_status' => $m->command_status,
+                'command_result' => $m->command_result,
+                'rating' => $m->rating,
+                'created_at' => $m->created_at->toIso8601String(),
+            ]),
+        ]);
+    })->name('web-api.ai-chat.sessions.messages');
+
+    // Send message to session
+    Route::post('/sessions/{uuid}/messages', function (string $uuid, Request $request) {
+        $session = \App\Models\AiChatSession::where('uuid', $uuid)
+            ->where('user_id', auth()->id())
+            ->where('team_id', currentTeam()->id)
+            ->first();
+
+        if (! $session) {
+            return response()->json(['error' => 'Session not found'], 404);
+        }
+
+        $chatService = app(\App\Services\AI\Chat\AiChatService::class);
+
+        if (! $chatService->isEnabledAndAvailable()) {
+            return response()->json([
+                'error' => 'AI Chat is not available',
+            ], 503);
+        }
+
+        $content = $request->input('content');
+        if (empty($content)) {
+            return response()->json(['error' => 'Message content is required'], 422);
+        }
+
+        // Check rate limiting
+        $recentMessages = \App\Models\AiChatMessage::where('session_id', $session->id)
+            ->where('role', 'user')
+            ->where('created_at', '>=', now()->subMinute())
+            ->count();
+
+        $rateLimit = config('ai.chat.rate_limit.messages_per_minute', 20);
+        if ($recentMessages >= $rateLimit) {
+            return response()->json([
+                'error' => 'Rate limit exceeded. Please wait a moment.',
+            ], 429);
+        }
+
+        try {
+            $message = $chatService->sendMessage(
+                session: $session,
+                content: $content,
+                executeCommands: $request->boolean('execute_commands', true),
+            );
+
+            return response()->json([
+                'message' => [
+                    'uuid' => $message->uuid,
+                    'role' => $message->role,
+                    'content' => $message->content,
+                    'intent' => $message->intent,
+                    'intent_label' => $message->intent_label,
+                    'command_status' => $message->command_status,
+                    'command_result' => $message->command_result,
+                    'created_at' => $message->created_at->toIso8601String(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'Failed to process message: '.$e->getMessage(),
+            ], 500);
+        }
+    })->name('web-api.ai-chat.sessions.messages.store');
+
+    // Rate a message
+    Route::post('/messages/{uuid}/rate', function (string $uuid, Request $request) {
+        $message = \App\Models\AiChatMessage::where('uuid', $uuid)
+            ->whereHas('session', fn ($q) => $q
+                ->where('user_id', auth()->id())
+                ->where('team_id', currentTeam()->id))
+            ->first();
+
+        if (! $message) {
+            return response()->json(['error' => 'Message not found'], 404);
+        }
+
+        $rating = $request->input('rating');
+        if (! is_numeric($rating) || $rating < 1 || $rating > 5) {
+            return response()->json(['error' => 'Rating must be between 1 and 5'], 422);
+        }
+
+        $message->rate((int) $rating);
+
+        return response()->json(['success' => true, 'rating' => (int) $rating]);
+    })->name('web-api.ai-chat.messages.rate');
+
+    // Archive (delete) session
+    Route::delete('/sessions/{uuid}', function (string $uuid) {
+        $session = \App\Models\AiChatSession::where('uuid', $uuid)
+            ->where('user_id', auth()->id())
+            ->where('team_id', currentTeam()->id)
+            ->first();
+
+        if (! $session) {
+            return response()->json(['error' => 'Session not found'], 404);
+        }
+
+        $session->archive();
+
+        return response()->json(['success' => true]);
+    })->name('web-api.ai-chat.sessions.delete');
+
+    // Confirm and execute command
+    Route::post('/sessions/{uuid}/confirm', function (string $uuid, Request $request) {
+        $session = \App\Models\AiChatSession::where('uuid', $uuid)
+            ->where('user_id', auth()->id())
+            ->where('team_id', currentTeam()->id)
+            ->first();
+
+        if (! $session) {
+            return response()->json(['error' => 'Session not found'], 404);
+        }
+
+        $intent = $request->input('intent');
+        $params = $request->input('params', []);
+
+        if (empty($intent)) {
+            return response()->json(['error' => 'Intent is required'], 422);
+        }
+
+        // Dispatch command execution job
+        $message = $session->messages()->create([
+            'role' => 'user',
+            'content' => "Confirmed: {$intent}",
+            'intent' => $intent,
+            'intent_params' => $params,
+            'command_status' => 'pending',
+        ]);
+
+        \App\Jobs\ExecuteAiCommandJob::dispatch(
+            session: $session,
+            message: $message,
+            intent: $intent,
+            params: $params,
+        );
+
+        return response()->json([
+            'message' => [
+                'uuid' => $message->uuid,
+                'content' => $message->content,
+                'command_status' => 'pending',
+            ],
+        ]);
+    })->name('web-api.ai-chat.sessions.confirm');
+});
+
+// AI Analytics routes
+Route::prefix('web-api/ai-analytics')->group(function () {
+    // Get usage statistics
+    Route::get('/usage', function (Request $request) {
+        $period = $request->query('period', '30d');
+        $teamId = currentTeam()->id;
+
+        $stats = \App\Models\AiUsageLog::getTeamStats($teamId, $period);
+
+        return response()->json($stats);
+    })->name('web-api.ai-analytics.usage');
+
+    // Get popular commands
+    Route::get('/commands', function () {
+        $teamId = currentTeam()->id;
+
+        $commands = \App\Models\AiChatMessage::whereHas('session', fn ($q) => $q->where('team_id', $teamId))
+            ->whereNotNull('intent')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->selectRaw('intent, COUNT(*) as count')
+            ->groupBy('intent')
+            ->orderByDesc('count')
+            ->limit(10)
+            ->get();
+
+        return response()->json([
+            'commands' => $commands->map(fn ($c) => [
+                'intent' => $c->intent,
+                'count' => $c->count,
+            ]),
+        ]);
+    })->name('web-api.ai-analytics.commands');
+
+    // Get rating distribution
+    Route::get('/ratings', function () {
+        $teamId = currentTeam()->id;
+
+        $ratings = \App\Models\AiChatMessage::whereHas('session', fn ($q) => $q->where('team_id', $teamId))
+            ->whereNotNull('rating')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->selectRaw('rating, COUNT(*) as count')
+            ->groupBy('rating')
+            ->orderBy('rating')
+            ->get();
+
+        $total = $ratings->sum('count');
+        $average = $total > 0 ? $ratings->sum(fn ($r) => $r->rating * $r->count) / $total : 0;
+
+        return response()->json([
+            'ratings' => $ratings->pluck('count', 'rating'),
+            'total' => $total,
+            'average' => round($average, 2),
+        ]);
+    })->name('web-api.ai-analytics.ratings');
+
+    // Get daily usage for chart
+    Route::get('/daily', function (Request $request) {
+        $days = min((int) $request->query('days', 30), 90);
+        $teamId = currentTeam()->id;
+
+        $daily = \App\Models\AiUsageLog::where('team_id', $teamId)
+            ->where('created_at', '>=', now()->subDays($days))
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as requests, SUM(input_tokens + output_tokens) as tokens, SUM(cost_usd) as cost')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return response()->json([
+            'daily' => $daily->map(fn ($d) => [
+                'date' => $d->date,
+                'requests' => $d->requests,
+                'tokens' => (int) $d->tokens,
+                'cost' => round((float) $d->cost, 4),
+            ]),
+        ]);
+    })->name('web-api.ai-analytics.daily');
+});

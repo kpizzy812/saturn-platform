@@ -6,6 +6,7 @@ import { initializeEcho } from '@/lib/echo';
 import { initializeSentry, setUser } from '@/lib/sentry';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ConfirmationProvider, ToastProvider, ThemeProvider } from '@/components/ui';
+import { AiChatGlobal } from '@/components/AiChat';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Saturn Platform';
 
@@ -36,6 +37,7 @@ createInertiaApp({
                     <ToastProvider>
                         <ConfirmationProvider>
                             <App {...props} />
+                            <AiChatGlobal />
                         </ConfirmationProvider>
                     </ToastProvider>
                 </ThemeProvider>

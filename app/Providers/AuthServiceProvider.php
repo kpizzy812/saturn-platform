@@ -64,6 +64,9 @@ class AuthServiceProvider extends ServiceProvider
 
         // Environment migration policy
         \App\Models\EnvironmentMigration::class => \App\Policies\EnvironmentMigrationPolicy::class,
+
+        // AI Chat policy
+        \App\Models\AiChatSession::class => \App\Policies\AiChatPolicy::class,
     ];
 
     /**

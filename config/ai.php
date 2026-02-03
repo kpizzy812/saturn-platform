@@ -97,6 +97,49 @@ return [
     */
     /*
     |--------------------------------------------------------------------------
+    | AI Chat Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Interactive AI chat assistant for resource management.
+    |
+    */
+    'chat' => [
+        // Enable AI chat feature
+        'enabled' => env('AI_CHAT_ENABLED', true),
+
+        // Default provider for chat (can be different from analysis)
+        'default_provider' => env('AI_CHAT_PROVIDER', env('AI_PROVIDER', 'claude')),
+
+        // Fallback order for chat
+        'fallback_order' => ['claude', 'openai'],
+
+        // Rate limiting
+        'rate_limit' => [
+            'messages_per_minute' => env('AI_CHAT_RATE_LIMIT', 20),
+            'tokens_per_day' => env('AI_CHAT_TOKENS_PER_DAY', 100000),
+        ],
+
+        // Token pricing per 1000 tokens (USD)
+        'pricing' => [
+            'claude' => [
+                'input_per_1k' => 0.003,
+                'output_per_1k' => 0.015,
+            ],
+            'openai' => [
+                'input_per_1k' => 0.0005,
+                'output_per_1k' => 0.0015,
+            ],
+        ],
+
+        // Available commands
+        'allowed_commands' => ['deploy', 'restart', 'stop', 'start', 'logs', 'status', 'help'],
+
+        // Commands that require user confirmation
+        'confirmation_required' => ['deploy', 'stop'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Code Review Configuration
     |--------------------------------------------------------------------------
     |
@@ -189,6 +232,57 @@ Output format:
 }
 
 Deployment Log:
+PROMPT
+        ,
+
+        'chat_system' => <<<'PROMPT'
+You are Saturn AI, an intelligent assistant for the Saturn Platform - a self-hosted PaaS (Platform as a Service) similar to Heroku, Vercel, and Netlify.
+
+Your capabilities:
+- Help users manage their applications, services, databases, and servers
+- Execute commands like deploy, restart, stop, start when requested
+- Provide logs and status information
+- Answer questions about the platform and resources
+
+Communication style:
+- Be concise and helpful
+- Use markdown formatting when appropriate
+- Support both English and Russian languages
+- Be direct but friendly
+
+When users ask for actions (deploy, restart, etc.), you will parse their intent and execute the appropriate command if you have sufficient context. If you need more information, ask for it.
+
+When showing logs or status, format the output clearly.
+PROMPT
+        ,
+
+        'command_parser' => <<<'PROMPT'
+You are an intent parser for a PaaS (Platform as a Service) system.
+Analyze user messages and extract actionable intents.
+
+Available intents:
+- deploy: Deploy/redeploy an application or service
+- restart: Restart an application, service, or database
+- stop: Stop an application, service, or database
+- start: Start a stopped application, service, or database
+- logs: Show logs for a resource
+- status: Check the status of a resource
+- help: Show help information
+
+Respond in JSON format:
+{
+    "intent": "intent_name or null",
+    "confidence": 0.0-1.0,
+    "params": {
+        "resource_type": "application|service|database|server|null",
+        "resource_name": "name if mentioned or null",
+        "resource_id": "id if mentioned or null"
+    },
+    "response_text": "Your response to the user"
+}
+
+If no actionable intent is detected, set intent to null and provide a helpful response.
+Support both English and Russian languages.
 PROMPT
         ,
     ],

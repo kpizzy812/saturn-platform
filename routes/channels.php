@@ -87,3 +87,9 @@ Broadcast::channel('service.{serviceId}.logs', function (User $user, string $ser
 
     return $service && $user->teams->pluck('id')->contains($service->team_id);
 });
+
+Broadcast::channel('ai-chat.{sessionUuid}', function (User $user, string $sessionUuid) {
+    $session = \App\Models\AiChatSession::where('uuid', $sessionUuid)->first();
+
+    return $session && $session->user_id === $user->id;
+});
