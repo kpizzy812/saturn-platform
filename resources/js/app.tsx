@@ -6,8 +6,7 @@ import { initializeEcho } from '@/lib/echo';
 import { initializeSentry, setUser } from '@/lib/sentry';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ConfirmationProvider, ToastProvider, ThemeProvider } from '@/components/ui';
-// TODO: Re-enable after fixing usePage issue
-// import { AiChatGlobal } from '@/components/AiChat';
+import { AiChatGlobal } from '@/components/AiChat';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Saturn Platform';
 
@@ -38,8 +37,10 @@ createInertiaApp({
                     <ToastProvider>
                         <ConfirmationProvider>
                             <App {...props} />
-                            {/* TODO: Re-enable after fixing usePage issue */}
-                            {/* <AiChatGlobal initialProps={props.initialPage.props} /> */}
+                            <AiChatGlobal
+                                isAuthenticated={!!auth?.user}
+                                isAvailable={true}
+                            />
                         </ConfirmationProvider>
                     </ToastProvider>
                 </ThemeProvider>

@@ -143,11 +143,16 @@ class EnvironmentMigrationController extends Controller
         $user = auth()->user();
         $authDetails = $this->authService->getAuthorizationDetails($user, $sourceEnvironment, $targetEnvironment);
 
-        // Add available target servers
+        // Add available target servers (using settings relation for is_usable check)
+        // Include both team's servers and localhost (Saturn host available to all)
         $targetServers = [];
         if ($authDetails['allowed']) {
-            $targetServers = Server::ownedByCurrentTeam()
-                ->where('is_usable', true)
+            $targetServers = Server::where(function ($query) use ($teamId) {
+                $query->where('team_id', $teamId)
+                    ->orWhere('id', 0); // localhost (Saturn host)
+            })
+                ->whereRelation('settings', 'is_usable', true)
+                ->whereRelation('settings', 'is_reachable', true)
                 ->get(['id', 'name', 'ip'])
                 ->toArray();
         }
@@ -505,9 +510,14 @@ class EnvironmentMigrationController extends Controller
         $targetEnvironments = ValidateMigrationChainAction::make()
             ->getAvailableTargets($sourceEnvironment);
 
-        // Get available servers
-        $servers = Server::ownedByCurrentTeam()
-            ->where('is_usable', true)
+        // Get available servers (using settings relation for is_usable check)
+        // Include both team's servers and localhost (Saturn host available to all)
+        $servers = Server::where(function ($query) use ($teamId) {
+            $query->where('team_id', $teamId)
+                ->orWhere('id', 0); // localhost (Saturn host)
+        })
+            ->whereRelation('settings', 'is_usable', true)
+            ->whereRelation('settings', 'is_reachable', true)
             ->get(['id', 'name', 'ip']);
 
         return response()->json([
@@ -558,9 +568,14 @@ class EnvironmentMigrationController extends Controller
         $targetEnvironments = ValidateMigrationChainAction::make()
             ->getAvailableTargets($environment);
 
-        // Get available servers
-        $servers = Server::ownedByCurrentTeam()
-            ->where('is_usable', true)
+        // Get available servers (using settings relation for is_usable check)
+        // Include both team's servers and localhost (Saturn host available to all)
+        $servers = Server::where(function ($query) use ($teamId) {
+            $query->where('team_id', $teamId)
+                ->orWhere('id', 0); // localhost (Saturn host)
+        })
+            ->whereRelation('settings', 'is_usable', true)
+            ->whereRelation('settings', 'is_reachable', true)
             ->get(['id', 'name', 'ip']);
 
         return response()->json([
