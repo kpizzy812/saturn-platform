@@ -110,34 +110,37 @@ class Project extends BaseModel
     protected static function booted()
     {
         static::created(function ($project) {
-            ProjectSetting::create([
+            ProjectSetting::firstOrCreate([
                 'project_id' => $project->id,
             ]);
 
-            // Create all three standard environments
-            Environment::create([
-                'name' => 'development',
-                'type' => 'development',
-                'project_id' => $project->id,
-                'uuid' => (string) new Cuid2,
-                'requires_approval' => false,
-            ]);
+            // Create all three standard environments (use firstOrCreate to avoid duplicates)
+            Environment::firstOrCreate(
+                ['name' => 'development', 'project_id' => $project->id],
+                [
+                    'type' => 'development',
+                    'uuid' => (string) new Cuid2,
+                    'requires_approval' => false,
+                ]
+            );
 
-            Environment::create([
-                'name' => 'uat',
-                'type' => 'uat',
-                'project_id' => $project->id,
-                'uuid' => (string) new Cuid2,
-                'requires_approval' => false,
-            ]);
+            Environment::firstOrCreate(
+                ['name' => 'uat', 'project_id' => $project->id],
+                [
+                    'type' => 'uat',
+                    'uuid' => (string) new Cuid2,
+                    'requires_approval' => false,
+                ]
+            );
 
-            Environment::create([
-                'name' => 'production',
-                'type' => 'production',
-                'project_id' => $project->id,
-                'uuid' => (string) new Cuid2,
-                'requires_approval' => true,
-            ]);
+            Environment::firstOrCreate(
+                ['name' => 'production', 'project_id' => $project->id],
+                [
+                    'type' => 'production',
+                    'uuid' => (string) new Cuid2,
+                    'requires_approval' => true,
+                ]
+            );
         });
         static::deleting(function ($project) {
             $project->environments()->delete();
