@@ -1268,3 +1268,19 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
 
     return response()->json(['message' => 'Project access updated successfully']);
 })->name('settings.team.members.projects.update');
+
+// Team Switcher - switch to a different team
+Route::post('/teams/switch/{id}', function (string $id) {
+    $user = auth()->user();
+
+    // Verify user is a member of this team
+    $team = $user->teams()->where('teams.id', $id)->first();
+    if (! $team) {
+        return redirect()->back()->with('error', 'You are not a member of this team');
+    }
+
+    // Update session with new team
+    refreshSession($team);
+
+    return redirect('/dashboard')->with('success', "Switched to {$team->name}");
+})->name('teams.switch');

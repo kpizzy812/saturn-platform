@@ -69,6 +69,12 @@ class HandleInertiaRequests extends Middleware
                 'name' => $team->name,
                 'personal_team' => $team->personal_team ?? false,
             ] : null,
+            'teams' => $user ? $user->teams->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'personal_team' => $t->personal_team ?? false,
+                'role' => $t->pivot->role ?? 'member',
+            ])->values()->toArray() : [],
             'notifications' => $notificationsData,
             'systemNotifications' => $systemNotificationsData,
             'flash' => [

@@ -26,12 +26,21 @@ export interface SharedTeam {
     personal_team: boolean;
 }
 
+// Team item in teams list (includes role)
+export interface SharedTeamItem {
+    id: number;
+    name: string;
+    personal_team: boolean;
+    role: string;
+}
+
 // Use InertiaConfig augmentation for shared page props (Inertia v2 approach)
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             auth: AuthUser | null;
             team: SharedTeam | null;
+            teams: SharedTeamItem[];
             flash: {
                 success?: string;
                 error?: string;

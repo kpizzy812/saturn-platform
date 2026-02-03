@@ -4,6 +4,7 @@ import { HelpCircle, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, 
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
+import { TeamSwitcher } from '@/components/ui/TeamSwitcher';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import type { Notification } from '@/types';
 
@@ -35,6 +36,9 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                     <SaturnLogo size="sm" />
                     <span className="text-lg font-semibold tracking-tight text-foreground">Saturn</span>
                 </Link>
+
+                {/* Team Switcher */}
+                <TeamSwitcher />
 
                 {/* Command Palette Trigger */}
                 <button
