@@ -5,6 +5,7 @@ namespace App\Services\AI\Chat\Providers;
 use App\Services\AI\Chat\Contracts\ChatProviderInterface;
 use App\Services\AI\Chat\DTOs\ChatMessage;
 use App\Services\AI\Chat\DTOs\ChatResponse;
+use App\Services\AI\Chat\DTOs\ToolCall;
 use Generator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -45,7 +46,14 @@ final class AnthropicChatProvider implements ChatProviderInterface
         return $this->model;
     }
 
-    public function chat(array $messages, ?array $tools = null): ChatResponse
+    /**
+     * Send a chat request with optional tools.
+     *
+     * @param  ChatMessage[]  $messages
+     * @param  array|null  $tools  Tool definitions in Anthropic format
+     * @param  string|null  $toolChoice  Force tool use: 'auto', 'any', or specific tool name
+     */
+    public function chat(array $messages, ?array $tools = null, ?string $toolChoice = null): ChatResponse
     {
         if (! $this->isAvailable()) {
             return ChatResponse::failed('Anthropic API key is not configured', $this->getName(), $this->model);
@@ -68,6 +76,13 @@ final class AnthropicChatProvider implements ChatProviderInterface
 
             if ($tools) {
                 $payload['tools'] = $tools;
+
+                // Set tool_choice to force tool use
+                if ($toolChoice === 'any') {
+                    $payload['tool_choice'] = ['type' => 'any'];
+                } elseif ($toolChoice && $toolChoice !== 'auto') {
+                    $payload['tool_choice'] = ['type' => 'tool', 'name' => $toolChoice];
+                }
             }
 
             $response = Http::withHeaders([
@@ -84,24 +99,45 @@ final class AnthropicChatProvider implements ChatProviderInterface
             }
 
             $data = $response->json();
-            $content = $data['content'][0]['text'] ?? '';
-            $inputTokens = $data['usage']['input_tokens'] ?? 0;
-            $outputTokens = $data['usage']['output_tokens'] ?? 0;
-            $stopReason = $data['stop_reason'] ?? null;
 
-            return ChatResponse::success(
-                content: $content,
-                provider: $this->getName(),
-                model: $this->model,
-                inputTokens: $inputTokens,
-                outputTokens: $outputTokens,
-                stopReason: $stopReason,
-            );
+            return $this->parseResponse($data);
         } catch (\Throwable $e) {
             Log::error('Anthropic chat error', ['error' => $e->getMessage()]);
 
             return ChatResponse::failed($e->getMessage(), $this->getName(), $this->model);
         }
+    }
+
+    /**
+     * Parse Anthropic API response including tool_use blocks.
+     */
+    private function parseResponse(array $data): ChatResponse
+    {
+        $content = '';
+        $toolCalls = [];
+
+        // Parse content blocks (can have multiple: text and tool_use)
+        foreach ($data['content'] ?? [] as $block) {
+            if ($block['type'] === 'text') {
+                $content .= $block['text'];
+            } elseif ($block['type'] === 'tool_use') {
+                $toolCalls[] = ToolCall::fromAnthropic($block);
+            }
+        }
+
+        $inputTokens = $data['usage']['input_tokens'] ?? 0;
+        $outputTokens = $data['usage']['output_tokens'] ?? 0;
+        $stopReason = $data['stop_reason'] ?? null;
+
+        return ChatResponse::success(
+            content: $content,
+            provider: $this->getName(),
+            model: $this->model,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            stopReason: $stopReason,
+            toolCalls: $toolCalls,
+        );
     }
 
     public function streamChat(array $messages): Generator

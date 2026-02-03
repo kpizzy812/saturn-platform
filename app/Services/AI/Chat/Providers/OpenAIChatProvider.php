@@ -5,6 +5,7 @@ namespace App\Services\AI\Chat\Providers;
 use App\Services\AI\Chat\Contracts\ChatProviderInterface;
 use App\Services\AI\Chat\DTOs\ChatMessage;
 use App\Services\AI\Chat\DTOs\ChatResponse;
+use App\Services\AI\Chat\DTOs\ToolCall;
 use Generator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -45,8 +46,20 @@ final class OpenAIChatProvider implements ChatProviderInterface
         return $this->model;
     }
 
-    public function chat(array $messages, ?array $tools = null): ChatResponse
-    {
+    /**
+     * Send a chat request with optional tools and response format.
+     *
+     * @param  ChatMessage[]  $messages
+     * @param  array|null  $tools  Tool definitions in OpenAI format
+     * @param  string|null  $toolChoice  Force tool use: 'auto', 'required', 'none', or specific function name
+     * @param  array|null  $responseFormat  Structured output schema (response_format)
+     */
+    public function chat(
+        array $messages,
+        ?array $tools = null,
+        ?string $toolChoice = null,
+        ?array $responseFormat = null
+    ): ChatResponse {
         if (! $this->isAvailable()) {
             return ChatResponse::failed('OpenAI API key is not configured', $this->getName(), $this->model);
         }
@@ -63,6 +76,25 @@ final class OpenAIChatProvider implements ChatProviderInterface
 
             if ($tools) {
                 $payload['tools'] = $tools;
+                $payload['parallel_tool_calls'] = false; // Ensure one tool at a time for reliability
+
+                // Set tool_choice to control function calling
+                if ($toolChoice === 'required') {
+                    $payload['tool_choice'] = 'required';
+                } elseif ($toolChoice === 'none') {
+                    $payload['tool_choice'] = 'none';
+                } elseif ($toolChoice && $toolChoice !== 'auto') {
+                    // Force specific function
+                    $payload['tool_choice'] = [
+                        'type' => 'function',
+                        'function' => ['name' => $toolChoice],
+                    ];
+                }
+            }
+
+            // Structured output via response_format
+            if ($responseFormat) {
+                $payload['response_format'] = $responseFormat;
             }
 
             $response = Http::withHeaders([
@@ -78,24 +110,60 @@ final class OpenAIChatProvider implements ChatProviderInterface
             }
 
             $data = $response->json();
-            $content = $data['choices'][0]['message']['content'] ?? '';
-            $inputTokens = $data['usage']['prompt_tokens'] ?? 0;
-            $outputTokens = $data['usage']['completion_tokens'] ?? 0;
-            $stopReason = $data['choices'][0]['finish_reason'] ?? null;
 
-            return ChatResponse::success(
-                content: $content,
-                provider: $this->getName(),
-                model: $this->model,
-                inputTokens: $inputTokens,
-                outputTokens: $outputTokens,
-                stopReason: $stopReason,
-            );
+            return $this->parseResponse($data);
         } catch (\Throwable $e) {
             Log::error('OpenAI chat error', ['error' => $e->getMessage()]);
 
             return ChatResponse::failed($e->getMessage(), $this->getName(), $this->model);
         }
+    }
+
+    /**
+     * Send a chat request with structured output (JSON schema).
+     *
+     * @param  ChatMessage[]  $messages
+     * @param  array  $schema  JSON schema for response_format
+     */
+    public function chatWithStructuredOutput(array $messages, array $schema): ChatResponse
+    {
+        return $this->chat($messages, null, null, $schema);
+    }
+
+    /**
+     * Parse OpenAI API response including function calls.
+     */
+    private function parseResponse(array $data): ChatResponse
+    {
+        $message = $data['choices'][0]['message'] ?? [];
+        $content = $message['content'] ?? '';
+        $toolCalls = [];
+
+        // Parse tool_calls if present
+        if (! empty($message['tool_calls'])) {
+            foreach ($message['tool_calls'] as $call) {
+                $toolCalls[] = ToolCall::fromOpenAI($call);
+            }
+        }
+
+        $inputTokens = $data['usage']['prompt_tokens'] ?? 0;
+        $outputTokens = $data['usage']['completion_tokens'] ?? 0;
+        $stopReason = $data['choices'][0]['finish_reason'] ?? null;
+
+        // Map OpenAI stop reasons to match Anthropic
+        if ($stopReason === 'tool_calls') {
+            $stopReason = 'tool_use';
+        }
+
+        return ChatResponse::success(
+            content: $content,
+            provider: $this->getName(),
+            model: $this->model,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            stopReason: $stopReason,
+            toolCalls: $toolCalls,
+        );
     }
 
     public function streamChat(array $messages): Generator

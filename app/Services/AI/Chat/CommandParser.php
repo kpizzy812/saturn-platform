@@ -5,10 +5,14 @@ namespace App\Services\AI\Chat;
 use App\Services\AI\Chat\Contracts\ChatProviderInterface;
 use App\Services\AI\Chat\DTOs\ChatMessage;
 use App\Services\AI\Chat\DTOs\IntentResult;
+use App\Services\AI\Chat\DTOs\ToolCall;
+use App\Services\AI\Chat\Providers\AnthropicChatProvider;
+use App\Services\AI\Chat\Providers\OpenAIChatProvider;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Parses user messages to detect actionable intents.
+ * Supports structured output and function calling for improved reliability.
  */
 class CommandParser
 {
@@ -25,6 +29,7 @@ class CommandParser
         'logs',
         'status',
         'help',
+        'none',
     ];
 
     /**
@@ -54,8 +59,9 @@ class CommandParser
      * Parse user message to detect intent.
      *
      * @param  array|null  $context  Current context (resource type, id, name)
+     * @param  bool  $useToolCalling  Use function calling / tool use for more reliable parsing
      */
-    public function parse(string $message, ?array $context = null): IntentResult
+    public function parse(string $message, ?array $context = null, bool $useToolCalling = true): IntentResult
     {
         // First try simple keyword-based detection
         $simpleResult = $this->parseSimple($message, $context);
@@ -65,10 +71,244 @@ class CommandParser
 
         // Fall back to AI-based parsing if provider is available
         if ($this->provider && $this->provider->isAvailable()) {
+            // Use tool calling for more structured and reliable parsing
+            if ($useToolCalling) {
+                return $this->parseWithToolCalling($message, $context);
+            }
+
             return $this->parseWithAI($message, $context);
         }
 
         return IntentResult::none();
+    }
+
+    /**
+     * Parse with function calling / tool use for structured output.
+     * This is more reliable than parsing free-form text.
+     */
+    private function parseWithToolCalling(string $message, ?array $context = null): IntentResult
+    {
+        try {
+            $systemPrompt = $this->buildToolCallingSystemPrompt($context);
+            $userPrompt = $message;
+
+            $messages = [
+                ChatMessage::system($systemPrompt),
+                ChatMessage::user($userPrompt),
+            ];
+
+            // Get provider-specific tools and call
+            if ($this->provider instanceof OpenAIChatProvider) {
+                return $this->parseWithOpenAITools($messages, $context);
+            } elseif ($this->provider instanceof AnthropicChatProvider) {
+                return $this->parseWithAnthropicTools($messages, $context);
+            }
+
+            // Fall back to regular AI parsing
+            return $this->parseWithAI($message, $context);
+        } catch (\Throwable $e) {
+            Log::error('CommandParser tool calling error', ['error' => $e->getMessage()]);
+
+            // Fall back to regular parsing
+            return $this->parseWithAI($message, $context);
+        }
+    }
+
+    /**
+     * Parse using OpenAI function calling.
+     */
+    private function parseWithOpenAITools(array $messages, ?array $context): IntentResult
+    {
+        $tools = ToolDefinitions::parseIntentOnlyOpenAI();
+
+        /** @var OpenAIChatProvider $provider */
+        $provider = $this->provider;
+
+        // Force the model to call parse_intent function
+        $response = $provider->chat($messages, $tools, 'parse_intent');
+
+        if (! $response->success) {
+            Log::warning('OpenAI tool calling failed', ['error' => $response->error]);
+
+            return IntentResult::none();
+        }
+
+        // Check for tool call in response
+        if ($response->hasToolCalls()) {
+            $toolCall = $response->getToolCall('parse_intent');
+            if ($toolCall) {
+                return $this->buildIntentFromToolCall($toolCall, $context);
+            }
+        }
+
+        // If no tool call, try to parse content as structured output
+        if ($response->content) {
+            return $this->parseStructuredContent($response->content, $context);
+        }
+
+        return IntentResult::none();
+    }
+
+    /**
+     * Parse using Anthropic tool use.
+     */
+    private function parseWithAnthropicTools(array $messages, ?array $context): IntentResult
+    {
+        $tools = ToolDefinitions::parseIntentOnlyAnthropic();
+
+        /** @var AnthropicChatProvider $provider */
+        $provider = $this->provider;
+
+        // Force the model to use parse_intent tool
+        $response = $provider->chat($messages, $tools, 'parse_intent');
+
+        if (! $response->success) {
+            Log::warning('Anthropic tool use failed', ['error' => $response->error]);
+
+            return IntentResult::none();
+        }
+
+        // Check for tool use in response
+        if ($response->hasToolCalls()) {
+            $toolCall = $response->getToolCall('parse_intent');
+            if ($toolCall) {
+                return $this->buildIntentFromToolCall($toolCall, $context);
+            }
+        }
+
+        // If no tool call but has content, use it as response text
+        if ($response->content) {
+            return IntentResult::none($response->content);
+        }
+
+        return IntentResult::none();
+    }
+
+    /**
+     * Build IntentResult from a tool call.
+     */
+    private function buildIntentFromToolCall(ToolCall $toolCall, ?array $context): IntentResult
+    {
+        $args = $toolCall->arguments;
+
+        $intent = $args['intent'] ?? null;
+        $confidence = (float) ($args['confidence'] ?? 0.0);
+        $responseText = $args['response_text'] ?? null;
+
+        // Handle 'none' intent
+        if (! $intent || $intent === 'none' || ! in_array($intent, self::ALLOWED_INTENTS, true)) {
+            return IntentResult::none($responseText);
+        }
+
+        $params = [];
+
+        // Extract resource info from tool call
+        $resourceType = $args['resource_type'] ?? null;
+        if ($resourceType && $resourceType !== 'null') {
+            $params['resource_type'] = $resourceType;
+        }
+
+        $resourceName = $args['resource_name'] ?? null;
+        if ($resourceName && $resourceName !== 'null') {
+            $params['resource_name'] = $resourceName;
+        }
+
+        $resourceId = $args['resource_id'] ?? null;
+        if ($resourceId && $resourceId !== 'null') {
+            $params['resource_id'] = $resourceId;
+        }
+
+        // Merge with context if not specified in params
+        if ($context) {
+            $params['resource_type'] ??= $context['type'] ?? null;
+            $params['resource_id'] ??= $context['id'] ?? null;
+            $params['resource_uuid'] ??= $context['uuid'] ?? null;
+        }
+
+        $requiresConfirmation = in_array($intent, self::DANGEROUS_INTENTS, true);
+        $confirmationMessage = null;
+
+        if ($requiresConfirmation) {
+            $resourceName = $params['resource_name'] ?? $context['name'] ?? 'this resource';
+            $confirmationMessage = $this->getConfirmationMessage($intent, $resourceName);
+        }
+
+        return new IntentResult(
+            intent: $intent,
+            params: $params,
+            confidence: $confidence,
+            requiresConfirmation: $requiresConfirmation,
+            confirmationMessage: $confirmationMessage,
+            responseText: $responseText,
+        );
+    }
+
+    /**
+     * Parse structured JSON content (fallback when tool call not present).
+     */
+    private function parseStructuredContent(string $content, ?array $context): IntentResult
+    {
+        try {
+            $json = $this->extractJson($content);
+            $data = json_decode($json, true);
+
+            if (! $data) {
+                return IntentResult::none($content);
+            }
+
+            // Create a mock tool call to reuse the same parsing logic
+            $mockToolCall = new ToolCall(
+                id: 'structured_output',
+                name: 'parse_intent',
+                arguments: $data,
+            );
+
+            return $this->buildIntentFromToolCall($mockToolCall, $context);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to parse structured content', ['error' => $e->getMessage()]);
+
+            return IntentResult::none($content);
+        }
+    }
+
+    /**
+     * Build system prompt for tool calling.
+     */
+    private function buildToolCallingSystemPrompt(?array $context = null): string
+    {
+        $contextInfo = '';
+        if ($context) {
+            $contextInfo = sprintf(
+                "\n\nCurrent context:\n- Resource type: %s\n- Resource name: %s\n- Resource ID: %s",
+                $context['type'] ?? 'none',
+                $context['name'] ?? 'unknown',
+                $context['id'] ?? 'unknown'
+            );
+        }
+
+        return <<<PROMPT
+You are an intent parser for a PaaS (Platform as a Service) system called Saturn.
+Your job is to analyze user messages and call the parse_intent tool with the detected intent.
+
+IMPORTANT: You MUST call the parse_intent tool for EVERY message. Never respond with plain text.
+
+Available intents:
+- deploy: Deploy/redeploy an application or service
+- restart: Restart an application, service, or database
+- stop: Stop an application, service, or database
+- start: Start a stopped application, service, or database
+- logs: Show logs for a resource
+- status: Check the status of a resource
+- help: Show help information
+- none: No actionable intent detected (for questions, greetings, etc.)
+
+Guidelines:
+- Set confidence based on how clear the user's intent is (0.0 = unclear, 1.0 = very clear)
+- Extract resource_type, resource_name, resource_id if mentioned
+- Provide a helpful response_text in the same language as the user's message
+- Support both English and Russian languages
+{$contextInfo}
+PROMPT;
     }
 
     /**
