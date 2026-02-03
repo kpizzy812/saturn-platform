@@ -93,6 +93,19 @@ export default function TeamSettings({
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [invitations, setInvitations] = React.useState<Invitation[]>(initialInvitations);
     const [receivedInvitations, setReceivedInvitations] = React.useState<ReceivedInvitation[]>(initialReceivedInvitations);
+
+    // Sync state with props when Inertia reloads data
+    React.useEffect(() => {
+        setMembers(initialMembers);
+    }, [initialMembers]);
+
+    React.useEffect(() => {
+        setInvitations(initialInvitations);
+    }, [initialInvitations]);
+
+    React.useEffect(() => {
+        setReceivedInvitations(initialReceivedInvitations);
+    }, [initialReceivedInvitations]);
     const [showInviteModal, setShowInviteModal] = React.useState(false);
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
