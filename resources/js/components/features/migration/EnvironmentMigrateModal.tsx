@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { Modal, Button, Alert, Spinner, Checkbox, Select } from '@/components/ui';
 import { ArrowRight, Box, Database, Layers, Server as ServerIcon, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
-import { useMigrationTargets } from '@/hooks/useMigrations';
+import { useEnvironmentMigrationTargets } from '@/hooks/useMigrations';
 import type { Application, StandaloneDatabase, Service, Environment, Server } from '@/types';
 import axios from 'axios';
 
@@ -72,12 +72,10 @@ export function EnvironmentMigrateModal({
         services: [],
     });
 
-    // Fetch targets using first available resource
-    const firstResource = applications[0] || databases[0] || services[0];
-    const { targets, isLoading: isLoadingTargets } = useMigrationTargets(
-        firstResource ? (applications[0] ? 'application' : databases[0] ? 'database' : 'service') : 'application',
-        firstResource?.uuid || '',
-        open && !!firstResource
+    // Fetch targets for environment migration
+    const { targets, isLoading: isLoadingTargets } = useEnvironmentMigrationTargets(
+        environment?.uuid || '',
+        open && !!environment
     );
 
     // Total count of resources

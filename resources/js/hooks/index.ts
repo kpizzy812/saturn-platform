@@ -155,4 +155,5 @@ export {
     usePendingMigrations,
     useMigrationCheck,
     useMigrationTargets,
+    useEnvironmentMigrationTargets,
 } from './useMigrations';

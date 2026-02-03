@@ -51,11 +51,6 @@ interface UseMigrationCheckReturn {
     check: () => Promise<void>;
 }
 
-interface UseMigrationTargetsOptions {
-    sourceType: 'application' | 'service' | 'database';
-    sourceUuid: string;
-}
-
 interface UseMigrationTargetsReturn {
     targets: MigrationTargets | null;
     isLoading: boolean;
@@ -324,16 +319,25 @@ export function useMigrationCheck({
 
 /**
  * Hook to fetch available migration targets for a source
+ * @param sourceType - Type of resource: 'application' | 'service' | 'database'
+ * @param sourceUuid - UUID of the source resource
+ * @param enabled - Whether to fetch targets (default: true)
  */
-export function useMigrationTargets({
-    sourceType,
-    sourceUuid,
-}: UseMigrationTargetsOptions): UseMigrationTargetsReturn {
+export function useMigrationTargets(
+    sourceType: 'application' | 'service' | 'database',
+    sourceUuid: string,
+    enabled: boolean = true
+): UseMigrationTargetsReturn {
     const [targets, setTargets] = React.useState<MigrationTargets | null>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
+    const [isLoading, setIsLoading] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
 
     const fetchTargets = React.useCallback(async () => {
+        if (!sourceUuid || !enabled) {
+            setIsLoading(false);
+            return;
+        }
+
         try {
             setIsLoading(true);
             setError(null);
@@ -357,11 +361,71 @@ export function useMigrationTargets({
         } finally {
             setIsLoading(false);
         }
-    }, [sourceType, sourceUuid]);
+    }, [sourceType, sourceUuid, enabled]);
 
     React.useEffect(() => {
-        fetchTargets();
-    }, [fetchTargets]);
+        if (enabled && sourceUuid) {
+            fetchTargets();
+        }
+    }, [fetchTargets, enabled, sourceUuid]);
+
+    return {
+        targets,
+        isLoading,
+        error,
+        refetch: fetchTargets,
+    };
+}
+
+/**
+ * Hook to fetch available migration targets for an environment (bulk migration)
+ * @param environmentUuid - UUID of the source environment
+ * @param enabled - Whether to fetch targets (default: true)
+ */
+export function useEnvironmentMigrationTargets(
+    environmentUuid: string,
+    enabled: boolean = true
+): UseMigrationTargetsReturn {
+    const [targets, setTargets] = React.useState<MigrationTargets | null>(null);
+    const [isLoading, setIsLoading] = React.useState(false);
+    const [error, setError] = React.useState<Error | null>(null);
+
+    const fetchTargets = React.useCallback(async () => {
+        if (!environmentUuid || !enabled) {
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const response = await fetch(`/api/v1/migrations/environment-targets/${environmentUuid}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch migration targets: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setTargets(data);
+        } catch (err) {
+            setError(err instanceof Error ? err : new Error('Failed to fetch migration targets'));
+        } finally {
+            setIsLoading(false);
+        }
+    }, [environmentUuid, enabled]);
+
+    React.useEffect(() => {
+        if (enabled && environmentUuid) {
+            fetchTargets();
+        }
+    }, [fetchTargets, enabled, environmentUuid]);
 
     return {
         targets,

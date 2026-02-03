@@ -465,6 +465,7 @@ Route::group([
     Route::get('/migrations/pending', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'pending'])->middleware(['api.ability:read']);
     Route::post('/migrations/check', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'check'])->middleware(['api.ability:read']);
     Route::get('/migrations/targets/{source_type}/{source_uuid}', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'targets'])->middleware(['api.ability:read']);
+    Route::get('/migrations/environment-targets/{environment_uuid}', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'environmentTargets'])->middleware(['api.ability:read']);
     Route::post('/migrations', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'store'])->middleware(['api.ability:write']);
     Route::get('/migrations/{uuid}', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'show'])->middleware(['api.ability:read']);
     Route::post('/migrations/{uuid}/approve', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'approve'])->middleware(['api.ability:write']);

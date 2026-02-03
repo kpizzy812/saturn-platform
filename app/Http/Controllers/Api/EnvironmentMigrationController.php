@@ -523,6 +523,59 @@ class EnvironmentMigrationController extends Controller
     }
 
     /**
+     * Get available target environments for an environment (for bulk migration).
+     */
+    #[OA\Get(
+        path: '/api/v1/migrations/environment-targets/{environment_uuid}',
+        summary: 'Get available migration targets for an environment',
+        tags: ['Migrations'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'environment_uuid', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Available targets'),
+            new OA\Response(response: 401, description: 'Unauthorized'),
+            new OA\Response(response: 404, description: 'Not found'),
+        ]
+    )]
+    public function environmentTargets(string $environmentUuid): JsonResponse
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = Environment::where('uuid', $environmentUuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+
+        if (! $environment) {
+            return response()->json(['message' => 'Environment not found.'], 404);
+        }
+
+        // Get available target environments
+        $targetEnvironments = ValidateMigrationChainAction::make()
+            ->getAvailableTargets($environment);
+
+        // Get available servers
+        $servers = Server::ownedByCurrentTeam()
+            ->where('is_usable', true)
+            ->get(['id', 'name', 'ip']);
+
+        return response()->json([
+            'source' => [
+                'name' => $environment->name,
+                'type' => 'environment',
+                'environment' => $environment->name,
+                'environment_type' => $environment->type ?? 'development',
+            ],
+            'target_environments' => $targetEnvironments,
+            'servers' => $servers,
+        ]);
+    }
+
+    /**
      * Find a resource by type and UUID.
      */
     protected function findResource(string $type, string $uuid, int $teamId): mixed

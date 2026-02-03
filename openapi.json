@@ -5399,6 +5399,42 @@
                 ]
             }
         },
+        "\/api\/v1\/migrations\/environment-targets\/{environment_uuid}": {
+            "get": {
+                "tags": [
+                    "Migrations"
+                ],
+                "summary": "Get available migration targets for an environment",
+                "description": "Get available target environments for an environment (for bulk migration).",
+                "operationId": "780ebef7d3107d38786f0e23e595093e",
+                "parameters": [
+                    {
+                        "name": "environment_uuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Available targets"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "\/git\/branches": {
             "get": {
                 "tags": [
