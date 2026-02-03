@@ -13,6 +13,7 @@ import {
     Mail,
     Save,
     RotateCcw,
+    Brain,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -24,6 +25,10 @@ interface InstanceSettingsData {
     auto_update_frequency?: string;
     update_check_frequency?: string;
     is_wire_navigate_enabled?: boolean;
+    // AI Features
+    is_ai_code_review_enabled?: boolean;
+    is_ai_error_analysis_enabled?: boolean;
+    // Email
     smtp_enabled?: boolean;
     smtp_host?: string;
     smtp_port?: number;
@@ -180,6 +185,49 @@ export default function AdminSettingsIndex({
                                         setFormData({ ...formData, auto_update_frequency: e.target.value })
                                     }
                                     placeholder="0 0 * * *"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* AI Features */}
+                    <Card variant="glass">
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <Brain className="h-5 w-5 text-primary" />
+                                <CardTitle>AI Features</CardTitle>
+                            </div>
+                            <CardDescription>
+                                AI-powered analysis requires ANTHROPIC_API_KEY or OPENAI_API_KEY
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-foreground">AI Code Review</p>
+                                    <p className="text-sm text-foreground-muted">
+                                        Analyze code for security issues and bad practices during deployment
+                                    </p>
+                                </div>
+                                <Checkbox
+                                    checked={formData.is_ai_code_review_enabled || false}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, is_ai_code_review_enabled: checked === true })
+                                    }
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-foreground">AI Error Analysis</p>
+                                    <p className="text-sm text-foreground-muted">
+                                        Analyze deployment failures to identify root cause and solutions
+                                    </p>
+                                </div>
+                                <Checkbox
+                                    checked={formData.is_ai_error_analysis_enabled ?? true}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, is_ai_error_analysis_enabled: checked === true })
+                                    }
                                 />
                             </div>
                         </CardContent>

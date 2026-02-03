@@ -2,6 +2,7 @@
 
 namespace App\Services\AI\CodeReview;
 
+use App\Models\InstanceSettings;
 use App\Services\AI\CodeReview\DTOs\DiffResult;
 use App\Services\AI\CodeReview\DTOs\Violation;
 use App\Services\AI\Contracts\AIProviderInterface;
@@ -96,7 +97,7 @@ class AICodeAnalyzer
     }
 
     /**
-     * Check if AI analysis is available.
+     * Check if AI analysis is available (provider configured).
      */
     public function isAvailable(): bool
     {
@@ -105,6 +106,29 @@ class AICodeAnalyzer
         }
 
         return $this->getAvailableProvider() !== null;
+    }
+
+    /**
+     * Check if AI code review is enabled in instance settings.
+     */
+    public function isEnabled(): bool
+    {
+        try {
+            $settings = InstanceSettings::get();
+
+            return $settings->is_ai_code_review_enabled ?? false;
+        } catch (\Throwable) {
+            // Default to disabled if settings not available
+            return false;
+        }
+    }
+
+    /**
+     * Check if AI code review is both enabled and available.
+     */
+    public function isEnabledAndAvailable(): bool
+    {
+        return $this->isEnabled() && $this->isAvailable();
     }
 
     /**

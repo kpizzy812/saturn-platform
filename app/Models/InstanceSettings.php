@@ -37,6 +37,10 @@ class InstanceSettings extends Model
         'sentinel_token' => 'encrypted',
         'is_wire_navigate_enabled' => 'boolean',
 
+        // AI features
+        'is_ai_code_review_enabled' => 'boolean',
+        'is_ai_error_analysis_enabled' => 'boolean',
+
         // Resource monitoring
         'resource_warning_cpu_threshold' => 'integer',
         'resource_critical_cpu_threshold' => 'integer',

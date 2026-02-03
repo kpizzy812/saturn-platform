@@ -351,14 +351,15 @@ Route::get('/web-api/deployments/{uuid}/analysis', function (string $uuid) {
 })->name('web-api.deployments.analysis');
 
 Route::post('/web-api/deployments/{uuid}/analyze', function (string $uuid) {
-    if (! config('ai.enabled', true)) {
+    $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
+
+    if (! $analyzer->isEnabled()) {
         return response()->json([
-            'error' => 'AI analysis is disabled',
-            'hint' => 'Enable AI analysis by setting AI_ANALYSIS_ENABLED=true',
+            'error' => 'AI error analysis is disabled',
+            'hint' => 'Enable AI error analysis in Admin → Settings',
         ], 503);
     }
 
-    $analyzer = app(\App\Services\AI\DeploymentLogAnalyzer::class);
     if (! $analyzer->isAvailable()) {
         return response()->json([
             'error' => 'No AI provider available',
@@ -401,7 +402,7 @@ Route::get('/web-api/ai/status', function () {
     $provider = $analyzer->getAvailableProvider();
 
     return response()->json([
-        'enabled' => config('ai.enabled', true),
+        'enabled' => $analyzer->isEnabled(),
         'available' => $analyzer->isAvailable(),
         'provider' => $provider ? $provider->getName() : null,
     ]);

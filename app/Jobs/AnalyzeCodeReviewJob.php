@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\CodeReviewCompleted;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\CodeReview;
+use App\Models\InstanceSettings;
 use App\Services\AI\CodeReview\AICodeAnalyzer;
 use App\Services\AI\CodeReview\Detectors\DangerousFunctionsDetector;
 use App\Services\AI\CodeReview\Detectors\SecretsDetector;
@@ -62,8 +63,19 @@ class AnalyzeCodeReviewJob implements ShouldQueue
         AICodeAnalyzer $aiAnalyzer,
         LLMEnricher $llmEnricher
     ): void {
-        if (! config('ai.code_review.enabled', false)) {
-            Log::debug('Code review is disabled', ['deployment_id' => $this->deploymentId]);
+        // Check if code review is enabled in instance settings
+        try {
+            $settings = InstanceSettings::get();
+            if (! ($settings->is_ai_code_review_enabled ?? false)) {
+                Log::debug('Code review is disabled in instance settings', ['deployment_id' => $this->deploymentId]);
+
+                return;
+            }
+        } catch (\Throwable $e) {
+            Log::debug('Could not check instance settings, skipping code review', [
+                'deployment_id' => $this->deploymentId,
+                'error' => $e->getMessage(),
+            ]);
 
             return;
         }
@@ -177,7 +189,7 @@ class AnalyzeCodeReviewJob implements ShouldQueue
             $llmTokensUsed = null;
             $summary = null;
 
-            if (config('ai.code_review.ai_analysis', true) && $aiAnalyzer->isAvailable()) {
+            if ($aiAnalyzer->isAvailable()) {
                 try {
                     Log::info('Running AI code analysis', ['files' => count($diff->getFilePaths())]);
                     $aiViolations = $aiAnalyzer->analyze($diff);

@@ -4,6 +4,7 @@ namespace App\Services\AI;
 
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\DeploymentLogAnalysis;
+use App\Models\InstanceSettings;
 use App\Services\AI\Contracts\AIProviderInterface;
 use App\Services\AI\DTOs\AIAnalysisResult;
 use App\Services\AI\Providers\AnthropicProvider;
@@ -36,6 +37,29 @@ final class DeploymentLogAnalyzer
         }
 
         return $this->getAvailableProvider() !== null;
+    }
+
+    /**
+     * Check if AI error analysis is enabled in instance settings.
+     */
+    public function isEnabled(): bool
+    {
+        try {
+            $settings = InstanceSettings::get();
+
+            return $settings->is_ai_error_analysis_enabled ?? true;
+        } catch (\Throwable) {
+            // Default to enabled if settings not available
+            return true;
+        }
+    }
+
+    /**
+     * Check if AI analysis is both enabled and available.
+     */
+    public function isEnabledAndAvailable(): bool
+    {
+        return $this->isEnabled() && $this->isAvailable();
     }
 
     /**
