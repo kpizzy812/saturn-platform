@@ -55,7 +55,9 @@ interface ContextMenuProps {
     onCreateBackup?: (nodeId: string) => void;
     onRestoreBackup?: (nodeId: string) => void;
     onMigrate?: (nodeId: string, uuid: string, name: string, type: 'app' | 'db') => void;
+    onClone?: (nodeId: string, uuid: string, name: string, type: 'app' | 'db') => void;
     canMigrate?: boolean;
+    canClone?: boolean;
 }
 
 export function ContextMenu({
@@ -73,7 +75,9 @@ export function ContextMenu({
     onCreateBackup,
     onRestoreBackup,
     onMigrate,
+    onClone,
     canMigrate = true,
+    canClone = false,
 }: ContextMenuProps) {
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -137,6 +141,12 @@ export function ContextMenu({
             label: 'Migrate to Next Env',
             icon: <ArrowUpRight className="h-4 w-4" />,
             action: () => onMigrate(node.id, node.uuid, node.name, node.type),
+        }] : []),
+        ...(canClone && onClone ? [{
+            id: 'clone',
+            label: 'Clone to Environment',
+            icon: <Copy className="h-4 w-4" />,
+            action: () => onClone(node.id, node.uuid, node.name, node.type),
             divider: true,
         }] : []),
         {
@@ -219,6 +229,12 @@ export function ContextMenu({
             label: 'Migrate to Next Env',
             icon: <ArrowUpRight className="h-4 w-4" />,
             action: () => onMigrate(node.id, node.uuid, node.name, node.type),
+        }] : []),
+        ...(canClone && onClone ? [{
+            id: 'clone',
+            label: 'Clone to Environment',
+            icon: <Copy className="h-4 w-4" />,
+            action: () => onClone(node.id, node.uuid, node.name, node.type),
             divider: true,
         }] : []),
         {

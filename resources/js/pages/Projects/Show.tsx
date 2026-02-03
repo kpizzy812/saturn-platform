@@ -34,6 +34,7 @@ import {
 } from '@/components/features/Projects';
 import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
 import { MigrateButton, MigrateModal } from '@/components/features/migration';
+import { CloneModal } from '@/components/transfer';
 import { useMigrationTargets } from '@/hooks/useMigrations';
 import type { EnvironmentMigration, EnvironmentMigrationOptions } from '@/types';
 
@@ -98,6 +99,17 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         uuid: string;
         name: string;
     } | null>(null);
+
+    // Clone modal state
+    const [showCloneModal, setShowCloneModal] = useState(false);
+    const [cloneSource, setCloneSource] = useState<{
+        uuid: string;
+        name: string;
+        type: 'application' | 'database';
+    } | null>(null);
+
+    // Check if user can clone (admin or owner only)
+    const canClone = userRole === 'admin' || userRole === 'owner';
 
     // Undo/Redo history for canvas state
     const historyRef = useRef<{ past: SelectedService[][]; future: SelectedService[][] }>({
@@ -214,6 +226,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const openMigrationModal = useCallback((type: 'application' | 'service' | 'database', uuid: string, name: string) => {
         setMigrateSource({ type, uuid, name });
         setShowMigrateModal(true);
+    }, []);
+
+    // Open clone modal for a specific resource
+    const openCloneModal = useCallback((type: 'application' | 'database', uuid: string, name: string) => {
+        setCloneSource({ type, uuid, name });
+        setShowCloneModal(true);
     }, []);
 
     // Switch environment handler
@@ -1676,7 +1694,11 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 onMigrate={(_nodeId, uuid, name, type) => {
                     openMigrationModal(type === 'app' ? 'application' : 'database', uuid, name);
                 }}
+                onClone={(_nodeId, uuid, name, type) => {
+                    openCloneModal(type === 'app' ? 'application' : 'database', uuid, name);
+                }}
                 canMigrate={selectedEnv?.type !== 'production'}
+                canClone={canClone}
             />
 
             {/* Local Setup Modal */}
@@ -1765,6 +1787,19 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     targets={migrationTargets}
                     isLoadingTargets={isLoadingMigrationTargets}
                     onMigrate={handleMigrate}
+                />
+            )}
+
+            {/* Clone Modal (Admin/Owner only) */}
+            {cloneSource && (
+                <CloneModal
+                    isOpen={showCloneModal}
+                    onClose={() => {
+                        setShowCloneModal(false);
+                        setCloneSource(null);
+                    }}
+                    resource={{ uuid: cloneSource.uuid, name: cloneSource.name }}
+                    resourceType={cloneSource.type}
                 />
             )}
         </>
