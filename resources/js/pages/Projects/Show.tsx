@@ -4,7 +4,7 @@ import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon } from 'lucide-react';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon, ArrowUpRight } from 'lucide-react';
 import type { Project, Environment, Application, StandaloneDatabase } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
@@ -33,7 +33,7 @@ import {
     LocalSetupModal,
 } from '@/components/features/Projects';
 import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
-import { MigrateButton, MigrateModal } from '@/components/features/migration';
+import { MigrateButton, MigrateModal, EnvironmentMigrateModal } from '@/components/features/migration';
 import { CloneModal } from '@/components/transfer';
 import { useMigrationTargets } from '@/hooks/useMigrations';
 import type { EnvironmentMigration, EnvironmentMigrationOptions } from '@/types';
@@ -99,6 +99,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         uuid: string;
         name: string;
     } | null>(null);
+
+    // Environment migration modal state (migrate all resources)
+    const [showEnvMigrateModal, setShowEnvMigrateModal] = useState(false);
 
     // Clone modal state
     const [showCloneModal, setShowCloneModal] = useState(false);
@@ -1226,7 +1229,19 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         )}
 
                         {/* Canvas Overlay Buttons */}
-                        <div className="absolute right-4 top-4 z-10">
+                        <div className="absolute right-4 top-4 z-10 flex gap-2">
+                            {/* Migrate Environment Button - only visible for dev/uat */}
+                            {selectedEnv && selectedEnv.type !== 'production' && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="shadow-lg"
+                                    onClick={() => setShowEnvMigrateModal(true)}
+                                >
+                                    <ArrowUpRight className="mr-2 h-4 w-4" />
+                                    Migrate
+                                </Button>
+                            )}
                             <Dropdown>
                                 <DropdownTrigger>
                                     <Button size="sm" className="shadow-lg">
@@ -1800,6 +1815,19 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     }}
                     resource={{ uuid: cloneSource.uuid, name: cloneSource.name }}
                     resourceType={cloneSource.type}
+                />
+            )}
+
+            {/* Environment Migration Modal (migrate all resources) */}
+            {selectedEnv && project && (
+                <EnvironmentMigrateModal
+                    open={showEnvMigrateModal}
+                    onOpenChange={setShowEnvMigrateModal}
+                    environment={selectedEnv}
+                    applications={envWithRealtimeStatuses?.applications || []}
+                    databases={envWithRealtimeStatuses?.databases || []}
+                    services={envWithRealtimeStatuses?.services || []}
+                    projectUuid={project.uuid}
                 />
             )}
         </>

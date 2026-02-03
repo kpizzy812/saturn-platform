@@ -4,3 +4,4 @@ export { MigrateConfigureStep } from './MigrateConfigureStep';
 export { MigrateConfirmStep } from './MigrateConfirmStep';
 export { MigrateProgressStep } from './MigrateProgressStep';
 export { MigrationApprovalCard } from './MigrationApprovalCard';
+export { EnvironmentMigrateModal } from './EnvironmentMigrateModal';
