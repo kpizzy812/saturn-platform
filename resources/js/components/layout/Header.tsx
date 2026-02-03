@@ -104,7 +104,7 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                         <button className="flex items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-background-secondary">
                             {user?.avatar ? (
                                 <img
-                                    src={`/storage/${user.avatar}`}
+                                    src={user.avatar}
                                     alt={user.name || 'User'}
                                     className="h-8 w-8 rounded-full object-cover shadow-sm"
                                 />

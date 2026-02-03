@@ -491,7 +491,7 @@ class TeamController extends Controller
                 'user' => [
                     'name' => $causer?->name ?? 'System',
                     'email' => $causer?->email ?? 'system@saturn.local',
-                    'avatar' => null,
+                    'avatar' => $causer?->avatar ? '/storage/'.$causer->avatar : null,
                 ],
                 'resource' => $resourceType ? [
                     'type' => $resourceType,

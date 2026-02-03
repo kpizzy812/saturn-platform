@@ -51,7 +51,7 @@ class HandleInertiaRequests extends Middleware
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'avatar' => $user->avatar,
+                'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
                 'email_verified_at' => $user->email_verified_at,
                 'is_superadmin' => $user->is_superadmin ?? false,
                 'two_factor_enabled' => ! is_null($user->two_factor_secret),

@@ -60,7 +60,7 @@ const adminNavItems: NavItem[] = [
 
 function AdminSidebar() {
     const { url, props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string; is_root_user?: boolean } | undefined;
+    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null; is_root_user?: boolean } | undefined;
     const systemNotifications = (props as any).systemNotifications as { unreadCount: number } | undefined;
 
     const isActive = (href: string) => {
@@ -135,9 +135,17 @@ function AdminSidebar() {
             {/* Admin User Section */}
             <div className="border-t border-primary/20 bg-gradient-to-r from-primary/10 to-transparent p-4">
                 <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-500 text-sm font-bold text-white shadow-lg shadow-primary/25">
-                        {user?.name?.charAt(0).toUpperCase() || 'A'}
-                    </div>
+                    {user?.avatar ? (
+                        <img
+                            src={user.avatar}
+                            alt={user.name || 'Admin'}
+                            className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-primary/25"
+                        />
+                    ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-purple-500 text-sm font-bold text-white shadow-lg shadow-primary/25">
+                            {user?.name?.charAt(0).toUpperCase() || 'A'}
+                        </div>
+                    )}
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">
                             {user?.name || 'Admin'}

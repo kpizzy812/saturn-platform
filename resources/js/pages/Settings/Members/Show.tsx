@@ -21,7 +21,8 @@ import {
     UserCog,
     GitBranch,
     Activity,
-    Loader2
+    Loader2,
+    LogOut
 } from 'lucide-react';
 
 interface TeamMember {
@@ -45,15 +46,19 @@ interface Props {
     member: TeamMember;
     projects: MemberProject[];
     activities: ActivityLog[];
+    isCurrentUser: boolean;
+    canManageTeam: boolean;
 }
 
-export default function MemberShow({ member, projects, activities }: Props) {
+export default function MemberShow({ member, projects, activities, isCurrentUser, canManageTeam }: Props) {
     const { toast } = useToast();
     const [showRemoveModal, setShowRemoveModal] = React.useState(false);
+    const [showLeaveModal, setShowLeaveModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [selectedRole, setSelectedRole] = React.useState(member.role);
     const [isUpdatingRole, setIsUpdatingRole] = React.useState(false);
     const [isRemoving, setIsRemoving] = React.useState(false);
+    const [isLeaving, setIsLeaving] = React.useState(false);
 
     const getRoleIcon = (role: string) => {
         switch (role) {
@@ -128,6 +133,31 @@ export default function MemberShow({ member, projects, activities }: Props) {
             },
             onFinish: () => {
                 setIsRemoving(false);
+            },
+        });
+    };
+
+    const handleLeaveTeam = () => {
+        setIsLeaving(true);
+        router.delete(`/settings/team/members/${member.id}`, {
+            onSuccess: () => {
+                toast({
+                    title: 'Left team',
+                    description: 'You have left the team.',
+                    variant: 'success',
+                });
+                setShowLeaveModal(false);
+                router.visit('/dashboard');
+            },
+            onError: (errors) => {
+                toast({
+                    title: 'Error',
+                    description: Object.values(errors).flat().join(', ') || 'Failed to leave team',
+                    variant: 'error',
+                });
+            },
+            onFinish: () => {
+                setIsLeaving(false);
             },
         });
     };
@@ -219,23 +249,37 @@ export default function MemberShow({ member, projects, activities }: Props) {
                             </div>
                             {member.role !== 'owner' && (
                                 <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => {
-                                            setSelectedRole(member.role);
-                                            setShowRoleModal(true);
-                                        }}
-                                    >
-                                        <UserCog className="mr-2 h-4 w-4" />
-                                        Change Role
-                                    </Button>
-                                    <Button
-                                        variant="danger"
-                                        onClick={() => setShowRemoveModal(true)}
-                                    >
-                                        <UserX className="mr-2 h-4 w-4" />
-                                        Remove
-                                    </Button>
+                                    {/* Show Change Role only for admins viewing other users */}
+                                    {canManageTeam && !isCurrentUser && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                setSelectedRole(member.role);
+                                                setShowRoleModal(true);
+                                            }}
+                                        >
+                                            <UserCog className="mr-2 h-4 w-4" />
+                                            Change Role
+                                        </Button>
+                                    )}
+                                    {/* Show Leave Team for own profile, Remove for others (admin only) */}
+                                    {isCurrentUser ? (
+                                        <Button
+                                            variant="danger"
+                                            onClick={() => setShowLeaveModal(true)}
+                                        >
+                                            <LogOut className="mr-2 h-4 w-4" />
+                                            Leave Team
+                                        </Button>
+                                    ) : canManageTeam && (
+                                        <Button
+                                            variant="danger"
+                                            onClick={() => setShowRemoveModal(true)}
+                                        >
+                                            <UserX className="mr-2 h-4 w-4" />
+                                            Remove
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -439,6 +483,30 @@ export default function MemberShow({ member, projects, activities }: Props) {
                             </>
                         ) : (
                             'Remove Member'
+                        )}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* Leave Team Modal */}
+            <Modal
+                isOpen={showLeaveModal}
+                onClose={() => !isLeaving && setShowLeaveModal(false)}
+                title="Leave Team"
+                description="Are you sure you want to leave this team? You will lose access to all team resources."
+            >
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowLeaveModal(false)} disabled={isLeaving}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={handleLeaveTeam} disabled={isLeaving}>
+                        {isLeaving ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Leaving...
+                            </>
+                        ) : (
+                            'Leave Team'
                         )}
                     </Button>
                 </ModalFooter>

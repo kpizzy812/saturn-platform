@@ -67,7 +67,7 @@ Route::get('/settings/team', function () {
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'avatar' => null, // Gravatar can be implemented later on frontend
+            'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
             'role' => $user->pivot->role ?? 'member',
             'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
             'lastActive' => $lastActive,
@@ -565,20 +565,31 @@ Route::delete('/settings/team/members/{id}', function (string $id) {
     $team = currentTeam();
     $currentUser = auth()->user();
 
-    // Check if the current user is an admin or owner
-    if (! $currentUser->isAdmin()) {
-        return redirect()->back()->withErrors(['member' => 'You do not have permission to remove members']);
-    }
-
     // Find the member in the team
     $member = $team->members()->where('user_id', $id)->first();
     if (! $member) {
         return redirect()->back()->withErrors(['member' => 'Member not found in this team']);
     }
 
-    // Prevent removing yourself
-    if ($member->id == $currentUser->id) {
-        return redirect()->back()->withErrors(['member' => 'You cannot remove yourself from the team']);
+    $isLeavingTeam = (int) $id === $currentUser->id;
+
+    // If user is trying to leave the team (remove themselves)
+    if ($isLeavingTeam) {
+        // Check if this is the last owner - cannot leave as last owner
+        $owners = $team->members()->wherePivot('role', 'owner')->get();
+        if ($member->pivot->role === 'owner' && $owners->count() <= 1) {
+            return redirect()->back()->withErrors(['member' => 'Cannot leave the team as the last owner. Please transfer ownership first.']);
+        }
+
+        // Remove the member from the team
+        $team->members()->detach($id);
+
+        return redirect('/dashboard')->with('success', 'You have left the team');
+    }
+
+    // If user is trying to remove another member - check admin permission
+    if (! $currentUser->isAdmin()) {
+        return redirect()->back()->withErrors(['member' => 'You do not have permission to remove members']);
     }
 
     // Check if this is the last owner
@@ -1030,6 +1041,13 @@ Route::get('/settings/members/{id}', function (string $id) {
         abort(404, 'Team member not found');
     }
 
+    // Check if viewing own profile
+    $isCurrentUser = (int) $id === $currentUser->id;
+
+    // Get current user's role and permissions
+    $currentUserRole = $currentUser->teams()->where('team_id', $team->id)->first()?->pivot->role ?? 'member';
+    $canManageTeam = in_array($currentUserRole, ['owner', 'admin']);
+
     // Get last activity from sessions table
     $lastSession = \Illuminate\Support\Facades\DB::table('sessions')
         ->where('user_id', $member->id)
@@ -1045,7 +1063,7 @@ Route::get('/settings/members/{id}', function (string $id) {
         'id' => $member->id,
         'name' => $member->name,
         'email' => $member->email,
-        'avatar' => null,
+        'avatar' => $member->avatar ? '/storage/'.$member->avatar : null,
         'role' => $member->pivot->role ?? 'member',
         'joinedAt' => $member->pivot->created_at?->toDateString() ?? $member->created_at->toDateString(),
         'lastActive' => $lastActive,
@@ -1102,6 +1120,8 @@ Route::get('/settings/members/{id}', function (string $id) {
         'member' => $memberData,
         'projects' => $projects,
         'activities' => $activities,
+        'isCurrentUser' => $isCurrentUser,
+        'canManageTeam' => $canManageTeam,
     ]);
 })->name('settings.members.show');
 
@@ -1127,7 +1147,7 @@ Route::get('/settings/team/index', function () {
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'avatar' => null, // Gravatar can be implemented later on frontend
+            'avatar' => $user->avatar ? '/storage/'.$user->avatar : null,
             'role' => $user->pivot->role ?? 'member',
             'joinedAt' => $user->pivot->created_at?->toISOString() ?? $user->created_at->toISOString(),
             'lastActive' => $lastActive,

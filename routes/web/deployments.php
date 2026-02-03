@@ -108,6 +108,7 @@ Route::get('/deployments/{uuid}', function (string $uuid) {
         $author = [
             'name' => $deployment->user->name,
             'email' => $deployment->user->email,
+            'avatar' => $deployment->user->avatar ? '/storage/'.$deployment->user->avatar : null,
         ];
     }
 

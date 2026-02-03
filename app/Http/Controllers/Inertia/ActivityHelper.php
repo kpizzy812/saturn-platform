@@ -36,6 +36,7 @@ class ActivityHelper
                 $app = $deployment->application;
                 $appName = $app?->name ?? 'Unknown';
                 $status = $deployment->status;
+                $deploymentUser = $deployment->user ?? $user;
 
                 $action = match ($status) {
                     'finished' => 'deployment_completed',
@@ -57,9 +58,9 @@ class ActivityHelper
                     'action' => $action,
                     'description' => $description,
                     'user' => [
-                        'name' => $user->name ?? 'System',
-                        'email' => $user->email ?? 'system@saturn.local',
-                        'avatar' => null,
+                        'name' => $deploymentUser?->name ?? 'System',
+                        'email' => $deploymentUser?->email ?? 'system@saturn.local',
+                        'avatar' => $deploymentUser?->avatar ? '/storage/'.$deploymentUser->avatar : null,
                     ],
                     'resource' => [
                         'type' => 'application',
@@ -114,7 +115,7 @@ class ActivityHelper
                 'user' => [
                     'name' => $causer?->name ?? 'System',
                     'email' => $causer?->email ?? 'system@saturn.local',
-                    'avatar' => null,
+                    'avatar' => $causer?->avatar ? '/storage/'.$causer->avatar : null,
                 ],
                 'resource' => [
                     'type' => $resourceType ?? 'application',
@@ -157,14 +158,16 @@ class ActivityHelper
                 default => 'deployment_started',
             };
 
+            $deploymentUser = $deployment->user ?? $user;
+
             return [
                 'id' => $id,
                 'action' => $action,
                 'description' => self::buildDescription($action, $appName),
                 'user' => [
-                    'name' => $user?->name ?? 'System',
-                    'email' => $user?->email ?? 'system@saturn.local',
-                    'avatar' => null,
+                    'name' => $deploymentUser?->name ?? 'System',
+                    'email' => $deploymentUser?->email ?? 'system@saturn.local',
+                    'avatar' => $deploymentUser?->avatar ? '/storage/'.$deploymentUser->avatar : null,
                 ],
                 'resource' => [
                     'type' => 'application',
@@ -215,7 +218,7 @@ class ActivityHelper
             'user' => [
                 'name' => $causer?->name ?? 'System',
                 'email' => $causer?->email ?? 'system@saturn.local',
-                'avatar' => null,
+                'avatar' => $causer?->avatar ? '/storage/'.$causer->avatar : null,
             ],
             'resource' => [
                 'type' => $resourceType ?? 'application',

@@ -242,7 +242,7 @@ export default function AccountSettings() {
                                     <div className="relative">
                                         {currentUser.avatar ? (
                                             <img
-                                                src={`/storage/${currentUser.avatar}`}
+                                                src={currentUser.avatar}
                                                 alt={currentUser.name}
                                                 className="h-16 w-16 rounded-full object-cover"
                                             />
