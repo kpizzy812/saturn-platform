@@ -369,10 +369,19 @@ class CommandParser
    - "покажи метрики за неделю" → metrics, time_period: 7d
    - "статистика деплоев за месяц" → metrics, time_period: 30d
 
-9. **Удаление всех кроме (delete с target_scope=all)**:
-   - "удали все проекты кроме PIXELPETS" → ОДНА команда: delete, resource_type: project, target_scope: all, resource_names: ["PIXELPETS"]
-   - "удали все кроме app1 и app2" → ОДНА команда: delete, target_scope: all, resource_names: ["app1", "app2"]
-   - ВАЖНО: НЕ создавай отдельные команды для каждого проекта! Используй target_scope: all с resource_names для исключений.
+9. **КРИТИЧЕСКИ ВАЖНО - Удаление всех кроме (delete с target_scope=all)**:
+   Когда пользователь просит "удали все кроме X" или "удали все проекты кроме X":
+   - Создай ОДНУ команду: action=delete, resource_type=project, target_scope=all, resource_names=["X"]
+   - resource_names содержит имена которые НУЖНО СОХРАНИТЬ (исключить из удаления)
+
+   Примеры:
+   - "удали все проекты кроме PIXELPETS" →
+     action: delete, resource_type: project, target_scope: all, resource_names: ["PIXELPETS"]
+   - "удали все кроме prod" →
+     action: delete, resource_type: project, target_scope: all, resource_names: ["prod"]
+
+   ЗАПРЕЩЕНО: создавать отдельные команды для каждого проекта с придуманными именами!
+   ПРАВИЛЬНО: одна команда с target_scope=all и списком исключений в resource_names
 {$contextInfo}
 PROMPT;
     }

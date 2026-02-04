@@ -92,8 +92,8 @@ final class ToolDefinitions
                                 ],
                                 'target_scope' => [
                                     'type' => 'string',
-                                    'enum' => ['single', 'multiple', 'all'],
-                                    'description' => 'Scope for batch operations: single resource, multiple named resources, or all resources',
+                                    'enum' => ['single', 'multiple', 'all', 'all_except'],
+                                    'description' => 'Scope: single (one resource), multiple (named list), all (all resources), all_except (all except those in resource_names)',
                                 ],
                                 'resource_names' => [
                                     'type' => 'array',
@@ -170,8 +170,8 @@ final class ToolDefinitions
                                     ],
                                     'target_scope' => [
                                         'type' => ['string', 'null'],
-                                        'enum' => ['single', 'multiple', 'all', null],
-                                        'description' => 'Scope for batch operations',
+                                        'enum' => ['single', 'multiple', 'all', 'all_except', null],
+                                        'description' => 'Scope: single, multiple, all, or all_except (all except resource_names)',
                                     ],
                                     'resource_names' => [
                                         'type' => ['array', 'null'],
@@ -275,7 +275,7 @@ final class ToolDefinitions
                                     ],
                                     'target_scope' => [
                                         'type' => ['string', 'null'],
-                                        'enum' => ['single', 'multiple', 'all', null],
+                                        'enum' => ['single', 'multiple', 'all', 'all_except', null],
                                     ],
                                     'resource_names' => [
                                         'type' => ['array', 'null'],
