@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $provider
  * @property string|null $model
  * @property int|null $tokens_used
+ * @property int|null $input_tokens
+ * @property int|null $output_tokens
  * @property string $error_hash
  * @property string $status
  * @property string|null $error_message
@@ -39,6 +41,8 @@ class DeploymentLogAnalysis extends Model
         'provider',
         'model',
         'tokens_used',
+        'input_tokens',
+        'output_tokens',
         'error_hash',
         'status',
         'error_message',
@@ -49,6 +53,8 @@ class DeploymentLogAnalysis extends Model
         'prevention' => 'array',
         'confidence' => 'float',
         'tokens_used' => 'integer',
+        'input_tokens' => 'integer',
+        'output_tokens' => 'integer',
     ];
 
     protected $attributes = [

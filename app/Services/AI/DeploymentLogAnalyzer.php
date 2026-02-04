@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use App\Models\AiUsageLog;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\DeploymentLogAnalysis;
 use App\Models\InstanceSettings;
@@ -108,6 +109,8 @@ final class DeploymentLogAnalyzer
         $analysis->status = 'analyzing';
         $analysis->save();
 
+        $startTime = microtime(true);
+
         try {
             $result = $this->analyze($deployment);
 
@@ -122,15 +125,21 @@ final class DeploymentLogAnalyzer
                 'provider' => $result->provider,
                 'model' => $result->model,
                 'tokens_used' => $result->tokensUsed,
+                'input_tokens' => $result->inputTokens,
+                'output_tokens' => $result->outputTokens,
                 'status' => 'completed',
                 'error_message' => null,
             ]);
             $analysis->save();
 
+            // Log AI usage for cost tracking
+            $this->logUsage($deployment, $result, $startTime, true);
+
             Log::info('AI analysis completed', [
                 'deployment_id' => $deployment->id,
                 'provider' => $result->provider,
                 'category' => $result->errorCategory,
+                'tokens' => $result->tokensUsed,
             ]);
         } catch (\Throwable $e) {
             Log::error('AI analysis failed', [
@@ -138,12 +147,106 @@ final class DeploymentLogAnalyzer
                 'error' => $e->getMessage(),
             ]);
 
+            // Log failed usage attempt
+            $this->logFailedUsage($deployment, $e->getMessage(), $startTime);
+
             $analysis->status = 'failed';
             $analysis->error_message = $e->getMessage();
             $analysis->save();
         }
 
         return $analysis;
+    }
+
+    /**
+     * Log successful AI usage.
+     */
+    private function logUsage(
+        ApplicationDeploymentQueue $deployment,
+        AIAnalysisResult $result,
+        float $startTime,
+        bool $success,
+    ): void {
+        $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        try {
+            // Get user and team from deployment context
+            $userId = $deployment->user_id;
+            $teamId = $deployment->application?->environment?->project?->team_id;
+
+            if (! $teamId) {
+                Log::debug('Could not determine team_id for AI usage logging', [
+                    'deployment_id' => $deployment->id,
+                ]);
+
+                return;
+            }
+
+            // Calculate cost using pricing service
+            $pricingService = new AiPricingService;
+            $cost = $pricingService->calculateCost(
+                $result->provider,
+                $result->model,
+                $result->inputTokens ?? 0,
+                $result->outputTokens ?? 0
+            );
+
+            AiUsageLog::create([
+                'user_id' => $userId,
+                'team_id' => $teamId,
+                'provider' => $result->provider,
+                'model' => $result->model,
+                'operation' => 'deployment_analysis',
+                'input_tokens' => $result->inputTokens ?? 0,
+                'output_tokens' => $result->outputTokens ?? 0,
+                'cost_usd' => $cost,
+                'response_time_ms' => $responseTimeMs,
+                'success' => $success,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log AI usage for deployment analysis', [
+                'deployment_id' => $deployment->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Log failed AI usage attempt.
+     */
+    private function logFailedUsage(
+        ApplicationDeploymentQueue $deployment,
+        string $errorMessage,
+        float $startTime,
+    ): void {
+        $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        try {
+            $userId = $deployment->user_id;
+            $teamId = $deployment->application?->environment?->project?->team_id;
+
+            if (! $teamId) {
+                return;
+            }
+
+            $provider = $this->getAvailableProvider();
+
+            AiUsageLog::create([
+                'user_id' => $userId,
+                'team_id' => $teamId,
+                'provider' => $provider?->getName() ?? 'unknown',
+                'model' => $provider?->getModel() ?? 'unknown',
+                'operation' => 'deployment_analysis',
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'cost_usd' => 0,
+                'response_time_ms' => $responseTimeMs,
+                'success' => false,
+                'error_message' => $errorMessage,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log failed AI usage', ['error' => $e->getMessage()]);
+        }
     }
 
     /**

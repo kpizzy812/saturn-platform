@@ -7,6 +7,7 @@ use App\Models\AiChatMessage;
 use App\Models\AiChatSession;
 use App\Models\AiUsageLog;
 use App\Models\User;
+use App\Services\AI\AiPricingService;
 use App\Services\AI\Chat\Contracts\ChatProviderInterface;
 use App\Services\AI\Chat\DTOs\ChatMessage;
 use App\Services\AI\Chat\DTOs\ChatResponse;
@@ -490,14 +491,13 @@ PROMPT;
      */
     private function calculateCost(ChatResponse $response): float
     {
-        $pricing = config("ai.chat.pricing.{$response->provider}", [
-            'input_per_1k' => 0.003,
-            'output_per_1k' => 0.015,
-        ]);
+        $pricingService = new AiPricingService;
 
-        $inputCost = ($response->inputTokens / 1000) * $pricing['input_per_1k'];
-        $outputCost = ($response->outputTokens / 1000) * $pricing['output_per_1k'];
-
-        return $inputCost + $outputCost;
+        return $pricingService->calculateCost(
+            $response->provider,
+            $response->model,
+            $response->inputTokens,
+            $response->outputTokens
+        );
     }
 }

@@ -30,4 +30,11 @@ interface AIProviderInterface
      * Get the model being used.
      */
     public function getModel(): string;
+
+    /**
+     * Get usage data from the last API call.
+     *
+     * @return array{input_tokens: int, output_tokens: int}|null
+     */
+    public function getLastUsage(): ?array;
 }

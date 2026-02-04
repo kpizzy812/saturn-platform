@@ -30,6 +30,8 @@ class AICodeAnalyzer
 
     private ?string $lastSummary = null;
 
+    private ?array $lastUsage = null;
+
     /**
      * @var array<string, class-string<AIProviderInterface>>
      */
@@ -53,12 +55,24 @@ class AICodeAnalyzer
     }
 
     /**
+     * Get the usage data from the last analysis.
+     *
+     * @return array{input_tokens: int, output_tokens: int}|null
+     */
+    public function getLastUsage(): ?array
+    {
+        return $this->lastUsage;
+    }
+
+    /**
      * Analyze code diff for issues using AI.
      *
      * @return Collection<int, Violation>
      */
     public function analyze(DiffResult $diff): Collection
     {
+        $this->lastUsage = null;
+
         $provider = $this->getAvailableProvider();
         if ($provider === null) {
             Log::info('No AI provider available for code analysis');
@@ -77,12 +91,16 @@ class AICodeAnalyzer
             // Call LLM with raw response (not parsed into AIAnalysisResult)
             $response = $provider->rawAnalyze($systemPrompt, $userPrompt);
 
+            // Store usage from provider
+            $this->lastUsage = $provider->getLastUsage();
+
             // Parse response into violations
             $violations = $this->parseResponse($response);
 
             Log::info('AI code analysis completed', [
                 'violations_found' => $violations->count(),
                 'provider' => $provider->getName(),
+                'usage' => $this->lastUsage,
             ]);
 
             return $violations;

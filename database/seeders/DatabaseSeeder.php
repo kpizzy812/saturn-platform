@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             PersonalAccessTokenSeeder::class,
             PermissionsSeeder::class,
             PermissionSetsSeeder::class,
+            AiModelPricingSeeder::class,
         ]);
     }
 }

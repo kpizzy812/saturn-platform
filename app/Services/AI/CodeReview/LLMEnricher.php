@@ -26,6 +26,8 @@ class LLMEnricher
 
     private ?AIProviderInterface $provider = null;
 
+    private ?array $lastUsage = null;
+
     /**
      * @var array<string, class-string<AIProviderInterface>>
      */
@@ -49,6 +51,8 @@ class LLMEnricher
      */
     public function enrich(Collection $violations, DiffResult $diff): Collection
     {
+        $this->lastUsage = null;
+
         if ($violations->isEmpty()) {
             return $violations;
         }
@@ -70,6 +74,9 @@ class LLMEnricher
             // Call LLM
             $systemPrompt = $this->getSystemPrompt();
             $result = $provider->analyze($systemPrompt, $prompt);
+
+            // Store usage from provider
+            $this->lastUsage = $provider->getLastUsage();
 
             // Validate response
             $validation = $this->validator->validate(json_encode([
@@ -95,6 +102,16 @@ class LLMEnricher
             // Graceful degradation - return violations without enrichment
             return $violations;
         }
+    }
+
+    /**
+     * Get the usage data from the last enrichment.
+     *
+     * @return array{input_tokens: int, output_tokens: int}|null
+     */
+    public function getLastUsage(): ?array
+    {
+        return $this->lastUsage;
     }
 
     /**

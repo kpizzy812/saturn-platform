@@ -44,12 +44,32 @@ final class OpenAIProvider implements AIProviderInterface
         return $this->model;
     }
 
+    /**
+     * Last API response usage data.
+     */
+    private ?array $lastUsage = null;
+
     public function analyze(string $prompt, string $logContent): AIAnalysisResult
     {
         $content = $this->rawAnalyze($prompt, $logContent);
-        $tokensUsed = null; // Token count not available in rawAnalyze
+        $usage = $this->getLastUsage();
 
-        return AIAnalysisResult::fromJson($content, $this->getName(), $this->model, $tokensUsed);
+        return AIAnalysisResult::fromJson(
+            $content,
+            $this->getName(),
+            $this->model,
+            tokensUsed: $usage ? $usage['input_tokens'] + $usage['output_tokens'] : null,
+            inputTokens: $usage['input_tokens'] ?? null,
+            outputTokens: $usage['output_tokens'] ?? null,
+        );
+    }
+
+    /**
+     * Get usage data from last API call.
+     */
+    public function getLastUsage(): ?array
+    {
+        return $this->lastUsage;
     }
 
     public function rawAnalyze(string $systemPrompt, string $userPrompt): string
@@ -86,6 +106,12 @@ final class OpenAIProvider implements AIProviderInterface
             }
 
             $data = $response->json();
+
+            // Store usage data for later retrieval
+            $this->lastUsage = [
+                'input_tokens' => $data['usage']['prompt_tokens'] ?? 0,
+                'output_tokens' => $data['usage']['completion_tokens'] ?? 0,
+            ];
 
             return $data['choices'][0]['message']['content'] ?? '';
         } catch (RuntimeException $e) {

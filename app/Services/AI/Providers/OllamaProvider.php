@@ -55,11 +55,32 @@ final class OllamaProvider implements AIProviderInterface
         return $this->model;
     }
 
+    /**
+     * Last API response usage data.
+     */
+    private ?array $lastUsage = null;
+
     public function analyze(string $prompt, string $logContent): AIAnalysisResult
     {
         $content = $this->rawAnalyze($prompt, $logContent);
+        $usage = $this->getLastUsage();
 
-        return AIAnalysisResult::fromJson($content, $this->getName(), $this->model, null);
+        return AIAnalysisResult::fromJson(
+            $content,
+            $this->getName(),
+            $this->model,
+            tokensUsed: $usage ? $usage['input_tokens'] + $usage['output_tokens'] : null,
+            inputTokens: $usage['input_tokens'] ?? null,
+            outputTokens: $usage['output_tokens'] ?? null,
+        );
+    }
+
+    /**
+     * Get usage data from last API call.
+     */
+    public function getLastUsage(): ?array
+    {
+        return $this->lastUsage;
     }
 
     public function rawAnalyze(string $systemPrompt, string $userPrompt): string
@@ -86,6 +107,12 @@ final class OllamaProvider implements AIProviderInterface
 
             $data = $response->json();
             $content = $data['response'] ?? '';
+
+            // Store usage data (Ollama uses different field names)
+            $this->lastUsage = [
+                'input_tokens' => $data['prompt_eval_count'] ?? 0,
+                'output_tokens' => $data['eval_count'] ?? 0,
+            ];
 
             return $this->extractJson($content);
         } catch (RuntimeException $e) {

@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Events\CodeReviewCompleted;
+use App\Models\AiUsageLog;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\CodeReview;
 use App\Models\InstanceSettings;
+use App\Services\AI\AiPricingService;
 use App\Services\AI\CodeReview\AICodeAnalyzer;
 use App\Services\AI\CodeReview\Detectors\DangerousFunctionsDetector;
 use App\Services\AI\CodeReview\Detectors\SecretsDetector;
@@ -188,6 +190,9 @@ class AnalyzeCodeReviewJob implements ShouldQueue
             $llmModel = null;
             $llmTokensUsed = null;
             $summary = null;
+            $totalInputTokens = 0;
+            $totalOutputTokens = 0;
+            $startTime = microtime(true);
 
             if ($aiAnalyzer->isAvailable()) {
                 try {
@@ -201,6 +206,13 @@ class AnalyzeCodeReviewJob implements ShouldQueue
                     $providerInfo = $aiAnalyzer->getProviderInfo();
                     $llmProvider = $providerInfo['provider'];
                     $llmModel = $providerInfo['model'];
+
+                    // Track token usage
+                    $analyzerUsage = $aiAnalyzer->getLastUsage();
+                    if ($analyzerUsage) {
+                        $totalInputTokens += $analyzerUsage['input_tokens'];
+                        $totalOutputTokens += $analyzerUsage['output_tokens'];
+                    }
 
                     Log::debug('AI analysis found violations', ['count' => $aiViolations->count(), 'summary' => $summary]);
                 } catch (\Throwable $e) {
@@ -227,12 +239,33 @@ class AnalyzeCodeReviewJob implements ShouldQueue
                         $llmProvider = $providerInfo['provider'];
                         $llmModel = $providerInfo['model'];
                     }
+
+                    // Track token usage from enricher
+                    $enricherUsage = $llmEnricher->getLastUsage();
+                    if ($enricherUsage) {
+                        $totalInputTokens += $enricherUsage['input_tokens'];
+                        $totalOutputTokens += $enricherUsage['output_tokens'];
+                    }
                 } catch (\Throwable $e) {
                     Log::warning('LLM enrichment failed, continuing without it', [
                         'error' => $e->getMessage(),
                     ]);
                     $llmFailed = true;
                 }
+            }
+
+            // Log AI usage for cost tracking
+            if ($llmProvider && ($totalInputTokens > 0 || $totalOutputTokens > 0)) {
+                $this->logUsage(
+                    $deployment,
+                    $llmProvider,
+                    $llmModel ?? 'unknown',
+                    $totalInputTokens,
+                    $totalOutputTokens,
+                    $startTime,
+                    ! $llmFailed
+                );
+                $llmTokensUsed = $totalInputTokens + $totalOutputTokens;
             }
 
             // Save violations
@@ -304,5 +337,63 @@ class AnalyzeCodeReviewJob implements ShouldQueue
             'deployment_id' => $this->deploymentId,
             'error' => $exception->getMessage(),
         ]);
+    }
+
+    /**
+     * Log AI usage for cost tracking.
+     */
+    private function logUsage(
+        ApplicationDeploymentQueue $deployment,
+        string $provider,
+        string $model,
+        int $inputTokens,
+        int $outputTokens,
+        float $startTime,
+        bool $success,
+    ): void {
+        $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        try {
+            // Get user and team from deployment context
+            $userId = $deployment->user_id;
+            $teamId = $deployment->application?->environment?->project?->team_id;
+
+            if (! $teamId) {
+                Log::debug('Could not determine team_id for AI usage logging', [
+                    'deployment_id' => $deployment->id,
+                ]);
+
+                return;
+            }
+
+            // Calculate cost using pricing service
+            $pricingService = new AiPricingService;
+            $cost = $pricingService->calculateCost($provider, $model, $inputTokens, $outputTokens);
+
+            AiUsageLog::create([
+                'user_id' => $userId,
+                'team_id' => $teamId,
+                'provider' => $provider,
+                'model' => $model,
+                'operation' => 'code_review',
+                'input_tokens' => $inputTokens,
+                'output_tokens' => $outputTokens,
+                'cost_usd' => $cost,
+                'response_time_ms' => $responseTimeMs,
+                'success' => $success,
+            ]);
+
+            Log::debug('AI usage logged for code review', [
+                'deployment_id' => $deployment->id,
+                'provider' => $provider,
+                'tokens' => $inputTokens + $outputTokens,
+                'cost_usd' => $cost,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log AI usage for code review', [
+                'deployment_id' => $deployment->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

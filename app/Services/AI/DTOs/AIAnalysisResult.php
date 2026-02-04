@@ -17,13 +17,33 @@ final readonly class AIAnalysisResult
         public string $provider,
         public string $model,
         public ?int $tokensUsed = null,
+        public ?int $inputTokens = null,
+        public ?int $outputTokens = null,
     ) {}
+
+    /**
+     * Get total tokens used.
+     */
+    public function getTotalTokens(): ?int
+    {
+        if ($this->inputTokens !== null && $this->outputTokens !== null) {
+            return $this->inputTokens + $this->outputTokens;
+        }
+
+        return $this->tokensUsed;
+    }
 
     /**
      * Create from AI provider JSON response.
      */
-    public static function fromJson(string $json, string $provider, string $model, ?int $tokensUsed = null): self
-    {
+    public static function fromJson(
+        string $json,
+        string $provider,
+        string $model,
+        ?int $tokensUsed = null,
+        ?int $inputTokens = null,
+        ?int $outputTokens = null,
+    ): self {
         $data = json_decode($json, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -40,7 +60,9 @@ final readonly class AIAnalysisResult
             confidence: self::normalizeConfidence($data['confidence'] ?? 0.5),
             provider: $provider,
             model: $model,
-            tokensUsed: $tokensUsed,
+            tokensUsed: $tokensUsed ?? ($inputTokens !== null && $outputTokens !== null ? $inputTokens + $outputTokens : null),
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
         );
     }
 
@@ -60,6 +82,8 @@ final readonly class AIAnalysisResult
             provider: $provider,
             model: $model,
             tokensUsed: null,
+            inputTokens: null,
+            outputTokens: null,
         );
     }
 
@@ -79,6 +103,8 @@ final readonly class AIAnalysisResult
             'provider' => $this->provider,
             'model' => $this->model,
             'tokens_used' => $this->tokensUsed,
+            'input_tokens' => $this->inputTokens,
+            'output_tokens' => $this->outputTokens,
         ];
     }
 
