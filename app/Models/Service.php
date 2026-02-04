@@ -57,7 +57,38 @@ class Service extends BaseModel
 
     private static $parserVersion = '5';
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Critical fields (id, uuid, environment_id, destination_*, server_id) are excluded.
+     */
+    protected $fillable = [
+        'name',
+        'description',
+        'docker_compose_raw',
+        'docker_compose',
+        'connect_to_docker_network',
+        'is_container_label_escape_enabled',
+        'is_container_label_readonly_enabled',
+        'config_hash',
+        'service_type',
+        'limits_memory',
+        'limits_memory_swap',
+        'limits_memory_swappiness',
+        'limits_memory_reservation',
+        'limits_cpus',
+        'limits_cpuset',
+        'limits_cpu_shares',
+        'compose_parsing_version',
+        'manual_webhook_secret_github',
+        'manual_webhook_secret_gitlab',
+        'manual_webhook_secret_bitbucket',
+        'manual_webhook_secret_gitea',
+        'min_replicas',
+        'max_replicas',
+        'target_cpu_percent',
+        'target_memory_percent',
+        'cooldown_seconds',
+    ];
 
     protected $appends = ['server_status', 'status'];
 

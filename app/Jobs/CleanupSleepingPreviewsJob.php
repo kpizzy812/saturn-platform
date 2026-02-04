@@ -31,12 +31,14 @@ class CleanupSleepingPreviewsJob implements ShouldQueue
 
     protected function handleAutoSleep(): void
     {
+        // SECURITY: Using parameterized interval calculation instead of raw column in INTERVAL
+        // This is PostgreSQL-compatible and avoids potential SQL issues
         $previewsToSleep = ApplicationPreview::query()
             ->where('auto_sleep_enabled', true)
             ->where('is_sleeping', false)
             ->whereNotNull('auto_sleep_after_minutes')
             ->whereNotNull('last_activity_at')
-            ->whereRaw('last_activity_at < NOW() - INTERVAL auto_sleep_after_minutes MINUTE')
+            ->whereRaw('last_activity_at < NOW() - (auto_sleep_after_minutes * interval \'1 minute\')')
             ->get();
 
         foreach ($previewsToSleep as $preview) {
@@ -52,10 +54,12 @@ class CleanupSleepingPreviewsJob implements ShouldQueue
 
     protected function handleAutoDelete(): void
     {
+        // SECURITY: Using parameterized interval calculation instead of raw column in INTERVAL
+        // This is PostgreSQL-compatible and avoids potential SQL issues
         $previewsToDelete = ApplicationPreview::query()
             ->where('auto_delete_enabled', true)
             ->whereNotNull('auto_delete_after_days')
-            ->whereRaw('created_at < NOW() - INTERVAL auto_delete_after_days DAY')
+            ->whereRaw('created_at < NOW() - (auto_delete_after_days * interval \'1 day\')')
             ->get();
 
         foreach ($previewsToDelete as $preview) {

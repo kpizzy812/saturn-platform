@@ -43,7 +43,21 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
 {
     use Auditable, HasFactory, HasNotificationSettings, HasSafeStringAttribute, LogsActivity, Notifiable;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Critical fields (id, personal_team) are excluded - personal_team should not be changed after creation.
+     */
+    protected $fillable = [
+        'name',
+        'description',
+        'show_boarding',
+        'custom_server_limit',
+        'logo_path',
+        'workspace_timezone',
+        'workspace_locale',
+        'workspace_date_format',
+        'default_project_id',
+    ];
 
     protected $casts = [
         'personal_team' => 'boolean',

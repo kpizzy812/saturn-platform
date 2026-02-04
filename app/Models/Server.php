@@ -238,7 +238,7 @@ class Server extends BaseModel
         'traefik_outdated_info',
     ];
 
-    protected $guarded = [];
+    // SECURITY: $fillable is defined above (line 225). Do not use $guarded = [] as it overrides $fillable.
 
     use HasSafeStringAttribute;
 
