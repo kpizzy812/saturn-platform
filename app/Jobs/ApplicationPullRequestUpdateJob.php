@@ -53,7 +53,7 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
                 ProcessStatus::CANCELLED => $this->body = "The preview deployment for **{$serviceName}** was cancelled. 🚫\n\n",
                 ProcessStatus::CLOSED => '', // Already handled above, but included for completeness
             };
-            $this->build_logs_url = base_url()."/project/{$this->application->environment->project->uuid}/environment/{$this->application->environment->uuid}/application/{$this->application->uuid}/deployment/{$this->deployment_uuid}";
+            $this->build_logs_url = base_url()."/deployments/{$this->deployment_uuid}";
 
             $this->body .= '[Open Build Logs]('.$this->build_logs_url.")\n\n\n";
             $this->body .= 'Last updated at: '.now()->toDateTimeString().' CET';

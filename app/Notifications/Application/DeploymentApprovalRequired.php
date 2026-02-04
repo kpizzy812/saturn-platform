@@ -49,7 +49,7 @@ class DeploymentApprovalRequired extends CustomEmailNotification
         $this->project_uuid = data_get($application, 'environment.project.uuid');
         $this->environment_uuid = data_get($application, 'environment.uuid');
         $this->environment_name = data_get($application, 'environment.name');
-        $this->deployment_url = base_url()."/project/{$this->project_uuid}/environment/{$this->environment_uuid}/application/{$this->application->uuid}/deployment/{$this->deployment_uuid}";
+        $this->deployment_url = base_url()."/deployments/{$this->deployment_uuid}";
         $this->approval_url = base_url().'/approvals';
 
         // Get who requested the deployment

@@ -111,7 +111,7 @@ function queue_application_deployment(Application $application, string $deployme
                 $approvers = $project->getApprovers();
                 $projectName = $project->name;
                 $environmentName = $application->environment->name;
-                $deploymentUrl = base_url()."/project/{$project->uuid}/environment/{$application->environment->uuid}/application/{$application->uuid}/deployment/{$deployment->deployment_uuid}";
+                $deploymentUrl = base_url()."/deployments/{$deployment->deployment_uuid}";
 
                 foreach ($approvers as $approver) {
                     // Send email notification directly to each approver
