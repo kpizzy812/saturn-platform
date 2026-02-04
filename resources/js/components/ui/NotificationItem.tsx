@@ -17,6 +17,8 @@ interface NotificationItemProps {
     notification: Notification;
     onMarkAsRead?: (id: string) => void;
     onDelete?: (id: string) => void;
+    /** When true, clicking the item won't call preventDefault - allows Link wrapper to work */
+    allowNavigation?: boolean;
 }
 
 const iconMap: Record<NotificationType, React.ReactNode> = {
@@ -47,7 +49,7 @@ const borderColorMap: Record<NotificationType, string> = {
 };
 
 export const NotificationItem = React.forwardRef<HTMLDivElement, NotificationItemProps>(
-    ({ notification, onMarkAsRead, onDelete }, ref) => {
+    ({ notification, onMarkAsRead, onDelete, allowNavigation = false }, ref) => {
         const [isDeleting, setIsDeleting] = React.useState(false);
 
         const handleDelete = (e: React.MouseEvent) => {
@@ -60,8 +62,11 @@ export const NotificationItem = React.forwardRef<HTMLDivElement, NotificationIte
         };
 
         const handleMarkAsRead = (e: React.SyntheticEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
+            // Only prevent default if we're not allowing navigation (e.g., when wrapped in Link)
+            if (!allowNavigation) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
             if (!notification.isRead) {
                 onMarkAsRead?.(notification.id);
             }

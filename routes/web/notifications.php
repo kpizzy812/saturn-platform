@@ -94,8 +94,14 @@ Route::get('/notifications/preferences', function () {
 
 Route::get('/notifications/{uuid}', function (string $uuid) {
     $team = auth()->user()->currentTeam();
+    $userId = auth()->id();
+    // Consistent with other routes: show notifications that are team-wide or targeted to current user
     $notification = \App\Models\UserNotification::where('team_id', $team->id)
         ->where('id', $uuid)
+        ->where(function ($query) use ($userId) {
+            $query->whereNull('user_id')
+                ->orWhere('user_id', $userId);
+        })
         ->first();
 
     return Inertia::render('Notifications/NotificationDetail', [

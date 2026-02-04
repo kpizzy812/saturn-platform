@@ -346,6 +346,7 @@ export default function NotificationsIndex({ notifications: propNotifications }:
                                             notification={notification}
                                             onMarkAsRead={handleMarkAsRead}
                                             onDelete={handleDelete}
+                                            allowNavigation
                                         />
                                     </Link>
                                 ))}
