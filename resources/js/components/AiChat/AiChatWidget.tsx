@@ -18,14 +18,14 @@ export function AiChatWidget({
     position = 'bottom-right',
 }: AiChatWidgetProps) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
-    const [isMinimized, setIsMinimized] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const chat = useAiChat({ context, autoConnect: true });
 
     const handleToggle = useCallback(() => {
         if (!isOpen) {
             setIsOpen(true);
-            setIsMinimized(false);
+            setIsExpanded(false);
             // Create session on first open
             if (!chat.session && chat.status?.available) {
                 chat.createSession();
@@ -35,17 +35,13 @@ export function AiChatWidget({
         }
     }, [isOpen, chat]);
 
-    const handleMinimize = useCallback(() => {
-        setIsMinimized(true);
-    }, []);
-
-    const handleMaximize = useCallback(() => {
-        setIsMinimized(false);
+    const handleToggleExpand = useCallback(() => {
+        setIsExpanded((prev) => !prev);
     }, []);
 
     const handleClose = useCallback(() => {
         setIsOpen(false);
-        setIsMinimized(false);
+        setIsExpanded(false);
     }, []);
 
     // Don't render only if explicitly disabled (status checked and not available)
@@ -83,10 +79,9 @@ export function AiChatWidget({
                         'fixed z-50 flex flex-col',
                         'bg-background border border-white/10 rounded-xl shadow-2xl',
                         'transition-all duration-200',
-                        positionClasses,
-                        isMinimized
-                            ? 'h-14 w-72'
-                            : 'h-[500px] w-[380px] sm:h-[600px] sm:w-[420px]'
+                        isExpanded
+                            ? 'inset-4 sm:inset-8'
+                            : cn(positionClasses, 'h-[500px] w-[380px] sm:h-[600px] sm:w-[420px]')
                     )}
                 >
                     {/* Header */}
@@ -105,24 +100,22 @@ export function AiChatWidget({
                                 <h3 className="text-sm font-semibold text-foreground">
                                     Saturn AI
                                 </h3>
-                                {!isMinimized && (
-                                    <p className="text-xs text-foreground-muted">
-                                        {chat.status?.provider || 'AI Assistant'}
-                                    </p>
-                                )}
+                                <p className="text-xs text-foreground-muted">
+                                    {chat.status?.provider || 'AI Assistant'}
+                                </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
                             <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={isMinimized ? handleMaximize : handleMinimize}
-                                title={isMinimized ? 'Expand' : 'Minimize'}
+                                onClick={handleToggleExpand}
+                                title={isExpanded ? 'Minimize' : 'Expand'}
                             >
-                                {isMinimized ? (
-                                    <Maximize2 className="h-4 w-4" />
-                                ) : (
+                                {isExpanded ? (
                                     <Minimize2 className="h-4 w-4" />
+                                ) : (
+                                    <Maximize2 className="h-4 w-4" />
                                 )}
                             </Button>
                             <Button
@@ -137,20 +130,18 @@ export function AiChatWidget({
                     </div>
 
                     {/* Content */}
-                    {!isMinimized && (
-                        <AiChatPanel
-                            session={chat.session}
-                            messages={chat.messages}
-                            isLoading={chat.isLoading}
-                            isSending={chat.isSending}
-                            error={chat.error}
-                            context={context}
-                            onSendMessage={chat.sendMessage}
-                            onConfirmCommand={chat.confirmCommand}
-                            onRateMessage={chat.rateMessage}
-                            onClearError={chat.clearError}
-                        />
-                    )}
+                    <AiChatPanel
+                        session={chat.session}
+                        messages={chat.messages}
+                        isLoading={chat.isLoading}
+                        isSending={chat.isSending}
+                        error={chat.error}
+                        context={context}
+                        onSendMessage={chat.sendMessage}
+                        onConfirmCommand={chat.confirmCommand}
+                        onRateMessage={chat.rateMessage}
+                        onClearError={chat.clearError}
+                    />
                 </div>
             )}
         </>

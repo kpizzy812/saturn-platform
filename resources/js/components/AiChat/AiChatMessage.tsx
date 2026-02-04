@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
     User,
     Bot,
@@ -135,32 +137,28 @@ export function AiChatMessage({ message, onConfirm, onRate }: AiChatMessageProps
                             : 'bg-background-secondary/80 text-foreground'
                     )}
                 >
-                    {/* Message content with markdown-like formatting */}
-                    <div className="prose prose-sm prose-invert max-w-none break-words">
-                        {message.content.split('\n').map((line, i) => (
-                            <p key={i} className={cn('mb-1 last:mb-0', !line && 'h-2')}>
-                                {line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, j) => {
-                                    if (part.startsWith('**') && part.endsWith('**')) {
-                                        return (
-                                            <strong key={j}>
-                                                {part.slice(2, -2)}
-                                            </strong>
-                                        );
-                                    }
-                                    if (part.startsWith('`') && part.endsWith('`')) {
-                                        return (
-                                            <code
-                                                key={j}
-                                                className="rounded bg-black/30 px-1 py-0.5 text-xs"
-                                            >
-                                                {part.slice(1, -1)}
-                                            </code>
-                                        );
-                                    }
-                                    return part;
-                                })}
-                            </p>
-                        ))}
+                    {/* Message content with markdown rendering */}
+                    <div
+                        className={cn(
+                            'prose prose-sm max-w-none break-words',
+                            isUser ? 'prose-invert' : 'prose-invert',
+                            '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
+                            '[&_p]:my-1.5 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5',
+                            '[&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-xs',
+                            '[&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold',
+                            '[&_h1]:my-2 [&_h2]:my-1.5 [&_h3]:my-1 [&_h4]:my-1',
+                            '[&_pre]:bg-black/30 [&_pre]:p-2 [&_pre]:rounded-md [&_pre]:my-2 [&_pre]:overflow-x-auto',
+                            '[&_code]:bg-black/30 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs',
+                            '[&_pre_code]:bg-transparent [&_pre_code]:p-0',
+                            '[&_a]:text-primary [&_a]:underline',
+                            '[&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-3 [&_blockquote]:italic',
+                            '[&_table]:text-xs [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1',
+                            '[&_th]:border-b [&_th]:border-white/20 [&_td]:border-b [&_td]:border-white/10'
+                        )}
+                    >
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {message.content}
+                        </ReactMarkdown>
                     </div>
 
                     {/* Command status */}
