@@ -499,10 +499,17 @@ PROMPT;
             $params['resource_uuid'] = $context['uuid'] ?? null;
         }
 
-        // Try to extract resource name from message
-        $resourceName = $this->extractResourceName($originalMessage);
-        if ($resourceName) {
-            $params['resource_name'] = $resourceName;
+        // Try to extract resource info including project/environment
+        $resourceInfo = $this->extractResourceInfo($originalMessage);
+
+        if ($resourceInfo['name']) {
+            $params['resource_name'] = $resourceInfo['name'];
+        }
+        if ($resourceInfo['project']) {
+            $params['project_name'] = $resourceInfo['project'];
+        }
+        if ($resourceInfo['environment']) {
+            $params['environment_name'] = $resourceInfo['environment'];
         }
 
         $requiresConfirmation = in_array($intent, self::DANGEROUS_INTENTS, true);
@@ -510,6 +517,13 @@ PROMPT;
 
         if ($requiresConfirmation) {
             $displayName = $params['resource_name'] ?? $context['name'] ?? 'this resource';
+            if (! empty($params['project_name'])) {
+                $displayName .= " ({$params['project_name']}";
+                if (! empty($params['environment_name'])) {
+                    $displayName .= "/{$params['environment_name']}";
+                }
+                $displayName .= ')';
+            }
             $confirmationMessage = $this->getConfirmationMessage($intent, $displayName);
         }
 
@@ -527,12 +541,53 @@ PROMPT;
      */
     private function extractResourceName(string $message): ?string
     {
-        // Pattern: "deploy app-name" or "restart my-service"
-        if (preg_match('/(?:deploy|restart|stop|start|logs|status)\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
+        // Pattern: "deploy app-name" or "restart my-service" (English and Russian commands)
+        $commands = 'deploy|restart|stop|start|logs|status|деплой|задеплой|разверни|перезапусти|рестарт|останови|стоп|выключи|запусти|старт|включи|логи|статус';
+        if (preg_match('/(?:'.$commands.')\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
             return $matches[1];
         }
 
         return null;
+    }
+
+    /**
+     * Extract resource info including project and environment from message.
+     * Supports formats like:
+     * - "deploy app-name in project/environment"
+     * - "deploy app-name from project/environment"
+     * - "деплой app-name в project/environment"
+     */
+    public function extractResourceInfo(string $message): array
+    {
+        $info = [
+            'name' => null,
+            'project' => null,
+            'environment' => null,
+        ];
+
+        // Extract resource name
+        $info['name'] = $this->extractResourceName($message);
+
+        // Pattern for "in project/environment" or "from project/environment"
+        // Also supports Russian "в project/environment"
+        if (preg_match('/(?:in|from|в)\s+([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
+            $info['project'] = $matches[1];
+            $info['environment'] = $matches[2];
+        }
+        // Pattern for just project name "in project" or "from project"
+        elseif (preg_match('/(?:in|from|в)\s+([a-zA-Z0-9_-]+)(?:\s|$)/ui', $message, $matches)) {
+            $info['project'] = $matches[1];
+        }
+        // Pattern for "project project-name" or "проект project-name"
+        elseif (preg_match('/(?:project|проект)\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
+            $info['project'] = $matches[1];
+        }
+        // Pattern for "environment env-name" or "окружение env-name"
+        if (preg_match('/(?:environment|env|окружение)\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
+            $info['environment'] = $matches[1];
+        }
+
+        return $info;
     }
 
     /**

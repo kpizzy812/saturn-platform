@@ -242,4 +242,56 @@ class CommandParserTest extends TestCase
         $this->assertNotNull($result->confirmationMessage);
         $this->assertStringContainsString('my-app', $result->confirmationMessage);
     }
+
+    #[Test]
+    public function it_extracts_project_and_environment_from_message(): void
+    {
+        $info = $this->parser->extractResourceInfo('deploy my-app in my-project/production');
+
+        $this->assertEquals('my-app', $info['name']);
+        $this->assertEquals('my-project', $info['project']);
+        $this->assertEquals('production', $info['environment']);
+    }
+
+    #[Test]
+    public function it_extracts_only_project_when_no_environment(): void
+    {
+        $info = $this->parser->extractResourceInfo('deploy my-app in my-project');
+
+        $this->assertEquals('my-app', $info['name']);
+        $this->assertEquals('my-project', $info['project']);
+        $this->assertNull($info['environment']);
+    }
+
+    #[Test]
+    public function it_extracts_project_and_environment_in_russian(): void
+    {
+        $info = $this->parser->extractResourceInfo('деплой my-app в my-project/staging');
+
+        $this->assertEquals('my-app', $info['name']);
+        $this->assertEquals('my-project', $info['project']);
+        $this->assertEquals('staging', $info['environment']);
+    }
+
+    #[Test]
+    public function it_includes_project_in_confirmation_message(): void
+    {
+        $result = $this->parser->parse('deploy my-app in my-project/production');
+
+        $this->assertTrue($result->requiresConfirmation);
+        $this->assertStringContainsString('my-app', $result->confirmationMessage);
+        $this->assertStringContainsString('my-project', $result->confirmationMessage);
+        $this->assertStringContainsString('production', $result->confirmationMessage);
+    }
+
+    #[Test]
+    public function it_stores_project_and_environment_in_params(): void
+    {
+        $result = $this->parser->parse('restart api-service in backend/staging');
+
+        $this->assertEquals('restart', $result->intent);
+        $this->assertEquals('api-service', $result->params['resource_name'] ?? null);
+        $this->assertEquals('backend', $result->params['project_name'] ?? null);
+        $this->assertEquals('staging', $result->params['environment_name'] ?? null);
+    }
 }

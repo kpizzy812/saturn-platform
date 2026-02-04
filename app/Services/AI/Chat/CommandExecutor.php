@@ -455,6 +455,8 @@ HELP;
         $resourceId = $intent->getResourceId();
         $resourceUuid = $intent->getResourceUuid();
         $resourceName = $intent->params['resource_name'] ?? null;
+        $projectName = $intent->params['project_name'] ?? null;
+        $envName = $intent->params['environment_name'] ?? null;
 
         // Try to find by ID first
         if ($resourceId) {
@@ -466,9 +468,9 @@ HELP;
             return $this->findResourceByUuid($resourceType, $resourceUuid);
         }
 
-        // Try to find by name
+        // Try to find by name (with optional project/environment filter)
         if ($resourceName) {
-            return $this->findResourceByName($resourceType, $resourceName);
+            return $this->findResourceByName($resourceType, $resourceName, $projectName, $envName);
         }
 
         return null;
@@ -514,24 +516,56 @@ HELP;
     }
 
     /**
-     * Find resource by name.
+     * Find resource by name with optional project/environment filter.
      */
-    private function findResourceByName(?string $type, string $name): ?Model
+    private function findResourceByName(?string $type, string $name, ?string $projectName = null, ?string $envName = null): ?Model
     {
         $name = trim($name);
 
         return match ($type) {
-            'application' => Application::where('name', 'ILIKE', "%{$name}%")
-                ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-                ->first(),
-            'service' => Service::where('name', 'ILIKE', "%{$name}%")
-                ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-                ->first(),
+            'application' => $this->findApplicationByName($name, $projectName, $envName),
+            'service' => $this->findServiceByName($name, $projectName, $envName),
             'server' => Server::where('name', 'ILIKE', "%{$name}%")
                 ->where('team_id', $this->teamId)
                 ->first(),
-            default => $this->findAnyResourceByName($name),
+            default => $this->findAnyResourceByName($name, $projectName, $envName),
         };
+    }
+
+    /**
+     * Find application by name with project/environment filter.
+     */
+    private function findApplicationByName(string $name, ?string $projectName = null, ?string $envName = null): ?Application
+    {
+        $query = Application::where('name', 'ILIKE', "%{$name}%")
+            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
+
+        if ($projectName) {
+            $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', "%{$projectName}%"));
+        }
+        if ($envName) {
+            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', "%{$envName}%"));
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * Find service by name with project/environment filter.
+     */
+    private function findServiceByName(string $name, ?string $projectName = null, ?string $envName = null): ?Service
+    {
+        $query = Service::where('name', 'ILIKE', "%{$name}%")
+            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
+
+        if ($projectName) {
+            $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', "%{$projectName}%"));
+        }
+        if ($envName) {
+            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', "%{$envName}%"));
+        }
+
+        return $query->first();
     }
 
     /**
@@ -616,24 +650,23 @@ HELP;
     }
 
     /**
-     * Find any resource by name.
+     * Find any resource by name with optional project/environment filter.
      */
-    private function findAnyResourceByName(string $name): ?Model
+    private function findAnyResourceByName(string $name, ?string $projectName = null, ?string $envName = null): ?Model
     {
-        $app = Application::where('name', 'ILIKE', "%{$name}%")
-            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-            ->first();
+        // Try application
+        $app = $this->findApplicationByName($name, $projectName, $envName);
         if ($app) {
             return $app;
         }
 
-        $service = Service::where('name', 'ILIKE', "%{$name}%")
-            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-            ->first();
+        // Try service
+        $service = $this->findServiceByName($name, $projectName, $envName);
         if ($service) {
             return $service;
         }
 
+        // Server (no project/environment)
         $server = Server::where('name', 'ILIKE', "%{$name}%")
             ->where('team_id', $this->teamId)
             ->first();
@@ -641,11 +674,19 @@ HELP;
             return $server;
         }
 
-        // Try databases
+        // Try databases with project/environment filter
         foreach (array_unique(self::DATABASE_MODELS) as $model) {
-            $db = $model::where('name', 'ILIKE', "%{$name}%")
-                ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-                ->first();
+            $query = $model::where('name', 'ILIKE', "%{$name}%")
+                ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
+
+            if ($projectName) {
+                $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', "%{$projectName}%"));
+            }
+            if ($envName) {
+                $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', "%{$envName}%"));
+            }
+
+            $db = $query->first();
             if ($db) {
                 return $db;
             }
@@ -781,12 +822,12 @@ HELP;
     {
         $resources = [];
 
-        // Get applications
+        // Get applications with project and environment info
         if (! $resourceType || $resourceType === 'application') {
             $apps = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-                ->select('name', 'status', 'uuid', 'fqdn')
+                ->with(['environment.project'])
                 ->orderBy('name')
-                ->take(10)
+                ->take(20)
                 ->get();
 
             foreach ($apps as $app) {
@@ -794,34 +835,39 @@ HELP;
                     'name' => $app->name,
                     'status' => $app->status,
                     'type' => 'application',
-                    'fqdn' => $app->fqdn,
+                    'project' => $app->environment?->project?->name ?? 'Unknown',
+                    'environment' => $app->environment?->name ?? 'default',
+                    'uuid' => $app->uuid,
                 ];
             }
         }
 
-        // Get services if not specifically looking for applications
+        // Get services with project and environment info
         if (! $resourceType || $resourceType === 'service') {
             $services = Service::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-                ->select('name', 'uuid')
+                ->with(['environment.project'])
                 ->orderBy('name')
-                ->take(10)
+                ->take(20)
                 ->get();
 
             foreach ($services as $service) {
                 $resources[] = [
                     'name' => $service->name,
                     'type' => 'service',
+                    'project' => $service->environment?->project?->name ?? 'Unknown',
+                    'environment' => $service->environment?->name ?? 'default',
+                    'uuid' => $service->uuid,
                 ];
             }
         }
 
-        // Get databases if not specifically looking for applications/services
+        // Get databases with project and environment info
         if (! $resourceType || $resourceType === 'database') {
             foreach (array_unique(self::DATABASE_MODELS) as $model) {
                 $dbs = $model::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
-                    ->select('name', 'status', 'uuid')
+                    ->with(['environment.project'])
                     ->orderBy('name')
-                    ->take(5)
+                    ->take(10)
                     ->get();
 
                 foreach ($dbs as $db) {
@@ -829,6 +875,9 @@ HELP;
                         'name' => $db->name,
                         'status' => $db->status ?? 'unknown',
                         'type' => 'database',
+                        'project' => $db->environment?->project?->name ?? 'Unknown',
+                        'environment' => $db->environment?->name ?? 'default',
+                        'uuid' => $db->uuid,
                     ];
                 }
             }
