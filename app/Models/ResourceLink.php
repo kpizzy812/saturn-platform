@@ -12,7 +12,20 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  */
 class ResourceLink extends Model
 {
-    protected $guarded = [];
+    /**
+     * The attributes that are mass assignable.
+     * SECURITY: Using $fillable to prevent mass assignment vulnerabilities.
+     */
+    protected $fillable = [
+        'source_type',
+        'source_id',
+        'target_type',
+        'target_id',
+        'environment_id',
+        'inject_as',
+        'auto_inject',
+        'use_external_url',
+    ];
 
     protected $casts = [
         'auto_inject' => 'boolean',
@@ -120,5 +133,67 @@ class ResourceLink extends Model
         return method_exists($this->target, 'getInternalDbUrlAttribute')
             || isset($this->target->internal_db_url)
             || isset($this->target->internal_app_url);
+    }
+
+    /**
+     * SECURITY: Validate that source and target belong to the same team.
+     * This prevents cross-team data leakage through resource links.
+     */
+    public function validateSameTeam(): bool
+    {
+        $source = $this->source;
+        $target = $this->target;
+
+        if (! $source || ! $target) {
+            return false;
+        }
+
+        $sourceTeamId = $this->getResourceTeamId($source);
+        $targetTeamId = $this->getResourceTeamId($target);
+
+        if ($sourceTeamId === null || $targetTeamId === null) {
+            return false;
+        }
+
+        return $sourceTeamId === $targetTeamId;
+    }
+
+    /**
+     * Get team ID from a resource (Application or Database).
+     */
+    private function getResourceTeamId($resource): ?int
+    {
+        // For Applications and Databases, team is via environment.project.team
+        if (method_exists($resource, 'team') && is_callable([$resource, 'team'])) {
+            $team = $resource->team();
+
+            return $team?->id ?? data_get($resource, 'environment.project.team.id');
+        }
+
+        return data_get($resource, 'environment.project.team.id');
+    }
+
+    /**
+     * Boot method for model events.
+     */
+    protected static function booted()
+    {
+        // SECURITY: Validate team ownership before creating/updating links
+        static::saving(function (ResourceLink $link) {
+            // Load relationships if not loaded
+            if (! $link->relationLoaded('source')) {
+                $link->load('source');
+            }
+            if (! $link->relationLoaded('target')) {
+                $link->load('target');
+            }
+
+            // Validate same team
+            if (! $link->validateSameTeam()) {
+                throw new \InvalidArgumentException(
+                    'ResourceLink source and target must belong to the same team'
+                );
+            }
+        });
     }
 }

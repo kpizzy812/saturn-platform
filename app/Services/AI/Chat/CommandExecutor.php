@@ -34,6 +34,7 @@ use App\Services\AI\DeploymentLogAnalyzer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Visus\Cuid2\Cuid2;
 
 /**
@@ -44,6 +45,17 @@ class CommandExecutor
     private User $user;
 
     private int $teamId;
+
+    /**
+     * Rate limiting configuration for dangerous operations.
+     * Format: [operation => [max_attempts_per_minute, decay_seconds]]
+     */
+    private const RATE_LIMITS = [
+        'deploy' => [10, 60],      // 10 deploys per minute
+        'delete' => [5, 60],       // 5 deletes per minute
+        'restart' => [10, 60],     // 10 restarts per minute
+        'stop' => [10, 60],        // 10 stops per minute
+    ];
 
     /**
      * Database model classes.
@@ -65,6 +77,39 @@ class CommandExecutor
     {
         $this->user = $user;
         $this->teamId = $teamId;
+    }
+
+    /**
+     * SECURITY: Check rate limit for dangerous operations to prevent DOS attacks.
+     *
+     * @return CommandResult|null Returns error result if rate limited, null if OK
+     */
+    private function checkRateLimit(string $operation): ?CommandResult
+    {
+        if (! isset(self::RATE_LIMITS[$operation])) {
+            return null;
+        }
+
+        [$maxAttempts, $decaySeconds] = self::RATE_LIMITS[$operation];
+        $key = "ai_chat:{$operation}:{$this->user->id}:{$this->teamId}";
+
+        if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
+            $seconds = RateLimiter::availableIn($key);
+            Log::warning('AI Chat rate limit exceeded', [
+                'user_id' => $this->user->id,
+                'team_id' => $this->teamId,
+                'operation' => $operation,
+                'retry_after' => $seconds,
+            ]);
+
+            return CommandResult::failed(
+                "⏳ Слишком много запросов на {$operation}. Подождите {$seconds} секунд."
+            );
+        }
+
+        RateLimiter::hit($key, $decaySeconds);
+
+        return null;
     }
 
     /**
@@ -137,6 +182,11 @@ class CommandExecutor
      */
     private function executeDeployCommand(ParsedCommand $command): CommandResult
     {
+        // SECURITY: Rate limit deploy operations
+        if ($rateLimitResult = $this->checkRateLimit('deploy')) {
+            return $rateLimitResult;
+        }
+
         $resource = $this->resolveResourceFromCommand($command, 'application');
         if (! $resource) {
             if (! $command->hasResource()) {
@@ -193,6 +243,11 @@ class CommandExecutor
      */
     private function executeRestartCommand(ParsedCommand $command): CommandResult
     {
+        // SECURITY: Rate limit restart operations
+        if ($rateLimitResult = $this->checkRateLimit('restart')) {
+            return $rateLimitResult;
+        }
+
         $resource = $this->resolveResourceFromCommand($command);
         if (! $resource) {
             if (! $command->hasResource()) {
@@ -247,6 +302,11 @@ class CommandExecutor
      */
     private function executeStopCommand(ParsedCommand $command): CommandResult
     {
+        // SECURITY: Rate limit stop operations
+        if ($rateLimitResult = $this->checkRateLimit('stop')) {
+            return $rateLimitResult;
+        }
+
         $resource = $this->resolveResourceFromCommand($command);
         if (! $resource) {
             if (! $command->hasResource()) {
@@ -406,6 +466,11 @@ class CommandExecutor
      */
     private function executeDeleteCommand(ParsedCommand $command): CommandResult
     {
+        // SECURITY: Rate limit delete operations (most restrictive)
+        if ($rateLimitResult = $this->checkRateLimit('delete')) {
+            return $rateLimitResult;
+        }
+
         // Handle project deletion
         if ($command->resourceType === 'project' || $this->looksLikeProject($command->resourceName)) {
             return $this->executeDeleteProjectCommand($command);

@@ -2134,12 +2134,16 @@ class Application extends BaseModel
     /**
      * Auto-inject connection URLs from linked resources (databases and applications).
      * This method checks for ResourceLinks and injects the appropriate env variables.
+     * SECURITY: Validates that target belongs to the same team to prevent cross-team data leakage.
      */
     public function autoInjectDatabaseUrl(): void
     {
         if (! $this->auto_inject_database_url) {
             return;
         }
+
+        // Get this application's team ID for security validation
+        $sourceTeamId = data_get($this, 'environment.project.team.id');
 
         // Get links where this application is the source and auto_inject is enabled
         $links = ResourceLink::where('source_type', self::class)
@@ -2152,6 +2156,20 @@ class Application extends BaseModel
             $target = $link->target;
 
             if (! $target) {
+                continue;
+            }
+
+            // SECURITY: Validate target belongs to the same team
+            $targetTeamId = data_get($target, 'environment.project.team.id');
+            if ($sourceTeamId && $targetTeamId && $sourceTeamId !== $targetTeamId) {
+                // Log security violation and skip this link
+                \Illuminate\Support\Facades\Log::warning('ResourceLink cross-team access blocked', [
+                    'source_application_id' => $this->id,
+                    'source_team_id' => $sourceTeamId,
+                    'target_id' => $target->id ?? null,
+                    'target_team_id' => $targetTeamId,
+                ]);
+
                 continue;
             }
 

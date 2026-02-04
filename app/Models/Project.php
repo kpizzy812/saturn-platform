@@ -35,7 +35,16 @@ class Project extends BaseModel
     use HasSafeStringAttribute;
     use LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * The attributes that are mass assignable.
+     * SECURITY: Using $fillable to prevent mass assignment vulnerabilities.
+     */
+    protected $fillable = [
+        'uuid',
+        'name',
+        'description',
+        'team_id',
+    ];
 
     public function getActivitylogOptions(): LogOptions
     {
