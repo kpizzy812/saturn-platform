@@ -57,6 +57,18 @@ class UploadController extends BaseController
      */
     private const MAX_FILE_SIZE = 2147483648;
 
+    /**
+     * Magic bytes for validating binary files when MIME is octet-stream.
+     * Format: [extension => [magic_bytes_hex, offset]]
+     */
+    private const MAGIC_BYTES = [
+        'gz' => ['1f8b', 0],           // Gzip
+        'bz2' => ['425a68', 0],        // Bzip2
+        'zip' => ['504b0304', 0],      // ZIP (PK..)
+        'tar' => ['7573746172', 257],  // tar (ustar at offset 257)
+        'rdb' => ['52454449', 0],      // Redis RDB (REDI)
+    ];
+
     public function upload(Request $request)
     {
         $resource = getResourceByUuid(request()->route('databaseUuid'), data_get(auth()->user()->currentTeam(), 'id'));
@@ -120,6 +132,14 @@ class UploadController extends BaseController
             return 'Invalid file type. This does not appear to be a valid database backup file.';
         }
 
+        // SECURITY: Additional validation for octet-stream files using magic bytes
+        // This prevents uploading arbitrary binaries disguised as backup files
+        if ($mimeType === 'application/octet-stream') {
+            if (! $this->validateMagicBytes($file, $extension)) {
+                return 'Invalid file content. The file does not match expected format for extension: '.$extension;
+            }
+        }
+
         // Check for double extensions (e.g., file.php.sql)
         $originalName = $file->getClientOriginalName();
         if (preg_match('/\.(php|phtml|phar|sh|bash|exe|bat|cmd|ps1|py|rb|pl|cgi|asp|aspx|jsp|htaccess)\./i', $originalName)) {
@@ -133,6 +153,46 @@ class UploadController extends BaseController
 
         return null;
     }
+
+    /**
+     * Validate file content using magic bytes for binary files.
+     * Returns true if valid or if no magic bytes check is defined for the extension.
+     */
+    protected function validateMagicBytes(UploadedFile $file, string $extension): bool
+    {
+        // If no magic bytes defined for this extension, allow it
+        // (e.g., .sql, .dump, .json are text files)
+        if (! isset(self::MAGIC_BYTES[$extension])) {
+            return true;
+        }
+
+        [$expectedHex, $offset] = self::MAGIC_BYTES[$extension];
+        $expectedLength = strlen($expectedHex) / 2;
+
+        // Read bytes from file
+        $handle = fopen($file->getPathname(), 'rb');
+        if (! $handle) {
+            return false;
+        }
+
+        // Seek to offset if needed
+        if ($offset > 0) {
+            fseek($handle, $offset);
+        }
+
+        $bytes = fread($handle, $expectedLength);
+        fclose($handle);
+
+        if ($bytes === false || strlen($bytes) < $expectedLength) {
+            return false;
+        }
+
+        // Compare magic bytes
+        $actualHex = bin2hex($bytes);
+
+        return strtolower($actualHex) === strtolower($expectedHex);
+    }
+
     // protected function saveFileToS3($file)
     // {
     //     $fileName = $this->createFilename($file);

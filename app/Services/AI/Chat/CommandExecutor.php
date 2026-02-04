@@ -80,6 +80,17 @@ class CommandExecutor
     }
 
     /**
+     * SECURITY: Escape special ILIKE/LIKE pattern characters.
+     *
+     * Without this, user input containing % or _ could alter query logic.
+     * Example: searching for "%admin%" would match anything containing "admin".
+     */
+    private function escapeIlike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+    }
+
+    /**
      * SECURITY: Check rate limit for dangerous operations to prevent DOS attacks.
      *
      * @return CommandResult|null Returns error result if rate limited, null if OK
@@ -518,7 +529,7 @@ class CommandExecutor
         }
 
         $project = Project::where('team_id', $this->teamId)
-            ->where('name', 'ILIKE', "%{$projectName}%")
+            ->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%')
             ->first();
 
         if (! $project) {
@@ -1679,7 +1690,7 @@ class CommandExecutor
         }
 
         $project = Project::where('team_id', $this->teamId)
-            ->where('name', 'ILIKE', "%{$projectName}%")
+            ->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%')
             ->first();
 
         if (! $project) {
@@ -1714,7 +1725,7 @@ class CommandExecutor
 
         if (! empty($excludeNames)) {
             foreach ($excludeNames as $name) {
-                $query->where('name', 'NOT ILIKE', "%{$name}%");
+                $query->where('name', 'NOT ILIKE', '%'.$this->escapeIlike($name).'%');
             }
         }
 
@@ -1784,7 +1795,7 @@ class CommandExecutor
 
         // Check if this name matches a project
         return Project::where('team_id', $this->teamId)
-            ->where('name', 'ILIKE', "%{$name}%")
+            ->where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
             ->exists();
     }
 
@@ -1972,7 +1983,7 @@ HELP;
         return match ($type) {
             'application' => $this->findApplicationByName($name, $projectName, $envName),
             'service' => $this->findServiceByName($name, $projectName, $envName),
-            'server' => Server::where('name', 'ILIKE', "%{$name}%")
+            'server' => Server::where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
                 ->where('team_id', $this->teamId)
                 ->first(),
             default => $this->findAnyResourceByName($name, $projectName, $envName),
@@ -1984,14 +1995,14 @@ HELP;
      */
     private function findApplicationByName(string $name, ?string $projectName = null, ?string $envName = null): ?Application
     {
-        $query = Application::where('name', 'ILIKE', "%{$name}%")
+        $query = Application::where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
             ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
 
         if ($projectName) {
-            $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', "%{$projectName}%"));
+            $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
         }
         if ($envName) {
-            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', "%{$envName}%"));
+            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
 
         return $query->first();
@@ -2002,14 +2013,14 @@ HELP;
      */
     private function findServiceByName(string $name, ?string $projectName = null, ?string $envName = null): ?Service
     {
-        $query = Service::where('name', 'ILIKE', "%{$name}%")
+        $query = Service::where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
             ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
 
         if ($projectName) {
-            $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', "%{$projectName}%"));
+            $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
         }
         if ($envName) {
-            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', "%{$envName}%"));
+            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
 
         return $query->first();
@@ -2114,7 +2125,7 @@ HELP;
         }
 
         // Server (no project/environment)
-        $server = Server::where('name', 'ILIKE', "%{$name}%")
+        $server = Server::where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
             ->where('team_id', $this->teamId)
             ->first();
         if ($server) {
@@ -2123,14 +2134,14 @@ HELP;
 
         // Try databases with project/environment filter
         foreach (array_unique(self::DATABASE_MODELS) as $model) {
-            $query = $model::where('name', 'ILIKE', "%{$name}%")
+            $query = $model::where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
                 ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
 
             if ($projectName) {
-                $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', "%{$projectName}%"));
+                $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
             }
             if ($envName) {
-                $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', "%{$envName}%"));
+                $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
             }
 
             $db = $query->first();

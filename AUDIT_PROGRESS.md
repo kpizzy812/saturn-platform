@@ -74,13 +74,17 @@
 
 ## СРЕДНИЕ РИСКИ
 
-### 12. ⏳ ILIKE injection в CommandExecutor
-- **Файлы**: `app/Services/AI/Chat/CommandExecutor.php:456,1616`
-- **Статус**: В ОЧЕРЕДИ
+### 12. ✅ ILIKE injection в CommandExecutor
+- **Файлы**: `app/Services/AI/Chat/CommandExecutor.php`
+- **Проблема**: Специальные символы % и _ в пользовательском вводе изменяли логику запроса
+- **Решение**: Добавлен метод `escapeIlike()` для экранирования
+- **Статус**: ✅ ИСПРАВЛЕНО
 
-### 13. ⏳ Upload octet-stream разрешен
-- **Файл**: `app/Http/Controllers/UploadController.php:51`
-- **Статус**: В ОЧЕРЕДИ
+### 13. ✅ Upload octet-stream усилен
+- **Файл**: `app/Http/Controllers/UploadController.php`
+- **Проблема**: application/octet-stream слишком широкий MIME type
+- **Решение**: Добавлена проверка magic bytes для бинарных файлов
+- **Статус**: ✅ ИСПРАВЛЕНО
 
 ### 14. ⏳ Preview Deployments не реализованы
 - **Файл**: `routes/api.php:336-373`
@@ -131,4 +135,12 @@
   - Изменён `addLogEntry()` с O(N²) на O(1)
   - Добавлен accessor `logs` для обратной совместимости
   - Unit тесты для DeploymentLogEntry модели
+
+### 2026-02-04 (Фаза 4 - Security Hardening)
+- ✅ ILIKE injection fix в CommandExecutor:
+  - Добавлен метод `escapeIlike()` для экранирования %, _, \
+  - Исправлено 15+ мест с уязвимыми ILIKE запросами
+- ✅ Upload validation усилена:
+  - Добавлена проверка magic bytes для binary файлов
+  - octet-stream теперь проверяется на соответствие формату
 
