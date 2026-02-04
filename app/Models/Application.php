@@ -120,10 +120,15 @@ class Application extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Critical fields (id, uuid, environment_id, destination_*, source_*) are excluded.
+     * Critical fields (id, uuid) are excluded. Relationship IDs are fillable but validated in Actions.
      */
     protected $fillable = [
         'name',
+        'environment_id',
+        'destination_id',
+        'destination_type',
+        'source_id',
+        'source_type',
         'description',
         'repository_project_id',
         'fqdn',

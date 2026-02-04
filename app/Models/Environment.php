@@ -32,13 +32,14 @@ class Environment extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, project_id (relationship)
+     * Excludes: id. Relationship IDs are fillable but validated in Actions/routes.
      */
     protected $fillable = [
         'name',
         'description',
         'type',
         'requires_approval',
+        'project_id',
     ];
 
     protected $casts = [

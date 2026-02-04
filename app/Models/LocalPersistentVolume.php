@@ -10,12 +10,14 @@ class LocalPersistentVolume extends Model
 {
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, resource_type, resource_id (polymorphic relationship)
+     * Excludes: id. Polymorphic relationship IDs are fillable for internal booted() hooks.
      */
     protected $fillable = [
         'name',
         'mount_path',
         'host_path',
+        'resource_id',
+        'resource_type',
     ];
 
     public function resource()
