@@ -522,6 +522,17 @@ class CommandExecutor
      */
     private function executeDeleteProjectCommand(ParsedCommand $command): CommandResult
     {
+        // Handle "delete all except" case
+        if ($command->targetScope === 'all' || $command->targetScope === 'all_except') {
+            $excludeNames = $command->resourceNames ?? [];
+            // Also check resourceName as single exclusion
+            if ($command->resourceName && ! in_array($command->resourceName, $excludeNames)) {
+                $excludeNames[] = $command->resourceName;
+            }
+
+            return $this->executeDeleteAllProjectsExceptCommand($excludeNames);
+        }
+
         $projectName = $command->resourceName ?? $command->projectName;
 
         if (! $projectName) {
@@ -553,6 +564,66 @@ class CommandExecutor
 
             return CommandResult::failed("Ошибка удаления проекта: {$e->getMessage()}");
         }
+    }
+
+    /**
+     * Delete all projects except specified ones.
+     */
+    private function executeDeleteAllProjectsExceptCommand(array $excludeNames): CommandResult
+    {
+        $query = Project::where('team_id', $this->teamId);
+
+        // Exclude projects by name (case-insensitive partial match)
+        if (! empty($excludeNames)) {
+            foreach ($excludeNames as $name) {
+                $query->where('name', 'NOT ILIKE', '%'.$this->escapeIlike($name).'%');
+            }
+        }
+
+        $projectsToDelete = $query->get();
+
+        if ($projectsToDelete->isEmpty()) {
+            return CommandResult::success('Нет проектов для удаления (все проекты соответствуют критериям исключения).');
+        }
+
+        $deleted = [];
+        $failed = [];
+
+        foreach ($projectsToDelete as $project) {
+            if (! $this->authorize('delete', $project)) {
+                $failed[] = "{$project->name} (нет прав)";
+
+                continue;
+            }
+
+            try {
+                $deleted[] = $project->name;
+                $project->delete();
+            } catch (\Throwable $e) {
+                $failed[] = "{$project->name} ({$e->getMessage()})";
+                Log::error('AI Chat bulk delete project failed', ['error' => $e->getMessage(), 'project_id' => $project->id]);
+            }
+        }
+
+        $output = '';
+        if (! empty($deleted)) {
+            $output .= "✅ Успешно удалены проекты:\n";
+            foreach ($deleted as $name) {
+                $output .= "- **{$name}**\n";
+            }
+        }
+
+        if (! empty($failed)) {
+            $output .= "\n⚠️ Не удалось удалить:\n";
+            foreach ($failed as $info) {
+                $output .= "- {$info}\n";
+            }
+        }
+
+        return CommandResult::success($output, [
+            'deleted' => $deleted,
+            'failed' => $failed,
+        ]);
     }
 
     /**
