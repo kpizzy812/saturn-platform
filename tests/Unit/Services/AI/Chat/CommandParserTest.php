@@ -189,6 +189,60 @@ class CommandParserTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('deleteIntentProvider')]
+    public function it_parses_delete_intents(string $message): void
+    {
+        $result = $this->parser->parse($message);
+
+        $this->assertInstanceOf(IntentResult::class, $result);
+        $this->assertTrue($result->hasIntent());
+        $this->assertEquals('delete', $result->intent);
+        $this->assertTrue($result->requiresConfirmation);
+    }
+
+    public static function deleteIntentProvider(): array
+    {
+        return [
+            ['delete'],
+            ['Delete'],
+            ['DELETE'],
+            ['delete my-project'],
+            ['remove'],
+            ['remove my-app'],
+            ['удали'],
+            ['удалить'],
+            ['убери'],
+            ['убрать'],
+        ];
+    }
+
+    #[Test]
+    public function it_parses_delete_all_except_pattern(): void
+    {
+        $result = $this->parser->parse('удали все проекты кроме PIXELPETS');
+
+        $this->assertInstanceOf(IntentResult::class, $result);
+        $this->assertTrue($result->hasIntent());
+        $this->assertEquals('delete', $result->intent);
+        $this->assertTrue($result->requiresConfirmation);
+        $this->assertEquals('project', $result->params['resource_type'] ?? null);
+        $this->assertTrue($result->params['delete_all_except'] ?? false);
+        $this->assertContains('PIXELPETS', $result->params['exclude_names'] ?? []);
+    }
+
+    #[Test]
+    public function it_parses_delete_all_except_pattern_in_english(): void
+    {
+        $result = $this->parser->parse('delete all projects except MyApp');
+
+        $this->assertInstanceOf(IntentResult::class, $result);
+        $this->assertTrue($result->hasIntent());
+        $this->assertEquals('delete', $result->intent);
+        $this->assertTrue($result->params['delete_all_except'] ?? false);
+        $this->assertContains('MyApp', $result->params['exclude_names'] ?? []);
+    }
+
+    #[Test]
     public function it_returns_no_intent_for_generic_messages(): void
     {
         $result = $this->parser->parse('Hello, how are you?');

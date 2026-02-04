@@ -10,6 +10,7 @@ use App\Actions\Service\RestartService;
 use App\Actions\Service\StartService;
 use App\Actions\Service\StopService;
 use App\Models\Application;
+use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
 use App\Models\StandaloneClickhouse;
@@ -75,6 +76,7 @@ class CommandExecutor
             'start' => $this->executeStart($intent),
             'logs' => $this->executeLogs($intent),
             'status' => $this->executeStatus($intent),
+            'delete' => $this->executeDelete($intent),
             'help' => $this->executeHelp(),
             default => CommandResult::failed("Unknown intent: {$intent->intent}"),
         };
@@ -420,6 +422,243 @@ class CommandExecutor
     }
 
     /**
+     * Delete a resource (project, application, service, or database).
+     */
+    private function executeDelete(IntentResult $intent): CommandResult
+    {
+        $resourceType = $intent->getResourceType();
+        $resourceName = $intent->params['resource_name'] ?? null;
+
+        // Handle project deletion
+        if ($resourceType === 'project' || $this->looksLikeProject($resourceName)) {
+            return $this->executeDeleteProject($intent);
+        }
+
+        // Handle other resources (application, service, database)
+        $resource = $this->resolveResource($intent);
+        if (! $resource) {
+            if (! $this->hasResourceSpecified($intent)) {
+                return $this->listDeletableResources();
+            }
+
+            return CommandResult::notFound($resourceType ?? 'resource');
+        }
+
+        if (! $this->authorize('delete', $resource)) {
+            return CommandResult::unauthorized('You do not have permission to delete this resource.');
+        }
+
+        try {
+            $resourceName = $resource->name ?? 'Unknown';
+            $resourceClass = class_basename($resource);
+
+            $resource->delete();
+
+            return CommandResult::success(
+                "✅ Successfully deleted {$resourceClass} **{$resourceName}**.",
+                ['deleted' => true, 'type' => $resourceClass, 'name' => $resourceName]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat delete failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Failed to delete: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Delete a project.
+     */
+    private function executeDeleteProject(IntentResult $intent): CommandResult
+    {
+        $projectName = $intent->params['resource_name'] ?? $intent->params['project_name'] ?? null;
+        $excludeNames = $intent->params['exclude_names'] ?? [];
+
+        // If user wants to delete all projects except some
+        if ($this->isDeleteAllExceptRequest($intent)) {
+            return $this->executeDeleteAllProjectsExcept($excludeNames);
+        }
+
+        if (! $projectName) {
+            return $this->listDeletableProjects('Which project do you want to delete?');
+        }
+
+        $project = Project::where('team_id', $this->teamId)
+            ->where('name', 'ILIKE', "%{$projectName}%")
+            ->first();
+
+        if (! $project) {
+            return CommandResult::notFound('project');
+        }
+
+        if (! $this->authorize('delete', $project)) {
+            return CommandResult::unauthorized('You do not have permission to delete this project.');
+        }
+
+        try {
+            $deletedName = $project->name;
+            $project->delete();
+
+            return CommandResult::success(
+                "✅ Successfully deleted project **{$deletedName}**.",
+                ['deleted' => true, 'type' => 'Project', 'name' => $deletedName]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat delete project failed', ['error' => $e->getMessage(), 'project_id' => $project->id]);
+
+            return CommandResult::failed("Failed to delete project: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Delete all projects except specified ones.
+     */
+    private function executeDeleteAllProjectsExcept(array $excludeNames): CommandResult
+    {
+        $query = Project::where('team_id', $this->teamId);
+
+        if (! empty($excludeNames)) {
+            foreach ($excludeNames as $name) {
+                $query->where('name', 'NOT ILIKE', "%{$name}%");
+            }
+        }
+
+        $projectsToDelete = $query->get();
+
+        if ($projectsToDelete->isEmpty()) {
+            return CommandResult::success('No projects to delete (all projects match the exclusion criteria).');
+        }
+
+        $deleted = [];
+        $failed = [];
+
+        foreach ($projectsToDelete as $project) {
+            if (! $this->authorize('delete', $project)) {
+                $failed[] = "{$project->name} (no permission)";
+
+                continue;
+            }
+
+            try {
+                $deleted[] = $project->name;
+                $project->delete();
+            } catch (\Throwable $e) {
+                $failed[] = "{$project->name} ({$e->getMessage()})";
+                Log::error('AI Chat bulk delete project failed', ['error' => $e->getMessage(), 'project_id' => $project->id]);
+            }
+        }
+
+        $output = '';
+        if (! empty($deleted)) {
+            $output .= "✅ Successfully deleted projects:\n";
+            foreach ($deleted as $name) {
+                $output .= "- **{$name}**\n";
+            }
+        }
+
+        if (! empty($failed)) {
+            $output .= "\n⚠️ Failed to delete:\n";
+            foreach ($failed as $info) {
+                $output .= "- {$info}\n";
+            }
+        }
+
+        return CommandResult::success($output, [
+            'deleted' => $deleted,
+            'failed' => $failed,
+        ]);
+    }
+
+    /**
+     * Check if the delete request looks like "delete all except X".
+     */
+    private function isDeleteAllExceptRequest(IntentResult $intent): bool
+    {
+        return ! empty($intent->params['exclude_names']) ||
+               ! empty($intent->params['delete_all_except']);
+    }
+
+    /**
+     * Check if the resource name looks like a project (not application/service/database).
+     */
+    private function looksLikeProject(?string $name): bool
+    {
+        if (! $name) {
+            return false;
+        }
+
+        // Check if this name matches a project
+        return Project::where('team_id', $this->teamId)
+            ->where('name', 'ILIKE', "%{$name}%")
+            ->exists();
+    }
+
+    /**
+     * List projects that can be deleted.
+     */
+    private function listDeletableProjects(string $message = 'Available projects:'): CommandResult
+    {
+        $projects = Project::where('team_id', $this->teamId)
+            ->select('id', 'name', 'uuid')
+            ->orderBy('name')
+            ->take(20)
+            ->get();
+
+        if ($projects->isEmpty()) {
+            return CommandResult::success('No projects found in your team.');
+        }
+
+        $output = "**{$message}**\n\n";
+        foreach ($projects as $project) {
+            $output .= "- **{$project->name}**\n";
+        }
+        $output .= "\n*Say: \"delete [project name]\" to delete a specific project.*";
+
+        return CommandResult::success($output, ['projects' => $projects->pluck('name')->toArray()]);
+    }
+
+    /**
+     * List all deletable resources.
+     */
+    private function listDeletableResources(): CommandResult
+    {
+        $output = "**What would you like to delete?**\n\n";
+
+        // Projects
+        $projects = Project::where('team_id', $this->teamId)
+            ->select('name')
+            ->orderBy('name')
+            ->take(10)
+            ->get();
+
+        if ($projects->isNotEmpty()) {
+            $output .= "**Projects:**\n";
+            foreach ($projects as $project) {
+                $output .= "- {$project->name}\n";
+            }
+            $output .= "\n";
+        }
+
+        // Applications
+        $apps = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+            ->select('name')
+            ->orderBy('name')
+            ->take(10)
+            ->get();
+
+        if ($apps->isNotEmpty()) {
+            $output .= "**Applications:**\n";
+            foreach ($apps as $app) {
+                $output .= "- {$app->name}\n";
+            }
+            $output .= "\n";
+        }
+
+        $output .= '*Say: "delete [resource name]" to delete a specific resource.*';
+
+        return CommandResult::success($output);
+    }
+
+    /**
      * Show help information.
      */
     private function executeHelp(): CommandResult
@@ -433,12 +672,15 @@ class CommandExecutor
 - **start** - Start a stopped resource
 - **logs** - View recent logs
 - **status** - Check resource status
+- **delete** - Delete a project, application, service, or database
 
 **Examples:**
 - "Deploy my-app"
 - "Restart the database"
 - "Show logs for api-service"
 - "What's the status of my application?"
+- "Delete project test-project"
+- "Delete all projects except PIXELPETS"
 
 You can also ask questions about your resources and I'll try to help!
 HELP;

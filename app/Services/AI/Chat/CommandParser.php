@@ -28,6 +28,7 @@ class CommandParser
         'start',
         'logs',
         'status',
+        'delete',
         'help',
         'none',
     ];
@@ -38,6 +39,7 @@ class CommandParser
     private const DANGEROUS_INTENTS = [
         'deploy',
         'stop',
+        'delete',
     ];
 
     public function __construct(?ChatProviderInterface $provider = null)
@@ -299,6 +301,7 @@ Available intents:
 - start: Start a stopped application, service, or database
 - logs: Show logs for a resource
 - status: Check the status of a resource
+- delete: Delete a project, application, service, or database (requires confirmation)
 - help: Show help information
 - none: No actionable intent detected (for questions, greetings, etc.)
 
@@ -321,41 +324,65 @@ PROMPT;
      */
     private function parseSimple(string $message, ?array $context = null): IntentResult
     {
-        $message = strtolower(trim($message));
+        $originalMessage = trim($message);
+        $message = strtolower($originalMessage);
 
         // Deploy patterns
         if (preg_match('/^(deploy|деплой|задеплой|разверни|redeploy)/ui', $message)) {
-            return $this->createIntentResult('deploy', $context, $message);
+            return $this->createIntentResult('deploy', $context, $originalMessage);
         }
 
         // Restart patterns
         if (preg_match('/^(restart|перезапусти|рестарт|reboot)/ui', $message)) {
-            return $this->createIntentResult('restart', $context, $message);
+            return $this->createIntentResult('restart', $context, $originalMessage);
         }
 
         // Stop patterns
         if (preg_match('/^(stop|останови|стоп|выключи)/ui', $message)) {
-            return $this->createIntentResult('stop', $context, $message);
+            return $this->createIntentResult('stop', $context, $originalMessage);
         }
 
         // Start patterns
         if (preg_match('/^(start|запусти|старт|включи)/ui', $message)) {
-            return $this->createIntentResult('start', $context, $message);
+            return $this->createIntentResult('start', $context, $originalMessage);
         }
 
         // Logs patterns
         if (preg_match('/^(logs?|логи?|покажи логи|show logs)/ui', $message)) {
-            return $this->createIntentResult('logs', $context, $message);
+            return $this->createIntentResult('logs', $context, $originalMessage);
         }
 
         // Status patterns
         if (preg_match('/^(status|статус|состояние|state)/ui', $message)) {
-            return $this->createIntentResult('status', $context, $message);
+            return $this->createIntentResult('status', $context, $originalMessage);
+        }
+
+        // Delete all except patterns (must be before simple delete)
+        // Use original message to preserve case for resource names
+        if (preg_match('/(?:delete|remove|удали|удалить|убери|убрать)\s+(?:all|все)\s+(?:projects?|проект[ыа]?)\s+(?:except|кроме|besides|but not)\s+(.+)/ui', $originalMessage, $matches)) {
+            $excludeNames = array_map('trim', preg_split('/[,\s]+/', $matches[1]));
+
+            return new IntentResult(
+                intent: 'delete',
+                params: [
+                    'resource_type' => 'project',
+                    'delete_all_except' => true,
+                    'exclude_names' => $excludeNames,
+                ],
+                confidence: 1.0,
+                requiresConfirmation: true,
+                confirmationMessage: '⚠️ Are you sure you want to **DELETE ALL PROJECTS** except: **'.implode(', ', $excludeNames).'**? This action is **IRREVERSIBLE**!',
+            );
+        }
+
+        // Delete patterns
+        if (preg_match('/^(delete|remove|удали|удалить|убери|убрать)/ui', $message)) {
+            return $this->createIntentResult('delete', $context, $originalMessage);
         }
 
         // Help patterns
         if (preg_match('/^(help|помощь|помоги|что ты (умеешь|можешь))/ui', $message)) {
-            return $this->createIntentResult('help', $context, $message);
+            return $this->createIntentResult('help', $context, $originalMessage);
         }
 
         return IntentResult::none();
@@ -417,6 +444,7 @@ Available intents:
 - start: Start a stopped application, service, or database
 - logs: Show logs for a resource
 - status: Check the status of a resource
+- delete: Delete a project, application, service, or database (requires confirmation)
 - help: Show help information
 
 Respond in JSON format:
@@ -551,7 +579,7 @@ PROMPT;
     private function extractResourceName(string $message): ?string
     {
         // Pattern: "deploy app-name" or "restart my-service" (English and Russian commands)
-        $commands = 'deploy|restart|stop|start|logs|status|деплой|задеплой|разверни|перезапусти|рестарт|останови|стоп|выключи|запусти|старт|включи|логи|статус';
+        $commands = 'deploy|restart|stop|start|logs|status|delete|remove|деплой|задеплой|разверни|перезапусти|рестарт|останови|стоп|выключи|запусти|старт|включи|логи|статус|удали|удалить|убери|убрать';
         if (preg_match('/(?:'.$commands.')\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
             return $matches[1];
         }
@@ -607,6 +635,7 @@ PROMPT;
         return match ($intent) {
             'deploy' => "Are you sure you want to deploy **{$resourceName}**? This will trigger a new deployment.",
             'stop' => "Are you sure you want to stop **{$resourceName}**? The service will become unavailable.",
+            'delete' => "⚠️ Are you sure you want to **DELETE** **{$resourceName}**? This action is **IRREVERSIBLE** and will permanently remove the resource and all its data!",
             default => "Are you sure you want to {$intent} **{$resourceName}**?",
         };
     }
