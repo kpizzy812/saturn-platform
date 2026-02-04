@@ -71,15 +71,12 @@ Route::get('/projects/create/docker', function () {
 
 Route::get('/projects/create/empty', function () {
     // Create empty project directly
+    // Note: Default environments (development, uat, production) are created
+    // automatically in Project::booted() - no need to create them here
     $project = \App\Models\Project::create([
         'name' => 'New Project',
         'description' => null,
         'team_id' => currentTeam()->id,
-    ]);
-
-    // Create default environment
-    $project->environments()->create([
-        'name' => 'production',
     ]);
 
     return redirect()->route('projects.show', $project->uuid)

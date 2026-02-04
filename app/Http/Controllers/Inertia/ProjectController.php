@@ -49,10 +49,8 @@ class ProjectController extends Controller
             'team_id' => currentTeam()->id,
         ]);
 
-        // Create default environment
-        $project->environments()->create([
-            'name' => 'production',
-        ]);
+        // Note: Default environments (development, uat, production) are created
+        // automatically in Project::booted() - no need to create them here
 
         return redirect()->route('projects.show', $project->uuid);
     }
