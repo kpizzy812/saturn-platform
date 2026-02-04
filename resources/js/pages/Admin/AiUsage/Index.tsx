@@ -130,24 +130,28 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, trendValue }: {
     );
 }
 
-function formatCost(cost: number): string {
-    if (cost < 0.01) {
-        return `$${cost.toFixed(4)}`;
+function formatCost(cost: number | string | null | undefined): string {
+    // BUGFIX: Ensure cost is a valid number before calling toFixed
+    const numCost = typeof cost === 'number' ? cost : parseFloat(String(cost ?? 0)) || 0;
+    if (numCost < 0.01) {
+        return `$${numCost.toFixed(4)}`;
     }
-    if (cost < 1) {
-        return `$${cost.toFixed(3)}`;
+    if (numCost < 1) {
+        return `$${numCost.toFixed(3)}`;
     }
-    return `$${cost.toFixed(2)}`;
+    return `$${numCost.toFixed(2)}`;
 }
 
-function formatNumber(num: number): string {
-    if (num >= 1_000_000) {
-        return `${(num / 1_000_000).toFixed(1)}M`;
+function formatNumber(num: number | string | null | undefined): string {
+    // BUGFIX: Ensure num is a valid number before operations
+    const n = typeof num === 'number' ? num : parseFloat(String(num ?? 0)) || 0;
+    if (n >= 1_000_000) {
+        return `${(n / 1_000_000).toFixed(1)}M`;
     }
-    if (num >= 1_000) {
-        return `${(num / 1_000).toFixed(1)}K`;
+    if (n >= 1_000) {
+        return `${(n / 1_000).toFixed(1)}K`;
     }
-    return num.toString();
+    return n.toString();
 }
 
 function getOperationLabel(operation: string): string {

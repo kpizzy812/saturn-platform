@@ -40,7 +40,11 @@ class StopDatabase
         } catch (\Exception $e) {
             return 'Database stop failed: '.$e->getMessage();
         } finally {
-            ServiceStatusChanged::dispatch($database->environment->project->team->id);
+            // BUGFIX: Use null-safe operator to prevent NPE when database is being deleted
+            $teamId = $database->environment?->project?->team?->id;
+            if ($teamId) {
+                ServiceStatusChanged::dispatch($teamId);
+            }
         }
 
     }
