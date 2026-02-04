@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, X, Minimize2, Maximize2 } from 'lucide-react';
+import { MessageSquare, X, Minimize2, Maximize2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useAiChat } from '@/hooks/useAiChat';
@@ -43,6 +43,10 @@ export function AiChatWidget({
         setIsOpen(false);
         setIsExpanded(false);
     }, []);
+
+    const handleNewChat = useCallback(() => {
+        chat.createSession();
+    }, [chat]);
 
     // Don't render only if explicitly disabled (status checked and not available)
     // Show widget by default while status is loading
@@ -106,6 +110,15 @@ export function AiChatWidget({
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={handleNewChat}
+                                title="Новый чат"
+                                disabled={chat.isLoading || chat.isSending}
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
                             <Button
                                 variant="ghost"
                                 size="icon-sm"
