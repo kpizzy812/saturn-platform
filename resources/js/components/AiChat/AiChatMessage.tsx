@@ -180,10 +180,16 @@ export function AiChatMessage({ message, onConfirm, onRate }: AiChatMessageProps
 
                     {/* Command result */}
                     {message.command_result && (
-                        <div className="mt-2 rounded bg-black/20 p-2 text-xs">
-                            <pre className="whitespace-pre-wrap font-mono">
+                        <div className={cn(
+                            'mt-2 rounded bg-black/20 p-2 text-xs',
+                            'prose prose-sm prose-invert max-w-none',
+                            '[&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5',
+                            '[&_strong]:font-semibold [&_strong]:text-foreground',
+                            '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0'
+                        )}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {message.command_result}
-                            </pre>
+                            </ReactMarkdown>
                         </div>
                     )}
 
