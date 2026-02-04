@@ -14,9 +14,10 @@ class ApplicationSetting extends Model
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, application_id (relationship)
+     * Excludes: id
      */
     protected $fillable = [
+        'application_id',
         'is_static',
         'is_spa',
         'is_build_server_enabled',
