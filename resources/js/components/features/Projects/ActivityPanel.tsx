@@ -75,7 +75,7 @@ export function ActivityPanel() {
     const count = meta.total || activities.length;
 
     return (
-        <div className="absolute bottom-4 right-4 z-10">
+        <div className="absolute bottom-4 right-20 z-10">
             <div className={`w-80 rounded-lg border border-border bg-background shadow-lg transition-all duration-200 ${isExpanded ? 'max-h-96' : 'max-h-[52px]'} overflow-hidden`}>
                 {/* Header */}
                 <button
