@@ -172,6 +172,11 @@ class AiChatService
         // Parse commands using AI (supports multiple commands)
         $parsedIntent = $this->parseCommands($content, $context);
 
+        // Enrich confirmation message for bulk delete operations
+        if ($parsedIntent->requiresConfirmation) {
+            $parsedIntent = $this->enrichConfirmationWithPreview($session, $parsedIntent);
+        }
+
         // Generate AI response based on parsed intent
         $response = $this->generateResponseFromIntent($session, $content, $parsedIntent, $context);
 
@@ -246,6 +251,36 @@ class AiChatService
         $executor = new CommandExecutor($session->user, $session->team_id);
 
         return $executor->executeMultiple($parsedIntent);
+    }
+
+    /**
+     * Enrich confirmation message with preview of what will be affected.
+     * Especially important for bulk delete operations.
+     */
+    private function enrichConfirmationWithPreview(AiChatSession $session, ParsedIntent $parsedIntent): ParsedIntent
+    {
+        foreach ($parsedIntent->commands as $command) {
+            // Check for bulk delete operations (target_scope = all or all_except)
+            if ($command->action === 'delete'
+                && in_array($command->targetScope, ['all', 'all_except'], true)
+            ) {
+                $executor = new CommandExecutor($session->user, $session->team_id);
+                $preview = $executor->previewBulkDelete($command);
+
+                if (! empty($preview['toDelete'])) {
+                    // Create new ParsedIntent with enriched confirmation message
+                    return new ParsedIntent(
+                        commands: $parsedIntent->commands,
+                        confidence: $parsedIntent->confidence,
+                        requiresConfirmation: true,
+                        confirmationMessage: $preview['message'],
+                        responseText: $parsedIntent->responseText,
+                    );
+                }
+            }
+        }
+
+        return $parsedIntent;
     }
 
     /**

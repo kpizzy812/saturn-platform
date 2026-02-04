@@ -627,6 +627,75 @@ class CommandExecutor
     }
 
     /**
+     * Preview what would be deleted for bulk delete operations.
+     * Returns detailed info for confirmation messages.
+     *
+     * @return array{toDelete: array, toKeep: array, message: string}
+     */
+    public function previewBulkDelete(ParsedCommand $command): array
+    {
+        if ($command->resourceType !== 'project') {
+            return [
+                'toDelete' => [],
+                'toKeep' => [],
+                'message' => 'Preview only supported for project deletions.',
+            ];
+        }
+
+        $excludeNames = $command->resourceNames ?? [];
+        if ($command->resourceName && ! in_array($command->resourceName, $excludeNames)) {
+            $excludeNames[] = $command->resourceName;
+        }
+
+        // Get all projects
+        $allProjects = Project::where('team_id', $this->teamId)->get();
+
+        $toDelete = [];
+        $toKeep = [];
+
+        foreach ($allProjects as $project) {
+            $isExcluded = false;
+            foreach ($excludeNames as $name) {
+                if (stripos($project->name, $name) !== false) {
+                    $isExcluded = true;
+                    break;
+                }
+            }
+
+            if ($isExcluded) {
+                $toKeep[] = $project->name;
+            } else {
+                $toDelete[] = $project->name;
+            }
+        }
+
+        $message = '';
+        if (empty($toDelete)) {
+            $message = 'Нет проектов для удаления.';
+        } else {
+            $message = "⚠️ **Будут удалены следующие проекты:**\n\n";
+            foreach ($toDelete as $name) {
+                $message .= "- 🗑️ **{$name}**\n";
+            }
+
+            if (! empty($toKeep)) {
+                $message .= "\n✅ **Останутся:**\n";
+                foreach ($toKeep as $name) {
+                    $message .= "- {$name}\n";
+                }
+            }
+
+            $message .= "\n⚠️ Это действие **необратимо**! Подтвердите, ответив **'да'** или **'confirm'**.";
+        }
+
+        return [
+            'toDelete' => $toDelete,
+            'toKeep' => $toKeep,
+            'message' => $message,
+        ];
+    }
+
+    /**
      * Analyze errors in resource logs using AI.
      */
     private function executeAnalyzeErrorsCommand(ParsedCommand $command): CommandResult
