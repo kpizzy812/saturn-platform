@@ -12,7 +12,16 @@ class SharedEnvironmentVariable extends Model
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), project_id, environment_id (relationships)
+     */
+    protected $fillable = [
+        'key',
+        'value',
+        'type',
+        'description',
+    ];
 
     protected $casts = [
         'key' => 'string',

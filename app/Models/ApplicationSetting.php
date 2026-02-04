@@ -12,6 +12,36 @@ class ApplicationSetting extends Model
 {
     use Auditable, LogsActivity;
 
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, application_id (relationship)
+     */
+    protected $fillable = [
+        'is_static',
+        'is_spa',
+        'is_build_server_enabled',
+        'is_preserve_repository_enabled',
+        'is_container_label_escape_enabled',
+        'is_container_label_readonly_enabled',
+        'use_build_secrets',
+        'inject_build_args_to_dockerfile',
+        'include_source_commit_in_build',
+        'is_auto_deploy_enabled',
+        'is_force_https_enabled',
+        'is_debug_enabled',
+        'is_preview_deployments_enabled',
+        'is_pr_deployments_public_enabled',
+        'is_git_submodules_enabled',
+        'is_git_lfs_enabled',
+        'is_git_shallow_clone_enabled',
+        'docker_images_to_keep',
+        'auto_rollback_enabled',
+        'rollback_validation_seconds',
+        'rollback_max_restarts',
+        'rollback_on_health_check_fail',
+        'rollback_on_crash_loop',
+    ];
+
     protected $casts = [
         'is_static' => 'boolean',
         'is_spa' => 'boolean',
@@ -38,8 +68,6 @@ class ApplicationSetting extends Model
         'rollback_on_health_check_fail' => 'boolean',
         'rollback_on_crash_loop' => 'boolean',
     ];
-
-    protected $guarded = [];
 
     public function getActivitylogOptions(): LogOptions
     {

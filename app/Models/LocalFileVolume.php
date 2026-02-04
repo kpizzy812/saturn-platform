@@ -18,7 +18,20 @@ class LocalFileVolume extends BaseModel
 
     use HasFactory;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, resource_type, resource_id (polymorphic relationship), is_binary (computed)
+     */
+    protected $fillable = [
+        'uuid',
+        'name',
+        'fs_path',
+        'mount_path',
+        'content',
+        'is_directory',
+        'chmod',
+        'chown',
+    ];
 
     public $appends = ['is_binary'];
 

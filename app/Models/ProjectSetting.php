@@ -11,7 +11,13 @@ class ProjectSetting extends Model
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, project_id (relationship)
+     */
+    protected $fillable = [
+        'default_server_id',
+    ];
 
     public function getActivitylogOptions(): LogOptions
     {

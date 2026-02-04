@@ -10,7 +10,20 @@ class ApplicationTemplate extends BaseModel
 {
     use HasFactory;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), created_by (relationship), slug (auto-generated),
+     * usage_count, rating, rating_count (system-managed)
+     */
+    protected $fillable = [
+        'name',
+        'description',
+        'category',
+        'config',
+        'tags',
+        'is_official',
+        'is_public',
+    ];
 
     protected $casts = [
         'config' => 'array',

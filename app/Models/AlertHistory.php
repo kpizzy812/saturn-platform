@@ -7,7 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AlertHistory extends Model
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, alert_id (relationship)
+     */
+    protected $fillable = [
+        'triggered_at',
+        'resolved_at',
+        'value',
+        'message',
+    ];
 
     protected $table = 'alert_histories';
 

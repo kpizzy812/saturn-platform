@@ -7,7 +7,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AutoProvisioningEvent extends Model
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, status (system-managed), triggered_at, provisioned_at, ready_at (system-managed)
+     */
+    protected $fillable = [
+        'team_id',
+        'trigger_server_id',
+        'provisioned_server_id',
+        'trigger_reason',
+        'trigger_metrics',
+        'provider_server_id',
+        'server_config',
+        'error_message',
+    ];
 
     protected $casts = [
         'trigger_metrics' => 'array',

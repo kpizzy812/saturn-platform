@@ -30,7 +30,16 @@ class Environment extends BaseModel
     use HasSafeStringAttribute;
     use LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, project_id (relationship)
+     */
+    protected $fillable = [
+        'name',
+        'description',
+        'type',
+        'requires_approval',
+    ];
 
     protected $casts = [
         'requires_approval' => 'boolean',

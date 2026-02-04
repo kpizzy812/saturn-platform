@@ -12,7 +12,20 @@ class Alert extends BaseModel
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), triggered_count, last_triggered_at (system-managed)
+     */
+    protected $fillable = [
+        'uuid',
+        'name',
+        'type',
+        'enabled',
+        'channels',
+        'threshold',
+        'duration',
+        'message_template',
+    ];
 
     protected function casts(): array
     {

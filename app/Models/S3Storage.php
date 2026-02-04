@@ -15,7 +15,21 @@ class S3Storage extends BaseModel
 {
     use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), is_usable (system-managed), unusable_email_sent (system-managed)
+     */
+    protected $fillable = [
+        'uuid',
+        'name',
+        'description',
+        'key',
+        'secret',
+        'bucket',
+        'region',
+        'endpoint',
+        'path',
+    ];
 
     protected $casts = [
         'is_usable' => 'boolean',

@@ -6,7 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subscription extends Model
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security)
+     */
+    protected $fillable = [
+        'stripe_subscription_id',
+        'stripe_customer_id',
+        'stripe_plan_id',
+        'stripe_invoice_paid',
+        'lemon_subscription_id',
+        'lemon_customer_id',
+        'lemon_plan_id',
+        'lemon_variant_id',
+        'lemon_order_id',
+        'lemon_product_id',
+        'lemon_update_payment_link',
+        'lemon_renews_at',
+    ];
 
     public function team()
     {

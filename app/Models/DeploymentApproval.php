@@ -15,7 +15,16 @@ class DeploymentApproval extends BaseModel
 {
     use HasFactory;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, uuid (auto-generated), status (system-managed),
+     * approved_by, decided_at (system-managed during approval/rejection)
+     */
+    protected $fillable = [
+        'application_deployment_queue_id',
+        'requested_by',
+        'comment',
+    ];
 
     protected $casts = [
         'decided_at' => 'datetime',

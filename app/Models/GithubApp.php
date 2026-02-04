@@ -11,7 +11,25 @@ class GithubApp extends BaseModel
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), private_key_id (relationship management)
+     */
+    protected $fillable = [
+        'name',
+        'organization',
+        'api_url',
+        'html_url',
+        'custom_user',
+        'custom_port',
+        'app_id',
+        'installation_id',
+        'client_id',
+        'client_secret',
+        'webhook_secret',
+        'is_public',
+        'is_system_wide',
+    ];
 
     protected $appends = ['type'];
 

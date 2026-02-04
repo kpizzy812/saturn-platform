@@ -11,7 +11,17 @@ class RedirectRule extends BaseModel
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), application_id (relationship), hits (system-managed)
+     */
+    protected $fillable = [
+        'uuid',
+        'source',
+        'destination',
+        'type',
+        'enabled',
+    ];
 
     public function getActivitylogOptions(): LogOptions
     {

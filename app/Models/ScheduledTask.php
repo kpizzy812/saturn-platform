@@ -13,7 +13,19 @@ class ScheduledTask extends BaseModel
 {
     use Auditable, HasSafeStringAttribute, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, service_id, application_id (relationships)
+     */
+    protected $fillable = [
+        'uuid',
+        'name',
+        'command',
+        'frequency',
+        'container',
+        'enabled',
+        'timeout',
+    ];
 
     protected function casts(): array
     {

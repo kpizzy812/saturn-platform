@@ -15,7 +15,29 @@ use Visus\Cuid2\Cuid2;
  */
 class EnvironmentMigration extends Model
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, uuid (auto-generated), status (system-managed), progress (system-managed),
+     * approved_by, approved_at, started_at, completed_at, rolled_back_at (system-managed)
+     */
+    protected $fillable = [
+        'team_id',
+        'source_type',
+        'source_id',
+        'target_type',
+        'target_id',
+        'source_environment_id',
+        'target_environment_id',
+        'target_server_id',
+        'requested_by',
+        'requires_approval',
+        'options',
+        'rollback_snapshot',
+        'current_step',
+        'error_message',
+        'rejection_reason',
+        'logs',
+    ];
 
     protected $casts = [
         'options' => 'array',

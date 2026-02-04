@@ -9,7 +9,29 @@ use Visus\Cuid2\Cuid2;
 
 class ResourceTransfer extends Model
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, uuid (auto-generated), status (system-managed), progress (system-managed),
+     * started_at, completed_at (system-managed)
+     */
+    protected $fillable = [
+        'team_id',
+        'user_id',
+        'source_type',
+        'source_id',
+        'target_type',
+        'target_id',
+        'target_environment_id',
+        'target_server_id',
+        'transfer_mode',
+        'transfer_options',
+        'current_step',
+        'error_message',
+        'error_details',
+        'transferred_bytes',
+        'total_bytes',
+        'logs',
+    ];
 
     protected $casts = [
         'transfer_options' => 'array',

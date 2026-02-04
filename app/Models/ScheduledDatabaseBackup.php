@@ -13,7 +13,25 @@ class ScheduledDatabaseBackup extends BaseModel
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security), database_type, database_id (relationships),
+     * last_restore_test_at (system-managed)
+     */
+    protected $fillable = [
+        'uuid',
+        'enabled',
+        'name',
+        'frequency',
+        'save_s3',
+        's3_storage_id',
+        'backup_retention_period',
+        'databases_to_backup',
+        'dump_all',
+        'disable_local_backup',
+        'verify_after_backup',
+        'restore_test_enabled',
+    ];
 
     protected function casts(): array
     {

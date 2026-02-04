@@ -10,7 +10,17 @@ class ApplicationPreview extends BaseModel
 {
     use SoftDeletes;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, status (system-managed), last_online_at (system-managed)
+     */
+    protected $fillable = [
+        'application_id',
+        'pull_request_id',
+        'pull_request_html_url',
+        'fqdn',
+        'docker_compose_domains',
+    ];
 
     protected static function booted()
     {

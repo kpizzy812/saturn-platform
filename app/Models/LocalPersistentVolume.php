@@ -8,7 +8,15 @@ use Symfony\Component\Yaml\Yaml;
 
 class LocalPersistentVolume extends Model
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, resource_type, resource_id (polymorphic relationship)
+     */
+    protected $fillable = [
+        'name',
+        'mount_path',
+        'host_path',
+    ];
 
     public function resource()
     {

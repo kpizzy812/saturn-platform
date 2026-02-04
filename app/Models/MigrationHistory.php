@@ -13,7 +13,15 @@ class MigrationHistory extends Model
 {
     protected $table = 'migration_history';
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, resource_type, resource_id (polymorphic relationship), environment_migration_id (relationship)
+     */
+    protected $fillable = [
+        'version_hash',
+        'config_snapshot',
+        'source_environment_type',
+    ];
 
     protected $casts = [
         'config_snapshot' => 'array',

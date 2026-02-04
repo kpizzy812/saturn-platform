@@ -6,7 +6,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ScheduledDatabaseBackupExecution extends BaseModel
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, scheduled_database_backup_id (relationship),
+     * verified_at, restore_test_at, s3_integrity_checked_at (system-managed)
+     */
+    protected $fillable = [
+        'status',
+        'message',
+        'filename',
+        'size',
+        's3_uploaded',
+        's3_file_size',
+        's3_object_key',
+        'local_storage_deleted',
+        's3_storage_deleted',
+        'verification_status',
+        'verification_error',
+        'restore_test_status',
+        'restore_test_error',
+        'restore_test_duration_seconds',
+        's3_integrity_status',
+        's3_integrity_error',
+    ];
 
     protected function casts(): array
     {

@@ -4,7 +4,14 @@ namespace App\Models;
 
 class SwarmDocker extends BaseModel
 {
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, server_id (relationship)
+     */
+    protected $fillable = [
+        'name',
+        'network',
+    ];
 
     public function applications()
     {

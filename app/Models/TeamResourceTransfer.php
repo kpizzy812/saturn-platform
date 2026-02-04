@@ -17,7 +17,24 @@ class TeamResourceTransfer extends Model
 {
     protected $table = 'team_resource_transfers';
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, uuid (auto-generated), status (system-managed), completed_at (system-managed)
+     */
+    protected $fillable = [
+        'transfer_type',
+        'transferable_type',
+        'transferable_id',
+        'from_team_id',
+        'to_team_id',
+        'from_user_id',
+        'to_user_id',
+        'initiated_by',
+        'resource_snapshot',
+        'related_transfers',
+        'error_message',
+        'notes',
+    ];
 
     protected $casts = [
         'resource_snapshot' => 'array',

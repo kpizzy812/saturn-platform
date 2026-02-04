@@ -8,7 +8,14 @@ class Tag extends BaseModel
 {
     use HasSafeStringAttribute;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security)
+     */
+    protected $fillable = [
+        'name',
+        'description',
+    ];
 
     protected function customizeName($value)
     {

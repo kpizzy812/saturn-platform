@@ -10,7 +10,16 @@ class CloudProviderToken extends BaseModel
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, team_id (security)
+     */
+    protected $fillable = [
+        'uuid',
+        'name',
+        'provider',
+        'token',
+    ];
 
     public function getActivitylogOptions(): LogOptions
     {

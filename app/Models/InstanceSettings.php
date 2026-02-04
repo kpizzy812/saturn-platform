@@ -14,7 +14,51 @@ class InstanceSettings extends Model
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Note: This is a singleton model (id=0), but we still use $fillable for security
+     */
+    protected $fillable = [
+        'fqdn',
+        'instance_name',
+        'public_ipv4',
+        'public_ipv6',
+        'smtp_enabled',
+        'smtp_from_address',
+        'smtp_from_name',
+        'smtp_recipients',
+        'smtp_host',
+        'smtp_port',
+        'smtp_username',
+        'smtp_password',
+        'smtp_timeout',
+        'smtp_encryption',
+        'resend_enabled',
+        'resend_api_key',
+        'allowed_ip_ranges',
+        'is_auto_update_enabled',
+        'auto_update_frequency',
+        'update_check_frequency',
+        'sentinel_token',
+        'is_wire_navigate_enabled',
+        'is_registration_enabled',
+        'is_dns_validation_enabled',
+        'is_ai_code_review_enabled',
+        'is_ai_error_analysis_enabled',
+        'is_ai_chat_enabled',
+        'resource_warning_cpu_threshold',
+        'resource_critical_cpu_threshold',
+        'resource_warning_memory_threshold',
+        'resource_critical_memory_threshold',
+        'resource_warning_disk_threshold',
+        'resource_critical_disk_threshold',
+        'resource_monitoring_enabled',
+        'resource_check_interval_minutes',
+        'auto_provision_enabled',
+        'auto_provision_api_key',
+        'auto_provision_max_servers_per_day',
+        'auto_provision_cooldown_minutes',
+    ];
 
     protected $casts = [
         'smtp_enabled' => 'boolean',

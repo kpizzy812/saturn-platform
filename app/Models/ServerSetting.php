@@ -58,7 +58,46 @@ class ServerSetting extends Model
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Excludes: id, server_id (relationship), is_reachable, is_usable (system-managed),
+     * sentinel_token (auto-generated), sentinel_custom_url (auto-generated)
+     */
+    protected $fillable = [
+        'concurrent_builds',
+        'deployment_queue_limit',
+        'dynamic_timeout',
+        'force_disabled',
+        'force_docker_cleanup',
+        'docker_cleanup_frequency',
+        'docker_cleanup_threshold',
+        'delete_unused_volumes',
+        'delete_unused_networks',
+        'is_build_server',
+        'is_cloudflare_tunnel',
+        'is_jump_server',
+        'is_logdrain_axiom_enabled',
+        'is_logdrain_custom_enabled',
+        'is_logdrain_highlight_enabled',
+        'is_logdrain_newrelic_enabled',
+        'is_metrics_enabled',
+        'is_sentinel_enabled',
+        'is_swarm_manager',
+        'is_swarm_worker',
+        'is_terminal_enabled',
+        'logdrain_axiom_api_key',
+        'logdrain_axiom_dataset_name',
+        'logdrain_custom_config',
+        'logdrain_custom_config_parser',
+        'logdrain_highlight_project_id',
+        'logdrain_newrelic_base_uri',
+        'logdrain_newrelic_license_key',
+        'sentinel_metrics_history_days',
+        'sentinel_metrics_refresh_rate_seconds',
+        'sentinel_push_interval_seconds',
+        'wildcard_domain',
+        'disable_application_image_retention',
+    ];
 
     protected $casts = [
         'force_docker_cleanup' => 'boolean',
