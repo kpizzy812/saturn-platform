@@ -48,6 +48,7 @@ declare module '@inertiajs/core' {
                 info?: string;
             };
             appName: string;
+            aiChatEnabled: boolean;
             [key: string]: unknown;
         };
     }

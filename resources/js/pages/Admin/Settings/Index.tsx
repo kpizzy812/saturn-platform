@@ -28,6 +28,7 @@ interface InstanceSettingsData {
     // AI Features
     is_ai_code_review_enabled?: boolean;
     is_ai_error_analysis_enabled?: boolean;
+    is_ai_chat_enabled?: boolean;
     // Email
     smtp_enabled?: boolean;
     smtp_host?: string;
@@ -227,6 +228,20 @@ export default function AdminSettingsIndex({
                                     checked={formData.is_ai_error_analysis_enabled ?? true}
                                     onCheckedChange={(checked) =>
                                         setFormData({ ...formData, is_ai_error_analysis_enabled: checked === true })
+                                    }
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-medium text-foreground">AI Chat Assistant</p>
+                                    <p className="text-sm text-foreground-muted">
+                                        Interactive AI assistant for managing resources via chat
+                                    </p>
+                                </div>
+                                <Checkbox
+                                    checked={formData.is_ai_chat_enabled ?? true}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, is_ai_chat_enabled: checked === true })
                                     }
                                 />
                             </div>

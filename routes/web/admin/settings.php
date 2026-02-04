@@ -29,6 +29,7 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.auto_update_frequency' => 'nullable|string',
         'settings.is_ai_code_review_enabled' => 'nullable|boolean',
         'settings.is_ai_error_analysis_enabled' => 'nullable|boolean',
+        'settings.is_ai_chat_enabled' => 'nullable|boolean',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -44,6 +45,7 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'auto_update_frequency' => $data['auto_update_frequency'] ?? $settings->auto_update_frequency,
         'is_ai_code_review_enabled' => $data['is_ai_code_review_enabled'] ?? $settings->is_ai_code_review_enabled,
         'is_ai_error_analysis_enabled' => $data['is_ai_error_analysis_enabled'] ?? $settings->is_ai_error_analysis_enabled,
+        'is_ai_chat_enabled' => $data['is_ai_chat_enabled'] ?? $settings->is_ai_chat_enabled,
     ]);
 
     return back()->with('success', 'Settings updated successfully.');

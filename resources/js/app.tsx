@@ -30,6 +30,9 @@ createInertiaApp({
         // Check if user is authenticated (id can be 0, so check for undefined/null explicitly)
         const isAuthenticated = auth?.id !== undefined && auth?.id !== null;
 
+        // Check if AI Chat is enabled in instance settings
+        const aiChatEnabled = props.initialPage.props.aiChatEnabled as boolean ?? true;
+
         // Set Sentry user context if authenticated
         if (isAuthenticated) {
             setUser({ id: auth.id!, email: auth.email, name: auth.name });
@@ -44,7 +47,7 @@ createInertiaApp({
                             <App {...props} />
                             <AiChatGlobal
                                 isAuthenticated={isAuthenticated}
-                                isAvailable={true}
+                                isAvailable={aiChatEnabled}
                             />
                         </ConfirmationProvider>
                     </ToastProvider>

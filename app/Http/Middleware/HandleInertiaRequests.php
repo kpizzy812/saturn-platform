@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\InstanceSettings;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -84,6 +85,7 @@ class HandleInertiaRequests extends Middleware
                 'info' => $request->session()->get('info'),
             ],
             'appName' => config('app.name'),
+            'aiChatEnabled' => $this->isAiChatEnabled(),
         ];
     }
 
@@ -141,5 +143,20 @@ class HandleInertiaRequests extends Middleware
         return [
             'unreadCount' => $unreadCount,
         ];
+    }
+
+    /**
+     * Check if AI Chat is enabled in instance settings.
+     */
+    private function isAiChatEnabled(): bool
+    {
+        try {
+            $settings = InstanceSettings::get();
+
+            return $settings->is_ai_chat_enabled ?? true;
+        } catch (\Exception $e) {
+            // Default to enabled if settings not available
+            return true;
+        }
     }
 }

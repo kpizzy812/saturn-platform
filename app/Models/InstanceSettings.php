@@ -40,6 +40,7 @@ class InstanceSettings extends Model
         // AI features
         'is_ai_code_review_enabled' => 'boolean',
         'is_ai_error_analysis_enabled' => 'boolean',
+        'is_ai_chat_enabled' => 'boolean',
 
         // Resource monitoring
         'resource_warning_cpu_threshold' => 'integer',
