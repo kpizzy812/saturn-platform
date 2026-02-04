@@ -821,8 +821,8 @@ function ProjectCanvasInner({
                 </div>
             )}
 
-            {/* Legend */}
-            <div className="absolute bottom-4 right-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
+            {/* Legend - positioned at bottom left to avoid overlap with ActivityPanel */}
+            <div className="absolute bottom-16 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                         <div className="h-0.5 w-4 bg-success"></div>
