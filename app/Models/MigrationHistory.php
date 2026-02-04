@@ -15,9 +15,14 @@ class MigrationHistory extends Model
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, resource_type, resource_id (polymorphic relationship), environment_migration_id (relationship)
+     * Excludes only: id (auto-increment)
+     * Note: Polymorphic relationship fields (resource_type, resource_id) must be fillable
+     * to allow createForResource() to set them via mass assignment.
      */
     protected $fillable = [
+        'resource_type',
+        'resource_id',
+        'environment_migration_id',
         'version_hash',
         'config_snapshot',
         'source_environment_type',
