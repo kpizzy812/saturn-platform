@@ -1198,13 +1198,41 @@ class CommandExecutor
 
     /**
      * Determine health status from resource status.
+     *
+     * Status format can be:
+     * - Simple: "running", "stopped", "healthy"
+     * - Compound: "running:healthy", "exited:unhealthy", "running:unknown"
      */
     private function determineHealthStatus(string $status): string
     {
-        return match (strtolower($status)) {
+        $status = strtolower(trim($status));
+
+        // Parse compound format "state:health"
+        if (str_contains($status, ':')) {
+            [$state, $health] = explode(':', $status, 2);
+
+            // Health part takes priority when explicitly set
+            if ($health === 'healthy') {
+                return 'healthy';
+            }
+            if ($health === 'unhealthy') {
+                return 'unhealthy';
+            }
+
+            // For "unknown" health, determine by state
+            return match ($state) {
+                'running', 'started' => 'healthy',
+                'stopped', 'exited', 'dead', 'removing' => 'unhealthy',
+                'restarting', 'starting', 'stopping', 'paused', 'degraded' => 'degraded',
+                default => 'unknown',
+            };
+        }
+
+        // Simple status format
+        return match ($status) {
             'running', 'healthy', 'started' => 'healthy',
-            'stopped', 'exited', 'not_functional' => 'unhealthy',
-            'restarting', 'starting', 'stopping', 'degraded' => 'degraded',
+            'stopped', 'exited', 'not_functional', 'dead' => 'unhealthy',
+            'restarting', 'starting', 'stopping', 'degraded', 'paused' => 'degraded',
             default => 'unknown',
         };
     }
