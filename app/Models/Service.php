@@ -59,13 +59,17 @@ class Service extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Critical fields (id, uuid, environment_id, destination_*, server_id) are excluded.
+     * Critical fields (id, uuid) are excluded. Relationship IDs are fillable but validated in Actions.
      */
     protected $fillable = [
         'name',
         'description',
         'docker_compose_raw',
         'docker_compose',
+        'environment_id',
+        'server_id',
+        'destination_id',
+        'destination_type',
         'connect_to_docker_network',
         'is_container_label_escape_enabled',
         'is_container_label_readonly_enabled',
