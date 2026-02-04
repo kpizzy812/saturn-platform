@@ -182,4 +182,28 @@ class AiUsageLog extends Model
                 ->toArray(),
         ];
     }
+
+    /**
+     * Get global usage statistics (for admin panel).
+     */
+    public static function getGlobalStats(?string $period = '30d'): array
+    {
+        $startDate = match ($period) {
+            '7d' => now()->subDays(7),
+            '30d' => now()->subDays(30),
+            '90d' => now()->subDays(90),
+            default => now()->subDays(30),
+        };
+
+        $query = static::where('created_at', '>=', $startDate);
+
+        return [
+            'totalRequests' => (clone $query)->count(),
+            'successfulRequests' => (clone $query)->successful()->count(),
+            'failedRequests' => (clone $query)->failed()->count(),
+            'totalTokens' => (int) (clone $query)->sum(\DB::raw('input_tokens + output_tokens')),
+            'totalCostUsd' => (float) (clone $query)->sum('cost_usd'),
+            'avgResponseTimeMs' => (float) (clone $query)->avg('response_time_ms') ?: 0,
+        ];
+    }
 }

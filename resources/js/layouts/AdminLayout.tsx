@@ -21,6 +21,7 @@ import {
     ClipboardList,
     LayoutTemplate,
     Bell,
+    Brain,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -50,6 +51,7 @@ const adminNavItems: NavItem[] = [
     { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
     { label: 'Approvals', href: '/admin/deployment-approvals', icon: <CheckCircle className="h-4 w-4" /> },
     { label: 'Templates', href: '/admin/templates', icon: <LayoutTemplate className="h-4 w-4" /> },
+    { label: 'AI Usage', href: '/admin/ai-usage', icon: <Brain className="h-4 w-4" /> },
     { label: 'Queues', href: '/admin/queues', icon: <ListOrdered className="h-4 w-4" /> },
     { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
     { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },

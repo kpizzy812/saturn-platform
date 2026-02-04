@@ -79,4 +79,7 @@ Route::prefix('admin')->group(function () {
 
     // Application templates
     require __DIR__.'/admin/templates.php';
+
+    // AI Usage statistics
+    require __DIR__.'/admin/ai-usage.php';
 });
