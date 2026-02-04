@@ -213,6 +213,7 @@ class ExecuteMigrationAction
 
     /**
      * Update an existing resource in target environment.
+     * If resource doesn't exist, falls back to cloning.
      */
     protected function updateExistingResource(
         EnvironmentMigration $migration,
@@ -225,10 +226,18 @@ class ExecuteMigrationAction
         $existingTarget = $this->findExistingTarget($source, $targetEnv);
 
         if (! $existingTarget) {
-            return [
-                'success' => false,
-                'error' => 'Existing target resource not found in target environment.',
-            ];
+            // Resource doesn't exist in target - fall back to cloning
+            $migration->appendLog('Resource not found in target environment, creating new copy...');
+
+            $targetServer = $migration->targetServer;
+            if (! $targetServer) {
+                return [
+                    'success' => false,
+                    'error' => 'Target server not specified for migration.',
+                ];
+            }
+
+            return $this->cloneResource($migration, $source, $targetEnv, $targetServer, $options);
         }
 
         $migration->updateProgress(30, 'Updating resource configuration...');
