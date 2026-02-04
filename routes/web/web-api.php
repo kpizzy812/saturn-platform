@@ -566,7 +566,8 @@ Route::post('/web-api/deployments/{uuid}/code-review', function (string $uuid) {
 })->name('web-api.deployments.code-review.trigger');
 
 Route::get('/web-api/code-review/status', function () {
-    $isEnabled = config('ai.code_review.enabled', false);
+    $settings = \App\Models\InstanceSettings::get();
+    $isEnabled = $settings->is_ai_code_review_enabled ?? false;
     $mode = config('ai.code_review.mode', 'report_only');
     $enricher = app(\App\Services\AI\CodeReview\LLMEnricher::class);
     $llmAvailable = $enricher->isAvailable();

@@ -398,10 +398,10 @@ export function CodeReviewCard({ deploymentUuid, commitSha, className }: CodeRev
         autoRefresh: true, // Hook handles auto-refresh internally based on isAnalyzing
     });
 
-    const { status: serviceStatus } = useCodeReviewStatus();
+    const { status: serviceStatus, isLoading: isStatusLoading } = useCodeReviewStatus();
 
-    // Don't show if code review is disabled
-    if (serviceStatus && !serviceStatus.enabled) {
+    // Don't show while loading status or if code review is disabled
+    if (isStatusLoading || !serviceStatus?.enabled) {
         return null;
     }
 
