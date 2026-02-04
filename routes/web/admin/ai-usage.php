@@ -17,7 +17,12 @@ Route::get('/ai-usage', function () {
         ->selectRaw('provider, COUNT(*) as count, SUM(cost_usd) as total_cost')
         ->groupBy('provider')
         ->get()
-        ->keyBy('provider')
+        ->mapWithKeys(fn ($row) => [
+            $row->provider => [
+                'count' => (int) $row->count,
+                'total_cost' => (float) $row->total_cost,
+            ],
+        ])
         ->toArray();
 
     // By operation (last 30 days)
@@ -25,7 +30,13 @@ Route::get('/ai-usage', function () {
         ->selectRaw('operation, COUNT(*) as count, SUM(cost_usd) as total_cost, SUM(input_tokens + output_tokens) as total_tokens')
         ->groupBy('operation')
         ->get()
-        ->keyBy('operation')
+        ->mapWithKeys(fn ($row) => [
+            $row->operation => [
+                'count' => (int) $row->count,
+                'total_cost' => (float) $row->total_cost,
+                'total_tokens' => (int) $row->total_tokens,
+            ],
+        ])
         ->toArray();
 
     // Daily usage (last 30 days)
