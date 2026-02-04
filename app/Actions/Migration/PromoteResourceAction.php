@@ -1,0 +1,564 @@
+<?php
+
+namespace App\Actions\Migration;
+
+use App\Models\Application;
+use App\Models\Environment;
+use App\Models\EnvironmentMigration;
+use App\Models\EnvironmentVariable;
+use App\Models\Service;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Lorisleiva\Actions\Concerns\AsAction;
+
+/**
+ * Action for promoting a resource to target environment.
+ *
+ * Promote mode:
+ * - Updates existing resource configuration (code, build settings, health checks)
+ * - Does NOT copy environment variables (they are environment-specific)
+ * - Automatically rewires service connections to target environment resources
+ * - Optionally triggers deployment after promotion
+ */
+class PromoteResourceAction
+{
+    use AsAction;
+
+    /**
+     * Database model classes for connection detection.
+     */
+    protected const DATABASE_MODELS = [
+        'App\Models\StandalonePostgresql',
+        'App\Models\StandaloneMysql',
+        'App\Models\StandaloneMariadb',
+        'App\Models\StandaloneMongodb',
+        'App\Models\StandaloneRedis',
+        'App\Models\StandaloneClickhouse',
+        'App\Models\StandaloneKeydb',
+        'App\Models\StandaloneDragonfly',
+    ];
+
+    /**
+     * Environment variable patterns that contain service connections.
+     */
+    protected const CONNECTION_VAR_PATTERNS = [
+        'DATABASE_URL',
+        'DB_HOST',
+        'DB_CONNECTION',
+        'REDIS_URL',
+        'REDIS_HOST',
+        'MONGO_URL',
+        'MONGODB_URL',
+        'MYSQL_HOST',
+        'POSTGRES_HOST',
+        'PG_HOST',
+        '*_DATABASE_URL',
+        '*_DB_HOST',
+        '*_REDIS_URL',
+    ];
+
+    /**
+     * Promote a resource to target environment.
+     *
+     * @return array{success: bool, target?: Model, rewired_connections?: array, error?: string}
+     */
+    public function handle(EnvironmentMigration $migration): array
+    {
+        $source = $migration->source;
+        $targetEnv = $migration->targetEnvironment;
+        $options = $migration->options ?? [];
+
+        if (! $source) {
+            return [
+                'success' => false,
+                'error' => 'Source resource not found.',
+            ];
+        }
+
+        $migration->updateProgress(10, 'Finding target resource...');
+
+        // Find existing resource in target environment by name
+        $target = $this->findTargetResource($source, $targetEnv);
+
+        if (! $target) {
+            return [
+                'success' => false,
+                'error' => "Resource '{$source->name}' not found in target environment '{$targetEnv->name}'. For promote mode, the resource must already exist in target environment.",
+            ];
+        }
+
+        $migration->appendLog("Found target resource: {$target->name} (ID: {$target->id})");
+
+        try {
+            // Update configuration (code, build settings, etc.)
+            $migration->updateProgress(30, 'Updating resource configuration...');
+            $this->updateConfiguration($source, $target, $options);
+            $migration->appendLog('Configuration updated');
+
+            // Rewire connections if requested
+            $rewiredConnections = [];
+            if ($options[EnvironmentMigration::OPTION_REWIRE_CONNECTIONS] ?? true) {
+                $migration->updateProgress(60, 'Rewiring service connections...');
+                $rewiredConnections = $this->rewireConnections($target, $targetEnv);
+
+                if (! empty($rewiredConnections)) {
+                    $migration->appendLog('Rewired connections: '.implode(', ', array_keys($rewiredConnections)));
+                }
+            }
+
+            // Trigger deployment if requested
+            if ($options[EnvironmentMigration::OPTION_AUTO_DEPLOY] ?? false) {
+                $migration->updateProgress(80, 'Triggering deployment...');
+                $this->triggerDeployment($target);
+                $migration->appendLog('Deployment triggered');
+            }
+
+            $migration->updateProgress(100, 'Promotion completed');
+
+            return [
+                'success' => true,
+                'target' => $target->fresh(),
+                'rewired_connections' => $rewiredConnections,
+            ];
+
+        } catch (\Throwable $e) {
+            Log::error('Promote resource failed', [
+                'migration_id' => $migration->id,
+                'source_id' => $source->id,
+                'target_id' => $target->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Find the target resource in target environment by name.
+     */
+    protected function findTargetResource(Model $source, Environment $targetEnv): ?Model
+    {
+        $name = $source->name ?? null;
+        if (! $name) {
+            return null;
+        }
+
+        if ($source instanceof Application) {
+            return $targetEnv->applications()->where('name', $name)->first();
+        }
+
+        if ($source instanceof Service) {
+            return $targetEnv->services()->where('name', $name)->first();
+        }
+
+        // For databases
+        $relationMethod = $this->getDatabaseRelationMethod(get_class($source));
+        if ($relationMethod && method_exists($targetEnv, $relationMethod)) {
+            return $targetEnv->$relationMethod()->where('name', $name)->first();
+        }
+
+        return null;
+    }
+
+    /**
+     * Update target configuration from source.
+     */
+    protected function updateConfiguration(Model $source, Model $target, array $options): void
+    {
+        // Fields to update (code/config related)
+        $configFields = $this->getConfigFields($source);
+
+        // Fields to NEVER update
+        $excludeFields = [
+            'id',
+            'uuid',
+            'created_at',
+            'updated_at',
+            'deleted_at',
+            'environment_id',
+            'destination_id',
+            'destination_type',
+            'server_id',
+            'status',
+            'last_online_at',
+            'name', // Keep target name
+            'fqdn', // Keep target FQDN
+        ];
+
+        $attributes = collect($source->getAttributes())
+            ->only($configFields)
+            ->except($excludeFields)
+            ->filter(fn ($value) => $value !== null)
+            ->toArray();
+
+        $target->update($attributes);
+
+        // Update settings if applicable
+        if ($source instanceof Application && method_exists($source, 'settings')) {
+            $this->updateApplicationSettings($source, $target);
+        }
+    }
+
+    /**
+     * Get configuration fields to copy based on resource type.
+     */
+    protected function getConfigFields(Model $source): array
+    {
+        if ($source instanceof Application) {
+            return [
+                // Git/source settings
+                'git_repository',
+                'git_branch',
+                'git_full_url',
+                'repository_project_id',
+                'deploy_key_id',
+                'source_id',
+                'source_type',
+                // Build settings
+                'build_pack',
+                'static_image',
+                'install_command',
+                'build_command',
+                'start_command',
+                'base_directory',
+                'publish_directory',
+                'dockerfile',
+                'dockerfile_location',
+                'dockerfile_target_build',
+                'docker_compose_location',
+                'docker_compose_custom_start_command',
+                'docker_compose_custom_build_command',
+                'docker_compose',
+                'docker_compose_raw',
+                'docker_compose_domains',
+                'docker_registry_image_name',
+                'docker_registry_image_tag',
+                // Runtime settings
+                'ports_exposes',
+                'ports_mappings',
+                'custom_labels',
+                'custom_docker_run_options',
+                'post_deployment_command',
+                'post_deployment_command_container',
+                'pre_deployment_command',
+                'pre_deployment_command_container',
+                // Resource limits
+                'limits_memory',
+                'limits_memory_swap',
+                'limits_memory_swappiness',
+                'limits_memory_reservation',
+                'limits_cpus',
+                'limits_cpuset',
+                'limits_cpu_shares',
+                // Health check settings
+                'health_check_enabled',
+                'health_check_path',
+                'health_check_port',
+                'health_check_host',
+                'health_check_method',
+                'health_check_scheme',
+                'health_check_return_code',
+                'health_check_response_text',
+                'health_check_interval',
+                'health_check_timeout',
+                'health_check_retries',
+                'health_check_start_period',
+            ];
+        }
+
+        if ($source instanceof Service) {
+            return [
+                'docker_compose_raw',
+                'docker_compose',
+                'connect_to_docker_network',
+                'is_container_label_escape_enabled',
+                'is_container_label_readonly_enabled',
+                'limits_memory',
+                'limits_memory_swap',
+                'limits_memory_swappiness',
+                'limits_memory_reservation',
+                'limits_cpus',
+                'limits_cpuset',
+                'limits_cpu_shares',
+            ];
+        }
+
+        // For databases - update connection settings but not data
+        if ($this->isDatabase($source)) {
+            return [
+                'image',
+                'is_public',
+                'ports_mappings',
+                'limits_memory',
+                'limits_memory_swap',
+                'limits_memory_swappiness',
+                'limits_memory_reservation',
+                'limits_cpus',
+                'limits_cpuset',
+                'limits_cpu_shares',
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * Update application settings.
+     */
+    protected function updateApplicationSettings(Application $source, Application $target): void
+    {
+        $sourceSettings = $source->settings;
+        $targetSettings = $target->settings;
+
+        if (! $sourceSettings || ! $targetSettings) {
+            return;
+        }
+
+        // Settings to copy (build/deploy related)
+        $settingsToUpdate = [
+            'is_static',
+            'is_spa',
+            'is_build_server_enabled',
+            'is_preserve_repository_enabled',
+            'is_git_submodules_enabled',
+            'is_git_lfs_enabled',
+            'is_git_shallow_clone_enabled',
+            'is_auto_deploy_enabled',
+            'is_force_https_enabled',
+            'is_preview_deployments_enabled',
+            'is_container_label_escape_enabled',
+            'is_container_label_readonly_enabled',
+            'gpu_driver',
+            'gpu_count',
+            'gpu_device_ids',
+            'gpu_options',
+        ];
+
+        $attributes = collect($sourceSettings->getAttributes())
+            ->only($settingsToUpdate)
+            ->filter(fn ($value) => $value !== null)
+            ->toArray();
+
+        $targetSettings->update($attributes);
+    }
+
+    /**
+     * Rewire environment variable connections to point to target environment resources.
+     *
+     * @return array<string, array{old: string, new: string}> Rewired connections
+     */
+    protected function rewireConnections(Model $target, Environment $targetEnv): array
+    {
+        if (! method_exists($target, 'environment_variables')) {
+            return [];
+        }
+
+        $rewired = [];
+        $envVars = $target->environment_variables;
+
+        foreach ($envVars as $envVar) {
+            $result = $this->tryRewireVariable($envVar, $targetEnv);
+            if ($result) {
+                $rewired[$envVar->key] = $result;
+            }
+        }
+
+        return $rewired;
+    }
+
+    /**
+     * Try to rewire a single environment variable.
+     *
+     * @return array{old: string, new: string}|null
+     */
+    protected function tryRewireVariable(EnvironmentVariable $envVar, Environment $targetEnv): ?array
+    {
+        $value = $envVar->value;
+        if (empty($value)) {
+            return null;
+        }
+
+        // Check if this is a connection variable
+        if (! $this->isConnectionVariable($envVar->key)) {
+            return null;
+        }
+
+        // Try to find the referenced resource in target environment
+        $referencedResource = $this->findReferencedResource($value, $targetEnv);
+        if (! $referencedResource) {
+            return null;
+        }
+
+        // Generate new connection string for target resource
+        $newValue = $this->generateConnectionString($referencedResource, $value);
+        if (! $newValue || $newValue === $value) {
+            return null;
+        }
+
+        // Update the variable
+        $oldValue = $value;
+        $envVar->update(['value' => $newValue]);
+
+        return [
+            'old' => $this->maskSensitiveValue($oldValue),
+            'new' => $this->maskSensitiveValue($newValue),
+        ];
+    }
+
+    /**
+     * Check if variable key is a connection variable.
+     */
+    protected function isConnectionVariable(string $key): bool
+    {
+        $key = strtoupper($key);
+
+        foreach (self::CONNECTION_VAR_PATTERNS as $pattern) {
+            if ($pattern === $key) {
+                return true;
+            }
+
+            // Handle wildcard patterns
+            if (str_contains($pattern, '*')) {
+                $regex = '/^'.str_replace('*', '.*', $pattern).'$/i';
+                if (preg_match($regex, $key)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Find the resource referenced in a connection string within target environment.
+     */
+    protected function findReferencedResource(string $connectionString, Environment $targetEnv): ?Model
+    {
+        // Extract hostname/container name from connection string
+        // Patterns: postgresql://user:pass@hostname:port/db
+        //           redis://hostname:port
+        //           hostname:port
+
+        // Try to extract hostname from URL
+        $hostname = null;
+
+        if (preg_match('/[@\/]([a-zA-Z0-9_-]+)[:\/?]/', $connectionString, $matches)) {
+            $hostname = $matches[1];
+        } elseif (preg_match('/^([a-zA-Z0-9_-]+):(\d+)/', $connectionString, $matches)) {
+            $hostname = $matches[1];
+        }
+
+        if (! $hostname) {
+            return null;
+        }
+
+        // Search for resource with matching UUID or name in target environment
+        // Databases use UUID as container name
+        foreach (self::DATABASE_MODELS as $modelClass) {
+            $relationMethod = $this->getDatabaseRelationMethod($modelClass);
+            if ($relationMethod && method_exists($targetEnv, $relationMethod)) {
+                $resource = $targetEnv->$relationMethod()
+                    ->where(function ($query) use ($hostname) {
+                        $query->where('uuid', $hostname)
+                            ->orWhere('name', $hostname);
+                    })
+                    ->first();
+
+                if ($resource) {
+                    return $resource;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Generate connection string for a database resource.
+     */
+    protected function generateConnectionString(Model $resource, string $originalConnection): string
+    {
+        // Get internal database URL if available
+        if (method_exists($resource, 'getInternalDbUrl')) {
+            return $resource->getInternalDbUrl();
+        }
+
+        // For resources with internal_db_url attribute
+        if (isset($resource->internal_db_url)) {
+            return $resource->internal_db_url;
+        }
+
+        // Fallback: replace hostname in original connection
+        $uuid = $resource->uuid ?? null;
+        if (! $uuid) {
+            return $originalConnection;
+        }
+
+        // Replace hostname in connection string
+        return preg_replace(
+            '/(@|\/\/)([a-zA-Z0-9_-]+)([:\/])/',
+            '$1'.$uuid.'$3',
+            $originalConnection
+        );
+    }
+
+    /**
+     * Mask sensitive values for logging.
+     */
+    protected function maskSensitiveValue(string $value): string
+    {
+        // Mask passwords in URLs
+        return preg_replace('/:([^:@]+)@/', ':****@', $value);
+    }
+
+    /**
+     * Trigger deployment for the promoted resource.
+     */
+    protected function triggerDeployment(Model $resource): void
+    {
+        if ($resource instanceof Application) {
+            $deployment_uuid = new \Visus\Cuid2\Cuid2;
+
+            queue_application_deployment(
+                application: $resource,
+                deployment_uuid: (string) $deployment_uuid,
+                no_questions_asked: true,
+            );
+        }
+
+        // Services can be restarted via docker-compose
+        if ($resource instanceof Service) {
+            // Service restart logic would go here
+        }
+    }
+
+    /**
+     * Check if resource is a database.
+     */
+    protected function isDatabase(Model $resource): bool
+    {
+        return in_array(get_class($resource), self::DATABASE_MODELS);
+    }
+
+    /**
+     * Get the relation method for a database class.
+     */
+    protected function getDatabaseRelationMethod(string $class): ?string
+    {
+        $map = [
+            'App\Models\StandalonePostgresql' => 'postgresqls',
+            'App\Models\StandaloneMysql' => 'mysqls',
+            'App\Models\StandaloneMariadb' => 'mariadbs',
+            'App\Models\StandaloneMongodb' => 'mongodbs',
+            'App\Models\StandaloneRedis' => 'redis',
+            'App\Models\StandaloneClickhouse' => 'clickhouses',
+            'App\Models\StandaloneKeydb' => 'keydbs',
+            'App\Models\StandaloneDragonfly' => 'dragonflies',
+        ];
+
+        return $map[$class] ?? null;
+    }
+}

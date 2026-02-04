@@ -65,19 +65,20 @@ export function MigrateConfirmStep({
 
             {/* Options summary */}
             <div className="rounded-lg border border-border p-4 space-y-2">
-                <p className="text-sm font-medium text-foreground mb-3">Migration Options</p>
+                <p className="text-sm font-medium text-foreground mb-3">Promotion Options</p>
                 <div className="space-y-2">
                     <OptionItem
-                        label="Copy environment variables"
-                        enabled={options.copy_env_vars ?? true}
+                        label="Rewire service connections"
+                        enabled={options.rewire_connections ?? true}
+                        hint="DATABASE_URL, REDIS_URL etc. updated to target resources"
                     />
                     <OptionItem
                         label="Copy volume configurations"
                         enabled={options.copy_volumes ?? true}
                     />
                     <OptionItem
-                        label="Update existing resource"
-                        enabled={options.update_existing ?? false}
+                        label="Auto-deploy after promotion"
+                        enabled={options.auto_deploy ?? false}
                     />
                     {isDatabase && (
                         <OptionItem
@@ -86,6 +87,9 @@ export function MigrateConfirmStep({
                         />
                     )}
                 </div>
+                <p className="text-xs text-foreground-muted mt-3 pt-2 border-t border-border">
+                    Environment variables are NOT copied - they remain environment-specific.
+                </p>
             </div>
 
             {/* Production warning */}
@@ -129,15 +133,20 @@ export function MigrateConfirmStep({
     );
 }
 
-function OptionItem({ label, enabled }: { label: string; enabled: boolean }) {
+function OptionItem({ label, enabled, hint }: { label: string; enabled: boolean; hint?: string }) {
     return (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-start gap-2 text-sm">
             {enabled ? (
-                <Check className="h-4 w-4 text-success" />
+                <Check className="h-4 w-4 text-success mt-0.5" />
             ) : (
-                <X className="h-4 w-4 text-foreground-muted" />
+                <X className="h-4 w-4 text-foreground-muted mt-0.5" />
             )}
-            <span className={enabled ? 'text-foreground' : 'text-foreground-muted'}>{label}</span>
+            <div>
+                <span className={enabled ? 'text-foreground' : 'text-foreground-muted'}>{label}</span>
+                {hint && enabled && (
+                    <p className="text-xs text-foreground-muted">{hint}</p>
+                )}
+            </div>
         </div>
     );
 }

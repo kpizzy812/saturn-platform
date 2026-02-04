@@ -47,11 +47,15 @@ export function MigrateModal({
     // Configuration state
     const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<number | null>(null);
     const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
+    // Promote mode: updates config without copying env vars (they're environment-specific)
     const [options, setOptions] = useState<EnvironmentMigrationOptions>({
-        copy_env_vars: true,
+        mode: 'promote',
+        copy_env_vars: false, // Never copy env vars - they're environment-specific
         copy_volumes: true,
-        update_existing: false,
+        update_existing: true, // Promote always updates existing
         config_only: false,
+        rewire_connections: true, // Auto-rewire database/service connections
+        auto_deploy: false,
     });
 
     // Reset state when modal closes
@@ -65,10 +69,13 @@ export function MigrateModal({
             setSelectedEnvironmentId(null);
             setSelectedServerId(null);
             setOptions({
-                copy_env_vars: true,
+                mode: 'promote',
+                copy_env_vars: false,
                 copy_volumes: true,
-                update_existing: false,
+                update_existing: true,
                 config_only: false,
+                rewire_connections: true,
+                auto_deploy: false,
             });
         }
     }, [open]);

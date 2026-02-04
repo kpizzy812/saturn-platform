@@ -815,11 +815,16 @@ export type EnvironmentMigrationStatus =
     | 'failed'
     | 'rolled_back';
 
+export type MigrationMode = 'clone' | 'promote';
+
 export interface EnvironmentMigrationOptions {
+    mode?: MigrationMode;
     copy_env_vars?: boolean;
     copy_volumes?: boolean;
     update_existing?: boolean;
     config_only?: boolean;
+    rewire_connections?: boolean;
+    auto_deploy?: boolean;
 }
 
 export interface EnvironmentMigration {

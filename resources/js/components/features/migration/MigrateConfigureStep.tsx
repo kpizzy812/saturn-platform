@@ -111,17 +111,24 @@ export function MigrateConfigureStep({
                 <Alert>No servers available. Please add a server first.</Alert>
             )}
 
+            {/* Promotion Info */}
+            <Alert variant="info" className="text-sm">
+                <strong>Promote Mode:</strong> Updates code/config in target environment.
+                Environment variables are NOT copied (they are environment-specific).
+                Service connections are automatically rewired to target resources.
+            </Alert>
+
             {/* Options */}
             <div className="space-y-4">
-                <p className="text-sm font-medium text-foreground">Migration Options</p>
+                <p className="text-sm font-medium text-foreground">Promotion Options</p>
 
                 <div className="space-y-3 rounded-lg border border-border p-3">
                     <Checkbox
-                        label="Copy environment variables"
-                        hint="Include all environment variables"
-                        checked={options.copy_env_vars}
+                        label="Rewire service connections"
+                        hint="Automatically update DATABASE_URL, REDIS_URL etc. to target environment resources"
+                        checked={options.rewire_connections ?? true}
                         onCheckedChange={(checked) =>
-                            onOptionsChange({ ...options, copy_env_vars: checked })
+                            onOptionsChange({ ...options, rewire_connections: checked })
                         }
                     />
 
@@ -135,18 +142,18 @@ export function MigrateConfigureStep({
                     />
 
                     <Checkbox
-                        label="Update existing resource"
-                        hint="Update if resource with same name exists"
-                        checked={options.update_existing}
+                        label="Auto-deploy after promotion"
+                        hint="Automatically trigger deployment after config update"
+                        checked={options.auto_deploy ?? false}
                         onCheckedChange={(checked) =>
-                            onOptionsChange({ ...options, update_existing: checked })
+                            onOptionsChange({ ...options, auto_deploy: checked })
                         }
                     />
 
                     {isDatabase && (
                         <Checkbox
                             label="Configuration only"
-                            hint="Update config without recreating container"
+                            hint="Update config without recreating container (safe for production)"
                             checked={options.config_only}
                             onCheckedChange={(checked) =>
                                 onOptionsChange({ ...options, config_only: checked })

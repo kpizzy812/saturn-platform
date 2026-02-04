@@ -18,7 +18,11 @@ use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
  * Action to execute an approved migration.
- * Handles cloning or updating resources in the target environment.
+ * Handles cloning, promoting, or updating resources in the target environment.
+ *
+ * Migration Modes:
+ * - Clone: Creates a new copy of the resource in target environment (includes env vars, volumes)
+ * - Promote: Updates existing resource config in target environment (excludes env vars, rewires connections)
  */
 class ExecuteMigrationAction
 {
@@ -44,7 +48,38 @@ class ExecuteMigrationAction
                 throw new \RuntimeException('Source resource not found.');
             }
 
-            // Determine if we're updating existing or creating new
+            // Check migration mode
+            $mode = $options[EnvironmentMigration::OPTION_MODE] ?? EnvironmentMigration::MODE_CLONE;
+
+            // Promote mode: update existing resource config without copying env vars
+            if ($mode === EnvironmentMigration::MODE_PROMOTE) {
+                $result = PromoteResourceAction::run($migration);
+
+                if (! $result['success']) {
+                    $migration->markAsFailed($result['error'] ?? 'Promote failed');
+
+                    return $result;
+                }
+
+                $target = $result['target'];
+
+                // Create history entry
+                MigrationHistory::createForResource(
+                    $target,
+                    $migration,
+                    $this->getResourceConfig($target)
+                );
+
+                $migration->markAsCompleted(get_class($target), $target->id);
+
+                return [
+                    'success' => true,
+                    'target' => $target,
+                    'rewired_connections' => $result['rewired_connections'] ?? [],
+                ];
+            }
+
+            // Clone mode (default): Determine if we're updating existing or creating new
             $updateExisting = $options[EnvironmentMigration::OPTION_UPDATE_EXISTING] ?? false;
             $configOnly = $options[EnvironmentMigration::OPTION_CONFIG_ONLY] ?? false;
 

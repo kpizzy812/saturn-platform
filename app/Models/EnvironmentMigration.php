@@ -65,7 +65,14 @@ class EnvironmentMigration extends Model
 
     public const STATUS_ROLLED_BACK = 'rolled_back';
 
+    // Migration modes
+    public const MODE_CLONE = 'clone';
+
+    public const MODE_PROMOTE = 'promote';
+
     // Option keys
+    public const OPTION_MODE = 'mode';
+
     public const OPTION_COPY_ENV_VARS = 'copy_env_vars';
 
     public const OPTION_COPY_VOLUMES = 'copy_volumes';
@@ -73,6 +80,10 @@ class EnvironmentMigration extends Model
     public const OPTION_UPDATE_EXISTING = 'update_existing';
 
     public const OPTION_CONFIG_ONLY = 'config_only';
+
+    public const OPTION_REWIRE_CONNECTIONS = 'rewire_connections';
+
+    public const OPTION_AUTO_DEPLOY = 'auto_deploy';
 
     /**
      * Get all possible statuses.
