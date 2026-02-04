@@ -5,38 +5,24 @@ namespace App\Services\AI\Chat;
 use App\Services\AI\Chat\Contracts\ChatProviderInterface;
 use App\Services\AI\Chat\DTOs\ChatMessage;
 use App\Services\AI\Chat\DTOs\IntentResult;
-use App\Services\AI\Chat\DTOs\ToolCall;
+use App\Services\AI\Chat\DTOs\ParsedCommand;
+use App\Services\AI\Chat\DTOs\ParsedIntent;
 use App\Services\AI\Chat\Providers\AnthropicChatProvider;
 use App\Services\AI\Chat\Providers\OpenAIChatProvider;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Parses user messages to detect actionable intents.
- * Supports structured output and function calling for improved reliability.
+ * AI-first command parser.
+ * Uses AI to understand user intent and extract multiple commands.
  */
 class CommandParser
 {
     private ?ChatProviderInterface $provider = null;
 
     /**
-     * Allowed intents for command execution.
+     * Dangerous actions that require confirmation.
      */
-    private const ALLOWED_INTENTS = [
-        'deploy',
-        'restart',
-        'stop',
-        'start',
-        'logs',
-        'status',
-        'delete',
-        'help',
-        'none',
-    ];
-
-    /**
-     * Intents that require confirmation before execution.
-     */
-    private const DANGEROUS_INTENTS = [
+    private const DANGEROUS_ACTIONS = [
         'deploy',
         'stop',
         'delete',
@@ -58,586 +44,303 @@ class CommandParser
     }
 
     /**
-     * Parse user message to detect intent.
+     * Parse user message to detect multiple commands using AI.
      *
      * @param  array|null  $context  Current context (resource type, id, name)
-     * @param  bool  $useToolCalling  Use function calling / tool use for more reliable parsing
      */
-    public function parse(string $message, ?array $context = null, bool $useToolCalling = true): IntentResult
+    public function parseCommands(string $message, ?array $context = null): ParsedIntent
     {
-        // First try simple keyword-based detection
-        $simpleResult = $this->parseSimple($message, $context);
-        if ($simpleResult->hasIntent()) {
-            return $simpleResult;
+        if (! $this->provider || ! $this->provider->isAvailable()) {
+            Log::warning('CommandParser: No AI provider available');
+
+            return ParsedIntent::none('AI сервис недоступен. Пожалуйста, проверьте настройки API ключей.');
         }
 
-        // Fall back to AI-based parsing if provider is available
-        if ($this->provider && $this->provider->isAvailable()) {
-            // Use tool calling for more structured and reliable parsing
-            if ($useToolCalling) {
-                return $this->parseWithToolCalling($message, $context);
+        try {
+            $systemPrompt = $this->buildSystemPrompt($context);
+            $messages = [
+                ChatMessage::system($systemPrompt),
+                ChatMessage::user($message),
+            ];
+
+            // Use provider-specific tool calling
+            if ($this->provider instanceof OpenAIChatProvider) {
+                return $this->parseWithOpenAI($messages, $context);
+            } elseif ($this->provider instanceof AnthropicChatProvider) {
+                return $this->parseWithAnthropic($messages, $context);
             }
 
-            return $this->parseWithAI($message, $context);
-        }
+            // Fallback to generic parsing
+            return $this->parseWithGenericAI($messages, $context);
+        } catch (\Throwable $e) {
+            Log::error('CommandParser error', ['error' => $e->getMessage()]);
 
-        return IntentResult::none();
+            return ParsedIntent::none('Произошла ошибка при обработке запроса: '.$e->getMessage());
+        }
     }
 
     /**
-     * Parse with function calling / tool use for structured output.
-     * This is more reliable than parsing free-form text.
+     * Legacy method for backward compatibility.
+     * Converts ParsedIntent to IntentResult (single command).
      */
-    private function parseWithToolCalling(string $message, ?array $context = null): IntentResult
+    public function parse(string $message, ?array $context = null, bool $useToolCalling = true): IntentResult
     {
-        try {
-            $systemPrompt = $this->buildToolCallingSystemPrompt($context);
-            $userPrompt = $message;
+        $parsedIntent = $this->parseCommands($message, $context);
 
-            $messages = [
-                ChatMessage::system($systemPrompt),
-                ChatMessage::user($userPrompt),
-            ];
+        // Convert to legacy IntentResult (first command only)
+        $firstCommand = $parsedIntent->getFirstCommand();
 
-            // Get provider-specific tools and call
-            if ($this->provider instanceof OpenAIChatProvider) {
-                return $this->parseWithOpenAITools($messages, $context);
-            } elseif ($this->provider instanceof AnthropicChatProvider) {
-                return $this->parseWithAnthropicTools($messages, $context);
-            }
-
-            // Fall back to regular AI parsing
-            return $this->parseWithAI($message, $context);
-        } catch (\Throwable $e) {
-            Log::error('CommandParser tool calling error', ['error' => $e->getMessage()]);
-
-            // Fall back to regular parsing
-            return $this->parseWithAI($message, $context);
+        if (! $firstCommand || $firstCommand->action === 'none') {
+            return IntentResult::none($parsedIntent->responseText);
         }
+
+        $params = [
+            'resource_type' => $firstCommand->resourceType,
+            'resource_name' => $firstCommand->resourceName,
+            'resource_id' => $firstCommand->resourceId,
+            'resource_uuid' => $firstCommand->resourceUuid,
+            'project_name' => $firstCommand->projectName,
+            'environment_name' => $firstCommand->environmentName,
+        ];
+
+        // Filter out null values
+        $params = array_filter($params, fn ($v) => $v !== null);
+
+        return new IntentResult(
+            intent: $firstCommand->action,
+            params: $params,
+            confidence: $parsedIntent->confidence,
+            requiresConfirmation: $parsedIntent->requiresConfirmation,
+            confirmationMessage: $parsedIntent->confirmationMessage,
+            responseText: $parsedIntent->responseText,
+        );
     }
 
     /**
      * Parse using OpenAI function calling.
      */
-    private function parseWithOpenAITools(array $messages, ?array $context): IntentResult
+    private function parseWithOpenAI(array $messages, ?array $context): ParsedIntent
     {
-        $tools = ToolDefinitions::parseIntentOnlyOpenAI();
+        $tools = ToolDefinitions::parseCommandsOpenAI();
 
         /** @var OpenAIChatProvider $provider */
         $provider = $this->provider;
 
-        // Force the model to call parse_intent function
-        $response = $provider->chat($messages, $tools, 'parse_intent');
+        $response = $provider->chat($messages, $tools, 'parse_commands');
 
         if (! $response->success) {
-            Log::warning('OpenAI tool calling failed', ['error' => $response->error]);
+            Log::warning('OpenAI parsing failed', ['error' => $response->error]);
 
-            return IntentResult::none();
+            return ParsedIntent::none($response->error);
         }
 
-        // Check for tool call in response
         if ($response->hasToolCalls()) {
-            $toolCall = $response->getToolCall('parse_intent');
+            $toolCall = $response->getToolCall('parse_commands');
             if ($toolCall) {
-                return $this->buildIntentFromToolCall($toolCall, $context);
+                return $this->buildParsedIntent($toolCall->arguments, $context);
             }
         }
 
-        // If no tool call, try to parse content as structured output
+        // If no tool call, try to parse content
         if ($response->content) {
             return $this->parseStructuredContent($response->content, $context);
         }
 
-        return IntentResult::none();
+        return ParsedIntent::none();
     }
 
     /**
      * Parse using Anthropic tool use.
      */
-    private function parseWithAnthropicTools(array $messages, ?array $context): IntentResult
+    private function parseWithAnthropic(array $messages, ?array $context): ParsedIntent
     {
-        $tools = ToolDefinitions::parseIntentOnlyAnthropic();
+        $tools = ToolDefinitions::parseCommandsAnthropic();
 
         /** @var AnthropicChatProvider $provider */
         $provider = $this->provider;
 
-        // Force the model to use parse_intent tool
-        $response = $provider->chat($messages, $tools, 'parse_intent');
+        $response = $provider->chat($messages, $tools, 'parse_commands');
 
         if (! $response->success) {
-            Log::warning('Anthropic tool use failed', ['error' => $response->error]);
+            Log::warning('Anthropic parsing failed', ['error' => $response->error]);
 
-            return IntentResult::none();
+            return ParsedIntent::none($response->error);
         }
 
-        // Check for tool use in response
         if ($response->hasToolCalls()) {
-            $toolCall = $response->getToolCall('parse_intent');
+            $toolCall = $response->getToolCall('parse_commands');
             if ($toolCall) {
-                return $this->buildIntentFromToolCall($toolCall, $context);
+                return $this->buildParsedIntent($toolCall->arguments, $context);
             }
         }
 
-        // If no tool call but has content, use it as response text
         if ($response->content) {
-            return IntentResult::none($response->content);
+            return ParsedIntent::none($response->content);
         }
 
-        return IntentResult::none();
+        return ParsedIntent::none();
     }
 
     /**
-     * Build IntentResult from a tool call.
+     * Parse with generic AI (no specific tool calling).
      */
-    private function buildIntentFromToolCall(ToolCall $toolCall, ?array $context): IntentResult
+    private function parseWithGenericAI(array $messages, ?array $context): ParsedIntent
     {
-        $args = $toolCall->arguments;
+        $response = $this->provider->chat($messages);
 
-        $intent = $args['intent'] ?? null;
-        $confidence = (float) ($args['confidence'] ?? 0.0);
-        $responseText = $args['response_text'] ?? null;
-
-        // Handle 'none' intent
-        if (! $intent || $intent === 'none' || ! in_array($intent, self::ALLOWED_INTENTS, true)) {
-            return IntentResult::none($responseText);
+        if (! $response->success) {
+            return ParsedIntent::none($response->error);
         }
 
-        $params = [];
+        return $this->parseStructuredContent($response->content, $context);
+    }
 
-        // Extract resource info from tool call
-        $resourceType = $args['resource_type'] ?? null;
-        if ($resourceType && $resourceType !== 'null') {
-            $params['resource_type'] = $resourceType;
+    /**
+     * Build ParsedIntent from AI response data.
+     */
+    private function buildParsedIntent(array $data, ?array $context): ParsedIntent
+    {
+        $commands = [];
+
+        if (isset($data['commands']) && is_array($data['commands'])) {
+            foreach ($data['commands'] as $cmdData) {
+                $action = $cmdData['action'] ?? 'none';
+
+                if ($action === 'none') {
+                    continue;
+                }
+
+                // Merge context if resource not specified
+                $resourceType = $this->normalizeNull($cmdData['resource_type'] ?? null);
+                $resourceName = $this->normalizeNull($cmdData['resource_name'] ?? null);
+
+                if ($context && ! $resourceName && ! $resourceType) {
+                    $resourceType = $context['type'] ?? null;
+                    $resourceName = $context['name'] ?? null;
+                }
+
+                $commands[] = new ParsedCommand(
+                    action: $action,
+                    resourceType: $resourceType,
+                    resourceName: $resourceName,
+                    resourceId: $context['id'] ?? null,
+                    resourceUuid: $context['uuid'] ?? null,
+                    projectName: $this->normalizeNull($cmdData['project_name'] ?? null),
+                    environmentName: $this->normalizeNull($cmdData['environment_name'] ?? null),
+                );
+            }
         }
 
-        $resourceName = $args['resource_name'] ?? null;
-        if ($resourceName && $resourceName !== 'null') {
-            $params['resource_name'] = $resourceName;
+        // Check for dangerous commands
+        $hasDangerous = false;
+        $dangerousDescriptions = [];
+
+        foreach ($commands as $cmd) {
+            if (in_array($cmd->action, self::DANGEROUS_ACTIONS, true)) {
+                $hasDangerous = true;
+                $resourceDesc = $cmd->resourceName ?? $cmd->resourceType ?? 'ресурс';
+                $dangerousDescriptions[] = "**{$cmd->action}** {$resourceDesc}";
+            }
         }
 
-        $resourceId = $args['resource_id'] ?? null;
-        if ($resourceId && $resourceId !== 'null') {
-            $params['resource_id'] = $resourceId;
-        }
-
-        // Merge with context if not specified in params
-        if ($context) {
-            $params['resource_type'] ??= $context['type'] ?? null;
-            $params['resource_id'] ??= $context['id'] ?? null;
-            $params['resource_uuid'] ??= $context['uuid'] ?? null;
-        }
-
-        $requiresConfirmation = in_array($intent, self::DANGEROUS_INTENTS, true);
         $confirmationMessage = null;
-
-        if ($requiresConfirmation) {
-            $resourceName = $params['resource_name'] ?? $context['name'] ?? 'this resource';
-            $confirmationMessage = $this->getConfirmationMessage($intent, $resourceName);
+        if ($hasDangerous) {
+            $confirmationMessage = "⚠️ Вы уверены, что хотите выполнить следующие действия?\n\n";
+            foreach ($dangerousDescriptions as $desc) {
+                $confirmationMessage .= "- {$desc}\n";
+            }
+            $confirmationMessage .= "\nЭто действие может быть необратимым. Подтвердите, ответив 'да' или 'confirm'.";
         }
 
-        return new IntentResult(
-            intent: $intent,
-            params: $params,
-            confidence: $confidence,
-            requiresConfirmation: $requiresConfirmation,
+        return new ParsedIntent(
+            commands: $commands,
+            confidence: (float) ($data['confidence'] ?? 0.8),
+            requiresConfirmation: $hasDangerous,
             confirmationMessage: $confirmationMessage,
-            responseText: $responseText,
+            responseText: $data['response_text'] ?? null,
         );
     }
 
     /**
-     * Parse structured JSON content (fallback when tool call not present).
+     * Parse structured JSON content from AI response.
      */
-    private function parseStructuredContent(string $content, ?array $context): IntentResult
+    private function parseStructuredContent(string $content, ?array $context): ParsedIntent
     {
         try {
             $json = $this->extractJson($content);
             $data = json_decode($json, true);
 
             if (! $data) {
-                return IntentResult::none($content);
+                return ParsedIntent::none($content);
             }
 
-            // Create a mock tool call to reuse the same parsing logic
-            $mockToolCall = new ToolCall(
-                id: 'structured_output',
-                name: 'parse_intent',
-                arguments: $data,
-            );
-
-            return $this->buildIntentFromToolCall($mockToolCall, $context);
+            return $this->buildParsedIntent($data, $context);
         } catch (\Throwable $e) {
             Log::warning('Failed to parse structured content', ['error' => $e->getMessage()]);
 
-            return IntentResult::none($content);
+            return ParsedIntent::none($content);
         }
     }
 
     /**
-     * Build system prompt for tool calling.
-     */
-    private function buildToolCallingSystemPrompt(?array $context = null): string
-    {
-        $contextInfo = '';
-        if ($context) {
-            $contextInfo = sprintf(
-                "\n\nCurrent context:\n- Resource type: %s\n- Resource name: %s\n- Resource ID: %s",
-                $context['type'] ?? 'none',
-                $context['name'] ?? 'unknown',
-                $context['id'] ?? 'unknown'
-            );
-        }
-
-        return <<<PROMPT
-You are an intent parser for a PaaS (Platform as a Service) system called Saturn.
-Your job is to analyze user messages and call the parse_intent tool with the detected intent.
-
-IMPORTANT: You MUST call the parse_intent tool for EVERY message. Never respond with plain text.
-
-Available intents:
-- deploy: Deploy/redeploy an application or service
-- restart: Restart an application, service, or database
-- stop: Stop an application, service, or database
-- start: Start a stopped application, service, or database
-- logs: Show logs for a resource
-- status: Check the status of a resource
-- delete: Delete a project, application, service, or database (requires confirmation)
-- help: Show help information
-- none: No actionable intent detected (for questions, greetings, etc.)
-
-Guidelines:
-- Set confidence based on how clear the user's intent is (0.0 = unclear, 1.0 = very clear)
-- Extract resource_type, resource_name, resource_id if mentioned
-
-**CRITICAL LANGUAGE RULE for response_text:**
-- ALWAYS write response_text in the SAME LANGUAGE as the user's message
-- If user writes in Russian → response_text MUST be in Russian
-- If user writes in English → response_text MUST be in English
-- Example Russian: "Какое приложение вы хотите задеплоить?"
-- Example English: "Which application would you like to deploy?"
-{$contextInfo}
-PROMPT;
-    }
-
-    /**
-     * Simple keyword-based intent detection.
-     */
-    private function parseSimple(string $message, ?array $context = null): IntentResult
-    {
-        $originalMessage = trim($message);
-        $message = strtolower($originalMessage);
-
-        // Deploy patterns
-        if (preg_match('/^(deploy|деплой|задеплой|разверни|redeploy)/ui', $message)) {
-            return $this->createIntentResult('deploy', $context, $originalMessage);
-        }
-
-        // Restart patterns
-        if (preg_match('/^(restart|перезапусти|рестарт|reboot)/ui', $message)) {
-            return $this->createIntentResult('restart', $context, $originalMessage);
-        }
-
-        // Stop patterns
-        if (preg_match('/^(stop|останови|стоп|выключи)/ui', $message)) {
-            return $this->createIntentResult('stop', $context, $originalMessage);
-        }
-
-        // Start patterns
-        if (preg_match('/^(start|запусти|старт|включи)/ui', $message)) {
-            return $this->createIntentResult('start', $context, $originalMessage);
-        }
-
-        // Logs patterns
-        if (preg_match('/^(logs?|логи?|покажи логи|show logs)/ui', $message)) {
-            return $this->createIntentResult('logs', $context, $originalMessage);
-        }
-
-        // Status patterns
-        if (preg_match('/^(status|статус|состояние|state)/ui', $message)) {
-            return $this->createIntentResult('status', $context, $originalMessage);
-        }
-
-        // Delete all except patterns (must be before simple delete)
-        // Use original message to preserve case for resource names
-        if (preg_match('/(?:delete|remove|удали|удалить|убери|убрать)\s+(?:all|все)\s+(?:projects?|проект[ыа]?)\s+(?:except|кроме|besides|but not)\s+(.+)/ui', $originalMessage, $matches)) {
-            $excludeNames = array_map('trim', preg_split('/[,\s]+/', $matches[1]));
-
-            return new IntentResult(
-                intent: 'delete',
-                params: [
-                    'resource_type' => 'project',
-                    'delete_all_except' => true,
-                    'exclude_names' => $excludeNames,
-                ],
-                confidence: 1.0,
-                requiresConfirmation: true,
-                confirmationMessage: '⚠️ Are you sure you want to **DELETE ALL PROJECTS** except: **'.implode(', ', $excludeNames).'**? This action is **IRREVERSIBLE**!',
-            );
-        }
-
-        // Delete patterns
-        if (preg_match('/^(delete|remove|удали|удалить|убери|убрать)/ui', $message)) {
-            return $this->createIntentResult('delete', $context, $originalMessage);
-        }
-
-        // Help patterns
-        if (preg_match('/^(help|помощь|помоги|что ты (умеешь|можешь))/ui', $message)) {
-            return $this->createIntentResult('help', $context, $originalMessage);
-        }
-
-        return IntentResult::none();
-    }
-
-    /**
-     * AI-based intent detection for complex messages.
-     */
-    private function parseWithAI(string $message, ?array $context = null): IntentResult
-    {
-        try {
-            $systemPrompt = $this->buildSystemPrompt($context);
-            $userPrompt = "User message: {$message}";
-
-            $messages = [
-                ChatMessage::system($systemPrompt),
-                ChatMessage::user($userPrompt),
-            ];
-
-            $response = $this->provider->chat($messages);
-
-            if (! $response->success) {
-                Log::warning('AI intent parsing failed', ['error' => $response->error]);
-
-                return IntentResult::none();
-            }
-
-            return $this->parseAIResponse($response->content, $context);
-        } catch (\Throwable $e) {
-            Log::error('CommandParser AI error', ['error' => $e->getMessage()]);
-
-            return IntentResult::none();
-        }
-    }
-
-    /**
-     * Build system prompt for intent parsing.
+     * Build system prompt for command parsing.
      */
     private function buildSystemPrompt(?array $context = null): string
     {
         $contextInfo = '';
         if ($context) {
             $contextInfo = sprintf(
-                "\n\nCurrent context:\n- Resource type: %s\n- Resource name: %s\n- Resource ID: %s",
-                $context['type'] ?? 'none',
-                $context['name'] ?? 'unknown',
-                $context['id'] ?? 'unknown'
+                "\n\nТекущий контекст:\n- Тип ресурса: %s\n- Имя ресурса: %s\n- ID ресурса: %s",
+                $context['type'] ?? 'не указан',
+                $context['name'] ?? 'не указано',
+                $context['id'] ?? 'не указан'
             );
         }
 
         return <<<PROMPT
-You are an intent parser for a PaaS (Platform as a Service) system.
-Analyze user messages and extract actionable intents.
+Ты - интеллектуальный парсер команд для PaaS платформы Saturn.
+Твоя задача - анализировать сообщения пользователя и извлекать из них команды для управления ресурсами.
 
-Available intents:
-- deploy: Deploy/redeploy an application or service
-- restart: Restart an application, service, or database
-- stop: Stop an application, service, or database
-- start: Start a stopped application, service, or database
-- logs: Show logs for a resource
-- status: Check the status of a resource
-- delete: Delete a project, application, service, or database (requires confirmation)
-- help: Show help information
+**ВАЖНО: Ты ДОЛЖЕН вызвать инструмент parse_commands для КАЖДОГО сообщения!**
 
-Respond in JSON format:
-{
-    "intent": "intent_name or null",
-    "confidence": 0.0-1.0,
-    "params": {
-        "resource_type": "application|service|database|server|null",
-        "resource_name": "name if mentioned or null",
-        "resource_id": "id if mentioned or null"
-    },
-    "response_text": "Your response to the user"
-}
+Доступные действия:
+- **deploy** - задеплоить/развернуть приложение
+- **restart** - перезапустить приложение, сервис или базу данных
+- **stop** - остановить ресурс
+- **start** - запустить остановленный ресурс
+- **logs** - показать логи
+- **status** - показать статус ресурсов
+- **delete** - удалить проект, приложение, сервис или базу данных
+- **help** - показать справку
+- **none** - нет actionable команды (для вопросов, приветствий и т.д.)
 
-If no actionable intent is detected, set intent to null and provide a helpful response.
+Типы ресурсов:
+- **application** - приложение
+- **service** - сервис (docker-compose stack)
+- **database** - база данных (postgresql, mysql, mongodb, redis и т.д.)
+- **server** - сервер
+- **project** - проект (контейнер для environments и ресурсов)
 
-**CRITICAL LANGUAGE RULE:**
-- ALWAYS respond in the SAME LANGUAGE as the user's message
-- If user writes in Russian → respond in Russian
-- If user writes in English → respond in English
+**Правила парсинга:**
+
+1. **Множественные ресурсы**: Если пользователь упоминает несколько ресурсов, создай отдельную команду для каждого.
+   Пример: "перезапусти app1, app2 и db1" → 3 команды: restart(app1), restart(app2), restart(db1)
+
+2. **Множественные действия**: Если пользователь просит выполнить несколько действий, создай команду для каждого.
+   Пример: "удали test-project и перезапусти prod-app" → 2 команды: delete(test-project), restart(prod-app)
+
+3. **Определение типа ресурса**: Определяй тип по контексту и названию:
+   - db, database, postgres, mysql, redis → database
+   - app, application, api, frontend, backend → application
+   - project, проект → project
+
+4. **Язык ответа**: ВСЕГДА отвечай на том же языке, на котором написано сообщение пользователя!
+   - Русское сообщение → русский ответ
+   - English message → English response
+
+5. **response_text**: Это сообщение будет показано пользователю. Опиши что ты собираешься сделать.
 {$contextInfo}
 PROMPT;
-    }
-
-    /**
-     * Parse AI response to IntentResult.
-     */
-    private function parseAIResponse(string $content, ?array $context = null): IntentResult
-    {
-        try {
-            // Extract JSON from response
-            $json = $this->extractJson($content);
-            $data = json_decode($json, true);
-
-            if (! $data) {
-                return IntentResult::none($content);
-            }
-
-            $intent = $data['intent'] ?? null;
-            $confidence = (float) ($data['confidence'] ?? 0.0);
-            $responseText = $data['response_text'] ?? null;
-
-            if (! $intent || ! in_array($intent, self::ALLOWED_INTENTS, true)) {
-                return IntentResult::none($responseText);
-            }
-
-            $params = $data['params'] ?? [];
-
-            // Merge with context if not specified in params
-            if ($context) {
-                $params['resource_type'] ??= $context['type'] ?? null;
-                $params['resource_id'] ??= $context['id'] ?? null;
-                $params['resource_uuid'] ??= $context['uuid'] ?? null;
-            }
-
-            $requiresConfirmation = in_array($intent, self::DANGEROUS_INTENTS, true);
-            $confirmationMessage = null;
-
-            if ($requiresConfirmation) {
-                $resourceName = $params['resource_name'] ?? $context['name'] ?? 'this resource';
-                $confirmationMessage = $this->getConfirmationMessage($intent, $resourceName);
-            }
-
-            return new IntentResult(
-                intent: $intent,
-                params: $params,
-                confidence: $confidence,
-                requiresConfirmation: $requiresConfirmation,
-                confirmationMessage: $confirmationMessage,
-                responseText: $responseText,
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to parse AI intent response', ['error' => $e->getMessage(), 'content' => $content]);
-
-            return IntentResult::none();
-        }
-    }
-
-    /**
-     * Create intent result with context.
-     */
-    private function createIntentResult(string $intent, ?array $context, string $originalMessage): IntentResult
-    {
-        $params = [];
-
-        if ($context) {
-            $params['resource_type'] = $context['type'] ?? null;
-            $params['resource_id'] = $context['id'] ?? null;
-            $params['resource_uuid'] = $context['uuid'] ?? null;
-        }
-
-        // Try to extract resource info including project/environment
-        $resourceInfo = $this->extractResourceInfo($originalMessage);
-
-        if ($resourceInfo['name']) {
-            $params['resource_name'] = $resourceInfo['name'];
-        }
-        if ($resourceInfo['project']) {
-            $params['project_name'] = $resourceInfo['project'];
-        }
-        if ($resourceInfo['environment']) {
-            $params['environment_name'] = $resourceInfo['environment'];
-        }
-
-        $requiresConfirmation = in_array($intent, self::DANGEROUS_INTENTS, true);
-        $confirmationMessage = null;
-
-        if ($requiresConfirmation) {
-            $displayName = $params['resource_name'] ?? $context['name'] ?? 'this resource';
-            if (! empty($params['project_name'])) {
-                $displayName .= " ({$params['project_name']}";
-                if (! empty($params['environment_name'])) {
-                    $displayName .= "/{$params['environment_name']}";
-                }
-                $displayName .= ')';
-            }
-            $confirmationMessage = $this->getConfirmationMessage($intent, $displayName);
-        }
-
-        return new IntentResult(
-            intent: $intent,
-            params: $params,
-            confidence: 1.0,
-            requiresConfirmation: $requiresConfirmation,
-            confirmationMessage: $confirmationMessage,
-        );
-    }
-
-    /**
-     * Extract resource name from message.
-     */
-    private function extractResourceName(string $message): ?string
-    {
-        // Pattern: "deploy app-name" or "restart my-service" (English and Russian commands)
-        $commands = 'deploy|restart|stop|start|logs|status|delete|remove|деплой|задеплой|разверни|перезапусти|рестарт|останови|стоп|выключи|запусти|старт|включи|логи|статус|удали|удалить|убери|убрать';
-        if (preg_match('/(?:'.$commands.')\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
-            return $matches[1];
-        }
-
-        return null;
-    }
-
-    /**
-     * Extract resource info including project and environment from message.
-     * Supports formats like:
-     * - "deploy app-name in project/environment"
-     * - "deploy app-name from project/environment"
-     * - "деплой app-name в project/environment"
-     */
-    public function extractResourceInfo(string $message): array
-    {
-        $info = [
-            'name' => null,
-            'project' => null,
-            'environment' => null,
-        ];
-
-        // Extract resource name
-        $info['name'] = $this->extractResourceName($message);
-
-        // Pattern for "in project/environment" or "from project/environment"
-        // Also supports Russian "в project/environment"
-        if (preg_match('/(?:in|from|в)\s+([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
-            $info['project'] = $matches[1];
-            $info['environment'] = $matches[2];
-        }
-        // Pattern for just project name "in project" or "from project"
-        elseif (preg_match('/(?:in|from|в)\s+([a-zA-Z0-9_-]+)(?:\s|$)/ui', $message, $matches)) {
-            $info['project'] = $matches[1];
-        }
-        // Pattern for "project project-name" or "проект project-name"
-        elseif (preg_match('/(?:project|проект)\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
-            $info['project'] = $matches[1];
-        }
-        // Pattern for "environment env-name" or "окружение env-name"
-        if (preg_match('/(?:environment|env|окружение)\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
-            $info['environment'] = $matches[1];
-        }
-
-        return $info;
-    }
-
-    /**
-     * Get confirmation message for dangerous intent.
-     */
-    private function getConfirmationMessage(string $intent, string $resourceName): string
-    {
-        return match ($intent) {
-            'deploy' => "Are you sure you want to deploy **{$resourceName}**? This will trigger a new deployment.",
-            'stop' => "Are you sure you want to stop **{$resourceName}**? The service will become unavailable.",
-            'delete' => "⚠️ Are you sure you want to **DELETE** **{$resourceName}**? This action is **IRREVERSIBLE** and will permanently remove the resource and all its data!",
-            default => "Are you sure you want to {$intent} **{$resourceName}**?",
-        };
     }
 
     /**
@@ -645,16 +348,56 @@ PROMPT;
      */
     private function extractJson(string $content): string
     {
-        // Try to find JSON in code blocks
         if (preg_match('/```(?:json)?\s*(\{[\s\S]*?\})\s*```/', $content, $matches)) {
             return $matches[1];
         }
 
-        // Try to find raw JSON object
         if (preg_match('/\{[\s\S]*\}/', $content, $matches)) {
             return $matches[0];
         }
 
         return $content;
+    }
+
+    /**
+     * Normalize 'null' string to actual null.
+     */
+    private function normalizeNull(mixed $value): mixed
+    {
+        if ($value === 'null' || $value === '') {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Legacy method for extracting resource info.
+     * Kept for backward compatibility with tests.
+     */
+    public function extractResourceInfo(string $message): array
+    {
+        // This is now handled by AI, but kept for tests
+        $info = [
+            'name' => null,
+            'project' => null,
+            'environment' => null,
+        ];
+
+        // Simple regex fallback for basic extraction
+        $commands = 'deploy|restart|stop|start|logs|status|delete|remove|деплой|задеплой|разверни|перезапусти|рестарт|останови|стоп|выключи|запусти|старт|включи|логи|статус|удали|удалить|убери|убрать';
+
+        if (preg_match('/(?:'.$commands.')\s+([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
+            $info['name'] = $matches[1];
+        }
+
+        if (preg_match('/(?:in|from|в)\s+([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)/ui', $message, $matches)) {
+            $info['project'] = $matches[1];
+            $info['environment'] = $matches[2];
+        } elseif (preg_match('/(?:in|from|в)\s+([a-zA-Z0-9_-]+)(?:\s|$)/ui', $message, $matches)) {
+            $info['project'] = $matches[1];
+        }
+
+        return $info;
     }
 }

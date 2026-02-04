@@ -11,203 +11,152 @@ final class ToolDefinitions
     /**
      * Available resource types in the system.
      */
-    public const RESOURCE_TYPES = ['application', 'service', 'database', 'server'];
+    public const RESOURCE_TYPES = ['application', 'service', 'database', 'server', 'project'];
 
     /**
-     * Available intent types.
+     * Available action types.
      */
-    public const INTENT_TYPES = ['deploy', 'restart', 'stop', 'start', 'logs', 'status', 'help', 'none'];
+    public const ACTION_TYPES = ['deploy', 'restart', 'stop', 'start', 'logs', 'status', 'delete', 'help', 'none'];
+
+    /**
+     * Legacy intent types for backward compatibility.
+     */
+    public const INTENT_TYPES = self::ACTION_TYPES;
 
     /**
      * Get tool definitions for Anthropic API.
-     * Anthropic uses `input_schema` with JSON Schema.
      */
     public static function forAnthropic(): array
     {
         return [
-            self::parseIntentToolAnthropic(),
-            self::executeCommandToolAnthropic(),
+            self::parseCommandsToolAnthropic(),
         ];
     }
 
     /**
      * Get tool definitions for OpenAI API.
-     * OpenAI uses `functions` or `tools` with `parameters` JSON Schema.
      */
     public static function forOpenAI(): array
     {
         return [
-            self::parseIntentToolOpenAI(),
-            self::executeCommandToolOpenAI(),
+            self::parseCommandsToolOpenAI(),
         ];
     }
 
     /**
-     * Get structured output schema for intent parsing.
-     * Used with OpenAI's response_format.
+     * Parse commands tool for Anthropic - supports multiple commands.
      */
-    public static function intentParsingSchema(): array
+    private static function parseCommandsToolAnthropic(): array
     {
         return [
-            'type' => 'json_schema',
-            'json_schema' => [
-                'name' => 'intent_result',
-                'strict' => true,
-                'schema' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'intent' => [
-                            'type' => ['string', 'null'],
-                            'enum' => [...self::INTENT_TYPES, null],
-                            'description' => 'The detected intent or null if no actionable intent found',
-                        ],
-                        'confidence' => [
-                            'type' => 'number',
-                            'minimum' => 0,
-                            'maximum' => 1,
-                            'description' => 'Confidence score from 0.0 to 1.0',
-                        ],
-                        'resource_type' => [
-                            'type' => ['string', 'null'],
-                            'enum' => [...self::RESOURCE_TYPES, null],
-                            'description' => 'Type of resource if detected',
-                        ],
-                        'resource_name' => [
-                            'type' => ['string', 'null'],
-                            'description' => 'Name of the resource if mentioned',
-                        ],
-                        'resource_id' => [
-                            'type' => ['string', 'integer', 'null'],
-                            'description' => 'ID of the resource if mentioned',
-                        ],
-                        'response_text' => [
-                            'type' => 'string',
-                            'description' => 'Natural language response to the user',
-                        ],
-                    ],
-                    'required' => ['intent', 'confidence', 'response_text'],
-                    'additionalProperties' => false,
-                ],
-            ],
-        ];
-    }
-
-    /**
-     * Parse intent tool for Anthropic.
-     */
-    private static function parseIntentToolAnthropic(): array
-    {
-        return [
-            'name' => 'parse_intent',
-            'description' => 'Parse user message to detect actionable intent for resource management. Call this tool to analyze what the user wants to do.',
+            'name' => 'parse_commands',
+            'description' => 'Parse user message to detect one or more actionable commands. Supports multiple resources and multiple actions in a single message.',
             'input_schema' => [
                 'type' => 'object',
                 'properties' => [
-                    'intent' => [
-                        'type' => 'string',
-                        'enum' => self::INTENT_TYPES,
-                        'description' => 'The detected intent: deploy, restart, stop, start, logs, status, help, or none',
+                    'commands' => [
+                        'type' => 'array',
+                        'description' => 'List of commands extracted from user message. Each command is one action on one resource.',
+                        'items' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'action' => [
+                                    'type' => 'string',
+                                    'enum' => self::ACTION_TYPES,
+                                    'description' => 'The action to perform: deploy, restart, stop, start, logs, status, delete, help, or none',
+                                ],
+                                'resource_type' => [
+                                    'type' => 'string',
+                                    'enum' => [...self::RESOURCE_TYPES, 'null'],
+                                    'description' => 'Type of resource: application, service, database, server, project, or null',
+                                ],
+                                'resource_name' => [
+                                    'type' => 'string',
+                                    'description' => 'Name of the resource if mentioned',
+                                ],
+                                'project_name' => [
+                                    'type' => 'string',
+                                    'description' => 'Project name if mentioned (for filtering)',
+                                ],
+                                'environment_name' => [
+                                    'type' => 'string',
+                                    'description' => 'Environment name if mentioned (for filtering)',
+                                ],
+                            ],
+                            'required' => ['action'],
+                        ],
                     ],
                     'confidence' => [
                         'type' => 'number',
-                        'description' => 'Confidence score from 0.0 to 1.0',
-                    ],
-                    'resource_type' => [
-                        'type' => 'string',
-                        'enum' => [...self::RESOURCE_TYPES, 'null'],
-                        'description' => 'Type of resource: application, service, database, server, or null',
-                    ],
-                    'resource_name' => [
-                        'type' => 'string',
-                        'description' => 'Name of the resource if mentioned, otherwise null',
-                    ],
-                    'resource_id' => [
-                        'type' => 'string',
-                        'description' => 'ID of the resource if mentioned, otherwise null',
+                        'description' => 'Overall confidence score from 0.0 to 1.0',
                     ],
                     'response_text' => [
                         'type' => 'string',
-                        'description' => 'Natural language response to show the user',
+                        'description' => 'Natural language response to show the user. MUST be in the same language as user message.',
                     ],
                 ],
-                'required' => ['intent', 'confidence', 'response_text'],
+                'required' => ['commands', 'confidence', 'response_text'],
             ],
         ];
     }
 
     /**
-     * Execute command tool for Anthropic.
+     * Parse commands tool for OpenAI - supports multiple commands.
      */
-    private static function executeCommandToolAnthropic(): array
-    {
-        return [
-            'name' => 'execute_command',
-            'description' => 'Execute a command on a resource. Only call after confirming user intent.',
-            'input_schema' => [
-                'type' => 'object',
-                'properties' => [
-                    'command' => [
-                        'type' => 'string',
-                        'enum' => ['deploy', 'restart', 'stop', 'start'],
-                        'description' => 'The command to execute',
-                    ],
-                    'resource_type' => [
-                        'type' => 'string',
-                        'enum' => self::RESOURCE_TYPES,
-                        'description' => 'Type of resource to execute command on',
-                    ],
-                    'resource_id' => [
-                        'type' => 'integer',
-                        'description' => 'ID of the resource',
-                    ],
-                ],
-                'required' => ['command', 'resource_type', 'resource_id'],
-            ],
-        ];
-    }
-
-    /**
-     * Parse intent tool for OpenAI.
-     */
-    private static function parseIntentToolOpenAI(): array
+    private static function parseCommandsToolOpenAI(): array
     {
         return [
             'type' => 'function',
             'function' => [
-                'name' => 'parse_intent',
-                'description' => 'Parse user message to detect actionable intent for resource management. Call this function to analyze what the user wants to do.',
+                'name' => 'parse_commands',
+                'description' => 'Parse user message to detect one or more actionable commands. Supports multiple resources and multiple actions in a single message.',
                 'strict' => true,
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'intent' => [
-                            'type' => 'string',
-                            'enum' => self::INTENT_TYPES,
-                            'description' => 'The detected intent: deploy, restart, stop, start, logs, status, help, or none',
+                        'commands' => [
+                            'type' => 'array',
+                            'description' => 'List of commands extracted from user message',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'action' => [
+                                        'type' => 'string',
+                                        'enum' => self::ACTION_TYPES,
+                                        'description' => 'The action to perform',
+                                    ],
+                                    'resource_type' => [
+                                        'type' => ['string', 'null'],
+                                        'enum' => [...self::RESOURCE_TYPES, null],
+                                        'description' => 'Type of resource',
+                                    ],
+                                    'resource_name' => [
+                                        'type' => ['string', 'null'],
+                                        'description' => 'Name of the resource',
+                                    ],
+                                    'project_name' => [
+                                        'type' => ['string', 'null'],
+                                        'description' => 'Project name if mentioned',
+                                    ],
+                                    'environment_name' => [
+                                        'type' => ['string', 'null'],
+                                        'description' => 'Environment name if mentioned',
+                                    ],
+                                ],
+                                'required' => ['action', 'resource_type', 'resource_name', 'project_name', 'environment_name'],
+                                'additionalProperties' => false,
+                            ],
                         ],
                         'confidence' => [
                             'type' => 'number',
-                            'description' => 'Confidence score from 0.0 to 1.0',
-                        ],
-                        'resource_type' => [
-                            'type' => ['string', 'null'],
-                            'enum' => [...self::RESOURCE_TYPES, null],
-                            'description' => 'Type of resource: application, service, database, server, or null',
-                        ],
-                        'resource_name' => [
-                            'type' => ['string', 'null'],
-                            'description' => 'Name of the resource if mentioned, otherwise null',
-                        ],
-                        'resource_id' => [
-                            'type' => ['string', 'null'],
-                            'description' => 'ID of the resource if mentioned, otherwise null',
+                            'description' => 'Overall confidence score from 0.0 to 1.0',
                         ],
                         'response_text' => [
                             'type' => 'string',
                             'description' => 'Natural language response to show the user',
                         ],
                     ],
-                    'required' => ['intent', 'confidence', 'resource_type', 'resource_name', 'resource_id', 'response_text'],
+                    'required' => ['commands', 'confidence', 'response_text'],
                     'additionalProperties' => false,
                 ],
             ],
@@ -215,54 +164,98 @@ final class ToolDefinitions
     }
 
     /**
-     * Execute command tool for OpenAI.
+     * Get only the parse_commands tool for Anthropic.
      */
-    private static function executeCommandToolOpenAI(): array
+    public static function parseCommandsAnthropic(): array
     {
-        return [
-            'type' => 'function',
-            'function' => [
-                'name' => 'execute_command',
-                'description' => 'Execute a command on a resource. Only call after confirming user intent.',
-                'strict' => true,
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'command' => [
-                            'type' => 'string',
-                            'enum' => ['deploy', 'restart', 'stop', 'start'],
-                            'description' => 'The command to execute',
-                        ],
-                        'resource_type' => [
-                            'type' => 'string',
-                            'enum' => self::RESOURCE_TYPES,
-                            'description' => 'Type of resource to execute command on',
-                        ],
-                        'resource_id' => [
-                            'type' => 'integer',
-                            'description' => 'ID of the resource',
-                        ],
-                    ],
-                    'required' => ['command', 'resource_type', 'resource_id'],
-                    'additionalProperties' => false,
-                ],
-            ],
-        ];
+        return [self::parseCommandsToolAnthropic()];
     }
 
     /**
-     * Get only the parse_intent tool for intent parsing operations.
+     * Get only the parse_commands tool for OpenAI.
+     */
+    public static function parseCommandsOpenAI(): array
+    {
+        return [self::parseCommandsToolOpenAI()];
+    }
+
+    /**
+     * Legacy: Get parse_intent tool for backward compatibility.
      */
     public static function parseIntentOnlyAnthropic(): array
     {
-        return [self::parseIntentToolAnthropic()];
+        return self::parseCommandsAnthropic();
     }
 
     /**
-     * Get only the parse_intent tool for OpenAI.
+     * Legacy: Get parse_intent tool for backward compatibility.
      */
     public static function parseIntentOnlyOpenAI(): array
     {
-        return [self::parseIntentToolOpenAI()];
+        return self::parseCommandsOpenAI();
+    }
+
+    /**
+     * Get structured output schema for command parsing.
+     */
+    public static function commandParsingSchema(): array
+    {
+        return [
+            'type' => 'json_schema',
+            'json_schema' => [
+                'name' => 'parsed_commands',
+                'strict' => true,
+                'schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'commands' => [
+                            'type' => 'array',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'action' => [
+                                        'type' => 'string',
+                                        'enum' => self::ACTION_TYPES,
+                                    ],
+                                    'resource_type' => [
+                                        'type' => ['string', 'null'],
+                                        'enum' => [...self::RESOURCE_TYPES, null],
+                                    ],
+                                    'resource_name' => [
+                                        'type' => ['string', 'null'],
+                                    ],
+                                    'project_name' => [
+                                        'type' => ['string', 'null'],
+                                    ],
+                                    'environment_name' => [
+                                        'type' => ['string', 'null'],
+                                    ],
+                                ],
+                                'required' => ['action'],
+                                'additionalProperties' => false,
+                            ],
+                        ],
+                        'confidence' => [
+                            'type' => 'number',
+                            'minimum' => 0,
+                            'maximum' => 1,
+                        ],
+                        'response_text' => [
+                            'type' => 'string',
+                        ],
+                    ],
+                    'required' => ['commands', 'confidence', 'response_text'],
+                    'additionalProperties' => false,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Legacy schema for backward compatibility.
+     */
+    public static function intentParsingSchema(): array
+    {
+        return self::commandParsingSchema();
     }
 }

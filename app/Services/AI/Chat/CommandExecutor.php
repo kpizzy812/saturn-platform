@@ -24,6 +24,8 @@ use App\Models\StandaloneRedis;
 use App\Models\User;
 use App\Services\AI\Chat\DTOs\CommandResult;
 use App\Services\AI\Chat\DTOs\IntentResult;
+use App\Services\AI\Chat\DTOs\ParsedCommand;
+use App\Services\AI\Chat\DTOs\ParsedIntent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -61,7 +63,7 @@ class CommandExecutor
     }
 
     /**
-     * Execute a command based on intent.
+     * Execute a command based on intent (legacy single command).
      */
     public function execute(IntentResult $intent): CommandResult
     {
@@ -80,6 +82,452 @@ class CommandExecutor
             'help' => $this->executeHelp(),
             default => CommandResult::failed("Unknown intent: {$intent->intent}"),
         };
+    }
+
+    /**
+     * Execute multiple commands from ParsedIntent.
+     *
+     * @return CommandResult[] Array of results for each command
+     */
+    public function executeMultiple(ParsedIntent $parsedIntent): array
+    {
+        $results = [];
+
+        if (! $parsedIntent->hasCommands()) {
+            return [CommandResult::failed('Не обнаружено команд для выполнения')];
+        }
+
+        foreach ($parsedIntent->commands as $command) {
+            $results[] = $this->executeCommand($command);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Execute a single ParsedCommand.
+     */
+    public function executeCommand(ParsedCommand $command): CommandResult
+    {
+        return match ($command->action) {
+            'deploy' => $this->executeDeployCommand($command),
+            'restart' => $this->executeRestartCommand($command),
+            'stop' => $this->executeStopCommand($command),
+            'start' => $this->executeStartCommand($command),
+            'logs' => $this->executeLogsCommand($command),
+            'status' => $this->executeStatusCommand($command),
+            'delete' => $this->executeDeleteCommand($command),
+            'help' => $this->executeHelp(),
+            default => CommandResult::failed("Неизвестное действие: {$command->action}"),
+        };
+    }
+
+    /**
+     * Deploy an application (new method for ParsedCommand).
+     */
+    private function executeDeployCommand(ParsedCommand $command): CommandResult
+    {
+        $resource = $this->resolveResourceFromCommand($command, 'application');
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listAvailableResources('deploy', 'application');
+            }
+
+            return CommandResult::notFound('application');
+        }
+
+        if (! ($resource instanceof Application)) {
+            return CommandResult::failed('Deploy доступен только для приложений');
+        }
+
+        if (! $this->authorize('deploy', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            $deploymentUuid = (string) new Cuid2;
+            $result = queue_application_deployment(
+                application: $resource,
+                deployment_uuid: $deploymentUuid,
+                commit: 'HEAD',
+                force_rebuild: false,
+                is_api: true,
+                user_id: $this->user->id,
+            );
+
+            if (is_array($result) && isset($result['status'])) {
+                if ($result['status'] === 'queue_full') {
+                    return CommandResult::failed($result['message']);
+                }
+                if ($result['status'] === 'skipped') {
+                    return CommandResult::success(
+                        "Деплой уже в очереди для этого коммита. UUID: {$result['deployment_uuid']}",
+                        ['deployment_uuid' => $result['deployment_uuid']]
+                    );
+                }
+            }
+
+            return CommandResult::success(
+                "🚀 Запущен деплой **{$resource->name}**. UUID: `{$deploymentUuid}`",
+                ['deployment_uuid' => $deploymentUuid, 'application_uuid' => $resource->uuid]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat deploy failed', ['error' => $e->getMessage(), 'application_id' => $resource->id]);
+
+            return CommandResult::failed("Ошибка деплоя: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Restart a resource (new method for ParsedCommand).
+     */
+    private function executeRestartCommand(ParsedCommand $command): CommandResult
+    {
+        $resource = $this->resolveResourceFromCommand($command);
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listAvailableResources('restart', $command->resourceType);
+            }
+
+            return CommandResult::notFound($command->resourceType ?? 'resource');
+        }
+
+        if (! $this->authorize('update', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            if ($resource instanceof Application) {
+                $deploymentUuid = (string) new Cuid2;
+                queue_application_deployment(
+                    application: $resource,
+                    deployment_uuid: $deploymentUuid,
+                    restart_only: true,
+                    user_id: $this->user->id,
+                );
+
+                return CommandResult::success(
+                    "🔄 Перезапуск **{$resource->name}**. UUID: `{$deploymentUuid}`",
+                    ['deployment_uuid' => $deploymentUuid]
+                );
+            }
+
+            if ($resource instanceof Service) {
+                RestartService::dispatch($resource, false);
+
+                return CommandResult::success("🔄 Перезапуск сервиса **{$resource->name}**.");
+            }
+
+            if ($this->isDatabase($resource)) {
+                RestartDatabase::dispatch($resource);
+
+                return CommandResult::success("🔄 Перезапуск базы данных **{$resource->name}**.");
+            }
+
+            return CommandResult::failed('Этот тип ресурса не поддерживает перезапуск');
+        } catch (\Throwable $e) {
+            Log::error('AI Chat restart failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка перезапуска: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Stop a resource (new method for ParsedCommand).
+     */
+    private function executeStopCommand(ParsedCommand $command): CommandResult
+    {
+        $resource = $this->resolveResourceFromCommand($command);
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listAvailableResources('stop', $command->resourceType);
+            }
+
+            return CommandResult::notFound($command->resourceType ?? 'resource');
+        }
+
+        if (! $this->authorize('update', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            if ($resource instanceof Application) {
+                StopApplication::dispatch($resource);
+
+                return CommandResult::success("⏹️ Остановка приложения **{$resource->name}**.");
+            }
+
+            if ($resource instanceof Service) {
+                StopService::dispatch($resource);
+
+                return CommandResult::success("⏹️ Остановка сервиса **{$resource->name}**.");
+            }
+
+            if ($this->isDatabase($resource)) {
+                StopDatabase::dispatch($resource);
+
+                return CommandResult::success("⏹️ Остановка базы данных **{$resource->name}**.");
+            }
+
+            return CommandResult::failed('Этот тип ресурса не поддерживает остановку');
+        } catch (\Throwable $e) {
+            Log::error('AI Chat stop failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка остановки: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Start a resource (new method for ParsedCommand).
+     */
+    private function executeStartCommand(ParsedCommand $command): CommandResult
+    {
+        $resource = $this->resolveResourceFromCommand($command);
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listAvailableResources('start', $command->resourceType);
+            }
+
+            return CommandResult::notFound($command->resourceType ?? 'resource');
+        }
+
+        if (! $this->authorize('update', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            if ($resource instanceof Application) {
+                $deploymentUuid = (string) new Cuid2;
+                queue_application_deployment(
+                    application: $resource,
+                    deployment_uuid: $deploymentUuid,
+                    user_id: $this->user->id,
+                );
+
+                return CommandResult::success(
+                    "▶️ Запуск приложения **{$resource->name}**. UUID: `{$deploymentUuid}`",
+                    ['deployment_uuid' => $deploymentUuid]
+                );
+            }
+
+            if ($resource instanceof Service) {
+                StartService::dispatch($resource, false);
+
+                return CommandResult::success("▶️ Запуск сервиса **{$resource->name}**.");
+            }
+
+            if ($this->isDatabase($resource)) {
+                StartDatabase::dispatch($resource);
+
+                return CommandResult::success("▶️ Запуск базы данных **{$resource->name}**.");
+            }
+
+            return CommandResult::failed('Этот тип ресурса не поддерживает запуск');
+        } catch (\Throwable $e) {
+            Log::error('AI Chat start failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка запуска: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Get logs (new method for ParsedCommand).
+     */
+    private function executeLogsCommand(ParsedCommand $command): CommandResult
+    {
+        $resource = $this->resolveResourceFromCommand($command);
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listAvailableResources('view logs for', $command->resourceType);
+            }
+
+            return CommandResult::notFound($command->resourceType ?? 'resource');
+        }
+
+        if (! $this->authorize('view', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            $logs = $this->fetchLogs($resource);
+
+            return CommandResult::success(
+                "📋 Логи **{$resource->name}**:\n```\n{$logs}\n```",
+                ['logs' => $logs]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat logs failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка получения логов: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Get status (new method for ParsedCommand).
+     */
+    private function executeStatusCommand(ParsedCommand $command): CommandResult
+    {
+        $resource = $this->resolveResourceFromCommand($command);
+
+        if (! $resource) {
+            return $this->executeStatusOverview();
+        }
+
+        if (! $this->authorize('view', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            $status = $this->getResourceStatus($resource);
+
+            return CommandResult::success(
+                "📊 Статус **{$resource->name}**: {$status['status']}",
+                $status
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat status failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка получения статуса: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Delete a resource (new method for ParsedCommand).
+     */
+    private function executeDeleteCommand(ParsedCommand $command): CommandResult
+    {
+        // Handle project deletion
+        if ($command->resourceType === 'project' || $this->looksLikeProject($command->resourceName)) {
+            return $this->executeDeleteProjectCommand($command);
+        }
+
+        $resource = $this->resolveResourceFromCommand($command);
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listDeletableResources();
+            }
+
+            return CommandResult::notFound($command->resourceType ?? 'resource');
+        }
+
+        if (! $this->authorize('delete', $resource)) {
+            return CommandResult::unauthorized('У вас нет прав на удаление этого ресурса.');
+        }
+
+        try {
+            $resourceName = $resource->name ?? 'Unknown';
+            $resourceClass = class_basename($resource);
+
+            $resource->delete();
+
+            return CommandResult::success(
+                "✅ Успешно удалён {$resourceClass} **{$resourceName}**.",
+                ['deleted' => true, 'type' => $resourceClass, 'name' => $resourceName]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat delete failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка удаления: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Delete a project (new method for ParsedCommand).
+     */
+    private function executeDeleteProjectCommand(ParsedCommand $command): CommandResult
+    {
+        $projectName = $command->resourceName ?? $command->projectName;
+
+        if (! $projectName) {
+            return $this->listDeletableProjects('Какой проект вы хотите удалить?');
+        }
+
+        $project = Project::where('team_id', $this->teamId)
+            ->where('name', 'ILIKE', "%{$projectName}%")
+            ->first();
+
+        if (! $project) {
+            return CommandResult::notFound('project');
+        }
+
+        if (! $this->authorize('delete', $project)) {
+            return CommandResult::unauthorized('У вас нет прав на удаление этого проекта.');
+        }
+
+        try {
+            $deletedName = $project->name;
+            $project->delete();
+
+            return CommandResult::success(
+                "✅ Успешно удалён проект **{$deletedName}**.",
+                ['deleted' => true, 'type' => 'Project', 'name' => $deletedName]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat delete project failed', ['error' => $e->getMessage(), 'project_id' => $project->id]);
+
+            return CommandResult::failed("Ошибка удаления проекта: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Resolve resource from ParsedCommand.
+     */
+    private function resolveResourceFromCommand(ParsedCommand $command, ?string $preferredType = null): ?Model
+    {
+        $resourceType = $command->resourceType ?? $preferredType;
+        $resourceName = $command->resourceName;
+        $projectName = $command->projectName;
+        $envName = $command->environmentName;
+
+        if (! $resourceName && ! $command->resourceId && ! $command->resourceUuid) {
+            return null;
+        }
+
+        // Try by ID
+        if ($command->resourceId) {
+            return $this->findResourceById($resourceType, $command->resourceId);
+        }
+
+        // Try by UUID
+        if ($command->resourceUuid) {
+            return $this->findResourceByUuid($resourceType, $command->resourceUuid);
+        }
+
+        // Try by name
+        if ($resourceName) {
+            return $this->findResourceByName($resourceType, $resourceName, $projectName, $envName);
+        }
+
+        return null;
+    }
+
+    /**
+     * Format multiple results into a single message.
+     */
+    public static function formatMultipleResults(array $results): string
+    {
+        if (count($results) === 0) {
+            return 'Не выполнено ни одной команды.';
+        }
+
+        if (count($results) === 1) {
+            return $results[0]->message;
+        }
+
+        $output = "**Результаты выполнения команд:**\n\n";
+
+        foreach ($results as $i => $result) {
+            $icon = $result->success ? '✓' : '✗';
+            $output .= "{$icon} {$result->message}\n";
+        }
+
+        $successCount = count(array_filter($results, fn ($r) => $r->success));
+        $totalCount = count($results);
+
+        $output .= "\n---\n";
+        $output .= "Выполнено успешно: {$successCount}/{$totalCount}";
+
+        return $output;
     }
 
     /**

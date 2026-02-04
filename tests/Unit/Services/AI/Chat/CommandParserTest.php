@@ -3,8 +3,8 @@
 namespace Tests\Unit\Services\AI\Chat;
 
 use App\Services\AI\Chat\CommandParser;
-use App\Services\AI\Chat\DTOs\IntentResult;
-use PHPUnit\Framework\Attributes\DataProvider;
+use App\Services\AI\Chat\DTOs\ParsedCommand;
+use App\Services\AI\Chat\DTOs\ParsedIntent;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -19,282 +19,19 @@ class CommandParserTest extends TestCase
     }
 
     #[Test]
-    #[DataProvider('deployIntentProvider')]
-    public function it_parses_deploy_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('deploy', $result->intent);
-        $this->assertTrue($result->requiresConfirmation);
-    }
-
-    public static function deployIntentProvider(): array
-    {
-        return [
-            ['deploy'],
-            ['Deploy'],
-            ['DEPLOY'],
-            ['deploy my-app'],
-            ['деплой'],
-            ['задеплой'],
-            ['разверни'],
-            ['redeploy'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('restartIntentProvider')]
-    public function it_parses_restart_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('restart', $result->intent);
-        $this->assertFalse($result->requiresConfirmation);
-    }
-
-    public static function restartIntentProvider(): array
-    {
-        return [
-            ['restart'],
-            ['Restart'],
-            ['restart my-service'],
-            ['перезапусти'],
-            ['рестарт'],
-            ['reboot'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('stopIntentProvider')]
-    public function it_parses_stop_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('stop', $result->intent);
-        $this->assertTrue($result->requiresConfirmation);
-    }
-
-    public static function stopIntentProvider(): array
-    {
-        return [
-            ['stop'],
-            ['Stop'],
-            ['stop my-app'],
-            ['останови'],
-            ['стоп'],
-            ['выключи'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('startIntentProvider')]
-    public function it_parses_start_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('start', $result->intent);
-        $this->assertFalse($result->requiresConfirmation);
-    }
-
-    public static function startIntentProvider(): array
-    {
-        return [
-            ['start'],
-            ['Start'],
-            ['start my-app'],
-            ['запусти'],
-            ['старт'],
-            ['включи'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('logsIntentProvider')]
-    public function it_parses_logs_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('logs', $result->intent);
-        $this->assertFalse($result->requiresConfirmation);
-    }
-
-    public static function logsIntentProvider(): array
-    {
-        return [
-            ['logs'],
-            ['Logs'],
-            ['log'],
-            ['логи'],
-            ['лог'],
-            ['покажи логи'],
-            ['show logs'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('statusIntentProvider')]
-    public function it_parses_status_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('status', $result->intent);
-        $this->assertFalse($result->requiresConfirmation);
-    }
-
-    public static function statusIntentProvider(): array
-    {
-        return [
-            ['status'],
-            ['Status'],
-            ['статус'],
-            ['состояние'],
-            ['state'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('helpIntentProvider')]
-    public function it_parses_help_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('help', $result->intent);
-        $this->assertFalse($result->requiresConfirmation);
-    }
-
-    public static function helpIntentProvider(): array
-    {
-        return [
-            ['help'],
-            ['Help'],
-            ['помощь'],
-            ['помоги'],
-            ['что ты умеешь'],
-            ['что ты можешь'],
-        ];
-    }
-
-    #[Test]
-    #[DataProvider('deleteIntentProvider')]
-    public function it_parses_delete_intents(string $message): void
-    {
-        $result = $this->parser->parse($message);
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('delete', $result->intent);
-        $this->assertTrue($result->requiresConfirmation);
-    }
-
-    public static function deleteIntentProvider(): array
-    {
-        return [
-            ['delete'],
-            ['Delete'],
-            ['DELETE'],
-            ['delete my-project'],
-            ['remove'],
-            ['remove my-app'],
-            ['удали'],
-            ['удалить'],
-            ['убери'],
-            ['убрать'],
-        ];
-    }
-
-    #[Test]
-    public function it_parses_delete_all_except_pattern(): void
-    {
-        $result = $this->parser->parse('удали все проекты кроме PIXELPETS');
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('delete', $result->intent);
-        $this->assertTrue($result->requiresConfirmation);
-        $this->assertEquals('project', $result->params['resource_type'] ?? null);
-        $this->assertTrue($result->params['delete_all_except'] ?? false);
-        $this->assertContains('PIXELPETS', $result->params['exclude_names'] ?? []);
-    }
-
-    #[Test]
-    public function it_parses_delete_all_except_pattern_in_english(): void
-    {
-        $result = $this->parser->parse('delete all projects except MyApp');
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('delete', $result->intent);
-        $this->assertTrue($result->params['delete_all_except'] ?? false);
-        $this->assertContains('MyApp', $result->params['exclude_names'] ?? []);
-    }
-
-    #[Test]
-    public function it_returns_no_intent_for_generic_messages(): void
-    {
-        $result = $this->parser->parse('Hello, how are you?');
-
-        $this->assertInstanceOf(IntentResult::class, $result);
-        $this->assertFalse($result->hasIntent());
-        $this->assertNull($result->intent);
-    }
-
-    #[Test]
     public function it_extracts_resource_name_from_message(): void
     {
-        $result = $this->parser->parse('deploy my-awesome-app');
+        $info = $this->parser->extractResourceInfo('deploy my-awesome-app');
 
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('deploy', $result->intent);
-        $this->assertEquals('my-awesome-app', $result->params['resource_name'] ?? null);
+        $this->assertEquals('my-awesome-app', $info['name']);
     }
 
     #[Test]
-    public function it_uses_context_when_provided(): void
+    public function it_extracts_resource_name_from_russian_message(): void
     {
-        $context = [
-            'type' => 'application',
-            'id' => 123,
-            'name' => 'test-app',
-            'uuid' => 'abc-123',
-        ];
+        $info = $this->parser->extractResourceInfo('деплой my-app');
 
-        $result = $this->parser->parse('deploy', $context);
-
-        $this->assertTrue($result->hasIntent());
-        $this->assertEquals('deploy', $result->intent);
-        $this->assertEquals('application', $result->params['resource_type'] ?? null);
-        $this->assertEquals(123, $result->params['resource_id'] ?? null);
-        $this->assertEquals('abc-123', $result->params['resource_uuid'] ?? null);
-    }
-
-    #[Test]
-    public function it_generates_confirmation_message_for_dangerous_intents(): void
-    {
-        $context = [
-            'type' => 'application',
-            'id' => 123,
-            'name' => 'my-app',
-        ];
-
-        $result = $this->parser->parse('deploy', $context);
-
-        $this->assertTrue($result->requiresConfirmation);
-        $this->assertNotNull($result->confirmationMessage);
-        $this->assertStringContainsString('my-app', $result->confirmationMessage);
+        $this->assertEquals('my-app', $info['name']);
     }
 
     #[Test]
@@ -328,24 +65,161 @@ class CommandParserTest extends TestCase
     }
 
     #[Test]
-    public function it_includes_project_in_confirmation_message(): void
+    public function it_extracts_delete_command_resource(): void
     {
-        $result = $this->parser->parse('deploy my-app in my-project/production');
+        $info = $this->parser->extractResourceInfo('delete test-project');
 
-        $this->assertTrue($result->requiresConfirmation);
-        $this->assertStringContainsString('my-app', $result->confirmationMessage);
-        $this->assertStringContainsString('my-project', $result->confirmationMessage);
-        $this->assertStringContainsString('production', $result->confirmationMessage);
+        $this->assertEquals('test-project', $info['name']);
     }
 
     #[Test]
-    public function it_stores_project_and_environment_in_params(): void
+    public function it_extracts_russian_delete_command_resource(): void
     {
-        $result = $this->parser->parse('restart api-service in backend/staging');
+        $info = $this->parser->extractResourceInfo('удали my-project');
 
-        $this->assertEquals('restart', $result->intent);
-        $this->assertEquals('api-service', $result->params['resource_name'] ?? null);
-        $this->assertEquals('backend', $result->params['project_name'] ?? null);
-        $this->assertEquals('staging', $result->params['environment_name'] ?? null);
+        $this->assertEquals('my-project', $info['name']);
+    }
+
+    #[Test]
+    public function parsed_command_is_actionable(): void
+    {
+        $command = new ParsedCommand('deploy', 'application', 'my-app');
+
+        $this->assertTrue($command->isActionable());
+        $this->assertTrue($command->isDangerous());
+        $this->assertTrue($command->hasResource());
+    }
+
+    #[Test]
+    public function parsed_command_restart_is_not_dangerous(): void
+    {
+        $command = new ParsedCommand('restart', 'application', 'my-app');
+
+        $this->assertTrue($command->isActionable());
+        $this->assertFalse($command->isDangerous());
+    }
+
+    #[Test]
+    public function parsed_command_delete_is_dangerous(): void
+    {
+        $command = new ParsedCommand('delete', 'project', 'test-project');
+
+        $this->assertTrue($command->isActionable());
+        $this->assertTrue($command->isDangerous());
+    }
+
+    #[Test]
+    public function parsed_command_none_is_not_actionable(): void
+    {
+        $command = new ParsedCommand('none');
+
+        $this->assertFalse($command->isActionable());
+        $this->assertFalse($command->isDangerous());
+        $this->assertFalse($command->hasResource());
+    }
+
+    #[Test]
+    public function parsed_intent_with_multiple_commands(): void
+    {
+        $commands = [
+            new ParsedCommand('restart', 'application', 'app1'),
+            new ParsedCommand('restart', 'application', 'app2'),
+            new ParsedCommand('restart', 'database', 'db1'),
+        ];
+
+        $intent = new ParsedIntent($commands, 0.9);
+
+        $this->assertTrue($intent->hasCommands());
+        $this->assertTrue($intent->hasMultipleCommands());
+        $this->assertCount(3, $intent->commands);
+        $this->assertEquals('restart', $intent->getFirstCommand()->action);
+    }
+
+    #[Test]
+    public function parsed_intent_detects_dangerous_commands(): void
+    {
+        $commands = [
+            new ParsedCommand('restart', 'application', 'app1'),
+            new ParsedCommand('delete', 'project', 'test-project'),
+        ];
+
+        $intent = new ParsedIntent($commands, 0.9);
+
+        $this->assertTrue($intent->hasDangerousCommands());
+        $this->assertCount(1, $intent->getDangerousCommands());
+    }
+
+    #[Test]
+    public function parsed_intent_from_ai_response(): void
+    {
+        $data = [
+            'commands' => [
+                ['action' => 'restart', 'resource_type' => 'application', 'resource_name' => 'app1'],
+                ['action' => 'restart', 'resource_type' => 'application', 'resource_name' => 'app2'],
+            ],
+            'confidence' => 0.95,
+            'response_text' => 'Перезапускаю приложения app1 и app2.',
+        ];
+
+        $intent = ParsedIntent::fromAIResponse($data);
+
+        $this->assertTrue($intent->hasCommands());
+        $this->assertCount(2, $intent->commands);
+        $this->assertEquals('Перезапускаю приложения app1 и app2.', $intent->responseText);
+        $this->assertEquals(0.95, $intent->confidence);
+    }
+
+    #[Test]
+    public function parsed_intent_from_ai_response_with_dangerous_commands(): void
+    {
+        $data = [
+            'commands' => [
+                ['action' => 'delete', 'resource_type' => 'project', 'resource_name' => 'test-project'],
+            ],
+            'confidence' => 0.9,
+            'response_text' => 'Удаляю проект test-project.',
+        ];
+
+        $intent = ParsedIntent::fromAIResponse($data);
+
+        $this->assertTrue($intent->requiresConfirmation);
+        $this->assertNotNull($intent->confirmationMessage);
+        $this->assertStringContainsString('delete', $intent->confirmationMessage);
+    }
+
+    #[Test]
+    public function parsed_command_to_array(): void
+    {
+        $command = new ParsedCommand(
+            action: 'deploy',
+            resourceType: 'application',
+            resourceName: 'my-app',
+            projectName: 'my-project',
+            environmentName: 'production',
+        );
+
+        $array = $command->toArray();
+
+        $this->assertEquals('deploy', $array['action']);
+        $this->assertEquals('application', $array['resource_type']);
+        $this->assertEquals('my-app', $array['resource_name']);
+        $this->assertEquals('my-project', $array['project_name']);
+        $this->assertEquals('production', $array['environment_name']);
+    }
+
+    #[Test]
+    public function parsed_command_from_array(): void
+    {
+        $data = [
+            'action' => 'restart',
+            'resource_type' => 'database',
+            'resource_name' => 'my-db',
+        ];
+
+        $command = ParsedCommand::fromArray($data);
+
+        $this->assertEquals('restart', $command->action);
+        $this->assertEquals('database', $command->resourceType);
+        $this->assertEquals('my-db', $command->resourceName);
     }
 }

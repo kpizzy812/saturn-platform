@@ -13,6 +13,7 @@ use App\Services\AI\Chat\DTOs\ChatMessage;
 use App\Services\AI\Chat\DTOs\ChatResponse;
 use App\Services\AI\Chat\DTOs\CommandResult;
 use App\Services\AI\Chat\DTOs\IntentResult;
+use App\Services\AI\Chat\DTOs\ParsedIntent;
 use App\Services\AI\Chat\Providers\AnthropicChatProvider;
 use App\Services\AI\Chat\Providers\OpenAIChatProvider;
 use Generator;
@@ -150,6 +151,7 @@ class AiChatService
 
     /**
      * Send a message and get response.
+     * Supports multiple commands in a single message.
      */
     public function sendMessage(
         AiChatSession $session,
@@ -167,26 +169,46 @@ class AiChatService
         // Get context for command parsing
         $context = $this->buildContext($session);
 
-        // Parse intent
-        $intent = $this->parseIntent($content, $context);
+        // Parse commands using AI (supports multiple commands)
+        $parsedIntent = $this->parseCommands($content, $context);
 
-        // Generate AI response
-        $response = $this->generateResponse($session, $content, $intent, $context);
+        // Generate AI response based on parsed intent
+        $response = $this->generateResponseFromIntent($session, $content, $parsedIntent, $context);
 
-        // Execute command if detected and allowed
-        $commandResult = null;
-        if ($executeCommands && $intent->isActionable() && ! $intent->requiresConfirmation) {
-            $commandResult = $this->executeCommand($session, $intent);
+        // Execute commands if detected and allowed
+        $commandResults = [];
+        if ($executeCommands && $parsedIntent->hasActionableCommands() && ! $parsedIntent->requiresConfirmation) {
+            $commandResults = $this->executeCommands($session, $parsedIntent);
         }
+
+        // Format the final response message
+        $finalContent = $this->formatMultiCommandResponse($response, $parsedIntent, $commandResults);
+
+        // Determine command status
+        $commandStatus = null;
+        $commandResultMessage = null;
+        if (! empty($commandResults)) {
+            $allSuccess = ! empty(array_filter($commandResults, fn ($r) => $r->success));
+            $anyFailed = ! empty(array_filter($commandResults, fn ($r) => ! $r->success));
+            $commandStatus = $allSuccess ? 'completed' : ($anyFailed ? 'failed' : null);
+            $commandResultMessage = CommandExecutor::formatMultipleResults($commandResults);
+        }
+
+        // Get first command for legacy storage
+        $firstCommand = $parsedIntent->getFirstCommand();
 
         // Save assistant message
         $assistantMessage = $session->messages()->create([
             'role' => 'assistant',
-            'content' => $this->formatResponse($response, $intent, $commandResult),
-            'intent' => $intent->intent,
-            'intent_params' => $intent->params ?: null,
-            'command_status' => $commandResult?->success ? 'completed' : ($commandResult ? 'failed' : null),
-            'command_result' => $commandResult?->message,
+            'content' => $finalContent,
+            'intent' => $firstCommand?->action,
+            'intent_params' => $firstCommand ? [
+                'resource_type' => $firstCommand->resourceType,
+                'resource_name' => $firstCommand->resourceName,
+                'commands_count' => count($parsedIntent->commands),
+            ] : null,
+            'command_status' => $commandStatus,
+            'command_result' => $commandResultMessage,
         ]);
 
         // Log usage
@@ -199,6 +221,98 @@ class AiChatService
         $session->generateTitle();
 
         return $assistantMessage;
+    }
+
+    /**
+     * Parse commands from message using AI.
+     */
+    public function parseCommands(string $message, ?array $context = null): ParsedIntent
+    {
+        $provider = $this->getProvider();
+        if ($provider) {
+            $this->commandParser->setProvider($provider);
+        }
+
+        return $this->commandParser->parseCommands($message, $context);
+    }
+
+    /**
+     * Execute multiple commands.
+     *
+     * @return CommandResult[]
+     */
+    public function executeCommands(AiChatSession $session, ParsedIntent $parsedIntent): array
+    {
+        $executor = new CommandExecutor($session->user, $session->team_id);
+
+        return $executor->executeMultiple($parsedIntent);
+    }
+
+    /**
+     * Generate response based on parsed intent.
+     */
+    private function generateResponseFromIntent(
+        AiChatSession $session,
+        string $userMessage,
+        ParsedIntent $parsedIntent,
+        ?array $context,
+    ): ChatResponse {
+        $provider = $this->getProvider();
+        if (! $provider) {
+            return ChatResponse::failed(
+                'AI service is not available',
+                'none',
+                'none'
+            );
+        }
+
+        try {
+            // If intent requires confirmation, return confirmation message
+            if ($parsedIntent->requiresConfirmation) {
+                return ChatResponse::success(
+                    $parsedIntent->confirmationMessage ?? 'Вы уверены, что хотите выполнить эти действия?',
+                    $provider->getName(),
+                    $provider->getModel()
+                );
+            }
+
+            // If parsed intent has a response text, use it
+            if ($parsedIntent->responseText) {
+                return ChatResponse::success(
+                    $parsedIntent->responseText,
+                    $provider->getName(),
+                    $provider->getModel()
+                );
+            }
+
+            // Generate response via AI
+            $messages = $this->buildMessageHistory($session, $userMessage);
+
+            return $provider->chat($messages);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat response generation failed', ['error' => $e->getMessage()]);
+
+            return ChatResponse::failed($e->getMessage(), $provider?->getName() ?? 'none', $provider?->getModel() ?? 'none');
+        }
+    }
+
+    /**
+     * Format response with multiple command results.
+     */
+    private function formatMultiCommandResponse(ChatResponse $response, ParsedIntent $parsedIntent, array $commandResults): string
+    {
+        // If there are command results, show them
+        if (! empty($commandResults)) {
+            return CommandExecutor::formatMultipleResults($commandResults);
+        }
+
+        // If intent requires confirmation, show confirmation message
+        if ($parsedIntent->requiresConfirmation && $parsedIntent->confirmationMessage) {
+            return $parsedIntent->confirmationMessage;
+        }
+
+        // Otherwise use AI response
+        return $response->content ?: $parsedIntent->responseText ?: 'Не удалось сгенерировать ответ.';
     }
 
     /**
