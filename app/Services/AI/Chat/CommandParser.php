@@ -305,8 +305,13 @@ Available intents:
 Guidelines:
 - Set confidence based on how clear the user's intent is (0.0 = unclear, 1.0 = very clear)
 - Extract resource_type, resource_name, resource_id if mentioned
-- Provide a helpful response_text in the same language as the user's message
-- Support both English and Russian languages
+
+**CRITICAL LANGUAGE RULE for response_text:**
+- ALWAYS write response_text in the SAME LANGUAGE as the user's message
+- If user writes in Russian → response_text MUST be in Russian
+- If user writes in English → response_text MUST be in English
+- Example Russian: "Какое приложение вы хотите задеплоить?"
+- Example English: "Which application would you like to deploy?"
 {$contextInfo}
 PROMPT;
     }
@@ -427,7 +432,11 @@ Respond in JSON format:
 }
 
 If no actionable intent is detected, set intent to null and provide a helpful response.
-Support both English and Russian languages.
+
+**CRITICAL LANGUAGE RULE:**
+- ALWAYS respond in the SAME LANGUAGE as the user's message
+- If user writes in Russian → respond in Russian
+- If user writes in English → respond in English
 {$contextInfo}
 PROMPT;
     }
