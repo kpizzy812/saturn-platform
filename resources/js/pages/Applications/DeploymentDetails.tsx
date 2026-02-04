@@ -6,6 +6,7 @@ import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '@/comp
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
 import { AIAnalysisCard } from '@/components/features/AIAnalysisCard';
 import { CodeReviewCard } from '@/components/features/CodeReviewCard';
+import { DeploymentGraph, parseDeploymentLogs } from '@/components/features/DeploymentGraph';
 import {
     Rocket,
     GitCommit,
@@ -143,6 +144,21 @@ export default function DeploymentDetails({
             level: log.type === 'stderr' ? 'stderr' : 'stdout',
         }));
     }, [logs]);
+
+    // Parse deployment stages for pipeline graph
+    const deploymentStages = React.useMemo(() => {
+        const logsForParsing = logs.map(log => ({
+            output: log.output,
+            timestamp: log.timestamp || undefined,
+        }));
+        return parseDeploymentLogs(logsForParsing);
+    }, [logs]);
+
+    // Determine current stage for the graph
+    const currentStage = React.useMemo(() => {
+        const runningStage = deploymentStages.find(s => s.status === 'running');
+        return runningStage?.id;
+    }, [deploymentStages]);
 
     const handleCancel = async () => {
         const confirmed = await confirm({
@@ -332,6 +348,17 @@ export default function DeploymentDetails({
                 <div className="grid gap-6 lg:grid-cols-3">
                     {/* Main content - Logs */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* Deployment Pipeline Graph */}
+                        <Card>
+                            <CardContent className="p-6">
+                                <DeploymentGraph
+                                    stages={deploymentStages}
+                                    currentStage={currentStage}
+                                    isLive={isInProgress}
+                                />
+                            </CardContent>
+                        </Card>
+
                         {/* AI Analysis Card - shown for failed deployments */}
                         <AIAnalysisCard
                             deploymentUuid={deployment.deployment_uuid}
