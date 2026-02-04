@@ -104,8 +104,9 @@
 - [ ] `ApplicationComposeParser.php` + `ServiceComposeParser.php` = 3020 строк дублирования
 
 ### N+1 Queries
-- [ ] `Service.php:85-100` - множество ->get() без eager loading
-- [ ] `routes/web/misc.php` - nested foreach loops
+- [x] `Service.php:85-100` - ✅ Кэширование результатов get() в переменные
+- [x] `Project.php:isEmpty()` - ✅ exists() вместо count() == 0
+- [x] `routes/web/misc.php` - Уже использует eager loading (with())
 
 ---
 
@@ -143,4 +144,9 @@
 - ✅ Upload validation усилена:
   - Добавлена проверка magic bytes для binary файлов
   - octet-stream теперь проверяется на соответствие формату
+
+### 2026-02-04 (Фаза 5 - Performance)
+- ✅ N+1 queries оптимизация:
+  - `Service::isConfigurationChanged()` - кэширование get() результатов (5 → 2 запроса)
+  - `Project::isEmpty()` - exists() вместо count() (быстрее, short-circuit)
 

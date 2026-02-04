@@ -84,16 +84,20 @@ class Service extends BaseModel
 
     public function isConfigurationChanged(bool $save = false)
     {
-        $domains = $this->applications()->get()->pluck('fqdn')->sort()->toArray();
+        // PERFORMANCE: Cache query results to avoid N+1 (was calling get() 5 times)
+        $applications = $this->applications()->get();
+        $databases = $this->databases()->get();
+
+        $domains = $applications->pluck('fqdn')->sort()->toArray();
         $domains = implode(',', $domains);
 
-        $applicationImages = $this->applications()->get()->pluck('image')->sort();
-        $databaseImages = $this->databases()->get()->pluck('image')->sort();
+        $applicationImages = $applications->pluck('image')->sort();
+        $databaseImages = $databases->pluck('image')->sort();
         $images = $applicationImages->merge($databaseImages);
         $images = implode(',', $images->toArray());
 
-        $applicationStorages = $this->applications()->get()->pluck('persistentStorages')->flatten()->sortBy('id');
-        $databaseStorages = $this->databases()->get()->pluck('persistentStorages')->flatten()->sortBy('id');
+        $applicationStorages = $applications->pluck('persistentStorages')->flatten()->sortBy('id');
+        $databaseStorages = $databases->pluck('persistentStorages')->flatten()->sortBy('id');
         $storages = $applicationStorages->merge($databaseStorages)->implode('updated_at');
 
         $newConfigHash = $images.$domains.$images.$storages;

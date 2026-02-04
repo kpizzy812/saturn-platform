@@ -318,18 +318,22 @@ class Project extends BaseModel
         return $this->hasManyThrough(StandaloneMariadb::class, Environment::class);
     }
 
+    /**
+     * Check if project has no resources.
+     * PERFORMANCE: Using exists() instead of count() - stops at first record found.
+     */
     public function isEmpty()
     {
-        return $this->applications()->count() == 0 &&
-            $this->redis()->count() == 0 &&
-            $this->postgresqls()->count() == 0 &&
-            $this->mysqls()->count() == 0 &&
-            $this->keydbs()->count() == 0 &&
-            $this->dragonflies()->count() == 0 &&
-            $this->clickhouses()->count() == 0 &&
-            $this->mariadbs()->count() == 0 &&
-            $this->mongodbs()->count() == 0 &&
-            $this->services()->count() == 0;
+        return ! $this->applications()->exists() &&
+            ! $this->redis()->exists() &&
+            ! $this->postgresqls()->exists() &&
+            ! $this->mysqls()->exists() &&
+            ! $this->keydbs()->exists() &&
+            ! $this->dragonflies()->exists() &&
+            ! $this->clickhouses()->exists() &&
+            ! $this->mariadbs()->exists() &&
+            ! $this->mongodbs()->exists() &&
+            ! $this->services()->exists();
     }
 
     public function databases()
