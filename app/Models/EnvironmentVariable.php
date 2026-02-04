@@ -37,7 +37,27 @@ class EnvironmentVariable extends BaseModel
 {
     use Auditable, LogsActivity;
 
-    protected $guarded = [];
+    /**
+     * The attributes that are mass assignable.
+     * SECURITY: Using $fillable to prevent mass assignment vulnerabilities.
+     */
+    protected $fillable = [
+        'uuid',
+        'key',
+        'value',
+        'is_literal',
+        'is_multiline',
+        'is_preview',
+        'is_runtime',
+        'is_buildtime',
+        'is_shown_once',
+        'is_required',
+        'description',
+        'source_template',
+        'version',
+        'resourceable_type',
+        'resourceable_id',
+    ];
 
     protected $casts = [
         'key' => 'string',

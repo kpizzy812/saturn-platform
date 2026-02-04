@@ -43,7 +43,32 @@ class User extends Authenticatable implements SendsEmail
 {
     use DeletesUserSessions, HasApiTokens, HasFactory, LogsActivity, Notifiable, TwoFactorAuthenticatable;
 
-    protected $guarded = [];
+    /**
+     * The attributes that are mass assignable.
+     * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
+     * Critical fields like is_superadmin, platform_role are NOT included to prevent privilege escalation.
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'remember_token',
+        'email_verified_at',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'two_factor_confirmed_at',
+        'force_password_reset',
+        'show_boarding',
+        'marketing_emails',
+        'pending_email',
+        'email_change_code',
+        'email_change_code_expires_at',
+        'status',
+        'suspended_at',
+        'suspended_by',
+        'suspension_reason',
+        'last_login_at',
+    ];
 
     protected $hidden = [
         'password',

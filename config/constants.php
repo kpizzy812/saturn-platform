@@ -60,11 +60,14 @@ return [
 
     'ssh' => [
         'mux_enabled' => env('MUX_ENABLED', env('SSH_MUX_ENABLED', true)),
-        'mux_persist_time' => env('SSH_MUX_PERSIST_TIME', 3600),
+        // FIX: mux_persist_time should be <= mux_max_age to prevent unexpected disconnects
+        // mux_persist_time: How long to keep connection open after last use
+        // mux_max_age: Maximum total age of connection before cleanup
+        'mux_persist_time' => env('SSH_MUX_PERSIST_TIME', 1800), // 30 minutes (was 3600)
         'mux_health_check_enabled' => env('SSH_MUX_HEALTH_CHECK_ENABLED', true),
         'mux_health_check_timeout' => env('SSH_MUX_HEALTH_CHECK_TIMEOUT', 5),
-        'mux_max_age' => env('SSH_MUX_MAX_AGE', 1800), // 30 minutes
-        'connection_timeout' => 10,
+        'mux_max_age' => env('SSH_MUX_MAX_AGE', 3600), // 1 hour (was 1800) - max_age should be >= persist_time
+        'connection_timeout' => env('SSH_CONNECTION_TIMEOUT', 30), // Increased from 10 for slow networks
         'server_interval' => 20,
         'command_timeout' => 3600,
         'max_retries' => env('SSH_MAX_RETRIES', 3),

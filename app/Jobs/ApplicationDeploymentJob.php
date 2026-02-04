@@ -58,7 +58,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private const NIXPACKS_PLAN_PATH = '/artifacts/thegameplan.json';
 
-    public $tries = 1;
+    /**
+     * Number of times the job may be attempted.
+     * FIX: Changed from 1 to 3 to handle temporary network failures.
+     */
+    public $tries = 3;
 
     public $timeout = 3600;
 
@@ -197,14 +201,43 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         return ['App\Models\ApplicationDeploymentQueue:'.$this->application_deployment_queue_id];
     }
 
+    /**
+     * Determine the time to wait before retrying the job (exponential backoff).
+     *
+     * @return array<int>
+     */
+    public function backoff(): array
+    {
+        return [30, 60, 120]; // Wait 30s, 60s, 120s between retries
+    }
+
     public function __construct(public int $application_deployment_queue_id)
     {
         $this->onQueue('high');
 
         $this->application_deployment_queue = ApplicationDeploymentQueue::find($this->application_deployment_queue_id);
+
+        // SECURITY FIX: Null check to prevent NPE if deployment queue was deleted
+        if (! $this->application_deployment_queue) {
+            Log::error('ApplicationDeploymentJob: Deployment queue not found', [
+                'deployment_queue_id' => $this->application_deployment_queue_id,
+            ]);
+            throw new \RuntimeException("Deployment queue #{$this->application_deployment_queue_id} not found - may have been deleted");
+        }
+
         $this->nixpacks_plan_json = collect([]);
 
         $this->application = Application::find($this->application_deployment_queue->application_id);
+
+        // SECURITY FIX: Null check to prevent NPE if application was deleted
+        if (! $this->application) {
+            Log::error('ApplicationDeploymentJob: Application not found', [
+                'application_id' => $this->application_deployment_queue->application_id,
+                'deployment_queue_id' => $this->application_deployment_queue_id,
+            ]);
+            $this->application_deployment_queue->update(['status' => 'failed']);
+            throw new \RuntimeException("Application #{$this->application_deployment_queue->application_id} not found - may have been deleted");
+        }
         $this->build_pack = data_get($this->application, 'build_pack');
         $this->build_args = collect([]);
         $this->build_secrets = '';

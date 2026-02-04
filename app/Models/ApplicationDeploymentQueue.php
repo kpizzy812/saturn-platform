@@ -53,7 +53,40 @@ class ApplicationDeploymentQueue extends Model
 
     public const STAGE_HEALTHCHECK = 'healthcheck';
 
-    protected $guarded = [];
+    /**
+     * The attributes that are mass assignable.
+     * SECURITY: Using $fillable to prevent mass assignment vulnerabilities.
+     */
+    protected $fillable = [
+        'application_id',
+        'deployment_uuid',
+        'pull_request_id',
+        'force_rebuild',
+        'commit',
+        'status',
+        'is_webhook',
+        'is_api',
+        'logs',
+        'current_process_id',
+        'restart_only',
+        'git_type',
+        'server_id',
+        'application_name',
+        'server_name',
+        'deployment_url',
+        'destination_id',
+        'only_this_server',
+        'rollback',
+        'commit_message',
+        'horizon_job_id',
+        'started_at',
+        'requires_approval',
+        'approval_status',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
+        'user_id',
+    ];
 
     protected $casts = [
         'started_at' => 'datetime',
@@ -200,23 +233,32 @@ class ApplicationDeploymentQueue extends Model
 
         $order = 1;
 
-        // Use a transaction to ensure atomicity
+        // Use a transaction with pessimistic lock to prevent race conditions (lost updates)
         DB::transaction(function () use ($newLogEntry, &$order) {
-            // Reload the model to get the latest logs
-            $this->refresh();
+            // SECURITY FIX: Use lockForUpdate() to prevent lost updates when multiple processes
+            // write logs concurrently. Without this lock, parallel addLogEntry() calls could
+            // overwrite each other's logs.
+            $lockedInstance = static::where('id', $this->id)->lockForUpdate()->first();
 
-            if ($this->logs) {
-                $previousLogs = json_decode($this->logs, associative: true, flags: JSON_THROW_ON_ERROR);
+            if (! $lockedInstance) {
+                return; // Deployment was deleted, skip logging
+            }
+
+            if ($lockedInstance->logs) {
+                $previousLogs = json_decode($lockedInstance->logs, associative: true, flags: JSON_THROW_ON_ERROR);
                 $order = count($previousLogs) + 1;
                 $newLogEntry['order'] = $order;
                 $previousLogs[] = $newLogEntry;
-                $this->logs = json_encode($previousLogs, flags: JSON_THROW_ON_ERROR);
+                $lockedInstance->logs = json_encode($previousLogs, flags: JSON_THROW_ON_ERROR);
             } else {
-                $this->logs = json_encode([$newLogEntry], flags: JSON_THROW_ON_ERROR);
+                $lockedInstance->logs = json_encode([$newLogEntry], flags: JSON_THROW_ON_ERROR);
             }
 
             // Save without triggering events to prevent potential race conditions
-            $this->saveQuietly();
+            $lockedInstance->saveQuietly();
+
+            // Update local instance to reflect changes
+            $this->logs = $lockedInstance->logs;
         });
 
         // Broadcast the log entry for real-time updates (only non-hidden entries)

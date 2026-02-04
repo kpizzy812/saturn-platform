@@ -15,7 +15,19 @@ class StandaloneClickhouse extends BaseModel
 {
     use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes;
 
-    protected $guarded = [];
+    /**
+     * The attributes that are mass assignable.
+     * SECURITY: Using $fillable to prevent mass assignment vulnerabilities.
+     */
+    protected $fillable = [
+        'uuid', 'name', 'description', 'clickhouse_user', 'clickhouse_password', 'clickhouse_db',
+        'image', 'status', 'is_public', 'public_port', 'ports_mappings',
+        'limits_memory', 'limits_memory_swap', 'limits_memory_swappiness',
+        'limits_memory_reservation', 'limits_cpus', 'limits_cpuset', 'limits_cpu_shares',
+        'started_at', 'environment_id', 'destination_id', 'destination_type',
+        'is_log_drain_enabled', 'config_hash', 'last_online_at',
+        'restart_count', 'last_restart_at', 'last_restart_type',
+    ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
@@ -131,8 +143,10 @@ class StandaloneClickhouse extends BaseModel
     {
         $server = data_get($this, 'destination.server');
         $workdir = $this->workdir();
-        if (str($workdir)->endsWith($this->uuid)) {
-            instant_remote_process(['rm -rf '.$this->workdir()], $server, false);
+        // SECURITY: Validate workdir ends with UUID and escape path to prevent command injection
+        if (str($workdir)->endsWith($this->uuid) && preg_match('/^[a-zA-Z0-9\-_\/]+$/', $workdir)) {
+            $escapedPath = escapeshellarg($workdir);
+            instant_remote_process(["rm -rf {$escapedPath}"], $server, false);
         }
     }
 
@@ -144,7 +158,9 @@ class StandaloneClickhouse extends BaseModel
         }
         $server = data_get($this, 'destination.server');
         foreach ($persistentStorages as $storage) {
-            instant_remote_process(["docker volume rm -f $storage->name"], $server, false);
+            // SECURITY: Escape volume name to prevent command injection
+            $escapedName = escapeshellarg($storage->name);
+            instant_remote_process(["docker volume rm -f {$escapedName}"], $server, false);
         }
     }
 
