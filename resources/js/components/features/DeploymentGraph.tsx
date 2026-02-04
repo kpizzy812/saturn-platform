@@ -221,6 +221,9 @@ function StageNode({
                         {stage.status === 'pending' && (
                             <span>Waiting...</span>
                         )}
+                        {stage.status === 'skipped' && (
+                            <span>Skipped</span>
+                        )}
                     </div>
                 )}
 
@@ -246,7 +249,7 @@ function StageNode({
 
 // Progress bar
 function ProgressBar({ stages, className }: { stages: DeploymentStage[]; className?: string }) {
-    const completed = stages.filter(s => s.status === 'completed').length;
+    const completed = stages.filter(s => s.status === 'completed' || s.status === 'skipped').length;
     const failed = stages.some(s => s.status === 'failed');
     const progress = Math.round((completed / stages.length) * 100);
 
@@ -448,7 +451,7 @@ export function parseDeploymentLogs(logs: Array<LogEntry>): DeploymentStage[] {
         }
     } else {
         // Fallback: regex-based detection for legacy logs without stage field
-        const stagePatterns: Record<string, { start: RegExp; end?: RegExp; fail?: RegExp }> = {
+        const stagePatterns: Record<string, { start: RegExp; end?: RegExp; fail?: RegExp; skip?: RegExp }> = {
             prepare: {
                 start: /Preparing container|Starting deployment|Deployment started/i,
                 end: /helper image.*ready|preparation complete/i,
@@ -462,11 +465,13 @@ export function parseDeploymentLogs(logs: Array<LogEntry>): DeploymentStage[] {
                 start: /Building docker image started|docker build|nixpacks build/i,
                 end: /Building docker image completed|Successfully built|build complete/i,
                 fail: /Build failed|error during build/i,
+                skip: /Build step skipped|No build needed|image found.*Build step skipped/i,
             },
             push: {
                 start: /Pushing image|docker push/i,
                 end: /Successfully pushed|push complete/i,
                 fail: /Failed to push|push error/i,
+                skip: /Push step skipped|No push needed/i,
             },
             deploy: {
                 start: /Rolling update started|Starting container|docker-compose up|up --build/i,
@@ -513,12 +518,31 @@ export function parseDeploymentLogs(logs: Array<LogEntry>): DeploymentStage[] {
                     stages[i].status = 'failed';
                     stages[i].error = output.substring(0, 200);
                 }
+
+                // Check for skip patterns
+                if (patterns.skip?.test(output)) {
+                    stages[i].status = 'skipped';
+                }
             }
 
             if (currentStageIndex >= 0) {
                 stageLogs[stages[currentStageIndex].id].push(output);
             }
         }
+    }
+
+    // Check if deployment is complete (deploy stage completed or healthcheck completed)
+    const deployCompleted = stages[stageIndex.deploy].status === 'completed';
+    const healthcheckCompleted = stages[stageIndex.healthcheck].status === 'completed';
+    const isDeploymentSuccessful = deployCompleted || healthcheckCompleted;
+
+    // If deployment completed successfully, mark any remaining pending stages as skipped
+    if (isDeploymentSuccessful) {
+        stages.forEach(stage => {
+            if (stage.status === 'pending') {
+                stage.status = 'skipped';
+            }
+        });
     }
 
     // Calculate durations and assign logs
