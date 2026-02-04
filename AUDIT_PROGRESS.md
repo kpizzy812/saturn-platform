@@ -1,8 +1,8 @@
 # Saturn Platform Security & Bug Audit Progress
 
 **Дата начала**: 2026-02-04
-**Статус**: Фаза 1 завершена ✅
-**Коммит**: b46cb23
+**Статус**: Фаза 2 завершена ✅
+**Коммиты**: b46cb23, ef457a8
 
 ---
 
@@ -49,10 +49,11 @@
 
 ## ВЫСОКИЕ РИСКИ
 
-### 8. ⏳ Memory leak в JSON логах
+### 8. ✅ Memory leak в JSON логах
 - **Файл**: `app/Models/ApplicationDeploymentQueue.php:208`
-- **Проблема**: O(N²) при добавлении логов
-- **Статус**: В ОЧЕРЕДИ (требует изменение архитектуры)
+- **Проблема**: O(N²) при добавлении логов (весь JSON перечитывался/перезаписывался)
+- **Решение**: Отдельная таблица `deployment_log_entries` с append-only INSERT
+- **Статус**: ✅ ИСПРАВЛЕНО
 
 ### 9. ✅ SSH timeout conflicts
 - **Файл**: `config/constants.php:62-74`
@@ -123,4 +124,11 @@
 - ✅ Rate limiting в AI Chat CommandExecutor
 - ✅ Project model $fillable вместо $guarded
 - ✅ ResourceLink model $fillable + team validation hook
+
+### 2026-02-04 (Фаза 3 - Performance)
+- ✅ Memory leak fix в deployment logs:
+  - Создана таблица `deployment_log_entries` для append-only логов
+  - Изменён `addLogEntry()` с O(N²) на O(1)
+  - Добавлен accessor `logs` для обратной совместимости
+  - Unit тесты для DeploymentLogEntry модели
 

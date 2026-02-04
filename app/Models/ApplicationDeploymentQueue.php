@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use App\Events\DeploymentLogEntry;
+use App\Events\DeploymentLogEntry as DeploymentLogEntryEvent;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
@@ -128,6 +129,14 @@ class ApplicationDeploymentQueue extends Model
         return $this->hasOne(CodeReview::class, 'deployment_id');
     }
 
+    /**
+     * Get log entries for this deployment (new optimized storage).
+     */
+    public function logEntries(): HasMany
+    {
+        return $this->hasMany(DeploymentLogEntry::class, 'deployment_id')->orderBy('order');
+    }
+
     public function server(): Attribute
     {
         return Attribute::make(
@@ -206,6 +215,13 @@ class ApplicationDeploymentQueue extends Model
         return $text;
     }
 
+    /**
+     * Add a log entry to this deployment.
+     *
+     * PERFORMANCE: Uses separate table with INSERT instead of JSON column UPDATE.
+     * Each call is O(1) regardless of existing log count.
+     * Previous implementation was O(N) per call = O(N²) total for N logs.
+     */
     public function addLogEntry(string $message, string $type = 'stdout', bool $hidden = false, ?string $stage = null)
     {
         if ($type === 'error') {
@@ -221,50 +237,34 @@ class ApplicationDeploymentQueue extends Model
         // Use explicitly passed stage, or fall back to currentStage property
         $effectiveStage = $stage ?? $this->currentStage;
 
-        $newLogEntry = [
-            'command' => null,
-            'output' => $redactedMessage,
-            'type' => $type,
-            'timestamp' => $timestamp,
-            'hidden' => $hidden,
-            'batch' => 1,
-            'stage' => $effectiveStage,
-        ];
-
+        // Get next order number with atomic increment
+        // Using MAX + 1 with a short lock to prevent race conditions
         $order = 1;
+        DB::transaction(function () use (&$order, $redactedMessage, $type, $hidden, $effectiveStage) {
+            // Lock only for getting max order number - very quick
+            $maxOrder = DeploymentLogEntry::where('deployment_id', $this->id)
+                ->lockForUpdate()
+                ->max('order');
 
-        // Use a transaction with pessimistic lock to prevent race conditions (lost updates)
-        DB::transaction(function () use ($newLogEntry, &$order) {
-            // SECURITY FIX: Use lockForUpdate() to prevent lost updates when multiple processes
-            // write logs concurrently. Without this lock, parallel addLogEntry() calls could
-            // overwrite each other's logs.
-            $lockedInstance = static::where('id', $this->id)->lockForUpdate()->first();
+            $order = ($maxOrder ?? 0) + 1;
 
-            if (! $lockedInstance) {
-                return; // Deployment was deleted, skip logging
-            }
-
-            if ($lockedInstance->logs) {
-                $previousLogs = json_decode($lockedInstance->logs, associative: true, flags: JSON_THROW_ON_ERROR);
-                $order = count($previousLogs) + 1;
-                $newLogEntry['order'] = $order;
-                $previousLogs[] = $newLogEntry;
-                $lockedInstance->logs = json_encode($previousLogs, flags: JSON_THROW_ON_ERROR);
-            } else {
-                $lockedInstance->logs = json_encode([$newLogEntry], flags: JSON_THROW_ON_ERROR);
-            }
-
-            // Save without triggering events to prevent potential race conditions
-            $lockedInstance->saveQuietly();
-
-            // Update local instance to reflect changes
-            $this->logs = $lockedInstance->logs;
+            // Insert new log entry - O(1) operation
+            DeploymentLogEntry::create([
+                'deployment_id' => $this->id,
+                'order' => $order,
+                'command' => null,
+                'output' => (string) $redactedMessage,
+                'type' => $type,
+                'hidden' => $hidden,
+                'batch' => 1,
+                'stage' => $effectiveStage,
+            ]);
         });
 
         // Broadcast the log entry for real-time updates (only non-hidden entries)
         if (! $hidden && $this->deployment_uuid) {
             try {
-                event(new DeploymentLogEntry(
+                event(new DeploymentLogEntryEvent(
                     deploymentUuid: $this->deployment_uuid,
                     message: (string) $redactedMessage,
                     timestamp: $timestamp->toIso8601String(),
@@ -276,5 +276,37 @@ class ApplicationDeploymentQueue extends Model
                 // Silently fail broadcasting - don't break deployment for WebSocket issues
             }
         }
+    }
+
+    /**
+     * Get logs in legacy JSON format for backward compatibility.
+     *
+     * This accessor merges data from both sources:
+     * 1. New separate table (deployment_log_entries)
+     * 2. Legacy JSON column (for old deployments)
+     */
+    public function getLogsAttribute(?string $value): ?string
+    {
+        // Check if we have entries in new table
+        $newEntries = $this->logEntries()->get();
+
+        if ($newEntries->isNotEmpty()) {
+            // Return logs from new table in legacy JSON format
+            $logs = $newEntries->map(fn (DeploymentLogEntry $entry) => $entry->toLegacyFormat())->all();
+
+            return json_encode($logs, JSON_THROW_ON_ERROR);
+        }
+
+        // Fallback to legacy JSON column for old deployments
+        return $value;
+    }
+
+    /**
+     * Get the raw logs value from database without accessor transformation.
+     * Used for checking if legacy data exists.
+     */
+    public function getRawLogsAttribute(): ?string
+    {
+        return $this->attributes['logs'] ?? null;
     }
 }
