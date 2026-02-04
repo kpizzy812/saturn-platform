@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Select } from '@/components/ui';
-import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History } from 'lucide-react';
+import { Card, CardContent, Button, Input, Select, Modal, ModalFooter } from '@/components/ui';
+import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History, HelpCircle, Copy, Check, ExternalLink } from 'lucide-react';
 import type { Application } from '@/types';
 
 interface ApplicationSettings {
@@ -46,6 +46,23 @@ export default function ApplicationSettingsPage({ application, applicationSettin
     const [isSaving, setIsSaving] = React.useState(false);
     const [errors, setErrors] = React.useState<Record<string, string>>({});
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
+    const [showWebhookGuide, setShowWebhookGuide] = React.useState(false);
+    const [copiedField, setCopiedField] = React.useState<string | null>(null);
+
+    // Generate webhook URL based on git source
+    const webhookUrl = React.useMemo(() => {
+        const baseUrl = window.location.origin;
+        const source = application.source?.type || 'github';
+        return `${baseUrl}/webhooks/source/${source}/events/manual`;
+    }, [application.source?.type]);
+
+    const webhookSecret = application.manual_webhook_secret_github || application.manual_webhook_secret_gitlab || '';
+
+    const copyToClipboard = (text: string, field: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 2000);
+    };
 
     React.useEffect(() => {
         if (saveStatus !== 'idle') {
@@ -252,9 +269,19 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="flex-1">
-                                        <label className="text-sm font-medium text-foreground mb-1 block">
-                                            Auto Deploy
-                                        </label>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <label className="text-sm font-medium text-foreground">
+                                                Auto Deploy
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowWebhookGuide(true)}
+                                                className="text-foreground-muted hover:text-primary transition-colors"
+                                                title="Setup Guide"
+                                            >
+                                                <HelpCircle className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                         <p className="text-sm text-foreground-muted">
                                             Automatically deploy when changes are pushed to the repository
                                         </p>
@@ -525,6 +552,141 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                     </Card>
                 </div>
             </div>
+
+            {/* Webhook Setup Guide Modal */}
+            <Modal
+                isOpen={showWebhookGuide}
+                onClose={() => setShowWebhookGuide(false)}
+                title="Auto Deploy Setup Guide"
+                description="Configure your Git provider to automatically deploy when code is pushed"
+                size="lg"
+            >
+                <div className="space-y-6">
+                    {/* Step 1: Enable Auto Deploy */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            1
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">Enable Auto Deploy</h4>
+                            <p className="text-sm text-foreground-muted">
+                                Make sure the "Auto Deploy" toggle is enabled above. This allows Saturn to accept deployment triggers from webhooks.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Step 2: Copy Webhook URL */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            2
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-2">Copy Webhook URL</h4>
+                            <div className="flex items-center gap-2">
+                                <code className="flex-1 px-3 py-2 bg-background rounded border border-border text-sm font-mono text-foreground-muted truncate">
+                                    {webhookUrl}
+                                </code>
+                                <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(webhookUrl, 'url')}
+                                    className="p-2 hover:bg-background-tertiary rounded transition-colors"
+                                    title="Copy URL"
+                                >
+                                    {copiedField === 'url' ? (
+                                        <Check className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                        <Copy className="h-4 w-4 text-foreground-muted" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Step 3: Copy Secret */}
+                    {webhookSecret && (
+                        <div className="flex gap-4">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                                3
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-medium text-foreground mb-2">Copy Webhook Secret</h4>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 px-3 py-2 bg-background rounded border border-border text-sm font-mono text-foreground-muted truncate">
+                                        {webhookSecret}
+                                    </code>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(webhookSecret, 'secret')}
+                                        className="p-2 hover:bg-background-tertiary rounded transition-colors"
+                                        title="Copy Secret"
+                                    >
+                                        {copiedField === 'secret' ? (
+                                            <Check className="h-4 w-4 text-green-500" />
+                                        ) : (
+                                            <Copy className="h-4 w-4 text-foreground-muted" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 4: Configure Git Provider */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            {webhookSecret ? '4' : '3'}
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-2">Configure Your Git Provider</h4>
+                            <div className="space-y-3 text-sm text-foreground-muted">
+                                <div className="p-3 bg-background rounded border border-border">
+                                    <p className="font-medium text-foreground mb-2">GitHub:</p>
+                                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                                        <li>Go to your repository → Settings → Webhooks</li>
+                                        <li>Click "Add webhook"</li>
+                                        <li>Paste the Webhook URL in "Payload URL"</li>
+                                        <li>Set Content type to <code className="px-1 bg-background-tertiary rounded">application/json</code></li>
+                                        <li>Paste the Secret in "Secret" field</li>
+                                        <li>Select "Just the push event"</li>
+                                        <li>Click "Add webhook"</li>
+                                    </ol>
+                                </div>
+                                <div className="p-3 bg-background rounded border border-border">
+                                    <p className="font-medium text-foreground mb-2">GitLab:</p>
+                                    <ol className="list-decimal list-inside space-y-1 ml-2">
+                                        <li>Go to your project → Settings → Webhooks</li>
+                                        <li>Paste the Webhook URL</li>
+                                        <li>Paste the Secret Token</li>
+                                        <li>Check "Push events"</li>
+                                        <li>Click "Add webhook"</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* How it works */}
+                    <div className="p-4 bg-info/10 border border-info/30 rounded-lg">
+                        <div className="flex gap-3">
+                            <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+                            <div>
+                                <h4 className="font-medium text-foreground mb-1">How it works</h4>
+                                <p className="text-sm text-foreground-muted">
+                                    When you push code to your repository, the Git provider sends a webhook to Saturn.
+                                    Saturn verifies the signature, checks if auto-deploy is enabled, and automatically
+                                    starts a new deployment with your latest code.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowWebhookGuide(false)}>
+                        Close
+                    </Button>
+                </ModalFooter>
+            </Modal>
         </AppLayout>
     );
 }
