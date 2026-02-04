@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rocket, RefreshCw, Square, Activity, FileText } from 'lucide-react';
+import { Rocket, RefreshCw, Square, Activity, FileText, Search, Stethoscope, BarChart3, FileCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatContext } from '@/types/ai-chat';
 
@@ -22,9 +22,14 @@ const defaultSuggestions: Suggestion[] = [
         query: 'What can you help me with?',
     },
     {
-        icon: Rocket,
-        text: 'Deploy help',
-        query: 'How do I deploy an application?',
+        icon: Stethoscope,
+        text: 'Health check',
+        query: 'Check health of all services',
+    },
+    {
+        icon: BarChart3,
+        text: 'Metrics',
+        query: 'Show metrics for last week',
     },
     {
         icon: FileText,
@@ -47,19 +52,19 @@ function getSuggestionsForContext(context?: ChatContext): Suggestion[] {
                     query: `Deploy ${resourceName}`,
                 },
                 {
-                    icon: RefreshCw,
-                    text: 'Restart',
-                    query: `Restart ${resourceName}`,
+                    icon: Search,
+                    text: 'Analyze errors',
+                    query: `Analyze errors in ${resourceName}`,
+                },
+                {
+                    icon: FileCode,
+                    text: 'Code review',
+                    query: `Show code review for ${resourceName}`,
                 },
                 {
                     icon: FileText,
                     text: 'Show logs',
                     query: `Show logs for ${resourceName}`,
-                },
-                {
-                    icon: Activity,
-                    text: 'Check status',
-                    query: `What is the status of ${resourceName}?`,
                 },
             ];
 
@@ -71,9 +76,14 @@ function getSuggestionsForContext(context?: ChatContext): Suggestion[] {
                     query: `Restart ${resourceName}`,
                 },
                 {
-                    icon: Square,
-                    text: 'Stop service',
-                    query: `Stop ${resourceName}`,
+                    icon: Search,
+                    text: 'Analyze errors',
+                    query: `Analyze errors in ${resourceName}`,
+                },
+                {
+                    icon: FileText,
+                    text: 'Show logs',
+                    query: `Show logs for ${resourceName}`,
                 },
                 {
                     icon: Activity,
@@ -88,6 +98,11 @@ function getSuggestionsForContext(context?: ChatContext): Suggestion[] {
                     icon: RefreshCw,
                     text: 'Restart database',
                     query: `Restart ${resourceName}`,
+                },
+                {
+                    icon: Search,
+                    text: 'Analyze errors',
+                    query: `Analyze errors in ${resourceName}`,
                 },
                 {
                     icon: Activity,

@@ -8,13 +8,17 @@ namespace App\Services\AI\Chat\DTOs;
 readonly class ParsedCommand
 {
     public function __construct(
-        public string $action,              // deploy, restart, stop, start, logs, status, delete
+        public string $action,              // deploy, restart, stop, start, logs, status, delete, analyze_errors, analyze_deployment, code_review, health_check, metrics
         public ?string $resourceType = null, // application, service, database, server, project
         public ?string $resourceName = null,
         public ?int $resourceId = null,
         public ?string $resourceUuid = null,
         public ?string $projectName = null,
         public ?string $environmentName = null,
+        public ?string $deploymentUuid = null,    // UUID of specific deployment for analysis
+        public ?string $targetScope = null,       // single, multiple, all - for batch operations
+        public ?array $resourceNames = null,      // Array of resource names for multiple analysis
+        public ?string $timePeriod = null,        // Time period for metrics (e.g., "24h", "7d", "30d")
     ) {}
 
     public function isActionable(): bool
@@ -27,6 +31,11 @@ readonly class ParsedCommand
             'logs',
             'status',
             'delete',
+            'analyze_errors',
+            'analyze_deployment',
+            'code_review',
+            'health_check',
+            'metrics',
         ], true);
     }
 
@@ -50,6 +59,10 @@ readonly class ParsedCommand
             'resource_uuid' => $this->resourceUuid,
             'project_name' => $this->projectName,
             'environment_name' => $this->environmentName,
+            'deployment_uuid' => $this->deploymentUuid,
+            'target_scope' => $this->targetScope,
+            'resource_names' => $this->resourceNames,
+            'time_period' => $this->timePeriod,
         ];
     }
 
@@ -63,6 +76,10 @@ readonly class ParsedCommand
             resourceUuid: $data['resource_uuid'] ?? null,
             projectName: $data['project_name'] ?? null,
             environmentName: $data['environment_name'] ?? null,
+            deploymentUuid: $data['deployment_uuid'] ?? null,
+            targetScope: $data['target_scope'] ?? null,
+            resourceNames: $data['resource_names'] ?? null,
+            timePeriod: $data['time_period'] ?? null,
         );
     }
 }

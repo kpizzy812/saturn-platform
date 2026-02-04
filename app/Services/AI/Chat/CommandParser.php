@@ -227,6 +227,10 @@ class CommandParser
                     resourceUuid: $context['uuid'] ?? null,
                     projectName: $this->normalizeNull($cmdData['project_name'] ?? null),
                     environmentName: $this->normalizeNull($cmdData['environment_name'] ?? null),
+                    deploymentUuid: $this->normalizeNull($cmdData['deployment_uuid'] ?? null),
+                    targetScope: $this->normalizeNull($cmdData['target_scope'] ?? null),
+                    resourceNames: $cmdData['resource_names'] ?? null,
+                    timePeriod: $this->normalizeNull($cmdData['time_period'] ?? null),
                 );
             }
         }
@@ -311,6 +315,11 @@ class CommandParser
 - **logs** - показать логи
 - **status** - показать статус ресурсов
 - **delete** - удалить проект, приложение, сервис или базу данных
+- **analyze_errors** - AI анализ ошибок в логах ресурса (находит проблемы, предлагает решения)
+- **analyze_deployment** - анализ неудачного деплоя (root cause, solution, prevention)
+- **code_review** - показать результаты code review для приложения/деплоя
+- **health_check** - проверить здоровье всех ресурсов проекта
+- **metrics** - показать метрики и статистику деплоев за период
 - **help** - показать справку
 - **none** - нет actionable команды (для вопросов, приветствий и т.д.)
 
@@ -320,6 +329,13 @@ class CommandParser
 - **database** - база данных (postgresql, mysql, mongodb, redis и т.д.)
 - **server** - сервер
 - **project** - проект (контейнер для environments и ресурсов)
+
+**Дополнительные поля для новых команд:**
+
+- **target_scope**: single | multiple | all - для анализа одного, нескольких или всех ресурсов
+- **resource_names**: массив имен ресурсов для множественного анализа
+- **deployment_uuid**: UUID конкретного деплоя для analyze_deployment
+- **time_period**: период для metrics ("24h", "7d", "30d")
 
 **Правила парсинга:**
 
@@ -339,6 +355,19 @@ class CommandParser
    - English message → English response
 
 5. **response_text**: Это сообщение будет показано пользователю. Опиши что ты собираешься сделать.
+
+6. **Анализ ошибок (analyze_errors)**:
+   - "проанализируй ошибки api-service" → analyze_errors, resource_name: api-service
+   - "найди проблемы во всех сервисах" → analyze_errors, target_scope: all
+   - "что не так с app1 и app2" → analyze_errors, target_scope: multiple, resource_names: [app1, app2]
+
+7. **Анализ деплоя (analyze_deployment)**:
+   - "почему упал последний деплой" → analyze_deployment (без UUID - возьмем последний failed)
+   - "проанализируй деплой abc123" → analyze_deployment, deployment_uuid: abc123
+
+8. **Метрики (metrics)**:
+   - "покажи метрики за неделю" → metrics, time_period: 7d
+   - "статистика деплоев за месяц" → metrics, time_period: 30d
 {$contextInfo}
 PROMPT;
     }

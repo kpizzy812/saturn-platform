@@ -13,7 +13,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
-import type { AiChatMessage as MessageType } from '@/types/ai-chat';
+import { AnalysisResultCard } from './AnalysisResultCard';
+import type { AiChatMessage as MessageType, AiChatIntent } from '@/types/ai-chat';
 
 interface AiChatMessageProps {
     message: MessageType;
@@ -33,6 +34,17 @@ export function AiChatMessage({ message, onConfirm, onRate }: AiChatMessageProps
         message.content.includes('confirm') &&
         message.intent &&
         !message.command_status;
+
+    // Check if this is an analysis intent that needs special rendering
+    const analysisIntents: AiChatIntent[] = [
+        'analyze_errors',
+        'analyze_deployment',
+        'code_review',
+        'health_check',
+        'metrics',
+    ];
+    const isAnalysisIntent = message.intent && analysisIntents.includes(message.intent as AiChatIntent);
+    const hasAnalysisData = message.intent_params && Object.keys(message.intent_params).length > 0;
 
     const handleConfirm = () => {
         if (message.intent && onConfirm) {
@@ -171,6 +183,14 @@ export function AiChatMessage({ message, onConfirm, onRate }: AiChatMessageProps
                                 {message.command_result}
                             </pre>
                         </div>
+                    )}
+
+                    {/* Analysis result card for special intents */}
+                    {isAssistant && isAnalysisIntent && hasAnalysisData && (
+                        <AnalysisResultCard
+                            intent={message.intent!}
+                            data={message.intent_params as Record<string, unknown>}
+                        />
                     )}
                 </div>
 

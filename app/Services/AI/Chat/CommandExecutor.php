@@ -10,6 +10,10 @@ use App\Actions\Service\RestartService;
 use App\Actions\Service\StartService;
 use App\Actions\Service\StopService;
 use App\Models\Application;
+use App\Models\ApplicationDeploymentQueue;
+use App\Models\CodeReview;
+use App\Models\DeploymentLogAnalysis;
+use App\Models\Environment;
 use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
@@ -26,6 +30,7 @@ use App\Services\AI\Chat\DTOs\CommandResult;
 use App\Services\AI\Chat\DTOs\IntentResult;
 use App\Services\AI\Chat\DTOs\ParsedCommand;
 use App\Services\AI\Chat\DTOs\ParsedIntent;
+use App\Services\AI\DeploymentLogAnalyzer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -117,6 +122,11 @@ class CommandExecutor
             'logs' => $this->executeLogsCommand($command),
             'status' => $this->executeStatusCommand($command),
             'delete' => $this->executeDeleteCommand($command),
+            'analyze_errors' => $this->executeAnalyzeErrorsCommand($command),
+            'analyze_deployment' => $this->executeAnalyzeDeploymentCommand($command),
+            'code_review' => $this->executeCodeReviewCommand($command),
+            'health_check' => $this->executeHealthCheckCommand($command),
+            'metrics' => $this->executeMetricsCommand($command),
             'help' => $this->executeHelp(),
             default => CommandResult::failed("Неизвестное действие: {$command->action}"),
         };
@@ -467,6 +477,679 @@ class CommandExecutor
 
             return CommandResult::failed("Ошибка удаления проекта: {$e->getMessage()}");
         }
+    }
+
+    /**
+     * Analyze errors in resource logs using AI.
+     */
+    private function executeAnalyzeErrorsCommand(ParsedCommand $command): CommandResult
+    {
+        try {
+            $analyzer = new ResourceErrorAnalyzer;
+
+            // Handle different scopes
+            $scope = $command->targetScope ?? 'single';
+
+            if ($scope === 'all') {
+                return $this->analyzeAllResourcesErrors($analyzer);
+            }
+
+            if ($scope === 'multiple' && ! empty($command->resourceNames)) {
+                return $this->analyzeMultipleResourcesErrors($analyzer, $command->resourceNames);
+            }
+
+            // Single resource
+            $resource = $this->resolveResourceFromCommand($command);
+            if (! $resource) {
+                if (! $command->hasResource()) {
+                    return $this->listAvailableResources('analyze errors for', $command->resourceType);
+                }
+
+                return CommandResult::notFound($command->resourceType ?? 'resource');
+            }
+
+            if (! $this->authorize('view', $resource)) {
+                return CommandResult::unauthorized();
+            }
+
+            $result = $analyzer->analyze($resource);
+
+            return $this->formatAnalysisResult($result);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat analyze_errors failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка анализа: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Analyze all resources in team for errors.
+     */
+    private function analyzeAllResourcesErrors(ResourceErrorAnalyzer $analyzer): CommandResult
+    {
+        $resources = [];
+
+        // Get applications
+        $apps = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+            ->take(10)
+            ->get();
+
+        foreach ($apps as $app) {
+            if ($this->authorize('view', $app)) {
+                $resources[] = $app;
+            }
+        }
+
+        // Get services
+        $services = Service::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+            ->take(5)
+            ->get();
+
+        foreach ($services as $service) {
+            if ($this->authorize('view', $service)) {
+                $resources[] = $service;
+            }
+        }
+
+        if (empty($resources)) {
+            return CommandResult::success('Нет ресурсов для анализа.');
+        }
+
+        $results = $analyzer->analyzeMultiple($resources);
+
+        return $this->formatMultipleAnalysisResults($results);
+    }
+
+    /**
+     * Analyze multiple named resources for errors.
+     */
+    private function analyzeMultipleResourcesErrors(ResourceErrorAnalyzer $analyzer, array $names): CommandResult
+    {
+        $resources = [];
+
+        foreach ($names as $name) {
+            $resource = $this->findAnyResourceByName($name, null, null);
+            if ($resource && $this->authorize('view', $resource)) {
+                $resources[] = $resource;
+            }
+        }
+
+        if (empty($resources)) {
+            return CommandResult::failed('Не найдено ресурсов с указанными именами.');
+        }
+
+        $results = $analyzer->analyzeMultiple($resources);
+
+        return $this->formatMultipleAnalysisResults($results);
+    }
+
+    /**
+     * Format single analysis result.
+     */
+    private function formatAnalysisResult(array $result): CommandResult
+    {
+        $output = "## 🔍 Анализ ошибок: **{$result['resource_name']}**\n\n";
+
+        if ($result['errors_found'] === 0) {
+            $output .= "✅ Критических ошибок не обнаружено.\n";
+            if ($result['summary']) {
+                $output .= "\n{$result['summary']}";
+            }
+
+            return CommandResult::success($output, $result);
+        }
+
+        $output .= "**Найдено проблем:** {$result['errors_found']}\n\n";
+
+        if (! empty($result['issues'])) {
+            $output .= "### Проблемы:\n\n";
+            foreach ($result['issues'] as $i => $issue) {
+                $severityEmoji = match ($issue['severity'] ?? 'medium') {
+                    'critical' => '🔴',
+                    'high' => '🟠',
+                    'medium' => '🟡',
+                    'low' => '🟢',
+                    default => '⚪',
+                };
+                $output .= "{$severityEmoji} **{$issue['severity']}**: {$issue['message']}\n";
+                if (! empty($issue['suggestion'])) {
+                    $output .= "   _Рекомендация: {$issue['suggestion']}_\n";
+                }
+                $output .= "\n";
+            }
+        }
+
+        if (! empty($result['solutions'])) {
+            $output .= "### Рекомендуемые действия:\n\n";
+            foreach ($result['solutions'] as $i => $solution) {
+                $output .= ($i + 1).". {$solution}\n";
+            }
+        }
+
+        if ($result['summary']) {
+            $output .= "\n---\n**Резюме:** {$result['summary']}";
+        }
+
+        return CommandResult::success($output, $result);
+    }
+
+    /**
+     * Format multiple analysis results.
+     */
+    private function formatMultipleAnalysisResults(array $results): CommandResult
+    {
+        $totalErrors = 0;
+        $resourcesWithErrors = 0;
+
+        foreach ($results as $result) {
+            $totalErrors += $result['errors_found'] ?? 0;
+            if (($result['errors_found'] ?? 0) > 0) {
+                $resourcesWithErrors++;
+            }
+        }
+
+        $output = '## 🔍 Анализ ошибок: '.count($results)." ресурсов\n\n";
+        $output .= "**Всего ошибок:** {$totalErrors} в {$resourcesWithErrors} ресурсах\n\n";
+
+        foreach ($results as $name => $result) {
+            $status = ($result['errors_found'] ?? 0) > 0 ? '🔴' : '✅';
+            $output .= "{$status} **{$name}**: {$result['errors_found']} ошибок\n";
+        }
+
+        return CommandResult::success($output, ['results' => $results, 'total_errors' => $totalErrors]);
+    }
+
+    /**
+     * Analyze a failed deployment using DeploymentLogAnalyzer.
+     */
+    private function executeAnalyzeDeploymentCommand(ParsedCommand $command): CommandResult
+    {
+        try {
+            $deployment = null;
+
+            // Find deployment by UUID
+            if ($command->deploymentUuid) {
+                $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $command->deploymentUuid)
+                    ->whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                    ->first();
+            }
+
+            // Find by resource if specified
+            if (! $deployment && $command->resourceName) {
+                $app = $this->findApplicationByName($command->resourceName, $command->projectName, $command->environmentName);
+                if ($app) {
+                    $deployment = ApplicationDeploymentQueue::where('application_id', $app->id)
+                        ->where('status', 'failed')
+                        ->orderByDesc('created_at')
+                        ->first();
+                }
+            }
+
+            // Find the last failed deployment in team
+            if (! $deployment) {
+                $deployment = ApplicationDeploymentQueue::whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                    ->where('status', 'failed')
+                    ->orderByDesc('created_at')
+                    ->first();
+            }
+
+            if (! $deployment) {
+                return CommandResult::success('Не найдено неудачных деплоев для анализа.');
+            }
+
+            // Check authorization
+            if (! $this->authorize('view', $deployment->application)) {
+                return CommandResult::unauthorized();
+            }
+
+            // Check if analysis already exists
+            $existingAnalysis = DeploymentLogAnalysis::where('deployment_id', $deployment->id)
+                ->where('status', 'completed')
+                ->first();
+
+            if ($existingAnalysis) {
+                return $this->formatDeploymentAnalysis($deployment, $existingAnalysis);
+            }
+
+            // Run new analysis
+            $analyzer = app(DeploymentLogAnalyzer::class);
+
+            if (! $analyzer->isEnabledAndAvailable()) {
+                return CommandResult::failed('AI анализ недоступен. Проверьте настройки API ключей.');
+            }
+
+            $analysis = $analyzer->analyzeAndSave($deployment);
+
+            if ($analysis->isFailed()) {
+                return CommandResult::failed("Ошибка анализа: {$analysis->error_message}");
+            }
+
+            return $this->formatDeploymentAnalysis($deployment, $analysis);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat analyze_deployment failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка анализа деплоя: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Format deployment analysis result.
+     */
+    private function formatDeploymentAnalysis(ApplicationDeploymentQueue $deployment, DeploymentLogAnalysis $analysis): CommandResult
+    {
+        $appName = $deployment->application->name ?? 'Unknown';
+        $severityEmoji = match ($analysis->severity) {
+            'critical' => '🔴',
+            'high' => '🟠',
+            'medium' => '🟡',
+            'low' => '🟢',
+            default => '⚪',
+        };
+
+        $output = "## 🔍 Анализ деплоя: **{$appName}**\n\n";
+        $output .= "**UUID:** `{$deployment->deployment_uuid}`\n";
+        $output .= "**Статус:** {$deployment->status}\n";
+        $output .= "**Серьёзность:** {$severityEmoji} {$analysis->severity}\n";
+        $output .= "**Категория:** {$analysis->category_label}\n";
+        $output .= '**Уверенность:** '.round($analysis->confidence * 100).'%';
+        $output .= "\n\n";
+
+        if ($analysis->root_cause) {
+            $output .= "### 🎯 Причина ошибки\n\n{$analysis->root_cause}\n\n";
+        }
+
+        if ($analysis->root_cause_details) {
+            $output .= "### 📋 Детали\n\n{$analysis->root_cause_details}\n\n";
+        }
+
+        if (! empty($analysis->solution)) {
+            $output .= "### ✅ Решение\n\n";
+            foreach ($analysis->solution as $i => $step) {
+                $output .= ($i + 1).". {$step}\n";
+            }
+            $output .= "\n";
+        }
+
+        if (! empty($analysis->prevention)) {
+            $output .= "### 🛡️ Предотвращение\n\n";
+            foreach ($analysis->prevention as $tip) {
+                $output .= "- {$tip}\n";
+            }
+        }
+
+        return CommandResult::success($output, [
+            'deployment_uuid' => $deployment->deployment_uuid,
+            'analysis' => $analysis->toArray(),
+        ]);
+    }
+
+    /**
+     * Show code review results for an application or deployment.
+     */
+    private function executeCodeReviewCommand(ParsedCommand $command): CommandResult
+    {
+        try {
+            $codeReview = null;
+
+            // Find by deployment UUID
+            if ($command->deploymentUuid) {
+                $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $command->deploymentUuid)
+                    ->whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                    ->first();
+
+                if ($deployment) {
+                    $codeReview = CodeReview::where('deployment_id', $deployment->id)->first();
+                }
+            }
+
+            // Find by application name
+            if (! $codeReview && $command->resourceName) {
+                $app = $this->findApplicationByName($command->resourceName, $command->projectName, $command->environmentName);
+                if ($app) {
+                    $codeReview = CodeReview::where('application_id', $app->id)
+                        ->orderByDesc('created_at')
+                        ->first();
+                }
+            }
+
+            // Find the latest code review in team
+            if (! $codeReview) {
+                $codeReview = CodeReview::whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                    ->orderByDesc('created_at')
+                    ->first();
+            }
+
+            if (! $codeReview) {
+                return CommandResult::success('Не найдено code review для отображения. Code review создаётся автоматически при деплое.');
+            }
+
+            // Check authorization
+            if (! $this->authorize('view', $codeReview->application)) {
+                return CommandResult::unauthorized();
+            }
+
+            return $this->formatCodeReview($codeReview);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat code_review failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка получения code review: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Format code review result.
+     */
+    private function formatCodeReview(CodeReview $review): CommandResult
+    {
+        $appName = $review->application->name ?? 'Unknown';
+        $statusEmoji = match ($review->status) {
+            'completed' => $review->hasCriticalViolations() ? '🔴' : ($review->hasViolations() ? '🟡' : '✅'),
+            'analyzing' => '🔄',
+            'failed' => '❌',
+            default => '⏳',
+        };
+
+        $output = "## 📝 Code Review: **{$appName}**\n\n";
+        $output .= "**Коммит:** `{$review->commit_sha}`\n";
+        $output .= "**Статус:** {$statusEmoji} {$review->status_label}\n";
+        $output .= "**Нарушений:** {$review->violations_count} (критических: {$review->critical_count})\n";
+
+        if ($review->summary) {
+            $output .= "\n### Резюме\n\n{$review->summary}\n";
+        }
+
+        // Load violations
+        $violations = $review->violations()->orderBy('severity')->take(10)->get();
+
+        if ($violations->isNotEmpty()) {
+            $output .= "\n### Нарушения\n\n";
+
+            foreach ($violations as $violation) {
+                $severityEmoji = match ($violation->severity) {
+                    'critical' => '🔴',
+                    'high' => '🟠',
+                    'medium' => '🟡',
+                    'low' => '🟢',
+                    default => '⚪',
+                };
+                $output .= "{$severityEmoji} **{$violation->severity}** [{$violation->rule_id}]\n";
+                $output .= "   {$violation->message}\n";
+                if ($violation->file_path) {
+                    $output .= "   📄 `{$violation->file_path}:{$violation->line_number}`\n";
+                }
+                $output .= "\n";
+            }
+        }
+
+        if ($review->files_analyzed) {
+            $filesCount = count($review->files_analyzed);
+            $output .= "\n_Проанализировано файлов: {$filesCount}_";
+        }
+
+        return CommandResult::success($output, [
+            'code_review_id' => $review->id,
+            'violations_count' => $review->violations_count,
+            'critical_count' => $review->critical_count,
+        ]);
+    }
+
+    /**
+     * Check health of all resources in project/environment.
+     */
+    private function executeHealthCheckCommand(ParsedCommand $command): CommandResult
+    {
+        try {
+            $resources = [];
+            $statuses = [
+                'healthy' => 0,
+                'unhealthy' => 0,
+                'degraded' => 0,
+                'unknown' => 0,
+            ];
+
+            // Get applications
+            $apps = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->with(['environment.project'])
+                ->take(20)
+                ->get();
+
+            foreach ($apps as $app) {
+                if ($this->authorize('view', $app)) {
+                    $status = $this->getResourceStatus($app);
+                    $health = $this->determineHealthStatus($status['status'] ?? 'unknown');
+                    $statuses[$health]++;
+                    $resources[] = [
+                        'name' => $app->name,
+                        'type' => 'Application',
+                        'status' => $status['status'] ?? 'unknown',
+                        'health' => $health,
+                        'project' => $app->environment?->project?->name,
+                    ];
+                }
+            }
+
+            // Get services
+            $services = Service::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->with(['environment.project'])
+                ->take(10)
+                ->get();
+
+            foreach ($services as $service) {
+                if ($this->authorize('view', $service)) {
+                    $status = $this->getResourceStatus($service);
+                    $health = $this->determineHealthStatus($status['status'] ?? 'unknown');
+                    $statuses[$health]++;
+                    $resources[] = [
+                        'name' => $service->name,
+                        'type' => 'Service',
+                        'status' => $status['status'] ?? 'unknown',
+                        'health' => $health,
+                        'project' => $service->environment?->project?->name,
+                    ];
+                }
+            }
+
+            // Get databases
+            foreach (array_unique(self::DATABASE_MODELS) as $model) {
+                $dbs = $model::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                    ->with(['environment.project'])
+                    ->take(5)
+                    ->get();
+
+                foreach ($dbs as $db) {
+                    if ($this->authorize('view', $db)) {
+                        $status = $this->getResourceStatus($db);
+                        $health = $this->determineHealthStatus($status['status'] ?? 'unknown');
+                        $statuses[$health]++;
+                        $resources[] = [
+                            'name' => $db->name,
+                            'type' => 'Database',
+                            'status' => $status['status'] ?? 'unknown',
+                            'health' => $health,
+                            'project' => $db->environment?->project?->name,
+                        ];
+                    }
+                }
+            }
+
+            return $this->formatHealthCheckResult($resources, $statuses);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat health_check failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка проверки здоровья: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Determine health status from resource status.
+     */
+    private function determineHealthStatus(string $status): string
+    {
+        return match (strtolower($status)) {
+            'running', 'healthy', 'started' => 'healthy',
+            'stopped', 'exited', 'not_functional' => 'unhealthy',
+            'restarting', 'starting', 'stopping', 'degraded' => 'degraded',
+            default => 'unknown',
+        };
+    }
+
+    /**
+     * Format health check result.
+     */
+    private function formatHealthCheckResult(array $resources, array $statuses): CommandResult
+    {
+        $total = count($resources);
+        $healthyPercent = $total > 0 ? round(($statuses['healthy'] / $total) * 100) : 0;
+
+        $overallStatus = match (true) {
+            $statuses['unhealthy'] > 0 => '🔴 Проблемы обнаружены',
+            $statuses['degraded'] > 0 => '🟡 Есть предупреждения',
+            $statuses['unknown'] > $statuses['healthy'] => '⚪ Статус неизвестен',
+            default => '✅ Всё в порядке',
+        };
+
+        $output = "## 🏥 Health Check\n\n";
+        $output .= "**Общий статус:** {$overallStatus}\n";
+        $output .= "**Здоровых ресурсов:** {$healthyPercent}% ({$statuses['healthy']}/{$total})\n\n";
+
+        $output .= "| Статус | Количество |\n";
+        $output .= "|--------|------------|\n";
+        $output .= "| ✅ Healthy | {$statuses['healthy']} |\n";
+        $output .= "| 🟡 Degraded | {$statuses['degraded']} |\n";
+        $output .= "| 🔴 Unhealthy | {$statuses['unhealthy']} |\n";
+        $output .= "| ⚪ Unknown | {$statuses['unknown']} |\n\n";
+
+        // List unhealthy resources
+        $unhealthy = array_filter($resources, fn ($r) => $r['health'] === 'unhealthy');
+        if (! empty($unhealthy)) {
+            $output .= "### 🔴 Проблемные ресурсы\n\n";
+            foreach ($unhealthy as $r) {
+                $output .= "- **{$r['name']}** ({$r['type']}) - {$r['status']}\n";
+            }
+            $output .= "\n";
+        }
+
+        // List degraded resources
+        $degraded = array_filter($resources, fn ($r) => $r['health'] === 'degraded');
+        if (! empty($degraded)) {
+            $output .= "### 🟡 Ресурсы с предупреждениями\n\n";
+            foreach ($degraded as $r) {
+                $output .= "- **{$r['name']}** ({$r['type']}) - {$r['status']}\n";
+            }
+        }
+
+        return CommandResult::success($output, [
+            'total' => $total,
+            'statuses' => $statuses,
+            'healthy_percent' => $healthyPercent,
+            'resources' => $resources,
+        ]);
+    }
+
+    /**
+     * Show deployment metrics and statistics.
+     */
+    private function executeMetricsCommand(ParsedCommand $command): CommandResult
+    {
+        try {
+            $period = $command->timePeriod ?? '7d';
+            $days = $this->parsePeriodToDays($period);
+
+            $startDate = now()->subDays($days);
+
+            // Get deployment statistics
+            $totalDeployments = ApplicationDeploymentQueue::whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->where('created_at', '>=', $startDate)
+                ->count();
+
+            $successfulDeployments = ApplicationDeploymentQueue::whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->where('created_at', '>=', $startDate)
+                ->where('status', 'finished')
+                ->count();
+
+            $failedDeployments = ApplicationDeploymentQueue::whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->where('created_at', '>=', $startDate)
+                ->where('status', 'failed')
+                ->count();
+
+            $successRate = $totalDeployments > 0 ? round(($successfulDeployments / $totalDeployments) * 100, 1) : 0;
+
+            // Get deployments by application
+            $byApp = ApplicationDeploymentQueue::whereHas('application.environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->where('created_at', '>=', $startDate)
+                ->selectRaw('application_id, count(*) as total, sum(case when status = \'finished\' then 1 else 0 end) as success')
+                ->groupBy('application_id')
+                ->with('application:id,name')
+                ->orderByDesc('total')
+                ->take(5)
+                ->get();
+
+            // Resource counts
+            $appCount = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))->count();
+            $serviceCount = Service::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))->count();
+            $serverCount = Server::where('team_id', $this->teamId)->count();
+
+            $output = "## 📊 Метрики за {$days} дней\n\n";
+
+            $output .= "### Деплои\n\n";
+            $output .= "| Метрика | Значение |\n";
+            $output .= "|---------|----------|\n";
+            $output .= "| Всего деплоев | {$totalDeployments} |\n";
+            $output .= "| Успешных | {$successfulDeployments} |\n";
+            $output .= "| Неудачных | {$failedDeployments} |\n";
+            $output .= "| Success Rate | {$successRate}% |\n\n";
+
+            if ($byApp->isNotEmpty()) {
+                $output .= "### Топ приложений по деплоям\n\n";
+                foreach ($byApp as $stat) {
+                    $appName = $stat->application?->name ?? 'Unknown';
+                    $appSuccess = $stat->total > 0 ? round(($stat->success / $stat->total) * 100) : 0;
+                    $output .= "- **{$appName}**: {$stat->total} деплоев ({$appSuccess}% успешных)\n";
+                }
+                $output .= "\n";
+            }
+
+            $output .= "### Ресурсы\n\n";
+            $output .= "- Приложений: {$appCount}\n";
+            $output .= "- Сервисов: {$serviceCount}\n";
+            $output .= "- Серверов: {$serverCount}\n";
+
+            return CommandResult::success($output, [
+                'period_days' => $days,
+                'total_deployments' => $totalDeployments,
+                'successful_deployments' => $successfulDeployments,
+                'failed_deployments' => $failedDeployments,
+                'success_rate' => $successRate,
+                'app_count' => $appCount,
+                'service_count' => $serviceCount,
+                'server_count' => $serverCount,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('AI Chat metrics failed', ['error' => $e->getMessage()]);
+
+            return CommandResult::failed("Ошибка получения метрик: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Parse time period string to days.
+     */
+    private function parsePeriodToDays(string $period): int
+    {
+        if (preg_match('/^(\d+)([hdwm])$/i', $period, $matches)) {
+            $value = (int) $matches[1];
+            $unit = strtolower($matches[2]);
+
+            return match ($unit) {
+                'h' => max(1, (int) ceil($value / 24)),
+                'd' => $value,
+                'w' => $value * 7,
+                'm' => $value * 30,
+                default => 7,
+            };
+        }
+
+        return 7; // Default to 7 days
     }
 
     /**
@@ -1112,25 +1795,34 @@ class CommandExecutor
     private function executeHelp(): CommandResult
     {
         $help = <<<'HELP'
-**Available commands:**
+**Доступные команды:**
 
-- **deploy** - Deploy an application
-- **restart** - Restart an application, service, or database
-- **stop** - Stop an application, service, or database
-- **start** - Start a stopped resource
-- **logs** - View recent logs
-- **status** - Check resource status
-- **delete** - Delete a project, application, service, or database
+### Управление ресурсами
+- **deploy** - Задеплоить приложение
+- **restart** - Перезапустить приложение, сервис или БД
+- **stop** - Остановить ресурс
+- **start** - Запустить остановленный ресурс
+- **logs** - Показать логи
+- **status** - Статус ресурсов
+- **delete** - Удалить ресурс
 
-**Examples:**
-- "Deploy my-app"
-- "Restart the database"
-- "Show logs for api-service"
-- "What's the status of my application?"
-- "Delete project test-project"
-- "Delete all projects except PIXELPETS"
+### AI Анализ
+- **analyze_errors** - AI анализ ошибок в логах
+- **analyze_deployment** - Анализ неудачного деплоя
+- **code_review** - Показать code review
+- **health_check** - Проверка здоровья ресурсов
+- **metrics** - Статистика деплоев
 
-You can also ask questions about your resources and I'll try to help!
+**Примеры:**
+- "Задеплой my-app"
+- "Проанализируй ошибки api-service"
+- "Почему упал последний деплой?"
+- "Покажи code review"
+- "Проверь здоровье всех сервисов"
+- "Метрики за неделю"
+- "Удали проект test-project"
+
+Можете также задавать вопросы о ваших ресурсах!
 HELP;
 
         return CommandResult::success($help);

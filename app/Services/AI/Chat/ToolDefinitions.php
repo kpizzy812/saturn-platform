@@ -16,7 +16,11 @@ final class ToolDefinitions
     /**
      * Available action types.
      */
-    public const ACTION_TYPES = ['deploy', 'restart', 'stop', 'start', 'logs', 'status', 'delete', 'help', 'none'];
+    public const ACTION_TYPES = [
+        'deploy', 'restart', 'stop', 'start', 'logs', 'status', 'delete',
+        'analyze_errors', 'analyze_deployment', 'code_review', 'health_check', 'metrics',
+        'help', 'none',
+    ];
 
     /**
      * Legacy intent types for backward compatibility.
@@ -82,6 +86,24 @@ final class ToolDefinitions
                                     'type' => 'string',
                                     'description' => 'Environment name if mentioned (for filtering)',
                                 ],
+                                'deployment_uuid' => [
+                                    'type' => 'string',
+                                    'description' => 'UUID of specific deployment for analyze_deployment command',
+                                ],
+                                'target_scope' => [
+                                    'type' => 'string',
+                                    'enum' => ['single', 'multiple', 'all'],
+                                    'description' => 'Scope for batch operations: single resource, multiple named resources, or all resources',
+                                ],
+                                'resource_names' => [
+                                    'type' => 'array',
+                                    'items' => ['type' => 'string'],
+                                    'description' => 'Array of resource names for multiple analysis',
+                                ],
+                                'time_period' => [
+                                    'type' => 'string',
+                                    'description' => 'Time period for metrics command (e.g., "24h", "7d", "30d")',
+                                ],
                             ],
                             'required' => ['action'],
                         ],
@@ -142,8 +164,26 @@ final class ToolDefinitions
                                         'type' => ['string', 'null'],
                                         'description' => 'Environment name if mentioned',
                                     ],
+                                    'deployment_uuid' => [
+                                        'type' => ['string', 'null'],
+                                        'description' => 'UUID of specific deployment for analyze_deployment command',
+                                    ],
+                                    'target_scope' => [
+                                        'type' => ['string', 'null'],
+                                        'enum' => ['single', 'multiple', 'all', null],
+                                        'description' => 'Scope for batch operations',
+                                    ],
+                                    'resource_names' => [
+                                        'type' => ['array', 'null'],
+                                        'items' => ['type' => 'string'],
+                                        'description' => 'Array of resource names for multiple analysis',
+                                    ],
+                                    'time_period' => [
+                                        'type' => ['string', 'null'],
+                                        'description' => 'Time period for metrics command',
+                                    ],
                                 ],
-                                'required' => ['action', 'resource_type', 'resource_name', 'project_name', 'environment_name'],
+                                'required' => ['action', 'resource_type', 'resource_name', 'project_name', 'environment_name', 'deployment_uuid', 'target_scope', 'resource_names', 'time_period'],
                                 'additionalProperties' => false,
                             ],
                         ],
@@ -228,6 +268,20 @@ final class ToolDefinitions
                                         'type' => ['string', 'null'],
                                     ],
                                     'environment_name' => [
+                                        'type' => ['string', 'null'],
+                                    ],
+                                    'deployment_uuid' => [
+                                        'type' => ['string', 'null'],
+                                    ],
+                                    'target_scope' => [
+                                        'type' => ['string', 'null'],
+                                        'enum' => ['single', 'multiple', 'all', null],
+                                    ],
+                                    'resource_names' => [
+                                        'type' => ['array', 'null'],
+                                        'items' => ['type' => 'string'],
+                                    ],
+                                    'time_period' => [
                                         'type' => ['string', 'null'],
                                     ],
                                 ],
