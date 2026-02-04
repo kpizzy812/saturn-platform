@@ -232,8 +232,8 @@ class AiChatService
             'command_result' => $commandResultMessage,
         ]);
 
-        // Log usage
-        $this->logUsage($session, $assistantMessage, $response, $startTime);
+        // Log usage (include tokens from command parsing)
+        $this->logUsage($session, $assistantMessage, $response, $startTime, $parsedIntent);
 
         // Broadcast assistant message
         broadcast(new AiChatMessageReceived($session, $assistantMessage));
@@ -628,8 +628,13 @@ PROMPT;
         AiChatMessage $message,
         ChatResponse $response,
         float $startTime,
+        ?ParsedIntent $parsedIntent = null,
     ): void {
         $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        // Combine tokens from command parsing and response generation
+        $inputTokens = $response->inputTokens + ($parsedIntent?->inputTokens ?? 0);
+        $outputTokens = $response->outputTokens + ($parsedIntent?->outputTokens ?? 0);
 
         try {
             AiUsageLog::create([
@@ -639,9 +644,9 @@ PROMPT;
                 'provider' => $response->provider,
                 'model' => $response->model,
                 'operation' => 'chat',
-                'input_tokens' => $response->inputTokens,
-                'output_tokens' => $response->outputTokens,
-                'cost_usd' => $this->calculateCost($response),
+                'input_tokens' => $inputTokens,
+                'output_tokens' => $outputTokens,
+                'cost_usd' => $this->calculateCostFromTokens($response->provider, $response->model, $inputTokens, $outputTokens),
                 'response_time_ms' => $responseTimeMs,
                 'success' => $response->success,
                 'error_message' => $response->error,
@@ -656,13 +661,21 @@ PROMPT;
      */
     private function calculateCost(ChatResponse $response): float
     {
-        $pricingService = new AiPricingService;
-
-        return $pricingService->calculateCost(
+        return $this->calculateCostFromTokens(
             $response->provider,
             $response->model,
             $response->inputTokens,
             $response->outputTokens
         );
+    }
+
+    /**
+     * Calculate cost from token counts.
+     */
+    private function calculateCostFromTokens(string $provider, string $model, int $inputTokens, int $outputTokens): float
+    {
+        $pricingService = new AiPricingService;
+
+        return $pricingService->calculateCost($provider, $model, $inputTokens, $outputTokens);
     }
 }

@@ -448,7 +448,7 @@ export default function AiUsageIndex({
                                             </Badge>
                                         </div>
                                         <div className="space-y-2 pl-2">
-                                            {models.slice(0, 4).map((model) => (
+                                            {models.map((model) => (
                                                 <div key={model.model_id} className="flex items-center justify-between text-sm">
                                                     <span className="text-foreground-muted truncate max-w-[150px]" title={model.model_name}>
                                                         {model.model_name}

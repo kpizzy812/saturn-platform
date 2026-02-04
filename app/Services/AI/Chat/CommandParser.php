@@ -131,22 +131,22 @@ class CommandParser
         if (! $response->success) {
             Log::warning('OpenAI parsing failed', ['error' => $response->error]);
 
-            return ParsedIntent::none($response->error);
+            return ParsedIntent::none($response->error, $response->inputTokens, $response->outputTokens);
         }
 
         if ($response->hasToolCalls()) {
             $toolCall = $response->getToolCall('parse_commands');
             if ($toolCall) {
-                return $this->buildParsedIntent($toolCall->arguments, $context);
+                return $this->buildParsedIntent($toolCall->arguments, $context, $response->inputTokens, $response->outputTokens);
             }
         }
 
         // If no tool call, try to parse content
         if ($response->content) {
-            return $this->parseStructuredContent($response->content, $context);
+            return $this->parseStructuredContent($response->content, $context, $response->inputTokens, $response->outputTokens);
         }
 
-        return ParsedIntent::none();
+        return ParsedIntent::none(null, $response->inputTokens, $response->outputTokens);
     }
 
     /**
@@ -164,21 +164,21 @@ class CommandParser
         if (! $response->success) {
             Log::warning('Anthropic parsing failed', ['error' => $response->error]);
 
-            return ParsedIntent::none($response->error);
+            return ParsedIntent::none($response->error, $response->inputTokens, $response->outputTokens);
         }
 
         if ($response->hasToolCalls()) {
             $toolCall = $response->getToolCall('parse_commands');
             if ($toolCall) {
-                return $this->buildParsedIntent($toolCall->arguments, $context);
+                return $this->buildParsedIntent($toolCall->arguments, $context, $response->inputTokens, $response->outputTokens);
             }
         }
 
         if ($response->content) {
-            return ParsedIntent::none($response->content);
+            return ParsedIntent::none($response->content, $response->inputTokens, $response->outputTokens);
         }
 
-        return ParsedIntent::none();
+        return ParsedIntent::none(null, $response->inputTokens, $response->outputTokens);
     }
 
     /**
@@ -189,16 +189,16 @@ class CommandParser
         $response = $this->provider->chat($messages);
 
         if (! $response->success) {
-            return ParsedIntent::none($response->error);
+            return ParsedIntent::none($response->error, $response->inputTokens, $response->outputTokens);
         }
 
-        return $this->parseStructuredContent($response->content, $context);
+        return $this->parseStructuredContent($response->content, $context, $response->inputTokens, $response->outputTokens);
     }
 
     /**
      * Build ParsedIntent from AI response data.
      */
-    private function buildParsedIntent(array $data, ?array $context): ParsedIntent
+    private function buildParsedIntent(array $data, ?array $context, int $inputTokens = 0, int $outputTokens = 0): ParsedIntent
     {
         $commands = [];
 
@@ -262,27 +262,29 @@ class CommandParser
             requiresConfirmation: $hasDangerous,
             confirmationMessage: $confirmationMessage,
             responseText: $data['response_text'] ?? null,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
         );
     }
 
     /**
      * Parse structured JSON content from AI response.
      */
-    private function parseStructuredContent(string $content, ?array $context): ParsedIntent
+    private function parseStructuredContent(string $content, ?array $context, int $inputTokens = 0, int $outputTokens = 0): ParsedIntent
     {
         try {
             $json = $this->extractJson($content);
             $data = json_decode($json, true);
 
             if (! $data) {
-                return ParsedIntent::none($content);
+                return ParsedIntent::none($content, $inputTokens, $outputTokens);
             }
 
-            return $this->buildParsedIntent($data, $context);
+            return $this->buildParsedIntent($data, $context, $inputTokens, $outputTokens);
         } catch (\Throwable $e) {
             Log::warning('Failed to parse structured content', ['error' => $e->getMessage()]);
 
-            return ParsedIntent::none($content);
+            return ParsedIntent::none($content, $inputTokens, $outputTokens);
         }
     }
 

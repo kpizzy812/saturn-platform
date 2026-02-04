@@ -59,9 +59,21 @@ Route::get('/ai-usage', function () {
         ->toArray();
 
     // Model pricing grouped by provider
+    // Priority order: newest models first (Claude 4.5, GPT-4o, etc.)
     $modelPricing = [];
     $pricing = AiModelPricing::where('is_active', true)
         ->orderBy('provider')
+        ->orderByRaw("CASE
+            WHEN model_id LIKE '%opus-4-5%' THEN 1
+            WHEN model_id LIKE '%sonnet-4-5%' THEN 2
+            WHEN model_id LIKE '%sonnet-4%' THEN 3
+            WHEN model_id LIKE '%haiku-4-5%' THEN 4
+            WHEN model_id LIKE 'gpt-4o' THEN 1
+            WHEN model_id LIKE 'gpt-4o-mini' THEN 2
+            WHEN model_id LIKE 'o3%' THEN 3
+            WHEN model_id LIKE 'o1%' THEN 4
+            ELSE 99
+        END")
         ->orderBy('model_name')
         ->get();
 

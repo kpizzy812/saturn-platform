@@ -16,6 +16,8 @@ readonly class ParsedIntent
         public bool $requiresConfirmation = false,
         public ?string $confirmationMessage = null,
         public ?string $responseText = null,
+        public int $inputTokens = 0,
+        public int $outputTokens = 0,
     ) {}
 
     public function hasCommands(): bool
@@ -75,11 +77,13 @@ readonly class ParsedIntent
         return array_filter($this->commands, fn (ParsedCommand $cmd) => $cmd->isDangerous());
     }
 
-    public static function none(?string $responseText = null): self
+    public static function none(?string $responseText = null, int $inputTokens = 0, int $outputTokens = 0): self
     {
         return new self(
             commands: [],
             responseText: $responseText,
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
         );
     }
 
