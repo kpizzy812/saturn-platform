@@ -156,6 +156,8 @@ export function AiChatMessage({ message, onConfirm, onRate }: AiChatMessageProps
                             isUser ? 'prose-invert' : 'prose-invert',
                             '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
                             '[&_p]:my-1.5 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5',
+                            '[&_strong]:font-semibold [&_strong]:text-foreground',
+                            '[&_em]:italic',
                             '[&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_h4]:text-xs',
                             '[&_h1]:font-bold [&_h2]:font-semibold [&_h3]:font-semibold',
                             '[&_h1]:my-2 [&_h2]:my-1.5 [&_h3]:my-1 [&_h4]:my-1',
