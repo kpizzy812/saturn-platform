@@ -26,6 +26,61 @@ class PermissionSetsSeeder extends Seeder
 
         foreach ($teams as $team) {
             $this->createSystemSetsForTeam($team);
+            $this->assignExistingMembersToPermissionSets($team);
+        }
+    }
+
+    /**
+     * Assign existing team members to their corresponding permission sets.
+     */
+    private function assignExistingMembersToPermissionSets(Team $team): void
+    {
+        // Map old roles to permission set slugs
+        $roleToSlugMap = [
+            'owner' => 'owner',
+            'admin' => 'admin',
+            'developer' => 'developer',
+            'member' => 'member',
+            'viewer' => 'viewer',
+        ];
+
+        // Get team members with their roles from pivot
+        $members = \DB::table('team_user')
+            ->where('team_id', $team->id)
+            ->get();
+
+        foreach ($members as $member) {
+            $role = $member->role ?? 'member';
+            $slug = $roleToSlugMap[$role] ?? 'member';
+
+            // Find the permission set
+            $permissionSet = PermissionSet::forTeam($team->id)
+                ->where('slug', $slug)
+                ->first();
+
+            if (! $permissionSet) {
+                continue;
+            }
+
+            // Check if user is already assigned to this permission set
+            $exists = \DB::table('permission_set_user')
+                ->where('permission_set_id', $permissionSet->id)
+                ->where('user_id', $member->user_id)
+                ->where('scope_type', 'team')
+                ->where('scope_id', $team->id)
+                ->exists();
+
+            if (! $exists) {
+                \DB::table('permission_set_user')->insert([
+                    'permission_set_id' => $permissionSet->id,
+                    'user_id' => $member->user_id,
+                    'scope_type' => 'team',
+                    'scope_id' => $team->id,
+                    'environment_overrides' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
     }
 
