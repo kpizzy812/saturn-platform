@@ -87,6 +87,11 @@ class CommandExecutor
     {
         $resource = $this->resolveResource($intent, 'application');
         if (! $resource) {
+            // Check if user didn't specify which resource
+            if (! $this->hasResourceSpecified($intent)) {
+                return $this->listAvailableResources('deploy', 'application');
+            }
+
             return CommandResult::notFound('application');
         }
 
@@ -142,6 +147,10 @@ class CommandExecutor
     {
         $resource = $this->resolveResource($intent);
         if (! $resource) {
+            if (! $this->hasResourceSpecified($intent)) {
+                return $this->listAvailableResources('restart', $intent->getResourceType());
+            }
+
             return CommandResult::notFound($intent->getResourceType() ?? 'resource');
         }
 
@@ -192,6 +201,10 @@ class CommandExecutor
     {
         $resource = $this->resolveResource($intent);
         if (! $resource) {
+            if (! $this->hasResourceSpecified($intent)) {
+                return $this->listAvailableResources('stop', $intent->getResourceType());
+            }
+
             return CommandResult::notFound($intent->getResourceType() ?? 'resource');
         }
 
@@ -233,6 +246,10 @@ class CommandExecutor
     {
         $resource = $this->resolveResource($intent);
         if (! $resource) {
+            if (! $this->hasResourceSpecified($intent)) {
+                return $this->listAvailableResources('start', $intent->getResourceType());
+            }
+
             return CommandResult::notFound($intent->getResourceType() ?? 'resource');
         }
 
@@ -282,6 +299,10 @@ class CommandExecutor
     {
         $resource = $this->resolveResource($intent);
         if (! $resource) {
+            if (! $this->hasResourceSpecified($intent)) {
+                return $this->listAvailableResources('view logs for', $intent->getResourceType());
+            }
+
             return CommandResult::notFound($intent->getResourceType() ?? 'resource');
         }
 
@@ -741,5 +762,80 @@ HELP;
         }
 
         return $status;
+    }
+
+    /**
+     * Check if intent has a resource specified.
+     */
+    private function hasResourceSpecified(IntentResult $intent): bool
+    {
+        return $intent->getResourceId() !== null
+            || $intent->getResourceUuid() !== null
+            || ! empty($intent->params['resource_name']);
+    }
+
+    /**
+     * List available resources for the user to choose from.
+     */
+    private function listAvailableResources(string $action, ?string $resourceType = null): CommandResult
+    {
+        $resources = [];
+
+        // Get applications
+        if (! $resourceType || $resourceType === 'application') {
+            $apps = Application::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->select('name', 'status', 'uuid', 'fqdn')
+                ->orderBy('name')
+                ->take(10)
+                ->get();
+
+            foreach ($apps as $app) {
+                $resources[] = [
+                    'name' => $app->name,
+                    'status' => $app->status,
+                    'type' => 'application',
+                    'fqdn' => $app->fqdn,
+                ];
+            }
+        }
+
+        // Get services if not specifically looking for applications
+        if (! $resourceType || $resourceType === 'service') {
+            $services = Service::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->select('name', 'uuid')
+                ->orderBy('name')
+                ->take(10)
+                ->get();
+
+            foreach ($services as $service) {
+                $resources[] = [
+                    'name' => $service->name,
+                    'type' => 'service',
+                ];
+            }
+        }
+
+        // Get databases if not specifically looking for applications/services
+        if (! $resourceType || $resourceType === 'database') {
+            foreach (array_unique(self::DATABASE_MODELS) as $model) {
+                $dbs = $model::whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                    ->select('name', 'status', 'uuid')
+                    ->orderBy('name')
+                    ->take(5)
+                    ->get();
+
+                foreach ($dbs as $db) {
+                    $resources[] = [
+                        'name' => $db->name,
+                        'status' => $db->status ?? 'unknown',
+                        'type' => 'database',
+                    ];
+                }
+            }
+        }
+
+        $displayType = $resourceType ?? 'resource';
+
+        return CommandResult::needsResource($action, $displayType, $resources);
     }
 }
