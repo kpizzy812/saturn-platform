@@ -1818,7 +1818,9 @@ class CommandExecutor
     private function executeDeleteProject(IntentResult $intent): CommandResult
     {
         $projectName = $intent->params['resource_name'] ?? $intent->params['project_name'] ?? null;
-        $excludeNames = $intent->params['exclude_names'] ?? [];
+
+        // Support both old (exclude_names) and new (resource_names with target_scope) formats
+        $excludeNames = $intent->params['exclude_names'] ?? $intent->params['resource_names'] ?? [];
 
         // If user wants to delete all projects except some
         if ($this->isDeleteAllExceptRequest($intent)) {
@@ -1920,8 +1922,13 @@ class CommandExecutor
      */
     private function isDeleteAllExceptRequest(IntentResult $intent): bool
     {
+        // Support both old (exclude_names, delete_all_except) and new (target_scope, resource_names) formats
+        $targetScope = $intent->params['target_scope'] ?? null;
+
         return ! empty($intent->params['exclude_names']) ||
-               ! empty($intent->params['delete_all_except']);
+               ! empty($intent->params['delete_all_except']) ||
+               $targetScope === 'all' ||
+               $targetScope === 'all_except';
     }
 
     /**

@@ -202,16 +202,32 @@ class AiChatService
         // Get first command for legacy storage
         $firstCommand = $parsedIntent->getFirstCommand();
 
+        // Build complete intent params (including all fields for confirmation)
+        $intentParams = null;
+        if ($firstCommand) {
+            $intentParams = [
+                'resource_type' => $firstCommand->resourceType,
+                'resource_name' => $firstCommand->resourceName,
+                'resource_id' => $firstCommand->resourceId,
+                'resource_uuid' => $firstCommand->resourceUuid,
+                'project_name' => $firstCommand->projectName,
+                'environment_name' => $firstCommand->environmentName,
+                'deployment_uuid' => $firstCommand->deploymentUuid,
+                'target_scope' => $firstCommand->targetScope,
+                'resource_names' => $firstCommand->resourceNames,
+                'time_period' => $firstCommand->timePeriod,
+                'commands_count' => count($parsedIntent->commands),
+            ];
+            // Remove null values
+            $intentParams = array_filter($intentParams, fn ($v) => $v !== null);
+        }
+
         // Save assistant message
         $assistantMessage = $session->messages()->create([
             'role' => 'assistant',
             'content' => $finalContent,
             'intent' => $firstCommand?->action,
-            'intent_params' => $firstCommand ? [
-                'resource_type' => $firstCommand->resourceType,
-                'resource_name' => $firstCommand->resourceName,
-                'commands_count' => count($parsedIntent->commands),
-            ] : null,
+            'intent_params' => $intentParams,
             'command_status' => $commandStatus,
             'command_result' => $commandResultMessage,
         ]);
