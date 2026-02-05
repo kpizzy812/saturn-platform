@@ -217,7 +217,7 @@ class MonitorDeploymentHealthJob implements ShouldQueue
 
         if ($team) {
             // Use existing notification system
-            $application->environment->project->team->notify(
+            $team->notify(
                 new \App\Notifications\Application\DeploymentFailed(
                     $application,
                     "Auto-rollback triggered: {$event->getReasonLabel()}"

@@ -58,7 +58,10 @@ class StopService
         } catch (\Exception $e) {
             return $e->getMessage();
         } finally {
-            ServiceStatusChanged::dispatch($service->environment->project->team->id);
+            $teamId = $service->environment?->project?->team?->id;
+            if ($teamId) {
+                ServiceStatusChanged::dispatch($teamId);
+            }
         }
     }
 

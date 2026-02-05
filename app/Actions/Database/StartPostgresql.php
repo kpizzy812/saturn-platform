@@ -239,7 +239,7 @@ class StartPostgresql
         $eventData = [
             'databaseId' => $database->id,
             'status' => 'starting',
-            'teamId' => $database->environment->project->team->id,
+            'teamId' => $database->environment?->project?->team?->id,
         ];
 
         return remote_process($this->commands, $database->destination->server, callEventOnFinish: 'DatabaseStatusChanged', callEventData: $eventData);

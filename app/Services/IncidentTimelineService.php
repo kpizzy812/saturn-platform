@@ -141,7 +141,11 @@ class IncidentTimelineService
     protected function getAlertEvents(Application $application, Carbon $from, Carbon $to): Collection
     {
         // Get alerts for this application's team/server
-        $teamId = $application->environment->project->team_id;
+        $teamId = $application->environment?->project?->team_id;
+
+        if (! $teamId) {
+            return collect();
+        }
 
         $alertHistories = AlertHistory::whereHas('alert', function ($query) use ($teamId) {
             $query->where('team_id', $teamId);

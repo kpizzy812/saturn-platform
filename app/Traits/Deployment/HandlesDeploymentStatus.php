@@ -120,7 +120,7 @@ trait HandlesDeploymentStatus
      */
     private function sendDeploymentNotification(string $notificationClass): void
     {
-        $this->application->environment->project->team?->notify(
+        $this->application->environment?->project?->team?->notify(
             new $notificationClass($this->application, $this->deployment_uuid, $this->preview)
         );
     }
