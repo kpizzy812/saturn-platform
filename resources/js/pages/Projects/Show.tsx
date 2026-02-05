@@ -214,6 +214,19 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     }
                     return changed ? next : prev;
                 });
+
+                // Sync selected service panel status
+                setSelectedService((prev) => {
+                    if (!prev) return null;
+                    const statusMap = prev.type === 'app' ? data.applications
+                        : prev.type === 'db' ? data.databases
+                        : data.services;
+                    const newStatus = statusMap[prev.id];
+                    if (newStatus && newStatus !== prev.status) {
+                        return { ...prev, status: newStatus };
+                    }
+                    return prev;
+                });
             } catch {
                 // Silently ignore polling errors
             }
