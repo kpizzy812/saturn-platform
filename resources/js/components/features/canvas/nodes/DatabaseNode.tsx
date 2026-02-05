@@ -165,6 +165,7 @@ const arePropsEqual = (prevProps: { data: DatabaseNodeData; selected?: boolean }
 export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; selected?: boolean }) => {
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
+    const isError = statusBase === 'exited' || statusBase === 'stopped' || statusBase === 'crashed' || statusBase === 'failed';
     const bgColor = getDbBgColor(data.databaseType);
     const hasQuickActions = !!(data.onQuickViewLogs || data.onQuickBrowseData);
     const isKeyValueStore = isRedisLike(data.databaseType);
@@ -241,11 +242,15 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
                     <div className="flex items-center gap-2">
                         <div className={cn(
                             'w-2 h-2 rounded-full',
-                            isOnline ? 'bg-success' : 'bg-foreground-subtle'
+                            isOnline && 'bg-success',
+                            isError && 'bg-red-500',
+                            !isOnline && !isError && 'bg-foreground-subtle'
                         )} />
                         <span className={cn(
                             'text-sm',
-                            isOnline ? 'text-success' : 'text-foreground-muted'
+                            isOnline && 'text-success',
+                            isError && 'text-red-400',
+                            !isOnline && !isError && 'text-foreground-muted'
                         )}>
                             {isOnline ? 'Online' : statusBase || 'unknown'}
                         </span>

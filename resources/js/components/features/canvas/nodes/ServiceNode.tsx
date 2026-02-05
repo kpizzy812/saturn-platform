@@ -61,6 +61,7 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const isDeploying = statusBase === 'deploying' || statusBase === 'restarting';
+    const isError = statusBase === 'exited' || statusBase === 'stopped' || statusBase === 'crashed' || statusBase === 'failed';
     const hasQuickActions = data.onQuickDeploy || data.onQuickOpenUrl || data.onQuickViewLogs;
 
     return (
@@ -138,13 +139,15 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
                             'w-2 h-2 rounded-full transition-all duration-200',
                             isOnline && 'status-online',
                             isDeploying && 'status-deploying',
-                            !isOnline && !isDeploying && 'bg-foreground-subtle'
+                            isError && 'bg-red-500',
+                            !isOnline && !isDeploying && !isError && 'bg-foreground-subtle'
                         )} />
                         <span className={cn(
                             'text-sm transition-colors duration-200',
                             isOnline && 'text-success',
                             isDeploying && 'text-primary',
-                            !isOnline && !isDeploying && 'text-foreground-muted'
+                            isError && 'text-red-400',
+                            !isOnline && !isDeploying && !isError && 'text-foreground-muted'
                         )}>
                             {isOnline ? 'Online' : statusBase || 'unknown'}
                         </span>

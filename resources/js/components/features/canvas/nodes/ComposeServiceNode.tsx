@@ -51,6 +51,7 @@ export const ComposeServiceNode = memo(({ data, selected }: { data: ComposeServi
     const statusBase = (data.status || '').split(':')[0];
     const isOnline = statusBase === 'running';
     const isStarting = statusBase === 'starting' || statusBase === 'restarting';
+    const isError = statusBase === 'exited' || statusBase === 'stopped' || statusBase === 'crashed' || statusBase === 'failed';
     const hasQuickActions = data.onQuickRestart || data.onQuickStop || data.onQuickViewLogs;
 
     return (
@@ -126,13 +127,15 @@ export const ComposeServiceNode = memo(({ data, selected }: { data: ComposeServi
                             'w-2 h-2 rounded-full transition-all duration-200',
                             isOnline && 'status-online',
                             isStarting && 'status-deploying',
-                            !isOnline && !isStarting && 'bg-foreground-subtle'
+                            isError && 'bg-red-500',
+                            !isOnline && !isStarting && !isError && 'bg-foreground-subtle'
                         )} />
                         <span className={cn(
                             'text-sm transition-colors duration-200',
                             isOnline && 'text-success',
                             isStarting && 'text-primary',
-                            !isOnline && !isStarting && 'text-foreground-muted'
+                            isError && 'text-red-400',
+                            !isOnline && !isStarting && !isError && 'text-foreground-muted'
                         )}>
                             {isOnline ? 'Online' : statusBase || 'unknown'}
                         </span>
