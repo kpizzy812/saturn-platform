@@ -208,6 +208,7 @@ class UserNotification extends Model
 
     /**
      * Get action URL as relative path (strips base_url for SPA navigation).
+     * Also converts legacy Livewire deployment URLs to new Inertia format.
      */
     protected function getRelativeActionUrl(): ?string
     {
@@ -215,20 +216,23 @@ class UserNotification extends Model
             return null;
         }
 
-        // Already a relative path
-        if (str_starts_with($this->action_url, '/')) {
-            return $this->action_url;
-        }
-
         // Strip the origin to get a relative path
-        $parsed = parse_url($this->action_url);
-        if ($parsed === false || ! isset($parsed['path'])) {
-            return $this->action_url;
+        $path = $this->action_url;
+        if (! str_starts_with($path, '/')) {
+            $parsed = parse_url($path);
+            if ($parsed !== false && isset($parsed['path'])) {
+                $path = $parsed['path'];
+                if (isset($parsed['query'])) {
+                    $path .= '?'.$parsed['query'];
+                }
+            }
         }
 
-        $path = $parsed['path'];
-        if (isset($parsed['query'])) {
-            $path .= '?'.$parsed['query'];
+        // Convert legacy Livewire deployment URLs to new Inertia format:
+        // /project/{uuid}/environment/{uuid}/application/{uuid}/deployment/{uuid}
+        // → /deployments/{uuid}
+        if (preg_match('#/deployment/([a-zA-Z0-9-]+)$#', $path, $matches)) {
+            return '/deployments/'.$matches[1];
         }
 
         return $path;

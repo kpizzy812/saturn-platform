@@ -72,4 +72,37 @@ class UserNotificationUrlTest extends TestCase
 
         $this->assertEquals('/deployments/xyz-789', $result['actionUrl']);
     }
+
+    #[Test]
+    public function to_frontend_array_converts_legacy_livewire_deployment_url(): void
+    {
+        $notification = new UserNotification;
+        $notification->id = 'test-uuid';
+        $notification->type = 'deployment_success';
+        $notification->title = 'Deployment: frontend';
+        $notification->description = 'Environment: development';
+        $notification->action_url = 'http://157.180.57.47:8000/project/oc80wckk804k0g4kswok4k40/environment/nw0g00cokc0k4o8gw4koks8w/application/20491441-0d69-481d-998c-461bdb06c992/deployment/de3ae2e2-b757-4cae-8868-a7843b24b4be';
+        $notification->is_read = false;
+        $notification->created_at = now();
+
+        $result = $notification->toFrontendArray();
+
+        $this->assertEquals('/deployments/de3ae2e2-b757-4cae-8868-a7843b24b4be', $result['actionUrl']);
+    }
+
+    #[Test]
+    public function to_frontend_array_converts_relative_legacy_url(): void
+    {
+        $notification = new UserNotification;
+        $notification->id = 'test-uuid';
+        $notification->type = 'deployment_failure';
+        $notification->title = 'Deployment: backend';
+        $notification->action_url = '/project/abc123/environment/def456/application/ghi789/deployment/xyz-deployment-uuid';
+        $notification->is_read = false;
+        $notification->created_at = now();
+
+        $result = $notification->toFrontendArray();
+
+        $this->assertEquals('/deployments/xyz-deployment-uuid', $result['actionUrl']);
+    }
 }

@@ -38,17 +38,22 @@ function getRelativeTime(timestamp: string): string {
 }
 
 function toRelativePath(url: string): string {
+    let path = url;
     try {
         const parsed = new URL(url, window.location.origin);
-        if (parsed.origin === window.location.origin) {
-            return parsed.pathname + parsed.search + parsed.hash;
-        }
-        // If it's a different origin, extract just the path
-        return parsed.pathname + parsed.search + parsed.hash;
+        path = parsed.pathname + parsed.search + parsed.hash;
     } catch {
         // Already a relative path or invalid URL
-        return url;
     }
+
+    // Convert legacy Livewire deployment URLs to new Inertia format:
+    // /project/.../deployment/{uuid} → /deployments/{uuid}
+    const legacyMatch = path.match(/\/deployment\/([a-zA-Z0-9-]+)$/);
+    if (legacyMatch) {
+        return `/deployments/${legacyMatch[1]}`;
+    }
+
+    return path;
 }
 
 function NotificationItemCompact({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: string) => void }) {
