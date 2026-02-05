@@ -147,7 +147,7 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
             color: data.color,
             icon: data.icon,
             parent_id: data.parent_id || null,
-            permissions,
+            permissions: permissions as any,
         }, {
             onSuccess: () => {
                 toast({

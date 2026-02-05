@@ -398,7 +398,7 @@ export function EnvironmentMigrateModal({
                             label="Target Environment"
                             value={selectedEnvironmentId}
                             onChange={(e) => setSelectedEnvironmentId(e.target.value)}
-                            options={targets.target_environments.map((env: { id: number; name: string; type: string }) => ({
+                            options={(targets.target_environments as any).map((env: { id: number; name: string; type: string }) => ({
                                 value: env.id.toString(),
                                 label: `${env.name} (${env.type})`,
                             }))}
@@ -420,7 +420,7 @@ export function EnvironmentMigrateModal({
                             label="Target Server"
                             value={selectedServerId}
                             onChange={(e) => setSelectedServerId(e.target.value)}
-                            options={targets.servers.map((server: Server) => ({
+                            options={targets.servers.map((server: { id: number; name: string; ip: string }) => ({
                                 value: server.id.toString(),
                                 label: server.name,
                             }))}
@@ -526,7 +526,7 @@ export function EnvironmentMigrateModal({
                                     <div key={uuid} className="flex items-center gap-2 text-sm">
                                         <Database className="h-4 w-4 text-foreground-muted" />
                                         {db.name}
-                                        {targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10))?.type === 'production' && (
+                                        {(targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10)) as any)?.type === 'production' && (
                                             <span className="text-xs text-warning">(config only)</span>
                                         )}
                                     </div>
@@ -545,7 +545,7 @@ export function EnvironmentMigrateModal({
                     </div>
 
                     {/* Warning for production */}
-                    {targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10))?.type === 'production' && (
+                    {(targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10)) as any)?.type === 'production' && (
                         <Alert variant="warning">
                             <AlertTriangle className="h-4 w-4" />
                             <div>

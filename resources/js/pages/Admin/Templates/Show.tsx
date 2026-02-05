@@ -126,7 +126,7 @@ export default function AdminTemplatesShow({ template: initialTemplate, categori
                 is_official: isOfficial,
                 is_public: isPublic,
                 tags,
-                config,
+                config: config as any,
             },
             {
                 onSuccess: () => {

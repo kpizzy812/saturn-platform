@@ -68,24 +68,17 @@ export default function TeamActivity() {
     // Debounce search
     React.useEffect(() => {
         const timer = setTimeout(() => {
-            setFilters(prev => ({
-                ...prev,
+            setFilters({
                 search: searchQuery || undefined,
-            }));
+                member: selectedMember !== 'all' ? selectedMember : undefined,
+                action: selectedAction !== 'all' ? selectedAction : undefined,
+                dateRange: selectedDateRange !== 'all' ? selectedDateRange : undefined,
+            });
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, setFilters]);
+    }, [searchQuery, selectedMember, selectedAction, selectedDateRange, setFilters]);
 
-    // Update filters when select values change
-    React.useEffect(() => {
-        setFilters({
-            search: searchQuery || undefined,
-            member: selectedMember !== 'all' ? selectedMember : undefined,
-            action: selectedAction !== 'all' ? selectedAction : undefined,
-            dateRange: selectedDateRange !== 'all' ? selectedDateRange : undefined,
-        });
-    }, [selectedMember, selectedAction, selectedDateRange, searchQuery, setFilters]);
 
     // Get unique team members from activities
     const teamMembers = React.useMemo(() => {

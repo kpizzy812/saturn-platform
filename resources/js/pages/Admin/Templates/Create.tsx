@@ -91,7 +91,7 @@ export default function AdminTemplatesCreate({ categories }: Props) {
                 is_official: isOfficial,
                 is_public: isPublic,
                 tags,
-                config,
+                config: config as any,
             },
             {
                 onError: (errs) => {

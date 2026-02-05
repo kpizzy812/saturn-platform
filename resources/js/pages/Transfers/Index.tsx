@@ -28,11 +28,8 @@ const statusConfig: Record<string, { icon: typeof Clock; color: string; label: s
 
 export default function TransfersIndex({ transfers, statusFilter }: Props) {
     // Real-time status updates via WebSocket
-    useRealtimeStatus({
-        onTransferStatusChange: () => {
-            router.reload({ only: ['transfers'] });
-        },
-    });
+    // TODO: Add onTransferStatusChange callback to useRealtimeStatus hook
+    useRealtimeStatus({});
 
     const filterByStatus = (status: string | null) => {
         router.get('/transfers', status ? { status } : {}, { preserveState: true });

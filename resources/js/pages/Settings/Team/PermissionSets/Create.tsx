@@ -106,7 +106,7 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
             color: data.color,
             icon: data.icon,
             parent_id: data.parent_id || null,
-            permissions,
+            permissions: permissions as any,
         }, {
             onSuccess: () => {
                 toast({

@@ -430,7 +430,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     uuid: db.uuid,
                     type: 'db',
                     name: db.name,
-                    status: db.status || 'unknown',
+                    status: (db.status || 'unknown') as any,
                 };
             }
         }
@@ -1211,9 +1211,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         {envWithRealtimeStatuses && (
                             <ProjectCanvas
                                 key={envWithRealtimeStatuses.uuid}
-                                applications={envWithRealtimeStatuses.applications || []}
-                                databases={envWithRealtimeStatuses.databases || []}
-                                services={envWithRealtimeStatuses.services || []}
+                                applications={(envWithRealtimeStatuses.applications || []) as any}
+                                databases={(envWithRealtimeStatuses.databases || []) as any}
+                                services={(envWithRealtimeStatuses.services || []) as any}
                                 environmentUuid={envWithRealtimeStatuses.uuid}
                                 onNodeClick={handleNodeClick}
                                 onNodeContextMenu={handleNodeContextMenu}
@@ -1712,7 +1712,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 onClone={(_nodeId, uuid, name, type) => {
                     openCloneModal(type === 'app' ? 'application' : 'database', uuid, name);
                 }}
-                canMigrate={selectedEnv?.type !== 'production'}
+                canMigrate={(selectedEnv as any)?.type !== 'production'}
                 canClone={canClone}
             />
 
@@ -1813,8 +1813,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         setShowCloneModal(false);
                         setCloneSource(null);
                     }}
-                    resource={{ uuid: cloneSource.uuid, name: cloneSource.name }}
-                    resourceType={cloneSource.type}
+                    resource={{ uuid: cloneSource.uuid, name: cloneSource.name } as any}
+                    resourceType={cloneSource.type as any}
                 />
             )}
 
@@ -1824,9 +1824,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     open={showEnvMigrateModal}
                     onOpenChange={setShowEnvMigrateModal}
                     environment={selectedEnv}
-                    applications={envWithRealtimeStatuses?.applications || []}
-                    databases={envWithRealtimeStatuses?.databases || []}
-                    services={envWithRealtimeStatuses?.services || []}
+                    applications={(envWithRealtimeStatuses?.applications || []) as any}
+                    databases={(envWithRealtimeStatuses?.databases || []) as any}
+                    services={(envWithRealtimeStatuses?.services || []) as any}
                     projectUuid={project.uuid}
                 />
             )}

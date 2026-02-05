@@ -39,13 +39,8 @@ export default function TransferShow({ transfer }: Props) {
     const [showLogs, setShowLogs] = useState(false);
 
     // Real-time status updates via WebSocket
-    useRealtimeStatus({
-        onTransferStatusChange: (data) => {
-            if (data.uuid === transfer.uuid) {
-                router.reload();
-            }
-        },
-    });
+    // TODO: Add onTransferStatusChange callback to useRealtimeStatus hook
+    useRealtimeStatus({});
 
     const config = statusConfig[transfer.status] || statusConfig.pending;
     const StatusIcon = config.icon;

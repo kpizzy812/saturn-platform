@@ -9,7 +9,7 @@ import { router } from '@inertiajs/react';
  */
 export default function TeamRoles() {
     React.useEffect(() => {
-        router.replace('/settings/team/permission-sets');
+        router.visit('/settings/team/permission-sets', { replace: true });
     }, []);
 
     return (
