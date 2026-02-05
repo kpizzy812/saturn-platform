@@ -2,6 +2,7 @@
 
 namespace App\Actions\Migration;
 
+use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Actions\Transfer\CloneApplicationAction;
 use App\Actions\Transfer\CloneServiceAction;
 use App\Models\Application;
@@ -27,6 +28,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 class ExecuteMigrationAction
 {
     use AsAction;
+    use ResourceConfigFields;
 
     /**
      * Execute the migration.
@@ -357,26 +359,6 @@ class ExecuteMigrationAction
     }
 
     /**
-     * Get safe configuration attributes (for config_only mode).
-     */
-    protected function getSafeConfigAttributes(Model $source): array
-    {
-        // Fields to exclude from config-only update
-        $excludeFields = [
-            'id', 'uuid', 'created_at', 'updated_at', 'deleted_at',
-            'environment_id', 'destination_id', 'destination_type',
-            'status', 'last_online_at', 'name',
-            // Don't update volume-related fields in config-only mode
-            'host_path', 'mount_path',
-        ];
-
-        return collect($source->getAttributes())
-            ->except($excludeFields)
-            ->filter(fn ($value) => $value !== null)
-            ->toArray();
-    }
-
-    /**
      * Get updatable attributes for full update.
      */
     protected function getUpdatableAttributes(Model $source): array
@@ -525,44 +507,6 @@ class ExecuteMigrationAction
         }
 
         return null;
-    }
-
-    /**
-     * Check if resource is a database.
-     */
-    protected function isDatabase(Model $resource): bool
-    {
-        $databaseClasses = [
-            'App\Models\StandalonePostgresql',
-            'App\Models\StandaloneMysql',
-            'App\Models\StandaloneMariadb',
-            'App\Models\StandaloneMongodb',
-            'App\Models\StandaloneRedis',
-            'App\Models\StandaloneClickhouse',
-            'App\Models\StandaloneKeydb',
-            'App\Models\StandaloneDragonfly',
-        ];
-
-        return in_array(get_class($resource), $databaseClasses);
-    }
-
-    /**
-     * Get the relation method for a database class.
-     */
-    protected function getDatabaseRelationMethod(string $class): ?string
-    {
-        $map = [
-            'App\Models\StandalonePostgresql' => 'postgresqls',
-            'App\Models\StandaloneMysql' => 'mysqls',
-            'App\Models\StandaloneMariadb' => 'mariadbs',
-            'App\Models\StandaloneMongodb' => 'mongodbs',
-            'App\Models\StandaloneRedis' => 'redis',
-            'App\Models\StandaloneClickhouse' => 'clickhouses',
-            'App\Models\StandaloneKeydb' => 'keydbs',
-            'App\Models\StandaloneDragonfly' => 'dragonflies',
-        ];
-
-        return $map[$class] ?? null;
     }
 
     /**

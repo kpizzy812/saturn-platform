@@ -185,8 +185,8 @@ class MigrationDiffActionTest extends TestCase
 
         $result = $method->invoke($action, $source, $target);
 
-        $this->assertContains('/logs', $result['persistent']['added']);
-        $this->assertContains('/cache', $result['persistent']['removed']);
+        $this->assertContains('/logs', $result['added']);
+        $this->assertContains('/cache', $result['removed']);
     }
 
     #[Test]

@@ -80,10 +80,8 @@ class PromoteResourceActionTest extends TestCase
         $action = new PromoteResourceAction;
         $method = new \ReflectionMethod($action, 'getConfigFields');
 
-        $db = new class extends StandalonePostgresql
-        {
-            // Empty - just need the type
-        };
+        // Create a mock that will pass isDatabase() check
+        $db = Mockery::mock(StandalonePostgresql::class)->makePartial();
 
         $result = $method->invoke($action, $db);
 

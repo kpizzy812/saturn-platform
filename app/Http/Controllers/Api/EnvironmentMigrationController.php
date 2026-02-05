@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Migration\MigrateResourceAction;
+use App\Actions\Migration\MigrationDiffAction;
+use App\Actions\Migration\PreMigrationCheckAction;
 use App\Actions\Migration\RollbackMigrationAction;
 use App\Actions\Migration\ValidateMigrationChainAction;
 use App\Http\Controllers\Controller;
@@ -116,6 +118,8 @@ class EnvironmentMigrationController extends Controller
             'source_type' => 'required|string|in:application,service,database',
             'source_uuid' => 'required|string',
             'target_environment_id' => 'required|integer|exists:environments,id',
+            'target_server_id' => 'nullable|integer|exists:servers,id',
+            'options' => 'nullable|array',
         ]);
 
         // Find source resource
@@ -157,7 +161,7 @@ class EnvironmentMigrationController extends Controller
                 ->toArray();
         }
 
-        return response()->json([
+        $response = [
             'allowed' => $authDetails['allowed'],
             'requires_approval' => $authDetails['requires_approval'],
             'reason' => $authDetails['reason'],
@@ -172,7 +176,25 @@ class EnvironmentMigrationController extends Controller
                 'environment_type' => $targetEnvironment->type ?? 'development',
             ],
             'target_servers' => $targetServers,
-        ]);
+        ];
+
+        // Run pre-migration checks if target server is specified
+        if (isset($validated['target_server_id'])) {
+            $targetServer = Server::find($validated['target_server_id']);
+            if ($targetServer) {
+                $options = $validated['options'] ?? [];
+                $response['pre_checks'] = PreMigrationCheckAction::run(
+                    $resource, $targetEnvironment, $targetServer, $options
+                );
+
+                // Include diff preview
+                $response['preview'] = MigrationDiffAction::run(
+                    $resource, $targetEnvironment, $options
+                );
+            }
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -207,6 +229,7 @@ class EnvironmentMigrationController extends Controller
             'options.copy_volumes' => 'nullable|boolean',
             'options.update_existing' => 'nullable|boolean',
             'options.config_only' => 'nullable|boolean',
+            'dry_run' => 'nullable|boolean',
         ]);
 
         // Find source resource
@@ -227,8 +250,21 @@ class EnvironmentMigrationController extends Controller
             return response()->json(['message' => 'Target server does not belong to your team.'], 403);
         }
 
-        $user = auth()->user();
         $options = $validated['options'] ?? [];
+
+        // Dry run mode: return diff and pre-checks without creating migration
+        if ($validated['dry_run'] ?? false) {
+            $preChecks = PreMigrationCheckAction::run($resource, $targetEnvironment, $targetServer, $options);
+            $diff = MigrationDiffAction::run($resource, $targetEnvironment, $options);
+
+            return response()->json([
+                'dry_run' => true,
+                'pre_checks' => $preChecks,
+                'diff' => $diff,
+            ]);
+        }
+
+        $user = auth()->user();
 
         // Execute migration action
         $result = MigrateResourceAction::run(
@@ -252,6 +288,7 @@ class EnvironmentMigrationController extends Controller
             'message' => $message,
             'migration' => $result['migration'],
             'requires_approval' => $result['requires_approval'],
+            'warnings' => $result['warnings'] ?? [],
         ], $statusCode);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Migration;
 
+use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Jobs\ExecuteMigrationJob;
 use App\Models\Application;
 use App\Models\Environment;
@@ -13,6 +14,8 @@ use App\Models\User;
 use App\Notifications\Migration\MigrationApprovalRequired;
 use App\Services\Authorization\MigrationAuthorizationService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -22,6 +25,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 class MigrateResourceAction
 {
     use AsAction;
+    use ResourceConfigFields;
 
     /**
      * Initiate a resource migration.
@@ -75,26 +79,54 @@ class MigrateResourceAction
         // Normalize options with defaults
         $options = $this->normalizeOptions($options, $resource, $targetEnvironment);
 
+        // Run pre-migration checks
+        $preChecks = PreMigrationCheckAction::run($resource, $targetEnvironment, $targetServer, $options);
+        if (! $preChecks['pass']) {
+            return [
+                'success' => false,
+                'error' => implode(' ', $preChecks['errors']),
+                'pre_checks' => $preChecks,
+            ];
+        }
+
         // Determine if approval is required
         $requiresApproval = $authService->requiresApproval($requestedBy, $sourceEnvironment, $targetEnvironment);
 
         // Create rollback snapshot before migration
         $rollbackSnapshot = $this->createRollbackSnapshot($resource, $targetEnvironment, $options);
 
-        // Create migration record
-        $migration = EnvironmentMigration::create([
-            'source_type' => get_class($resource),
-            'source_id' => $resource->id,
-            'source_environment_id' => $sourceEnvironment->id,
-            'target_environment_id' => $targetEnvironment->id,
-            'target_server_id' => $targetServer->id,
-            'options' => $options,
-            'status' => $requiresApproval ? EnvironmentMigration::STATUS_PENDING : EnvironmentMigration::STATUS_PENDING,
-            'requires_approval' => $requiresApproval,
-            'requested_by' => $requestedBy->id,
-            'rollback_snapshot' => $rollbackSnapshot,
-            'team_id' => currentTeam()->id,
-        ]);
+        // Create migration record inside transaction to prevent race conditions
+        // The partial unique index enforces one active migration per resource at DB level
+        try {
+            $migration = DB::transaction(function () use (
+                $resource, $sourceEnvironment, $targetEnvironment, $targetServer,
+                $options, $requiresApproval, $requestedBy, $rollbackSnapshot
+            ) {
+                return EnvironmentMigration::create([
+                    'source_type' => get_class($resource),
+                    'source_id' => $resource->id,
+                    'source_environment_id' => $sourceEnvironment->id,
+                    'target_environment_id' => $targetEnvironment->id,
+                    'target_server_id' => $targetServer->id,
+                    'options' => $options,
+                    'status' => EnvironmentMigration::STATUS_PENDING,
+                    'requires_approval' => $requiresApproval,
+                    'requested_by' => $requestedBy->id,
+                    'rollback_snapshot' => $rollbackSnapshot,
+                    'team_id' => currentTeam()->id,
+                ]);
+            });
+        } catch (QueryException $e) {
+            // Unique constraint violation — race condition caught
+            if (str_contains($e->getMessage(), 'unique_active_migration_per_source')) {
+                return [
+                    'success' => false,
+                    'error' => 'An active migration already exists for this resource.',
+                ];
+            }
+
+            throw $e;
+        }
 
         // Create migration history entry for source resource
         MigrationHistory::createForResource(
@@ -111,6 +143,7 @@ class MigrateResourceAction
                 'success' => true,
                 'migration' => $migration->fresh(),
                 'requires_approval' => true,
+                'warnings' => $preChecks['warnings'],
             ];
         }
 
@@ -121,6 +154,7 @@ class MigrateResourceAction
             'success' => true,
             'migration' => $migration->fresh(),
             'requires_approval' => false,
+            'warnings' => $preChecks['warnings'],
         ];
     }
 
@@ -156,25 +190,6 @@ class MigrateResourceAction
         }
 
         return $options;
-    }
-
-    /**
-     * Check if resource is a database.
-     */
-    protected function isDatabase(Model $resource): bool
-    {
-        $databaseClasses = [
-            'App\Models\StandalonePostgresql',
-            'App\Models\StandaloneMysql',
-            'App\Models\StandaloneMariadb',
-            'App\Models\StandaloneMongodb',
-            'App\Models\StandaloneRedis',
-            'App\Models\StandaloneClickhouse',
-            'App\Models\StandaloneKeydb',
-            'App\Models\StandaloneDragonfly',
-        ];
-
-        return in_array(get_class($resource), $databaseClasses);
     }
 
     /**
@@ -272,25 +287,6 @@ class MigrateResourceAction
         }
 
         return null;
-    }
-
-    /**
-     * Get the relation method for a database class.
-     */
-    protected function getDatabaseRelationMethod(string $class): ?string
-    {
-        $map = [
-            'App\Models\StandalonePostgresql' => 'postgresqls',
-            'App\Models\StandaloneMysql' => 'mysqls',
-            'App\Models\StandaloneMariadb' => 'mariadbs',
-            'App\Models\StandaloneMongodb' => 'mongodbs',
-            'App\Models\StandaloneRedis' => 'redis',
-            'App\Models\StandaloneClickhouse' => 'clickhouses',
-            'App\Models\StandaloneKeydb' => 'keydbs',
-            'App\Models\StandaloneDragonfly' => 'dragonflies',
-        ];
-
-        return $map[$class] ?? null;
     }
 
     /**

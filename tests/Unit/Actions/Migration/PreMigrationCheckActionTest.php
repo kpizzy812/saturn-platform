@@ -165,20 +165,11 @@ class PreMigrationCheckActionTest extends TestCase
         $envVar->key = 'API_KEY';
         $envVar->value = '';
 
-        $resource = new class($envVar) extends Model
+        $resource = new class extends Model
         {
-            private $envVar;
-
-            public function __construct($envVar)
-            {
-                $this->envVar = $envVar;
-            }
-
-            public function environment_variables()
-            {
-                return new Collection([$this->envVar]);
-            }
+            public $environment_variables;
         };
+        $resource->environment_variables = new Collection([$envVar]);
 
         $environment = $this->createMockEnvironment('production');
 

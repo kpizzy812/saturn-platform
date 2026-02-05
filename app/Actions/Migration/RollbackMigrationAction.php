@@ -2,6 +2,7 @@
 
 namespace App\Actions\Migration;
 
+use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Models\Application;
 use App\Models\EnvironmentMigration;
 use App\Models\EnvironmentVariable;
@@ -21,6 +22,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 class RollbackMigrationAction
 {
     use AsAction;
+    use ResourceConfigFields;
 
     /**
      * Rollback a completed migration.
@@ -358,25 +360,6 @@ class RollbackMigrationAction
         }
 
         $database->delete();
-    }
-
-    /**
-     * Check if resource is a database.
-     */
-    protected function isDatabase(Model $resource): bool
-    {
-        $databaseClasses = [
-            'App\Models\StandalonePostgresql',
-            'App\Models\StandaloneMysql',
-            'App\Models\StandaloneMariadb',
-            'App\Models\StandaloneMongodb',
-            'App\Models\StandaloneRedis',
-            'App\Models\StandaloneClickhouse',
-            'App\Models\StandaloneKeydb',
-            'App\Models\StandaloneDragonfly',
-        ];
-
-        return in_array(get_class($resource), $databaseClasses);
     }
 
     /**

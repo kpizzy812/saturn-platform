@@ -2,6 +2,8 @@
 
 namespace App\Actions\Migration;
 
+use App\Actions\Migration\Concerns\ResourceConfigFields;
+use App\Actions\Service\RestartService;
 use App\Models\Application;
 use App\Models\Environment;
 use App\Models\EnvironmentMigration;
@@ -23,20 +25,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 class PromoteResourceAction
 {
     use AsAction;
-
-    /**
-     * Database model classes for connection detection.
-     */
-    protected const DATABASE_MODELS = [
-        'App\Models\StandalonePostgresql',
-        'App\Models\StandaloneMysql',
-        'App\Models\StandaloneMariadb',
-        'App\Models\StandaloneMongodb',
-        'App\Models\StandaloneRedis',
-        'App\Models\StandaloneClickhouse',
-        'App\Models\StandaloneKeydb',
-        'App\Models\StandaloneDragonfly',
-    ];
+    use ResourceConfigFields;
 
     /**
      * Environment variable patterns that contain service connections.
@@ -109,7 +98,7 @@ class PromoteResourceAction
             // Trigger deployment if requested
             if ($options[EnvironmentMigration::OPTION_AUTO_DEPLOY] ?? false) {
                 $migration->updateProgress(80, 'Triggering deployment...');
-                $this->triggerDeployment($target);
+                $this->triggerDeployment($target, $migration);
                 $migration->appendLog('Deployment triggered');
             }
 
@@ -200,109 +189,6 @@ class PromoteResourceAction
         if ($source instanceof Application && method_exists($source, 'settings')) {
             $this->updateApplicationSettings($source, $target);
         }
-    }
-
-    /**
-     * Get configuration fields to copy based on resource type.
-     */
-    protected function getConfigFields(Model $source): array
-    {
-        if ($source instanceof Application) {
-            return [
-                // Git/source settings
-                'git_repository',
-                'git_branch',
-                'git_full_url',
-                'repository_project_id',
-                'deploy_key_id',
-                'source_id',
-                'source_type',
-                // Build settings
-                'build_pack',
-                'static_image',
-                'install_command',
-                'build_command',
-                'start_command',
-                'base_directory',
-                'publish_directory',
-                'dockerfile',
-                'dockerfile_location',
-                'dockerfile_target_build',
-                'docker_compose_location',
-                'docker_compose_custom_start_command',
-                'docker_compose_custom_build_command',
-                'docker_compose',
-                'docker_compose_raw',
-                'docker_compose_domains',
-                'docker_registry_image_name',
-                'docker_registry_image_tag',
-                // Runtime settings
-                'ports_exposes',
-                'ports_mappings',
-                'custom_labels',
-                'custom_docker_run_options',
-                'post_deployment_command',
-                'post_deployment_command_container',
-                'pre_deployment_command',
-                'pre_deployment_command_container',
-                // Resource limits
-                'limits_memory',
-                'limits_memory_swap',
-                'limits_memory_swappiness',
-                'limits_memory_reservation',
-                'limits_cpus',
-                'limits_cpuset',
-                'limits_cpu_shares',
-                // Health check settings
-                'health_check_enabled',
-                'health_check_path',
-                'health_check_port',
-                'health_check_host',
-                'health_check_method',
-                'health_check_scheme',
-                'health_check_return_code',
-                'health_check_response_text',
-                'health_check_interval',
-                'health_check_timeout',
-                'health_check_retries',
-                'health_check_start_period',
-            ];
-        }
-
-        if ($source instanceof Service) {
-            return [
-                'docker_compose_raw',
-                'docker_compose',
-                'connect_to_docker_network',
-                'is_container_label_escape_enabled',
-                'is_container_label_readonly_enabled',
-                'limits_memory',
-                'limits_memory_swap',
-                'limits_memory_swappiness',
-                'limits_memory_reservation',
-                'limits_cpus',
-                'limits_cpuset',
-                'limits_cpu_shares',
-            ];
-        }
-
-        // For databases - update connection settings but not data
-        if ($this->isDatabase($source)) {
-            return [
-                'image',
-                'is_public',
-                'ports_mappings',
-                'limits_memory',
-                'limits_memory_swap',
-                'limits_memory_swappiness',
-                'limits_memory_reservation',
-                'limits_cpus',
-                'limits_cpuset',
-                'limits_cpu_shares',
-            ];
-        }
-
-        return [];
     }
 
     /**
@@ -457,7 +343,7 @@ class PromoteResourceAction
 
         // Search for resource with matching UUID or name in target environment
         // Databases use UUID as container name
-        foreach (self::DATABASE_MODELS as $modelClass) {
+        foreach (static::$databaseModels as $modelClass) {
             $relationMethod = $this->getDatabaseRelationMethod($modelClass);
             if ($relationMethod && method_exists($targetEnv, $relationMethod)) {
                 $resource = $targetEnv->$relationMethod()
@@ -517,48 +403,25 @@ class PromoteResourceAction
     /**
      * Trigger deployment for the promoted resource.
      */
-    protected function triggerDeployment(Model $resource): void
+    protected function triggerDeployment(Model $resource, EnvironmentMigration $migration): void
     {
         if ($resource instanceof Application) {
             $deployment_uuid = new \Visus\Cuid2\Cuid2;
+
+            // Require deployment approval when deploying to production
+            $requiresApproval = $migration->targetEnvironment?->isProduction() ?? false;
 
             queue_application_deployment(
                 application: $resource,
                 deployment_uuid: (string) $deployment_uuid,
                 no_questions_asked: true,
+                requires_approval: $requiresApproval,
             );
         }
 
-        // Services can be restarted via docker-compose
+        // Restart services via the RestartService action
         if ($resource instanceof Service) {
-            // Service restart logic would go here
+            RestartService::run($resource, pullLatestImages: false);
         }
-    }
-
-    /**
-     * Check if resource is a database.
-     */
-    protected function isDatabase(Model $resource): bool
-    {
-        return in_array(get_class($resource), self::DATABASE_MODELS);
-    }
-
-    /**
-     * Get the relation method for a database class.
-     */
-    protected function getDatabaseRelationMethod(string $class): ?string
-    {
-        $map = [
-            'App\Models\StandalonePostgresql' => 'postgresqls',
-            'App\Models\StandaloneMysql' => 'mysqls',
-            'App\Models\StandaloneMariadb' => 'mariadbs',
-            'App\Models\StandaloneMongodb' => 'mongodbs',
-            'App\Models\StandaloneRedis' => 'redis',
-            'App\Models\StandaloneClickhouse' => 'clickhouses',
-            'App\Models\StandaloneKeydb' => 'keydbs',
-            'App\Models\StandaloneDragonfly' => 'dragonflies',
-        ];
-
-        return $map[$class] ?? null;
     }
 }
