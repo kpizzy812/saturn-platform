@@ -58,6 +58,17 @@ class InstanceSettings extends Model
         'auto_provision_api_key',
         'auto_provision_max_servers_per_day',
         'auto_provision_cooldown_minutes',
+        // AI Provider settings
+        'ai_default_provider',
+        'ai_anthropic_api_key',
+        'ai_openai_api_key',
+        'ai_claude_model',
+        'ai_openai_model',
+        'ai_ollama_base_url',
+        'ai_ollama_model',
+        'ai_max_tokens',
+        'ai_cache_enabled',
+        'ai_cache_ttl',
     ];
 
     protected $casts = [
@@ -101,6 +112,13 @@ class InstanceSettings extends Model
         'auto_provision_api_key' => 'encrypted',
         'auto_provision_max_servers_per_day' => 'integer',
         'auto_provision_cooldown_minutes' => 'integer',
+
+        // AI Provider settings
+        'ai_anthropic_api_key' => 'encrypted',
+        'ai_openai_api_key' => 'encrypted',
+        'ai_max_tokens' => 'integer',
+        'ai_cache_enabled' => 'boolean',
+        'ai_cache_ttl' => 'integer',
     ];
 
     protected static function booted(): void

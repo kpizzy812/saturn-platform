@@ -73,6 +73,17 @@ interface InstanceSettingsData {
     auto_provision_api_key?: string;
     auto_provision_max_servers_per_day?: number;
     auto_provision_cooldown_minutes?: number;
+    // AI Provider
+    ai_default_provider?: string;
+    ai_anthropic_api_key?: string;
+    ai_openai_api_key?: string;
+    ai_claude_model?: string;
+    ai_openai_model?: string;
+    ai_ollama_base_url?: string;
+    ai_ollama_model?: string;
+    ai_max_tokens?: number;
+    ai_cache_enabled?: boolean;
+    ai_cache_ttl?: number;
 
     created_at?: string;
     updated_at?: string;
@@ -101,6 +112,8 @@ export default function AdminSettingsIndex({ settings }: Props) {
     const [showResendKey, setShowResendKey] = React.useState(false);
     const [showSentinelToken, setShowSentinelToken] = React.useState(false);
     const [showProvisionKey, setShowProvisionKey] = React.useState(false);
+    const [showAnthropicKey, setShowAnthropicKey] = React.useState(false);
+    const [showOpenaiKey, setShowOpenaiKey] = React.useState(false);
 
     const update = (fields: Partial<InstanceSettingsData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
@@ -547,14 +560,15 @@ export default function AdminSettingsIndex({ settings }: Props) {
                         {/* ============ TAB 3: AI FEATURES ============ */}
                         <TabsContent>
                             <div className="space-y-6">
+                                {/* Feature Toggles */}
                                 <Card variant="glass">
                                     <CardHeader>
                                         <div className="flex items-center gap-2">
                                             <Brain className="h-5 w-5 text-primary" />
-                                            <CardTitle>AI Features</CardTitle>
+                                            <CardTitle>AI Feature Toggles</CardTitle>
                                         </div>
                                         <CardDescription>
-                                            AI-powered analysis requires ANTHROPIC_API_KEY or OPENAI_API_KEY in environment
+                                            Enable or disable individual AI-powered features
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -597,6 +611,154 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 checked={formData.is_ai_chat_enabled ?? true}
                                                 onCheckedChange={(checked) =>
                                                     update({ is_ai_chat_enabled: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Provider Configuration */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Brain className="h-5 w-5 text-primary" />
+                                            <CardTitle>AI Provider Configuration</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Configure AI providers and API keys. The system will fallback to other providers if the default is unavailable.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Select
+                                            value={formData.ai_default_provider || 'claude'}
+                                            onChange={(e) => update({ ai_default_provider: e.target.value })}
+                                            label="Default Provider"
+                                            options={[
+                                                { value: 'claude', label: 'Claude (Anthropic)' },
+                                                { value: 'openai', label: 'OpenAI (GPT)' },
+                                                { value: 'ollama', label: 'Ollama (Self-hosted)' },
+                                            ]}
+                                        />
+
+                                        {/* Anthropic / Claude */}
+                                        <div className="rounded-lg border border-white/[0.06] p-4">
+                                            <p className="mb-3 font-medium text-foreground">Claude (Anthropic)</p>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                                        Anthropic API Key
+                                                    </label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            type={showAnthropicKey ? 'text' : 'password'}
+                                                            value={formData.ai_anthropic_api_key || ''}
+                                                            onChange={(e) => update({ ai_anthropic_api_key: e.target.value })}
+                                                            placeholder="sk-ant-..."
+                                                            className="pr-10"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                                                        >
+                                                            {showAnthropicKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <Input
+                                                    value={formData.ai_claude_model || 'claude-sonnet-4-20250514'}
+                                                    onChange={(e) => update({ ai_claude_model: e.target.value })}
+                                                    placeholder="claude-sonnet-4-20250514"
+                                                    label="Model"
+                                                    hint="e.g., claude-sonnet-4-20250514, claude-haiku-4-5-20251001"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* OpenAI */}
+                                        <div className="rounded-lg border border-white/[0.06] p-4">
+                                            <p className="mb-3 font-medium text-foreground">OpenAI</p>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                                        OpenAI API Key
+                                                    </label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            type={showOpenaiKey ? 'text' : 'password'}
+                                                            value={formData.ai_openai_api_key || ''}
+                                                            onChange={(e) => update({ ai_openai_api_key: e.target.value })}
+                                                            placeholder="sk-..."
+                                                            className="pr-10"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                                                        >
+                                                            {showOpenaiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <Input
+                                                    value={formData.ai_openai_model || 'gpt-4o-mini'}
+                                                    onChange={(e) => update({ ai_openai_model: e.target.value })}
+                                                    placeholder="gpt-4o-mini"
+                                                    label="Model"
+                                                    hint="e.g., gpt-4o, gpt-4o-mini, gpt-4-turbo"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Ollama */}
+                                        <div className="rounded-lg border border-white/[0.06] p-4">
+                                            <p className="mb-3 font-medium text-foreground">Ollama (Self-hosted)</p>
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                <Input
+                                                    value={formData.ai_ollama_base_url || ''}
+                                                    onChange={(e) => update({ ai_ollama_base_url: e.target.value })}
+                                                    placeholder="http://localhost:11434"
+                                                    label="Base URL"
+                                                />
+                                                <Input
+                                                    value={formData.ai_ollama_model || 'llama3.1'}
+                                                    onChange={(e) => update({ ai_ollama_model: e.target.value })}
+                                                    placeholder="llama3.1"
+                                                    label="Model"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Shared settings */}
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <Input
+                                                type="number"
+                                                value={formData.ai_max_tokens ?? 2048}
+                                                onChange={(e) => update({ ai_max_tokens: parseInt(e.target.value) || 2048 })}
+                                                label="Max Tokens"
+                                                placeholder="2048"
+                                                hint="Maximum response length"
+                                            />
+                                            <Input
+                                                type="number"
+                                                value={formData.ai_cache_ttl ?? 86400}
+                                                onChange={(e) => update({ ai_cache_ttl: parseInt(e.target.value) || 86400 })}
+                                                label="Cache TTL (seconds)"
+                                                placeholder="86400"
+                                                hint="How long to cache analysis results (86400 = 24h)"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Analysis Cache</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Cache AI analysis results to reduce API costs
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.ai_cache_enabled ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ ai_cache_enabled: checked === true })
                                                 }
                                             />
                                         </div>

@@ -16,7 +16,7 @@ Route::get('/settings', function () {
     $settingsArray = $settings->toArray();
 
     // For encrypted fields, send a placeholder if they have a value
-    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key'];
+    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key'];
     foreach ($secretFields as $field) {
         if (! empty($settings->{$field})) {
             $settingsArray[$field] = '••••••••';
@@ -85,6 +85,17 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.auto_provision_api_key' => 'nullable|string|max:255',
         'settings.auto_provision_max_servers_per_day' => 'nullable|integer|min:1|max:100',
         'settings.auto_provision_cooldown_minutes' => 'nullable|integer|min:1|max:1440',
+        // AI Provider
+        'settings.ai_default_provider' => 'nullable|string|in:claude,openai,ollama',
+        'settings.ai_anthropic_api_key' => 'nullable|string|max:500',
+        'settings.ai_openai_api_key' => 'nullable|string|max:500',
+        'settings.ai_claude_model' => 'nullable|string|max:100',
+        'settings.ai_openai_model' => 'nullable|string|max:100',
+        'settings.ai_ollama_base_url' => 'nullable|string|max:500',
+        'settings.ai_ollama_model' => 'nullable|string|max:100',
+        'settings.ai_max_tokens' => 'nullable|integer|min:256|max:32000',
+        'settings.ai_cache_enabled' => 'nullable|boolean',
+        'settings.ai_cache_ttl' => 'nullable|integer|min:60|max:604800',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -136,6 +147,15 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'auto_provision_enabled' => $data['auto_provision_enabled'] ?? $settings->auto_provision_enabled,
         'auto_provision_max_servers_per_day' => $data['auto_provision_max_servers_per_day'] ?? $settings->auto_provision_max_servers_per_day,
         'auto_provision_cooldown_minutes' => $data['auto_provision_cooldown_minutes'] ?? $settings->auto_provision_cooldown_minutes,
+        // AI Provider (non-secret)
+        'ai_default_provider' => $data['ai_default_provider'] ?? $settings->ai_default_provider,
+        'ai_claude_model' => $data['ai_claude_model'] ?? $settings->ai_claude_model,
+        'ai_openai_model' => $data['ai_openai_model'] ?? $settings->ai_openai_model,
+        'ai_ollama_base_url' => $data['ai_ollama_base_url'] ?? $settings->ai_ollama_base_url,
+        'ai_ollama_model' => $data['ai_ollama_model'] ?? $settings->ai_ollama_model,
+        'ai_max_tokens' => $data['ai_max_tokens'] ?? $settings->ai_max_tokens,
+        'ai_cache_enabled' => $data['ai_cache_enabled'] ?? $settings->ai_cache_enabled,
+        'ai_cache_ttl' => $data['ai_cache_ttl'] ?? $settings->ai_cache_ttl,
     ];
 
     // Only update secret fields if the value is not the placeholder
@@ -145,6 +165,8 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'resend_api_key' => 'resend_api_key',
         'sentinel_token' => 'sentinel_token',
         'auto_provision_api_key' => 'auto_provision_api_key',
+        'ai_anthropic_api_key' => 'ai_anthropic_api_key',
+        'ai_openai_api_key' => 'ai_openai_api_key',
     ];
 
     foreach ($secretMappings as $formField => $dbField) {
