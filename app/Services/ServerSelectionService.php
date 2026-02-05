@@ -30,7 +30,8 @@ class ServerSelectionService
      * Priority:
      * 1. Environment default server (if set & functional)
      * 2. Project default server (if set & functional)
-     * 3. Score-based selection from all usable servers
+     * 3. Localhost (platform master, id=0) — always preferred while it has resources
+     * 4. Score-based selection from all usable servers (when localhost is overloaded)
      */
     public function selectOptimalServer(Environment $env): ?Server
     {
@@ -51,17 +52,20 @@ class ServerSelectionService
             }
         }
 
-        // 2. Score all usable servers
-        $servers = $this->getUsableServers($env);
+        // 3. Localhost (platform master) is the default — use while it has resources
+        $localhost = Server::with(['settings', 'latestHealthCheck'])->find(0);
+        if ($localhost && $localhost->isFunctional() && ! $this->isCriticallyOverloaded($localhost)) {
+            return $localhost;
+        }
+
+        // 4. Score remaining servers when localhost is overloaded or unavailable
+        $servers = $this->getUsableServers($env)->filter(fn (Server $s) => $s->id !== 0);
         if ($servers->isEmpty()) {
-            return null;
+            // Even overloaded localhost is better than nothing
+            return ($localhost && $localhost->isFunctional()) ? $localhost : null;
         }
 
-        if ($servers->count() === 1) {
-            return $servers->first();
-        }
-
-        return $this->selectByScore($servers);
+        return $servers->count() === 1 ? $servers->first() : $this->selectByScore($servers);
     }
 
     /**
@@ -136,6 +140,21 @@ class ServerSelectionService
             + ($diskScore * self::WEIGHT_DISK)
             + ($containerScore * self::WEIGHT_CONTAINERS)
             + ($queueScore * self::WEIGHT_QUEUED);
+    }
+
+    /**
+     * Check if a server is critically overloaded (any resource > 90%).
+     */
+    private function isCriticallyOverloaded(Server $server): bool
+    {
+        $health = $server->latestHealthCheck;
+        if (! $health) {
+            return false; // No health data = assume OK
+        }
+
+        return ($health->cpu_usage_percent ?? 0) > 90
+            || ($health->memory_usage_percent ?? 0) > 90
+            || ($health->disk_usage_percent ?? 0) > 90;
     }
 
     /**

@@ -51,7 +51,7 @@ class InfrastructureProvisioner
             $selectionService = app(\App\Services\ServerSelectionService::class);
             $server = $selectionService->selectOptimalServer($environment);
             if (! $server) {
-                throw new ProvisioningException('No available server found for auto-selection.');
+                throw new ProvisioningException('No available server found.');
             }
         } else {
             $server = Server::where('uuid', $serverUuid)->firstOrFail();
