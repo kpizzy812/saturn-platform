@@ -299,7 +299,14 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
 
     // Auto-inject database URL if enabled
     if ($link->auto_inject) {
-        $application->autoInjectDatabaseUrl();
+        try {
+            $application->autoInjectDatabaseUrl();
+        } catch (\InvalidArgumentException $e) {
+            \Illuminate\Support\Facades\Log::warning('Auto-inject failed for link', [
+                'link_id' => $link->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     // For app-to-app links, create reverse link
@@ -315,8 +322,15 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
 
         // Auto-inject for target application too
         if ($reverseLink->auto_inject) {
-            $target = \App\Models\Application::find($validated['target_id']);
-            $target?->autoInjectDatabaseUrl();
+            try {
+                $target = \App\Models\Application::find($validated['target_id']);
+                $target?->autoInjectDatabaseUrl();
+            } catch (\InvalidArgumentException $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto-inject failed for reverse link', [
+                    'link_id' => $reverseLink->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         $link->load(['source', 'target']);

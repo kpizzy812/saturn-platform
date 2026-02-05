@@ -93,7 +93,14 @@ class ResourceLink extends Model
             $name = str($this->target->name)
                 ->upper()
                 ->replace(['-', ' ', '.'], '_')
+                ->replaceMatches('/[^A-Z0-9_]/', '')
+                ->replaceMatches('/_{2,}/', '_')
+                ->trim('_')
                 ->value();
+
+            if (empty($name) || is_numeric($name[0])) {
+                $name = 'APP_'.$name;
+            }
 
             return "{$name}_URL";
         }
