@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\DeploymentAnalysisCompleted;
 use App\Models\ApplicationDeploymentQueue;
+use App\Models\DeploymentLogAnalysis;
 use App\Services\AI\DeploymentLogAnalyzer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,12 +20,7 @@ class AnalyzeDeploymentLogsJob implements ShouldQueue
     /**
      * The number of times the job may be attempted.
      */
-    public int $tries = 3;
-
-    /**
-     * The number of seconds to wait before retrying.
-     */
-    public int $backoff = 30;
+    public int $tries = 1;
 
     /**
      * The number of seconds the job can run before timing out.
@@ -41,7 +37,7 @@ class AnalyzeDeploymentLogsJob implements ShouldQueue
     public function handle(DeploymentLogAnalyzer $analyzer): void
     {
         if (! config('ai.enabled', true)) {
-            Log::debug('AI analysis is disabled, skipping', ['deployment_id' => $this->deploymentId]);
+            $this->saveFailedAnalysis('AI analysis is disabled');
 
             return;
         }
@@ -56,23 +52,29 @@ class AnalyzeDeploymentLogsJob implements ShouldQueue
 
         // Only analyze failed deployments
         if ($deployment->status !== 'failed') {
-            Log::debug('Skipping AI analysis for non-failed deployment', [
-                'deployment_id' => $this->deploymentId,
-                'status' => $deployment->status,
-            ]);
+            $this->saveFailedAnalysis(
+                "Cannot analyze: deployment status is '{$deployment->status}', not 'failed'",
+                $deployment->id
+            );
 
             return;
         }
 
         // Check if logs exist
         if (empty($deployment->logs)) {
-            Log::debug('No logs available for AI analysis', ['deployment_id' => $this->deploymentId]);
+            $this->saveFailedAnalysis(
+                'No deployment logs available to analyze. The deployment may have failed before generating any output.',
+                $deployment->id
+            );
 
             return;
         }
 
         if (! $analyzer->isAvailable()) {
-            Log::warning('No AI provider available for analysis', ['deployment_id' => $this->deploymentId]);
+            $this->saveFailedAnalysis(
+                'No AI provider available. Configure ANTHROPIC_API_KEY, OPENAI_API_KEY, or Ollama.',
+                $deployment->id
+            );
 
             return;
         }
@@ -85,6 +87,24 @@ class AnalyzeDeploymentLogsJob implements ShouldQueue
         if ($analysis->isCompleted()) {
             event(new DeploymentAnalysisCompleted($deployment, $analysis));
         }
+    }
+
+    /**
+     * Save a failed analysis record so the frontend stops polling.
+     */
+    private function saveFailedAnalysis(string $message, ?int $deploymentId = null): void
+    {
+        $id = $deploymentId ?? $this->deploymentId;
+
+        DeploymentLogAnalysis::updateOrCreate(
+            ['deployment_id' => $id],
+            [
+                'status' => 'failed',
+                'error_message' => $message,
+            ]
+        );
+
+        Log::debug('AI analysis skipped', ['deployment_id' => $id, 'reason' => $message]);
     }
 
     /**
@@ -106,5 +126,7 @@ class AnalyzeDeploymentLogsJob implements ShouldQueue
             'deployment_id' => $this->deploymentId,
             'error' => $exception->getMessage(),
         ]);
+
+        $this->saveFailedAnalysis('Analysis job failed: '.$exception->getMessage());
     }
 }
