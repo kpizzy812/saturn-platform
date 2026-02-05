@@ -144,7 +144,9 @@ trait HandlesHealthCheck
                         } elseif (str($this->saved_outputs->get('health_check'))->replace('"', '')->value() === 'unhealthy') {
                             $this->newVersionIsHealthy = false;
                             $this->application_deployment_queue->addLogEntry('New container is unhealthy.', type: 'error');
+                            $this->checkContainerState();
                             $this->query_logs();
+                            $this->analyzeContainerFailure();
                             break;
                         }
                         $counter++;
@@ -155,12 +157,49 @@ trait HandlesHealthCheck
                         }
                     }
                     if (str($this->saved_outputs->get('health_check'))->replace('"', '')->value() === 'starting') {
+                        $this->application_deployment_queue->addLogEntry('Healthcheck timed out (still starting after all retries).', type: 'error');
+                        $this->checkContainerState();
                         $this->query_logs();
+                        $this->analyzeContainerFailure();
                     }
                 }
             }
         } catch (Exception $e) {
             throw new DeploymentException('Health check failed ('.get_class($e).'): '.$e->getMessage(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Check if the container has crashed/exited vs just failing healthcheck.
+     * This helps distinguish between app crashes and healthcheck configuration issues.
+     */
+    private function checkContainerState(): void
+    {
+        $this->execute_remote_command(
+            [
+                "docker inspect --format='{{.State.Status}} {{.State.Restarting}} {{.RestartCount}}' {$this->container_name}",
+                'hidden' => true,
+                'save' => 'container_state_check',
+                'ignore_errors' => true,
+            ],
+        );
+
+        $state = trim($this->saved_outputs->get('container_state_check', ''));
+        $parts = explode(' ', $state);
+        $status = $parts[0] ?? '';
+        $isRestarting = ($parts[1] ?? '') === 'true';
+        $restartCount = (int) ($parts[2] ?? 0);
+
+        if ($isRestarting || $restartCount > 0 || $status === 'restarting') {
+            $this->application_deployment_queue->addLogEntry(
+                "Container is crash-looping (status: {$status}, restarts: {$restartCount}). The application is crashing on startup.",
+                type: 'error'
+            );
+        } elseif ($status === 'exited' || $status === 'dead') {
+            $this->application_deployment_queue->addLogEntry(
+                "Container has exited (status: {$status}). The application failed to start.",
+                type: 'error'
+            );
         }
     }
 
@@ -173,7 +212,7 @@ trait HandlesHealthCheck
         $this->application_deployment_queue->addLogEntry('Container logs:');
         $this->execute_remote_command(
             [
-                'command' => "docker logs -n 100 {$this->container_name}",
+                'command' => "docker logs -n 100 {$this->container_name} 2>&1",
                 'type' => 'stderr',
                 'ignore_errors' => true,
             ],
