@@ -7,6 +7,7 @@ use App\Events\ApplicationConfigurationChanged;
 use App\Exceptions\DeploymentException;
 use App\Notifications\Application\DeploymentFailed;
 use App\Notifications\Application\DeploymentSuccess;
+use App\Services\MasterProxyConfigService;
 
 /**
  * Trait for deployment status management operations.
@@ -99,6 +100,16 @@ trait HandlesDeploymentStatus
 
         if (! $this->only_this_server) {
             $this->deploy_to_additional_destinations();
+        }
+
+        // Sync master proxy route for remote server apps
+        try {
+            $appServer = $this->application->destination?->server;
+            if ($appServer && ! $appServer->isMasterServer()) {
+                app(MasterProxyConfigService::class)->syncRemoteRoute($this->application);
+            }
+        } catch (\Throwable $e) {
+            ray('Failed to sync master proxy route', ['error' => $e->getMessage()]);
         }
 
         $this->sendDeploymentNotification(DeploymentSuccess::class);

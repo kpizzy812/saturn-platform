@@ -1412,6 +1412,19 @@ $schema://$host {
         return $this->settings->is_build_server;
     }
 
+    public function isMasterServer(): bool
+    {
+        return (bool) $this->settings?->is_master_server;
+    }
+
+    /**
+     * Get the master server instance (the one with is_master_server=true).
+     */
+    public static function masterServer(): ?self
+    {
+        return static::whereHas('settings', fn ($q) => $q->where('is_master_server', true))->first();
+    }
+
     public static function createWithPrivateKey(array $data, PrivateKey $privateKey)
     {
         $server = new self($data);

@@ -61,11 +61,12 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
             $memoryCritical = $this->checkMemoryUsage($settings);
 
             // Check Disk usage (with instance settings thresholds)
-            $this->checkDiskUsage($settings);
+            $diskCritical = $this->checkDiskUsage($settings);
 
             // Trigger auto-provisioning if critical thresholds exceeded
-            if ($cpuCritical || $memoryCritical) {
-                $this->triggerAutoProvisioning($settings, $cpuCritical ? 'cpu_critical' : 'memory_critical');
+            if ($cpuCritical || $memoryCritical || $diskCritical) {
+                $reason = $cpuCritical ? 'cpu_critical' : ($memoryCritical ? 'memory_critical' : 'disk_critical');
+                $this->triggerAutoProvisioning($settings, $reason);
             }
 
         } catch (\Throwable $e) {
@@ -195,20 +196,25 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
 
     /**
      * Check Disk usage and send notifications if thresholds exceeded.
+     *
+     * @return bool True if critical threshold exceeded
      */
-    private function checkDiskUsage(InstanceSettings $settings): void
+    private function checkDiskUsage(InstanceSettings $settings): bool
     {
         try {
             $diskUsage = $this->server->getDiskUsage();
             if (empty($diskUsage) || ! is_numeric($diskUsage)) {
-                return;
+                return false;
             }
 
             $diskUsage = (int) $diskUsage;
+            $this->currentDiskUsage = $diskUsage;
             $cacheKey = "server-disk-alert-{$this->server->uuid}";
+            $isCritical = false;
 
             // Check critical threshold first
             if ($diskUsage >= $settings->resource_critical_disk_threshold) {
+                $isCritical = true;
                 if (! Cache::has($cacheKey.'-critical')) {
                     $this->server->team?->notify(new HighDiskUsage(
                         $this->server,
@@ -231,8 +237,11 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
                     Cache::put($cacheKey.'-warning', true, now()->addMinutes(30));
                 }
             }
+
+            return $isCritical;
         } catch (\Throwable $e) {
             // SSH might not be available
+            return false;
         }
     }
 

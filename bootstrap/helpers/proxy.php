@@ -247,6 +247,7 @@ function generateDefaultProxyConfiguration(Server $server, array $custom_command
         $filtered_networks->push($network);
     });
     if ($proxy_type === ProxyTypes::TRAEFIK->value) {
+        $isMasterServer = $server->isMasterServer();
         $labels = [
             'traefik.enable=true',
             'traefik.http.routers.traefik.entrypoints=http',
@@ -255,6 +256,22 @@ function generateDefaultProxyConfiguration(Server $server, array $custom_command
             'saturn.managed=true',
             'saturn.proxy=true',
         ];
+
+        // Remote servers: HTTP-only (master handles SSL termination)
+        if ($isMasterServer) {
+            $ports = [
+                '80:80',
+                '443:443',
+                '443:443/udp',
+                '8080:8080',
+            ];
+        } else {
+            $ports = [
+                '80:80',
+                '8080:8080',
+            ];
+        }
+
         $config = [
             'name' => 'saturn-proxy',
             'networks' => $array_of_networks->toArray(),
@@ -267,12 +284,7 @@ function generateDefaultProxyConfiguration(Server $server, array $custom_command
                         'host.docker.internal:host-gateway',
                     ],
                     'networks' => $filtered_networks->toArray(),
-                    'ports' => [
-                        '80:80',
-                        '443:443',
-                        '443:443/udp',
-                        '8080:8080',
-                    ],
+                    'ports' => $ports,
                     'healthcheck' => [
                         'test' => 'wget -qO- http://localhost:80/ping || exit 1',
                         'interval' => '4s',
@@ -288,22 +300,26 @@ function generateDefaultProxyConfiguration(Server $server, array $custom_command
                         '--ping.entrypoint=http',
                         '--api.dashboard=true',
                         '--entrypoints.http.address=:80',
-                        '--entrypoints.https.address=:443',
                         '--entrypoints.http.http.encodequerysemicolons=true',
                         '--entryPoints.http.http2.maxConcurrentStreams=250',
-                        '--entrypoints.https.http.encodequerysemicolons=true',
-                        '--entryPoints.https.http2.maxConcurrentStreams=250',
-                        '--entrypoints.https.http3',
                         '--providers.file.directory=/traefik/dynamic/',
                         '--providers.file.watch=true',
-                        '--certificatesresolvers.letsencrypt.acme.httpchallenge=true',
-                        '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http',
-                        '--certificatesresolvers.letsencrypt.acme.storage=/traefik/acme.json',
                     ],
                     'labels' => $labels,
                 ],
             ],
         ];
+
+        // Master server gets HTTPS entrypoint + cert resolver
+        if ($isMasterServer) {
+            $config['services']['traefik']['command'][] = '--entrypoints.https.address=:443';
+            $config['services']['traefik']['command'][] = '--entrypoints.https.http.encodequerysemicolons=true';
+            $config['services']['traefik']['command'][] = '--entryPoints.https.http2.maxConcurrentStreams=250';
+            $config['services']['traefik']['command'][] = '--entrypoints.https.http3';
+            $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.httpchallenge=true';
+            $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http';
+            $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.storage=/traefik/acme.json';
+        }
         if (isDev()) {
             $config['services']['traefik']['command'][] = '--api.insecure=true';
             $config['services']['traefik']['command'][] = '--log.level=debug';

@@ -88,14 +88,41 @@ function base_url(bool $withPort = true): string
 }
 
 /**
+ * Resolve the wildcard domain for URL generation.
+ *
+ * Priority: master server wildcard -> target server wildcard -> sslip(master) -> sslip(target)
+ */
+function resolveWildcardDomain(Server $server): string
+{
+    // First try master server's wildcard domain (all apps use *.saturn.io)
+    $masterServer = Server::masterServer();
+    if ($masterServer && $masterServer->id !== $server->id) {
+        $masterWildcard = data_get($masterServer, 'settings.wildcard_domain');
+        if (! empty($masterWildcard)) {
+            return $masterWildcard;
+        }
+    }
+
+    // Fallback to target server's wildcard domain
+    $wildcard = data_get($server, 'settings.wildcard_domain');
+    if (! empty($wildcard)) {
+        return $wildcard;
+    }
+
+    // Last resort: sslip.io for master or target
+    if ($masterServer) {
+        return sslip($masterServer);
+    }
+
+    return sslip($server);
+}
+
+/**
  * Generate a URL using sslip.io for a server.
  */
 function generateUrl(Server $server, string $random, bool $forceHttps = false): string
 {
-    $wildcard = data_get($server, 'settings.wildcard_domain');
-    if (is_null($wildcard) || $wildcard === '') {
-        $wildcard = sslip($server);
-    }
+    $wildcard = resolveWildcardDomain($server);
     $url = Url::fromString($wildcard);
     $host = $url->getHost();
     $path = $url->getPath() === '/' ? '' : $url->getPath();
@@ -112,11 +139,7 @@ function generateUrl(Server $server, string $random, bool $forceHttps = false): 
  */
 function generateFqdn(Server $server, string $random, bool $forceHttps = false, int $parserVersion = 5): string
 {
-
-    $wildcard = data_get($server, 'settings.wildcard_domain');
-    if (is_null($wildcard) || $wildcard === '') {
-        $wildcard = sslip($server);
-    }
+    $wildcard = resolveWildcardDomain($server);
     $url = Url::fromString($wildcard);
     $host = $url->getHost();
     $path = $url->getPath() === '/' ? '' : $url->getPath();

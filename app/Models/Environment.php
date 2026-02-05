@@ -40,6 +40,7 @@ class Environment extends BaseModel
         'type',
         'requires_approval',
         'project_id',
+        'default_server_id',
     ];
 
     protected $casts = [
@@ -150,6 +151,11 @@ class Environment extends BaseModel
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function defaultServer()
+    {
+        return $this->belongsTo(Server::class, 'default_server_id');
     }
 
     /**

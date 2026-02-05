@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge, BranchSelector } from '@/components/ui';
-import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink } from 'lucide-react';
+import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap } from 'lucide-react';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
 import type { Project, Environment, Server } from '@/types';
@@ -46,9 +46,6 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     const [isCreatingEnvironment, setIsCreatingEnvironment] = useState(false);
     const [useMonorepoAnalyzer, setUseMonorepoAnalyzer] = useState(false);
 
-    // Default to localhost server (platform's master server)
-    const defaultServerUuid = localhost?.uuid || userServers[0]?.uuid || '';
-
     const [formData, setFormData] = useState<FormData>({
         name: '',
         source_type: initialSource,
@@ -57,7 +54,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         build_pack: 'nixpacks',
         project_uuid: projects[0]?.uuid || '',
         environment_uuid: projects[0]?.environments[0]?.uuid || '',
-        server_uuid: defaultServerUuid,
+        server_uuid: 'auto',
         fqdn: '',
         description: '',
     });
@@ -223,7 +220,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         }
         if (!formData.project_uuid) newErrors.project_uuid = 'Project is required';
         if (!formData.environment_uuid) newErrors.environment_uuid = 'Environment is required';
-        if (!formData.server_uuid) newErrors.server_uuid = 'Server is required';
+        // server_uuid is optional - 'auto' or empty triggers smart selection
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
@@ -271,11 +268,11 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    {/* Step 1: Source Selection */}
+                    {/* Step 1: Git Provider Selection */}
                     {step === 1 && (
                         <div className="space-y-4">
-                            <h2 className="text-lg font-semibold text-foreground">Select Source</h2>
-                            <div className="grid gap-4 md:grid-cols-2">
+                            <h2 className="text-lg font-semibold text-foreground">Select Git Provider</h2>
+                            <div className="grid gap-4 md:grid-cols-3">
                                 <SourceCard
                                     icon={<Github className="h-6 w-6" />}
                                     title="GitHub"
@@ -297,13 +294,6 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     description="Deploy from Bitbucket repository"
                                     onClick={() => handleSourceSelect('bitbucket')}
                                     selected={formData.source_type === 'bitbucket'}
-                                />
-                                <SourceCard
-                                    icon={<Package className="h-6 w-6" />}
-                                    title="Docker Image"
-                                    description="Deploy from Docker registry"
-                                    onClick={() => handleSourceSelect('docker')}
-                                    selected={formData.source_type === 'docker'}
                                 />
                             </div>
                         </div>
@@ -598,9 +588,10 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                             value={formData.server_uuid}
                                             onChange={(e) => setFormData(prev => ({ ...prev, server_uuid: e.target.value }))}
                                         >
+                                            <option value="auto">Auto (Recommended)</option>
                                             {localhost && (
                                                 <option value={localhost.uuid}>
-                                                    {localhost.name} (Platform Default)
+                                                    {localhost.name} (Master)
                                                 </option>
                                             )}
                                             {userServers.map(server => (
@@ -609,8 +600,9 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                 </option>
                                             ))}
                                         </Select>
-                                        <p className="mt-1 text-xs text-foreground-muted">
-                                            Deploy to platform server by default
+                                        <p className="mt-1 text-xs text-foreground-muted flex items-center gap-1">
+                                            <Zap className="h-3 w-3" />
+                                            Auto selects the server with most available resources
                                         </p>
                                     </div>
 
@@ -720,9 +712,11 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     <ReviewItem label="Project" value={selectedProject?.name || ''} />
                                     <ReviewItem label="Environment" value={environments.find(e => e.uuid === formData.environment_uuid)?.name || ''} />
                                     <ReviewItem label="Server" value={
-                                        localhost?.uuid === formData.server_uuid
-                                            ? `${localhost.name} (Platform Default)`
-                                            : userServers.find(s => s.uuid === formData.server_uuid)?.name || 'Platform Default'
+                                        formData.server_uuid === 'auto'
+                                            ? 'Auto (Best Available)'
+                                            : localhost?.uuid === formData.server_uuid
+                                            ? `${localhost.name} (Master)`
+                                            : userServers.find(s => s.uuid === formData.server_uuid)?.name || 'Auto'
                                     } />
                                     {formData.fqdn && <ReviewItem label="Domain" value={formData.fqdn} />}
                                 </div>

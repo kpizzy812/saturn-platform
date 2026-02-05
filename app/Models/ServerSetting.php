@@ -74,6 +74,7 @@ class ServerSetting extends Model
         'delete_unused_volumes',
         'delete_unused_networks',
         'is_build_server',
+        'is_master_server',
         'is_cloudflare_tunnel',
         'is_jump_server',
         'is_logdrain_axiom_enabled',
@@ -102,6 +103,7 @@ class ServerSetting extends Model
     protected $casts = [
         'force_docker_cleanup' => 'boolean',
         'docker_cleanup_threshold' => 'integer',
+        'is_master_server' => 'boolean',
         'sentinel_token' => 'encrypted',
         'is_reachable' => 'boolean',
         'is_usable' => 'boolean',

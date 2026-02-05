@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Proxy\StartProxy;
 use App\Actions\Server\InstallDocker;
 use App\Enums\ProxyTypes;
 use App\Exceptions\RateLimitException;
@@ -362,6 +363,9 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
 
         // Install Docker
         InstallDocker::run($server);
+
+        // Start Traefik proxy on the new server
+        StartProxy::run($server, async: false);
 
         // Update server settings
         $server->settings->update([

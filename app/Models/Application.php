@@ -338,7 +338,27 @@ class Application extends BaseModel
             // If not detected, Nixpacks will use its default (Node 18).
             // Users can manually set NIXPACKS_NODE_VERSION if needed.
         });
+        // Re-sync master proxy route when FQDN changes
+        static::updated(function ($application) {
+            if ($application->wasChanged('fqdn')) {
+                try {
+                    $appServer = $application->destination?->server;
+                    if ($appServer && ! $appServer->isMasterServer()) {
+                        app(\App\Services\MasterProxyConfigService::class)->syncRemoteRoute($application);
+                    }
+                } catch (\Throwable $e) {
+                    // Don't break FQDN update if proxy sync fails
+                }
+            }
+        });
         static::forceDeleting(function ($application) {
+            // Remove master proxy route before clearing FQDN
+            try {
+                app(\App\Services\MasterProxyConfigService::class)->removeRemoteRoute($application);
+            } catch (\Throwable $e) {
+                // Don't block deletion if proxy cleanup fails
+            }
+
             $application->update(['fqdn' => null]);
             $application->settings()->delete();
             $application->persistentStorages()->delete();

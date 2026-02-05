@@ -9,6 +9,7 @@
 
 use App\Actions\Application\StopApplication;
 use App\Jobs\DeleteResourceJob;
+use App\Services\ServerSelectionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -109,7 +110,7 @@ Route::post('/applications', function (Request $request) {
         'build_pack' => 'required|string|in:nixpacks,dockerfile,dockercompose,dockerimage',
         'project_uuid' => 'required|string',
         'environment_uuid' => 'required|string',
-        'server_uuid' => 'required|string',
+        'server_uuid' => 'nullable|string',
         'fqdn' => 'nullable|string',
         'description' => 'nullable|string',
         'docker_image' => 'required_if:source_type,docker|nullable|string',
@@ -125,15 +126,34 @@ Route::post('/applications', function (Request $request) {
         ->firstOrFail();
 
     // Find server and destination
-    // First check if it's localhost (platform's master server with id=0)
-    $localhost = \App\Models\Server::where('id', 0)->first();
-    if ($localhost && $localhost->uuid === $validated['server_uuid']) {
-        $server = $localhost;
+    $serverUuid = $validated['server_uuid'] ?? '';
+
+    if ($serverUuid === 'auto' || empty($serverUuid)) {
+        // Smart server selection
+        $selectionService = app(ServerSelectionService::class);
+        $server = $selectionService->selectOptimalServer($environment);
+        if (! $server) {
+            return redirect()->back()->withErrors(['server_uuid' => 'No usable servers available for auto-selection']);
+        }
+
+        // Set project affinity if not already set
+        if (! $project->settings?->default_server_id) {
+            $project->settings()->updateOrCreate(
+                ['project_id' => $project->id],
+                ['default_server_id' => $server->id]
+            );
+        }
     } else {
-        // Otherwise, look for user's own servers
-        $server = \App\Models\Server::ownedByCurrentTeam()
-            ->where('uuid', $validated['server_uuid'])
-            ->firstOrFail();
+        // First check if it's localhost (platform's master server with id=0)
+        $localhost = \App\Models\Server::where('id', 0)->first();
+        if ($localhost && $localhost->uuid === $serverUuid) {
+            $server = $localhost;
+        } else {
+            // Otherwise, look for user's own servers
+            $server = \App\Models\Server::ownedByCurrentTeam()
+                ->where('uuid', $serverUuid)
+                ->firstOrFail();
+        }
     }
 
     $destination = $server->destinations()->first();
