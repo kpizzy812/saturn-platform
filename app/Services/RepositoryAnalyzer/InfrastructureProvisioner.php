@@ -47,7 +47,15 @@ class InfrastructureProvisioner
         $groupId = $monorepoGroupId ?? ($analysis->monorepo->isMonorepo ? (string) Str::uuid() : null);
 
         // Find server and its default StandaloneDocker destination
-        $server = Server::where('uuid', $serverUuid)->firstOrFail();
+        if ($serverUuid === 'auto' || empty($serverUuid)) {
+            $selectionService = app(\App\Services\ServerSelectionService::class);
+            $server = $selectionService->selectOptimalServer($environment);
+            if (! $server) {
+                throw new ProvisioningException('No available server found for auto-selection.');
+            }
+        } else {
+            $server = Server::where('uuid', $serverUuid)->firstOrFail();
+        }
         $destination = $server->standaloneDockers()->firstOrFail();
         $destinationUuid = $destination->uuid;
 
