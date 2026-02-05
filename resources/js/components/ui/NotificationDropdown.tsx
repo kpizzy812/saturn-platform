@@ -37,18 +37,40 @@ function getRelativeTime(timestamp: string): string {
     return date.toLocaleDateString();
 }
 
+function toRelativePath(url: string): string {
+    try {
+        const parsed = new URL(url, window.location.origin);
+        if (parsed.origin === window.location.origin) {
+            return parsed.pathname + parsed.search + parsed.hash;
+        }
+        // If it's a different origin, extract just the path
+        return parsed.pathname + parsed.search + parsed.hash;
+    } catch {
+        // Already a relative path or invalid URL
+        return url;
+    }
+}
+
 function NotificationItemCompact({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: string) => void }) {
     const icon = notificationIcons[notification.type] || notificationIcons.info;
 
     const handleClick = (e: React.MouseEvent) => {
+        const targetUrl = notification.actionUrl
+            ? toRelativePath(notification.actionUrl)
+            : `/notifications/${notification.id}`;
+
         if (!notification.isRead) {
-            onMarkAsRead(notification.id);
+            // Mark as read in background without blocking navigation
+            fetch(`/notifications/${notification.id}/read`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json',
+                },
+            }).catch(() => {});
         }
-        if (notification.actionUrl) {
-            router.visit(notification.actionUrl);
-        } else {
-            router.visit(`/notifications/${notification.id}`);
-        }
+
+        router.visit(targetUrl);
     };
 
     return (

@@ -169,18 +169,50 @@ class InAppChannel
 
     /**
      * Extract action URL from notification.
+     * Returns a relative path (strips base_url) for in-app navigation.
      */
     protected function extractActionUrl(Notification $notification): ?string
     {
+        $url = null;
+
         if (property_exists($notification, 'action_url')) {
-            return $notification->action_url;
+            $url = $notification->action_url;
+        } elseif (property_exists($notification, 'deployment_url')) {
+            $url = $notification->deployment_url;
         }
 
-        if (property_exists($notification, 'deployment_url')) {
-            return $notification->deployment_url;
+        if ($url === null) {
+            return null;
         }
 
-        return null;
+        // Strip base_url to store only the relative path for in-app navigation
+        return $this->toRelativePath($url);
+    }
+
+    /**
+     * Convert a full URL to a relative path.
+     */
+    protected function toRelativePath(string $url): string
+    {
+        // If already a relative path, return as-is
+        if (str_starts_with($url, '/')) {
+            return $url;
+        }
+
+        $parsed = parse_url($url);
+        if ($parsed === false || ! isset($parsed['path'])) {
+            return $url;
+        }
+
+        $path = $parsed['path'];
+        if (isset($parsed['query'])) {
+            $path .= '?'.$parsed['query'];
+        }
+        if (isset($parsed['fragment'])) {
+            $path .= '#'.$parsed['fragment'];
+        }
+
+        return $path;
     }
 
     /**

@@ -202,7 +202,35 @@ class UserNotification extends Model
             'description' => $this->description,
             'timestamp' => $this->created_at->toIso8601String(),
             'isRead' => $this->is_read,
-            'actionUrl' => $this->action_url,
+            'actionUrl' => $this->getRelativeActionUrl(),
         ];
+    }
+
+    /**
+     * Get action URL as relative path (strips base_url for SPA navigation).
+     */
+    protected function getRelativeActionUrl(): ?string
+    {
+        if ($this->action_url === null) {
+            return null;
+        }
+
+        // Already a relative path
+        if (str_starts_with($this->action_url, '/')) {
+            return $this->action_url;
+        }
+
+        // Strip the origin to get a relative path
+        $parsed = parse_url($this->action_url);
+        if ($parsed === false || ! isset($parsed['path'])) {
+            return $this->action_url;
+        }
+
+        $path = $parsed['path'];
+        if (isset($parsed['query'])) {
+            $path .= '?'.$parsed['query'];
+        }
+
+        return $path;
     }
 }
