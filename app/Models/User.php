@@ -378,9 +378,9 @@ class User extends Authenticatable implements SendsEmail
             return in_array($projectRole, ['owner', 'admin', 'developer']);
         }
 
-        // Production: developer can deploy, but may require approval (checked in deployment flow)
+        // Production: only owner/admin can deploy (requires approval if configured)
         if ($envType === 'production') {
-            return in_array($projectRole, ['owner', 'admin', 'developer']);
+            return in_array($projectRole, ['owner', 'admin']);
         }
 
         return false;

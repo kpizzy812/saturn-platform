@@ -73,9 +73,19 @@ Route::get('/applications/create', function () {
         return redirect()->route('dashboard')->with('error', 'Please select a team first');
     }
 
+    $authService = app(\App\Services\Authorization\ProjectAuthorizationService::class);
+    $currentUser = auth()->user();
+
     $projects = \App\Models\Project::ownedByCurrentTeam()
         ->with('environments')
-        ->get();
+        ->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            // Filter out environments the user cannot deploy to (e.g. production for developers)
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        });
 
     // Always get localhost (platform's master server) - used by default
     $localhost = \App\Models\Server::where('id', 0)->first();

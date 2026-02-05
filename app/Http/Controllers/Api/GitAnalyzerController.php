@@ -122,11 +122,10 @@ class GitAnalyzerController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        // Authorize: environment must belong to user's current team
+        // Authorize: user must be able to deploy to this environment
         $environment = Environment::where('uuid', $validated['environment_uuid'])->firstOrFail();
-        $project = $environment->project;
-        if (! $project || $project->team_id !== currentTeam()?->id) {
-            abort(403, 'Unauthorized access to this environment.');
+        if (! auth()->user()->canDeployToEnvironment($environment)) {
+            abort(403, 'You do not have permission to deploy to this environment.');
         }
 
         // Determine source type class
