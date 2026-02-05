@@ -3,6 +3,7 @@
 namespace Tests\Unit\Actions\Migration;
 
 use App\Actions\Migration\MigrationDiffAction;
+use App\Models\Application;
 use App\Models\Environment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -19,11 +20,12 @@ class MigrationDiffActionTest extends TestCase
     }
 
     /**
-     * Create a mock application using anonymous class extending Model.
+     * Create a mock application using anonymous class extending Application.
+     * Using Application so that getConfigFields() returns proper whitelist via instanceof.
      */
     protected function createMockApp(array $attributes = [], ?Collection $envVars = null, ?Collection $storages = null): Model
     {
-        return new class($attributes, $envVars, $storages) extends Model
+        return new class($attributes, $envVars, $storages) extends Application
         {
             public $id;
 
@@ -35,23 +37,76 @@ class MigrationDiffActionTest extends TestCase
 
             public $build_pack;
 
-            public $environment_variables;
+            private Collection $envVarsCollection;
 
-            public $persistentStorages;
+            private Collection $storagesCollection;
 
-            public $fileStorages;
+            private Collection $fileStoragesCollection;
 
             public function __construct(array $attributes, ?Collection $envVars, ?Collection $storages)
             {
+                // Don't call parent::__construct to avoid DB connection
                 $this->id = $attributes['id'] ?? 1;
                 $this->name = $attributes['name'] ?? 'test-app';
                 $this->git_repository = $attributes['git_repository'] ?? 'https://github.com/test/repo';
                 $this->git_branch = $attributes['git_branch'] ?? 'main';
                 $this->build_pack = $attributes['build_pack'] ?? 'nixpacks';
-                $this->environment_variables = $envVars ?? new Collection;
-                $this->persistentStorages = $storages ?? new Collection;
-                $this->fileStorages = new Collection;
+                $this->envVarsCollection = $envVars ?? new Collection;
+                $this->storagesCollection = $storages ?? new Collection;
+                $this->fileStoragesCollection = new Collection;
             }
+
+            // Provide methods (not just properties) so method_exists() works
+            public function environment_variables()
+            {
+                return $this->envVarsCollection;
+            }
+
+            public function persistentStorages()
+            {
+                return $this->storagesCollection;
+            }
+
+            public function fileStorages()
+            {
+                return $this->fileStoragesCollection;
+            }
+
+            // Override getAttribute to return public properties
+            public function getAttribute($key)
+            {
+                if (property_exists($this, $key)) {
+                    return $this->$key;
+                }
+
+                return null;
+            }
+
+            // Override __get to handle relationship-style property access
+            public function __get($key)
+            {
+                if ($key === 'environment_variables') {
+                    return $this->environment_variables();
+                }
+                if ($key === 'persistentStorages') {
+                    return $this->persistentStorages();
+                }
+                if ($key === 'fileStorages') {
+                    return $this->fileStorages();
+                }
+                if (property_exists($this, $key)) {
+                    return $this->$key;
+                }
+
+                return parent::__get($key);
+            }
+
+            // Prevent Eloquent boot
+            protected static function boot() {}
+
+            protected static function booting() {}
+
+            protected static function booted() {}
         };
     }
 
@@ -106,10 +161,11 @@ class MigrationDiffActionTest extends TestCase
 
         $result = $method->invoke($action, $app, []);
 
-        $this->assertEquals('create_new', $result['action']);
-        $this->assertEquals('test-app', $result['resource_name']);
-        $this->assertEquals(1, $result['env_vars_count']);
-        $this->assertEquals(1, $result['persistent_volumes_count']);
+        // generateCloneSummary returns nested structure: result['summary']['action']
+        $this->assertEquals('create_new', $result['summary']['action']);
+        $this->assertEquals('test-app', $result['summary']['resource_name']);
+        $this->assertEquals(1, $result['summary']['env_vars_count']);
+        $this->assertEquals(1, $result['summary']['persistent_volumes_count']);
     }
 
     #[Test]
@@ -124,8 +180,8 @@ class MigrationDiffActionTest extends TestCase
         $result = $method->invoke($action, $source, $target);
 
         $this->assertArrayHasKey('git_branch', $result);
-        $this->assertEquals('release/v1', $result['git_branch']['old']);
-        $this->assertEquals('release/v2', $result['git_branch']['new']);
+        $this->assertEquals('release/v1', $result['git_branch']['from']);
+        $this->assertEquals('release/v2', $result['git_branch']['to']);
     }
 
     #[Test]

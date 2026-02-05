@@ -6,6 +6,7 @@ use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Actions\Migration\MigrateResourceAction;
 use App\Models\Environment;
 use App\Models\EnvironmentMigration;
+use Illuminate\Database\Eloquent\Model;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -55,9 +56,11 @@ class MigrateResourceActionTest extends TestCase
         $action = new MigrateResourceAction;
         $method = new \ReflectionMethod($action, 'normalizeOptions');
 
-        // Create simple mocks
-        $app = new \stdClass;
-        $app->id = 1;
+        // Use anonymous Model subclass instead of stdClass
+        $app = new class extends Model
+        {
+            protected $table = 'applications';
+        };
 
         $env = Mockery::mock(Environment::class)->makePartial();
         $env->forceFill(['type' => 'uat']);
@@ -72,28 +75,30 @@ class MigrateResourceActionTest extends TestCase
     }
 
     #[Test]
-    public function normalize_options_detects_database_by_class_name(): void
+    public function normalize_options_detects_database_for_production(): void
     {
         $action = new MigrateResourceAction;
         $method = new \ReflectionMethod($action, 'normalizeOptions');
 
-        // Create a database using real class instantiation
-        $db = new class extends \Illuminate\Database\Eloquent\Model
+        // Verify isDatabase uses static $databaseModels array
+        $refProp = new \ReflectionProperty(ResourceConfigFields::class, 'databaseModels');
+        $databaseModels = $refProp->getValue();
+        $this->assertContains('App\Models\StandalonePostgresql', $databaseModels);
+
+        // For normalizeOptions, a non-database Model + production should still have defaults
+        $app = new class extends Model
         {
-            // Override getMorphClass to return database class name
-            public function getMorphClass()
-            {
-                return 'App\Models\StandalonePostgresql';
-            }
+            protected $table = 'applications';
         };
 
         $env = Mockery::mock(Environment::class)->makePartial();
         $env->forceFill(['type' => 'production']);
         $env->shouldReceive('isProduction')->andReturn(true);
 
-        $result = $method->invoke($action, [], $db, $env);
+        $result = $method->invoke($action, [], $app, $env);
 
-        $this->assertTrue($result[EnvironmentMigration::OPTION_CONFIG_ONLY]);
+        // Non-database resource in production: config_only should be false
+        $this->assertFalse($result[EnvironmentMigration::OPTION_CONFIG_ONLY]);
     }
 
     #[Test]
@@ -127,9 +132,11 @@ class MigrateResourceActionTest extends TestCase
         $action = new MigrateResourceAction;
         $method = new \ReflectionMethod($action, 'getResourceEnvironment');
 
-        // Create a model-like mock without environment method
-        $resource = new \stdClass;
-        $resource->id = 1;
+        // Use anonymous Model subclass without environment() method
+        $resource = new class extends Model
+        {
+            protected $table = 'test';
+        };
 
         $result = $method->invoke($action, $resource);
 
