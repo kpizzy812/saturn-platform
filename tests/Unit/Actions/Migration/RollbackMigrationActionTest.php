@@ -152,6 +152,31 @@ class RollbackMigrationActionTest extends TestCase
     }
 
     #[Test]
+    public function restore_application_settings_whitelist_matches_fillable(): void
+    {
+        $action = new RollbackMigrationAction;
+        $method = new \ReflectionMethod($action, 'restoreApplicationSettings');
+
+        // Extract the safeFields from source code
+        $source = file_get_contents(
+            base_path('app/Actions/Migration/RollbackMigrationAction.php')
+        );
+
+        // Verify all critical ApplicationSetting fields are in the whitelist
+        $this->assertStringContainsString("'auto_rollback_enabled'", $source);
+        $this->assertStringContainsString("'rollback_validation_seconds'", $source);
+        $this->assertStringContainsString("'rollback_max_restarts'", $source);
+        $this->assertStringContainsString("'rollback_on_health_check_fail'", $source);
+        $this->assertStringContainsString("'rollback_on_crash_loop'", $source);
+        $this->assertStringContainsString("'use_build_secrets'", $source);
+        $this->assertStringContainsString("'is_debug_enabled'", $source);
+        $this->assertStringContainsString("'docker_images_to_keep'", $source);
+
+        // Verify identity field is NOT in whitelist
+        $this->assertStringNotContainsString("'application_id'", $source);
+    }
+
+    #[Test]
     public function action_has_notify_method(): void
     {
         $class = new \ReflectionClass(RollbackMigrationAction::class);

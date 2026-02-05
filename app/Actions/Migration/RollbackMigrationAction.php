@@ -410,24 +410,31 @@ class RollbackMigrationAction
             return;
         }
 
-        // Only restore safe settings fields
+        // Only restore safe settings fields (matches ApplicationSetting::$fillable minus application_id)
         $safeFields = [
             'is_static',
             'is_spa',
             'is_build_server_enabled',
             'is_preserve_repository_enabled',
+            'is_container_label_escape_enabled',
+            'is_container_label_readonly_enabled',
+            'use_build_secrets',
+            'inject_build_args_to_dockerfile',
+            'include_source_commit_in_build',
+            'is_auto_deploy_enabled',
+            'is_force_https_enabled',
+            'is_debug_enabled',
+            'is_preview_deployments_enabled',
+            'is_pr_deployments_public_enabled',
             'is_git_submodules_enabled',
             'is_git_lfs_enabled',
             'is_git_shallow_clone_enabled',
-            'is_auto_deploy_enabled',
-            'is_force_https_enabled',
-            'is_preview_deployments_enabled',
-            'is_container_label_escape_enabled',
-            'is_container_label_readonly_enabled',
-            'gpu_driver',
-            'gpu_count',
-            'gpu_device_ids',
-            'gpu_options',
+            'docker_images_to_keep',
+            'auto_rollback_enabled',
+            'rollback_validation_seconds',
+            'rollback_max_restarts',
+            'rollback_on_health_check_fail',
+            'rollback_on_crash_loop',
         ];
 
         $attributes = collect($settingsData)

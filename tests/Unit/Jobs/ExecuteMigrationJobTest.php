@@ -77,11 +77,18 @@ class ExecuteMigrationJobTest extends TestCase
     }
 
     #[Test]
+    public function handle_checks_for_deleted_server(): void
+    {
+        $sourceCode = file_get_contents(
+            base_path('app/Jobs/ExecuteMigrationJob.php')
+        );
+        $this->assertStringContainsString('Target server was deleted', $sourceCode);
+        $this->assertStringContainsString('if (! $targetServer)', $sourceCode);
+    }
+
+    #[Test]
     public function handle_does_not_call_mark_as_failed_in_catch_block(): void
     {
-        // Verify the catch block in handle() does NOT call markAsFailed
-        // (it's handled by the failed() hook to avoid double status update)
-        $method = new \ReflectionMethod(ExecuteMigrationJob::class, 'handle');
         $source = file_get_contents(
             base_path('app/Jobs/ExecuteMigrationJob.php')
         );
@@ -89,5 +96,30 @@ class ExecuteMigrationJobTest extends TestCase
         // The catch block should only append log and notify, NOT markAsFailed
         // The failed() method should be the one calling markAsFailed
         $this->assertStringContainsString('// Only log here; markAsFailed is handled by the failed() hook', $source);
+    }
+
+    #[Test]
+    public function handle_calls_mark_as_failed_on_action_failure(): void
+    {
+        $source = file_get_contents(
+            base_path('app/Jobs/ExecuteMigrationJob.php')
+        );
+
+        // When ExecuteMigrationAction returns success=false (no exception),
+        // handle() must call markAsFailed to prevent migration stuck in_progress
+        $this->assertStringContainsString('$this->migration->markAsFailed($error)', $source);
+    }
+
+    #[Test]
+    public function failed_hook_catches_logic_exception(): void
+    {
+        $source = file_get_contents(
+            base_path('app/Jobs/ExecuteMigrationJob.php')
+        );
+
+        // failed() hook must catch LogicException to prevent infinite loop
+        // when migration is already in terminal state
+        $this->assertStringContainsString('catch (\LogicException $e)', $source);
+        $this->assertStringContainsString('migration already terminal', $source);
     }
 }

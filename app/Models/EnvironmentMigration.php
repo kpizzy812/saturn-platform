@@ -370,9 +370,15 @@ class EnvironmentMigration extends Model
      */
     public function markAsFailed(string $errorMessage): void
     {
-        // Allow marking as failed from any active status (pending, approved, in_progress)
-        // but not from terminal states
-        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_ROLLED_BACK])) {
+        // Idempotent: if already failed, just update the error message
+        if ($this->status === self::STATUS_FAILED) {
+            $this->update(['error_message' => $errorMessage]);
+
+            return;
+        }
+
+        // Cannot transition from terminal or rejected states
+        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_ROLLED_BACK, self::STATUS_REJECTED])) {
             throw new \LogicException("Cannot mark migration as failed from status: {$this->status}");
         }
 

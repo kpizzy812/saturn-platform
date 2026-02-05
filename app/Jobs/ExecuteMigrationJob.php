@@ -68,9 +68,16 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
-        // Check target server health before proceeding
+        // Check target server exists and is healthy before proceeding
         $targetServer = $this->migration->targetServer;
-        if ($targetServer && ! $targetServer->isFunctional()) {
+        if (! $targetServer) {
+            $this->migration->markAsFailed('Target server was deleted.');
+            $this->notifyFailure('Target server was deleted.');
+
+            return;
+        }
+
+        if (! $targetServer->isFunctional()) {
             $this->migration->markAsFailed('Target server is not reachable.');
             $this->notifyFailure('Target server is not reachable.');
 
@@ -87,8 +94,10 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
                 $this->migration->appendLog('Migration completed successfully');
                 $this->notifySuccess();
             } else {
-                $this->migration->appendLog('Migration failed: '.($result['error'] ?? 'Unknown error'));
-                $this->notifyFailure($result['error'] ?? 'Unknown error');
+                $error = $result['error'] ?? 'Unknown error';
+                $this->migration->markAsFailed($error);
+                $this->migration->appendLog('Migration failed: '.$error);
+                $this->notifyFailure($error);
             }
 
         } catch (Throwable $e) {
@@ -106,8 +115,14 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
      */
     public function failed(Throwable $exception): void
     {
-        $this->migration->markAsFailed($exception->getMessage());
-        $this->migration->appendLog('Job failed permanently: '.$exception->getMessage());
+        try {
+            $this->migration->markAsFailed($exception->getMessage());
+            $this->migration->appendLog('Job failed permanently: '.$exception->getMessage());
+        } catch (\LogicException $e) {
+            // Migration already in terminal state — just log
+            $this->migration->appendLog('Job failed but migration already terminal: '.$e->getMessage());
+        }
+
         $this->notifyFailure($exception->getMessage());
     }
 
