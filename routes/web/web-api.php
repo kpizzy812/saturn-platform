@@ -920,3 +920,24 @@ Route::prefix('web-api/ai-analytics')->group(function () {
         ]);
     })->name('web-api.ai-analytics.daily');
 });
+
+// Environment resource statuses (lightweight polling endpoint for canvas real-time updates)
+Route::get('/web-api/environments/{uuid}/statuses', function (string $uuid) {
+    $environment = \App\Models\Environment::where('uuid', $uuid)->firstOrFail();
+
+    // Verify team ownership
+    $project = $environment->project;
+    if (! $project || ! \App\Models\Project::ownedByCurrentTeam()->where('id', $project->id)->exists()) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    $applications = $environment->applications()->select('id', 'status')->get();
+    $databases = $environment->databases(); // Returns collection (concat of all DB types)
+    $services = $environment->services()->select('id', 'status')->get();
+
+    return response()->json([
+        'applications' => $applications->pluck('status', 'id'),
+        'databases' => $databases->mapWithKeys(fn ($db) => [$db->id => $db->status]),
+        'services' => $services->pluck('status', 'id'),
+    ]);
+})->name('web-api.environment.statuses');

@@ -156,6 +156,77 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         },
     });
 
+    // Polling fallback for status updates (works with session auth, no WebSocket needed)
+    useEffect(() => {
+        if (!selectedEnv?.uuid) return;
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        const pollStatuses = async () => {
+            try {
+                const res = await fetch(`/web-api/environments/${selectedEnv.uuid}/statuses`, {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                });
+                if (!res.ok) return;
+
+                const data = await res.json() as {
+                    applications: Record<string, string>;
+                    databases: Record<string, string>;
+                    services: Record<string, string>;
+                };
+
+                // Update app statuses
+                setAppStatuses((prev) => {
+                    const next = { ...prev };
+                    let changed = false;
+                    for (const [id, status] of Object.entries(data.applications)) {
+                        if (next[Number(id)] !== status) {
+                            next[Number(id)] = status;
+                            changed = true;
+                        }
+                    }
+                    return changed ? next : prev;
+                });
+
+                // Update db statuses
+                setDbStatuses((prev) => {
+                    const next = { ...prev };
+                    let changed = false;
+                    for (const [id, status] of Object.entries(data.databases)) {
+                        if (next[Number(id)] !== status) {
+                            next[Number(id)] = status;
+                            changed = true;
+                        }
+                    }
+                    return changed ? next : prev;
+                });
+
+                // Update service statuses
+                setServiceStatuses((prev) => {
+                    const next = { ...prev };
+                    let changed = false;
+                    for (const [id, status] of Object.entries(data.services)) {
+                        if (next[Number(id)] !== status) {
+                            next[Number(id)] = status;
+                            changed = true;
+                        }
+                    }
+                    return changed ? next : prev;
+                });
+            } catch {
+                // Silently ignore polling errors
+            }
+        };
+
+        // Initial fetch
+        pollStatuses();
+
+        // Poll every 5 seconds
+        const interval = setInterval(pollStatuses, 5000);
+        return () => clearInterval(interval);
+    }, [selectedEnv?.uuid]);
+
     // Compute environments with real-time statuses
     const envWithRealtimeStatuses = useMemo(() => {
         if (!selectedEnv) return null;
