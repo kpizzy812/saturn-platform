@@ -60,10 +60,11 @@ class ServerSetting extends Model
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, server_id (relationship), is_reachable, is_usable (system-managed),
+     * Excludes: id, is_reachable, is_usable (system-managed),
      * sentinel_token (auto-generated), sentinel_custom_url (auto-generated)
      */
     protected $fillable = [
+        'server_id',
         'concurrent_builds',
         'deployment_queue_limit',
         'dynamic_timeout',

@@ -13,9 +13,10 @@ class ProjectSetting extends Model
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, project_id (relationship)
+     * Excludes: id
      */
     protected $fillable = [
+        'project_id',
         'default_server_id',
     ];
 
