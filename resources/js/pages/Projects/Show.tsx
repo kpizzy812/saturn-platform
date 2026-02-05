@@ -1231,7 +1231,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         {/* Canvas Overlay Buttons */}
                         <div className="absolute right-4 top-4 z-10 flex gap-2">
                             {/* Migrate Environment Button - only visible for dev/uat */}
-                            {selectedEnv && selectedEnv.type !== 'production' && (
+                            {selectedEnv && (selectedEnv as any).type !== 'production' && (
                                 <Button
                                     variant="outline"
                                     size="sm"

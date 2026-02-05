@@ -37,7 +37,7 @@ interface LogEntry {
 interface DeploymentData {
     id: number;
     deployment_uuid: string;
-    status: 'queued' | 'in_progress' | 'finished' | 'failed' | 'cancelled';
+    status: 'queued' | 'in_progress' | 'finished' | 'failed' | 'cancelled' | 'pending_approval';
     commit: string | null;
     commit_message: string | null;
     is_webhook: boolean;

@@ -75,7 +75,11 @@ export default function DatabaseShow({ database }: Props) {
         onDatabaseStatusChange: (data) => {
             // Update database status when WebSocket event arrives
             if (data.databaseId === database.id) {
-                setCurrentStatus(data.status as { state: string; health: string });
+                // Handle both string and object status formats
+                const newStatus = typeof data.status === 'string'
+                    ? { state: data.status, health: 'unknown' }
+                    : data.status as { state: string; health: string };
+                setCurrentStatus(newStatus);
             }
         },
     });
