@@ -122,9 +122,12 @@ class GitAnalyzerController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        // Authorize access to environment
+        // Authorize: environment must belong to user's current team
         $environment = Environment::where('uuid', $validated['environment_uuid'])->firstOrFail();
-        Gate::authorize('update', $environment->project);
+        $project = $environment->project;
+        if (! $project || $project->team_id !== currentTeam()?->id) {
+            abort(403, 'Unauthorized access to this environment.');
+        }
 
         // Determine source type class
         $sourceType = match ($validated['source_type'] ?? null) {
