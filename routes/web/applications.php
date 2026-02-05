@@ -682,7 +682,7 @@ Route::get('/applications/{uuid}/envs/json', function (string $uuid) {
                 'id' => $var->id,
                 'key' => $var->key,
                 'value' => $var->value,
-                'is_build_time' => $var->is_build_time,
+                'is_buildtime' => $var->is_buildtime,
             ];
         });
 

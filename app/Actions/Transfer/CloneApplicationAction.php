@@ -246,7 +246,7 @@ class CloneApplicationAction
         EnvironmentVariable::create([
             'key' => $envVar->key,
             'value' => $envVar->value,
-            'is_build_time' => $envVar->is_build_time,
+            'is_buildtime' => $envVar->is_buildtime ?? false,
             'is_literal' => $envVar->is_literal,
             'is_multiline' => $envVar->is_multiline,
             'is_preview' => $isPreview,

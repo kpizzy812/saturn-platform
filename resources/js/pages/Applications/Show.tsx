@@ -48,7 +48,7 @@ interface Props {
 export default function ApplicationShow({ application: initialApplication }: Props) {
     const [application, setApplication] = useState<ApplicationWithRelations>(initialApplication);
     const [showEnvVars, setShowEnvVars] = useState(false);
-    const [envVars, setEnvVars] = useState<Array<{ id: number; key: string; value: string; is_build_time: boolean }>>([]);
+    const [envVars, setEnvVars] = useState<Array<{ id: number; key: string; value: string; is_buildtime: boolean }>>([]);
     const [envVarsLoading, setEnvVarsLoading] = useState(false);
     const [envVarsLoaded, setEnvVarsLoaded] = useState(false);
     const [revealedVarIds, setRevealedVarIds] = useState<Set<number>>(new Set());

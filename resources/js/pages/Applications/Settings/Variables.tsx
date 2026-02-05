@@ -73,7 +73,7 @@ export default function ApplicationVariables({ application, variables: propVaria
                 .map(v => ({
                     key: v.key,
                     value: v.value,
-                    is_build_time: v.is_buildtime ?? false,
+                    is_buildtime: v.is_buildtime ?? false,
                 }));
 
             router.patch(`/applications/${application.uuid}/envs/bulk`, {

@@ -170,6 +170,7 @@ class ExecuteMigrationAction
             'copyScheduledTasks' => true,
             'copyTags' => true,
             'instantDeploy' => false,
+            'newName' => $source->name, // Keep original name — environment label distinguishes
         ];
 
         $result = CloneApplicationAction::run($source, $targetEnv, $targetServer, $cloneOptions);
@@ -207,6 +208,7 @@ class ExecuteMigrationAction
             'copyScheduledTasks' => true,
             'copyTags' => true,
             'instantDeploy' => false,
+            'newName' => $source->name, // Keep original name — environment label distinguishes
         ];
 
         $result = CloneServiceAction::run($source, $targetEnv, $targetServer, $cloneOptions);
@@ -394,6 +396,10 @@ class ExecuteMigrationAction
 
     /**
      * Sync environment variables from source to target.
+     *
+     * Full sync: adds new vars with values, updates existing, removes
+     * vars that no longer exist in source. This ensures target env
+     * matches source exactly (safe for dev→uat→prod migrations).
      */
     protected function syncEnvironmentVariables(Model $source, Model $target): void
     {
@@ -403,27 +409,35 @@ class ExecuteMigrationAction
 
         $sourceVars = $source->environment_variables;
         $targetVars = $target->environment_variables;
+        $sourceKeys = $sourceVars->pluck('key')->toArray();
 
+        // 1. Delete vars that no longer exist in source
+        foreach ($targetVars as $targetVar) {
+            if (! in_array($targetVar->key, $sourceKeys)) {
+                $targetVar->delete();
+            }
+        }
+
+        // 2. Add new or update existing vars (with values!)
         foreach ($sourceVars as $sourceVar) {
-            // Find existing var by key
             $existingVar = $targetVars->firstWhere('key', $sourceVar->key);
 
             if ($existingVar) {
-                // Update existing
                 $existingVar->update([
                     'value' => $sourceVar->value,
-                    'is_build_time' => $sourceVar->is_build_time,
+                    'is_buildtime' => $sourceVar->is_buildtime,
                     'is_literal' => $sourceVar->is_literal,
+                    'is_multiline' => $sourceVar->is_multiline,
                 ]);
             } else {
-                // Create new
                 EnvironmentVariable::create([
                     'key' => $sourceVar->key,
                     'value' => $sourceVar->value,
-                    'is_build_time' => $sourceVar->is_build_time,
+                    'is_buildtime' => $sourceVar->is_buildtime ?? false,
                     'is_literal' => $sourceVar->is_literal ?? false,
                     'is_multiline' => $sourceVar->is_multiline ?? false,
                     'is_preview' => $sourceVar->is_preview ?? false,
+                    'is_required' => $sourceVar->is_required ?? false,
                     'resourceable_type' => get_class($target),
                     'resourceable_id' => $target->id,
                 ]);

@@ -520,7 +520,7 @@ class ApplicationController extends Controller
                     'key' => $variable->key,
                     // Don't send value if is_shown_once - requires explicit reveal via API
                     'value' => $variable->is_shown_once ? null : $variable->value,
-                    'is_build_time' => $variable->is_build_time,
+                    'is_buildtime' => $variable->is_buildtime,
                     'is_literal' => $variable->is_literal,
                     'is_multiline' => $variable->is_multiline,
                     'is_required' => $variable->is_required,

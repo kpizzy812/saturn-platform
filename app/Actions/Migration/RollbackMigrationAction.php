@@ -225,7 +225,7 @@ class RollbackMigrationAction
             if ($existingVar) {
                 $existingVar->update([
                     'value' => $varData['value'],
-                    'is_build_time' => $varData['is_build_time'] ?? false,
+                    'is_buildtime' => $varData['is_buildtime'] ?? $varData['is_build_time'] ?? false,
                     'is_literal' => $varData['is_literal'] ?? false,
                     'is_preview' => $varData['is_preview'] ?? false,
                 ]);
@@ -233,7 +233,7 @@ class RollbackMigrationAction
                 EnvironmentVariable::create([
                     'key' => $varData['key'],
                     'value' => $varData['value'],
-                    'is_build_time' => $varData['is_build_time'] ?? false,
+                    'is_buildtime' => $varData['is_buildtime'] ?? $varData['is_build_time'] ?? false,
                     'is_literal' => $varData['is_literal'] ?? false,
                     'is_preview' => $varData['is_preview'] ?? false,
                     'resourceable_type' => get_class($target),

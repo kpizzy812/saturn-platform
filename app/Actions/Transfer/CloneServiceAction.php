@@ -302,7 +302,7 @@ class CloneServiceAction
             EnvironmentVariable::create([
                 'key' => $envVar->key,
                 'value' => $value,
-                'is_build_time' => $envVar->is_build_time,
+                'is_buildtime' => $envVar->is_buildtime,
                 'is_literal' => $envVar->is_literal,
                 'is_multiline' => $envVar->is_multiline,
                 'is_preview' => $envVar->is_preview ?? false,
@@ -322,7 +322,7 @@ class CloneServiceAction
             EnvironmentVariable::create([
                 'key' => $envVar->key,
                 'value' => $envVar->value,
-                'is_build_time' => $envVar->is_build_time ?? false,
+                'is_buildtime' => $envVar->is_buildtime ?? false,
                 'is_literal' => $envVar->is_literal ?? false,
                 'is_multiline' => $envVar->is_multiline ?? false,
                 'is_preview' => $envVar->is_preview ?? false,

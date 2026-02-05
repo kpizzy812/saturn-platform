@@ -46,7 +46,7 @@ interface EnvironmentVariable {
     key: string;
     value: string;
     is_preview: boolean;
-    is_build_time: boolean;
+    is_buildtime: boolean;
 }
 
 interface UseServiceEnvsOptions {

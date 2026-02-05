@@ -81,7 +81,7 @@ describe('Application Model Buildpack Cleanup', function () {
             'application_id' => $application->id,
             'key' => 'SERVICE_FQDN_APP',
             'value' => 'app.example.com',
-            'is_build_time' => false,
+            'is_buildtime' => false,
             'is_preview' => false,
         ]);
 
@@ -89,7 +89,7 @@ describe('Application Model Buildpack Cleanup', function () {
             'application_id' => $application->id,
             'key' => 'SERVICE_URL_APP',
             'value' => 'http://app.example.com',
-            'is_build_time' => false,
+            'is_buildtime' => false,
             'is_preview' => false,
         ]);
 
@@ -97,7 +97,7 @@ describe('Application Model Buildpack Cleanup', function () {
             'application_id' => $application->id,
             'key' => 'REGULAR_VAR',
             'value' => 'should_remain',
-            'is_build_time' => false,
+            'is_buildtime' => false,
             'is_preview' => false,
         ]);
 

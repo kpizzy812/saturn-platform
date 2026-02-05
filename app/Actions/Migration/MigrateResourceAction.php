@@ -217,7 +217,7 @@ class MigrateResourceAction
             $config['environment_variables'] = $resource->environment_variables->map(fn ($var) => [
                 'key' => $var->key,
                 'value' => $var->value,
-                'is_build_time' => $var->is_build_time ?? false,
+                'is_buildtime' => $var->is_buildtime ?? false,
                 'is_literal' => $var->is_literal ?? false,
                 'is_preview' => $var->is_preview ?? false,
             ])->toArray();
