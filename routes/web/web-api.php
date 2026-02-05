@@ -830,8 +830,14 @@ Route::prefix('web-api/ai-chat')->group(function () {
         return response()->json([
             'message' => [
                 'uuid' => $message->uuid,
+                'role' => $message->role,
                 'content' => $message->content,
-                'command_status' => 'pending',
+                'intent' => $message->intent,
+                'intent_label' => $message->intent_label,
+                'intent_params' => $message->intent_params,
+                'command_status' => $message->command_status,
+                'command_result' => $message->command_result,
+                'created_at' => $message->created_at->toIso8601String(),
             ],
         ]);
     })->name('web-api.ai-chat.sessions.confirm');

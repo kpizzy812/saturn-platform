@@ -273,12 +273,14 @@ export function AiChatMessage({ message, onConfirm, onRate }: AiChatMessageProps
                 )}
 
                 {/* Timestamp */}
-                <span className="mt-1 text-[10px] text-foreground-muted">
-                    {new Date(message.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                    })}
-                </span>
+                {message.created_at && (
+                    <span className="mt-1 text-[10px] text-foreground-muted">
+                        {new Date(message.created_at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        })}
+                    </span>
+                )}
             </div>
         </div>
     );
