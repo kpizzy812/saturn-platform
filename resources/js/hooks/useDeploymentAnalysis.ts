@@ -44,6 +44,13 @@ export function useDeploymentAnalysis({
     const [isLoading, setIsLoading] = React.useState(enabled);
     const [isAnalyzing, setIsAnalyzing] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
+    const triggeredRef = React.useRef(false);
+    const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    // Cleanup timeout on unmount
+    React.useEffect(() => {
+        return () => clearTimeout(timeoutRef.current);
+    }, []);
 
     const fetchAnalysis = React.useCallback(async () => {
         try {
@@ -68,10 +75,16 @@ export function useDeploymentAnalysis({
             // Handle 'not_found' status (no analysis yet)
             if (data.status === 'not_found' || data.analysis === null) {
                 setAnalysis(null);
-                setIsAnalyzing(false);
+                // Don't reset isAnalyzing if we just triggered - the job is still queued
+                if (!triggeredRef.current) {
+                    setIsAnalyzing(false);
+                }
                 return;
             }
 
+            // Got actual analysis data
+            triggeredRef.current = false;
+            clearTimeout(timeoutRef.current);
             setAnalysis(data.analysis);
             setIsAnalyzing(data.status === 'analyzing');
         } catch (err) {
@@ -85,6 +98,15 @@ export function useDeploymentAnalysis({
         try {
             setIsAnalyzing(true);
             setError(null);
+            triggeredRef.current = true;
+
+            // Safety timeout: give up after 2 minutes
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = setTimeout(() => {
+                triggeredRef.current = false;
+                setIsAnalyzing(false);
+                setError(new Error('Analysis timed out — the job may still be processing'));
+            }, 120_000);
 
             const response = await fetch(`/web-api/deployments/${deploymentUuid}/analyze`, {
                 method: 'POST',
@@ -101,13 +123,14 @@ export function useDeploymentAnalysis({
                 throw new Error(data.error || 'Failed to trigger analysis');
             }
 
-            // Start polling for results
-            await fetchAnalysis();
+            // Don't fetchAnalysis immediately — job is queued, auto-refresh will poll
         } catch (err) {
+            triggeredRef.current = false;
+            clearTimeout(timeoutRef.current);
             setError(err instanceof Error ? err : new Error('Failed to trigger analysis'));
             setIsAnalyzing(false);
         }
-    }, [deploymentUuid, fetchAnalysis]);
+    }, [deploymentUuid]);
 
     // Initial fetch (only when enabled)
     React.useEffect(() => {
@@ -116,9 +139,8 @@ export function useDeploymentAnalysis({
         }
     }, [fetchAnalysis, enabled]);
 
-    // Auto-refresh when analyzing
+    // Auto-refresh when analyzing (polls every refreshInterval until analysis is done)
     React.useEffect(() => {
-        // Only auto-refresh when enabled AND currently analyzing
         if (!autoRefresh || !isAnalyzing) return;
 
         const interval = setInterval(() => {
