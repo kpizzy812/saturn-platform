@@ -222,6 +222,17 @@ class AiChatService
             $intentParams = array_filter($intentParams, fn ($v) => $v !== null);
         }
 
+        // For analysis intents, merge execution result data for frontend visualization cards
+        $analysisIntents = ['analyze_errors', 'health_check', 'metrics', 'code_review'];
+        if ($firstCommand && in_array($firstCommand->action, $analysisIntents) && ! empty($commandResults)) {
+            foreach ($commandResults as $result) {
+                if ($result->success && $result->data) {
+                    $intentParams = array_merge($intentParams ?? [], $result->data);
+                    break;
+                }
+            }
+        }
+
         // Save assistant message
         $assistantMessage = $session->messages()->create([
             'role' => 'assistant',
