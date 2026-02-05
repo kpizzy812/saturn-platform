@@ -238,15 +238,16 @@ class ApplicationDeploymentQueue extends Model
         $effectiveStage = $stage ?? $this->currentStage;
 
         // Get next order number with atomic increment
-        // Using MAX + 1 with a short lock to prevent race conditions
         $order = 1;
         DB::transaction(function () use (&$order, $redactedMessage, $type, $hidden, $effectiveStage) {
-            // Lock only for getting max order number - very quick
-            $maxOrder = DeploymentLogEntry::where('deployment_id', $this->id)
+            // PostgreSQL forbids FOR UPDATE with aggregate functions (MAX),
+            // so we use ORDER BY + LIMIT 1 instead
+            $lastEntry = DeploymentLogEntry::where('deployment_id', $this->id)
+                ->orderByDesc('order')
                 ->lockForUpdate()
-                ->max('order');
+                ->first(['order']);
 
-            $order = ($maxOrder ?? 0) + 1;
+            $order = ($lastEntry?->order ?? 0) + 1;
 
             // Insert new log entry - O(1) operation
             DeploymentLogEntry::create([
