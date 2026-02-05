@@ -1033,19 +1033,21 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         if ($this->application->settings->is_static || $this->application->build_pack === 'static') {
             $health_check_port = 80;
         }
-        if ($this->application->health_check_path) {
-            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}{$this->application->health_check_path}";
-            $generated_healthchecks_commands = [
-                "curl -s -X {$this->application->health_check_method} -f {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}{$this->application->health_check_path} > /dev/null || wget -q -O- {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}{$this->application->health_check_path} > /dev/null || exit 1",
-            ];
-        } else {
-            $this->full_healthcheck_url = "{$this->application->health_check_method}: {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}/";
-            $generated_healthchecks_commands = [
-                "curl -s -X {$this->application->health_check_method} -f {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}/ > /dev/null || wget -q -O- {$this->application->health_check_scheme}://{$this->application->health_check_host}:{$health_check_port}/ > /dev/null || exit 1",
-            ];
-        }
 
-        return implode(' ', $generated_healthchecks_commands);
+        $host = $this->application->health_check_host;
+        $scheme = $this->application->health_check_scheme;
+        $method = $this->application->health_check_method;
+        $path = $this->application->health_check_path ?: '/';
+
+        $this->full_healthcheck_url = "{$method}: {$scheme}://{$host}:{$health_check_port}{$path}";
+        $url = "{$scheme}://{$host}:{$health_check_port}{$path}";
+
+        // Try curl, then wget, then bare TCP check (for images without curl/wget)
+        $curlCmd = "curl -s -X {$method} -f {$url} > /dev/null 2>&1";
+        $wgetCmd = "wget -q -O- {$url} > /dev/null 2>&1";
+        $tcpCmd = "(echo > /dev/tcp/{$host}/{$health_check_port}) > /dev/null 2>&1";
+
+        return "{$curlCmd} || {$wgetCmd} || {$tcpCmd} || exit 1";
     }
 
     // Static buildpack methods moved to HandlesStaticBuildpack trait
