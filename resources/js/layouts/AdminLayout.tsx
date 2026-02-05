@@ -22,6 +22,7 @@ import {
     LayoutTemplate,
     Bell,
     Brain,
+    KeyRound,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -56,6 +57,7 @@ const adminNavItems: NavItem[] = [
     { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
     { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
     { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
+    { label: 'OAuth / SSO', href: '/admin/settings/oauth', icon: <KeyRound className="h-4 w-4" /> },
     { label: 'System Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },
     { label: 'Audit Logs', href: '/admin/audit-logs', icon: <ClipboardList className="h-4 w-4" /> },
 ];

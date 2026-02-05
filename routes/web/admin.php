@@ -82,4 +82,7 @@ Route::prefix('admin')->group(function () {
 
     // AI Usage statistics
     require __DIR__.'/admin/ai-usage.php';
+
+    // OAuth/SSO provider management
+    require __DIR__.'/admin/oauth.php';
 });
