@@ -16,7 +16,7 @@ Route::get('/settings', function () {
     $settingsArray = $settings->toArray();
 
     // For encrypted fields, send a placeholder if they have a value
-    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key'];
+    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key', 's3_key', 's3_secret'];
     foreach ($secretFields as $field) {
         if (! empty($settings->{$field})) {
             $settingsArray[$field] = '••••••••';
@@ -96,6 +96,14 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.ai_max_tokens' => 'nullable|integer|min:256|max:32000',
         'settings.ai_cache_enabled' => 'nullable|boolean',
         'settings.ai_cache_ttl' => 'nullable|integer|min:60|max:604800',
+        // Global S3
+        'settings.s3_enabled' => 'nullable|boolean',
+        'settings.s3_endpoint' => 'nullable|string|max:500',
+        'settings.s3_bucket' => 'nullable|string|max:255',
+        'settings.s3_region' => 'nullable|string|max:100',
+        'settings.s3_key' => 'nullable|string|max:255',
+        'settings.s3_secret' => 'nullable|string|max:500',
+        'settings.s3_path' => 'nullable|string|max:500',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -156,6 +164,12 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'ai_max_tokens' => $data['ai_max_tokens'] ?? $settings->ai_max_tokens,
         'ai_cache_enabled' => $data['ai_cache_enabled'] ?? $settings->ai_cache_enabled,
         'ai_cache_ttl' => $data['ai_cache_ttl'] ?? $settings->ai_cache_ttl,
+        // Global S3 (non-secret)
+        's3_enabled' => $data['s3_enabled'] ?? $settings->s3_enabled,
+        's3_endpoint' => $data['s3_endpoint'] ?? $settings->s3_endpoint,
+        's3_bucket' => $data['s3_bucket'] ?? $settings->s3_bucket,
+        's3_region' => $data['s3_region'] ?? $settings->s3_region,
+        's3_path' => $data['s3_path'] ?? $settings->s3_path,
     ];
 
     // Only update secret fields if the value is not the placeholder
@@ -167,6 +181,8 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'auto_provision_api_key' => 'auto_provision_api_key',
         'ai_anthropic_api_key' => 'ai_anthropic_api_key',
         'ai_openai_api_key' => 'ai_openai_api_key',
+        's3_key' => 's3_key',
+        's3_secret' => 's3_secret',
     ];
 
     foreach ($secretMappings as $formField => $dbField) {

@@ -69,6 +69,14 @@ class InstanceSettings extends Model
         'ai_max_tokens',
         'ai_cache_enabled',
         'ai_cache_ttl',
+        // Global S3 storage
+        's3_enabled',
+        's3_endpoint',
+        's3_bucket',
+        's3_region',
+        's3_key',
+        's3_secret',
+        's3_path',
     ];
 
     protected $casts = [
@@ -119,6 +127,11 @@ class InstanceSettings extends Model
         'ai_max_tokens' => 'integer',
         'ai_cache_enabled' => 'boolean',
         'ai_cache_ttl' => 'integer',
+
+        // Global S3 storage
+        's3_enabled' => 'boolean',
+        's3_key' => 'encrypted',
+        's3_secret' => 'encrypted',
     ];
 
     protected static function booted(): void

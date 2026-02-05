@@ -84,6 +84,14 @@ interface InstanceSettingsData {
     ai_max_tokens?: number;
     ai_cache_enabled?: boolean;
     ai_cache_ttl?: number;
+    // Global S3
+    s3_enabled?: boolean;
+    s3_endpoint?: string;
+    s3_bucket?: string;
+    s3_region?: string;
+    s3_key?: string;
+    s3_secret?: string;
+    s3_path?: string;
 
     created_at?: string;
     updated_at?: string;
@@ -114,6 +122,8 @@ export default function AdminSettingsIndex({ settings }: Props) {
     const [showProvisionKey, setShowProvisionKey] = React.useState(false);
     const [showAnthropicKey, setShowAnthropicKey] = React.useState(false);
     const [showOpenaiKey, setShowOpenaiKey] = React.useState(false);
+    const [showS3Key, setShowS3Key] = React.useState(false);
+    const [showS3Secret, setShowS3Secret] = React.useState(false);
 
     const update = (fields: Partial<InstanceSettingsData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
@@ -1022,6 +1032,119 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                         hint="Minimum wait time between provisioning"
                                                         placeholder="10"
                                                     />
+                                                </div>
+                                            </>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Global S3 Storage */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Server className="h-5 w-5 text-primary" />
+                                                <CardTitle>Global S3 Storage</CardTitle>
+                                            </div>
+                                            <Badge variant={formData.s3_enabled ? 'success' : 'default'}>
+                                                {formData.s3_enabled ? 'Enabled' : 'Disabled'}
+                                            </Badge>
+                                        </div>
+                                        <CardDescription>
+                                            Platform-level S3-compatible storage for global backups and exports
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Enable Global S3</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Use S3-compatible storage for platform backups
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.s3_enabled || false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ s3_enabled: checked === true })
+                                                }
+                                            />
+                                        </div>
+
+                                        {formData.s3_enabled && (
+                                            <>
+                                                <div className="grid gap-4 sm:grid-cols-2">
+                                                    <Input
+                                                        value={formData.s3_endpoint || ''}
+                                                        onChange={(e) => update({ s3_endpoint: e.target.value })}
+                                                        placeholder="https://s3.amazonaws.com"
+                                                        label="S3 Endpoint"
+                                                        hint="AWS, MinIO, Cloudflare R2, etc."
+                                                    />
+                                                    <Input
+                                                        value={formData.s3_region || ''}
+                                                        onChange={(e) => update({ s3_region: e.target.value })}
+                                                        placeholder="us-east-1"
+                                                        label="Region"
+                                                    />
+                                                </div>
+                                                <div className="grid gap-4 sm:grid-cols-2">
+                                                    <Input
+                                                        value={formData.s3_bucket || ''}
+                                                        onChange={(e) => update({ s3_bucket: e.target.value })}
+                                                        placeholder="saturn-backups"
+                                                        label="Bucket Name"
+                                                    />
+                                                    <Input
+                                                        value={formData.s3_path || ''}
+                                                        onChange={(e) => update({ s3_path: e.target.value })}
+                                                        placeholder="/backups"
+                                                        label="Path Prefix"
+                                                        hint="Optional path prefix for all files"
+                                                    />
+                                                </div>
+                                                <div className="grid gap-4 sm:grid-cols-2">
+                                                    <div>
+                                                        <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                                            Access Key
+                                                        </label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                type={showS3Key ? 'text' : 'password'}
+                                                                value={formData.s3_key || ''}
+                                                                onChange={(e) => update({ s3_key: e.target.value })}
+                                                                placeholder="AKIAIOSFODNN7EXAMPLE"
+                                                                className="pr-10"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowS3Key(!showS3Key)}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                                                            >
+                                                                {showS3Key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                                            Secret Key
+                                                        </label>
+                                                        <div className="relative">
+                                                            <Input
+                                                                type={showS3Secret ? 'text' : 'password'}
+                                                                value={formData.s3_secret || ''}
+                                                                onChange={(e) => update({ s3_secret: e.target.value })}
+                                                                placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                                                                className="pr-10"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowS3Secret(!showS3Secret)}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                                                            >
+                                                                {showS3Secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </>
                                         )}
