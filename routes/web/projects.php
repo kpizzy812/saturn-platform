@@ -55,10 +55,10 @@ Route::get('/projects/create', function () {
 })->name('projects.create');
 
 // Sub-routes for project creation flow
-Route::get('/projects/create/github', function () {
-    // Redirect to applications create with github preset
-    return redirect()->route('applications.create', ['source' => 'github']);
-})->name('projects.create.github');
+Route::get('/projects/create/git', function () {
+    // Redirect to applications create - Step 1 will show Git provider selection
+    return redirect()->route('applications.create');
+})->name('projects.create.git');
 
 Route::get('/projects/create/database', function () {
     return redirect()->route('databases.create');

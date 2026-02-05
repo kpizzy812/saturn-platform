@@ -1,6 +1,6 @@
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
-import { Github, Database, FileCode, Container, Zap, Folder, ArrowLeft, ChevronRight } from 'lucide-react';
+import { GitBranch, Database, FileCode, Container, Zap, Folder, ArrowLeft, ChevronRight } from 'lucide-react';
 
 interface DeployOption {
     icon: React.ReactNode;
@@ -14,10 +14,10 @@ interface DeployOption {
 
 const deployOptions: DeployOption[] = [
     {
-        icon: <Github className="h-5 w-5" />,
-        title: 'GitHub Repository',
-        description: 'Deploy from a GitHub repository',
-        href: '/projects/create/github',
+        icon: <GitBranch className="h-5 w-5" />,
+        title: 'Git Repository',
+        description: 'GitHub, GitLab, Bitbucket',
+        href: '/projects/create/git',
         iconBg: 'bg-gradient-to-br from-zinc-700 to-zinc-800',
         iconColor: 'text-white',
     },

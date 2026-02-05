@@ -55,6 +55,9 @@ class StopApplication
                 return $e->getMessage();
             }
         }
-        ServiceStatusChanged::dispatch($application->environment->project->team->id);
+        $teamId = $application->environment?->project?->team?->id;
+        if ($teamId) {
+            ServiceStatusChanged::dispatch($teamId);
+        }
     }
 }
