@@ -352,6 +352,9 @@ class Application extends BaseModel
             foreach ($application->deployment_queue as $deployment) {
                 $deployment->delete();
             }
+
+            // Clean up deployment notifications referencing this application
+            UserNotification::where('metadata->application_uuid', $application->uuid)->delete();
         });
     }
 

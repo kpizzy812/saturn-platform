@@ -189,6 +189,9 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                 <div className="flex flex-col items-center justify-center py-16">
                     <Play className="h-12 w-12 text-foreground-muted" />
                     <h3 className="mt-4 text-lg font-medium text-foreground">Deployment not found</h3>
+                    <p className="mt-2 max-w-md text-center text-sm text-foreground-muted">
+                        This deployment may have been removed because the application was deleted or the logs were cleaned up.
+                    </p>
                     <Link href="/deployments">
                         <Button variant="secondary" size="sm" className="mt-4">
                             <ChevronLeft className="mr-2 h-4 w-4" />
