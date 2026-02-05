@@ -288,10 +288,12 @@ class InfrastructureProvisioner
         }
 
         // Health check configuration — universal defaults that work for any app
+        // Dockerfile apps need longer start_period (migrations, compilation, etc.)
+        $isDockerfile = $app->buildPack === 'dockerfile' || $app->dockerfileInfo !== null;
         $application->health_check_interval = 10;
         $application->health_check_timeout = 5;
         $application->health_check_retries = 10;
-        $application->health_check_start_period = $app->buildPack === 'dockerfile' ? 30 : 15;
+        $application->health_check_start_period = $isDockerfile ? 30 : 15;
 
         if ($app->healthCheck) {
             $application->health_check_enabled = true;

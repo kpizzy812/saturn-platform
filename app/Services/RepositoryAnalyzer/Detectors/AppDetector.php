@@ -301,6 +301,33 @@ class AppDetector
 
     private function detectAppInDirectory(string $appPath, string $repoPath): ?DetectedApp
     {
+        // Dockerfile takes priority — it's an explicit, intentional build configuration.
+        // This prevents mismatch where framework detection returns nixpacks/wrong port
+        // but deployment job later switches to Dockerfile with different settings.
+        if (file_exists($appPath.'/Dockerfile')) {
+            $relativePath = $this->getRelativePath($appPath, $repoPath);
+
+            // Still detect framework for context (healthcheck detection, app type)
+            $detectedFramework = 'dockerfile';
+            $detectedType = 'unknown';
+            foreach (self::FRAMEWORK_RULES as $framework => $rules) {
+                if ($this->checkFramework($appPath, $rules)) {
+                    $detectedFramework = $framework;
+                    $detectedType = $rules['type'] ?? 'backend';
+                    break;
+                }
+            }
+
+            return new DetectedApp(
+                name: $this->inferAppName($appPath, $relativePath),
+                path: $relativePath,
+                framework: $detectedFramework,
+                buildPack: 'dockerfile',
+                defaultPort: $this->extractPortFromDockerfile($appPath.'/Dockerfile'),
+                type: $detectedType,
+            );
+        }
+
         foreach (self::FRAMEWORK_RULES as $framework => $rules) {
             if ($this->checkFramework($appPath, $rules)) {
                 $relativePath = $this->getRelativePath($appPath, $repoPath);
@@ -317,20 +344,6 @@ class AppDetector
                     type: $rules['type'] ?? 'backend',
                 );
             }
-        }
-
-        // Check for Dockerfile as fallback
-        if (file_exists($appPath.'/Dockerfile')) {
-            $relativePath = $this->getRelativePath($appPath, $repoPath);
-
-            return new DetectedApp(
-                name: $this->inferAppName($appPath, $relativePath),
-                path: $relativePath,
-                framework: 'dockerfile',
-                buildPack: 'dockerfile',
-                defaultPort: $this->extractPortFromDockerfile($appPath.'/Dockerfile'),
-                type: 'unknown',
-            );
         }
 
         // Check for nixpacks config (explicit nixpacks configuration)
