@@ -147,7 +147,7 @@ export default function DatabaseOverview({ database }: Props) {
                         <h1 className="text-2xl font-bold text-foreground">{database.name}</h1>
                         <div className="flex items-center gap-2">
                             <Badge variant="default">{config.displayName}</Badge>
-                            <ConnectionStatusBadge status={database.status} />
+                            <ConnectionStatusBadge status={typeof database.status === 'object' ? database.status.state : database.status} />
                         </div>
                     </div>
                 </div>

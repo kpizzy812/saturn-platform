@@ -90,6 +90,7 @@ Route::get('/applications/create', function () {
         'localhost' => $localhost,
         'userServers' => $userServers,
         'needsProject' => $projects->isEmpty(),
+        'preselectedSource' => request()->query('source'),
     ]);
 })->name('applications.create');
 

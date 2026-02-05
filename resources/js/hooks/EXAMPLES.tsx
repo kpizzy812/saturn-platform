@@ -245,7 +245,7 @@ export function DatabasesListExample() {
             <ul>
                 {databases.map((db) => (
                     <li key={db.uuid}>
-                        {db.name} - {db.database_type} - {db.status}
+                        {db.name} - {db.database_type} - {typeof db.status === 'object' ? db.status.state : db.status}
                     </li>
                 ))}
             </ul>
@@ -296,7 +296,7 @@ export function DatabaseManagementExample({ uuid }: { uuid: string }) {
         <div>
             <h1>{database.name}</h1>
             <p>Type: {database.database_type}</p>
-            <p>Status: {database.status}</p>
+            <p>Status: {typeof database.status === 'object' ? database.status.state : database.status}</p>
             <div>
                 <button onClick={() => startDatabase()}>Start</button>
                 <button onClick={() => stopDatabase()}>Stop</button>

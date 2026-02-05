@@ -386,7 +386,7 @@ function DatabaseItem({ database }: { database: StandaloneDatabase }) {
                         <Badge variant="outline" className="text-xs">
                             {database.database_type}
                         </Badge>
-                        <StatusBadge status={database.status} />
+                        <StatusBadge status={typeof database.status === 'object' ? database.status.state : database.status} />
                     </div>
                 </div>
             </div>

@@ -65,6 +65,7 @@ const statusConfig = {
         bgColor: 'bg-foreground-muted/10',
         borderColor: 'border-foreground-muted/30',
         lineColor: 'bg-foreground-muted/30',
+        animate: false,
     },
     running: {
         icon: Loader2,
@@ -80,6 +81,7 @@ const statusConfig = {
         bgColor: 'bg-success/10',
         borderColor: 'border-success/50',
         lineColor: 'bg-success',
+        animate: false,
     },
     failed: {
         icon: XCircle,
@@ -87,6 +89,7 @@ const statusConfig = {
         bgColor: 'bg-danger/10',
         borderColor: 'border-danger/50',
         lineColor: 'bg-danger',
+        animate: false,
     },
     skipped: {
         icon: Circle,
@@ -94,6 +97,7 @@ const statusConfig = {
         bgColor: 'bg-foreground-muted/5',
         borderColor: 'border-foreground-muted/20',
         lineColor: 'bg-foreground-muted/20',
+        animate: false,
     },
 };
 

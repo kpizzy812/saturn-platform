@@ -89,6 +89,7 @@ export interface Environment {
     id: number;
     uuid: string;
     name: string;
+    type?: EnvironmentType;
     project_id: number;
     applications: Application[];
     databases: StandaloneDatabase[];
@@ -119,6 +120,7 @@ export interface Application {
     environment_id: number;
     destination_id: number;
     destination?: Destination;
+    source?: GitSource;
     // Build & Deploy settings
     build_command?: string | null;
     install_command?: string | null;
@@ -134,6 +136,9 @@ export interface Application {
     limits_memory?: string | null;
     // Auto-deploy settings
     is_auto_deploy_enabled?: boolean;
+    // Webhook secrets
+    manual_webhook_secret_github?: string;
+    manual_webhook_secret_gitlab?: string;
     created_at: string;
     updated_at: string;
 }

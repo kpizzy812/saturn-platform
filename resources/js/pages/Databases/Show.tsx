@@ -75,7 +75,7 @@ export default function DatabaseShow({ database }: Props) {
         onDatabaseStatusChange: (data) => {
             // Update database status when WebSocket event arrives
             if (data.databaseId === database.id) {
-                setCurrentStatus(data.status as typeof currentStatus);
+                setCurrentStatus(data.status as { state: string; health: string });
             }
         },
     });
@@ -152,7 +152,7 @@ export default function DatabaseShow({ database }: Props) {
                         <h1 className="text-2xl font-bold text-foreground">{database.name}</h1>
                         <div className="flex items-center gap-2">
                             <Badge variant="default">{config.displayName}</Badge>
-                            <StatusBadge status={currentStatus} />
+                            <StatusBadge status={typeof currentStatus === 'object' ? currentStatus.state : currentStatus} />
                         </div>
                     </div>
                 </div>
@@ -187,8 +187,9 @@ export default function DatabaseShow({ database }: Props) {
     );
 }
 
-function StatusBadge({ status }: { status: string }) {
-    return <Badge variant={getStatusVariant(status)}>{getStatusLabel(status)}</Badge>;
+function StatusBadge({ status }: { status: string | { state: string; health: string } }) {
+    const statusValue = typeof status === 'object' ? status.state : status;
+    return <Badge variant={getStatusVariant(statusValue)}>{getStatusLabel(statusValue)}</Badge>;
 }
 
 function ConnectionTab({ database }: { database: StandaloneDatabase }) {

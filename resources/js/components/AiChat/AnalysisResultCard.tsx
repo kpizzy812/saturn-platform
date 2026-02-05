@@ -446,9 +446,9 @@ function MetricsCard({ data }: { data: Record<string, unknown> }) {
 
             {/* Resource Counts */}
             <div className="flex items-center justify-around text-sm text-foreground-muted">
-                <span>Apps: {data.app_count || 0}</span>
-                <span>Services: {data.service_count || 0}</span>
-                <span>Servers: {data.server_count || 0}</span>
+                <span>Apps: {String(data.app_count || 0)}</span>
+                <span>Services: {String(data.service_count || 0)}</span>
+                <span>Servers: {String(data.server_count || 0)}</span>
             </div>
         </div>
     );

@@ -623,6 +623,7 @@ function DeploymentItem({ deployment, applicationUuid }: DeploymentItemProps) {
         finished: <CheckCircle2 className="h-4 w-4 text-success" />,
         failed: <XCircle className="h-4 w-4 text-destructive" />,
         cancelled: <XCircle className="h-4 w-4 text-foreground-muted" />,
+        pending_approval: <Clock className="h-4 w-4 text-warning" />,
     };
 
     // Use deployment_uuid if available (from backend), otherwise fallback to uuid

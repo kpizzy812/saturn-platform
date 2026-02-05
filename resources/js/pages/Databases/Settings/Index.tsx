@@ -259,7 +259,7 @@ export default function DatabaseSettings({ database }: Props) {
                                 />
                                 <InfoField label="Database Type" value={config.displayName} />
                                 <InfoField label="Version" value={database.version || config.version} />
-                                <InfoField label="Status" value={getStatusLabel(database.status)} />
+                                <InfoField label="Status" value={getStatusLabel(typeof database.status === 'object' ? database.status.state : database.status)} />
                                 <InfoField label="Created" value={new Date(database.created_at).toLocaleDateString()} />
                                 <InfoField label="Last Updated" value={new Date(database.updated_at).toLocaleDateString()} />
                             </div>

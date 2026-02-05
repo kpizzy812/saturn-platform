@@ -160,7 +160,7 @@ export function EnvironmentMigrateModal({
         let hasApproval = false;
         const targetEnvId = parseInt(selectedEnvironmentId, 10);
         const targetServId = parseInt(selectedServerId, 10);
-        const isTargetProduction = targets?.target_environments.find(e => e.id === targetEnvId)?.type === 'production';
+        const isTargetProduction = (targets?.target_environments.find(e => e.id === targetEnvId) as any)?.type === 'production';
 
         // Migrate each selected resource
         const migrateResource = async (type: 'application' | 'database' | 'service', uuid: string, name: string, index: number) => {
@@ -296,7 +296,7 @@ export function EnvironmentMigrateModal({
     };
 
     const selectedEnvName = targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10))?.name || '';
-    const selectedServerName = targets?.servers.find((s: Server) => s.id === parseInt(selectedServerId, 10))?.name || '';
+    const selectedServerName = targets?.servers.find((s: { id: number; name: string; ip: string }) => s.id === parseInt(selectedServerId, 10))?.name || '';
 
     if (!environment) return null;
 
@@ -468,7 +468,7 @@ export function EnvironmentMigrateModal({
                         </div>
                     </div>
 
-                    {error && <Alert variant="error">{error}</Alert>}
+                    {error && <Alert variant="danger">{error}</Alert>}
 
                     {/* Actions */}
                     <div className="flex justify-end gap-3">
@@ -558,7 +558,7 @@ export function EnvironmentMigrateModal({
                         </Alert>
                     )}
 
-                    {error && <Alert variant="error">{error}</Alert>}
+                    {error && <Alert variant="danger">{error}</Alert>}
 
                     {/* Actions */}
                     <div className="flex justify-end gap-3">

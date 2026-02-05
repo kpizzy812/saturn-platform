@@ -12,6 +12,7 @@ interface Props {
     localhost?: Server;
     userServers?: Server[];
     needsProject?: boolean;
+    preselectedSource?: SourceType | null;
 }
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
@@ -31,8 +32,11 @@ interface FormData {
     docker_image?: string;
 }
 
-export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false }: Props) {
-    const [step, setStep] = useState<1 | 2 | 3 | 'analyze'>(1);
+export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null }: Props) {
+    const validSources: SourceType[] = ['github', 'gitlab', 'bitbucket', 'docker'];
+    const initialSource = preselectedSource && validSources.includes(preselectedSource) ? preselectedSource : null;
+
+    const [step, setStep] = useState<1 | 2 | 3 | 'analyze'>(initialSource ? 2 : 1);
     const [projectList, setProjectList] = useState<Project[]>(projects);
     const [showCreateProject, setShowCreateProject] = useState(needsProject);
     const [newProjectName, setNewProjectName] = useState('');
@@ -47,7 +51,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
     const [formData, setFormData] = useState<FormData>({
         name: '',
-        source_type: null,
+        source_type: initialSource,
         git_repository: '',
         git_branch: 'main',
         build_pack: 'nixpacks',

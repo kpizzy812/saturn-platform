@@ -92,7 +92,7 @@ export default function TransferShow({ transfer }: Props) {
                     </div>
                     <div className="flex items-center gap-2">
                         {canCancel && (
-                            <Button variant="destructive" onClick={handleCancel}>
+                            <Button variant="danger" onClick={handleCancel}>
                                 Cancel Transfer
                             </Button>
                         )}

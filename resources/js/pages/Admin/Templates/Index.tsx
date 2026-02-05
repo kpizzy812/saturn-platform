@@ -254,7 +254,8 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                         </p>
                     </div>
                     <Link href="/admin/templates/create">
-                        <Button variant="primary" icon={<Plus className="h-4 w-4" />}>
+                        <Button variant="primary">
+                            <Plus className="h-4 w-4" />
                             Create Template
                         </Button>
                     </Link>
@@ -349,8 +350,8 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                                             { preserveState: true }
                                         );
                                     }}
-                                    icon={<Filter className="h-4 w-4" />}
                                 >
+                                    <Filter className="h-4 w-4" />
                                     Official Only
                                 </Button>
                             </div>
@@ -371,7 +372,8 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                             </p>
                             {!search && category === 'all' && (
                                 <Link href="/admin/templates/create" className="mt-4 inline-block">
-                                    <Button variant="primary" icon={<Plus className="h-4 w-4" />}>
+                                    <Button variant="primary">
+                                        <Plus className="h-4 w-4" />
                                         Create Template
                                     </Button>
                                 </Link>

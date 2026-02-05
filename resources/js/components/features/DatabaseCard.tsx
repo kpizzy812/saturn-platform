@@ -128,7 +128,7 @@ const formatDatabaseType = (type: DatabaseType): string => {
 const getEnvironmentVariant = (type: EnvironmentType): 'default' | 'primary' | 'success' | 'warning' | 'info' => {
     switch (type) {
         case 'production':
-            return 'danger';
+            return 'warning';
         case 'uat':
             return 'warning';
         case 'development':

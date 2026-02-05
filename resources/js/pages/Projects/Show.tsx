@@ -248,7 +248,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         if (!newEnvName.trim()) return;
         setCreatingEnv(true);
         try {
-            const res = await fetch(`/projects/${project.uuid}/environments`, {
+            const res = await fetch(`/projects/${project?.uuid}/environments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -275,9 +275,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     // Add Service handler - navigate to service creation page
     const handleAddService = () => {
         if (selectedEnv) {
-            router.visit(`/services/create?project=${project.uuid}&environment=${selectedEnv.uuid}`);
+            router.visit(`/services/create?project=${project?.uuid}&environment=${selectedEnv.uuid}`);
         } else {
-            router.visit(`/services/create?project=${project.uuid}`);
+            router.visit(`/services/create?project=${project?.uuid}`);
         }
     };
 
@@ -366,7 +366,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     uuid: db.uuid,
                     type: 'db',
                     name: db.name,
-                    status: db.status || 'unknown',
+                    status: typeof db.status === 'object' ? db.status.state : (db.status || 'unknown'),
                     dbType: db.database_type,
                     serverUuid: db.destination?.server?.uuid,
                 };

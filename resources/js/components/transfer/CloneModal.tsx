@@ -177,12 +177,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={
-                <div className="flex items-center gap-2">
-                    <Copy className="h-5 w-5 text-primary" />
-                    <span>Clone {resourceLabel}</span>
-                </div>
-            }
+            title={`Clone ${resourceLabel}`}
             size="lg"
         >
             {success ? (

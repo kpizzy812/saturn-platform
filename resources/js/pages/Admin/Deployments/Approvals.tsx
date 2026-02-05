@@ -164,7 +164,7 @@ export default function DeploymentApprovals({ deployments }: Props) {
                                         </Button>
                                         <Button
                                             size="sm"
-                                            variant="destructive"
+                                            variant="danger"
                                             onClick={() => handleReject(deployment)}
                                             className="flex items-center gap-2"
                                         >
@@ -214,7 +214,7 @@ export default function DeploymentApprovals({ deployments }: Props) {
                                 Cancel
                             </Button>
                             <Button
-                                variant={actionType === 'approve' ? 'default' : 'destructive'}
+                                variant={actionType === 'approve' ? 'default' : 'danger'}
                                 onClick={submitAction}
                             >
                                 {actionType === 'approve' ? 'Approve' : 'Reject'}

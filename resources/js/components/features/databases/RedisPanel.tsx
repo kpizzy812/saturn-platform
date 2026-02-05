@@ -619,7 +619,7 @@ function CreateKeyModal({
     };
 
     return (
-        <Modal isOpen={true} onClose={onClose} title="Create New Key" size="md">
+        <Modal isOpen={true} onClose={onClose} title="Create New Key" size="default">
             <div className="space-y-4">
                 {/* Key Name */}
                 <div>
