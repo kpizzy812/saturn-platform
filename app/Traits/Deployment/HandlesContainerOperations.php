@@ -66,7 +66,7 @@ trait HandlesContainerOperations
             } else {
                 if ($this->application->dockerfile || $this->application->build_pack === 'dockerfile' || $this->application->build_pack === 'dockerimage') {
                     $this->application_deployment_queue->addLogEntry('----------------------------------------');
-                    $this->application_deployment_queue->addLogEntry("WARNING: Dockerfile or Docker Image based deployment detected. The healthcheck needs a curl or wget command to check the health of the application. Please make sure that it is available in the image or turn off healthcheck on Saturn Platform's UI.");
+                    $this->application_deployment_queue->addLogEntry("WARNING: Dockerfile or Docker Image based deployment detected. The healthcheck requires curl, wget, nc (netcat), or bash in the image. If none are available, disable healthcheck in Saturn Platform's UI or add a HEALTHCHECK instruction to your Dockerfile.");
                     $this->application_deployment_queue->addLogEntry('----------------------------------------');
                 }
                 $this->application_deployment_queue->addLogEntry('New container is not healthy, rolling back to the old container.');

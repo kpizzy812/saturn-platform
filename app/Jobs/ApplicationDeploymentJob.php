@@ -1042,12 +1042,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->full_healthcheck_url = "{$method}: {$scheme}://{$host}:{$health_check_port}{$path}";
         $url = "{$scheme}://{$host}:{$health_check_port}{$path}";
 
-        // Try curl, then wget, then bare TCP check (for images without curl/wget)
+        // Fallback chain: curl (HTTP) → wget (HTTP) → nc (TCP) → bash /dev/tcp (TCP)
+        // CMD-SHELL uses /bin/sh, so /dev/tcp (bash-only) must be wrapped in explicit bash -c
         $curlCmd = "curl -s -X {$method} -f {$url} > /dev/null 2>&1";
         $wgetCmd = "wget -q -O- {$url} > /dev/null 2>&1";
-        $tcpCmd = "(echo > /dev/tcp/{$host}/{$health_check_port}) > /dev/null 2>&1";
+        $ncCmd = "nc -w5 -z {$host} {$health_check_port} 2>/dev/null";
+        $bashTcpCmd = "bash -c 'echo > /dev/tcp/{$host}/{$health_check_port}' 2>/dev/null";
 
-        return "{$curlCmd} || {$wgetCmd} || {$tcpCmd} || exit 1";
+        return "{$curlCmd} || {$wgetCmd} || {$ncCmd} || {$bashTcpCmd} || exit 1";
     }
 
     // Static buildpack methods moved to HandlesStaticBuildpack trait
