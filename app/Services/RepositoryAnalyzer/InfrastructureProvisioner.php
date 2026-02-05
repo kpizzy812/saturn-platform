@@ -287,14 +287,33 @@ class InfrastructureProvisioner
             }
         }
 
-        // Health check configuration
+        // Health check configuration — universal defaults that work for any app
+        $application->health_check_interval = 10;
+        $application->health_check_timeout = 5;
+        $application->health_check_retries = 10;
+        $application->health_check_start_period = $app->buildPack === 'dockerfile' ? 30 : 15;
+
         if ($app->healthCheck) {
             $application->health_check_enabled = true;
             $application->health_check_path = $app->healthCheck->path;
             $application->health_check_method = $app->healthCheck->method ?? 'GET';
-            $application->health_check_interval = $app->healthCheck->intervalSeconds ?? 30;
-            $application->health_check_timeout = $app->healthCheck->timeoutSeconds ?? 5;
-            $application->health_check_retries = $app->healthCheck->retries ?? 3;
+
+            // Use detected values if more generous than defaults
+            if ($app->healthCheck->intervalSeconds > 0) {
+                $application->health_check_interval = $app->healthCheck->intervalSeconds;
+            }
+            if ($app->healthCheck->timeoutSeconds > 0) {
+                $application->health_check_timeout = $app->healthCheck->timeoutSeconds;
+            }
+            if ($app->healthCheck->retries > 0) {
+                $application->health_check_retries = max($app->healthCheck->retries, 10);
+            }
+            if ($app->healthCheck->startPeriodSeconds > 0) {
+                $application->health_check_start_period = max(
+                    $app->healthCheck->startPeriodSeconds,
+                    $application->health_check_start_period
+                );
+            }
         }
 
         // Monorepo group

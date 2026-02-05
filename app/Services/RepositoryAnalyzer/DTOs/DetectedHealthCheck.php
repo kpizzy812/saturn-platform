@@ -10,9 +10,10 @@ readonly class DetectedHealthCheck
     public function __construct(
         public string $path,
         public string $method = 'GET',
-        public int $intervalSeconds = 30,
+        public int $intervalSeconds = 10,
         public int $timeoutSeconds = 5,
-        public int $retries = 3,
+        public int $retries = 10,
+        public int $startPeriodSeconds = 15,
         public ?string $detectedVia = null,
     ) {}
 }
