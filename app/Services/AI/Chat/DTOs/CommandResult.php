@@ -41,12 +41,36 @@ readonly class CommandResult
         );
     }
 
-    public static function notFound(string $resourceType): self
+    public static function notFound(string $resourceType, array $similarResources = []): self
     {
+        if (empty($similarResources)) {
+            return new self(
+                success: false,
+                message: "The {$resourceType} was not found or you don't have access to it.",
+                error: 'not_found',
+            );
+        }
+
+        // Build disambiguation message
+        $message = "Найдено несколько похожих ресурсов. Уточните, какой именно:\n";
+
+        foreach ($similarResources as $r) {
+            $statusEmoji = match (true) {
+                str_contains($r['status'] ?? '', 'running') => '🟢',
+                str_contains($r['status'] ?? '', 'exited'), str_contains($r['status'] ?? '', 'stopped') => '🔴',
+                default => '⚪',
+            };
+            $message .= "\n- {$statusEmoji} **{$r['name']}** — {$r['environment']} ({$r['project']})";
+        }
+
+        $first = $similarResources[0];
+        $message .= "\n\nНапример: *\"{$first['name']} {$first['environment']}\"*";
+
         return new self(
             success: false,
-            message: "The {$resourceType} was not found or you don't have access to it.",
-            error: 'not_found',
+            message: $message,
+            error: 'ambiguous',
+            data: ['similar' => $similarResources],
         );
     }
 

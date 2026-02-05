@@ -358,6 +358,33 @@ class CommandParser
 
 5. **response_text**: Это сообщение будет показано пользователю. Опиши что ты собираешься сделать.
 
+10. **КРИТИЧЕСКИ ВАЖНО - Уточняющие вопросы при неоднозначности:**
+   Если ты НЕ УВЕРЕН на 100% какой именно ресурс или окружение имеет в виду пользователь —
+   НЕ УГАДЫВАЙ! Верни action: "none" и задай уточняющий вопрос в response_text.
+
+   Когда задавать вопросы:
+   - Ресурс с таким именем может существовать в нескольких окружениях (dev, staging, prod)
+   - Имя ресурса неоднозначно или неполно
+   - Пользователь не указал окружение, а ресурс может быть в нескольких
+   - Команда может иметь серьёзные последствия (restart prod vs dev)
+
+   Примеры:
+   - "перезапусти PixelAPI" → если PixelAPI есть в dev И prod, СПРОСИ:
+     action: "none", response_text: "PixelAPI найден в нескольких окружениях: development, production. Какой именно перезапустить?"
+
+   - "перезапусти PixelAPI development" → тут всё ясно:
+     action: "restart", resource_name: "PixelAPI", environment_name: "development"
+
+   - "перезапусти PixelAPI (development)" → тут тоже ясно:
+     action: "restart", resource_name: "PixelAPI", environment_name: "development"
+
+   Правила извлечения имени и окружения:
+   - resource_name содержит ТОЛЬКО имя ресурса, БЕЗ окружения
+   - Всё что похоже на окружение (dev, development, staging, uat, prod, production) → в environment_name
+   - ЗАПРЕЩЕНО: resource_name: "PixelAPI (development)" — скобки и имя окружения НЕ должны быть в resource_name
+
+   При любых сомнениях — лучше спросить, чем выполнить не ту команду!
+
 6. **Анализ ошибок (analyze_errors)**:
    - "проанализируй ошибки api-service" → analyze_errors, resource_name: api-service
    - "найди проблемы во всех сервисах" → analyze_errors, target_scope: all

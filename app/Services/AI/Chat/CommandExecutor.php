@@ -204,7 +204,7 @@ class CommandExecutor
                 return $this->listAvailableResources('deploy', 'application');
             }
 
-            return CommandResult::notFound('application');
+            return $this->notFoundWithSuggestions($command);
         }
 
         if (! ($resource instanceof Application)) {
@@ -265,7 +265,7 @@ class CommandExecutor
                 return $this->listAvailableResources('restart', $command->resourceType);
             }
 
-            return CommandResult::notFound($command->resourceType ?? 'resource');
+            return $this->notFoundWithSuggestions($command);
         }
 
         if (! $this->authorize('update', $resource)) {
@@ -324,7 +324,7 @@ class CommandExecutor
                 return $this->listAvailableResources('stop', $command->resourceType);
             }
 
-            return CommandResult::notFound($command->resourceType ?? 'resource');
+            return $this->notFoundWithSuggestions($command);
         }
 
         if (! $this->authorize('update', $resource)) {
@@ -369,7 +369,7 @@ class CommandExecutor
                 return $this->listAvailableResources('start', $command->resourceType);
             }
 
-            return CommandResult::notFound($command->resourceType ?? 'resource');
+            return $this->notFoundWithSuggestions($command);
         }
 
         if (! $this->authorize('update', $resource)) {
@@ -422,7 +422,7 @@ class CommandExecutor
                 return $this->listAvailableResources('view logs for', $command->resourceType);
             }
 
-            return CommandResult::notFound($command->resourceType ?? 'resource');
+            return $this->notFoundWithSuggestions($command);
         }
 
         if (! $this->authorize('view', $resource)) {
@@ -493,7 +493,7 @@ class CommandExecutor
                 return $this->listDeletableResources();
             }
 
-            return CommandResult::notFound($command->resourceType ?? 'resource');
+            return $this->notFoundWithSuggestions($command);
         }
 
         if (! $this->authorize('delete', $resource)) {
@@ -721,7 +721,7 @@ class CommandExecutor
                     return $this->listAvailableResources('analyze errors for', $command->resourceType);
                 }
 
-                return CommandResult::notFound($command->resourceType ?? 'resource');
+                return $this->notFoundWithSuggestions($command);
             }
 
             if (! $this->authorize('view', $resource)) {
@@ -1426,6 +1426,24 @@ class CommandExecutor
         }
 
         return null;
+    }
+
+    /**
+     * Build a not-found result with similar resource suggestions.
+     * Instead of a generic "not found", shows the user what was found and asks to clarify.
+     */
+    private function notFoundWithSuggestions(ParsedCommand $command): CommandResult
+    {
+        $resourceName = $command->resourceName;
+        $resourceType = $command->resourceType ?? 'resource';
+
+        if (! $resourceName) {
+            return CommandResult::notFound($resourceType);
+        }
+
+        $similar = $this->findSimilarResources($resourceName);
+
+        return CommandResult::notFound($resourceType, $similar);
     }
 
     /**
@@ -2167,30 +2185,19 @@ HELP;
 
     /**
      * Find application by name with project/environment filter.
-     * Supports format: "AppName (environment)" -> extracts env from parentheses
      */
     private function findApplicationByName(string $name, ?string $projectName = null, ?string $envName = null): ?Application
     {
-        // Extract environment from parentheses if present: "PixelAPI (development)" -> name=PixelAPI, env=development
-        $parsedName = $name;
-        $parsedEnv = $envName;
+        $cleanName = $this->cleanResourceName($name);
 
-        if (preg_match('/^(.+?)\s*\(([^)]+)\)\s*$/', $name, $matches)) {
-            $parsedName = trim($matches[1]);
-            // Only use extracted env if no explicit env was provided
-            if (! $envName) {
-                $parsedEnv = trim($matches[2]);
-            }
-        }
-
-        $query = Application::where('name', 'ILIKE', '%'.$this->escapeIlike($parsedName).'%')
+        $query = Application::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
             ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
 
         if ($projectName) {
             $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
         }
-        if ($parsedEnv) {
-            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($parsedEnv).'%'));
+        if ($envName) {
+            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
 
         return $query->first();
@@ -2198,29 +2205,19 @@ HELP;
 
     /**
      * Find service by name with project/environment filter.
-     * Supports format: "ServiceName (environment)" -> extracts env from parentheses
      */
     private function findServiceByName(string $name, ?string $projectName = null, ?string $envName = null): ?Service
     {
-        // Extract environment from parentheses if present
-        $parsedName = $name;
-        $parsedEnv = $envName;
+        $cleanName = $this->cleanResourceName($name);
 
-        if (preg_match('/^(.+?)\s*\(([^)]+)\)\s*$/', $name, $matches)) {
-            $parsedName = trim($matches[1]);
-            if (! $envName) {
-                $parsedEnv = trim($matches[2]);
-            }
-        }
-
-        $query = Service::where('name', 'ILIKE', '%'.$this->escapeIlike($parsedName).'%')
+        $query = Service::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
             ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
 
         if ($projectName) {
             $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
         }
-        if ($parsedEnv) {
-            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($parsedEnv).'%'));
+        if ($envName) {
+            $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
 
         return $query->first();
@@ -2309,35 +2306,25 @@ HELP;
 
     /**
      * Find any resource by name with optional project/environment filter.
-     * Supports format: "ResourceName (environment)" -> extracts env from parentheses
      */
     private function findAnyResourceByName(string $name, ?string $projectName = null, ?string $envName = null): ?Model
     {
-        // Extract environment from parentheses if present
-        $parsedName = $name;
-        $parsedEnv = $envName;
+        $cleanName = $this->cleanResourceName($name);
 
-        if (preg_match('/^(.+?)\s*\(([^)]+)\)\s*$/', $name, $matches)) {
-            $parsedName = trim($matches[1]);
-            if (! $envName) {
-                $parsedEnv = trim($matches[2]);
-            }
-        }
-
-        // Try application (already parses parentheses internally)
+        // Try application
         $app = $this->findApplicationByName($name, $projectName, $envName);
         if ($app) {
             return $app;
         }
 
-        // Try service (already parses parentheses internally)
+        // Try service
         $service = $this->findServiceByName($name, $projectName, $envName);
         if ($service) {
             return $service;
         }
 
         // Server (no project/environment)
-        $server = Server::where('name', 'ILIKE', '%'.$this->escapeIlike($parsedName).'%')
+        $server = Server::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
             ->where('team_id', $this->teamId)
             ->first();
         if ($server) {
@@ -2346,14 +2333,14 @@ HELP;
 
         // Try databases with project/environment filter
         foreach (array_unique(self::DATABASE_MODELS) as $model) {
-            $query = $model::where('name', 'ILIKE', '%'.$this->escapeIlike($parsedName).'%')
+            $query = $model::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
                 ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
 
             if ($projectName) {
                 $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
             }
-            if ($parsedEnv) {
-                $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($parsedEnv).'%'));
+            if ($envName) {
+                $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
             }
 
             $db = $query->first();
@@ -2363,6 +2350,94 @@ HELP;
         }
 
         return null;
+    }
+
+    /**
+     * Strip environment info and noise from resource name.
+     * "PixelAPI (development)" -> "PixelAPI"
+     * "PixelAPI development"  -> "PixelAPI"
+     * "development PixelAPI"  -> "PixelAPI"
+     */
+    private function cleanResourceName(string $name): string
+    {
+        $name = trim($name);
+
+        // Remove parenthesized suffixes: "PixelAPI (development)" -> "PixelAPI"
+        $name = preg_replace('/\s*\([^)]+\)\s*$/', '', $name);
+
+        // Remove known environment words from start/end
+        $envWords = ['dev', 'development', 'staging', 'stage', 'uat', 'prod', 'production', 'test', 'testing'];
+        $pattern = '/^(?:'.implode('|', $envWords).')\s+|\s+(?:'.implode('|', $envWords).')$/i';
+        $name = preg_replace($pattern, '', $name);
+
+        return trim($name);
+    }
+
+    /**
+     * Find similar resources by name across all types.
+     * Returns list for "did you mean?" suggestions.
+     *
+     * @return array<array{name: string, type: string, environment: string, project: string}>
+     */
+    private function findSimilarResources(string $name): array
+    {
+        $cleanName = $this->cleanResourceName($name);
+        $results = [];
+
+        // Search applications
+        $apps = Application::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+            ->with('environment.project')
+            ->limit(10)
+            ->get();
+
+        foreach ($apps as $app) {
+            $results[] = [
+                'name' => $app->name,
+                'type' => 'application',
+                'environment' => $app->environment?->name ?? '?',
+                'project' => $app->environment?->project?->name ?? '?',
+                'status' => $app->status ?? 'unknown',
+            ];
+        }
+
+        // Search services
+        $services = Service::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+            ->with('environment.project')
+            ->limit(10)
+            ->get();
+
+        foreach ($services as $service) {
+            $results[] = [
+                'name' => $service->name,
+                'type' => 'service',
+                'environment' => $service->environment?->name ?? '?',
+                'project' => $service->environment?->project?->name ?? '?',
+                'status' => $service->status ?? 'unknown',
+            ];
+        }
+
+        // Search databases
+        foreach (array_unique(self::DATABASE_MODELS) as $model) {
+            $dbs = $model::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+                ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId))
+                ->with('environment.project')
+                ->limit(5)
+                ->get();
+
+            foreach ($dbs as $db) {
+                $results[] = [
+                    'name' => $db->name,
+                    'type' => 'database',
+                    'environment' => $db->environment?->name ?? '?',
+                    'project' => $db->environment?->project?->name ?? '?',
+                    'status' => $db->status ?? 'unknown',
+                ];
+            }
+        }
+
+        return $results;
     }
 
     /**
