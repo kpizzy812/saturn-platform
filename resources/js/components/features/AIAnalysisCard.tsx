@@ -143,6 +143,7 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
         analysis,
         isLoading,
         isAnalyzing,
+        error: analysisError,
         triggerAnalysis,
     } = useDeploymentAnalysis({
         deploymentUuid,
@@ -215,25 +216,33 @@ export function AIAnalysisCard({ deploymentUuid, deploymentStatus, className }: 
     // No analysis yet - offer to analyze
     if (!analysis || analysis.status === 'pending') {
         return (
-            <div className={cn('flex items-center gap-2 px-3 py-2 rounded-md bg-background-secondary border border-white/5 text-xs', className)}>
-                <Brain className="h-3.5 w-3.5 text-foreground-muted" />
-                <span className="text-foreground-muted">AI can analyze this failure</span>
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    className="ml-auto h-6 px-2 text-xs"
-                    onClick={triggerAnalysis}
-                    disabled={isLoading}
-                >
-                    {isLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                        <>
-                            <Zap className="h-3 w-3 mr-1" />
-                            Analyze
-                        </>
-                    )}
-                </Button>
+            <div className={cn('space-y-1', className)}>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-background-secondary border border-white/5 text-xs">
+                    <Brain className="h-3.5 w-3.5 text-foreground-muted" />
+                    <span className="text-foreground-muted">AI can analyze this failure</span>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="ml-auto h-6 px-2 text-xs"
+                        onClick={triggerAnalysis}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                            <>
+                                <Zap className="h-3 w-3 mr-1" />
+                                Analyze
+                            </>
+                        )}
+                    </Button>
+                </div>
+                {analysisError && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] text-red-400">
+                        <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                        <span>{analysisError.message}</span>
+                    </div>
+                )}
             </div>
         );
     }
