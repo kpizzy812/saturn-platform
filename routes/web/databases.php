@@ -59,10 +59,19 @@ Route::get('/databases', function () {
 })->name('databases.index');
 
 Route::get('/databases/create', function () {
-    // Get projects with environments for database creation
+    $authService = app(\App\Services\Authorization\ProjectAuthorizationService::class);
+    $currentUser = auth()->user();
+
+    // Get projects with environments for database creation (filter production for non-admins)
     $projects = \App\Models\Project::ownedByCurrentTeam()
         ->with('environments')
         ->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        })
         ->map(fn ($project) => [
             'uuid' => $project->uuid,
             'name' => $project->name,

@@ -105,6 +105,15 @@ class ProjectController extends Controller
 
         $project->load(['environments']);
 
+        // Filter out production environments for non-admin users
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            $project->setRelation(
+                'environments',
+                $this->authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        }
+
         return response()->json(
             serializeApiResponse($project),
         );

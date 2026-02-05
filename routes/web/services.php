@@ -21,9 +21,18 @@ Route::get('/services', function () {
 })->name('services.index');
 
 Route::get('/services/create', function () {
+    $authService = app(\App\Services\Authorization\ProjectAuthorizationService::class);
+    $currentUser = auth()->user();
+
     $projects = \App\Models\Project::ownedByCurrentTeam()
         ->with('environments')
-        ->get();
+        ->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        });
 
     // Always get localhost (platform's master server) - used by default
     $localhost = \App\Models\Server::where('id', 0)->first();

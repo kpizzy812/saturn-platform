@@ -48,10 +48,19 @@ Route::get('/templates/{id}/deploy', function (string $id) {
         abort(404);
     }
 
-    // Get projects with environments
+    // Get projects with environments (filter production for non-admins)
+    $authService = app(\App\Services\Authorization\ProjectAuthorizationService::class);
+    $currentUser = auth()->user();
+
     $projects = \App\Models\Project::ownedByCurrentTeam()
         ->with('environments')
-        ->get();
+        ->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        });
 
     // Get localhost (platform's master server)
     $localhost = \App\Models\Server::where('id', 0)->first();

@@ -114,7 +114,16 @@ Route::get('/shared-variables', function () {
 
 Route::get('/shared-variables/create', function () {
     $team = auth()->user()->currentTeam();
-    $projects = $team->projects()->with('environments')->get();
+    $currentUser = auth()->user();
+    $authService = app(\App\Services\Authorization\ProjectAuthorizationService::class);
+
+    $projects = $team->projects()->with('environments')->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        });
 
     return Inertia::render('SharedVariables/Create', [
         'teams' => [['id' => $team->id, 'name' => $team->name]],
