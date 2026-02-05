@@ -933,11 +933,12 @@ Route::get('/web-api/environments/{uuid}/statuses', function (string $uuid) {
 
     $applications = $environment->applications()->select('id', 'status')->get();
     $databases = $environment->databases(); // Returns collection (concat of all DB types)
-    $services = $environment->services()->select('id', 'status')->get();
+    // Services: 'status' is an accessor, not a real column - must load full models
+    $services = $environment->services()->with(['applications', 'databases'])->get();
 
     return response()->json([
         'applications' => $applications->pluck('status', 'id'),
         'databases' => $databases->mapWithKeys(fn ($db) => [$db->id => $db->status]),
-        'services' => $services->pluck('status', 'id'),
+        'services' => $services->mapWithKeys(fn ($svc) => [$svc->id => $svc->status]),
     ]);
 })->name('web-api.environment.statuses');
