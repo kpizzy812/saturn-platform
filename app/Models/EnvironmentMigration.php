@@ -85,6 +85,8 @@ class EnvironmentMigration extends Model
 
     public const OPTION_AUTO_DEPLOY = 'auto_deploy';
 
+    public const OPTION_OVERWRITE_VALUES = 'overwrite_values';
+
     /**
      * Get all possible statuses.
      */
@@ -282,9 +284,15 @@ class EnvironmentMigration extends Model
 
     /**
      * Approve the migration request.
+     *
+     * @throws \LogicException if migration is not in pending status
      */
     public function approve(User $approver, ?string $comment = null): void
     {
+        if ($this->status !== self::STATUS_PENDING) {
+            throw new \LogicException("Cannot approve migration in status: {$this->status}");
+        }
+
         $this->update([
             'status' => self::STATUS_APPROVED,
             'approved_by' => $approver->id,
@@ -294,9 +302,15 @@ class EnvironmentMigration extends Model
 
     /**
      * Reject the migration request.
+     *
+     * @throws \LogicException if migration is not in pending status
      */
     public function reject(User $approver, string $reason): void
     {
+        if ($this->status !== self::STATUS_PENDING) {
+            throw new \LogicException("Cannot reject migration in status: {$this->status}");
+        }
+
         $this->update([
             'status' => self::STATUS_REJECTED,
             'approved_by' => $approver->id,
@@ -309,9 +323,15 @@ class EnvironmentMigration extends Model
 
     /**
      * Mark migration as in progress.
+     *
+     * @throws \LogicException if migration is not in pending or approved status
      */
     public function markAsInProgress(?string $step = null): void
     {
+        if (! in_array($this->status, [self::STATUS_PENDING, self::STATUS_APPROVED])) {
+            throw new \LogicException("Cannot mark migration as in_progress from status: {$this->status}");
+        }
+
         $this->update([
             'status' => self::STATUS_IN_PROGRESS,
             'current_step' => $step ?? 'Starting migration...',
@@ -321,9 +341,15 @@ class EnvironmentMigration extends Model
 
     /**
      * Mark migration as completed.
+     *
+     * @throws \LogicException if migration is not in_progress
      */
     public function markAsCompleted(?string $targetType = null, ?int $targetId = null): void
     {
+        if ($this->status !== self::STATUS_IN_PROGRESS) {
+            throw new \LogicException("Cannot mark migration as completed from status: {$this->status}");
+        }
+
         $data = [
             'status' => self::STATUS_COMPLETED,
             'progress' => 100,
@@ -344,6 +370,12 @@ class EnvironmentMigration extends Model
      */
     public function markAsFailed(string $errorMessage): void
     {
+        // Allow marking as failed from any active status (pending, approved, in_progress)
+        // but not from terminal states
+        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_ROLLED_BACK])) {
+            throw new \LogicException("Cannot mark migration as failed from status: {$this->status}");
+        }
+
         $this->update([
             'status' => self::STATUS_FAILED,
             'error_message' => $errorMessage,
@@ -354,9 +386,15 @@ class EnvironmentMigration extends Model
 
     /**
      * Mark migration as rolled back.
+     *
+     * @throws \LogicException if migration is not completed
      */
     public function markAsRolledBack(): void
     {
+        if ($this->status !== self::STATUS_COMPLETED) {
+            throw new \LogicException("Cannot mark migration as rolled_back from status: {$this->status}");
+        }
+
         $this->update([
             'status' => self::STATUS_ROLLED_BACK,
             'current_step' => 'Migration rolled back',

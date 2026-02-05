@@ -24,8 +24,16 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
 
     /**
      * Number of times to attempt the job.
+     * Allows retry on transient failures (network timeout, docker restart).
      */
-    public int $tries = 1;
+    public int $tries = 3;
+
+    /**
+     * Backoff intervals in seconds between retries (1 min, 5 min, 15 min).
+     *
+     * @var array<int>
+     */
+    public array $backoff = [60, 300, 900];
 
     /**
      * Maximum job execution time in seconds (30 minutes).
@@ -60,6 +68,15 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
+        // Check target server health before proceeding
+        $targetServer = $this->migration->targetServer;
+        if ($targetServer && ! $targetServer->isFunctional()) {
+            $this->migration->markAsFailed('Target server is not reachable.');
+            $this->notifyFailure('Target server is not reachable.');
+
+            return;
+        }
+
         $this->migration->appendLog('Starting migration job...');
 
         try {
@@ -75,7 +92,8 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
             }
 
         } catch (Throwable $e) {
-            $this->migration->markAsFailed($e->getMessage());
+            // Only log here; markAsFailed is handled by the failed() hook
+            // to avoid double status update
             $this->migration->appendLog('Migration exception: '.$e->getMessage());
             $this->notifyFailure($e->getMessage());
 
@@ -84,12 +102,12 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
     }
 
     /**
-     * Handle a job failure.
+     * Handle a job failure (called by Laravel after all retries exhausted or exception thrown).
      */
     public function failed(Throwable $exception): void
     {
         $this->migration->markAsFailed($exception->getMessage());
-        $this->migration->appendLog('Job failed: '.$exception->getMessage());
+        $this->migration->appendLog('Job failed permanently: '.$exception->getMessage());
         $this->notifyFailure($exception->getMessage());
     }
 

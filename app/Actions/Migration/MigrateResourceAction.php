@@ -194,6 +194,7 @@ class MigrateResourceAction
 
     /**
      * Create rollback snapshot for recovery.
+     * Always snapshots existing target when it exists (needed for config_only and update_existing).
      */
     protected function createRollbackSnapshot(Model $resource, Environment $targetEnv, array $options): array
     {
@@ -203,13 +204,20 @@ class MigrateResourceAction
             'created_at' => now()->toIso8601String(),
         ];
 
-        // If updating existing, also snapshot the existing target
-        if ($options[EnvironmentMigration::OPTION_UPDATE_EXISTING] ?? false) {
-            $existingTarget = $this->findExistingTarget($resource, $targetEnv);
-            if ($existingTarget) {
-                $snapshot['existing_target_config'] = $this->getResourceConfig($existingTarget);
-                $snapshot['existing_target_type'] = get_class($existingTarget);
-                $snapshot['existing_target_id'] = $existingTarget->id;
+        // Always snapshot existing target when it exists — needed for both
+        // update_existing and config_only modes to enable proper rollback
+        $existingTarget = $this->findExistingTarget($resource, $targetEnv);
+        if ($existingTarget) {
+            $snapshot['existing_target_config'] = $this->getResourceConfig($existingTarget);
+            $snapshot['existing_target_type'] = get_class($existingTarget);
+            $snapshot['existing_target_id'] = $existingTarget->id;
+
+            // Include application settings in snapshot for proper rollback
+            if ($existingTarget instanceof \App\Models\Application && method_exists($existingTarget, 'settings')) {
+                $settings = $existingTarget->settings;
+                if ($settings) {
+                    $snapshot['existing_target_config']['application_settings'] = $settings->toArray();
+                }
             }
         }
 

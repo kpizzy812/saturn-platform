@@ -200,18 +200,9 @@ export function EnvironmentMigrateModal({
         };
 
         // Initialize all results as pending
+        // Order: databases → services → applications (dependencies first)
         let idx = 0;
 
-        for (const uuid of selectedResources.applications) {
-            const app = applications.find(a => a.uuid === uuid);
-            if (app) {
-                allResults.push({
-                    resource_type: 'application',
-                    resource_name: app.name,
-                    status: 'pending',
-                });
-            }
-        }
         for (const uuid of selectedResources.databases) {
             const db = databases.find(d => d.uuid === uuid);
             if (db) {
@@ -232,19 +223,20 @@ export function EnvironmentMigrateModal({
                 });
             }
         }
-        setResults([...allResults]);
-
-        // Migrate applications
-        idx = 0;
         for (const uuid of selectedResources.applications) {
             const app = applications.find(a => a.uuid === uuid);
             if (app) {
-                await migrateResource('application', uuid, app.name, idx);
-                idx++;
+                allResults.push({
+                    resource_type: 'application',
+                    resource_name: app.name,
+                    status: 'pending',
+                });
             }
         }
+        setResults([...allResults]);
 
-        // Migrate databases
+        // 1. Migrate databases first (dependencies)
+        idx = 0;
         for (const uuid of selectedResources.databases) {
             const db = databases.find(d => d.uuid === uuid);
             if (db) {
@@ -253,11 +245,20 @@ export function EnvironmentMigrateModal({
             }
         }
 
-        // Migrate services
+        // 2. Migrate services second
         for (const uuid of selectedResources.services) {
             const svc = services.find(s => s.uuid === uuid);
             if (svc) {
                 await migrateResource('service', uuid, svc.name, idx);
+                idx++;
+            }
+        }
+
+        // 3. Migrate applications last (depend on databases/services)
+        for (const uuid of selectedResources.applications) {
+            const app = applications.find(a => a.uuid === uuid);
+            if (app) {
+                await migrateResource('application', uuid, app.name, idx);
                 idx++;
             }
         }

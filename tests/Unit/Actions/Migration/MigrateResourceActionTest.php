@@ -168,6 +168,27 @@ class MigrateResourceActionTest extends TestCase
     }
 
     #[Test]
+    public function create_rollback_snapshot_always_captures_existing_target(): void
+    {
+        // Verify the snapshot creation does NOT conditionally check update_existing only
+        $sourceCode = file_get_contents(
+            base_path('app/Actions/Migration/MigrateResourceAction.php')
+        );
+
+        // Should find existing target unconditionally (no update_existing check)
+        $this->assertStringContainsString(
+            '$existingTarget = $this->findExistingTarget($resource, $targetEnv);',
+            $sourceCode
+        );
+
+        // Should snapshot when target exists (not just when update_existing is true)
+        $this->assertStringContainsString('if ($existingTarget)', $sourceCode);
+
+        // Should include application_settings in snapshot
+        $this->assertStringContainsString('application_settings', $sourceCode);
+    }
+
+    #[Test]
     public function create_rollback_snapshot_method_exists(): void
     {
         $class = new \ReflectionClass(MigrateResourceAction::class);

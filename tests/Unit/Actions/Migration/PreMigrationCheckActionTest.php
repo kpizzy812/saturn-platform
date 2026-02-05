@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Actions\Migration;
 
+use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Actions\Migration\PreMigrationCheckAction;
 use App\Models\Environment;
 use App\Models\Server;
@@ -228,6 +229,52 @@ class PreMigrationCheckActionTest extends TestCase
         $this->assertTrue($class->hasMethod('checkTargetExists'));
         $this->assertTrue($class->hasMethod('checkEnvVarCompleteness'));
         $this->assertTrue($class->hasMethod('checkConfigDrift'));
+    }
+
+    #[Test]
+    public function action_uses_resource_config_fields_trait(): void
+    {
+        $action = new PreMigrationCheckAction;
+        $traits = class_uses_recursive($action);
+
+        $this->assertArrayHasKey(ResourceConfigFields::class, $traits);
+    }
+
+    #[Test]
+    public function check_target_exists_returns_false_for_unknown_resource_types(): void
+    {
+        $action = new PreMigrationCheckAction;
+        $method = new \ReflectionMethod($action, 'checkTargetExists');
+
+        // Plain Model (not Application, Service, or database) should return false
+        $resource = new class extends Model
+        {
+            public $name = 'some-resource';
+        };
+
+        $environment = $this->createMockEnvironment('uat');
+
+        $result = $method->invoke($action, $resource, $environment);
+
+        $this->assertFalse($result);
+    }
+
+    #[Test]
+    public function check_target_exists_returns_false_when_no_name(): void
+    {
+        $action = new PreMigrationCheckAction;
+        $method = new \ReflectionMethod($action, 'checkTargetExists');
+
+        $resource = new class extends Model
+        {
+            public $name = null;
+        };
+
+        $environment = $this->createMockEnvironment('uat');
+
+        $result = $method->invoke($action, $resource, $environment);
+
+        $this->assertFalse($result);
     }
 
     #[Test]

@@ -43,6 +43,7 @@ class RollbackMigrationActionTest extends TestCase
         $this->assertTrue($class->hasMethod('restoreEnvironmentVariables'));
         $this->assertTrue($class->hasMethod('restorePersistentStorages'));
         $this->assertTrue($class->hasMethod('restoreFileStorages'));
+        $this->assertTrue($class->hasMethod('restoreApplicationSettings'));
     }
 
     #[Test]
@@ -79,6 +80,35 @@ class RollbackMigrationActionTest extends TestCase
         $this->assertArrayHasKey('name', $result);
         $this->assertArrayHasKey('git_branch', $result);
         $this->assertArrayHasKey('build_pack', $result);
+    }
+
+    #[Test]
+    public function allowed_target_types_contains_all_resource_types(): void
+    {
+        $refConst = new \ReflectionClassConstant(RollbackMigrationAction::class, 'ALLOWED_TARGET_TYPES');
+        $allowedTypes = $refConst->getValue();
+
+        $this->assertContains('App\Models\Application', $allowedTypes);
+        $this->assertContains('App\Models\Service', $allowedTypes);
+        $this->assertContains('App\Models\StandalonePostgresql', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneMysql', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneMariadb', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneMongodb', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneRedis', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneClickhouse', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneKeydb', $allowedTypes);
+        $this->assertContains('App\Models\StandaloneDragonfly', $allowedTypes);
+    }
+
+    #[Test]
+    public function allowed_target_types_does_not_contain_dangerous_classes(): void
+    {
+        $refConst = new \ReflectionClassConstant(RollbackMigrationAction::class, 'ALLOWED_TARGET_TYPES');
+        $allowedTypes = $refConst->getValue();
+
+        $this->assertNotContains('App\Models\User', $allowedTypes);
+        $this->assertNotContains('App\Models\Team', $allowedTypes);
+        $this->assertNotContains('App\Models\Server', $allowedTypes);
     }
 
     #[Test]

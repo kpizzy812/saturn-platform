@@ -20,6 +20,7 @@ use App\Services\Authorization\MigrationAuthorizationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 class EnvironmentMigrationController extends Controller
@@ -368,12 +369,23 @@ class EnvironmentMigrationController extends Controller
             return response()->json(['message' => 'You are not authorized to approve this migration.'], 403);
         }
 
-        if (! $migration->isAwaitingApproval()) {
-            return response()->json(['message' => 'Migration is not pending approval.'], 400);
+        // Atomic approve: prevents race condition where two parallel requests both pass
+        // the status check and dispatch duplicate jobs
+        $updated = EnvironmentMigration::where('uuid', $uuid)
+            ->where('team_id', $teamId)
+            ->where('status', EnvironmentMigration::STATUS_PENDING)
+            ->where('requires_approval', true)
+            ->update([
+                'status' => EnvironmentMigration::STATUS_APPROVED,
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+            ]);
+
+        if (! $updated) {
+            return response()->json(['message' => 'Migration already processed or not pending approval.'], 409);
         }
 
-        // Approve the migration
-        $migration->approve($user);
+        $migration->refresh();
 
         // Dispatch execution job
         ExecuteMigrationJob::dispatch($migration);
@@ -382,7 +394,7 @@ class EnvironmentMigrationController extends Controller
         try {
             $migration->requestedBy?->notify(new MigrationApproved($migration));
         } catch (\Throwable $e) {
-            \Log::warning('Failed to send migration approved notification: '.$e->getMessage());
+            Log::warning('Failed to send migration approved notification: '.$e->getMessage());
         }
 
         return response()->json([
@@ -446,7 +458,7 @@ class EnvironmentMigrationController extends Controller
         try {
             $migration->requestedBy?->notify(new MigrationRejected($migration));
         } catch (\Throwable $e) {
-            \Log::warning('Failed to send migration rejected notification: '.$e->getMessage());
+            Log::warning('Failed to send migration rejected notification: '.$e->getMessage());
         }
 
         return response()->json([

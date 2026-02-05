@@ -312,7 +312,8 @@ class ExecuteMigrationAction
         // Update environment variables if requested
         if ($options[EnvironmentMigration::OPTION_COPY_ENV_VARS] ?? true) {
             $migration->updateProgress(60, 'Syncing environment variables...');
-            $this->syncEnvironmentVariables($source, $target);
+            $overwrite = $options[EnvironmentMigration::OPTION_OVERWRITE_VALUES] ?? false;
+            $this->syncEnvironmentVariables($source, $target, $overwrite);
         }
 
         $migration->updateProgress(80, 'Configuration updated');
@@ -334,14 +335,15 @@ class ExecuteMigrationAction
     ): array {
         $migration->updateProgress(40, 'Updating full resource...');
 
-        // Get all attributes to update (excluding identity fields)
+        // Get safe attributes to update using whitelist
         $attributes = $this->getUpdatableAttributes($source);
         $target->update($attributes);
 
         // Sync environment variables
         if ($options[EnvironmentMigration::OPTION_COPY_ENV_VARS] ?? true) {
             $migration->updateProgress(50, 'Syncing environment variables...');
-            $this->syncEnvironmentVariables($source, $target);
+            $overwrite = $options[EnvironmentMigration::OPTION_OVERWRITE_VALUES] ?? false;
+            $this->syncEnvironmentVariables($source, $target, $overwrite);
         }
 
         // Sync volume configurations (but not data!)
@@ -359,31 +361,25 @@ class ExecuteMigrationAction
     }
 
     /**
-     * Get updatable attributes for full update.
+     * Get updatable attributes for full update using whitelist approach.
+     * Only returns attributes from the config fields whitelist to prevent
+     * accidental exposure of sensitive or identity fields.
      */
     protected function getUpdatableAttributes(Model $source): array
     {
-        // Fields to exclude from update
-        $excludeFields = [
-            'id', 'uuid', 'created_at', 'updated_at', 'deleted_at',
-            'environment_id', 'destination_id', 'destination_type',
-            'status', 'last_online_at',
-        ];
-
-        return collect($source->getAttributes())
-            ->except($excludeFields)
-            ->filter(fn ($value) => $value !== null)
-            ->toArray();
+        return $this->getSafeConfigAttributes($source);
     }
 
     /**
-     * Sync environment variables from source to target.
+     * Sync environment variables from source to target using merge strategy.
      *
-     * Full sync: adds new vars with values, updates existing, removes
-     * vars that no longer exist in source. This ensures target env
-     * matches source exactly (safe for dev→uat→prod migrations).
+     * Merge behavior:
+     * - Adds new variables from source that don't exist in target (with values)
+     * - Does NOT delete target-only variables (e.g., SENTRY_DSN, PROD_API_KEY)
+     * - For existing variables: updates only metadata (is_buildtime, etc.), NOT values
+     * - When overwrite_values is true: also overwrites values of existing variables
      */
-    protected function syncEnvironmentVariables(Model $source, Model $target): void
+    protected function syncEnvironmentVariables(Model $source, Model $target, bool $overwriteValues = false): void
     {
         if (! method_exists($source, 'environment_variables')) {
             return;
@@ -391,27 +387,27 @@ class ExecuteMigrationAction
 
         $sourceVars = $source->environment_variables;
         $targetVars = $target->environment_variables;
-        $sourceKeys = $sourceVars->pluck('key')->toArray();
 
-        // 1. Delete vars that no longer exist in source
-        foreach ($targetVars as $targetVar) {
-            if (! in_array($targetVar->key, $sourceKeys)) {
-                $targetVar->delete();
-            }
-        }
+        // Target-only vars are intentionally preserved (not deleted)
 
-        // 2. Add new or update existing vars (with values!)
         foreach ($sourceVars as $sourceVar) {
             $existingVar = $targetVars->firstWhere('key', $sourceVar->key);
 
             if ($existingVar) {
-                $existingVar->update([
-                    'value' => $sourceVar->value,
+                // Update metadata flags only; preserve target value unless overwrite requested
+                $updateData = [
                     'is_buildtime' => $sourceVar->is_buildtime,
                     'is_literal' => $sourceVar->is_literal,
                     'is_multiline' => $sourceVar->is_multiline,
-                ]);
+                ];
+
+                if ($overwriteValues) {
+                    $updateData['value'] = $sourceVar->value;
+                }
+
+                $existingVar->update($updateData);
             } else {
+                // New variable — add with value from source
                 EnvironmentVariable::create([
                     'key' => $sourceVar->key,
                     'value' => $sourceVar->value,

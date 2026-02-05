@@ -8,6 +8,7 @@ use App\Models\Application;
 use App\Models\Environment;
 use App\Models\EnvironmentMigration;
 use App\Models\EnvironmentVariable;
+use App\Models\ResourceLink;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -233,6 +234,7 @@ class PromoteResourceAction
 
     /**
      * Rewire environment variable connections to point to target environment resources.
+     * Uses ResourceLink graph when available, falls back to regex-based detection.
      *
      * @return array<string, array{old: string, new: string}> Rewired connections
      */
@@ -242,13 +244,80 @@ class PromoteResourceAction
             return [];
         }
 
-        $rewired = [];
-        $envVars = $target->environment_variables;
+        // Try ResourceLink-based rewire first (more reliable, handles FQDNs)
+        $rewired = $this->rewireViaResourceLinks($target, $targetEnv);
 
+        // Fall back to regex-based rewire for any remaining connection variables
+        $envVars = $target->environment_variables()->get();
         foreach ($envVars as $envVar) {
+            if (isset($rewired[$envVar->key])) {
+                continue; // Already rewired via ResourceLink
+            }
+
             $result = $this->tryRewireVariable($envVar, $targetEnv);
             if ($result) {
                 $rewired[$envVar->key] = $result;
+            }
+        }
+
+        return $rewired;
+    }
+
+    /**
+     * Rewire connections using ResourceLink graph.
+     *
+     * @return array<string, array{old: string, new: string}>
+     */
+    protected function rewireViaResourceLinks(Model $target, Environment $targetEnv): array
+    {
+        $rewired = [];
+
+        // Get all ResourceLinks where this resource is the source in its environment
+        $sourceLinks = ResourceLink::where('source_type', get_class($target))
+            ->where('source_id', $target->id)
+            ->with('target')
+            ->get();
+
+        if ($sourceLinks->isEmpty()) {
+            return $rewired;
+        }
+
+        foreach ($sourceLinks as $link) {
+            // Find the corresponding target resource in the target environment by name
+            $linkTarget = $link->target;
+            if (! $linkTarget || ! isset($linkTarget->name)) {
+                continue;
+            }
+
+            $targetResource = $this->findTargetResource($linkTarget, $targetEnv);
+            if (! $targetResource) {
+                continue;
+            }
+
+            // Get the env key from the link
+            $envKey = $link->getEnvKey();
+            $envVar = $target->environment_variables()->where('key', $envKey)->first();
+            if (! $envVar || empty($envVar->value)) {
+                continue;
+            }
+
+            // Generate new URL from the target environment's resource
+            $newUrl = null;
+            if (isset($targetResource->internal_db_url)) {
+                $newUrl = $targetResource->internal_db_url;
+            } elseif (method_exists($targetResource, 'getInternalDbUrl')) {
+                $newUrl = $targetResource->getInternalDbUrl();
+            } elseif (isset($targetResource->internal_app_url)) {
+                $newUrl = $targetResource->internal_app_url;
+            }
+
+            if ($newUrl && $newUrl !== $envVar->value) {
+                $old = $envVar->value;
+                $envVar->update(['value' => $newUrl]);
+                $rewired[$envKey] = [
+                    'old' => $this->maskSensitiveValue($old),
+                    'new' => $this->maskSensitiveValue($newUrl),
+                ];
             }
         }
 
@@ -331,9 +400,9 @@ class PromoteResourceAction
         // Try to extract hostname from URL
         $hostname = null;
 
-        if (preg_match('/[@\/]([a-zA-Z0-9_-]+)[:\/?]/', $connectionString, $matches)) {
+        if (preg_match('/[@\/]([a-zA-Z0-9._-]+)[:\/?]/', $connectionString, $matches)) {
             $hostname = $matches[1];
-        } elseif (preg_match('/^([a-zA-Z0-9_-]+):(\d+)/', $connectionString, $matches)) {
+        } elseif (preg_match('/^([a-zA-Z0-9._-]+):(\d+)/', $connectionString, $matches)) {
             $hostname = $matches[1];
         }
 

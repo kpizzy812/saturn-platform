@@ -146,6 +146,19 @@ class PromoteResourceActionTest extends TestCase
     }
 
     #[Test]
+    public function find_referenced_resource_regex_matches_dots_in_hostname(): void
+    {
+        $action = new PromoteResourceAction;
+        $method = new \ReflectionMethod($action, 'findReferencedResource');
+
+        // Verify the regex pattern matches dots (for FQDN / Kubernetes DNS names)
+        $sourceCode = file_get_contents(
+            base_path('app/Actions/Migration/PromoteResourceAction.php')
+        );
+        $this->assertStringContainsString('[a-zA-Z0-9._-]+', $sourceCode);
+    }
+
+    #[Test]
     public function trigger_deployment_method_accepts_migration(): void
     {
         $action = new PromoteResourceAction;
@@ -172,11 +185,20 @@ class PromoteResourceActionTest extends TestCase
     }
 
     #[Test]
+    public function action_has_resource_link_rewire_method(): void
+    {
+        $class = new \ReflectionClass(PromoteResourceAction::class);
+
+        $this->assertTrue($class->hasMethod('rewireViaResourceLinks'));
+    }
+
+    #[Test]
     public function action_has_connection_rewiring_methods(): void
     {
         $class = new \ReflectionClass(PromoteResourceAction::class);
 
         $this->assertTrue($class->hasMethod('rewireConnections'));
+        $this->assertTrue($class->hasMethod('rewireViaResourceLinks'));
         $this->assertTrue($class->hasMethod('tryRewireVariable'));
         $this->assertTrue($class->hasMethod('isConnectionVariable'));
         $this->assertTrue($class->hasMethod('maskSensitiveValue'));

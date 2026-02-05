@@ -2,6 +2,7 @@
 
 namespace App\Actions\Migration;
 
+use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Models\Environment;
 use App\Models\EnvironmentMigration;
 use App\Models\MigrationHistory;
@@ -16,6 +17,7 @@ use Lorisleiva\Actions\Concerns\AsAction;
 class PreMigrationCheckAction
 {
     use AsAction;
+    use ResourceConfigFields;
 
     /**
      * Run all pre-migration checks.
@@ -148,7 +150,15 @@ class PreMigrationCheckAction
             return $targetEnvironment->services()->where('name', $name)->exists();
         }
 
-        return true;
+        // Check database types via their specific relation methods
+        if ($this->isDatabase($resource)) {
+            $relationMethod = $this->getDatabaseRelationMethod(get_class($resource));
+            if ($relationMethod && method_exists($targetEnvironment, $relationMethod)) {
+                return $targetEnvironment->$relationMethod()->where('name', $name)->exists();
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -9,6 +9,14 @@ use App\Models\EnvironmentVariable;
 use App\Models\LocalFileVolume;
 use App\Models\LocalPersistentVolume;
 use App\Models\Service;
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
+use App\Models\StandaloneMariadb;
+use App\Models\StandaloneMongodb;
+use App\Models\StandaloneMysql;
+use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
 use App\Models\User;
 use App\Notifications\Migration\MigrationRolledBack;
 use App\Services\Authorization\MigrationAuthorizationService;
@@ -97,6 +105,22 @@ class RollbackMigrationAction
     }
 
     /**
+     * Allowed resource types for rollback to prevent arbitrary class instantiation.
+     */
+    protected const ALLOWED_TARGET_TYPES = [
+        Application::class,
+        Service::class,
+        StandalonePostgresql::class,
+        StandaloneMysql::class,
+        StandaloneMariadb::class,
+        StandaloneMongodb::class,
+        StandaloneRedis::class,
+        StandaloneClickhouse::class,
+        StandaloneKeydb::class,
+        StandaloneDragonfly::class,
+    ];
+
+    /**
      * Rollback by restoring existing resource to previous state.
      */
     protected function rollbackExistingUpdate(EnvironmentMigration $migration, array $snapshot): array
@@ -117,6 +141,14 @@ class RollbackMigrationAction
             return [
                 'success' => false,
                 'error' => 'Missing target identification in snapshot.',
+            ];
+        }
+
+        // Validate target type against allowed list to prevent arbitrary class loading
+        if (! in_array($targetType, self::ALLOWED_TARGET_TYPES)) {
+            return [
+                'success' => false,
+                'error' => 'Invalid target type in snapshot.',
             ];
         }
 
@@ -151,6 +183,12 @@ class RollbackMigrationAction
         if (isset($existingTargetConfig['file_storages'])) {
             $migration->appendLog('Restoring file storage configurations...');
             $this->restoreFileStorages($target, $existingTargetConfig['file_storages']);
+        }
+
+        // Restore application settings if present in snapshot
+        if (isset($existingTargetConfig['application_settings']) && $target instanceof Application) {
+            $migration->appendLog('Restoring application settings...');
+            $this->restoreApplicationSettings($target, $existingTargetConfig['application_settings']);
         }
 
         return ['success' => true];
@@ -360,6 +398,44 @@ class RollbackMigrationAction
         }
 
         $database->delete();
+    }
+
+    /**
+     * Restore application settings from snapshot.
+     */
+    protected function restoreApplicationSettings(Application $target, array $settingsData): void
+    {
+        $targetSettings = $target->settings;
+        if (! $targetSettings) {
+            return;
+        }
+
+        // Only restore safe settings fields
+        $safeFields = [
+            'is_static',
+            'is_spa',
+            'is_build_server_enabled',
+            'is_preserve_repository_enabled',
+            'is_git_submodules_enabled',
+            'is_git_lfs_enabled',
+            'is_git_shallow_clone_enabled',
+            'is_auto_deploy_enabled',
+            'is_force_https_enabled',
+            'is_preview_deployments_enabled',
+            'is_container_label_escape_enabled',
+            'is_container_label_readonly_enabled',
+            'gpu_driver',
+            'gpu_count',
+            'gpu_device_ids',
+            'gpu_options',
+        ];
+
+        $attributes = collect($settingsData)
+            ->only($safeFields)
+            ->filter(fn ($value) => $value !== null)
+            ->toArray();
+
+        $targetSettings->update($attributes);
     }
 
     /**

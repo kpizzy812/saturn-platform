@@ -4,6 +4,7 @@ namespace Tests\Unit\Actions\Migration;
 
 use App\Actions\Migration\Concerns\ResourceConfigFields;
 use App\Actions\Migration\ExecuteMigrationAction;
+use App\Models\Application;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -48,33 +49,39 @@ class ExecuteMigrationActionTest extends TestCase
     }
 
     #[Test]
-    public function get_updatable_attributes_method_excludes_identity_fields(): void
+    public function get_updatable_attributes_uses_whitelist(): void
     {
         $action = new ExecuteMigrationAction;
         $method = new \ReflectionMethod($action, 'getUpdatableAttributes');
 
-        $attributes = [
-            'id' => 1,
-            'uuid' => 'test-uuid',
-            'name' => 'test-app',
-            'status' => 'running',
-            'created_at' => '2026-01-01',
-            'updated_at' => '2026-01-01',
-            'environment_id' => 1,
-            'destination_id' => 1,
-            'git_branch' => 'main',
-            'build_pack' => 'nixpacks',
-        ];
-
-        // Create a mock Model with these attributes
-        $source = new class($attributes) extends \Illuminate\Database\Eloquent\Model
+        // Create a mock Application-like model to hit whitelist
+        $app = new class extends Application
         {
-            private array $attrs;
+            private array $attrs = [];
 
-            public function __construct(array $attrs)
+            public function __construct()
             {
-                $this->attrs = $attrs;
+                // Don't call parent to avoid DB connection
+                $this->attrs = [
+                    'id' => 1,
+                    'uuid' => 'test-uuid',
+                    'name' => 'test-app',
+                    'status' => 'running',
+                    'created_at' => '2026-01-01',
+                    'updated_at' => '2026-01-01',
+                    'environment_id' => 1,
+                    'destination_id' => 1,
+                    'git_branch' => 'main',
+                    'build_pack' => 'nixpacks',
+                    'is_superadmin' => true,
+                ];
             }
+
+            protected static function boot() {}
+
+            protected static function booting() {}
+
+            protected static function booted() {}
 
             public function getAttributes()
             {
@@ -82,23 +89,62 @@ class ExecuteMigrationActionTest extends TestCase
             }
         };
 
-        $result = $method->invoke($action, $source);
+        $result = $method->invoke($action, $app);
 
+        // Whitelist approach: only allowed config fields should be present
         $this->assertArrayNotHasKey('id', $result);
         $this->assertArrayNotHasKey('uuid', $result);
+        $this->assertArrayNotHasKey('name', $result);
+        $this->assertArrayNotHasKey('status', $result);
         $this->assertArrayNotHasKey('created_at', $result);
         $this->assertArrayNotHasKey('updated_at', $result);
         $this->assertArrayNotHasKey('environment_id', $result);
         $this->assertArrayNotHasKey('destination_id', $result);
-        $this->assertArrayNotHasKey('status', $result);
+        $this->assertArrayNotHasKey('is_superadmin', $result);
+
+        // Whitelisted fields should be present
+        $this->assertArrayHasKey('git_branch', $result);
+        $this->assertArrayHasKey('build_pack', $result);
     }
 
     #[Test]
-    public function sync_environment_variables_method_exists(): void
+    public function get_updatable_attributes_returns_empty_for_unknown_model(): void
+    {
+        $action = new ExecuteMigrationAction;
+        $method = new \ReflectionMethod($action, 'getUpdatableAttributes');
+
+        // Plain Model returns empty whitelist
+        $model = new class extends \Illuminate\Database\Eloquent\Model
+        {
+            public function __construct()
+            {
+                // No parent call
+            }
+
+            public function getAttributes()
+            {
+                return ['id' => 1, 'name' => 'test', 'secret_field' => 'value'];
+            }
+        };
+
+        $result = $method->invoke($action, $model);
+
+        $this->assertEmpty($result);
+    }
+
+    #[Test]
+    public function sync_environment_variables_accepts_overwrite_parameter(): void
     {
         $class = new \ReflectionClass(ExecuteMigrationAction::class);
+        $method = $class->getMethod('syncEnvironmentVariables');
+        $params = $method->getParameters();
 
-        $this->assertTrue($class->hasMethod('syncEnvironmentVariables'));
+        $this->assertCount(3, $params);
+        $this->assertEquals('source', $params[0]->getName());
+        $this->assertEquals('target', $params[1]->getName());
+        $this->assertEquals('overwriteValues', $params[2]->getName());
+        $this->assertTrue($params[2]->isDefaultValueAvailable());
+        $this->assertFalse($params[2]->getDefaultValue());
     }
 
     #[Test]
