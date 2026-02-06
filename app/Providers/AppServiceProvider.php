@@ -116,6 +116,56 @@ class AppServiceProvider extends ServiceProvider
                 'constants.saturn.registry_url' => $settings->docker_registry_url,
             ]);
         }
+
+        // Override API rate limit
+        if ($settings->api_rate_limit !== null) {
+            config(['api.rate_limit' => $settings->api_rate_limit]);
+        }
+
+        // Override Horizon worker defaults
+        $horizonDefaults = [
+            'horizon.defaults.s6.balance' => $settings->horizon_balance,
+            'horizon.defaults.s6.memory' => $settings->horizon_worker_memory,
+            'horizon.defaults.s6.timeout' => $settings->horizon_worker_timeout,
+            'horizon.defaults.s6.maxTime' => $settings->horizon_worker_timeout,
+            'horizon.defaults.s6.maxJobs' => $settings->horizon_max_jobs,
+        ];
+        foreach ($horizonDefaults as $key => $value) {
+            if ($value !== null) {
+                config([$key => $value]);
+            }
+        }
+
+        // Override Horizon environment processes (production, development, local)
+        foreach (['production', 'development', 'local'] as $env) {
+            if ($settings->horizon_min_processes !== null) {
+                config(["horizon.environments.{$env}.s6.minProcesses" => $settings->horizon_min_processes]);
+            }
+            if ($settings->horizon_max_processes !== null) {
+                config(["horizon.environments.{$env}.s6.maxProcesses" => $settings->horizon_max_processes]);
+            }
+        }
+
+        // Override Horizon retention
+        if ($settings->horizon_trim_recent_minutes !== null) {
+            config([
+                'horizon.trim.recent' => $settings->horizon_trim_recent_minutes,
+                'horizon.trim.pending' => $settings->horizon_trim_recent_minutes,
+                'horizon.trim.completed' => $settings->horizon_trim_recent_minutes,
+            ]);
+        }
+        if ($settings->horizon_trim_failed_minutes !== null) {
+            config([
+                'horizon.trim.recent_failed' => $settings->horizon_trim_failed_minutes,
+                'horizon.trim.failed' => $settings->horizon_trim_failed_minutes,
+                'horizon.trim.monitored' => $settings->horizon_trim_failed_minutes,
+            ]);
+        }
+
+        // Override queue wait threshold
+        if ($settings->horizon_queue_wait_threshold !== null) {
+            config(['horizon.waits.redis:default' => $settings->horizon_queue_wait_threshold]);
+        }
     }
 
     private function configureGitHubHttp(): void

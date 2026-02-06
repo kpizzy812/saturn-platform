@@ -82,6 +82,168 @@ Route::get('/servers', function (Request $request) {
     ]);
 })->name('admin.servers.index');
 
+// Bulk server settings management
+Route::get('/servers/bulk', function (Request $request) {
+    $query = \App\Models\Server::with(['team', 'settings']);
+
+    // Search filter (same as index)
+    if ($search = $request->get('search')) {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('ip', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+        });
+    }
+
+    // Status filter
+    if ($status = $request->get('status')) {
+        $query->whereHas('settings', function ($q) use ($status) {
+            if ($status === 'reachable') {
+                $q->where('is_reachable', true)->where('is_usable', true);
+            } elseif ($status === 'unreachable') {
+                $q->where('is_reachable', false);
+            } elseif ($status === 'degraded') {
+                $q->where('is_reachable', true)->where('is_usable', false);
+            }
+        });
+    }
+
+    // Tag filter
+    if ($tag = $request->get('tag')) {
+        $query->whereJsonContains('tags', $tag);
+    }
+
+    $servers = $query->latest()
+        ->paginate(100)
+        ->through(function ($server) {
+            return [
+                'id' => $server->id,
+                'uuid' => $server->uuid,
+                'name' => $server->name,
+                'ip' => $server->ip,
+                'is_reachable' => $server->settings?->is_reachable ?? false,
+                'is_usable' => $server->settings?->is_usable ?? false,
+                'team_name' => $server->team?->name ?? 'Unknown',
+                'settings' => [
+                    'concurrent_builds' => $server->settings?->concurrent_builds ?? 2,
+                    'deployment_queue_limit' => $server->settings?->deployment_queue_limit ?? 0,
+                    'dynamic_timeout' => $server->settings?->dynamic_timeout ?? 3600,
+                    'is_build_server' => $server->settings?->is_build_server ?? false,
+                    'force_docker_cleanup' => (bool) ($server->settings?->force_docker_cleanup ?? false),
+                    'docker_cleanup_frequency' => $server->settings?->getRawOriginal('docker_cleanup_frequency') ?? '0 0 * * *',
+                    'docker_cleanup_threshold' => $server->settings?->docker_cleanup_threshold ?? 80,
+                    'delete_unused_volumes' => (bool) ($server->settings?->delete_unused_volumes ?? false),
+                    'delete_unused_networks' => (bool) ($server->settings?->delete_unused_networks ?? false),
+                    'disable_application_image_retention' => (bool) ($server->settings?->disable_application_image_retention ?? false),
+                    'is_metrics_enabled' => $server->settings?->is_metrics_enabled ?? false,
+                    'is_sentinel_enabled' => $server->settings?->is_sentinel_enabled ?? false,
+                    'is_terminal_enabled' => (bool) ($server->settings?->is_terminal_enabled ?? false),
+                    'sentinel_metrics_history_days' => $server->settings?->sentinel_metrics_history_days ?? 7,
+                    'sentinel_metrics_refresh_rate_seconds' => $server->settings?->sentinel_metrics_refresh_rate_seconds ?? 10,
+                    'sentinel_push_interval_seconds' => $server->settings?->sentinel_push_interval_seconds ?? 60,
+                ],
+            ];
+        });
+
+    $allTags = \App\Models\Server::whereNotNull('tags')
+        ->get()
+        ->pluck('tags')
+        ->flatten()
+        ->unique()
+        ->values();
+
+    return Inertia::render('Admin/Servers/Bulk', [
+        'servers' => $servers,
+        'allTags' => $allTags,
+        'filters' => [
+            'search' => $request->get('search'),
+            'status' => $request->get('status'),
+            'tag' => $request->get('tag'),
+        ],
+    ]);
+})->name('admin.servers.bulk');
+
+Route::post('/servers/bulk', function (Request $request) {
+    // Allowlisted settings fields
+    $allowedFields = [
+        'concurrent_builds',
+        'deployment_queue_limit',
+        'dynamic_timeout',
+        'is_build_server',
+        'force_docker_cleanup',
+        'docker_cleanup_frequency',
+        'docker_cleanup_threshold',
+        'delete_unused_volumes',
+        'delete_unused_networks',
+        'disable_application_image_retention',
+        'is_metrics_enabled',
+        'is_sentinel_enabled',
+        'is_terminal_enabled',
+        'sentinel_metrics_history_days',
+        'sentinel_metrics_refresh_rate_seconds',
+        'sentinel_push_interval_seconds',
+    ];
+
+    $validated = $request->validate([
+        'server_ids' => 'required|array|min:1',
+        'server_ids.*' => 'integer|exists:servers,id',
+        'settings' => 'required|array|min:1',
+        'settings.concurrent_builds' => 'sometimes|integer|min:1|max:100',
+        'settings.deployment_queue_limit' => 'sometimes|integer|min:0|max:1000',
+        'settings.dynamic_timeout' => 'sometimes|integer|min:0|max:86400',
+        'settings.is_build_server' => 'sometimes|boolean',
+        'settings.force_docker_cleanup' => 'sometimes|boolean',
+        'settings.docker_cleanup_frequency' => 'sometimes|string|max:100',
+        'settings.docker_cleanup_threshold' => 'sometimes|integer|min:0|max:100',
+        'settings.delete_unused_volumes' => 'sometimes|boolean',
+        'settings.delete_unused_networks' => 'sometimes|boolean',
+        'settings.disable_application_image_retention' => 'sometimes|boolean',
+        'settings.is_metrics_enabled' => 'sometimes|boolean',
+        'settings.is_sentinel_enabled' => 'sometimes|boolean',
+        'settings.is_terminal_enabled' => 'sometimes|boolean',
+        'settings.sentinel_metrics_history_days' => 'sometimes|integer|min:1|max:365',
+        'settings.sentinel_metrics_refresh_rate_seconds' => 'sometimes|integer|min:5|max:3600',
+        'settings.sentinel_push_interval_seconds' => 'sometimes|integer|min:5|max:3600',
+    ]);
+
+    // Filter to only allowed fields
+    $settingsData = array_intersect_key(
+        $validated['settings'],
+        array_flip($allowedFields)
+    );
+
+    if (empty($settingsData)) {
+        return back()->withErrors(['settings' => 'No valid settings provided.']);
+    }
+
+    $serverIds = $validated['server_ids'];
+    $updatedCount = 0;
+
+    \Illuminate\Support\Facades\DB::transaction(function () use ($serverIds, $settingsData, &$updatedCount) {
+        $servers = \App\Models\Server::whereIn('id', $serverIds)->with('settings')->get();
+
+        foreach ($servers as $server) {
+            if ($server->settings) {
+                $server->settings->update($settingsData);
+                $updatedCount++;
+            }
+        }
+    });
+
+    \App\Models\AuditLog::log(
+        'server_settings_bulk_updated',
+        null,
+        "Bulk updated settings for {$updatedCount} servers",
+        [
+            'server_ids' => $serverIds,
+            'settings_changed' => array_keys($settingsData),
+            'settings_values' => $settingsData,
+        ]
+    );
+
+    return back()->with('success', "Settings updated for {$updatedCount} servers.");
+})->name('admin.servers.bulk.update');
+
 Route::get('/servers/{uuid}', function (string $uuid) {
     // Fetch specific server with all resources
     $server = \App\Models\Server::with(['team', 'settings'])

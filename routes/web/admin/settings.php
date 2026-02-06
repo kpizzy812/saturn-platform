@@ -137,6 +137,17 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.docker_registry_password' => 'nullable|string|max:500',
         // Default Proxy
         'settings.default_proxy_type' => 'nullable|string|in:TRAEFIK,CADDY,NONE',
+        // Rate Limiting & Queue
+        'settings.api_rate_limit' => 'nullable|integer|min:10|max:10000',
+        'settings.horizon_balance' => 'nullable|string|in:false,simple,auto',
+        'settings.horizon_min_processes' => 'nullable|integer|min:1|max:20',
+        'settings.horizon_max_processes' => 'nullable|integer|min:1|max:50',
+        'settings.horizon_worker_memory' => 'nullable|integer|min:64|max:2048',
+        'settings.horizon_worker_timeout' => 'nullable|integer|min:60|max:86400',
+        'settings.horizon_max_jobs' => 'nullable|integer|min:10|max:10000',
+        'settings.horizon_trim_recent_minutes' => 'nullable|integer|min:10|max:10080',
+        'settings.horizon_trim_failed_minutes' => 'nullable|integer|min:60|max:43200',
+        'settings.horizon_queue_wait_threshold' => 'nullable|integer|min:10|max:600',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -234,6 +245,17 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'docker_registry_url' => $data['docker_registry_url'] ?? $settings->docker_registry_url,
         // Default Proxy
         'default_proxy_type' => $data['default_proxy_type'] ?? $settings->default_proxy_type,
+        // Rate Limiting & Queue
+        'api_rate_limit' => $data['api_rate_limit'] ?? $settings->api_rate_limit,
+        'horizon_balance' => $data['horizon_balance'] ?? $settings->horizon_balance,
+        'horizon_min_processes' => $data['horizon_min_processes'] ?? $settings->horizon_min_processes,
+        'horizon_max_processes' => $data['horizon_max_processes'] ?? $settings->horizon_max_processes,
+        'horizon_worker_memory' => $data['horizon_worker_memory'] ?? $settings->horizon_worker_memory,
+        'horizon_worker_timeout' => $data['horizon_worker_timeout'] ?? $settings->horizon_worker_timeout,
+        'horizon_max_jobs' => $data['horizon_max_jobs'] ?? $settings->horizon_max_jobs,
+        'horizon_trim_recent_minutes' => $data['horizon_trim_recent_minutes'] ?? $settings->horizon_trim_recent_minutes,
+        'horizon_trim_failed_minutes' => $data['horizon_trim_failed_minutes'] ?? $settings->horizon_trim_failed_minutes,
+        'horizon_queue_wait_threshold' => $data['horizon_queue_wait_threshold'] ?? $settings->horizon_queue_wait_threshold,
     ];
 
     // Only update secret fields if the value is not the placeholder

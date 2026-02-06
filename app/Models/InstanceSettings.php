@@ -110,6 +110,17 @@ class InstanceSettings extends Model
         'docker_registry_password',
         // Infrastructure: Default Proxy
         'default_proxy_type',
+        // Rate Limiting & Queue
+        'api_rate_limit',
+        'horizon_balance',
+        'horizon_min_processes',
+        'horizon_max_processes',
+        'horizon_worker_memory',
+        'horizon_worker_timeout',
+        'horizon_max_jobs',
+        'horizon_trim_recent_minutes',
+        'horizon_trim_failed_minutes',
+        'horizon_queue_wait_threshold',
     ];
 
     protected $casts = [
@@ -198,6 +209,17 @@ class InstanceSettings extends Model
         // Infrastructure: Docker Registry
         'docker_registry_username' => 'encrypted',
         'docker_registry_password' => 'encrypted',
+
+        // Rate Limiting & Queue
+        'api_rate_limit' => 'integer',
+        'horizon_min_processes' => 'integer',
+        'horizon_max_processes' => 'integer',
+        'horizon_worker_memory' => 'integer',
+        'horizon_worker_timeout' => 'integer',
+        'horizon_max_jobs' => 'integer',
+        'horizon_trim_recent_minutes' => 'integer',
+        'horizon_trim_failed_minutes' => 'integer',
+        'horizon_queue_wait_threshold' => 'integer',
     ];
 
     protected static function booted(): void

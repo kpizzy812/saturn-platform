@@ -29,6 +29,8 @@ import {
     Bug,
     Terminal,
     Network,
+    Gauge,
+    Layers,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -132,6 +134,17 @@ interface InstanceSettingsData {
     docker_registry_password?: string;
     // Infrastructure: Default Proxy
     default_proxy_type?: string;
+    // Rate Limiting & Queue
+    api_rate_limit?: number;
+    horizon_balance?: string;
+    horizon_min_processes?: number;
+    horizon_max_processes?: number;
+    horizon_worker_memory?: number;
+    horizon_worker_timeout?: number;
+    horizon_max_jobs?: number;
+    horizon_trim_recent_minutes?: number;
+    horizon_trim_failed_minutes?: number;
+    horizon_queue_wait_threshold?: number;
 
     created_at?: string;
     updated_at?: string;
@@ -1419,6 +1432,167 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                             {formData.default_proxy_type === 'NONE' && 'No proxy — servers will not have a reverse proxy configured by default.'}
                                             {!formData.default_proxy_type && 'Traefik — full-featured reverse proxy with automatic SSL, dashboard, and middleware support.'}
                                         </p>
+                                    </CardContent>
+                                </Card>
+
+                                {/* API Rate Limiting */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Gauge className="h-5 w-5 text-primary" />
+                                            <CardTitle>API Rate Limiting</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Control API request limits per user or IP address
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Input
+                                            type="number"
+                                            value={formData.api_rate_limit ?? 200}
+                                            onChange={(e) =>
+                                                update({ api_rate_limit: parseInt(e.target.value) || 200 })
+                                            }
+                                            label="Requests Per Minute"
+                                            hint="10-10000 requests per minute per user/IP"
+                                            placeholder="200"
+                                        />
+                                        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                                            <p className="text-sm text-foreground-muted">
+                                                Rate limit applies per authenticated user or IP. Changes apply immediately.
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Queue & Horizon Workers */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Layers className="h-5 w-5 text-primary" />
+                                            <CardTitle>Queue & Horizon Workers</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Configure background job processing, worker scaling, and retention
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        {/* Workers section */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-medium text-foreground">Workers</h4>
+                                            <Select
+                                                value={formData.horizon_balance || 'false'}
+                                                onChange={(e) => update({ horizon_balance: e.target.value })}
+                                                label="Balance Strategy"
+                                                options={[
+                                                    { value: 'false', label: 'None (fixed processes)' },
+                                                    { value: 'simple', label: 'Simple (equal distribution)' },
+                                                    { value: 'auto', label: 'Auto (scale by workload)' },
+                                                ]}
+                                            />
+                                            <div className="grid gap-4 sm:grid-cols-2">
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_min_processes ?? 1}
+                                                    onChange={(e) =>
+                                                        update({ horizon_min_processes: parseInt(e.target.value) || 1 })
+                                                    }
+                                                    label="Min Processes"
+                                                    hint="Minimum worker processes (1-20)"
+                                                    placeholder="1"
+                                                />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_max_processes ?? 4}
+                                                    onChange={(e) =>
+                                                        update({ horizon_max_processes: parseInt(e.target.value) || 4 })
+                                                    }
+                                                    label="Max Processes"
+                                                    hint="Maximum worker processes (1-50)"
+                                                    placeholder="4"
+                                                />
+                                            </div>
+                                            <div className="grid gap-4 sm:grid-cols-3">
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_worker_memory ?? 128}
+                                                    onChange={(e) =>
+                                                        update({ horizon_worker_memory: parseInt(e.target.value) || 128 })
+                                                    }
+                                                    label="Memory (MB)"
+                                                    hint="Worker memory limit (64-2048)"
+                                                    placeholder="128"
+                                                />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_worker_timeout ?? 3600}
+                                                    onChange={(e) =>
+                                                        update({ horizon_worker_timeout: parseInt(e.target.value) || 3600 })
+                                                    }
+                                                    label="Timeout (sec)"
+                                                    hint="Max job execution time (60-86400)"
+                                                    placeholder="3600"
+                                                />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_max_jobs ?? 400}
+                                                    onChange={(e) =>
+                                                        update({ horizon_max_jobs: parseInt(e.target.value) || 400 })
+                                                    }
+                                                    label="Max Jobs"
+                                                    hint="Jobs before worker restart (10-10000)"
+                                                    placeholder="400"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Retention section */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-medium text-foreground">Retention</h4>
+                                            <div className="grid gap-4 sm:grid-cols-2">
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_trim_recent_minutes ?? 60}
+                                                    onChange={(e) =>
+                                                        update({ horizon_trim_recent_minutes: parseInt(e.target.value) || 60 })
+                                                    }
+                                                    label="Recent Jobs (min)"
+                                                    hint="Keep completed jobs for (10-10080 min)"
+                                                    placeholder="60"
+                                                />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.horizon_trim_failed_minutes ?? 10080}
+                                                    onChange={(e) =>
+                                                        update({ horizon_trim_failed_minutes: parseInt(e.target.value) || 10080 })
+                                                    }
+                                                    label="Failed Jobs (min)"
+                                                    hint="Keep failed jobs for (60-43200 min)"
+                                                    placeholder="10080"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Monitoring section */}
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-medium text-foreground">Monitoring</h4>
+                                            <Input
+                                                type="number"
+                                                value={formData.horizon_queue_wait_threshold ?? 60}
+                                                onChange={(e) =>
+                                                    update({ horizon_queue_wait_threshold: parseInt(e.target.value) || 60 })
+                                                }
+                                                label="Queue Wait Threshold (sec)"
+                                                hint="Alert when jobs wait longer than this (10-600 sec)"
+                                                placeholder="60"
+                                            />
+                                        </div>
+
+                                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                                            <p className="text-sm text-foreground-muted">
+                                                Worker and retention changes require Horizon restart to take effect.
+                                            </p>
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>

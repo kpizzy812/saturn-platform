@@ -197,6 +197,12 @@ export default function AdminNotificationsIndex({ notifications, unreadCount }: 
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Link href="/admin/notifications/overview">
+                        <Button variant="secondary" size="sm">
+                            <Bell className="mr-2 h-4 w-4" />
+                            Channel Overview
+                        </Button>
+                    </Link>
                     <Button variant="secondary" size="sm" onClick={handleRefresh}>
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Refresh

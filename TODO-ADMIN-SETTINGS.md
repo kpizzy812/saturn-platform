@@ -22,9 +22,9 @@
 
 - [x] **SSH/Docker/Proxy global config** — Настройки SSH (mux, timeouts, retries), Docker registry URL (private registry), default proxy type (Traefik/Caddy) для новых серверов.
 
-- [ ] **Rate Limiting and Queue config** — API rate limit (сейчас hardcoded 200 req/min), Horizon worker configuration (processes, memory, retention), queue wait thresholds.
+- [x] **Rate Limiting and Queue config** — API rate limit (сейчас hardcoded 200 req/min), Horizon worker configuration (processes, memory, retention), queue wait thresholds.
 
-- [ ] **Notification Overview** — Админ-страница с обзором notification channels по всем командам: какие команды настроили Discord/Slack/Telegram/Email/Webhook.
+- [x] **Notification Overview** — Админ-страница с обзором notification channels по всем командам: какие команды настроили Discord/Slack/Telegram/Email/Webhook.
 
 ### LOW Priority
 

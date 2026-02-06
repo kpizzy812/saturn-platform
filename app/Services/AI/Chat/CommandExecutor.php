@@ -32,6 +32,7 @@ use App\Services\AI\Chat\DTOs\ParsedCommand;
 use App\Services\AI\Chat\DTOs\ParsedIntent;
 use App\Services\AI\DeploymentLogAnalyzer;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
@@ -2176,11 +2177,23 @@ HELP;
         return match ($type) {
             'application' => $this->findApplicationByName($name, $projectName, $envName),
             'service' => $this->findServiceByName($name, $projectName, $envName),
-            'server' => Server::where('name', 'ILIKE', '%'.$this->escapeIlike($name).'%')
-                ->where('team_id', $this->teamId)
-                ->first(),
+            'server' => $this->findServerByName($name),
             default => $this->findAnyResourceByName($name, $projectName, $envName),
         };
+    }
+
+    /**
+     * Find server by name with disambiguation.
+     */
+    private function findServerByName(string $name): ?Server
+    {
+        $cleanName = $this->cleanResourceName($name);
+
+        $matches = Server::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+            ->where('team_id', $this->teamId)
+            ->get();
+
+        return $this->resolveUniqueMatch($matches, $cleanName);
     }
 
     /**
@@ -2200,7 +2213,7 @@ HELP;
             $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
 
-        return $query->first();
+        return $this->resolveUniqueMatch($query->get(), $cleanName);
     }
 
     /**
@@ -2220,7 +2233,7 @@ HELP;
             $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
 
-        return $query->first();
+        return $this->resolveUniqueMatch($query->get(), $cleanName);
     }
 
     /**
@@ -2310,45 +2323,80 @@ HELP;
     private function findAnyResourceByName(string $name, ?string $projectName = null, ?string $envName = null): ?Model
     {
         $cleanName = $this->cleanResourceName($name);
+        $allMatches = collect();
 
-        // Try application
-        $app = $this->findApplicationByName($name, $projectName, $envName);
-        if ($app) {
-            return $app;
+        // Collect applications
+        $appQuery = Application::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
+        if ($projectName) {
+            $appQuery->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
         }
-
-        // Try service
-        $service = $this->findServiceByName($name, $projectName, $envName);
-        if ($service) {
-            return $service;
+        if ($envName) {
+            $appQuery->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
         }
+        $allMatches = $allMatches->merge($appQuery->get());
 
-        // Server (no project/environment)
-        $server = Server::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
-            ->where('team_id', $this->teamId)
-            ->first();
-        if ($server) {
-            return $server;
+        // Collect services
+        $serviceQuery = Service::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+            ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
+        if ($projectName) {
+            $serviceQuery->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
         }
+        if ($envName) {
+            $serviceQuery->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
+        }
+        $allMatches = $allMatches->merge($serviceQuery->get());
 
-        // Try databases with project/environment filter
+        // Collect servers (no project/environment filter)
+        $allMatches = $allMatches->merge(
+            Server::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+                ->where('team_id', $this->teamId)
+                ->get()
+        );
+
+        // Collect databases
         foreach (array_unique(self::DATABASE_MODELS) as $model) {
-            $query = $model::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
+            $dbQuery = $model::where('name', 'ILIKE', '%'.$this->escapeIlike($cleanName).'%')
                 ->whereHas('environment.project.team', fn ($q) => $q->where('id', $this->teamId));
-
             if ($projectName) {
-                $query->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
+                $dbQuery->whereHas('environment.project', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($projectName).'%'));
             }
             if ($envName) {
-                $query->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
+                $dbQuery->whereHas('environment', fn ($q) => $q->where('name', 'ILIKE', '%'.$this->escapeIlike($envName).'%'));
             }
-
-            $db = $query->first();
-            if ($db) {
-                return $db;
-            }
+            $allMatches = $allMatches->merge($dbQuery->get());
         }
 
+        return $this->resolveUniqueMatch($allMatches, $cleanName);
+    }
+
+    /**
+     * Resolve a unique match from a collection of candidates.
+     *
+     * Returns the single match if unambiguous, or null if zero/multiple matches.
+     * When multiple matches exist, tries exact name match to disambiguate
+     * (e.g., "frontend" wins over "frontend (Clone)").
+     */
+    private function resolveUniqueMatch(Collection $matches, string $cleanName): ?Model
+    {
+        if ($matches->isEmpty()) {
+            return null;
+        }
+
+        if ($matches->count() === 1) {
+            return $matches->first();
+        }
+
+        // Multiple matches — try exact name match to disambiguate
+        $exactMatches = $matches->filter(
+            fn (Model $m) => mb_strtolower($m->name) === mb_strtolower($cleanName)
+        );
+
+        if ($exactMatches->count() === 1) {
+            return $exactMatches->first();
+        }
+
+        // Still ambiguous
         return null;
     }
 
