@@ -50,6 +50,9 @@ Route::prefix('admin')->group(function () {
     // Server management
     require __DIR__.'/admin/servers.php';
 
+    // SSH Key management
+    require __DIR__.'/admin/ssh-keys.php';
+
     // Deployment management
     require __DIR__.'/admin/deployments.php';
 

@@ -50,6 +50,7 @@ const adminNavItems: NavItem[] = [
     { label: 'Teams', href: '/admin/teams', icon: <Teams className="h-4 w-4" /> },
     { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
     { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
+    { label: 'SSH Keys', href: '/admin/ssh-keys', icon: <KeyRound className="h-4 w-4" /> },
     { label: 'Approvals', href: '/admin/deployment-approvals', icon: <CheckCircle className="h-4 w-4" /> },
     { label: 'Templates', href: '/admin/templates', icon: <LayoutTemplate className="h-4 w-4" /> },
     { label: 'AI Usage', href: '/admin/ai-usage', icon: <Brain className="h-4 w-4" /> },

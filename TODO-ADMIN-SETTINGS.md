@@ -12,11 +12,11 @@
 
 ### HIGH Priority
 
-- [ ] **Server Settings bulk management** — Централизованный overview всех серверов с их настройками (concurrent_builds, docker_cleanup, sentinel, log drain). Bulk edit для массового изменения.
+- [x] **Server Settings bulk management** — Страница `/admin/servers/bulk`: таблица всех серверов с 16 настройками (build, docker cleanup, monitoring/sentinel), select all, bulk edit с include-toggle для каждого поля, confirmation dialog. Unit тесты для allowlist валидации.
 
 - [x] **Application Global Defaults** — Глобальные дефолты для новых приложений: auto-deploy, force HTTPS, preview deployments, auto-rollback, build cache, git submodules/lfs, docker images retention.
 
-- [ ] **SSH Key Management overview** — Админ-страница со списком всех SSH ключей по командам, где используется каждый ключ (servers, apps), fingerprints. Security audit.
+- [x] **SSH Key Management overview** — Админ-страница `/admin/ssh-keys` со списком всех SSH ключей по командам, где используется каждый ключ (servers, apps, git apps), fingerprints (SHA256 + MD5), security audit. Фильтры по team/type/usage. Show page с public key и usage details.
 
 ### MEDIUM Priority
 
