@@ -31,6 +31,8 @@ import {
     Network,
     Gauge,
     Layers,
+    Clock,
+    ShieldCheck,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -119,6 +121,10 @@ interface InstanceSettingsData {
     app_default_rollback_on_health_fail?: boolean;
     app_default_rollback_on_crash_loop?: boolean;
     app_default_debug?: boolean;
+    app_default_build_pack?: string;
+    app_default_build_timeout?: number;
+    app_default_static_image?: string;
+    app_default_requires_approval?: boolean;
     // Infrastructure: SSH
     ssh_mux_enabled?: boolean;
     ssh_mux_persist_time?: number;
@@ -223,6 +229,27 @@ export default function AdminSettingsIndex({ settings }: Props) {
         }
     };
 
+    const handleExport = () => {
+        window.location.href = '/admin/settings/export';
+    };
+
+    const handleImport = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) return;
+            const formPayload = new FormData();
+            formPayload.append('file', file);
+            router.post('/admin/settings/import', formPayload as any, {
+                preserveScroll: true,
+                forceFormData: true,
+            });
+        };
+        input.click();
+    };
+
     return (
         <AdminLayout
             title="Settings"
@@ -241,6 +268,12 @@ export default function AdminSettingsIndex({ settings }: Props) {
                         </p>
                     </div>
                     <div className="flex gap-2">
+                        <Button variant="secondary" onClick={handleExport}>
+                            Export
+                        </Button>
+                        <Button variant="secondary" onClick={handleImport}>
+                            Import
+                        </Button>
                         <Button variant="secondary" onClick={handleReset}>
                             <RotateCcw className="h-4 w-4" />
                             Reset
@@ -1676,6 +1709,57 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                     </CardContent>
                                 </Card>
 
+                                {/* Build Pack & Timeout */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Clock className="h-5 w-5 text-primary" />
+                                            <CardTitle>Build Pack & Timeout</CardTitle>
+                                        </div>
+                                        <CardDescription>Default build pack and timeout for new applications</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Select
+                                            value={formData.app_default_build_pack ?? 'nixpacks'}
+                                            onChange={(e) => update({ app_default_build_pack: e.target.value })}
+                                            label="Default Build Pack"
+                                            hint={
+                                                ({
+                                                    nixpacks: 'Auto-detect language and build with Nixpacks (recommended)',
+                                                    static: 'Serve static files with a web server',
+                                                    dockerfile: 'Build from a Dockerfile in the repository',
+                                                    dockercompose: 'Use Docker Compose for multi-container apps',
+                                                } as Record<string, string>)[formData.app_default_build_pack ?? 'nixpacks'] ?? 'Select a build pack'
+                                            }
+                                            options={[
+                                                { value: 'nixpacks', label: 'Nixpacks' },
+                                                { value: 'static', label: 'Static' },
+                                                { value: 'dockerfile', label: 'Dockerfile' },
+                                                { value: 'dockercompose', label: 'Docker Compose' },
+                                            ]}
+                                        />
+                                        <Input
+                                            type="number"
+                                            value={formData.app_default_build_timeout ?? 3600}
+                                            onChange={(e) =>
+                                                update({ app_default_build_timeout: parseInt(e.target.value) || 3600 })
+                                            }
+                                            label="Build Timeout (seconds)"
+                                            hint="Max time for build/deploy process (60-86400)"
+                                            placeholder="3600"
+                                        />
+                                        {formData.app_default_build_pack === 'static' && (
+                                            <Input
+                                                value={formData.app_default_static_image ?? 'nginx:alpine'}
+                                                onChange={(e) => update({ app_default_static_image: e.target.value })}
+                                                label="Static Image"
+                                                hint="Docker image to serve static files"
+                                                placeholder="nginx:alpine"
+                                            />
+                                        )}
+                                    </CardContent>
+                                </Card>
+
                                 {/* Build Defaults */}
                                 <Card variant="glass">
                                     <CardHeader>
@@ -1886,6 +1970,39 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                     update({ app_default_rollback_on_crash_loop: checked === true })
                                                 }
                                             />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Deployment Policy */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <ShieldCheck className="h-5 w-5 text-primary" />
+                                            <CardTitle>Deployment Policy</CardTitle>
+                                        </div>
+                                        <CardDescription>Deployment approval enforcement for new environments</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Require Deployment Approval</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Require manual approval before deploying to production environments
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_requires_approval ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_requires_approval: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                                            <p className="text-sm text-blue-400">
+                                                When enabled, all new environments will require deployment approval by default.
+                                                This can be overridden per environment.
+                                            </p>
                                         </div>
                                     </CardContent>
                                 </Card>

@@ -23,6 +23,12 @@ import {
     Bell,
     Brain,
     KeyRound,
+    History,
+    Webhook,
+    Clock,
+    Container,
+    Lock,
+    ArrowRightLeft,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -57,6 +63,12 @@ const adminNavItems: NavItem[] = [
     { label: 'Queues', href: '/admin/queues', icon: <ListOrdered className="h-4 w-4" /> },
     { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
     { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
+    { label: 'Scheduled Tasks', href: '/admin/scheduled-tasks', icon: <Clock className="h-4 w-4" /> },
+    { label: 'Docker Cleanups', href: '/admin/docker-cleanups', icon: <Container className="h-4 w-4" /> },
+    { label: 'SSL Certificates', href: '/admin/ssl-certificates', icon: <Lock className="h-4 w-4" /> },
+    { label: 'Webhooks', href: '/admin/webhook-deliveries', icon: <Webhook className="h-4 w-4" /> },
+    { label: 'Login History', href: '/admin/login-history', icon: <History className="h-4 w-4" /> },
+    { label: 'Transfers', href: '/admin/transfers', icon: <ArrowRightLeft className="h-4 w-4" /> },
     { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
     { label: 'OAuth / SSO', href: '/admin/settings/oauth', icon: <KeyRound className="h-4 w-4" /> },
     { label: 'System Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },

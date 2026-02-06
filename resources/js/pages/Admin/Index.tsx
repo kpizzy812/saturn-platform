@@ -25,6 +25,13 @@ interface SystemStats {
     totalDeployments: number;
     failedDeployments: number;
     totalTeams: number;
+    totalApplications: number;
+    totalServices: number;
+    totalDatabases: number;
+    deploymentSuccessRate24h: number;
+    deploymentSuccessRate7d: number;
+    queuePending: number;
+    queueFailed: number;
     diskUsage: number;
     cpuUsage: number;
 }
@@ -68,6 +75,13 @@ const defaultStats: SystemStats = {
     totalDeployments: 0,
     failedDeployments: 0,
     totalTeams: 0,
+    totalApplications: 0,
+    totalServices: 0,
+    totalDatabases: 0,
+    deploymentSuccessRate24h: 100,
+    deploymentSuccessRate7d: 100,
+    queuePending: 0,
+    queueFailed: 0,
     diskUsage: 0,
     cpuUsage: 0,
 };
@@ -334,9 +348,8 @@ export default function AdminDashboard({
                     <StatCard
                         title="Total Users"
                         value={stats.totalUsers}
-                        subtitle={`${stats.activeUsers} active`}
+                        subtitle={`${stats.activeUsers} active (30d)`}
                         icon={Users}
-                        trend="up"
                     />
                     <StatCard
                         title="Servers"
@@ -356,7 +369,47 @@ export default function AdminDashboard({
                         subtitle="Active teams"
                         icon={Users}
                     />
+                    <StatCard
+                        title="Applications"
+                        value={stats.totalApplications}
+                        subtitle="Deployed apps"
+                        icon={Activity}
+                    />
+                    <StatCard
+                        title="Services"
+                        value={stats.totalServices}
+                        subtitle="Running services"
+                        icon={Server}
+                    />
+                    <StatCard
+                        title="Databases"
+                        value={stats.totalDatabases}
+                        subtitle="All types"
+                        icon={Database}
+                    />
+                    <StatCard
+                        title="Deploy Success Rate"
+                        value={`${stats.deploymentSuccessRate24h}%`}
+                        subtitle={`${stats.deploymentSuccessRate7d}% over 7d`}
+                        icon={CheckCircle}
+                    />
                 </div>
+
+                {/* Queue Status */}
+                {(stats.queuePending > 0 || stats.queueFailed > 0) && (
+                    <div className="mb-8 flex gap-4">
+                        {stats.queuePending > 0 && (
+                            <Badge variant="warning">
+                                {stats.queuePending} deployment{stats.queuePending > 1 ? 's' : ''} in queue
+                            </Badge>
+                        )}
+                        {stats.queueFailed > 0 && (
+                            <Badge variant="danger">
+                                {stats.queueFailed} failed job{stats.queueFailed > 1 ? 's' : ''}
+                            </Badge>
+                        )}
+                    </div>
+                )}
 
                 <div className="grid gap-6 lg:grid-cols-2">
                     {/* System Health */}

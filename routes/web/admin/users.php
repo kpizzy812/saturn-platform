@@ -121,6 +121,7 @@ Route::get('/users/{id}', function (int $id) {
             'email' => $user->email,
             'email_verified_at' => $user->email_verified_at,
             'is_superadmin' => $user->isSuperAdmin(),
+            'platform_role' => $user->getPlatformRole(),
             'force_password_reset' => $user->force_password_reset ?? false,
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
@@ -559,3 +560,32 @@ Route::post('/users/{id}/transfer-and-delete', function (int $id) {
         return back()->with('error', 'Failed to delete user: '.$e->getMessage());
     }
 })->name('admin.users.transfer-and-delete');
+
+Route::post('/users/{id}/platform-role', function (int $id, \Illuminate\Http\Request $request) {
+    $adminUser = Auth::user();
+
+    if (! $adminUser->isSuperAdmin()) {
+        return back()->with('error', 'Unauthorized: Only superadmins can change platform roles');
+    }
+
+    $request->validate([
+        'platform_role' => 'required|string|in:owner,admin,member',
+    ]);
+
+    $user = \App\Models\User::findOrFail($id);
+
+    // Cannot change root user role
+    if ($user->id === 0) {
+        return back()->with('error', 'Cannot change root user role');
+    }
+
+    // Cannot demote yourself
+    if ($user->id === $adminUser->id && $request->input('platform_role') === 'member') {
+        return back()->with('error', 'Cannot demote yourself');
+    }
+
+    $oldRole = $user->getPlatformRole();
+    $user->update(['platform_role' => $request->input('platform_role')]);
+
+    return back()->with('success', "Platform role changed from {$oldRole} to {$request->input('platform_role')}");
+})->name('admin.users.platform-role');

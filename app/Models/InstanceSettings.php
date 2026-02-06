@@ -95,6 +95,10 @@ class InstanceSettings extends Model
         'app_default_rollback_on_health_fail',
         'app_default_rollback_on_crash_loop',
         'app_default_debug',
+        'app_default_build_pack',
+        'app_default_build_timeout',
+        'app_default_static_image',
+        'app_default_requires_approval',
         // Infrastructure: SSH
         'ssh_mux_enabled',
         'ssh_mux_persist_time',
@@ -195,6 +199,8 @@ class InstanceSettings extends Model
         'app_default_rollback_on_health_fail' => 'boolean',
         'app_default_rollback_on_crash_loop' => 'boolean',
         'app_default_debug' => 'boolean',
+        'app_default_build_timeout' => 'integer',
+        'app_default_requires_approval' => 'boolean',
 
         // Infrastructure: SSH
         'ssh_mux_enabled' => 'boolean',
@@ -316,6 +322,7 @@ class InstanceSettings extends Model
             'rollback_on_health_check_fail' => $this->app_default_rollback_on_health_fail,
             'rollback_on_crash_loop' => $this->app_default_rollback_on_crash_loop,
             'is_debug_enabled' => $this->app_default_debug,
+            'build_pack' => $this->app_default_build_pack,
         ];
     }
 

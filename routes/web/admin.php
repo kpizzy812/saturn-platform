@@ -27,8 +27,8 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Admin routes group with prefix
-Route::prefix('admin')->group(function () {
+// Admin routes group with prefix — protected by superadmin middleware
+Route::prefix('admin')->middleware('is.superadmin')->group(function () {
     // Dashboard - main admin page
     require __DIR__.'/admin/dashboard.php';
 
@@ -88,4 +88,22 @@ Route::prefix('admin')->group(function () {
 
     // OAuth/SSO provider management
     require __DIR__.'/admin/oauth.php';
+
+    // Login history / security audit
+    require __DIR__.'/admin/login-history.php';
+
+    // Webhook delivery logs
+    require __DIR__.'/admin/webhook-deliveries.php';
+
+    // Scheduled tasks overview
+    require __DIR__.'/admin/scheduled-tasks.php';
+
+    // Docker cleanup history
+    require __DIR__.'/admin/docker-cleanups.php';
+
+    // SSL certificates overview
+    require __DIR__.'/admin/ssl-certificates.php';
+
+    // Resource transfer history
+    require __DIR__.'/admin/transfers.php';
 });

@@ -28,7 +28,7 @@
 
 ### LOW Priority
 
-- [ ] **Build Defaults and Deployment Policy** — Default buildpack (nixpacks/static/dockerfile), build timeout, deployment approval enforcement для production.
+- [x] **Build Defaults and Deployment Policy** — Default buildpack (nixpacks/static/dockerfile), build timeout, deployment approval enforcement для production.
 
 ## Технические заметки
 

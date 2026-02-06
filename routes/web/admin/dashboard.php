@@ -11,6 +11,13 @@ use Inertia\Inertia;
 
 Route::get('/', function () {
     // Fetch actual system stats
+    $totalDeployments24h = \App\Models\ApplicationDeploymentQueue::where('created_at', '>=', now()->subHours(24))->count();
+    $successDeployments24h = \App\Models\ApplicationDeploymentQueue::where('created_at', '>=', now()->subHours(24))
+        ->where('status', 'finished')->count();
+    $totalDeployments7d = \App\Models\ApplicationDeploymentQueue::where('created_at', '>=', now()->subDays(7))->count();
+    $successDeployments7d = \App\Models\ApplicationDeploymentQueue::where('created_at', '>=', now()->subDays(7))
+        ->where('status', 'finished')->count();
+
     $stats = [
         'totalUsers' => \App\Models\User::count(),
         'activeUsers' => \App\Models\User::where('created_at', '>=', now()->subDays(30))->count(),
@@ -20,6 +27,22 @@ Route::get('/', function () {
         'totalTeams' => \App\Models\Team::count(),
         'totalApplications' => \App\Models\Application::count(),
         'totalServices' => \App\Models\Service::count(),
+        'totalDatabases' => \App\Models\StandalonePostgresql::count()
+            + \App\Models\StandaloneMysql::count()
+            + \App\Models\StandaloneMariadb::count()
+            + \App\Models\StandaloneMongodb::count()
+            + \App\Models\StandaloneRedis::count()
+            + \App\Models\StandaloneKeydb::count()
+            + \App\Models\StandaloneDragonfly::count()
+            + \App\Models\StandaloneClickhouse::count(),
+        'deploymentSuccessRate24h' => $totalDeployments24h > 0
+            ? round(($successDeployments24h / $totalDeployments24h) * 100)
+            : 100,
+        'deploymentSuccessRate7d' => $totalDeployments7d > 0
+            ? round(($successDeployments7d / $totalDeployments7d) * 100)
+            : 100,
+        'queuePending' => \App\Models\ApplicationDeploymentQueue::whereIn('status', ['queued', 'in_progress'])->count(),
+        'queueFailed' => \Illuminate\Support\Facades\DB::table('failed_jobs')->count(),
     ];
 
     // Recent activity from deployments (primary source of activity)

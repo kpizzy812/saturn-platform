@@ -122,6 +122,10 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.app_default_rollback_on_health_fail' => 'nullable|boolean',
         'settings.app_default_rollback_on_crash_loop' => 'nullable|boolean',
         'settings.app_default_debug' => 'nullable|boolean',
+        'settings.app_default_build_pack' => 'nullable|string|in:nixpacks,static,dockerfile,dockercompose',
+        'settings.app_default_build_timeout' => 'nullable|integer|min:60|max:86400',
+        'settings.app_default_static_image' => 'nullable|string|max:255',
+        'settings.app_default_requires_approval' => 'nullable|boolean',
         // SSH Configuration
         'settings.ssh_mux_enabled' => 'nullable|boolean',
         'settings.ssh_mux_persist_time' => 'nullable|integer|min:60|max:86400',
@@ -232,6 +236,10 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'app_default_rollback_on_health_fail' => $data['app_default_rollback_on_health_fail'] ?? $settings->app_default_rollback_on_health_fail,
         'app_default_rollback_on_crash_loop' => $data['app_default_rollback_on_crash_loop'] ?? $settings->app_default_rollback_on_crash_loop,
         'app_default_debug' => $data['app_default_debug'] ?? $settings->app_default_debug,
+        'app_default_build_pack' => $data['app_default_build_pack'] ?? $settings->app_default_build_pack,
+        'app_default_build_timeout' => $data['app_default_build_timeout'] ?? $settings->app_default_build_timeout,
+        'app_default_static_image' => $data['app_default_static_image'] ?? $settings->app_default_static_image,
+        'app_default_requires_approval' => $data['app_default_requires_approval'] ?? $settings->app_default_requires_approval,
         // SSH Configuration
         'ssh_mux_enabled' => $data['ssh_mux_enabled'] ?? $settings->ssh_mux_enabled,
         'ssh_mux_persist_time' => $data['ssh_mux_persist_time'] ?? $settings->ssh_mux_persist_time,
@@ -320,3 +328,68 @@ Route::post('/settings/test-email', function () {
         return back()->with('error', 'Failed to send test email: '.$e->getMessage());
     }
 })->name('admin.settings.test-email');
+
+Route::get('/settings/export', function () {
+    $settings = \App\Models\InstanceSettings::get();
+    $data = $settings->toArray();
+
+    // Remove sensitive fields from export
+    $sensitiveFields = [
+        'id', 'created_at', 'updated_at',
+        'smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token',
+        'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key',
+        's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password',
+    ];
+    foreach ($sensitiveFields as $field) {
+        unset($data[$field]);
+    }
+
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+    return response($json, 200, [
+        'Content-Type' => 'application/json',
+        'Content-Disposition' => 'attachment; filename="saturn-settings-'.date('Y-m-d').'.json"',
+    ]);
+})->name('admin.settings.export');
+
+Route::post('/settings/import', function (\Illuminate\Http\Request $request) {
+    $request->validate([
+        'file' => 'required|file|mimes:json|max:1024',
+    ]);
+
+    try {
+        $content = file_get_contents($request->file('file')->getRealPath());
+        $data = json_decode($content, true);
+
+        if (! is_array($data)) {
+            return back()->with('error', 'Invalid JSON format.');
+        }
+
+        $settings = \App\Models\InstanceSettings::get();
+        $fillable = $settings->getFillable();
+
+        // Only import fields that are in $fillable and not sensitive
+        $sensitiveFields = [
+            'smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token',
+            'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key',
+            's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password',
+        ];
+
+        $importData = [];
+        foreach ($data as $key => $value) {
+            if (in_array($key, $fillable) && ! in_array($key, $sensitiveFields)) {
+                $importData[$key] = $value;
+            }
+        }
+
+        if (empty($importData)) {
+            return back()->with('error', 'No valid settings found in the file.');
+        }
+
+        $settings->update($importData);
+
+        return back()->with('success', 'Settings imported successfully. '.count($importData).' fields updated.');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Failed to import settings: '.$e->getMessage());
+    }
+})->name('admin.settings.import');

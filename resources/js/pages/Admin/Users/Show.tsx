@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useConfirm } from '@/components/ui';
+import { Select } from '@/components/ui/Select';
 import {
     Mail,
     Calendar,
@@ -33,6 +34,7 @@ interface UserDetails {
     email: string;
     email_verified_at?: string;
     is_superadmin: boolean;
+    platform_role: string;
     force_password_reset?: boolean;
     created_at: string;
     updated_at: string;
@@ -176,11 +178,21 @@ export default function AdminUserShow({
                             </div>
                             <div className="flex items-start gap-3">
                                 <Shield className="mt-1 h-5 w-5 text-foreground-muted" />
-                                <div>
-                                    <p className="text-xs text-foreground-subtle">Role</p>
-                                    <p className="text-sm text-foreground">
-                                        {user.is_superadmin ? 'Super Admin' : 'User'}
-                                    </p>
+                                <div className="min-w-[160px]">
+                                    <p className="text-xs text-foreground-subtle mb-1">Platform Role</p>
+                                    <Select
+                                        value={user.platform_role}
+                                        onChange={(e) => {
+                                            router.post(`/admin/users/${user.id}/platform-role`, {
+                                                platform_role: e.target.value,
+                                            }, { preserveScroll: true });
+                                        }}
+                                        options={[
+                                            { value: 'owner', label: 'Owner' },
+                                            { value: 'admin', label: 'Admin' },
+                                            { value: 'member', label: 'Member' },
+                                        ]}
+                                    />
                                 </div>
                             </div>
                         </div>
