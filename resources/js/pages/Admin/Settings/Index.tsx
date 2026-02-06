@@ -22,6 +22,11 @@ import {
     Send,
     Eye,
     EyeOff,
+    Rocket,
+    Hammer,
+    Container,
+    Undo2,
+    Bug,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -92,6 +97,24 @@ interface InstanceSettingsData {
     s3_key?: string;
     s3_secret?: string;
     s3_path?: string;
+    // Application global defaults
+    app_default_auto_deploy?: boolean;
+    app_default_force_https?: boolean;
+    app_default_preview_deployments?: boolean;
+    app_default_pr_deployments_public?: boolean;
+    app_default_git_submodules?: boolean;
+    app_default_git_lfs?: boolean;
+    app_default_git_shallow_clone?: boolean;
+    app_default_use_build_secrets?: boolean;
+    app_default_inject_build_args?: boolean;
+    app_default_include_commit_in_build?: boolean;
+    app_default_docker_images_to_keep?: number;
+    app_default_auto_rollback?: boolean;
+    app_default_rollback_validation_sec?: number;
+    app_default_rollback_max_restarts?: number;
+    app_default_rollback_on_health_fail?: boolean;
+    app_default_rollback_on_crash_loop?: boolean;
+    app_default_debug?: boolean;
 
     created_at?: string;
     updated_at?: string;
@@ -227,6 +250,12 @@ export default function AdminSettingsIndex({ settings }: Props) {
                             <span className="flex items-center gap-1.5">
                                 <Server className="h-4 w-4" />
                                 Infrastructure
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger>
+                            <span className="flex items-center gap-1.5">
+                                <Rocket className="h-4 w-4" />
+                                App Defaults
                             </span>
                         </TabsTrigger>
                     </TabsList>
@@ -1148,6 +1177,300 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 </div>
                                             </>
                                         )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        {/* ============ TAB 6: APP DEFAULTS ============ */}
+                        <TabsContent>
+                            <div className="space-y-6">
+                                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+                                    <p className="text-sm text-foreground-muted">
+                                        These defaults are applied when creating new applications. Existing applications are not affected.
+                                    </p>
+                                </div>
+
+                                {/* Deployment Defaults */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Rocket className="h-5 w-5 text-primary" />
+                                            <CardTitle>Deployment Defaults</CardTitle>
+                                        </div>
+                                        <CardDescription>Default deployment behavior for new applications</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Auto Deploy</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Automatically deploy on git push
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_auto_deploy ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_auto_deploy: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Force HTTPS</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Redirect HTTP to HTTPS
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_force_https ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_force_https: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Preview Deployments</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Enable preview deployments for pull requests
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_preview_deployments ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_preview_deployments: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">PR Deployments Public</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Make pull request deployments publicly accessible
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_pr_deployments_public ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_pr_deployments_public: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Build Defaults */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Hammer className="h-5 w-5 text-primary" />
+                                            <CardTitle>Build Defaults</CardTitle>
+                                        </div>
+                                        <CardDescription>Default build configuration for new applications</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Git Submodules</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Enable git submodules during clone
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_git_submodules ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_git_submodules: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Git LFS</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Enable Git Large File Storage
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_git_lfs ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_git_lfs: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Shallow Clone</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Use shallow clone for faster builds
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_git_shallow_clone ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_git_shallow_clone: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Use Build Secrets</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Expose secrets during build phase
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_use_build_secrets ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_use_build_secrets: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Inject Build Args</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Inject build arguments to Dockerfile
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_inject_build_args ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_inject_build_args: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Include Commit SHA</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Include source commit SHA in build metadata
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_include_commit_in_build ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_include_commit_in_build: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Docker & Retention */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Container className="h-5 w-5 text-primary" />
+                                            <CardTitle>Docker & Debug</CardTitle>
+                                        </div>
+                                        <CardDescription>Docker image retention and debug settings</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Input
+                                            type="number"
+                                            value={formData.app_default_docker_images_to_keep ?? 2}
+                                            onChange={(e) =>
+                                                update({ app_default_docker_images_to_keep: parseInt(e.target.value) || 2 })
+                                            }
+                                            label="Docker Images to Keep"
+                                            hint="Number of Docker images to retain per application (1-50)"
+                                            placeholder="2"
+                                        />
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <Bug className="h-4 w-4 text-yellow-500" />
+                                                    <p className="font-medium text-foreground">Debug Mode</p>
+                                                </div>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Enable debug mode for new applications
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_debug ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_debug: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Auto-Rollback Defaults */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Undo2 className="h-5 w-5 text-primary" />
+                                            <CardTitle>Auto-Rollback Defaults</CardTitle>
+                                        </div>
+                                        <CardDescription>Default auto-rollback settings for new applications</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Enable Auto-Rollback</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Automatically rollback failed deployments
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_auto_rollback ?? false}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_auto_rollback: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <Input
+                                                type="number"
+                                                value={formData.app_default_rollback_validation_sec ?? 300}
+                                                onChange={(e) =>
+                                                    update({ app_default_rollback_validation_sec: parseInt(e.target.value) || 300 })
+                                                }
+                                                label="Validation Period (seconds)"
+                                                hint="Time to validate deployment health before confirming (10-3600)"
+                                                placeholder="300"
+                                            />
+                                            <Input
+                                                type="number"
+                                                value={formData.app_default_rollback_max_restarts ?? 3}
+                                                onChange={(e) =>
+                                                    update({ app_default_rollback_max_restarts: parseInt(e.target.value) || 3 })
+                                                }
+                                                label="Max Restarts"
+                                                hint="Maximum container restarts before triggering rollback (1-20)"
+                                                placeholder="3"
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Rollback on Health Check Failure</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Trigger rollback when healthcheck fails
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_rollback_on_health_fail ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_rollback_on_health_fail: checked === true })
+                                                }
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">Rollback on Crash Loop</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Trigger rollback when container enters crash loop
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.app_default_rollback_on_crash_loop ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ app_default_rollback_on_crash_loop: checked === true })
+                                                }
+                                            />
+                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>

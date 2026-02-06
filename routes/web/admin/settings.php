@@ -104,6 +104,24 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.s3_key' => 'nullable|string|max:255',
         'settings.s3_secret' => 'nullable|string|max:500',
         'settings.s3_path' => 'nullable|string|max:500',
+        // Application global defaults
+        'settings.app_default_auto_deploy' => 'nullable|boolean',
+        'settings.app_default_force_https' => 'nullable|boolean',
+        'settings.app_default_preview_deployments' => 'nullable|boolean',
+        'settings.app_default_pr_deployments_public' => 'nullable|boolean',
+        'settings.app_default_git_submodules' => 'nullable|boolean',
+        'settings.app_default_git_lfs' => 'nullable|boolean',
+        'settings.app_default_git_shallow_clone' => 'nullable|boolean',
+        'settings.app_default_use_build_secrets' => 'nullable|boolean',
+        'settings.app_default_inject_build_args' => 'nullable|boolean',
+        'settings.app_default_include_commit_in_build' => 'nullable|boolean',
+        'settings.app_default_docker_images_to_keep' => 'nullable|integer|min:1|max:50',
+        'settings.app_default_auto_rollback' => 'nullable|boolean',
+        'settings.app_default_rollback_validation_sec' => 'nullable|integer|min:10|max:3600',
+        'settings.app_default_rollback_max_restarts' => 'nullable|integer|min:1|max:20',
+        'settings.app_default_rollback_on_health_fail' => 'nullable|boolean',
+        'settings.app_default_rollback_on_crash_loop' => 'nullable|boolean',
+        'settings.app_default_debug' => 'nullable|boolean',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -170,6 +188,24 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         's3_bucket' => $data['s3_bucket'] ?? $settings->s3_bucket,
         's3_region' => $data['s3_region'] ?? $settings->s3_region,
         's3_path' => $data['s3_path'] ?? $settings->s3_path,
+        // Application global defaults
+        'app_default_auto_deploy' => $data['app_default_auto_deploy'] ?? $settings->app_default_auto_deploy,
+        'app_default_force_https' => $data['app_default_force_https'] ?? $settings->app_default_force_https,
+        'app_default_preview_deployments' => $data['app_default_preview_deployments'] ?? $settings->app_default_preview_deployments,
+        'app_default_pr_deployments_public' => $data['app_default_pr_deployments_public'] ?? $settings->app_default_pr_deployments_public,
+        'app_default_git_submodules' => $data['app_default_git_submodules'] ?? $settings->app_default_git_submodules,
+        'app_default_git_lfs' => $data['app_default_git_lfs'] ?? $settings->app_default_git_lfs,
+        'app_default_git_shallow_clone' => $data['app_default_git_shallow_clone'] ?? $settings->app_default_git_shallow_clone,
+        'app_default_use_build_secrets' => $data['app_default_use_build_secrets'] ?? $settings->app_default_use_build_secrets,
+        'app_default_inject_build_args' => $data['app_default_inject_build_args'] ?? $settings->app_default_inject_build_args,
+        'app_default_include_commit_in_build' => $data['app_default_include_commit_in_build'] ?? $settings->app_default_include_commit_in_build,
+        'app_default_docker_images_to_keep' => $data['app_default_docker_images_to_keep'] ?? $settings->app_default_docker_images_to_keep,
+        'app_default_auto_rollback' => $data['app_default_auto_rollback'] ?? $settings->app_default_auto_rollback,
+        'app_default_rollback_validation_sec' => $data['app_default_rollback_validation_sec'] ?? $settings->app_default_rollback_validation_sec,
+        'app_default_rollback_max_restarts' => $data['app_default_rollback_max_restarts'] ?? $settings->app_default_rollback_max_restarts,
+        'app_default_rollback_on_health_fail' => $data['app_default_rollback_on_health_fail'] ?? $settings->app_default_rollback_on_health_fail,
+        'app_default_rollback_on_crash_loop' => $data['app_default_rollback_on_crash_loop'] ?? $settings->app_default_rollback_on_crash_loop,
+        'app_default_debug' => $data['app_default_debug'] ?? $settings->app_default_debug,
     ];
 
     // Only update secret fields if the value is not the placeholder

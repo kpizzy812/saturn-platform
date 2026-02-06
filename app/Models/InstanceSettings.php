@@ -77,6 +77,24 @@ class InstanceSettings extends Model
         's3_key',
         's3_secret',
         's3_path',
+        // Application global defaults
+        'app_default_auto_deploy',
+        'app_default_force_https',
+        'app_default_preview_deployments',
+        'app_default_pr_deployments_public',
+        'app_default_git_submodules',
+        'app_default_git_lfs',
+        'app_default_git_shallow_clone',
+        'app_default_use_build_secrets',
+        'app_default_inject_build_args',
+        'app_default_include_commit_in_build',
+        'app_default_docker_images_to_keep',
+        'app_default_auto_rollback',
+        'app_default_rollback_validation_sec',
+        'app_default_rollback_max_restarts',
+        'app_default_rollback_on_health_fail',
+        'app_default_rollback_on_crash_loop',
+        'app_default_debug',
     ];
 
     protected $casts = [
@@ -132,6 +150,25 @@ class InstanceSettings extends Model
         's3_enabled' => 'boolean',
         's3_key' => 'encrypted',
         's3_secret' => 'encrypted',
+
+        // Application global defaults
+        'app_default_auto_deploy' => 'boolean',
+        'app_default_force_https' => 'boolean',
+        'app_default_preview_deployments' => 'boolean',
+        'app_default_pr_deployments_public' => 'boolean',
+        'app_default_git_submodules' => 'boolean',
+        'app_default_git_lfs' => 'boolean',
+        'app_default_git_shallow_clone' => 'boolean',
+        'app_default_use_build_secrets' => 'boolean',
+        'app_default_inject_build_args' => 'boolean',
+        'app_default_include_commit_in_build' => 'boolean',
+        'app_default_docker_images_to_keep' => 'integer',
+        'app_default_auto_rollback' => 'boolean',
+        'app_default_rollback_validation_sec' => 'integer',
+        'app_default_rollback_max_restarts' => 'integer',
+        'app_default_rollback_on_health_fail' => 'boolean',
+        'app_default_rollback_on_crash_loop' => 'boolean',
+        'app_default_debug' => 'boolean',
     ];
 
     protected static function booted(): void
@@ -204,6 +241,32 @@ class InstanceSettings extends Model
 
     //     return explode(',', $recipients);
     // }
+
+    /**
+     * Get application defaults mapped to ApplicationSetting field names.
+     */
+    public function getApplicationDefaults(): array
+    {
+        return [
+            'is_auto_deploy_enabled' => $this->app_default_auto_deploy,
+            'is_force_https_enabled' => $this->app_default_force_https,
+            'is_preview_deployments_enabled' => $this->app_default_preview_deployments,
+            'is_pr_deployments_public_enabled' => $this->app_default_pr_deployments_public,
+            'is_git_submodules_enabled' => $this->app_default_git_submodules,
+            'is_git_lfs_enabled' => $this->app_default_git_lfs,
+            'is_git_shallow_clone_enabled' => $this->app_default_git_shallow_clone,
+            'use_build_secrets' => $this->app_default_use_build_secrets,
+            'inject_build_args_to_dockerfile' => $this->app_default_inject_build_args,
+            'include_source_commit_in_build' => $this->app_default_include_commit_in_build,
+            'docker_images_to_keep' => $this->app_default_docker_images_to_keep,
+            'auto_rollback_enabled' => $this->app_default_auto_rollback,
+            'rollback_validation_seconds' => $this->app_default_rollback_validation_sec,
+            'rollback_max_restarts' => $this->app_default_rollback_max_restarts,
+            'rollback_on_health_check_fail' => $this->app_default_rollback_on_health_fail,
+            'rollback_on_crash_loop' => $this->app_default_rollback_on_crash_loop,
+            'is_debug_enabled' => $this->app_default_debug,
+        ];
+    }
 
     public function getTitleDisplayName(): string
     {

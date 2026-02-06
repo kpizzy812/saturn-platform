@@ -327,9 +327,11 @@ class Application extends BaseModel
             }
         });
         static::created(function ($application) {
-            ApplicationSetting::create([
-                'application_id' => $application->id,
-            ]);
+            $defaults = InstanceSettings::get()->getApplicationDefaults();
+            ApplicationSetting::create(array_merge(
+                ['application_id' => $application->id],
+                $defaults
+            ));
             $application->compose_parsing_version = self::$parserVersion;
             $application->save();
 

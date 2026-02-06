@@ -14,7 +14,7 @@
 
 - [ ] **Server Settings bulk management** — Централизованный overview всех серверов с их настройками (concurrent_builds, docker_cleanup, sentinel, log drain). Bulk edit для массового изменения.
 
-- [ ] **Application Global Defaults** — Глобальные дефолты для новых приложений: auto-deploy, force HTTPS, preview deployments, auto-rollback, build cache, git submodules/lfs, docker images retention.
+- [x] **Application Global Defaults** — Глобальные дефолты для новых приложений: auto-deploy, force HTTPS, preview deployments, auto-rollback, build cache, git submodules/lfs, docker images retention.
 
 - [ ] **SSH Key Management overview** — Админ-страница со списком всех SSH ключей по командам, где используется каждый ключ (servers, apps), fingerprints. Security audit.
 
