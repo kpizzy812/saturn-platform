@@ -524,7 +524,8 @@ class ServersController extends Controller
             return response()->json(['message' => 'Server with this IP already exists.'], 400);
         }
 
-        $proxyType = $request->proxy_type ? str($request->proxy_type)->upper() : ProxyTypes::TRAEFIK->value;
+        $defaultProxy = instanceSettings()->default_proxy_type ?? ProxyTypes::TRAEFIK->value;
+        $proxyType = $request->proxy_type ? str($request->proxy_type)->upper() : $defaultProxy;
 
         $server = ModelsServer::create([
             'name' => $request->name,

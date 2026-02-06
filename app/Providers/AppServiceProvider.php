@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureSanctumModel();
         $this->configureGitHubHttp();
         $this->ensureStorageLink();
+        $this->configureInfrastructureOverrides();
     }
 
     /**
@@ -79,6 +80,42 @@ class AppServiceProvider extends ServiceProvider
     private function configureSanctumModel(): void
     {
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+    }
+
+    /**
+     * Override config/constants.php SSH and Docker values from InstanceSettings DB.
+     * This avoids modifying SshMultiplexingHelper, SshRetryHandler, remoteProcess, etc.
+     */
+    private function configureInfrastructureOverrides(): void
+    {
+        try {
+            $settings = \App\Models\InstanceSettings::get();
+        } catch (\Throwable) {
+            return; // Table not yet migrated
+        }
+
+        $sshMap = [
+            'constants.ssh.mux_enabled' => $settings->ssh_mux_enabled,
+            'constants.ssh.mux_persist_time' => $settings->ssh_mux_persist_time,
+            'constants.ssh.mux_max_age' => $settings->ssh_mux_max_age,
+            'constants.ssh.connection_timeout' => $settings->ssh_connection_timeout,
+            'constants.ssh.command_timeout' => $settings->ssh_command_timeout,
+            'constants.ssh.max_retries' => $settings->ssh_max_retries,
+            'constants.ssh.retry_base_delay' => $settings->ssh_retry_base_delay,
+            'constants.ssh.retry_max_delay' => $settings->ssh_retry_max_delay,
+        ];
+
+        foreach ($sshMap as $key => $value) {
+            if ($value !== null) {
+                config([$key => $value]);
+            }
+        }
+
+        if ($settings->docker_registry_url) {
+            config([
+                'constants.saturn.registry_url' => $settings->docker_registry_url,
+            ]);
+        }
     }
 
     private function configureGitHubHttp(): void

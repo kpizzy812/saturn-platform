@@ -16,7 +16,7 @@ Route::get('/settings', function () {
     $settingsArray = $settings->toArray();
 
     // For encrypted fields, send a placeholder if they have a value
-    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key', 's3_key', 's3_secret'];
+    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key', 's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password'];
     foreach ($secretFields as $field) {
         if (! empty($settings->{$field})) {
             $settingsArray[$field] = '••••••••';
@@ -122,6 +122,21 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.app_default_rollback_on_health_fail' => 'nullable|boolean',
         'settings.app_default_rollback_on_crash_loop' => 'nullable|boolean',
         'settings.app_default_debug' => 'nullable|boolean',
+        // SSH Configuration
+        'settings.ssh_mux_enabled' => 'nullable|boolean',
+        'settings.ssh_mux_persist_time' => 'nullable|integer|min:60|max:86400',
+        'settings.ssh_mux_max_age' => 'nullable|integer|min:60|max:86400',
+        'settings.ssh_connection_timeout' => 'nullable|integer|min:5|max:300',
+        'settings.ssh_command_timeout' => 'nullable|integer|min:60|max:86400',
+        'settings.ssh_max_retries' => 'nullable|integer|min:0|max:10',
+        'settings.ssh_retry_base_delay' => 'nullable|integer|min:1|max:60',
+        'settings.ssh_retry_max_delay' => 'nullable|integer|min:1|max:300',
+        // Docker Registry
+        'settings.docker_registry_url' => 'nullable|string|max:500',
+        'settings.docker_registry_username' => 'nullable|string|max:255',
+        'settings.docker_registry_password' => 'nullable|string|max:500',
+        // Default Proxy
+        'settings.default_proxy_type' => 'nullable|string|in:TRAEFIK,CADDY,NONE',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -206,6 +221,19 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'app_default_rollback_on_health_fail' => $data['app_default_rollback_on_health_fail'] ?? $settings->app_default_rollback_on_health_fail,
         'app_default_rollback_on_crash_loop' => $data['app_default_rollback_on_crash_loop'] ?? $settings->app_default_rollback_on_crash_loop,
         'app_default_debug' => $data['app_default_debug'] ?? $settings->app_default_debug,
+        // SSH Configuration
+        'ssh_mux_enabled' => $data['ssh_mux_enabled'] ?? $settings->ssh_mux_enabled,
+        'ssh_mux_persist_time' => $data['ssh_mux_persist_time'] ?? $settings->ssh_mux_persist_time,
+        'ssh_mux_max_age' => $data['ssh_mux_max_age'] ?? $settings->ssh_mux_max_age,
+        'ssh_connection_timeout' => $data['ssh_connection_timeout'] ?? $settings->ssh_connection_timeout,
+        'ssh_command_timeout' => $data['ssh_command_timeout'] ?? $settings->ssh_command_timeout,
+        'ssh_max_retries' => $data['ssh_max_retries'] ?? $settings->ssh_max_retries,
+        'ssh_retry_base_delay' => $data['ssh_retry_base_delay'] ?? $settings->ssh_retry_base_delay,
+        'ssh_retry_max_delay' => $data['ssh_retry_max_delay'] ?? $settings->ssh_retry_max_delay,
+        // Docker Registry (non-secret)
+        'docker_registry_url' => $data['docker_registry_url'] ?? $settings->docker_registry_url,
+        // Default Proxy
+        'default_proxy_type' => $data['default_proxy_type'] ?? $settings->default_proxy_type,
     ];
 
     // Only update secret fields if the value is not the placeholder
@@ -219,6 +247,8 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'ai_openai_api_key' => 'ai_openai_api_key',
         's3_key' => 's3_key',
         's3_secret' => 's3_secret',
+        'docker_registry_username' => 'docker_registry_username',
+        'docker_registry_password' => 'docker_registry_password',
     ];
 
     foreach ($secretMappings as $formField => $dbField) {

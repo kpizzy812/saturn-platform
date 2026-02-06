@@ -27,6 +27,8 @@ import {
     Container,
     Undo2,
     Bug,
+    Terminal,
+    Network,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -115,6 +117,21 @@ interface InstanceSettingsData {
     app_default_rollback_on_health_fail?: boolean;
     app_default_rollback_on_crash_loop?: boolean;
     app_default_debug?: boolean;
+    // Infrastructure: SSH
+    ssh_mux_enabled?: boolean;
+    ssh_mux_persist_time?: number;
+    ssh_mux_max_age?: number;
+    ssh_connection_timeout?: number;
+    ssh_command_timeout?: number;
+    ssh_max_retries?: number;
+    ssh_retry_base_delay?: number;
+    ssh_retry_max_delay?: number;
+    // Infrastructure: Docker Registry
+    docker_registry_url?: string;
+    docker_registry_username?: string;
+    docker_registry_password?: string;
+    // Infrastructure: Default Proxy
+    default_proxy_type?: string;
 
     created_at?: string;
     updated_at?: string;
@@ -147,6 +164,8 @@ export default function AdminSettingsIndex({ settings }: Props) {
     const [showOpenaiKey, setShowOpenaiKey] = React.useState(false);
     const [showS3Key, setShowS3Key] = React.useState(false);
     const [showS3Secret, setShowS3Secret] = React.useState(false);
+    const [showDockerUsername, setShowDockerUsername] = React.useState(false);
+    const [showDockerPassword, setShowDockerPassword] = React.useState(false);
 
     const update = (fields: Partial<InstanceSettingsData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
@@ -1177,6 +1196,229 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 </div>
                                             </>
                                         )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* SSH Configuration */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Terminal className="h-5 w-5 text-primary" />
+                                                <CardTitle>SSH Configuration</CardTitle>
+                                            </div>
+                                            <Badge variant={formData.ssh_mux_enabled ? 'success' : 'default'}>
+                                                {formData.ssh_mux_enabled ? 'Mux Enabled' : 'Mux Disabled'}
+                                            </Badge>
+                                        </div>
+                                        <CardDescription>
+                                            SSH multiplexing and connection tuning for remote server communication
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="flex items-center justify-between rounded-lg border border-white/[0.06] p-4">
+                                            <div>
+                                                <p className="font-medium text-foreground">SSH Multiplexing</p>
+                                                <p className="text-sm text-foreground-muted">
+                                                    Reuse SSH connections for faster command execution
+                                                </p>
+                                            </div>
+                                            <Checkbox
+                                                checked={formData.ssh_mux_enabled ?? true}
+                                                onCheckedChange={(checked) =>
+                                                    update({ ssh_mux_enabled: checked === true })
+                                                }
+                                            />
+                                        </div>
+
+                                        {formData.ssh_mux_enabled && (
+                                            <div className="grid gap-4 sm:grid-cols-2">
+                                                <Input
+                                                    type="number"
+                                                    value={formData.ssh_mux_persist_time ?? 1800}
+                                                    onChange={(e) =>
+                                                        update({ ssh_mux_persist_time: parseInt(e.target.value) || 1800 })
+                                                    }
+                                                    label="Mux Persist Time (sec)"
+                                                    hint="Keep connection open after last use (60-86400)"
+                                                    placeholder="1800"
+                                                />
+                                                <Input
+                                                    type="number"
+                                                    value={formData.ssh_mux_max_age ?? 3600}
+                                                    onChange={(e) =>
+                                                        update({ ssh_mux_max_age: parseInt(e.target.value) || 3600 })
+                                                    }
+                                                    label="Mux Max Age (sec)"
+                                                    hint="Maximum total age before cleanup (60-86400)"
+                                                    placeholder="3600"
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <Input
+                                                type="number"
+                                                value={formData.ssh_connection_timeout ?? 30}
+                                                onChange={(e) =>
+                                                    update({ ssh_connection_timeout: parseInt(e.target.value) || 30 })
+                                                }
+                                                label="Connection Timeout (sec)"
+                                                hint="Timeout for establishing SSH connection (5-300)"
+                                                placeholder="30"
+                                            />
+                                            <Input
+                                                type="number"
+                                                value={formData.ssh_command_timeout ?? 3600}
+                                                onChange={(e) =>
+                                                    update({ ssh_command_timeout: parseInt(e.target.value) || 3600 })
+                                                }
+                                                label="Command Timeout (sec)"
+                                                hint="Max execution time for remote commands (60-86400)"
+                                                placeholder="3600"
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-4 sm:grid-cols-3">
+                                            <Input
+                                                type="number"
+                                                value={formData.ssh_max_retries ?? 3}
+                                                onChange={(e) =>
+                                                    update({ ssh_max_retries: parseInt(e.target.value) || 3 })
+                                                }
+                                                label="Max Retries"
+                                                hint="Retry attempts on failure (0-10)"
+                                                placeholder="3"
+                                            />
+                                            <Input
+                                                type="number"
+                                                value={formData.ssh_retry_base_delay ?? 2}
+                                                onChange={(e) =>
+                                                    update({ ssh_retry_base_delay: parseInt(e.target.value) || 2 })
+                                                }
+                                                label="Retry Base Delay (sec)"
+                                                hint="Initial delay between retries (1-60)"
+                                                placeholder="2"
+                                            />
+                                            <Input
+                                                type="number"
+                                                value={formData.ssh_retry_max_delay ?? 30}
+                                                onChange={(e) =>
+                                                    update({ ssh_retry_max_delay: parseInt(e.target.value) || 30 })
+                                                }
+                                                label="Retry Max Delay (sec)"
+                                                hint="Maximum delay between retries (1-300)"
+                                                placeholder="30"
+                                            />
+                                        </div>
+
+                                        <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                                            <p className="text-sm text-foreground-muted">
+                                                Changes take effect after queue worker restart.
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Docker Registry */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Container className="h-5 w-5 text-primary" />
+                                            <CardTitle>Docker Registry</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Default Docker registry for pulling helper and realtime images
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Input
+                                            value={formData.docker_registry_url || ''}
+                                            onChange={(e) => update({ docker_registry_url: e.target.value })}
+                                            placeholder="ghcr.io"
+                                            label="Registry URL"
+                                            hint="Docker registry URL for helper image pulls"
+                                        />
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div>
+                                                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                                    Username
+                                                </label>
+                                                <div className="relative">
+                                                    <Input
+                                                        type={showDockerUsername ? 'text' : 'password'}
+                                                        value={formData.docker_registry_username || ''}
+                                                        onChange={(e) => update({ docker_registry_username: e.target.value })}
+                                                        placeholder="Optional"
+                                                        className="pr-10"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowDockerUsername(!showDockerUsername)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                                                    >
+                                                        {showDockerUsername ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                                                    Password
+                                                </label>
+                                                <div className="relative">
+                                                    <Input
+                                                        type={showDockerPassword ? 'text' : 'password'}
+                                                        value={formData.docker_registry_password || ''}
+                                                        onChange={(e) => update({ docker_registry_password: e.target.value })}
+                                                        placeholder="Optional"
+                                                        className="pr-10"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowDockerPassword(!showDockerPassword)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground"
+                                                    >
+                                                        {showDockerPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                                            <p className="text-sm text-foreground-muted">
+                                                Changing the registry URL affects helper image pulls for all servers.
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Default Proxy Type */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Network className="h-5 w-5 text-primary" />
+                                            <CardTitle>Default Proxy Type</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Default reverse proxy for newly created servers
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Select
+                                            value={formData.default_proxy_type || 'TRAEFIK'}
+                                            onChange={(e) => update({ default_proxy_type: e.target.value })}
+                                            label="Proxy Type"
+                                            options={[
+                                                { value: 'TRAEFIK', label: 'Traefik' },
+                                                { value: 'CADDY', label: 'Caddy' },
+                                                { value: 'NONE', label: 'None' },
+                                            ]}
+                                        />
+                                        <p className="text-sm text-foreground-muted">
+                                            {formData.default_proxy_type === 'TRAEFIK' && 'Traefik — full-featured reverse proxy with automatic SSL, dashboard, and middleware support.'}
+                                            {formData.default_proxy_type === 'CADDY' && 'Caddy — simple reverse proxy with automatic HTTPS and minimal configuration.'}
+                                            {formData.default_proxy_type === 'NONE' && 'No proxy — servers will not have a reverse proxy configured by default.'}
+                                            {!formData.default_proxy_type && 'Traefik — full-featured reverse proxy with automatic SSL, dashboard, and middleware support.'}
+                                        </p>
                                     </CardContent>
                                 </Card>
                             </div>

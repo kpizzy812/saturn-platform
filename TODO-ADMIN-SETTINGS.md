@@ -20,7 +20,7 @@
 
 ### MEDIUM Priority
 
-- [ ] **SSH/Docker/Proxy global config** — Настройки SSH (mux, timeouts, retries), Docker registry URL (private registry), default proxy type (Traefik/Caddy) для новых серверов.
+- [x] **SSH/Docker/Proxy global config** — Настройки SSH (mux, timeouts, retries), Docker registry URL (private registry), default proxy type (Traefik/Caddy) для новых серверов.
 
 - [ ] **Rate Limiting and Queue config** — API rate limit (сейчас hardcoded 200 req/min), Horizon worker configuration (processes, memory, retention), queue wait thresholds.
 
@@ -46,3 +46,4 @@
 ### Миграции созданы:
 - `2026_02_05_120000_add_ai_provider_settings_to_instance_settings.php`
 - `2026_02_05_130000_add_global_s3_settings_to_instance_settings.php`
+- `2026_02_06_150000_add_infrastructure_settings_to_instance_settings.php`

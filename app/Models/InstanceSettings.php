@@ -95,6 +95,21 @@ class InstanceSettings extends Model
         'app_default_rollback_on_health_fail',
         'app_default_rollback_on_crash_loop',
         'app_default_debug',
+        // Infrastructure: SSH
+        'ssh_mux_enabled',
+        'ssh_mux_persist_time',
+        'ssh_mux_max_age',
+        'ssh_connection_timeout',
+        'ssh_command_timeout',
+        'ssh_max_retries',
+        'ssh_retry_base_delay',
+        'ssh_retry_max_delay',
+        // Infrastructure: Docker Registry
+        'docker_registry_url',
+        'docker_registry_username',
+        'docker_registry_password',
+        // Infrastructure: Default Proxy
+        'default_proxy_type',
     ];
 
     protected $casts = [
@@ -169,6 +184,20 @@ class InstanceSettings extends Model
         'app_default_rollback_on_health_fail' => 'boolean',
         'app_default_rollback_on_crash_loop' => 'boolean',
         'app_default_debug' => 'boolean',
+
+        // Infrastructure: SSH
+        'ssh_mux_enabled' => 'boolean',
+        'ssh_mux_persist_time' => 'integer',
+        'ssh_mux_max_age' => 'integer',
+        'ssh_connection_timeout' => 'integer',
+        'ssh_command_timeout' => 'integer',
+        'ssh_max_retries' => 'integer',
+        'ssh_retry_base_delay' => 'integer',
+        'ssh_retry_max_delay' => 'integer',
+
+        // Infrastructure: Docker Registry
+        'docker_registry_username' => 'encrypted',
+        'docker_registry_password' => 'encrypted',
     ];
 
     protected static function booted(): void
