@@ -36,6 +36,9 @@ import {
     Cloud,
     Trash2,
     Zap,
+    Info,
+    ExternalLink,
+    CheckCircle2,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -2031,24 +2034,42 @@ export default function AdminSettingsIndex({ settings }: Props) {
                         {/* ============ TAB 7: IP PROTECTION ============ */}
                         <TabsContent>
                             <div className="space-y-6">
+                                {/* What is this - explainer */}
+                                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4">
+                                    <div className="flex gap-3">
+                                        <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-400" />
+                                        <div className="space-y-2 text-sm text-blue-300">
+                                            <p className="font-medium text-blue-200">What does this do?</p>
+                                            <p>
+                                                Cloudflare Tunnel hides your master server's real IP address behind Cloudflare's network.
+                                                Without it, anyone can discover your server IP via DNS and target it directly with DDoS attacks.
+                                            </p>
+                                            <p>When enabled, Saturn will automatically:</p>
+                                            <ul className="ml-4 list-disc space-y-1">
+                                                <li>Route all traffic through Cloudflare (free DDoS protection)</li>
+                                                <li>Create DNS records (CNAME) pointing to the tunnel instead of your real IP</li>
+                                                <li>Sync routes automatically on every deployment and FQDN change</li>
+                                                <li>Hide server IPs from non-admin users in the API</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Status Card */}
                                 <Card variant="glass">
                                     <CardHeader>
                                         <div className="flex items-center gap-2">
                                             <ShieldCheck className="h-5 w-5 text-primary" />
-                                            <CardTitle>Cloudflare Tunnel Protection</CardTitle>
+                                            <CardTitle>Protection Status</CardTitle>
                                         </div>
-                                        <CardDescription>
-                                            Hide your master server IP behind Cloudflare Tunnel for DDoS protection. Routes are auto-synced on every deployment.
-                                        </CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="flex items-center gap-3">
                                             <span className="text-sm font-medium text-foreground">Status:</span>
                                             {formData.is_cloudflare_protection_enabled && formData.cloudflare_tunnel_id ? (
-                                                <Badge variant="success">Active</Badge>
+                                                <Badge variant="success">Active — IP Protected</Badge>
                                             ) : formData.cloudflare_api_token && formData.cloudflare_api_token !== '' ? (
-                                                <Badge variant="warning">Configured (Tunnel not initialized)</Badge>
+                                                <Badge variant="warning">Credentials saved — Tunnel not initialized</Badge>
                                             ) : (
                                                 <Badge variant="secondary">Not Configured</Badge>
                                             )}
@@ -2061,6 +2082,89 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 )}
                                             </div>
                                         )}
+                                        {!formData.cloudflare_tunnel_id && (
+                                            <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                                                <p className="text-sm text-amber-300">
+                                                    Your master server IP is currently exposed. Follow the setup steps below to enable protection.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Setup Guide */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Info className="h-5 w-5 text-primary" />
+                                            <CardTitle>Setup Guide</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Follow these steps to configure Cloudflare Tunnel protection. You need a free Cloudflare account with your domain added.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            <div className="flex gap-3">
+                                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">1</div>
+                                                <div>
+                                                    <p className="font-medium text-foreground">Create an API Token in Cloudflare</p>
+                                                    <p className="mt-1 text-sm text-foreground-muted">
+                                                        Go to{' '}
+                                                        <a
+                                                            href="https://dash.cloudflare.com/profile/api-tokens"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                                                        >
+                                                            Cloudflare API Tokens <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                        {' '}and create a Custom Token with these permissions:
+                                                    </p>
+                                                    <ul className="ml-4 mt-1 list-disc text-sm text-foreground-muted">
+                                                        <li><strong>Account &rarr; Cloudflare Tunnel &rarr; Edit</strong></li>
+                                                        <li><strong>Zone &rarr; DNS &rarr; Edit</strong></li>
+                                                        <li><strong>Account &rarr; Account Settings &rarr; Read</strong></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">2</div>
+                                                <div>
+                                                    <p className="font-medium text-foreground">Copy Account ID and Zone ID</p>
+                                                    <p className="mt-1 text-sm text-foreground-muted">
+                                                        In{' '}
+                                                        <a
+                                                            href="https://dash.cloudflare.com/"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                                                        >
+                                                            Cloudflare Dashboard <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                        , select your domain. On the <strong>Overview</strong> page, scroll down to the <strong>API</strong> section on the right sidebar — you'll find both IDs there.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">3</div>
+                                                <div>
+                                                    <p className="font-medium text-foreground">Enter credentials below and click "Save Changes"</p>
+                                                    <p className="mt-1 text-sm text-foreground-muted">
+                                                        Paste the API Token, Account ID, and Zone ID into the form below, then press the <strong>Save Changes</strong> button at the top of the page.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">4</div>
+                                                <div>
+                                                    <p className="font-medium text-foreground">Click "Initialize Tunnel"</p>
+                                                    <p className="mt-1 text-sm text-foreground-muted">
+                                                        This will create a Cloudflare Tunnel, deploy a <code className="rounded bg-white/5 px-1 py-0.5 text-xs">cloudflared</code> container on your master server, update DNS records, and sync all application routes. Takes about 15-30 seconds.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </CardContent>
                                 </Card>
 
@@ -2071,9 +2175,6 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                             <Cloud className="h-5 w-5 text-primary" />
                                             <CardTitle>Cloudflare Credentials</CardTitle>
                                         </div>
-                                        <CardDescription>
-                                            Enter your Cloudflare API Token, Account ID, and Zone ID. The API token needs permissions: Cloudflare Tunnel (Edit), DNS (Edit), Account Settings (Read).
-                                        </CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="relative">
@@ -2083,6 +2184,7 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 onChange={(e) => update({ cloudflare_api_token: e.target.value })}
                                                 placeholder="Enter Cloudflare API Token"
                                                 label="API Token"
+                                                hint="Custom token created at dash.cloudflare.com/profile/api-tokens"
                                             />
                                             <button
                                                 type="button"
@@ -2098,15 +2200,21 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 onChange={(e) => update({ cloudflare_account_id: e.target.value })}
                                                 placeholder="e.g. a1b2c3d4e5f6..."
                                                 label="Account ID"
-                                                hint="Found in Cloudflare Dashboard → Overview → API section"
+                                                hint="32-character hex string from Dashboard → your domain → Overview → API"
                                             />
                                             <Input
                                                 value={formData.cloudflare_zone_id || ''}
                                                 onChange={(e) => update({ cloudflare_zone_id: e.target.value })}
                                                 placeholder="e.g. f6e5d4c3b2a1..."
                                                 label="Zone ID"
-                                                hint="Found in Cloudflare Dashboard → Your domain → Overview → API section"
+                                                hint="32-character hex string, right below Account ID on the same page"
                                             />
+                                        </div>
+                                        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+                                            <p className="text-xs text-foreground-muted">
+                                                After entering credentials, click <strong>"Save Changes"</strong> at the top of the page before initializing the tunnel.
+                                                The API token is stored encrypted and never exposed in the UI after saving.
+                                            </p>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -2118,11 +2226,8 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                             <Zap className="h-5 w-5 text-primary" />
                                             <CardTitle>Tunnel Actions</CardTitle>
                                         </div>
-                                        <CardDescription>
-                                            Initialize, sync, or destroy the Cloudflare Tunnel. Save credentials first before initializing.
-                                        </CardDescription>
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="space-y-4">
                                         <div className="flex flex-wrap gap-3">
                                             {!formData.cloudflare_tunnel_id ? (
                                                 <Button
@@ -2159,7 +2264,7 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                         onClick={async () => {
                                                             const confirmed = await confirm({
                                                                 title: 'Destroy Cloudflare Tunnel',
-                                                                description: 'This will remove the Cloudflare Tunnel and cloudflared container. Your server IP will no longer be protected. Are you sure?',
+                                                                description: 'This will remove the Cloudflare Tunnel and cloudflared container from your master server. Your real IP will become visible again and DNS records will need manual cleanup.',
                                                                 confirmText: 'Destroy',
                                                                 variant: 'danger',
                                                             });
@@ -2176,6 +2281,33 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                         <Trash2 className="h-4 w-4" />
                                                         Destroy Tunnel
                                                     </Button>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Action explanations */}
+                                        <div className="space-y-2 text-sm text-foreground-muted">
+                                            {!formData.cloudflare_tunnel_id ? (
+                                                <div className="flex items-start gap-2">
+                                                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                                                    <p>
+                                                        <strong>Initialize Tunnel</strong> — creates a Cloudflare Tunnel, deploys <code className="rounded bg-white/5 px-1 py-0.5 text-xs">cloudflared</code> container on the master server, sets up DNS CNAME records for all your applications, and enables auto-sync on deploy.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-start gap-2">
+                                                        <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                                                        <p>
+                                                            <strong>Force Sync</strong> — manually re-syncs all application routes and DNS records. Normally this happens automatically on every deployment, but you can trigger it here if something got out of sync.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-start gap-2">
+                                                        <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                                                        <p>
+                                                            <strong>Destroy Tunnel</strong> — removes the tunnel and stops the cloudflared container. Your server IP will be exposed again. DNS CNAME records pointing to the tunnel will stop working — you'll need to update them manually or re-initialize.
+                                                        </p>
+                                                    </div>
                                                 </>
                                             )}
                                         </div>
