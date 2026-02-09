@@ -248,6 +248,15 @@ class InstanceSettings extends Model
             // Clear trusted hosts cache when FQDN changes
             if ($settings->wasChanged('fqdn')) {
                 Cache::forget('instance_settings_fqdn_host');
+
+                // Sync Cloudflare routes when platform FQDN changes
+                try {
+                    if ($settings->isCloudflareProtectionActive()) {
+                        \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                    }
+                } catch (\Throwable $e) {
+                    // Don't break FQDN update if Cloudflare sync fails
+                }
             }
         });
     }

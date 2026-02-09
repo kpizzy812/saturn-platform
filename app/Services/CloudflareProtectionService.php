@@ -338,6 +338,7 @@ class CloudflareProtectionService
         // All ApplicationPreviews with FQDNs (PR preview deployments)
         $previews = ApplicationPreview::whereNotNull('fqdn')
             ->where('fqdn', '!=', '')
+            ->with('application')
             ->get();
 
         foreach ($previews as $preview) {
@@ -396,16 +397,28 @@ class CloudflareProtectionService
         $settings = $this->settings();
         $tunnelCname = "{$settings->cloudflare_tunnel_id}.cfargotunnel.com";
 
-        // Get existing DNS records
-        $existingRecords = $this->safeApiCall(fn ($client) => $client->get(
-            "/zones/{$settings->cloudflare_zone_id}/dns_records",
-            [
-                'type' => 'CNAME',
-                'per_page' => 100,
-            ]
-        ));
+        // Get all existing CNAME DNS records (paginated — Cloudflare max 100 per page)
+        $allRecords = collect();
+        $page = 1;
 
-        $existingByName = collect($existingRecords->json('result', []))->keyBy('name');
+        do {
+            $response = $this->safeApiCall(fn ($client) => $client->get(
+                "/zones/{$settings->cloudflare_zone_id}/dns_records",
+                [
+                    'type' => 'CNAME',
+                    'per_page' => 100,
+                    'page' => $page,
+                ]
+            ));
+
+            $records = $response->json('result', []);
+            $allRecords = $allRecords->merge($records);
+
+            $totalPages = $response->json('result_info.total_pages', 1);
+            $page++;
+        } while ($page <= $totalPages);
+
+        $existingByName = $allRecords->keyBy('name');
 
         // Collect all hostnames from ingress (excluding catch-all and wildcards)
         $hostnames = collect($ingressRules)

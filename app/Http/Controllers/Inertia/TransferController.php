@@ -328,17 +328,20 @@ class TransferController extends Controller
             });
 
         // Get servers with their associated environments via destinations
+        $maskIp = instanceSettings()->isCloudflareProtectionActive()
+            && ! (auth()->user()?->is_superadmin || auth()->user()?->platform_role === 'admin');
+
         $servers = Server::ownedByCurrentTeamCached()
             ->filter(fn ($server) => $server->isFunctional())
-            ->flatMap(function ($server) use ($environments) {
+            ->flatMap(function ($server) use ($environments, $maskIp) {
                 // Server can be target for any environment
                 // We create entries for each environment to enable environment-server pairing
-                return $environments->map(function ($env) use ($server) {
+                return $environments->map(function ($env) use ($server, $maskIp) {
                     return [
                         'id' => $server->id,
                         'uuid' => $server->uuid,
                         'name' => $server->name,
-                        'ip' => $server->ip,
+                        'ip' => $maskIp ? '[protected]' : $server->ip,
                         'environment_id' => $env['id'],
                         'is_functional' => true,
                     ];
