@@ -6,6 +6,7 @@ import { initializeEcho } from '@/lib/echo';
 import { initializeSentry, setUser } from '@/lib/sentry';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ConfirmationProvider, ToastProvider, ThemeProvider } from '@/components/ui';
+import { MotionProvider } from '@/components/animation';
 import { AiChatGlobal } from '@/components/AiChat';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Saturn Platform';
@@ -42,15 +43,17 @@ createInertiaApp({
         root.render(
             <ErrorBoundary>
                 <ThemeProvider>
-                    <ToastProvider>
-                        <ConfirmationProvider>
-                            <App {...props} />
-                            <AiChatGlobal
-                                isAuthenticated={isAuthenticated}
-                                isAvailable={aiChatEnabled}
-                            />
-                        </ConfirmationProvider>
-                    </ToastProvider>
+                    <MotionProvider>
+                        <ToastProvider>
+                            <ConfirmationProvider>
+                                <App {...props} />
+                                <AiChatGlobal
+                                    isAuthenticated={isAuthenticated}
+                                    isAvailable={aiChatEnabled}
+                                />
+                            </ConfirmationProvider>
+                        </ToastProvider>
+                    </MotionProvider>
                 </ThemeProvider>
             </ErrorBoundary>
         );

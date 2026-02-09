@@ -43,6 +43,9 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('@xterm') || id.includes('xterm')) {
                                 return 'vendor-xterm';
                             }
+                            if (id.includes('node_modules/motion')) {
+                                return 'vendor-motion';
+                            }
                             if (id.includes('@headlessui')) {
                                 return 'vendor-headlessui';
                             }

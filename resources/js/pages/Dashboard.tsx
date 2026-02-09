@@ -4,6 +4,7 @@ import { Link, router } from '@inertiajs/react';
 import { Plus, MoreHorizontal, Settings, Trash2, FolderOpen } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useConfirm, Button } from '@/components/ui';
+import { FadeIn, StaggerList, StaggerItem } from '@/components/animation';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Project as BaseProject } from '@/types';
 
@@ -200,50 +201,57 @@ export default function Dashboard({ projects = [] }: Props) {
         <AppLayout title="Dashboard">
             <div className="mx-auto max-w-6xl">
                 {/* Workspace Header */}
-                <div className="mb-8 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-semibold text-foreground">My Workspace</h1>
-                        <p className="mt-1 text-sm text-foreground-muted">
-                            {projects.length} projects · {activeCount} active
-                        </p>
+                <FadeIn>
+                    <div className="mb-8 flex items-center justify-between">
+                        <div>
+                            <h1 className="text-2xl font-semibold text-foreground">My Workspace</h1>
+                            <p className="mt-1 text-sm text-foreground-muted">
+                                {projects.length} projects · {activeCount} active
+                            </p>
+                        </div>
+                        <Link href="/projects/create">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                New Project
+                            </Button>
+                        </Link>
                     </div>
-                    <Link href="/projects/create">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Project
-                        </Button>
-                    </Link>
-                </div>
+                </FadeIn>
 
                 {/* Projects Grid */}
                 {projects.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
-                            <FolderOpen className="h-8 w-8 text-foreground-muted" />
+                    <FadeIn direction="up" delay={0.1}>
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                                <FolderOpen className="h-8 w-8 text-foreground-muted" />
+                            </div>
+                            <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
+                            <p className="mt-1 text-sm text-foreground-muted">Create your first project to get started</p>
+                            <Link
+                                href="/projects/create"
+                                className="mt-6 flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Create Project
+                            </Link>
                         </div>
-                        <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
-                        <p className="mt-1 text-sm text-foreground-muted">Create your first project to get started</p>
-                        <Link
-                            href="/projects/create"
-                            className="mt-6 flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Create Project
-                        </Link>
-                    </div>
+                    </FadeIn>
                 ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {projects.map((project) => {
+                    <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {projects.map((project, index) => {
                             const proj = project as Project;
                             return (
-                                <ProjectCard
-                                    key={proj.id}
-                                    project={{ ...proj, status: getProjectStatus(proj) }}
-                                />
+                                <StaggerItem key={proj.id} index={index}>
+                                    <ProjectCard
+                                        project={{ ...proj, status: getProjectStatus(proj) }}
+                                    />
+                                </StaggerItem>
                             );
                         })}
-                        <NewProjectCard />
-                    </div>
+                        <StaggerItem index={projects.length}>
+                            <NewProjectCard />
+                        </StaggerItem>
+                    </StaggerList>
                 )}
             </div>
         </AppLayout>

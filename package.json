@@ -42,6 +42,7 @@
         "vue": "3.5.16"
     },
     "dependencies": {
+        "@formkit/auto-animate": "^0.9.0",
         "@headlessui/react": "^2.2.9",
         "@inertiajs/react": "^2.3.6",
         "@sentry/react": "^10.36.0",
@@ -56,6 +57,7 @@
         "dompurify": "^3.3.1",
         "ioredis": "5.6.1",
         "lucide-react": "^0.562.0",
+        "motion": "^12.34.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-markdown": "^10.1.0",

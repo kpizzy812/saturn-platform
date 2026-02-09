@@ -16,20 +16,37 @@ interface LegacyTabsProps {
 }
 
 export function Tabs({ tabs, defaultIndex = 0, onChange }: LegacyTabsProps) {
+    const [selectedIndex, setSelectedIndex] = React.useState(defaultIndex);
+    const tabRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+    const [indicatorStyle, setIndicatorStyle] = React.useState<{ left: number; width: number }>({ left: 0, width: 0 });
+
+    const handleChange = (index: number) => {
+        setSelectedIndex(index);
+        onChange?.(index);
+    };
+
+    React.useEffect(() => {
+        const el = tabRefs.current[selectedIndex];
+        if (el) {
+            setIndicatorStyle({ left: el.offsetLeft, width: el.offsetWidth });
+        }
+    }, [selectedIndex]);
+
     return (
-        <TabGroup defaultIndex={defaultIndex} onChange={onChange}>
-            <TabList className="flex gap-1 border-b border-border">
+        <TabGroup defaultIndex={defaultIndex} onChange={handleChange}>
+            <TabList className="relative flex gap-1 border-b border-border">
                 {tabs.map((tab, index) => (
                     <Tab
                         key={index}
+                        ref={(el: HTMLButtonElement | null) => { tabRefs.current[index] = el; }}
                         disabled={tab.disabled}
                         className={({ selected }) =>
                             cn(
-                                'px-4 py-2 text-sm font-medium outline-none transition-colors',
-                                'border-b-2 -mb-px',
+                                'relative px-4 py-2 text-sm font-medium outline-none transition-colors',
+                                '-mb-px',
                                 selected
-                                    ? 'border-primary text-foreground'
-                                    : 'border-transparent text-foreground-muted hover:text-foreground',
+                                    ? 'text-foreground'
+                                    : 'text-foreground-muted hover:text-foreground',
                                 tab.disabled && 'cursor-not-allowed opacity-50'
                             )
                         }
@@ -37,6 +54,11 @@ export function Tabs({ tabs, defaultIndex = 0, onChange }: LegacyTabsProps) {
                         {tab.label}
                     </Tab>
                 ))}
+                {/* Animated indicator */}
+                <div
+                    className="absolute bottom-0 h-0.5 bg-primary transition-all duration-200 ease-in-out"
+                    style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+                />
             </TabList>
             <TabPanels className="mt-4">
                 {tabs.map((tab, index) => (
@@ -72,7 +94,7 @@ interface TabsListProps {
 
 export function TabsList({ children, className }: TabsListProps) {
     return (
-        <TabList className={cn('flex gap-1 border-b border-border', className)}>
+        <TabList className={cn('relative flex gap-1 border-b border-border', className)}>
             {children}
         </TabList>
     );
@@ -90,7 +112,7 @@ export function TabsTrigger({ children, disabled, className }: TabsTriggerProps)
             disabled={disabled}
             className={({ selected }) =>
                 cn(
-                    'px-4 py-2 text-sm font-medium outline-none transition-colors',
+                    'relative px-4 py-2 text-sm font-medium outline-none transition-colors',
                     'border-b-2 -mb-px',
                     selected
                         ? 'border-primary text-foreground'

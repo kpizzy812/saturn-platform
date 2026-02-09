@@ -3,6 +3,10 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { FlashMessages } from '@/components/layout/FlashMessages';
 import { CardThemeContext } from '@/components/ui/Card';
+import { useCommandPalette } from '@/components/ui/CommandPalette';
+import { AdminCommandPalette } from '@/components/ui/AdminCommandPalette';
+import { useTheme } from '@/components/ui/ThemeProvider';
+import { PageTransition, CollapseSection } from '@/components/animation';
 import {
     LayoutDashboard,
     Users,
@@ -35,6 +39,11 @@ import {
     Rocket,
     BarChart3,
     Eye,
+    Search,
+    Command,
+    Moon,
+    Sun,
+    ArrowLeft,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -180,7 +189,7 @@ function NavGroupSection({
                 )}
             </button>
 
-            {isExpanded && (
+            <CollapseSection isOpen={isExpanded}>
                 <div className="mt-0.5 ml-2 space-y-0.5 border-l border-primary/10 pl-2">
                     {group.items.map((item) => (
                         <Link
@@ -203,7 +212,7 @@ function NavGroupSection({
                         </Link>
                     ))}
                 </div>
-            )}
+            </CollapseSection>
         </div>
     );
 }
@@ -397,8 +406,59 @@ function AdminBreadcrumbs({ items }: { items: AdminBreadcrumb[] }) {
     );
 }
 
+function AdminHeader({ title, onCommandPalette }: { title?: string; onCommandPalette: () => void }) {
+    const { isDark, toggleTheme } = useTheme();
+    const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+    return (
+        <header className="hidden lg:flex h-14 items-center justify-between border-b border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-6">
+            {/* Left: Page title */}
+            <div className="flex items-center gap-4">
+                {title && (
+                    <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+                )}
+            </div>
+
+            {/* Center: Search trigger */}
+            <button
+                onClick={onCommandPalette}
+                className="flex items-center gap-3 rounded-lg border border-primary/20 bg-background/50 px-4 py-2 text-sm text-foreground-muted transition-all duration-200 hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+            >
+                <Search className="h-4 w-4" />
+                <span>Search...</span>
+                <kbd className="ml-6 flex items-center gap-1 rounded-md bg-background-tertiary px-2 py-1 text-xs font-medium">
+                    {isMac ? <Command className="h-3 w-3" /> : <span>Ctrl</span>}
+                    <span>K</span>
+                </kbd>
+            </button>
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2">
+                {/* Theme toggle */}
+                <button
+                    onClick={toggleTheme}
+                    className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                    title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                >
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+
+                {/* Back to App */}
+                <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 rounded-lg border border-primary/20 px-3 py-1.5 text-sm font-medium text-foreground-muted transition-all duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <span>Back to App</span>
+                </Link>
+            </div>
+        </header>
+    );
+}
+
 export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+    const commandPalette = useCommandPalette();
 
     return (
         <>
@@ -410,27 +470,42 @@ export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) 
                     onMobileClose={() => setIsMobileSidebarOpen(false)}
                 />
                 <div className="flex flex-1 flex-col overflow-hidden">
+                    {/* Desktop header */}
+                    <AdminHeader title={title} onCommandPalette={commandPalette.toggle} />
+
                     {/* Mobile header with hamburger */}
-                    <div className="flex items-center gap-3 border-b border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3 lg:hidden">
+                    <div className="flex items-center justify-between border-b border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3 lg:hidden">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsMobileSidebarOpen(true)}
+                                className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                            >
+                                <Menu className="h-5 w-5" />
+                            </button>
+                            <div className="flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-primary" />
+                                <span className="font-semibold text-foreground">Admin</span>
+                            </div>
+                        </div>
                         <button
-                            onClick={() => setIsMobileSidebarOpen(true)}
+                            onClick={commandPalette.toggle}
                             className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
                         >
-                            <Menu className="h-5 w-5" />
+                            <Search className="h-5 w-5" />
                         </button>
-                        <div className="flex items-center gap-2">
-                            <Shield className="h-5 w-5 text-primary" />
-                            <span className="font-semibold text-foreground">Admin</span>
-                        </div>
                     </div>
+
                     {breadcrumbs && breadcrumbs.length > 0 && <AdminBreadcrumbs items={breadcrumbs} />}
                     <CardThemeContext.Provider value="admin">
                         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-                            {children}
+                            <PageTransition>{children}</PageTransition>
                         </main>
                     </CardThemeContext.Provider>
                 </div>
             </div>
+
+            {/* Admin Command Palette */}
+            <AdminCommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} />
         </>
     );
 }

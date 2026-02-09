@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { Header } from './Header';
 import { FlashMessages } from './FlashMessages';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
+import { PageTransition } from '@/components/animation';
 import { ChevronRight } from 'lucide-react';
 
 export interface Breadcrumb {
@@ -64,7 +65,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
                 <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
                 {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
                 <main className="flex-1 overflow-auto px-6 py-8">
-                    {children}
+                    <PageTransition>{children}</PageTransition>
                 </main>
             </div>
             <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} />
