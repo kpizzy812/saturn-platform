@@ -299,7 +299,7 @@ Route::get('/servers/{uuid}', function (string $uuid) {
                 'uuid' => $db->uuid,
                 'name' => $db->name,
                 'type' => $typeName,
-                'status' => $db->status(),
+                'status' => $db->status ?? 'unknown',
             ];
         });
         $databases = $databases->concat($dbs);
