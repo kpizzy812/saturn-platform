@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import {
     Search,
     KeyRound,
@@ -277,18 +278,17 @@ export default function AdminSshKeysIndex({ keys: keysData, allTeams = [], filte
                                     />
                                 </div>
                                 {allTeams.length > 0 && (
-                                    <select
+                                    <Select
                                         value={teamFilter}
                                         onChange={(e) => handleTeamChange(e.target.value)}
-                                        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                                    >
-                                        <option value="">All Teams</option>
-                                        {allTeams.map((team) => (
-                                            <option key={team.id} value={String(team.id)}>
-                                                {team.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        options={[
+                                            { value: '', label: 'All Teams' },
+                                            ...allTeams.map((team) => ({
+                                                value: String(team.id),
+                                                label: team.name,
+                                            })),
+                                        ]}
+                                    />
                                 )}
                             </div>
 

@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
+import { useConfirm } from '@/components/ui';
 import {
     Search,
     LayoutTemplate,
@@ -196,6 +198,7 @@ function TemplateCard({
 }
 
 export default function AdminTemplatesIndex({ templates, categories, filters }: Props) {
+    const confirm = useConfirm();
     const [search, setSearch] = React.useState(filters.search);
     const [category, setCategory] = React.useState(filters.category);
     const [officialOnly, setOfficialOnly] = React.useState(filters.official_only);
@@ -212,14 +215,25 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
         );
     };
 
-    const handleDuplicate = (uuid: string) => {
-        if (confirm('Duplicate this template?')) {
+    const handleDuplicate = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Duplicate Template',
+            description: 'This will create a copy of this template.',
+            confirmText: 'Duplicate',
+        });
+        if (confirmed) {
             router.post(`/admin/templates/${uuid}/duplicate`);
         }
     };
 
-    const handleDelete = (uuid: string) => {
-        if (confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
+    const handleDelete = async (uuid: string) => {
+        const confirmed = await confirm({
+            title: 'Delete Template',
+            description: 'Are you sure you want to delete this template? This action cannot be undone.',
+            confirmText: 'Delete',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete(`/admin/templates/${uuid}`);
         }
     };
@@ -312,7 +326,7 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                                 />
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <select
+                                <Select
                                     value={category}
                                     onChange={(e) => {
                                         setCategory(e.target.value);
@@ -326,15 +340,14 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                                             { preserveState: true }
                                         );
                                     }}
-                                    className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                                >
-                                    <option value="all">All Categories</option>
-                                    {Object.entries(categories).map(([key, label]) => (
-                                        <option key={key} value={key}>
-                                            {label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={[
+                                        { value: 'all', label: 'All Categories' },
+                                        ...Object.entries(categories).map(([key, label]) => ({
+                                            value: key,
+                                            label: label as string,
+                                        })),
+                                    ]}
+                                />
                                 <Button
                                     variant={officialOnly ? 'primary' : 'secondary'}
                                     size="sm"

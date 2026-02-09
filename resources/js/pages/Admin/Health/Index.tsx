@@ -61,9 +61,9 @@ interface Props {
 
 function ServiceHealthCard({ service }: { service: ServiceHealth }) {
     const statusConfig = {
-        healthy: { variant: 'success' as const, icon: <CheckCircle className="h-5 w-5" />, label: 'Healthy' },
-        degraded: { variant: 'warning' as const, icon: <AlertTriangle className="h-5 w-5" />, label: 'Degraded' },
-        down: { variant: 'danger' as const, icon: <XCircle className="h-5 w-5" />, label: 'Down' },
+        healthy: { variant: 'success' as const, icon: <CheckCircle className="h-5 w-5" />, label: 'Healthy', colorClass: 'text-success' },
+        degraded: { variant: 'warning' as const, icon: <AlertTriangle className="h-5 w-5" />, label: 'Degraded', colorClass: 'text-warning' },
+        down: { variant: 'danger' as const, icon: <XCircle className="h-5 w-5" />, label: 'Down', colorClass: 'text-danger' },
     };
 
     const config = statusConfig[service.status];
@@ -73,7 +73,7 @@ function ServiceHealthCard({ service }: { service: ServiceHealth }) {
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className={`text-${config.variant === 'success' ? 'success' : config.variant === 'danger' ? 'danger' : 'warning'}`}>
+                        <div className={config.colorClass}>
                             {config.icon}
                         </div>
                         <div>

@@ -171,12 +171,18 @@ export default function AdminQueuesIndex({ stats, failedJobs: initialFailedJobs 
 
     const filteredJobs = failedJobs.filter((job) => {
         if (!searchQuery) return true;
-        const payload = JSON.parse(job.payload || '{}');
-        const jobName = payload.displayName || payload.job || '';
+        let jobName = '';
+        try {
+            const payload = JSON.parse(job.payload || '{}');
+            jobName = payload.displayName || payload.job || '';
+        } catch {
+            // Invalid JSON payload - skip name matching
+        }
+        const query = searchQuery.toLowerCase();
         return (
-            jobName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            job.queue.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            job.exception.toLowerCase().includes(searchQuery.toLowerCase())
+            jobName.toLowerCase().includes(query) ||
+            job.queue.toLowerCase().includes(query) ||
+            job.exception.toLowerCase().includes(query)
         );
     });
 

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AdminLayout } from '@/layouts/AdminLayout';
-import { Card, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import {
     Bell,
     Check,
@@ -141,6 +141,8 @@ function NotificationRow({
 }
 
 export default function AdminNotificationsIndex({ notifications, unreadCount }: Props) {
+    const confirmAction = useConfirm();
+
     const handleMarkAsRead = React.useCallback((id: string) => {
         router.post(`/admin/notifications/${id}/read`, {}, {
             preserveState: true,
@@ -162,14 +164,20 @@ export default function AdminNotificationsIndex({ notifications, unreadCount }: 
         });
     }, []);
 
-    const handleClearAll = React.useCallback(() => {
-        if (confirm('Are you sure you want to delete all system notifications?')) {
+    const handleClearAll = React.useCallback(async () => {
+        const confirmed = await confirmAction({
+            title: 'Clear All Notifications',
+            description: 'Are you sure you want to delete all system notifications? This action cannot be undone.',
+            confirmText: 'Clear All',
+            variant: 'danger',
+        });
+        if (confirmed) {
             router.delete('/admin/notifications', {
                 preserveState: true,
                 preserveScroll: true,
             });
         }
-    }, []);
+    }, [confirmAction]);
 
     const handleRefresh = React.useCallback(() => {
         router.reload({ only: ['notifications', 'unreadCount'] });

@@ -143,6 +143,13 @@ function ResourceRow({ resource, type }: { resource: ServerResource; type: 'appl
     );
 }
 
+const iconColorMap: Record<string, string> = {
+    primary: 'text-primary/50',
+    success: 'text-success/50',
+    warning: 'text-warning/50',
+    danger: 'text-danger/50',
+};
+
 function MetricCard({
     label,
     value,
@@ -177,7 +184,7 @@ function MetricCard({
                             <p className="text-lg text-foreground-muted">N/A</p>
                         )}
                     </div>
-                    <Icon className={`h-8 w-8 text-${color}/50`} />
+                    <Icon className={`h-8 w-8 ${iconColorMap[color] ?? 'text-foreground-muted/50'}`} />
                 </div>
             </CardContent>
         </Card>
@@ -201,15 +208,22 @@ export default function AdminServerShow({ server }: Props) {
     const totalResources = applications.length + databases.length + services.length;
 
     // Load health history
+    const [historyError, setHistoryError] = React.useState<string | null>(null);
     React.useEffect(() => {
         const fetchHistory = async () => {
             setIsLoadingHistory(true);
+            setHistoryError(null);
             try {
                 const response = await fetch(`/admin/servers/${server.uuid}/health-history?period=${historyPeriod}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 const data = await response.json();
                 setHealthHistory(data.data ?? []);
             } catch (error) {
                 console.error('Failed to load health history:', error);
+                setHistoryError('Failed to load health history');
+                setHealthHistory([]);
             } finally {
                 setIsLoadingHistory(false);
             }
@@ -473,6 +487,10 @@ export default function AdminServerShow({ server }: Props) {
                         {isLoadingHistory ? (
                             <div className="flex items-center justify-center py-8">
                                 <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+                            </div>
+                        ) : historyError ? (
+                            <div className="py-8 text-center text-sm text-danger">
+                                {historyError}
                             </div>
                         ) : healthHistory.length === 0 ? (
                             <div className="py-8 text-center text-sm text-foreground-muted">
