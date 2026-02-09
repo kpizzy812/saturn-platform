@@ -15,6 +15,7 @@ import {
     ChevronLeft,
     ChevronRight,
     RefreshCw,
+    User,
 } from 'lucide-react';
 
 interface Deployment {
@@ -27,6 +28,11 @@ interface Deployment {
     commit_message?: string;
     is_webhook?: boolean;
     is_api?: boolean;
+    trigger?: string;
+    triggered_by?: {
+        name: string;
+        email: string;
+    } | null;
     team_id?: number;
     team_name?: string;
     created_at: string;
@@ -86,7 +92,20 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
                                 )}
                             </div>
                             <div className="mt-1 flex items-center gap-3 text-xs text-foreground-subtle">
-                                {deployment.team_name && <span>{deployment.team_name}</span>}
+                                {deployment.triggered_by ? (
+                                    <span className="flex items-center gap-1">
+                                        <User className="h-3 w-3" />
+                                        {deployment.triggered_by.name}
+                                    </span>
+                                ) : deployment.trigger ? (
+                                    <span className="capitalize">{deployment.trigger}</span>
+                                ) : null}
+                                {deployment.team_name && (
+                                    <>
+                                        {(deployment.triggered_by || deployment.trigger) && <span>&middot;</span>}
+                                        <span>{deployment.team_name}</span>
+                                    </>
+                                )}
                                 {deployment.commit && (
                                     <>
                                         <span>&middot;</span>

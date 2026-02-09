@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/deployments', function (\Illuminate\Http\Request $request) {
-    $query = \App\Models\ApplicationDeploymentQueue::with(['application.environment.project.team']);
+    $query = \App\Models\ApplicationDeploymentQueue::with(['application.environment.project.team', 'user']);
 
     // Search filter
     if ($search = $request->get('search')) {
@@ -38,6 +38,16 @@ Route::get('/deployments', function (\Illuminate\Http\Request $request) {
     $deployments = $query->latest()
         ->paginate(50)
         ->through(function ($deployment) {
+            // Determine trigger type
+            $trigger = 'manual';
+            if ($deployment->is_webhook) {
+                $trigger = 'webhook';
+            } elseif ($deployment->is_api) {
+                $trigger = 'api';
+            } elseif ($deployment->rollback) {
+                $trigger = 'rollback';
+            }
+
             return [
                 'id' => $deployment->id,
                 'deployment_uuid' => $deployment->deployment_uuid,
@@ -49,6 +59,11 @@ Route::get('/deployments', function (\Illuminate\Http\Request $request) {
                 'commit_message' => $deployment->commit_message,
                 'is_webhook' => (bool) $deployment->is_webhook,
                 'is_api' => (bool) $deployment->is_api,
+                'trigger' => $trigger,
+                'triggered_by' => $deployment->user ? [
+                    'name' => $deployment->user->name,
+                    'email' => $deployment->user->email,
+                ] : null,
                 'team_name' => $deployment->application?->environment?->project?->team?->name ?? 'Unknown',
                 'team_id' => $deployment->application?->environment?->project?->team?->id,
                 'created_at' => $deployment->created_at,
@@ -72,6 +87,97 @@ Route::get('/deployments', function (\Illuminate\Http\Request $request) {
         ],
     ]);
 })->name('admin.deployments.index');
+
+Route::get('/deployments/{uuid}', function (string $uuid) {
+    $deployment = \App\Models\ApplicationDeploymentQueue::with(['application', 'user'])
+        ->where('deployment_uuid', $uuid)
+        ->first();
+
+    if (! $deployment) {
+        return redirect()->route('admin.deployments.index');
+    }
+
+    $logs = $deployment->logs ? json_decode($deployment->logs, true) : [];
+    $buildLogs = [];
+    $deployLogs = [];
+
+    foreach ($logs as $log) {
+        if (! empty($log['hidden'])) {
+            continue;
+        }
+
+        $timestamp = $log['timestamp'] ?? '';
+        $output = $log['output'] ?? $log['message'] ?? '';
+
+        $formattedLine = $output;
+        if ($timestamp) {
+            try {
+                $time = \Carbon\Carbon::parse($timestamp)->format('H:i:s');
+                $formattedLine = "[$time] ".$output;
+            } catch (\Exception $e) {
+                $formattedLine = $output;
+            }
+        }
+
+        $buildLogs[] = trim($formattedLine);
+    }
+
+    // Calculate duration
+    $duration = null;
+    $startTime = $deployment->started_at ?? $deployment->created_at;
+    if ($startTime && $deployment->updated_at && $deployment->status !== 'in_progress') {
+        $diff = $startTime->diff($deployment->updated_at);
+        if ($diff->i > 0) {
+            $duration = $diff->i.'m '.$diff->s.'s';
+        } else {
+            $duration = $diff->s.'s';
+        }
+    }
+
+    $application = $deployment->application;
+
+    // Get user who triggered the deployment
+    $author = null;
+    if ($deployment->user) {
+        $author = [
+            'name' => $deployment->user->name,
+            'email' => $deployment->user->email,
+            'avatar' => $deployment->user->avatar ? '/storage/'.$deployment->user->avatar : null,
+        ];
+    }
+
+    // Determine trigger type
+    $trigger = 'manual';
+    if ($deployment->is_webhook) {
+        $trigger = 'push';
+    } elseif ($deployment->is_api) {
+        $trigger = 'api';
+    } elseif ($deployment->rollback) {
+        $trigger = 'rollback';
+    }
+
+    $data = [
+        'id' => $deployment->id,
+        'uuid' => $deployment->deployment_uuid,
+        'application_id' => $deployment->application_id,
+        'application_uuid' => $application?->uuid,
+        'status' => $deployment->status,
+        'commit' => $deployment->commit,
+        'commit_message' => $deployment->commit_message ?? 'Deployment',
+        'created_at' => $deployment->created_at?->toISOString(),
+        'updated_at' => $deployment->updated_at?->toISOString(),
+        'service_name' => $deployment->application_name ?? $application?->name,
+        'trigger' => $trigger,
+        'duration' => $duration,
+        'build_logs' => $buildLogs,
+        'deploy_logs' => $deployLogs,
+        'author' => $author,
+    ];
+
+    return Inertia::render('Admin/Deployments/Show', [
+        'deployment' => $data,
+    ]);
+})->name('admin.deployments.show');
 
 Route::get('/deployment-approvals', function () {
     // Fetch pending deployment approvals across all teams (admin view)
