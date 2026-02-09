@@ -70,7 +70,7 @@ interface Props {
     project: ProjectDetails;
 }
 
-function ApplicationRow({ app, projectUuid, envUuid }: { app: Environment['applications'][0]; projectUuid: string; envUuid: string }) {
+function ApplicationRow({ app }: { app: Environment['applications'][0] }) {
     const confirm = useConfirm();
 
     const statusConfig: Record<string, { variant: 'success' | 'danger' | 'warning' | 'default'; label: string }> = {
@@ -116,7 +116,7 @@ function ApplicationRow({ app, projectUuid, envUuid }: { app: Environment['appli
                         </Button>
                     </DropdownTrigger>
                     <DropdownContent align="right">
-                        <DropdownItem onClick={() => router.visit(`/project/${projectUuid}/${envUuid}/application/${app.uuid}`)}>
+                        <DropdownItem onClick={() => router.visit(`/applications/${app.uuid}`)}>
                             <Eye className="h-4 w-4" />
                             View Application
                         </DropdownItem>
@@ -138,7 +138,7 @@ function ApplicationRow({ app, projectUuid, envUuid }: { app: Environment['appli
     );
 }
 
-function ServiceRow({ service, projectUuid, envUuid }: { service: Environment['services'][0]; projectUuid: string; envUuid: string }) {
+function ServiceRow({ service }: { service: Environment['services'][0] }) {
     const confirm = useConfirm();
 
     const handleDelete = async () => {
@@ -172,7 +172,7 @@ function ServiceRow({ service, projectUuid, envUuid }: { service: Environment['s
                         </Button>
                     </DropdownTrigger>
                     <DropdownContent align="right">
-                        <DropdownItem onClick={() => router.visit(`/project/${projectUuid}/${envUuid}/service/${service.uuid}`)}>
+                        <DropdownItem onClick={() => router.visit(`/services/${service.uuid}`)}>
                             <Eye className="h-4 w-4" />
                             View Service
                         </DropdownItem>
@@ -188,7 +188,7 @@ function ServiceRow({ service, projectUuid, envUuid }: { service: Environment['s
     );
 }
 
-function DatabaseRow({ database, projectUuid, envUuid }: { database: Environment['databases'][0]; projectUuid: string; envUuid: string }) {
+function DatabaseRow({ database }: { database: Environment['databases'][0] }) {
     const confirm = useConfirm();
 
     const handleDelete = async () => {
@@ -199,7 +199,7 @@ function DatabaseRow({ database, projectUuid, envUuid }: { database: Environment
             variant: 'danger',
         });
         if (confirmed) {
-            router.delete(`/admin/databases/${database.id}`);
+            router.delete(`/admin/databases/${database.uuid}`);
         }
     };
 
@@ -223,7 +223,7 @@ function DatabaseRow({ database, projectUuid, envUuid }: { database: Environment
                         </Button>
                     </DropdownTrigger>
                     <DropdownContent align="right">
-                        <DropdownItem onClick={() => router.visit(`/project/${projectUuid}/${envUuid}/database/${database.uuid}`)}>
+                        <DropdownItem onClick={() => router.visit(`/databases/${database.uuid}`)}>
                             <Eye className="h-4 w-4" />
                             View Database
                         </DropdownItem>
@@ -293,7 +293,7 @@ export default function AdminProjectShow({ project }: Props) {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <Link href={`/project/${project.uuid}`}>
+                            <Link href={`/projects/${project.uuid}`}>
                                 <Button variant="secondary">
                                     <ExternalLink className="h-4 w-4" />
                                     Open Project
@@ -379,7 +379,7 @@ export default function AdminProjectShow({ project }: Props) {
                                             {env.applications.length} apps, {env.services.length} services, {env.databases.length} databases
                                         </CardDescription>
                                     </div>
-                                    <Link href={`/project/${project.uuid}/${env.uuid}`}>
+                                    <Link href={`/projects/${project.uuid}/environments`}>
                                         <Button variant="secondary" size="sm">
                                             <ExternalLink className="h-4 w-4" />
                                             Open Environment
@@ -396,8 +396,6 @@ export default function AdminProjectShow({ project }: Props) {
                                             <ApplicationRow
                                                 key={app.id}
                                                 app={app}
-                                                projectUuid={project.uuid}
-                                                envUuid={env.uuid}
                                             />
                                         ))}
                                     </div>
@@ -411,8 +409,6 @@ export default function AdminProjectShow({ project }: Props) {
                                             <ServiceRow
                                                 key={service.id}
                                                 service={service}
-                                                projectUuid={project.uuid}
-                                                envUuid={env.uuid}
                                             />
                                         ))}
                                     </div>
@@ -426,8 +422,6 @@ export default function AdminProjectShow({ project }: Props) {
                                             <DatabaseRow
                                                 key={database.id}
                                                 database={database}
-                                                projectUuid={project.uuid}
-                                                envUuid={env.uuid}
                                             />
                                         ))}
                                     </div>
