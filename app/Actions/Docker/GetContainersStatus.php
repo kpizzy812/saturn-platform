@@ -16,6 +16,7 @@ use App\Traits\CalculatesExcludedStatus;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 class GetContainersStatus
@@ -189,8 +190,11 @@ class GetContainersStatus
                                             }
                                         })->first();
                                         if (! $foundTcpProxy) {
-                                            StartDatabaseProxy::run($service_db);
-                                            // $this->server->team?->notify(new ContainerRestarted("TCP Proxy for {$service_db->service->name}", $this->server));
+                                            try {
+                                                StartDatabaseProxy::run($service_db);
+                                            } catch (\Throwable $e) {
+                                                Log::warning("Failed to start TCP proxy for service DB {$uuid}: ".$e->getMessage());
+                                            }
                                         }
                                     }
                                 }
@@ -239,8 +243,11 @@ class GetContainersStatus
                                     }
                                 })->first();
                                 if (! $foundTcpProxy) {
-                                    StartDatabaseProxy::run($database);
-                                    // $this->server->team?->notify(new ContainerRestarted("TCP Proxy for database", $this->server));
+                                    try {
+                                        StartDatabaseProxy::run($database);
+                                    } catch (\Throwable $e) {
+                                        Log::warning("Failed to start TCP proxy for database {$uuid}: ".$e->getMessage());
+                                    }
                                 }
                             }
                         } else {

@@ -494,9 +494,13 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
                 return data_get($value, 'name') === "$databaseUuid-proxy" && data_get($value, 'state') === 'running';
             })->first();
             if (! $tcpProxyContainerFound) {
-                StartDatabaseProxy::dispatch($database);
-                $this->server->team?->notify(new ContainerRestarted("TCP Proxy for {$database->name}", $this->server));
-            } else {
+                // Rate limit proxy restart attempts to prevent flooding failed_jobs queue
+                $cacheKey = "proxy_restart_attempt:{$databaseUuid}";
+                if (! cache()->has($cacheKey)) {
+                    cache()->put($cacheKey, true, now()->addMinutes(5));
+                    StartDatabaseProxy::dispatch($database);
+                    $this->server->team?->notify(new ContainerRestarted("TCP Proxy for {$database->name}", $this->server));
+                }
             }
         }
     }

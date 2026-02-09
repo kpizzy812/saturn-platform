@@ -20,6 +20,12 @@ class StartDatabaseProxy
 
     public string $jobQueue = 'high';
 
+    public int $jobTries = 3;
+
+    public int $jobMaxExceptions = 3;
+
+    public array $jobBackoff = [10, 30, 60];
+
     public function handle(StandaloneRedis|StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse|ServiceDatabase $database)
     {
         $databaseType = $database->database_type;
@@ -113,12 +119,22 @@ class StartDatabaseProxy
         $dockercompose_base64 = base64_encode(Yaml::dump($docker_compose, 4, 2));
         $nginxconf_base64 = base64_encode($nginxconf);
         instant_remote_process(["docker rm -f $proxyContainerName"], $server, false);
+
+        // Write config files
         instant_remote_process([
             "mkdir -p $configuration_dir",
             "echo '{$nginxconf_base64}' | base64 -d | tee $configuration_dir/nginx.conf > /dev/null",
             "echo '{$dockercompose_base64}' | base64 -d | tee $configuration_dir/docker-compose.yaml > /dev/null",
-            "docker compose --project-directory {$configuration_dir} pull",
-            "docker compose --project-directory {$configuration_dir} up -d",
+        ], $server);
+
+        // Pull image silently (don't fail if pull errors but image exists locally)
+        instant_remote_process([
+            "docker compose --project-directory {$configuration_dir} pull 2>/dev/null || true",
+        ], $server, false);
+
+        // Start the proxy container - this is where real errors should surface
+        instant_remote_process([
+            "docker compose --project-directory {$configuration_dir} up -d --remove-orphans",
         ], $server);
     }
 }
