@@ -125,6 +125,11 @@ stop_services() {
         --env-file "${SATURN_DATA}/source/.env" \
         down --remove-orphans 2>/dev/null || true
 
+    # Clean up any orphaned containers with mangled names
+    for name in saturn-dev saturn-db saturn-redis saturn-realtime; do
+        docker ps -a --format '{{.Names}}' | grep "_${name}$" | xargs -r docker rm -f 2>/dev/null || true
+    done
+
     log_success "Services stopped"
 }
 
