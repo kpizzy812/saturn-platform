@@ -261,7 +261,16 @@ class InfrastructureProvisioner
 
         // Build configuration
         $application->build_pack = $app->buildPack;
-        $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
+
+        // For Dockerfile buildpack in monorepo: use repo root as build context
+        // Monorepo Dockerfiles reference root-level files (lockfiles, shared packages)
+        if ($groupId && $app->buildPack === 'dockerfile' && $app->path !== '.') {
+            $application->base_directory = '';
+            $application->dockerfile_location = '/'.ltrim($app->path, '/').'/Dockerfile';
+        } else {
+            $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
+        }
+
         $application->ports_exposes = (string) $app->defaultPort;
 
         // Apply CI config commands (install, build, start)
