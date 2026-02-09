@@ -9,10 +9,18 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/teams', function () {
-    // Fetch all teams (admin view)
-    $teams = \App\Models\Team::withCount(['members', 'projects', 'servers'])
-        ->latest()
+Route::get('/teams', function (\Illuminate\Http\Request $request) {
+    $query = \App\Models\Team::withCount(['members', 'projects', 'servers']);
+
+    // Search filter
+    if ($search = $request->get('search')) {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+        });
+    }
+
+    $teams = $query->latest()
         ->paginate(50)
         ->through(function ($team) {
             return [
@@ -30,6 +38,9 @@ Route::get('/teams', function () {
 
     return Inertia::render('Admin/Teams/Index', [
         'teams' => $teams,
+        'filters' => [
+            'search' => $request->get('search'),
+        ],
     ]);
 })->name('admin.teams.index');
 

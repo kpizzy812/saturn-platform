@@ -2281,7 +2281,7 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                         {isCloudflareAction ? 'Syncing...' : 'Force Sync Routes'}
                                                     </Button>
                                                     <Button
-                                                        variant="destructive"
+                                                        variant="danger"
                                                         onClick={async () => {
                                                             const confirmed = await confirm({
                                                                 title: 'Destroy Cloudflare Tunnel',

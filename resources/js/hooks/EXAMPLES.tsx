@@ -410,7 +410,7 @@ export function ServiceEnvironmentVariablesExample({ serviceUuid }: { serviceUui
                 key: newKey,
                 value: newValue,
                 is_preview: false,
-                is_build_time: false,
+                is_buildtime: false,
             });
             setNewKey('');
             setNewValue('');

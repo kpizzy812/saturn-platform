@@ -77,6 +77,9 @@ Route::prefix('admin')->middleware('is.superadmin')->group(function () {
     // System logs and Audit logs
     require __DIR__.'/admin/logs.php';
 
+    // System metrics
+    require __DIR__.'/admin/metrics.php';
+
     // System health dashboard
     require __DIR__.'/admin/health.php';
 
