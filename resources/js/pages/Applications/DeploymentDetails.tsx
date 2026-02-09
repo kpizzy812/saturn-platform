@@ -151,8 +151,8 @@ export default function DeploymentDetails({
             output: log.output,
             timestamp: log.timestamp || undefined,
         }));
-        return parseDeploymentLogs(logsForParsing);
-    }, [logs]);
+        return parseDeploymentLogs(logsForParsing, deployment.status);
+    }, [logs, deployment.status]);
 
     // Determine current stage for the graph
     const currentStage = React.useMemo(() => {

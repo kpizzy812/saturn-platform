@@ -376,7 +376,7 @@ interface LogEntry {
 
 // Utility to parse logs and detect stages
 // Uses structured stage field from backend if available, falls back to regex for legacy logs
-export function parseDeploymentLogs(logs: Array<LogEntry>): DeploymentStage[] {
+export function parseDeploymentLogs(logs: Array<LogEntry>, deploymentStatus?: string): DeploymentStage[] {
     const stages: DeploymentStage[] = [
         { id: 'prepare', name: 'Prepare', status: 'pending' },
         { id: 'clone', name: 'Clone', status: 'pending' },
@@ -532,6 +532,29 @@ export function parseDeploymentLogs(logs: Array<LogEntry>): DeploymentStage[] {
             if (currentStageIndex >= 0) {
                 stageLogs[stages[currentStageIndex].id].push(output);
             }
+        }
+    }
+
+    // If the overall deployment failed, mark the currently running stage as failed
+    // and any remaining pending stages as skipped
+    if (deploymentStatus === 'failed' || deploymentStatus === 'cancelled') {
+        const isFailed = deploymentStatus === 'failed';
+        let foundRunning = false;
+        for (const stage of stages) {
+            if (stage.status === 'running') {
+                stage.status = isFailed ? 'failed' : 'skipped';
+                foundRunning = true;
+            } else if (stage.status === 'pending' && foundRunning) {
+                stage.status = 'skipped';
+            }
+        }
+        // If no stage was running but deployment failed, mark all remaining pending as skipped
+        if (!foundRunning) {
+            stages.forEach(stage => {
+                if (stage.status === 'pending') {
+                    stage.status = 'skipped';
+                }
+            });
         }
     }
 

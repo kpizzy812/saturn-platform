@@ -174,8 +174,8 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                 ...(deployment?.build_logs || []).map(log => ({ output: log })),
                 ...(deployment?.deploy_logs || []).map(log => ({ output: log })),
             ];
-        return parseDeploymentLogs(allLogs);
-    }, [isStreaming, streamedLogs, deployment?.build_logs, deployment?.deploy_logs]);
+        return parseDeploymentLogs(allLogs, deployment?.status);
+    }, [isStreaming, streamedLogs, deployment?.build_logs, deployment?.deploy_logs, deployment?.status]);
 
     // Determine current stage for the graph
     const currentStage = React.useMemo(() => {
