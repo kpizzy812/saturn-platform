@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\ApplicationPreview;
 use App\Models\InstanceSettings;
 use App\Models\Server;
 use App\Models\ServiceApplication;
@@ -233,6 +234,31 @@ class CloudflareProtectionService
                 $rules[] = [
                     'hostname' => $host,
                     'service' => 'http://localhost:80',
+                ];
+            }
+        }
+
+        // All ApplicationPreviews with FQDNs (PR preview deployments)
+        $previews = ApplicationPreview::whereNotNull('fqdn')
+            ->where('fqdn', '!=', '')
+            ->get();
+
+        foreach ($previews as $preview) {
+            $fqdns = collect(explode(',', $preview->fqdn))
+                ->map(fn ($f) => trim($f))
+                ->filter();
+
+            foreach ($fqdns as $fqdn) {
+                $host = parse_url($fqdn, PHP_URL_HOST);
+                if (! $host) {
+                    continue;
+                }
+
+                $port = $this->resolveAppPort($preview->application);
+
+                $rules[] = [
+                    'hostname' => $host,
+                    'service' => 'http://localhost:'.$port,
                 ];
             }
         }

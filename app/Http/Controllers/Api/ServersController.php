@@ -381,11 +381,15 @@ class ServersController extends Controller
                 }
             }
         }
+        // Mask IPs when Cloudflare protection is active for non-admin users
+        $maskIp = $settings->isCloudflareProtectionActive()
+            && request()->attributes->get('can_read_sensitive', false) === false;
+
         $domains = $domains->groupBy('ip')->map(function ($domain) {
             return $domain->pluck('domain')->flatten();
-        })->map(function ($domain, $ip) {
+        })->map(function ($domain, $ip) use ($maskIp) {
             return [
-                'ip' => $ip,
+                'ip' => $maskIp ? '[protected]' : $ip,
                 'domains' => $domain,
             ];
         })->values();

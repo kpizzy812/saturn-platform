@@ -369,6 +369,15 @@ class Application extends BaseModel
                 // Don't block deletion if proxy cleanup fails
             }
 
+            // Sync Cloudflare routes after FQDN removal
+            try {
+                if (instanceSettings()->isCloudflareProtectionActive()) {
+                    \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                }
+            } catch (\Throwable $e) {
+                // Don't block deletion if Cloudflare cleanup fails
+            }
+
             $application->update(['fqdn' => null]);
             $application->settings()->delete();
             $application->persistentStorages()->delete();

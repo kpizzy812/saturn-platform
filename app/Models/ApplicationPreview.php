@@ -54,6 +54,26 @@ class ApplicationPreview extends BaseModel
 
             // Clean up persistent storage records
             $preview->persistentStorages()->delete();
+
+            // Sync Cloudflare routes after preview FQDN removal
+            try {
+                if (instanceSettings()->isCloudflareProtectionActive()) {
+                    \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                }
+            } catch (\Throwable $e) {
+                // Don't block deletion if Cloudflare cleanup fails
+            }
+        });
+        static::updated(function ($preview) {
+            if ($preview->wasChanged('fqdn')) {
+                try {
+                    if (instanceSettings()->isCloudflareProtectionActive()) {
+                        \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                    }
+                } catch (\Throwable $e) {
+                    // Don't break FQDN update if Cloudflare sync fails
+                }
+            }
         });
         static::saving(function ($preview) {
             if ($preview->isDirty('status')) {

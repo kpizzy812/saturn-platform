@@ -32,6 +32,25 @@ class ServiceApplication extends BaseModel
             $service->update(['fqdn' => null]);
             $service->persistentStorages()->delete();
             $service->fileStorages()->delete();
+
+            try {
+                if (instanceSettings()->isCloudflareProtectionActive()) {
+                    \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                }
+            } catch (\Throwable $e) {
+                // Don't block deletion if Cloudflare cleanup fails
+            }
+        });
+        static::updated(function ($service) {
+            if ($service->wasChanged('fqdn')) {
+                try {
+                    if (instanceSettings()->isCloudflareProtectionActive()) {
+                        \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                    }
+                } catch (\Throwable $e) {
+                    // Don't break FQDN update if Cloudflare sync fails
+                }
+            }
         });
         static::saving(function ($service) {
             if ($service->isDirty('status')) {
