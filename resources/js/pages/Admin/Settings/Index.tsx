@@ -173,6 +173,10 @@ interface InstanceSettingsData {
 
 interface Props {
     settings: InstanceSettingsData;
+    envStatus?: {
+        anthropic_key: boolean;
+        openai_key: boolean;
+    };
 }
 
 // Helper to normalize allowed_ip_ranges to string for display
@@ -182,7 +186,7 @@ function ipRangesToString(val: string | string[] | undefined): string {
     return val;
 }
 
-export default function AdminSettingsIndex({ settings }: Props) {
+export default function AdminSettingsIndex({ settings, envStatus }: Props) {
     const confirm = useConfirm();
     const initialData = React.useMemo(() => ({
         ...settings,
@@ -812,6 +816,17 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                             {showAnthropicKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                         </button>
                                                     </div>
+                                                    {envStatus?.anthropic_key && !formData.ai_anthropic_api_key && (
+                                                        <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                                                            <CheckCircle2 className="h-3 w-3" />
+                                                            ANTHROPIC_API_KEY set in .env (used as fallback)
+                                                        </p>
+                                                    )}
+                                                    {!envStatus?.anthropic_key && !formData.ai_anthropic_api_key && (
+                                                        <p className="mt-1 text-xs text-foreground-muted">
+                                                            Set here or via ANTHROPIC_API_KEY in .env
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <Input
                                                     value={formData.ai_claude_model || 'claude-sonnet-4-20250514'}
@@ -847,6 +862,17 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                             {showOpenaiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                         </button>
                                                     </div>
+                                                    {envStatus?.openai_key && !formData.ai_openai_api_key && (
+                                                        <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                                                            <CheckCircle2 className="h-3 w-3" />
+                                                            OPENAI_API_KEY set in .env (used as fallback)
+                                                        </p>
+                                                    )}
+                                                    {!envStatus?.openai_key && !formData.ai_openai_api_key && (
+                                                        <p className="mt-1 text-xs text-foreground-muted">
+                                                            Set here or via OPENAI_API_KEY in .env
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <Input
                                                     value={formData.ai_openai_model || 'gpt-4o-mini'}

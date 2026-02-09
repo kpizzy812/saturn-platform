@@ -19,8 +19,14 @@ final class OllamaProvider implements AIProviderInterface
     public function __construct()
     {
         $config = config('ai.providers.ollama');
-        $this->baseUrl = rtrim($config['base_url'] ?? 'http://localhost:11434', '/');
-        $this->model = $config['model'] ?? 'llama3.1';
+
+        // DB settings (admin panel) take priority over .env
+        $settings = \App\Models\InstanceSettings::get();
+        $dbBaseUrl = $settings->ai_ollama_base_url ?? '';
+        $dbModel = $settings->ai_ollama_model ?? '';
+
+        $this->baseUrl = rtrim(! empty($dbBaseUrl) ? $dbBaseUrl : ($config['base_url'] ?? 'http://localhost:11434'), '/');
+        $this->model = ! empty($dbModel) ? $dbModel : ($config['model'] ?? 'llama3.1');
         $this->timeout = $config['timeout'] ?? 120;
     }
 

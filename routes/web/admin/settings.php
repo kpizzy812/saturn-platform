@@ -29,8 +29,15 @@ Route::get('/settings', function () {
         $settingsArray[$field] = $settings->{$field} ?? '';
     }
 
+    // Indicate which keys have .env fallback values
+    $envStatus = [
+        'anthropic_key' => ! empty(config('ai.providers.claude.api_key')),
+        'openai_key' => ! empty(config('ai.providers.openai.api_key')),
+    ];
+
     return Inertia::render('Admin/Settings/Index', [
         'settings' => $settingsArray,
+        'envStatus' => $envStatus,
     ]);
 })->name('admin.settings.index');
 

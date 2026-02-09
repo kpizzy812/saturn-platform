@@ -25,8 +25,14 @@ final class OpenAIChatProvider implements ChatProviderInterface
     public function __construct()
     {
         $config = config('ai.providers.openai');
-        $this->apiKey = $config['api_key'] ?? '';
-        $this->model = $config['chat_model'] ?? $config['model'] ?? 'gpt-4o-mini';
+
+        // DB settings (admin panel) take priority over .env
+        $settings = \App\Models\InstanceSettings::get();
+        $dbKey = $settings->ai_openai_api_key ?? '';
+        $dbModel = $settings->ai_openai_model ?? '';
+
+        $this->apiKey = ! empty($dbKey) ? $dbKey : ($config['api_key'] ?? '');
+        $this->model = ! empty($dbModel) ? $dbModel : ($config['chat_model'] ?? $config['model'] ?? 'gpt-4o-mini');
         $this->maxTokens = $config['chat_max_tokens'] ?? 1024;
         $this->temperature = $config['chat_temperature'] ?? 0.7;
     }

@@ -23,9 +23,16 @@ final class OpenAIProvider implements AIProviderInterface
     public function __construct()
     {
         $config = config('ai.providers.openai');
-        $this->apiKey = $config['api_key'] ?? '';
-        $this->model = $config['model'] ?? 'gpt-4o-mini';
-        $this->maxTokens = $config['max_tokens'] ?? 2048;
+
+        // DB settings (admin panel) take priority over .env
+        $settings = \App\Models\InstanceSettings::get();
+        $dbKey = $settings->ai_openai_api_key ?? '';
+        $dbModel = $settings->ai_openai_model ?? '';
+        $dbMaxTokens = $settings->ai_max_tokens ?? null;
+
+        $this->apiKey = ! empty($dbKey) ? $dbKey : ($config['api_key'] ?? '');
+        $this->model = ! empty($dbModel) ? $dbModel : ($config['model'] ?? 'gpt-4o-mini');
+        $this->maxTokens = $dbMaxTokens ?? ($config['max_tokens'] ?? 2048);
         $this->temperature = $config['temperature'] ?? 0.3;
     }
 

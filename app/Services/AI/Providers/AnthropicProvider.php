@@ -23,9 +23,16 @@ final class AnthropicProvider implements AIProviderInterface
     public function __construct()
     {
         $config = config('ai.providers.claude');
-        $this->apiKey = $config['api_key'] ?? '';
-        $this->model = $config['model'] ?? 'claude-sonnet-4-20250514';
-        $this->maxTokens = $config['max_tokens'] ?? 2048;
+
+        // DB settings (admin panel) take priority over .env
+        $settings = \App\Models\InstanceSettings::get();
+        $dbKey = $settings->ai_anthropic_api_key ?? '';
+        $dbModel = $settings->ai_claude_model ?? '';
+        $dbMaxTokens = $settings->ai_max_tokens ?? null;
+
+        $this->apiKey = ! empty($dbKey) ? $dbKey : ($config['api_key'] ?? '');
+        $this->model = ! empty($dbModel) ? $dbModel : ($config['model'] ?? 'claude-sonnet-4-20250514');
+        $this->maxTokens = $dbMaxTokens ?? ($config['max_tokens'] ?? 2048);
         $this->temperature = $config['temperature'] ?? 0.3;
     }
 

@@ -25,8 +25,14 @@ final class AnthropicChatProvider implements ChatProviderInterface
     public function __construct()
     {
         $config = config('ai.providers.claude');
-        $this->apiKey = $config['api_key'] ?? '';
-        $this->model = $config['chat_model'] ?? $config['model'] ?? 'claude-sonnet-4-20250514';
+
+        // DB settings (admin panel) take priority over .env
+        $settings = \App\Models\InstanceSettings::get();
+        $dbKey = $settings->ai_anthropic_api_key ?? '';
+        $dbModel = $settings->ai_claude_model ?? '';
+
+        $this->apiKey = ! empty($dbKey) ? $dbKey : ($config['api_key'] ?? '');
+        $this->model = ! empty($dbModel) ? $dbModel : ($config['chat_model'] ?? $config['model'] ?? 'claude-sonnet-4-20250514');
         $this->maxTokens = $config['chat_max_tokens'] ?? 1024;
         $this->temperature = $config['chat_temperature'] ?? 0.7;
     }
