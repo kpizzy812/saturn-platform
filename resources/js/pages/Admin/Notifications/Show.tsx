@@ -281,7 +281,7 @@ export default function AdminNotificationShow({ notification }: Props) {
                                     Related Resource
                                 </h3>
                                 <Link href={notification.actionUrl}>
-                                    <div className="rounded-lg border border-border bg-background-secondary p-3 transition-colors hover:border-primary hover:bg-background-tertiary">
+                                    <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-3 transition-colors hover:border-primary/20 hover:bg-primary/10">
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm font-medium text-foreground">
                                                 View Resource

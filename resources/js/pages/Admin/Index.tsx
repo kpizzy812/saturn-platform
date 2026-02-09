@@ -224,7 +224,7 @@ function ActivityItem({ activity }: { activity: RecentActivity }) {
     const deploymentUrl = activity.deployment_uuid ? `/deployments/${activity.deployment_uuid}` : null;
 
     const content = (
-        <div className={`flex items-start gap-3 border-b border-border/50 pb-3 last:border-0 last:pb-0 rounded-lg p-2 -m-2 ${deploymentUrl ? 'hover:bg-background-tertiary/50 cursor-pointer transition-colors' : ''}`}>
+        <div className={`flex items-start gap-3 border-b border-primary/10 pb-3 last:border-0 last:pb-0 rounded-lg p-2 -m-2 ${deploymentUrl ? 'hover:bg-primary/5 cursor-pointer transition-colors' : ''}`}>
             <div className="mt-1 rounded-full bg-background-tertiary p-2">
                 {getActionIcon(activity.action)}
             </div>
@@ -311,7 +311,7 @@ function HealthCheckRow({ check }: { check: HealthCheck }) {
     const Icon = config.icon;
 
     return (
-        <div className="flex items-center justify-between border-b border-border/50 py-3 last:border-0">
+        <div className="flex items-center justify-between border-b border-primary/10 py-3 last:border-0">
             <div className="flex items-center gap-3">
                 <Icon className={`h-4 w-4 ${
                     check.status === 'healthy' ? 'text-success' :
@@ -480,7 +480,7 @@ export default function AdminDashboard({
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <Link
                                 href="/admin/users"
-                                className="flex items-center gap-3 rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:bg-background-tertiary"
+                                className="flex items-center gap-3 rounded-lg border border-primary/10 bg-primary/[0.03] p-4 transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
                                 <Users className="h-5 w-5 text-primary" />
                                 <div>
@@ -490,7 +490,7 @@ export default function AdminDashboard({
                             </Link>
                             <Link
                                 href="/admin/servers"
-                                className="flex items-center gap-3 rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:bg-background-tertiary"
+                                className="flex items-center gap-3 rounded-lg border border-primary/10 bg-primary/[0.03] p-4 transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
                                 <Server className="h-5 w-5 text-primary" />
                                 <div>
@@ -500,7 +500,7 @@ export default function AdminDashboard({
                             </Link>
                             <Link
                                 href="/admin/teams"
-                                className="flex items-center gap-3 rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:bg-background-tertiary"
+                                className="flex items-center gap-3 rounded-lg border border-primary/10 bg-primary/[0.03] p-4 transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
                                 <Users className="h-5 w-5 text-primary" />
                                 <div>
@@ -510,7 +510,7 @@ export default function AdminDashboard({
                             </Link>
                             <Link
                                 href="/admin/settings"
-                                className="flex items-center gap-3 rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:bg-background-tertiary"
+                                className="flex items-center gap-3 rounded-lg border border-primary/10 bg-primary/[0.03] p-4 transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
                                 <Database className="h-5 w-5 text-primary" />
                                 <div>

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { FlashMessages } from '@/components/layout/FlashMessages';
+import { CardThemeContext } from '@/components/ui/Card';
 import {
     LayoutDashboard,
     Users,
@@ -423,9 +424,11 @@ export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) 
                         </div>
                     </div>
                     {breadcrumbs && breadcrumbs.length > 0 && <AdminBreadcrumbs items={breadcrumbs} />}
-                    <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-                        {children}
-                    </main>
+                    <CardThemeContext.Provider value="admin">
+                        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+                            {children}
+                        </main>
+                    </CardThemeContext.Provider>
                 </div>
             </div>
         </>

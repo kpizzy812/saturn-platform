@@ -277,7 +277,7 @@ export default function AiUsageIndex({
                             {Object.keys(byProvider).length > 0 ? (
                                 <div className="space-y-4">
                                     {Object.entries(byProvider).map(([provider, data]) => (
-                                        <div key={provider} className="flex items-center justify-between p-3 rounded-lg bg-background-tertiary/50">
+                                        <div key={provider} className="flex items-center justify-between p-3 rounded-lg bg-primary/5">
                                             <div className="flex items-center gap-3">
                                                 <Badge className={getProviderColor(provider)}>
                                                     {provider}
@@ -313,7 +313,7 @@ export default function AiUsageIndex({
                                     {Object.entries(byOperation).map(([operation, data]) => {
                                         const Icon = getOperationIcon(operation);
                                         return (
-                                            <div key={operation} className="flex items-center justify-between p-3 rounded-lg bg-background-tertiary/50">
+                                            <div key={operation} className="flex items-center justify-between p-3 rounded-lg bg-primary/5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="rounded-lg bg-primary/10 p-2">
                                                         <Icon className="h-4 w-4 text-primary" />
@@ -368,7 +368,7 @@ export default function AiUsageIndex({
                                                 className="w-full bg-primary/60 hover:bg-primary transition-colors rounded-t"
                                                 style={{ height: `${Math.max(height, 2)}%` }}
                                             />
-                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-background-secondary border border-border rounded px-2 py-1 text-xs whitespace-nowrap z-10">
+                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-primary/[0.03] border border-primary/10 rounded px-2 py-1 text-xs whitespace-nowrap z-10">
                                                 <div className="font-medium">{day.date}</div>
                                                 <div className="text-foreground-muted">{formatCost(day.cost)}</div>
                                                 <div className="text-foreground-muted">{day.requests} req</div>
@@ -400,7 +400,7 @@ export default function AiUsageIndex({
                             {topTeams.length > 0 ? (
                                 <div className="space-y-3">
                                     {topTeams.map((team, index) => (
-                                        <div key={team.team_id} className="flex items-center justify-between p-3 rounded-lg bg-background-tertiary/50">
+                                        <div key={team.team_id} className="flex items-center justify-between p-3 rounded-lg bg-primary/5">
                                             <div className="flex items-center gap-3">
                                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
                                                     {index + 1}

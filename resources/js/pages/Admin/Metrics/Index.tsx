@@ -246,15 +246,15 @@ export default function AdminMetricsIndex({ metrics = defaultMetrics }: Props) {
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <div className="rounded-lg border border-border/50 bg-background-secondary p-4">
+                            <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-4">
                                 <p className="text-sm font-medium text-foreground-muted">Resource Usage Trends</p>
                                 <Badge variant="warning" size="sm" className="mt-2">Coming Soon</Badge>
                             </div>
-                            <div className="rounded-lg border border-border/50 bg-background-secondary p-4">
+                            <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-4">
                                 <p className="text-sm font-medium text-foreground-muted">Team Performance</p>
                                 <Badge variant="warning" size="sm" className="mt-2">Coming Soon</Badge>
                             </div>
-                            <div className="rounded-lg border border-border/50 bg-background-secondary p-4">
+                            <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-4">
                                 <p className="text-sm font-medium text-foreground-muted">Cost Analytics</p>
                                 <Badge variant="warning" size="sm" className="mt-2">Coming Soon</Badge>
                             </div>
