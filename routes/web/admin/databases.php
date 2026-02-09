@@ -43,37 +43,107 @@ if (! function_exists('adminFindDatabaseByUuid')) {
     }
 }
 
-Route::get('/databases', function () {
-    // Fetch all databases across all teams (admin view)
+Route::get('/databases', function (\Illuminate\Http\Request $request) {
+    $search = $request->get('search');
+    $status = $request->get('status');
+    $type = $request->get('type');
+    $page = max(1, (int) $request->get('page', 1));
+    $perPage = 50;
+
     $databases = collect();
     $dbModels = ADMIN_DATABASE_MODELS;
+    $typeCounts = [];
+    $statusCounts = ['running' => 0, 'stopped' => 0, 'error' => 0];
 
-    foreach ($dbModels as $type => $model) {
-        $dbs = $model::with(['environment.project.team'])
-            ->get()
-            ->map(function ($db) use ($type) {
-                return [
-                    'id' => $db->id,
-                    'uuid' => $db->uuid,
-                    'name' => $db->name,
-                    'description' => $db->description,
-                    'database_type' => $type,
-                    'status' => $db->status(),
-                    'team_name' => $db->environment?->project?->team?->name ?? 'Unknown',
-                    'team_id' => $db->environment?->project?->team?->id,
-                    'created_at' => $db->created_at,
-                    'updated_at' => $db->updated_at,
-                ];
+    // If type filter set, only query that model
+    $modelsToQuery = $type && $type !== 'all' && isset($dbModels[$type])
+        ? [$type => $dbModels[$type]]
+        : $dbModels;
+
+    foreach ($dbModels as $dbType => $model) {
+        $query = $model::with(['environment.project.team']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhereHas('environment.project.team', function ($tq) use ($search) {
+                        $tq->where('name', 'ilike', "%{$search}%");
+                    });
             });
-        $databases = $databases->concat($dbs);
+        }
+
+        // Count for type tabs (before type filter)
+        $typeCounts[$dbType] = $query->count();
+
+        // Count for stats
+        $dbs = $query->get();
+        foreach ($dbs as $db) {
+            $dbStatus = $db->status();
+            if (str_starts_with($dbStatus, 'running')) {
+                $statusCounts['running']++;
+            } elseif (str_starts_with($dbStatus, 'stopped') || str_starts_with($dbStatus, 'exited')) {
+                $statusCounts['stopped']++;
+            } elseif (str_starts_with($dbStatus, 'error') || str_starts_with($dbStatus, 'degraded')) {
+                $statusCounts['error']++;
+            }
+        }
+
+        // Only include in results if matches type filter
+        if (! isset($modelsToQuery[$dbType])) {
+            continue;
+        }
+
+        $mapped = $dbs->map(function ($db) use ($dbType) {
+            return [
+                'id' => $db->id,
+                'uuid' => $db->uuid,
+                'name' => $db->name,
+                'description' => $db->description,
+                'database_type' => $dbType,
+                'status' => $db->status(),
+                'team_name' => $db->environment?->project?->team?->name ?? 'Unknown',
+                'team_id' => $db->environment?->project?->team?->id,
+                'project_name' => $db->environment?->project?->name,
+                'environment_name' => $db->environment?->name,
+                'created_at' => $db->created_at,
+                'updated_at' => $db->updated_at,
+            ];
+        });
+
+        // Apply status filter
+        if ($status && $status !== 'all') {
+            $mapped = $mapped->filter(function ($db) use ($status) {
+                return str_starts_with($db['status'], $status);
+            });
+        }
+
+        $databases = $databases->concat($mapped);
     }
 
-    $allDatabases = $databases
-        ->sortByDesc('updated_at')
-        ->values();
+    $sorted = $databases->sortByDesc('updated_at')->values();
+    $total = $sorted->count();
+    $lastPage = max(1, (int) ceil($total / $perPage));
+    $paginatedItems = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
 
     return Inertia::render('Admin/Databases/Index', [
-        'databases' => $allDatabases,
+        'databases' => [
+            'data' => $paginatedItems,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => $lastPage,
+        ],
+        'stats' => [
+            'runningCount' => $statusCounts['running'],
+            'stoppedCount' => $statusCounts['stopped'],
+            'errorCount' => $statusCounts['error'],
+        ],
+        'typeCounts' => $typeCounts,
+        'filters' => [
+            'search' => $search,
+            'status' => $status ?? 'all',
+            'type' => $type ?? 'all',
+        ],
     ]);
 })->name('admin.databases.index');
 

@@ -49,7 +49,7 @@ interface Props {
     };
 }
 
-function InvitationRow({ invitation, onResend, onDelete }: { invitation: Invitation; onResend: () => void; onDelete: () => void }) {
+function InvitationRow({ invitation, onResend, onDelete }: { invitation: Invitation; onResend: (onFinish: () => void) => void; onDelete: () => void }) {
     const confirm = useConfirm();
     const [isResending, setIsResending] = React.useState(false);
 
@@ -64,10 +64,9 @@ function InvitationRow({ invitation, onResend, onDelete }: { invitation: Invitat
         return configs[role.toLowerCase()] || { variant: 'default' as const, icon: <Shield className="h-3 w-3" />, label: role };
     };
 
-    const handleResend = async () => {
+    const handleResend = () => {
         setIsResending(true);
-        onResend();
-        setTimeout(() => setIsResending(false), 2000);
+        onResend(() => setIsResending(false));
     };
 
     const handleDelete = async () => {
@@ -159,9 +158,10 @@ export default function AdminInvitationsIndex({ invitations: invitationsData }: 
     const validCount = invitations.filter((i) => i.is_valid).length;
     const expiredCount = invitations.filter((i) => !i.is_valid).length;
 
-    const handleResend = (id: number) => {
+    const handleResend = (id: number, onFinish?: () => void) => {
         router.post(`/admin/invitations/${id}/resend`, {}, {
             preserveScroll: true,
+            onFinish: () => onFinish?.(),
         });
     };
 
@@ -290,7 +290,7 @@ export default function AdminInvitationsIndex({ invitations: invitationsData }: 
                                     <InvitationRow
                                         key={invitation.id}
                                         invitation={invitation}
-                                        onResend={() => handleResend(invitation.id)}
+                                        onResend={(onFinish) => handleResend(invitation.id, onFinish)}
                                         onDelete={() => handleDelete(invitation.id)}
                                     />
                                 ))}

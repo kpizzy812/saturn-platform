@@ -12,6 +12,7 @@ import {
     CheckCircle,
     XCircle,
     AlertTriangle,
+    Loader2,
 } from 'lucide-react';
 
 interface ServiceInfo {
@@ -34,6 +35,18 @@ interface Props {
     services: {
         data: ServiceInfo[];
         total: number;
+        current_page: number;
+        last_page: number;
+        per_page: number;
+    };
+    stats: {
+        runningCount: number;
+        stoppedCount: number;
+        errorCount: number;
+    };
+    filters: {
+        search?: string;
+        status?: string;
     };
 }
 
@@ -97,31 +110,74 @@ function ServiceRow({ service }: { service: ServiceInfo }) {
     );
 }
 
-export default function AdminServicesIndex({ services: servicesData }: Props) {
+export default function AdminServicesIndex({ services: servicesData, stats, filters = {} }: Props) {
     const items = servicesData?.data ?? [];
     const total = servicesData?.total ?? 0;
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<string>('all');
+    const currentPage = servicesData?.current_page ?? 1;
+    const lastPage = servicesData?.last_page ?? 1;
+
+    const [searchQuery, setSearchQuery] = React.useState(filters.search ?? '');
+    const [statusFilter, setStatusFilter] = React.useState<string>(filters.status ?? 'all');
+    const [isFiltering, setIsFiltering] = React.useState(false);
+
+    const runningCount = stats?.runningCount ?? 0;
+    const stoppedCount = stats?.stoppedCount ?? 0;
+    const errorCount = stats?.errorCount ?? 0;
 
     // Real-time status updates via WebSocket
     useRealtimeStatus({
         onServiceStatusChange: () => {
-            router.reload({ only: ['services'] });
+            router.reload({ only: ['services', 'stats'] });
         },
     });
 
-    const filteredServices = items.filter((service) => {
-        const matchesSearch =
-            service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (service.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (service.project_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    // Server-side search with debounce
+    const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>(null);
+    React.useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
 
-    const runningCount = items.filter((s) => s.status?.startsWith('running')).length;
-    const stoppedCount = items.filter((s) => s.status?.startsWith('stopped') || s.status?.startsWith('exited')).length;
-    const errorCount = items.filter((s) => s.status?.startsWith('error') || s.status?.startsWith('degraded')).length;
+    const applyFilters = React.useCallback((search: string, status: string) => {
+        setIsFiltering(true);
+        const params: Record<string, string> = {};
+        if (search) params.search = search;
+        if (status && status !== 'all') params.status = status;
+
+        router.get('/admin/services', params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['services', 'stats', 'filters'],
+            onFinish: () => setIsFiltering(false),
+        });
+    }, []);
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            applyFilters(value, statusFilter);
+        }, 300);
+    };
+
+    const handleStatusChange = (status: string) => {
+        setStatusFilter(status);
+        applyFilters(searchQuery, status);
+    };
+
+    const handlePageChange = (page: number) => {
+        setIsFiltering(true);
+        const params: Record<string, string> = { page: String(page) };
+        if (searchQuery) params.search = searchQuery;
+        if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
+
+        router.get('/admin/services', params, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setIsFiltering(false),
+        });
+    };
 
     return (
         <AdminLayout
@@ -184,38 +240,39 @@ export default function AdminServicesIndex({ services: servicesData }: Props) {
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
                                 <Input
-                                    placeholder="Search services by name, domain, user, team, or server..."
+                                    placeholder="Search services by name, team, or project..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
                                     className="pl-10"
                                 />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
+                                {isFiltering && <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />}
                                 <Button
                                     variant={statusFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('all')}
+                                    onClick={() => handleStatusChange('all')}
                                 >
                                     All
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'running' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('running')}
+                                    onClick={() => handleStatusChange('running')}
                                 >
                                     Running
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'stopped' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('stopped')}
+                                    onClick={() => handleStatusChange('stopped')}
                                 >
                                     Stopped
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'error' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('error')}
+                                    onClick={() => handleStatusChange('error')}
                                 >
                                     Errors
                                 </Button>
@@ -229,11 +286,12 @@ export default function AdminServicesIndex({ services: servicesData }: Props) {
                     <CardContent className="p-6">
                         <div className="mb-4 flex items-center justify-between">
                             <p className="text-sm text-foreground-muted">
-                                Showing {filteredServices.length} of {total} services
+                                Showing {items.length} of {total} services
+                                {currentPage > 1 && ` (page ${currentPage})`}
                             </p>
                         </div>
 
-                        {filteredServices.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="py-12 text-center">
                                 <Layers className="mx-auto h-12 w-12 text-foreground-muted" />
                                 <p className="mt-4 text-sm text-foreground-muted">No services found</p>
@@ -243,9 +301,34 @@ export default function AdminServicesIndex({ services: servicesData }: Props) {
                             </div>
                         ) : (
                             <div>
-                                {filteredServices.map((service) => (
+                                {items.map((service) => (
                                     <ServiceRow key={service.id} service={service} />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {lastPage > 1 && (
+                            <div className="mt-6 flex items-center justify-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={currentPage <= 1 || isFiltering}
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm text-foreground-muted">
+                                    Page {currentPage} of {lastPage}
+                                </span>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={currentPage >= lastPage || isFiltering}
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                >
+                                    Next
+                                </Button>
                             </div>
                         )}
                     </CardContent>

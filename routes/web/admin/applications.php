@@ -9,28 +9,65 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/applications', function () {
-    // Fetch all applications across all teams (admin view)
-    $applications = \App\Models\Application::with(['environment.project.team', 'destination'])
-        ->latest()
-        ->paginate(50)
-        ->through(function ($app) {
-            return [
-                'id' => $app->id,
-                'uuid' => $app->uuid,
-                'name' => $app->name,
-                'description' => $app->description,
-                'fqdn' => $app->fqdn,
-                'status' => $app->status,
-                'team_name' => $app->environment?->project?->team?->name ?? 'Unknown',
-                'team_id' => $app->environment?->project?->team?->id,
-                'created_at' => $app->created_at,
-                'updated_at' => $app->updated_at,
-            ];
+Route::get('/applications', function (\Illuminate\Http\Request $request) {
+    $search = $request->get('search');
+    $status = $request->get('status');
+
+    $query = \App\Models\Application::with(['environment.project.team', 'destination'])
+        ->latest();
+
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'ilike', "%{$search}%")
+                ->orWhere('fqdn', 'ilike', "%{$search}%")
+                ->orWhereHas('environment.project.team', function ($tq) use ($search) {
+                    $tq->where('name', 'ilike', "%{$search}%");
+                });
         });
+    }
+
+    if ($status && $status !== 'all') {
+        $query->where('status', 'ilike', "{$status}%");
+    }
+
+    // Stats from unfiltered query
+    $statsQuery = \App\Models\Application::query();
+    $stats = [
+        'runningCount' => (clone $statsQuery)->where('status', 'ilike', 'running%')->count(),
+        'deployingCount' => (clone $statsQuery)->where('status', 'ilike', 'deploying%')->count(),
+        'errorCount' => (clone $statsQuery)->where(function ($q) {
+            $q->where('status', 'ilike', 'error%')
+                ->orWhere('status', 'ilike', 'exited%')
+                ->orWhere('status', 'ilike', 'degraded%');
+        })->count(),
+    ];
+
+    $applications = $query->paginate(50)->through(function ($app) {
+        return [
+            'id' => $app->id,
+            'uuid' => $app->uuid,
+            'name' => $app->name,
+            'description' => $app->description,
+            'fqdn' => $app->fqdn,
+            'status' => $app->status,
+            'git_repository' => $app->git_repository,
+            'git_branch' => $app->git_branch,
+            'build_pack' => $app->build_pack,
+            'team_name' => $app->environment?->project?->team?->name ?? 'Unknown',
+            'team_id' => $app->environment?->project?->team?->id,
+            'project_name' => $app->environment?->project?->name,
+            'created_at' => $app->created_at,
+            'updated_at' => $app->updated_at,
+        ];
+    });
 
     return Inertia::render('Admin/Applications/Index', [
         'applications' => $applications,
+        'stats' => $stats,
+        'filters' => [
+            'search' => $search,
+            'status' => $status ?? 'all',
+        ],
     ]);
 })->name('admin.applications.index');
 

@@ -12,12 +12,14 @@ use Inertia\Inertia;
 Route::get('/backups', function () {
     $search = request()->query('search', '');
     $type = request()->query('type', '');
+    $page = max(1, (int) request()->query('page', 1));
+    $perPage = 50;
 
-    // Build query with filters
-    $query = \App\Models\ScheduledDatabaseBackup::with(['database', 'latest_log', 's3']);
+    // Load all backups with relations, then filter in PHP
+    // (polymorphic `database` relation prevents SQL-level filtering by name/type)
+    $allBackups = \App\Models\ScheduledDatabaseBackup::with(['database', 'latest_log', 's3'])->get();
 
-    // Server-side paginate with mapping
-    $backups = $query->paginate(50)->through(function ($backup) {
+    $mapped = $allBackups->map(function ($backup) {
         $database = $backup->database;
 
         return [
@@ -54,11 +56,9 @@ Route::get('/backups', function () {
         ];
     });
 
-    // Apply search and type filters on the mapped data (post-paginate filtering)
-    // Since ScheduledDatabaseBackup uses polymorphic `database` relation,
-    // filtering by database_name/type must happen after mapping.
+    // Apply search and type filters BEFORE pagination
     if ($search || $type) {
-        $filtered = collect($backups->items())->filter(function ($item) use ($search, $type) {
+        $mapped = $mapped->filter(function ($item) use ($search, $type) {
             $matchesSearch = ! $search
                 || str_contains(strtolower($item['database_name']), strtolower($search))
                 || str_contains(strtolower($item['team_name']), strtolower($search));
@@ -66,8 +66,21 @@ Route::get('/backups', function () {
 
             return $matchesSearch && $matchesType;
         });
-        $backups->setCollection($filtered->values());
     }
+
+    // Manual pagination after filtering
+    $sorted = $mapped->values();
+    $total = $sorted->count();
+    $lastPage = max(1, (int) ceil($total / $perPage));
+    $paginatedItems = $sorted->slice(($page - 1) * $perPage, $perPage)->values();
+
+    $backups = [
+        'data' => $paginatedItems,
+        'current_page' => $page,
+        'per_page' => $perPage,
+        'total' => $total,
+        'last_page' => $lastPage,
+    ];
 
     // Calculate stats from DB queries (not from paginated collection)
     $backupModel = \App\Models\ScheduledDatabaseBackup::query();

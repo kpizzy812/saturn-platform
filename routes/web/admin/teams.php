@@ -92,13 +92,21 @@ Route::post('/teams/{teamId}/members/{userId}/remove', function (int $teamId, in
     $team = \App\Models\Team::findOrFail($teamId);
     $user = \App\Models\User::findOrFail($userId);
 
-    // Check if user is owner - owners cannot be removed
-    $role = $team->members()->where('user_id', $userId)->first()?->pivot?->role;
-    if ($role === 'owner') {
-        return back()->with('error', 'Cannot remove team owner');
+    try {
+        // Use transaction with lock to prevent race condition on role check + detach
+        \Illuminate\Support\Facades\DB::transaction(function () use ($team, $userId) {
+            $member = $team->members()->where('user_id', $userId)->lockForUpdate()->first();
+            if (! $member) {
+                throw new \RuntimeException('User is not a member of this team');
+            }
+            if ($member->pivot?->role === 'owner') {
+                throw new \RuntimeException('Cannot remove team owner');
+            }
+            $team->members()->detach($userId);
+        });
+    } catch (\RuntimeException $e) {
+        return back()->with('error', $e->getMessage());
     }
-
-    $team->members()->detach($userId);
 
     return back()->with('success', "Removed {$user->name} from team");
 })->name('admin.teams.members.remove');

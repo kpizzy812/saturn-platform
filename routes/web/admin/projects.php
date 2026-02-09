@@ -11,21 +11,14 @@ use Inertia\Inertia;
 
 Route::get('/projects', function () {
     // Fetch all projects across all teams (admin view)
-    $projects = \App\Models\Project::with(['team', 'environments'])
+    // Eager load environments with counts to avoid N+1 queries
+    $projects = \App\Models\Project::with(['team', 'environments' => function ($q) {
+        $q->withCount(['applications', 'services', 'databases']);
+    }])
         ->withCount(['environments'])
         ->latest()
         ->paginate(50)
         ->through(function ($project) {
-            $applicationsCount = 0;
-            $servicesCount = 0;
-            $databasesCount = 0;
-
-            foreach ($project->environments as $env) {
-                $applicationsCount += $env->applications()->count();
-                $servicesCount += $env->services()->count();
-                $databasesCount += $env->databases()->count();
-            }
-
             return [
                 'id' => $project->id,
                 'uuid' => $project->uuid,
@@ -34,9 +27,9 @@ Route::get('/projects', function () {
                 'team_id' => $project->team_id,
                 'team_name' => $project->team?->name ?? 'Unknown',
                 'environments_count' => $project->environments_count,
-                'applications_count' => $applicationsCount,
-                'services_count' => $servicesCount,
-                'databases_count' => $databasesCount,
+                'applications_count' => $project->environments->sum('applications_count'),
+                'services_count' => $project->environments->sum('services_count'),
+                'databases_count' => $project->environments->sum('databases_count'),
                 'created_at' => $project->created_at,
                 'updated_at' => $project->updated_at,
             ];

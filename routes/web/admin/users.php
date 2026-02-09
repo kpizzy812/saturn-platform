@@ -332,19 +332,20 @@ Route::delete('/users/bulk-delete', function () {
     $deletedCount = 0;
     $skippedCount = 0;
 
-    foreach ($userIds as $userId) {
-        $user = \App\Models\User::find($userId);
-        if (! $user || $user->id === 0 || $user->isSuperAdmin()) {
-            $skippedCount++;
+    // Wrap bulk delete in transaction for atomicity
+    \Illuminate\Support\Facades\DB::transaction(function () use ($userIds, &$deletedCount, &$skippedCount) {
+        foreach ($userIds as $userId) {
+            $user = \App\Models\User::find($userId);
+            if (! $user || $user->id === 0 || $user->isSuperAdmin()) {
+                $skippedCount++;
 
-            continue;
+                continue;
+            }
+
+            $user->delete();
+            $deletedCount++;
         }
-
-        // Store name for logging before deletion
-        $userName = $user->name;
-        $user->delete();
-        $deletedCount++;
-    }
+    });
 
     // Log bulk action
     \App\Models\AuditLog::create([

@@ -4,7 +4,7 @@ import { AdminLayout } from '@/layouts/AdminLayout';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { CheckCircle, XCircle, Clock, GitBranch, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, GitBranch, Calendar, Loader2 } from 'lucide-react';
 import { router } from '@inertiajs/react';
 
 interface Deployment {
@@ -36,21 +36,37 @@ export default function DeploymentApprovals({ deployments }: Props) {
     const [approvalNote, setApprovalNote] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleApprove = (deployment: Deployment) => {
         setSelectedDeployment(deployment);
         setActionType('approve');
+        setError(null);
         setShowModal(true);
     };
 
     const handleReject = (deployment: Deployment) => {
         setSelectedDeployment(deployment);
         setActionType('reject');
+        setError(null);
         setShowModal(true);
     };
 
+    const closeModal = () => {
+        if (isSubmitting) return;
+        setShowModal(false);
+        setApprovalNote('');
+        setError(null);
+    };
+
     const submitAction = () => {
-        if (!selectedDeployment) return;
+        if (!selectedDeployment || isSubmitting) return;
+
+        setIsSubmitting(true);
+        setError(null);
+
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
         const endpoint =
             actionType === 'approve'
@@ -62,17 +78,27 @@ export default function DeploymentApprovals({ deployments }: Props) {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
             },
             body: JSON.stringify({ note: approvalNote }),
         })
-            .then((res) => res.json())
+            .then((res) => {
+                if (!res.ok) {
+                    return res.json().then((data) => {
+                        throw new Error(data.message || `Request failed with status ${res.status}`);
+                    });
+                }
+                return res.json();
+            })
             .then(() => {
-                setShowModal(false);
-                setApprovalNote('');
+                closeModal();
                 router.reload({ only: ['deployments'] });
             })
             .catch((err) => {
-                console.error('Failed to process approval:', err);
+                setError(err.message || 'Failed to process approval');
+            })
+            .finally(() => {
+                setIsSubmitting(false);
             });
     };
 
@@ -181,7 +207,12 @@ export default function DeploymentApprovals({ deployments }: Props) {
 
             {/* Approval Modal */}
             {showModal && selectedDeployment && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) closeModal();
+                    }}
+                >
                     <div className="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full">
                         <h3 className="text-lg font-semibold mb-4">
                             {actionType === 'approve' ? 'Approve' : 'Reject'} Deployment
@@ -191,32 +222,40 @@ export default function DeploymentApprovals({ deployments }: Props) {
                                 ? 'This deployment will be queued and executed immediately.'
                                 : 'This deployment will be cancelled and marked as rejected.'}
                         </p>
+
+                        {error && (
+                            <div className="mb-4 rounded-md bg-danger/10 p-3 text-sm text-danger">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="mb-4">
                             <label className="text-sm font-medium mb-2 block">
                                 Note (optional)
                             </label>
                             <textarea
-                                className="w-full border rounded-md p-2 text-sm"
+                                className="w-full border rounded-md p-2 text-sm bg-background"
                                 rows={3}
                                 value={approvalNote}
                                 onChange={(e) => setApprovalNote(e.target.value)}
                                 placeholder="Add a note about this decision..."
+                                disabled={isSubmitting}
                             />
                         </div>
                         <div className="flex gap-2 justify-end">
                             <Button
                                 variant="ghost"
-                                onClick={() => {
-                                    setShowModal(false);
-                                    setApprovalNote('');
-                                }}
+                                onClick={closeModal}
+                                disabled={isSubmitting}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 variant={actionType === 'approve' ? 'default' : 'danger'}
                                 onClick={submitAction}
+                                disabled={isSubmitting}
                             >
+                                {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                                 {actionType === 'approve' ? 'Approve' : 'Reject'}
                             </Button>
                         </div>

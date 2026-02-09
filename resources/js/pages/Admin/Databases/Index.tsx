@@ -12,6 +12,7 @@ import {
     CheckCircle,
     XCircle,
     AlertTriangle,
+    Loader2,
 } from 'lucide-react';
 
 interface DatabaseInfo {
@@ -30,17 +31,37 @@ interface DatabaseInfo {
     updated_at?: string;
 }
 
-interface PaginatedDatabases {
-    data: DatabaseInfo[];
-    current_page: number;
-    per_page: number;
-    total: number;
-    last_page: number;
+interface Props {
+    databases: {
+        data: DatabaseInfo[];
+        total: number;
+        current_page: number;
+        last_page: number;
+        per_page: number;
+    };
+    stats: {
+        runningCount: number;
+        stoppedCount: number;
+        errorCount: number;
+    };
+    typeCounts: Record<string, number>;
+    filters: {
+        search?: string;
+        status?: string;
+        type?: string;
+    };
 }
 
-interface Props {
-    databases: PaginatedDatabases;
-}
+const TYPE_LABELS: Record<string, string> = {
+    postgresql: 'PostgreSQL',
+    mysql: 'MySQL',
+    mongodb: 'MongoDB',
+    redis: 'Redis',
+    mariadb: 'MariaDB',
+    clickhouse: 'ClickHouse',
+    dragonfly: 'Dragonfly',
+    keydb: 'KeyDB',
+};
 
 function DatabaseTypeIcon({ type }: { type: string }) {
     const colors: Record<string, string> = {
@@ -65,19 +86,8 @@ function DatabaseRow({ database }: { database: DatabaseInfo }) {
         exited: { variant: 'danger', label: 'Exited', icon: <XCircle className="h-3 w-3" /> },
     };
 
-    const typeConfig: Record<string, { label: string; variant: 'default' }> = {
-        postgresql: { label: 'PostgreSQL', variant: 'default' },
-        mysql: { label: 'MySQL', variant: 'default' },
-        mongodb: { label: 'MongoDB', variant: 'default' },
-        redis: { label: 'Redis', variant: 'default' },
-        mariadb: { label: 'MariaDB', variant: 'default' },
-        clickhouse: { label: 'ClickHouse', variant: 'default' },
-        dragonfly: { label: 'Dragonfly', variant: 'default' },
-        keydb: { label: 'KeyDB', variant: 'default' },
-    };
-
     const config = statusConfig[database.status] || { variant: 'default' as const, label: database.status || 'Unknown', icon: null };
-    const typeInfo = typeConfig[database.database_type] || { label: database.database_type || 'Unknown', variant: 'default' as const };
+    const typeLabel = TYPE_LABELS[database.database_type] || database.database_type || 'Unknown';
 
     return (
         <div className="border-b border-border/50 py-4 last:border-0">
@@ -93,8 +103,8 @@ function DatabaseRow({ database }: { database: DatabaseInfo }) {
                                 >
                                     {database.name}
                                 </Link>
-                                <Badge variant={typeInfo.variant} size="sm">
-                                    {typeInfo.label}
+                                <Badge variant="default" size="sm">
+                                    {typeLabel}
                                 </Badge>
                                 <Badge variant={config.variant} size="sm" icon={config.icon}>
                                     {config.label}
@@ -126,38 +136,82 @@ function DatabaseRow({ database }: { database: DatabaseInfo }) {
     );
 }
 
-export default function AdminDatabasesIndex({ databases }: Props) {
+export default function AdminDatabasesIndex({ databases, stats, typeCounts = {}, filters = {} }: Props) {
     const items = databases?.data ?? [];
     const total = databases?.total ?? 0;
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [typeFilter, setTypeFilter] = React.useState<string>('all');
-    const [statusFilter, setStatusFilter] = React.useState<string>('all');
+    const currentPage = databases?.current_page ?? 1;
+    const lastPage = databases?.last_page ?? 1;
+
+    const [searchQuery, setSearchQuery] = React.useState(filters.search ?? '');
+    const [typeFilter, setTypeFilter] = React.useState<string>(filters.type ?? 'all');
+    const [statusFilter, setStatusFilter] = React.useState<string>(filters.status ?? 'all');
+    const [isFiltering, setIsFiltering] = React.useState(false);
+
+    const runningCount = stats?.runningCount ?? 0;
+    const stoppedCount = stats?.stoppedCount ?? 0;
+    const errorCount = stats?.errorCount ?? 0;
 
     // Real-time status updates via WebSocket
     useRealtimeStatus({
         onDatabaseStatusChange: () => {
-            router.reload({ only: ['databases'] });
+            router.reload({ only: ['databases', 'stats', 'typeCounts'] });
         },
     });
 
-    const filteredDatabases = items.filter((db) => {
-        const matchesSearch =
-            db.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (db.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (db.project_name || '').toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = typeFilter === 'all' || db.database_type === typeFilter;
-        const matchesStatus = statusFilter === 'all' || db.status === statusFilter;
-        return matchesSearch && matchesType && matchesStatus;
-    });
+    // Server-side search with debounce
+    const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>(null);
+    React.useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
 
-    const runningCount = items.filter((d) => d.status?.startsWith('running')).length;
-    const stoppedCount = items.filter((d) => d.status?.startsWith('stopped') || d.status?.startsWith('exited')).length;
-    const errorCount = items.filter((d) => d.status?.startsWith('error') || d.status?.startsWith('degraded')).length;
+    const applyFilters = React.useCallback((search: string, status: string, type: string) => {
+        setIsFiltering(true);
+        const params: Record<string, string> = {};
+        if (search) params.search = search;
+        if (status && status !== 'all') params.status = status;
+        if (type && type !== 'all') params.type = type;
 
-    const typeCount: Record<string, number> = {};
-    for (const db of items) {
-        typeCount[db.database_type] = (typeCount[db.database_type] || 0) + 1;
-    }
+        router.get('/admin/databases', params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['databases', 'stats', 'typeCounts', 'filters'],
+            onFinish: () => setIsFiltering(false),
+        });
+    }, []);
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            applyFilters(value, statusFilter, typeFilter);
+        }, 300);
+    };
+
+    const handleStatusChange = (status: string) => {
+        setStatusFilter(status);
+        applyFilters(searchQuery, status, typeFilter);
+    };
+
+    const handleTypeChange = (type: string) => {
+        setTypeFilter(type);
+        applyFilters(searchQuery, statusFilter, type);
+    };
+
+    const handlePageChange = (page: number) => {
+        setIsFiltering(true);
+        const params: Record<string, string> = { page: String(page) };
+        if (searchQuery) params.search = searchQuery;
+        if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
+        if (typeFilter && typeFilter !== 'all') params.type = typeFilter;
+
+        router.get('/admin/databases', params, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setIsFiltering(false),
+        });
+    };
 
     return (
         <AdminLayout
@@ -217,69 +271,65 @@ export default function AdminDatabasesIndex({ databases }: Props) {
                 <Card variant="glass" className="mb-6">
                     <CardContent className="p-4">
                         <div className="flex flex-col gap-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-                                <Input
-                                    placeholder="Search databases by name, user, or team..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10"
-                                />
+                            <div className="flex items-center gap-4">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
+                                    <Input
+                                        placeholder="Search databases by name or team..."
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearchChange(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                </div>
+                                {isFiltering && <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />}
                             </div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-sm text-foreground-subtle">Type:</span>
                                 <Button
                                     variant={typeFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setTypeFilter('all')}
+                                    onClick={() => handleTypeChange('all')}
                                 >
                                     All
                                 </Button>
-                                {Object.entries(typeCount).map(([type, count]) => {
-                                    const labels: Record<string, string> = {
-                                        postgresql: 'PostgreSQL', mysql: 'MySQL', mongodb: 'MongoDB',
-                                        redis: 'Redis', mariadb: 'MariaDB', clickhouse: 'ClickHouse',
-                                        dragonfly: 'Dragonfly', keydb: 'KeyDB',
-                                    };
-                                    return (
-                                        <Button
-                                            key={type}
-                                            variant={typeFilter === type ? 'primary' : 'secondary'}
-                                            size="sm"
-                                            onClick={() => setTypeFilter(type)}
-                                        >
-                                            {labels[type] || type} ({count})
-                                        </Button>
-                                    );
-                                })}
+                                {Object.entries(typeCounts).map(([type, count]) => (
+                                    <Button
+                                        key={type}
+                                        variant={typeFilter === type ? 'primary' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => handleTypeChange(type)}
+                                    >
+                                        {TYPE_LABELS[type] || type} ({count})
+                                    </Button>
+                                ))}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
                                 <span className="text-sm text-foreground-subtle">Status:</span>
                                 <Button
                                     variant={statusFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('all')}
+                                    onClick={() => handleStatusChange('all')}
                                 >
                                     All
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'running' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('running')}
+                                    onClick={() => handleStatusChange('running')}
                                 >
                                     Running
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'stopped' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('stopped')}
+                                    onClick={() => handleStatusChange('stopped')}
                                 >
                                     Stopped
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'error' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('error')}
+                                    onClick={() => handleStatusChange('error')}
                                 >
                                     Errors
                                 </Button>
@@ -293,11 +343,12 @@ export default function AdminDatabasesIndex({ databases }: Props) {
                     <CardContent className="p-6">
                         <div className="mb-4 flex items-center justify-between">
                             <p className="text-sm text-foreground-muted">
-                                Showing {filteredDatabases.length} of {total} databases
+                                Showing {items.length} of {total} databases
+                                {currentPage > 1 && ` (page ${currentPage})`}
                             </p>
                         </div>
 
-                        {filteredDatabases.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="py-12 text-center">
                                 <Database className="mx-auto h-12 w-12 text-foreground-muted" />
                                 <p className="mt-4 text-sm text-foreground-muted">No databases found</p>
@@ -307,9 +358,34 @@ export default function AdminDatabasesIndex({ databases }: Props) {
                             </div>
                         ) : (
                             <div>
-                                {filteredDatabases.map((db) => (
-                                    <DatabaseRow key={db.id} database={db} />
+                                {items.map((db) => (
+                                    <DatabaseRow key={`${db.database_type}-${db.id}`} database={db} />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {lastPage > 1 && (
+                            <div className="mt-6 flex items-center justify-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={currentPage <= 1 || isFiltering}
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm text-foreground-muted">
+                                    Page {currentPage} of {lastPage}
+                                </span>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={currentPage >= lastPage || isFiltering}
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                >
+                                    Next
+                                </Button>
                             </div>
                         )}
                     </CardContent>

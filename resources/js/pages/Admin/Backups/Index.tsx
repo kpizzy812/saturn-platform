@@ -96,7 +96,7 @@ interface Props {
     };
 }
 
-function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: () => void }) {
+function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: (onFinish: () => void) => void }) {
     const confirm = useConfirm();
     const [isRunning, setIsRunning] = React.useState(false);
 
@@ -179,9 +179,7 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: () 
         });
         if (confirmed) {
             setIsRunning(true);
-            onRunNow();
-            // Note: The actual completion will reload the page
-            setTimeout(() => setIsRunning(false), 5000);
+            onRunNow(() => setIsRunning(false));
         }
     };
 
@@ -371,9 +369,10 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
         applyFilters({ type: type === 'all' ? '' : type });
     };
 
-    const handleRunBackup = (uuid: string) => {
+    const handleRunBackup = (uuid: string, onFinish?: () => void) => {
         router.post(`/admin/backups/${uuid}/run`, {}, {
             preserveScroll: true,
+            onFinish: () => onFinish?.(),
         });
     };
 
@@ -611,7 +610,7 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
                                     <BackupRow
                                         key={backup.id}
                                         backup={backup}
-                                        onRunNow={() => handleRunBackup(backup.uuid)}
+                                        onRunNow={(onFinish) => handleRunBackup(backup.uuid, onFinish)}
                                     />
                                 ))}
                             </div>

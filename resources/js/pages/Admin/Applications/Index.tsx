@@ -14,6 +14,7 @@ import {
     XCircle,
     Clock,
     Activity,
+    Loader2,
 } from 'lucide-react';
 
 interface Application {
@@ -38,6 +39,18 @@ interface Props {
     applications: {
         data: Application[];
         total: number;
+        current_page: number;
+        last_page: number;
+        per_page: number;
+    };
+    stats: {
+        runningCount: number;
+        deployingCount: number;
+        errorCount: number;
+    };
+    filters: {
+        search?: string;
+        status?: string;
     };
 }
 
@@ -104,31 +117,74 @@ function ApplicationRow({ app }: { app: Application }) {
     );
 }
 
-export default function AdminApplicationsIndex({ applications: appsData }: Props) {
+export default function AdminApplicationsIndex({ applications: appsData, stats, filters = {} }: Props) {
     const items = appsData?.data ?? [];
     const total = appsData?.total ?? 0;
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<string>('all');
+    const currentPage = appsData?.current_page ?? 1;
+    const lastPage = appsData?.last_page ?? 1;
+
+    const [searchQuery, setSearchQuery] = React.useState(filters.search ?? '');
+    const [statusFilter, setStatusFilter] = React.useState<string>(filters.status ?? 'all');
+    const [isFiltering, setIsFiltering] = React.useState(false);
+
+    const runningCount = stats?.runningCount ?? 0;
+    const deployingCount = stats?.deployingCount ?? 0;
+    const errorCount = stats?.errorCount ?? 0;
 
     // Real-time status updates via WebSocket
     useRealtimeStatus({
         onApplicationStatusChange: () => {
-            router.reload({ only: ['applications'] });
+            router.reload({ only: ['applications', 'stats'] });
         },
     });
 
-    const filteredApplications = items.filter((app) => {
-        const matchesSearch =
-            app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (app.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (app.git_repository || '').toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    // Server-side search with debounce
+    const searchTimerRef = React.useRef<ReturnType<typeof setTimeout>>(null);
+    React.useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        };
+    }, []);
 
-    const runningCount = items.filter((a) => a.status?.startsWith('running')).length;
-    const errorCount = items.filter((a) => a.status?.startsWith('error') || a.status?.startsWith('exited') || a.status?.startsWith('degraded')).length;
-    const deployingCount = items.filter((a) => a.status?.startsWith('deploying')).length;
+    const applyFilters = React.useCallback((search: string, status: string) => {
+        setIsFiltering(true);
+        const params: Record<string, string> = {};
+        if (search) params.search = search;
+        if (status && status !== 'all') params.status = status;
+
+        router.get('/admin/applications', params, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['applications', 'stats', 'filters'],
+            onFinish: () => setIsFiltering(false),
+        });
+    }, []);
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            applyFilters(value, statusFilter);
+        }, 300);
+    };
+
+    const handleStatusChange = (status: string) => {
+        setStatusFilter(status);
+        applyFilters(searchQuery, status);
+    };
+
+    const handlePageChange = (page: number) => {
+        setIsFiltering(true);
+        const params: Record<string, string> = { page: String(page) };
+        if (searchQuery) params.search = searchQuery;
+        if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
+
+        router.get('/admin/applications', params, {
+            preserveState: true,
+            preserveScroll: true,
+            onFinish: () => setIsFiltering(false),
+        });
+    };
 
     return (
         <AdminLayout
@@ -191,38 +247,39 @@ export default function AdminApplicationsIndex({ applications: appsData }: Props
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
                                 <Input
-                                    placeholder="Search applications by name, domain, user, or repository..."
+                                    placeholder="Search applications by name, domain, or team..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
                                     className="pl-10"
                                 />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
+                                {isFiltering && <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />}
                                 <Button
                                     variant={statusFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('all')}
+                                    onClick={() => handleStatusChange('all')}
                                 >
                                     All
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'running' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('running')}
+                                    onClick={() => handleStatusChange('running')}
                                 >
                                     Running
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'deploying' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('deploying')}
+                                    onClick={() => handleStatusChange('deploying')}
                                 >
                                     Deploying
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'error' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('error')}
+                                    onClick={() => handleStatusChange('error')}
                                 >
                                     Errors
                                 </Button>
@@ -236,11 +293,12 @@ export default function AdminApplicationsIndex({ applications: appsData }: Props
                     <CardContent className="p-6">
                         <div className="mb-4 flex items-center justify-between">
                             <p className="text-sm text-foreground-muted">
-                                Showing {filteredApplications.length} of {total} applications
+                                Showing {items.length} of {total} applications
+                                {currentPage > 1 && ` (page ${currentPage})`}
                             </p>
                         </div>
 
-                        {filteredApplications.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="py-12 text-center">
                                 <Package className="mx-auto h-12 w-12 text-foreground-muted" />
                                 <p className="mt-4 text-sm text-foreground-muted">No applications found</p>
@@ -250,9 +308,34 @@ export default function AdminApplicationsIndex({ applications: appsData }: Props
                             </div>
                         ) : (
                             <div>
-                                {filteredApplications.map((app) => (
+                                {items.map((app) => (
                                     <ApplicationRow key={app.id} app={app} />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {lastPage > 1 && (
+                            <div className="mt-6 flex items-center justify-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={currentPage <= 1 || isFiltering}
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm text-foreground-muted">
+                                    Page {currentPage} of {lastPage}
+                                </span>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={currentPage >= lastPage || isFiltering}
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                >
+                                    Next
+                                </Button>
                             </div>
                         )}
                     </CardContent>
