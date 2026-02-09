@@ -316,6 +316,7 @@ function generateDefaultProxyConfiguration(Server $server, array $custom_command
             $config['services']['traefik']['command'][] = '--entrypoints.https.http.encodequerysemicolons=true';
             $config['services']['traefik']['command'][] = '--entryPoints.https.http2.maxConcurrentStreams=250';
             $config['services']['traefik']['command'][] = '--entrypoints.https.http3';
+            $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.email=admin@saturn.ac';
             $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.httpchallenge=true';
             $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http';
             $config['services']['traefik']['command'][] = '--certificatesresolvers.letsencrypt.acme.storage=/traefik/acme.json';

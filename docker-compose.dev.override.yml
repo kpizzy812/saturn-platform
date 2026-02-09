@@ -55,6 +55,18 @@ services:
     labels:
       - "saturn.environment=dev"
       - "saturn.managed=true"
+      # Traefik routing for saturn.ac
+      - "traefik.enable=true"
+      - "traefik.http.routers.saturn-http.rule=Host(`saturn.ac`)"
+      - "traefik.http.routers.saturn-http.entrypoints=http"
+      - "traefik.http.routers.saturn-http.middlewares=saturn-redirect-https"
+      - "traefik.http.routers.saturn-https.rule=Host(`saturn.ac`)"
+      - "traefik.http.routers.saturn-https.entrypoints=https"
+      - "traefik.http.routers.saturn-https.tls=true"
+      - "traefik.http.routers.saturn-https.tls.certresolver=letsencrypt"
+      - "traefik.http.services.saturn.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.saturn-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.saturn-redirect-https.redirectscheme.permanent=true"
 
   postgres:
     container_name: saturn-db
