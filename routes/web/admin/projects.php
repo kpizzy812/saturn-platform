@@ -13,7 +13,7 @@ Route::get('/projects', function () {
     // Fetch all projects across all teams (admin view)
     // Eager load environments with counts to avoid N+1 queries
     $projects = \App\Models\Project::with(['team', 'environments' => function ($q) {
-        $q->withCount(['applications', 'services', 'databases']);
+        $q->withCount(['applications', 'services']);
     }])
         ->withCount(['environments'])
         ->latest()
@@ -29,7 +29,7 @@ Route::get('/projects', function () {
                 'environments_count' => $project->environments_count,
                 'applications_count' => $project->environments->sum('applications_count'),
                 'services_count' => $project->environments->sum('services_count'),
-                'databases_count' => $project->environments->sum('databases_count'),
+                'databases_count' => $project->environments->sum(fn ($env) => $env->databases()->count()),
                 'created_at' => $project->created_at,
                 'updated_at' => $project->updated_at,
             ];
