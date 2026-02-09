@@ -6,12 +6,12 @@ import {
     LayoutDashboard,
     Users,
     Server,
-    Users as Teams,
     Settings,
     FileText,
     Shield,
     LogOut,
     ChevronDown,
+    ChevronRight,
     FolderKanban,
     ListOrdered,
     HardDrive,
@@ -29,6 +29,11 @@ import {
     Container,
     Lock,
     ArrowRightLeft,
+    Menu,
+    X,
+    Rocket,
+    BarChart3,
+    Eye,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -48,37 +53,174 @@ interface NavItem {
     icon: React.ReactNode;
 }
 
-const adminNavItems: NavItem[] = [
-    { label: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { label: 'Health', href: '/admin/health', icon: <Activity className="h-4 w-4" /> },
-    { label: 'Notifications', href: '/admin/notifications', icon: <Bell className="h-4 w-4" /> },
-    { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
-    { label: 'Teams', href: '/admin/teams', icon: <Teams className="h-4 w-4" /> },
-    { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
-    { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
-    { label: 'SSH Keys', href: '/admin/ssh-keys', icon: <KeyRound className="h-4 w-4" /> },
-    { label: 'Approvals', href: '/admin/deployment-approvals', icon: <CheckCircle className="h-4 w-4" /> },
-    { label: 'Templates', href: '/admin/templates', icon: <LayoutTemplate className="h-4 w-4" /> },
-    { label: 'AI Usage', href: '/admin/ai-usage', icon: <Brain className="h-4 w-4" /> },
-    { label: 'Queues', href: '/admin/queues', icon: <ListOrdered className="h-4 w-4" /> },
-    { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
-    { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
-    { label: 'Scheduled Tasks', href: '/admin/scheduled-tasks', icon: <Clock className="h-4 w-4" /> },
-    { label: 'Docker Cleanups', href: '/admin/docker-cleanups', icon: <Container className="h-4 w-4" /> },
-    { label: 'SSL Certificates', href: '/admin/ssl-certificates', icon: <Lock className="h-4 w-4" /> },
-    { label: 'Webhooks', href: '/admin/webhook-deliveries', icon: <Webhook className="h-4 w-4" /> },
-    { label: 'Login History', href: '/admin/login-history', icon: <History className="h-4 w-4" /> },
-    { label: 'Transfers', href: '/admin/transfers', icon: <ArrowRightLeft className="h-4 w-4" /> },
-    { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
-    { label: 'OAuth / SSO', href: '/admin/settings/oauth', icon: <KeyRound className="h-4 w-4" /> },
-    { label: 'System Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },
-    { label: 'Audit Logs', href: '/admin/audit-logs', icon: <ClipboardList className="h-4 w-4" /> },
+interface NavGroup {
+    label: string;
+    icon: React.ReactNode;
+    items: NavItem[];
+}
+
+const adminNavGroups: NavGroup[] = [
+    {
+        label: 'Overview',
+        icon: <LayoutDashboard className="h-4 w-4" />,
+        items: [
+            { label: 'Dashboard', href: '/admin', icon: <LayoutDashboard className="h-4 w-4" /> },
+            { label: 'Health', href: '/admin/health', icon: <Activity className="h-4 w-4" /> },
+            { label: 'Metrics', href: '/admin/metrics', icon: <BarChart3 className="h-4 w-4" /> },
+            { label: 'Notifications', href: '/admin/notifications', icon: <Bell className="h-4 w-4" /> },
+        ],
+    },
+    {
+        label: 'People',
+        icon: <Users className="h-4 w-4" />,
+        items: [
+            { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
+            { label: 'Teams', href: '/admin/teams', icon: <Users className="h-4 w-4" /> },
+            { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
+            { label: 'Login History', href: '/admin/login-history', icon: <History className="h-4 w-4" /> },
+        ],
+    },
+    {
+        label: 'Resources',
+        icon: <Server className="h-4 w-4" />,
+        items: [
+            { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
+            { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
+            { label: 'SSH Keys', href: '/admin/ssh-keys', icon: <KeyRound className="h-4 w-4" /> },
+            { label: 'Templates', href: '/admin/templates', icon: <LayoutTemplate className="h-4 w-4" /> },
+        ],
+    },
+    {
+        label: 'Deployments',
+        icon: <Rocket className="h-4 w-4" />,
+        items: [
+            { label: 'Deployments', href: '/admin/deployments', icon: <Rocket className="h-4 w-4" /> },
+            { label: 'Approvals', href: '/admin/deployment-approvals', icon: <CheckCircle className="h-4 w-4" /> },
+            { label: 'Queues', href: '/admin/queues', icon: <ListOrdered className="h-4 w-4" /> },
+            { label: 'Scheduled Tasks', href: '/admin/scheduled-tasks', icon: <Clock className="h-4 w-4" /> },
+        ],
+    },
+    {
+        label: 'Monitoring',
+        icon: <Eye className="h-4 w-4" />,
+        items: [
+            { label: 'Audit Logs', href: '/admin/audit-logs', icon: <ClipboardList className="h-4 w-4" /> },
+            { label: 'System Logs', href: '/admin/logs', icon: <FileText className="h-4 w-4" /> },
+            { label: 'Webhooks', href: '/admin/webhook-deliveries', icon: <Webhook className="h-4 w-4" /> },
+            { label: 'AI Usage', href: '/admin/ai-usage', icon: <Brain className="h-4 w-4" /> },
+        ],
+    },
+    {
+        label: 'System',
+        icon: <Settings className="h-4 w-4" />,
+        items: [
+            { label: 'Settings', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
+            { label: 'OAuth / SSO', href: '/admin/settings/oauth', icon: <KeyRound className="h-4 w-4" /> },
+            { label: 'Backups', href: '/admin/backups', icon: <HardDrive className="h-4 w-4" /> },
+            { label: 'Docker Cleanups', href: '/admin/docker-cleanups', icon: <Container className="h-4 w-4" /> },
+            { label: 'SSL Certificates', href: '/admin/ssl-certificates', icon: <Lock className="h-4 w-4" /> },
+            { label: 'Transfers', href: '/admin/transfers', icon: <ArrowRightLeft className="h-4 w-4" /> },
+        ],
+    },
 ];
 
-function AdminSidebar() {
+// Get stored expanded groups from localStorage
+function getStoredExpandedGroups(): Record<string, boolean> {
+    if (typeof window === 'undefined') return {};
+    try {
+        const stored = localStorage.getItem('admin-nav-groups');
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+}
+
+function storeExpandedGroups(groups: Record<string, boolean>) {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem('admin-nav-groups', JSON.stringify(groups));
+    } catch {
+        // Ignore storage errors
+    }
+}
+
+function NavGroupSection({
+    group,
+    isExpanded,
+    onToggle,
+    isActive,
+}: {
+    group: NavGroup;
+    isExpanded: boolean;
+    onToggle: () => void;
+    isActive: (href: string) => boolean;
+}) {
+    const hasActiveItem = group.items.some(item => isActive(item.href));
+
+    return (
+        <div className="mb-1">
+            <button
+                onClick={onToggle}
+                className={cn(
+                    'flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors',
+                    hasActiveItem
+                        ? 'text-primary'
+                        : 'text-foreground-muted/70 hover:text-foreground-muted'
+                )}
+            >
+                <span className="flex items-center gap-2">
+                    {group.icon}
+                    {group.label}
+                </span>
+                {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                ) : (
+                    <ChevronRight className="h-3 w-3" />
+                )}
+            </button>
+
+            {isExpanded && (
+                <div className="mt-0.5 ml-2 space-y-0.5 border-l border-primary/10 pl-2">
+                    {group.items.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                                isActive(item.href)
+                                    ? 'bg-gradient-to-r from-primary/20 to-purple-500/10 text-primary border border-primary/30 shadow-sm shadow-primary/10'
+                                    : 'text-foreground-muted hover:bg-primary/10 hover:text-foreground border border-transparent'
+                            )}
+                        >
+                            <span className={cn(
+                                'transition-colors',
+                                isActive(item.href) ? 'text-primary' : ''
+                            )}>
+                                {item.icon}
+                            </span>
+                            {item.label}
+                        </Link>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; onMobileClose: () => void }) {
     const { url, props } = usePage();
     const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null; is_root_user?: boolean } | undefined;
     const systemNotifications = (props as any).systemNotifications as { unreadCount: number } | undefined;
+
+    // Initialize expanded groups: all expanded by default, or use stored state
+    const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {
+        const stored = getStoredExpandedGroups();
+        if (Object.keys(stored).length > 0) return stored;
+        // Default: all groups expanded
+        const defaults: Record<string, boolean> = {};
+        adminNavGroups.forEach(g => { defaults[g.label] = true; });
+        return defaults;
+    });
 
     const isActive = (href: string) => {
         if (href === '/admin') {
@@ -87,8 +229,16 @@ function AdminSidebar() {
         return url.startsWith(href);
     };
 
-    return (
-        <aside className="flex h-screen w-64 flex-col border-r border-primary/20 bg-gradient-to-b from-primary/5 via-background to-background">
+    const toggleGroup = (label: string) => {
+        setExpandedGroups(prev => {
+            const next = { ...prev, [label]: !prev[label] };
+            storeExpandedGroups(next);
+            return next;
+        });
+    };
+
+    const sidebarContent = (
+        <>
             {/* Admin Logo with Notification Bell */}
             <div className="flex h-16 items-center justify-between border-b border-primary/20 bg-gradient-to-r from-primary/10 to-purple-500/5 px-4">
                 <div className="flex items-center gap-3">
@@ -100,41 +250,39 @@ function AdminSidebar() {
                         <div className="text-[11px] font-medium text-primary">Saturn Platform</div>
                     </div>
                 </div>
-                {/* Notification Bell */}
-                <Link
-                    href="/admin/notifications"
-                    className="relative rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
-                >
-                    <Bell className="h-5 w-5" />
-                    {(systemNotifications?.unreadCount ?? 0) > 0 && (
-                        <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
-                            {systemNotifications!.unreadCount > 9 ? '9+' : systemNotifications!.unreadCount}
-                        </span>
-                    )}
-                </Link>
+                <div className="flex items-center gap-1">
+                    {/* Notification Bell */}
+                    <Link
+                        href="/admin/notifications"
+                        className="relative rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                    >
+                        <Bell className="h-5 w-5" />
+                        {(systemNotifications?.unreadCount ?? 0) > 0 && (
+                            <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-bold text-white">
+                                {systemNotifications!.unreadCount > 9 ? '9+' : systemNotifications!.unreadCount}
+                            </span>
+                        )}
+                    </Link>
+                    {/* Mobile close button */}
+                    <button
+                        onClick={onMobileClose}
+                        className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary lg:hidden"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
             </div>
 
-            {/* Admin Navigation */}
-            <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-                {adminNavItems.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                            isActive(item.href)
-                                ? 'bg-gradient-to-r from-primary/20 to-purple-500/10 text-primary border border-primary/30 shadow-sm shadow-primary/10'
-                                : 'text-foreground-muted hover:bg-primary/10 hover:text-foreground hover:border-primary/20 border border-transparent'
-                        )}
-                    >
-                        <span className={cn(
-                            'transition-colors',
-                            isActive(item.href) ? 'text-primary' : ''
-                        )}>
-                            {item.icon}
-                        </span>
-                        {item.label}
-                    </Link>
+            {/* Admin Navigation - Grouped */}
+            <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+                {adminNavGroups.map((group) => (
+                    <NavGroupSection
+                        key={group.label}
+                        group={group}
+                        isExpanded={expandedGroups[group.label] ?? true}
+                        onToggle={() => toggleGroup(group.label)}
+                        isActive={isActive}
+                    />
                 ))}
             </nav>
 
@@ -181,7 +329,34 @@ function AdminSidebar() {
                     </Link>
                 </div>
             </div>
-        </aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Desktop sidebar */}
+            <aside className="hidden lg:flex h-screen w-64 flex-col border-r border-primary/20 bg-gradient-to-b from-primary/5 via-background to-background">
+                {sidebarContent}
+            </aside>
+
+            {/* Mobile sidebar overlay */}
+            {isMobileOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                    onClick={onMobileClose}
+                />
+            )}
+
+            {/* Mobile sidebar drawer */}
+            <aside
+                className={cn(
+                    'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-primary/20 bg-gradient-to-b from-primary/5 via-background to-background transition-transform duration-300 lg:hidden',
+                    isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+                )}
+            >
+                {sidebarContent}
+            </aside>
+        </>
     );
 }
 
@@ -222,15 +397,33 @@ function AdminBreadcrumbs({ items }: { items: AdminBreadcrumb[] }) {
 }
 
 export function AdminLayout({ children, title, breadcrumbs }: AdminLayoutProps) {
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
+
     return (
         <>
             <Head title={title ? `${title} | Admin` : 'Admin Panel'} />
             <FlashMessages />
             <div className="flex h-screen bg-background">
-                <AdminSidebar />
+                <AdminSidebar
+                    isMobileOpen={isMobileSidebarOpen}
+                    onMobileClose={() => setIsMobileSidebarOpen(false)}
+                />
                 <div className="flex flex-1 flex-col overflow-hidden">
+                    {/* Mobile header with hamburger */}
+                    <div className="flex items-center gap-3 border-b border-primary/20 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3 lg:hidden">
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            className="rounded-lg p-2 text-foreground-muted transition-colors hover:bg-primary/10 hover:text-primary"
+                        >
+                            <Menu className="h-5 w-5" />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <Shield className="h-5 w-5 text-primary" />
+                            <span className="font-semibold text-foreground">Admin</span>
+                        </div>
+                    </div>
                     {breadcrumbs && breadcrumbs.length > 0 && <AdminBreadcrumbs items={breadcrumbs} />}
-                    <main className="flex-1 overflow-auto p-6 lg:p-8">
+                    <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
                         {children}
                     </main>
                 </div>

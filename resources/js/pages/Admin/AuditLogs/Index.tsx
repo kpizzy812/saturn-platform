@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import {
     Search,
     FileText,
@@ -391,81 +392,49 @@ export default function AdminAuditLogsIndex({
 
                             {showFilters && (
                                 <div className="grid gap-4 border-t border-border/50 pt-4 sm:grid-cols-2 lg:grid-cols-5">
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                            Action
-                                        </label>
-                                        <select
-                                            value={selectedAction}
-                                            onChange={(e) => handleFilterChange('action', e.target.value)}
-                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                                        >
-                                            <option value="">All Actions</option>
-                                            {actions.map((action) => (
-                                                <option key={action} value={action}>
-                                                    {action}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <Select
+                                        label="Action"
+                                        value={selectedAction}
+                                        onChange={(e) => handleFilterChange('action', e.target.value)}
+                                        options={[
+                                            { value: '', label: 'All Actions' },
+                                            ...actions.map((action) => ({ value: action, label: action })),
+                                        ]}
+                                    />
 
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                            Resource Type
-                                        </label>
-                                        <select
-                                            value={selectedResourceType}
-                                            onChange={(e) => handleFilterChange('resource_type', e.target.value)}
-                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                                        >
-                                            <option value="">All Types</option>
-                                            {resourceTypes.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {type}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <Select
+                                        label="Resource Type"
+                                        value={selectedResourceType}
+                                        onChange={(e) => handleFilterChange('resource_type', e.target.value)}
+                                        options={[
+                                            { value: '', label: 'All Types' },
+                                            ...resourceTypes.map((type) => ({ value: type, label: type })),
+                                        ]}
+                                    />
 
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                            User
-                                        </label>
-                                        <select
-                                            value={selectedUserId}
-                                            onChange={(e) => handleFilterChange('user_id', e.target.value)}
-                                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                                        >
-                                            <option value="">All Users</option>
-                                            {users.map((user) => (
-                                                <option key={user.id} value={user.id.toString()}>
-                                                    {user.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <Select
+                                        label="User"
+                                        value={selectedUserId}
+                                        onChange={(e) => handleFilterChange('user_id', e.target.value)}
+                                        options={[
+                                            { value: '', label: 'All Users' },
+                                            ...users.map((user) => ({ value: user.id.toString(), label: user.name })),
+                                        ]}
+                                    />
 
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                            Date From
-                                        </label>
-                                        <Input
-                                            type="date"
-                                            value={dateFrom}
-                                            onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                                        />
-                                    </div>
+                                    <Input
+                                        type="date"
+                                        label="Date From"
+                                        value={dateFrom}
+                                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    />
 
-                                    <div>
-                                        <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                            Date To
-                                        </label>
-                                        <Input
-                                            type="date"
-                                            value={dateTo}
-                                            onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                                        />
-                                    </div>
+                                    <Input
+                                        type="date"
+                                        label="Date To"
+                                        value={dateTo}
+                                        onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                                    />
                                 </div>
                             )}
 

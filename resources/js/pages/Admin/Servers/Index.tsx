@@ -12,6 +12,8 @@ import {
     AlertTriangle,
     Tag,
     X,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 
 interface ServerInfo {
@@ -34,6 +36,9 @@ interface Props {
     servers: {
         data: ServerInfo[];
         total: number;
+        current_page: number;
+        last_page: number;
+        per_page: number;
     };
     allTags?: string[];
     filters?: {
@@ -110,6 +115,8 @@ function ServerRow({ server }: { server: ServerInfo }) {
 export default function AdminServersIndex({ servers: serversData, allTags = [], filters = {} }: Props) {
     const items = serversData?.data ?? [];
     const total = serversData?.total ?? 0;
+    const currentPage = serversData?.current_page ?? 1;
+    const lastPage = serversData?.last_page ?? 1;
     const [searchQuery, setSearchQuery] = React.useState(filters.search ?? '');
     const [statusFilter, setStatusFilter] = React.useState(filters.status ?? 'all');
     const [tagFilter, setTagFilter] = React.useState(filters.tag ?? '');
@@ -160,6 +167,19 @@ export default function AdminServersIndex({ servers: serversData, allTags = [], 
         setStatusFilter('all');
         setTagFilter('');
         router.get('/admin/servers');
+    };
+
+    const handlePageChange = (page: number) => {
+        const params = new URLSearchParams();
+        if (filters.search) params.set('search', filters.search);
+        if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+        if (filters.tag) params.set('tag', filters.tag);
+        params.set('page', page.toString());
+
+        router.get(`/admin/servers?${params.toString()}`, {}, {
+            preserveState: true,
+            preserveScroll: false,
+        });
     };
 
     const healthyCount = items.filter((s) => s.is_reachable && s.is_usable).length;
@@ -334,6 +354,31 @@ export default function AdminServersIndex({ servers: serversData, allTags = [], 
                             <p className="text-sm text-foreground-muted">
                                 Showing {items.length} of {total} servers
                             </p>
+                            {lastPage > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-foreground-muted">
+                                        Page {currentPage} of {lastPage}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === lastPage}
+                                    >
+                                        Next
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
                         {items.length === 0 ? (

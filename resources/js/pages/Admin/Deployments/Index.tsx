@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -12,6 +12,9 @@ import {
     XCircle,
     Clock,
     AlertTriangle,
+    ChevronLeft,
+    ChevronRight,
+    RefreshCw,
 } from 'lucide-react';
 
 interface Deployment {
@@ -34,6 +37,18 @@ interface Props {
     deployments: {
         data: Deployment[];
         total: number;
+        current_page: number;
+        last_page: number;
+        per_page: number;
+    };
+    stats: {
+        successCount: number;
+        failedCount: number;
+        inProgressCount: number;
+    };
+    filters: {
+        search?: string;
+        status?: string;
     };
 }
 
@@ -74,7 +89,7 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
                                 {deployment.team_name && <span>{deployment.team_name}</span>}
                                 {deployment.commit && (
                                     <>
-                                        <span>·</span>
+                                        <span>&middot;</span>
                                         <code className="rounded bg-background-tertiary px-1.5 py-0.5 font-mono">
                                             {deployment.commit.substring(0, 7)}
                                         </code>
@@ -82,7 +97,7 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
                                 )}
                                 {deployment.commit_message && (
                                     <>
-                                        <span>·</span>
+                                        <span>&middot;</span>
                                         <span className="truncate max-w-xs">{deployment.commit_message}</span>
                                     </>
                                 )}
@@ -91,7 +106,7 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
                                 <span>{new Date(deployment.created_at).toLocaleString()}</span>
                                 {isInProgress && (
                                     <>
-                                        <span>·</span>
+                                        <span>&middot;</span>
                                         <span className="animate-pulse text-warning">Deploying...</span>
                                     </>
                                 )}
@@ -111,24 +126,90 @@ function DeploymentRow({ deployment }: { deployment: Deployment }) {
     );
 }
 
-export default function AdminDeploymentsIndex({ deployments: deploymentsData }: Props) {
+export default function AdminDeploymentsIndex({ deployments: deploymentsData, stats, filters = {} }: Props) {
     const items = deploymentsData?.data ?? [];
     const total = deploymentsData?.total ?? 0;
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [statusFilter, setStatusFilter] = React.useState<string>('all');
+    const currentPage = deploymentsData?.current_page ?? 1;
+    const lastPage = deploymentsData?.last_page ?? 1;
 
-    const filteredDeployments = items.filter((deployment) => {
-        const matchesSearch =
-            (deployment.application_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (deployment.team_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (deployment.commit || '').toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || deployment.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    const [searchQuery, setSearchQuery] = React.useState(filters.search ?? '');
+    const [statusFilter, setStatusFilter] = React.useState(filters.status ?? 'all');
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
 
-    const successCount = items.filter((d) => d.status === 'finished').length;
-    const failedCount = items.filter((d) => d.status === 'failed').length;
-    const inProgressCount = items.filter((d) => d.status === 'in_progress' || d.status === 'queued').length;
+    // Computed stats - use server-provided stats or fallback to client-side count
+    const successCount = stats?.successCount ?? items.filter((d) => d.status === 'finished').length;
+    const failedCount = stats?.failedCount ?? items.filter((d) => d.status === 'failed').length;
+    const inProgressCount = stats?.inProgressCount ?? items.filter((d) => d.status === 'in_progress' || d.status === 'queued').length;
+
+    const hasActiveDeployments = inProgressCount > 0;
+
+    // Auto-refresh every 10s when there are active deployments
+    React.useEffect(() => {
+        if (!hasActiveDeployments) return;
+
+        const interval = setInterval(() => {
+            router.reload({
+                only: ['deployments', 'stats'],
+            });
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [hasActiveDeployments]);
+
+    // Debounced server-side search
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== (filters.search ?? '')) {
+                applyFilters({ search: searchQuery });
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const applyFilters = (newFilters: Record<string, string | undefined>) => {
+        const params = new URLSearchParams();
+        const merged = {
+            search: filters.search,
+            status: filters.status,
+            ...newFilters,
+        };
+
+        Object.entries(merged).forEach(([key, value]) => {
+            if (value && value !== 'all') {
+                params.set(key, value);
+            }
+        });
+
+        router.get(`/admin/deployments?${params.toString()}`, {}, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handleStatusFilter = (status: string) => {
+        setStatusFilter(status);
+        applyFilters({ status: status === 'all' ? undefined : status });
+    };
+
+    const handlePageChange = (page: number) => {
+        const params = new URLSearchParams();
+        if (filters.search) params.set('search', filters.search);
+        if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+        params.set('page', page.toString());
+
+        router.get(`/admin/deployments?${params.toString()}`, {}, {
+            preserveState: true,
+            preserveScroll: false,
+        });
+    };
+
+    const handleRefresh = () => {
+        setIsRefreshing(true);
+        router.reload({
+            only: ['deployments', 'stats'],
+            onFinish: () => setIsRefreshing(false),
+        });
+    };
 
     return (
         <AdminLayout
@@ -140,11 +221,33 @@ export default function AdminDeploymentsIndex({ deployments: deploymentsData }: 
         >
             <div className="mx-auto max-w-7xl">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-2xl font-semibold text-foreground">Deployment Management</h1>
-                    <p className="mt-1 text-sm text-foreground-muted">
-                        Monitor recent deployments across your Saturn Platform instance
-                    </p>
+                <div className="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-foreground">Deployment Management</h1>
+                        <p className="mt-1 text-sm text-foreground-muted">
+                            Monitor recent deployments across your Saturn Platform instance
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {hasActiveDeployments && (
+                            <span className="flex items-center gap-1.5 text-xs text-primary">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                                </span>
+                                Auto-refresh
+                            </span>
+                        )}
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleRefresh}
+                            disabled={isRefreshing}
+                        >
+                            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Stats */}
@@ -191,7 +294,7 @@ export default function AdminDeploymentsIndex({ deployments: deploymentsData }: 
                             <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
                                 <Input
-                                    placeholder="Search deployments by app, user, team, commit, or branch..."
+                                    placeholder="Search deployments by app, team, or commit..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-10"
@@ -201,28 +304,28 @@ export default function AdminDeploymentsIndex({ deployments: deploymentsData }: 
                                 <Button
                                     variant={statusFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('all')}
+                                    onClick={() => handleStatusFilter('all')}
                                 >
                                     All
                                 </Button>
                                 <Button
-                                    variant={statusFilter === 'success' ? 'primary' : 'secondary'}
+                                    variant={statusFilter === 'finished' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('success')}
+                                    onClick={() => handleStatusFilter('finished')}
                                 >
                                     Success
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'failed' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('failed')}
+                                    onClick={() => handleStatusFilter('failed')}
                                 >
                                     Failed
                                 </Button>
                                 <Button
                                     variant={statusFilter === 'in_progress' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setStatusFilter('in_progress')}
+                                    onClick={() => handleStatusFilter('in_progress')}
                                 >
                                     In Progress
                                 </Button>
@@ -236,11 +339,36 @@ export default function AdminDeploymentsIndex({ deployments: deploymentsData }: 
                     <CardContent className="p-6">
                         <div className="mb-4 flex items-center justify-between">
                             <p className="text-sm text-foreground-muted">
-                                Showing {filteredDeployments.length} of {total} recent deployments
+                                Showing {items.length} of {total} deployments
                             </p>
+                            {lastPage > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-foreground-muted">
+                                        Page {currentPage} of {lastPage}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === lastPage}
+                                    >
+                                        Next
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
-                        {filteredDeployments.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="py-12 text-center">
                                 <Rocket className="mx-auto h-12 w-12 text-foreground-muted" />
                                 <p className="mt-4 text-sm text-foreground-muted">No deployments found</p>
@@ -250,7 +378,7 @@ export default function AdminDeploymentsIndex({ deployments: deploymentsData }: 
                             </div>
                         ) : (
                             <div>
-                                {filteredDeployments.map((deployment) => (
+                                {items.map((deployment) => (
                                     <DeploymentRow key={deployment.id} deployment={deployment} />
                                 ))}
                             </div>

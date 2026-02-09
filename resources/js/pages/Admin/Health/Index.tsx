@@ -4,6 +4,7 @@ import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Checkbox } from '@/components/ui/Checkbox';
 import {
     Activity,
     Server,
@@ -209,14 +210,12 @@ export default function AdminHealthIndex({ services, servers, queues, lastUpdate
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 id="autoRefresh"
                                 checked={autoRefresh}
-                                onChange={(e) => setAutoRefresh(e.target.checked)}
-                                className="h-4 w-4 rounded border-border"
+                                onCheckedChange={(checked) => setAutoRefresh(!!checked)}
                             />
-                            <label htmlFor="autoRefresh" className="text-sm text-foreground-muted">
+                            <label htmlFor="autoRefresh" className="text-sm text-foreground-muted cursor-pointer">
                                 Auto-refresh (30s)
                             </label>
                         </div>

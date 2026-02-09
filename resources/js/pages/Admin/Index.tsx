@@ -8,7 +8,6 @@ import {
     Server,
     Activity,
     AlertTriangle,
-    TrendingUp,
     Database,
     CheckCircle,
     XCircle,
@@ -90,12 +89,11 @@ const defaultActivity: RecentActivity[] = [];
 
 const defaultHealthChecks: HealthCheck[] = [];
 
-function StatCard({ title, value, subtitle, icon: Icon, trend }: {
+function StatCard({ title, value, subtitle, icon: Icon }: {
     title: string;
     value: number | string;
     subtitle?: string;
     icon: React.ComponentType<{ className?: string }>;
-    trend?: 'up' | 'down';
 }) {
     return (
         <Card variant="glass" hover>
@@ -112,14 +110,6 @@ function StatCard({ title, value, subtitle, icon: Icon, trend }: {
                         <Icon className="h-6 w-6 text-primary" />
                     </div>
                 </div>
-                {trend && (
-                    <div className="mt-4 flex items-center gap-1">
-                        <TrendingUp className={`h-4 w-4 ${trend === 'up' ? 'text-success' : 'text-danger'}`} />
-                        <span className={`text-xs ${trend === 'up' ? 'text-success' : 'text-danger'}`}>
-                            {trend === 'up' ? '+12%' : '-5%'} from last month
-                        </span>
-                    </div>
-                )}
             </CardContent>
         </Card>
     );

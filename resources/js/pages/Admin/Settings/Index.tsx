@@ -184,10 +184,12 @@ function ipRangesToString(val: string | string[] | undefined): string {
 
 export default function AdminSettingsIndex({ settings }: Props) {
     const confirm = useConfirm();
-    const [formData, setFormData] = React.useState<InstanceSettingsData>(() => ({
+    const initialData = React.useMemo(() => ({
         ...settings,
         allowed_ip_ranges: ipRangesToString(settings?.allowed_ip_ranges),
-    }));
+    }), [settings]);
+
+    const [formData, setFormData] = React.useState<InstanceSettingsData>(() => ({ ...initialData }));
     const [isSaving, setIsSaving] = React.useState(false);
     const [isTesting, setIsTesting] = React.useState(false);
     const [showSmtpPassword, setShowSmtpPassword] = React.useState(false);
@@ -202,6 +204,23 @@ export default function AdminSettingsIndex({ settings }: Props) {
     const [showDockerPassword, setShowDockerPassword] = React.useState(false);
     const [showCloudflareToken, setShowCloudflareToken] = React.useState(false);
     const [isCloudflareAction, setIsCloudflareAction] = React.useState(false);
+
+    // Track unsaved changes
+    const isDirty = React.useMemo(() => {
+        return JSON.stringify(formData) !== JSON.stringify(initialData);
+    }, [formData, initialData]);
+
+    // Warn before leaving with unsaved changes
+    React.useEffect(() => {
+        if (!isDirty) return;
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
 
     const update = (fields: Partial<InstanceSettingsData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
@@ -239,10 +258,7 @@ export default function AdminSettingsIndex({ settings }: Props) {
             variant: 'warning',
         });
         if (confirmed) {
-            setFormData({
-                ...settings,
-                allowed_ip_ranges: ipRangesToString(settings?.allowed_ip_ranges),
-            });
+            setFormData({ ...initialData });
         }
     };
 
@@ -284,18 +300,23 @@ export default function AdminSettingsIndex({ settings }: Props) {
                             Configure global system settings and feature flags
                         </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
+                        {isDirty && (
+                            <Badge variant="warning" size="sm" className="mr-2">
+                                Unsaved changes
+                            </Badge>
+                        )}
                         <Button variant="secondary" onClick={handleExport}>
                             Export
                         </Button>
                         <Button variant="secondary" onClick={handleImport}>
                             Import
                         </Button>
-                        <Button variant="secondary" onClick={handleReset}>
+                        <Button variant="secondary" onClick={handleReset} disabled={!isDirty}>
                             <RotateCcw className="h-4 w-4" />
                             Reset
                         </Button>
-                        <Button onClick={handleSave} disabled={isSaving}>
+                        <Button onClick={handleSave} disabled={isSaving || !isDirty}>
                             <Save className="h-4 w-4" />
                             {isSaving ? 'Saving...' : 'Save Changes'}
                         </Button>
