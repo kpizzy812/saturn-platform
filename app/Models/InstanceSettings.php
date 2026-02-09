@@ -125,6 +125,14 @@ class InstanceSettings extends Model
         'horizon_trim_recent_minutes',
         'horizon_trim_failed_minutes',
         'horizon_queue_wait_threshold',
+        // Cloudflare Protection
+        'cloudflare_api_token',
+        'cloudflare_account_id',
+        'cloudflare_zone_id',
+        'cloudflare_tunnel_id',
+        'cloudflare_tunnel_token',
+        'is_cloudflare_protection_enabled',
+        'cloudflare_last_synced_at',
     ];
 
     protected $casts = [
@@ -226,6 +234,12 @@ class InstanceSettings extends Model
         'horizon_trim_recent_minutes' => 'integer',
         'horizon_trim_failed_minutes' => 'integer',
         'horizon_queue_wait_threshold' => 'integer',
+
+        // Cloudflare Protection
+        'cloudflare_api_token' => 'encrypted',
+        'cloudflare_tunnel_token' => 'encrypted',
+        'is_cloudflare_protection_enabled' => 'boolean',
+        'cloudflare_last_synced_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -236,6 +250,20 @@ class InstanceSettings extends Model
                 Cache::forget('instance_settings_fqdn_host');
             }
         });
+    }
+
+    public function hasCloudflareProtection(): bool
+    {
+        return ! empty($this->cloudflare_api_token)
+            && ! empty($this->cloudflare_account_id)
+            && ! empty($this->cloudflare_zone_id);
+    }
+
+    public function isCloudflareProtectionActive(): bool
+    {
+        return $this->is_cloudflare_protection_enabled
+            && $this->hasCloudflareProtection()
+            && ! empty($this->cloudflare_tunnel_id);
     }
 
     public function getActivitylogOptions(): LogOptions

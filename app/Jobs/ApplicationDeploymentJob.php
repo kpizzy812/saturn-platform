@@ -524,6 +524,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         } catch (\Exception $e) {
             Log::warning('Failed to mark configuration as changed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
         }
+
+        try {
+            if (instanceSettings()->isCloudflareProtectionActive()) {
+                SyncCloudflareRoutesJob::dispatch();
+            }
+        } catch (\Exception $e) {
+            Log::warning('Cloudflare sync failed for deployment '.$this->deployment_uuid.': '.$e->getMessage());
+        }
     }
 
     private function deploy_simple_dockerfile()

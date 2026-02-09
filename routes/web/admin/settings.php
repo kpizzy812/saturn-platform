@@ -16,7 +16,7 @@ Route::get('/settings', function () {
     $settingsArray = $settings->toArray();
 
     // For encrypted fields, send a placeholder if they have a value
-    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key', 's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password'];
+    $secretFields = ['smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token', 'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key', 's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password', 'cloudflare_api_token', 'cloudflare_tunnel_token'];
     foreach ($secretFields as $field) {
         if (! empty($settings->{$field})) {
             $settingsArray[$field] = '••••••••';
@@ -152,6 +152,10 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'settings.horizon_trim_recent_minutes' => 'nullable|integer|min:10|max:10080',
         'settings.horizon_trim_failed_minutes' => 'nullable|integer|min:60|max:43200',
         'settings.horizon_queue_wait_threshold' => 'nullable|integer|min:10|max:600',
+        // Cloudflare Protection
+        'settings.cloudflare_api_token' => 'nullable|string|max:500',
+        'settings.cloudflare_account_id' => 'nullable|string|max:100|regex:/^[a-f0-9]*$/',
+        'settings.cloudflare_zone_id' => 'nullable|string|max:100|regex:/^[a-f0-9]*$/',
     ]);
 
     $data = $validated['settings'] ?? [];
@@ -264,6 +268,9 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         'horizon_trim_recent_minutes' => $data['horizon_trim_recent_minutes'] ?? $settings->horizon_trim_recent_minutes,
         'horizon_trim_failed_minutes' => $data['horizon_trim_failed_minutes'] ?? $settings->horizon_trim_failed_minutes,
         'horizon_queue_wait_threshold' => $data['horizon_queue_wait_threshold'] ?? $settings->horizon_queue_wait_threshold,
+        // Cloudflare Protection (non-secret)
+        'cloudflare_account_id' => $data['cloudflare_account_id'] ?? $settings->cloudflare_account_id,
+        'cloudflare_zone_id' => $data['cloudflare_zone_id'] ?? $settings->cloudflare_zone_id,
     ];
 
     // Only update secret fields if the value is not the placeholder
@@ -279,6 +286,7 @@ Route::post('/settings', function (\Illuminate\Http\Request $request) {
         's3_secret' => 's3_secret',
         'docker_registry_username' => 'docker_registry_username',
         'docker_registry_password' => 'docker_registry_password',
+        'cloudflare_api_token' => 'cloudflare_api_token',
     ];
 
     foreach ($secretMappings as $formField => $dbField) {
@@ -339,6 +347,7 @@ Route::get('/settings/export', function () {
         'smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token',
         'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key',
         's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password',
+        'cloudflare_api_token', 'cloudflare_tunnel_token',
     ];
     foreach ($sensitiveFields as $field) {
         unset($data[$field]);
@@ -373,6 +382,7 @@ Route::post('/settings/import', function (\Illuminate\Http\Request $request) {
             'smtp_password', 'smtp_username', 'resend_api_key', 'sentinel_token',
             'auto_provision_api_key', 'ai_anthropic_api_key', 'ai_openai_api_key',
             's3_key', 's3_secret', 'docker_registry_username', 'docker_registry_password',
+            'cloudflare_api_token', 'cloudflare_tunnel_token',
         ];
 
         $importData = [];
@@ -393,3 +403,33 @@ Route::post('/settings/import', function (\Illuminate\Http\Request $request) {
         return back()->with('error', 'Failed to import settings: '.$e->getMessage());
     }
 })->name('admin.settings.import');
+
+Route::post('/settings/cloudflare/initialize', function () {
+    try {
+        app(\App\Services\CloudflareProtectionService::class)->initializeTunnel();
+
+        return back()->with('success', 'Cloudflare Tunnel initialized successfully.');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Failed to initialize tunnel: '.$e->getMessage());
+    }
+})->name('admin.settings.cloudflare.initialize');
+
+Route::post('/settings/cloudflare/sync', function () {
+    try {
+        app(\App\Services\CloudflareProtectionService::class)->syncAllRoutes();
+
+        return back()->with('success', 'Cloudflare routes synced successfully.');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Failed to sync routes: '.$e->getMessage());
+    }
+})->name('admin.settings.cloudflare.sync');
+
+Route::post('/settings/cloudflare/destroy', function () {
+    try {
+        app(\App\Services\CloudflareProtectionService::class)->destroyTunnel();
+
+        return back()->with('success', 'Cloudflare Tunnel destroyed successfully.');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Failed to destroy tunnel: '.$e->getMessage());
+    }
+})->name('admin.settings.cloudflare.destroy');

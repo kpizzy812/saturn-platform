@@ -34,7 +34,10 @@ class ServersController extends Controller
             'id',
         ]);
         if (request()->attributes->get('can_read_sensitive', false) === false) {
-            // Do nothing
+            // Mask IP when Cloudflare protection is active for non-admin users
+            if (instanceSettings()->isCloudflareProtectionActive()) {
+                $server->ip = '[protected]';
+            }
         }
 
         return serializeApiResponse($server);

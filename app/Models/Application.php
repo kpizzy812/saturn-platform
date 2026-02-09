@@ -351,6 +351,14 @@ class Application extends BaseModel
                 } catch (\Throwable $e) {
                     // Don't break FQDN update if proxy sync fails
                 }
+
+                try {
+                    if (instanceSettings()->isCloudflareProtectionActive()) {
+                        \App\Jobs\SyncCloudflareRoutesJob::dispatch();
+                    }
+                } catch (\Throwable $e) {
+                    // Don't break FQDN update if Cloudflare sync fails
+                }
             }
         });
         static::forceDeleting(function ($application) {

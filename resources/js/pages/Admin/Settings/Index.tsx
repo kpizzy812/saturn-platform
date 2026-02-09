@@ -33,6 +33,9 @@ import {
     Layers,
     Clock,
     ShieldCheck,
+    Cloud,
+    Trash2,
+    Zap,
 } from 'lucide-react';
 
 interface InstanceSettingsData {
@@ -152,6 +155,15 @@ interface InstanceSettingsData {
     horizon_trim_failed_minutes?: number;
     horizon_queue_wait_threshold?: number;
 
+    // Cloudflare Protection
+    cloudflare_api_token?: string;
+    cloudflare_account_id?: string;
+    cloudflare_zone_id?: string;
+    cloudflare_tunnel_id?: string;
+    cloudflare_tunnel_token?: string;
+    is_cloudflare_protection_enabled?: boolean;
+    cloudflare_last_synced_at?: string;
+
     created_at?: string;
     updated_at?: string;
 }
@@ -185,6 +197,8 @@ export default function AdminSettingsIndex({ settings }: Props) {
     const [showS3Secret, setShowS3Secret] = React.useState(false);
     const [showDockerUsername, setShowDockerUsername] = React.useState(false);
     const [showDockerPassword, setShowDockerPassword] = React.useState(false);
+    const [showCloudflareToken, setShowCloudflareToken] = React.useState(false);
+    const [isCloudflareAction, setIsCloudflareAction] = React.useState(false);
 
     const update = (fields: Partial<InstanceSettingsData>) => {
         setFormData((prev) => ({ ...prev, ...fields }));
@@ -321,6 +335,12 @@ export default function AdminSettingsIndex({ settings }: Props) {
                             <span className="flex items-center gap-1.5">
                                 <Rocket className="h-4 w-4" />
                                 App Defaults
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger>
+                            <span className="flex items-center gap-1.5">
+                                <Cloud className="h-4 w-4" />
+                                IP Protection
                             </span>
                         </TabsTrigger>
                     </TabsList>
@@ -2003,6 +2023,161 @@ export default function AdminSettingsIndex({ settings }: Props) {
                                                 When enabled, all new environments will require deployment approval by default.
                                                 This can be overridden per environment.
                                             </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+                        {/* ============ TAB 7: IP PROTECTION ============ */}
+                        <TabsContent>
+                            <div className="space-y-6">
+                                {/* Status Card */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <ShieldCheck className="h-5 w-5 text-primary" />
+                                            <CardTitle>Cloudflare Tunnel Protection</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Hide your master server IP behind Cloudflare Tunnel for DDoS protection. Routes are auto-synced on every deployment.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm font-medium text-foreground">Status:</span>
+                                            {formData.is_cloudflare_protection_enabled && formData.cloudflare_tunnel_id ? (
+                                                <Badge variant="success">Active</Badge>
+                                            ) : formData.cloudflare_api_token && formData.cloudflare_api_token !== '' ? (
+                                                <Badge variant="warning">Configured (Tunnel not initialized)</Badge>
+                                            ) : (
+                                                <Badge variant="secondary">Not Configured</Badge>
+                                            )}
+                                        </div>
+                                        {formData.cloudflare_tunnel_id && (
+                                            <div className="mt-3 space-y-1 text-sm text-foreground-muted">
+                                                <p>Tunnel ID: <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs">{formData.cloudflare_tunnel_id}</code></p>
+                                                {formData.cloudflare_last_synced_at && (
+                                                    <p>Last synced: {new Date(formData.cloudflare_last_synced_at).toLocaleString()}</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Credentials Form */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Cloud className="h-5 w-5 text-primary" />
+                                            <CardTitle>Cloudflare Credentials</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Enter your Cloudflare API Token, Account ID, and Zone ID. The API token needs permissions: Cloudflare Tunnel (Edit), DNS (Edit), Account Settings (Read).
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="relative">
+                                            <Input
+                                                type={showCloudflareToken ? 'text' : 'password'}
+                                                value={formData.cloudflare_api_token || ''}
+                                                onChange={(e) => update({ cloudflare_api_token: e.target.value })}
+                                                placeholder="Enter Cloudflare API Token"
+                                                label="API Token"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCloudflareToken(!showCloudflareToken)}
+                                                className="absolute right-3 top-9 text-foreground-muted hover:text-foreground"
+                                            >
+                                                {showCloudflareToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
+                                        </div>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <Input
+                                                value={formData.cloudflare_account_id || ''}
+                                                onChange={(e) => update({ cloudflare_account_id: e.target.value })}
+                                                placeholder="e.g. a1b2c3d4e5f6..."
+                                                label="Account ID"
+                                                hint="Found in Cloudflare Dashboard → Overview → API section"
+                                            />
+                                            <Input
+                                                value={formData.cloudflare_zone_id || ''}
+                                                onChange={(e) => update({ cloudflare_zone_id: e.target.value })}
+                                                placeholder="e.g. f6e5d4c3b2a1..."
+                                                label="Zone ID"
+                                                hint="Found in Cloudflare Dashboard → Your domain → Overview → API section"
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Actions */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Zap className="h-5 w-5 text-primary" />
+                                            <CardTitle>Tunnel Actions</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Initialize, sync, or destroy the Cloudflare Tunnel. Save credentials first before initializing.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap gap-3">
+                                            {!formData.cloudflare_tunnel_id ? (
+                                                <Button
+                                                    onClick={() => {
+                                                        setIsCloudflareAction(true);
+                                                        router.post('/admin/settings/cloudflare/initialize', {}, {
+                                                            preserveScroll: true,
+                                                            onFinish: () => setIsCloudflareAction(false),
+                                                        });
+                                                    }}
+                                                    disabled={isCloudflareAction || !formData.cloudflare_api_token || formData.cloudflare_api_token === '••••••••' && !formData.cloudflare_account_id}
+                                                >
+                                                    <Cloud className="h-4 w-4" />
+                                                    {isCloudflareAction ? 'Initializing...' : 'Initialize Tunnel'}
+                                                </Button>
+                                            ) : (
+                                                <>
+                                                    <Button
+                                                        variant="secondary"
+                                                        onClick={() => {
+                                                            setIsCloudflareAction(true);
+                                                            router.post('/admin/settings/cloudflare/sync', {}, {
+                                                                preserveScroll: true,
+                                                                onFinish: () => setIsCloudflareAction(false),
+                                                            });
+                                                        }}
+                                                        disabled={isCloudflareAction}
+                                                    >
+                                                        <RefreshCw className="h-4 w-4" />
+                                                        {isCloudflareAction ? 'Syncing...' : 'Force Sync Routes'}
+                                                    </Button>
+                                                    <Button
+                                                        variant="destructive"
+                                                        onClick={async () => {
+                                                            const confirmed = await confirm({
+                                                                title: 'Destroy Cloudflare Tunnel',
+                                                                description: 'This will remove the Cloudflare Tunnel and cloudflared container. Your server IP will no longer be protected. Are you sure?',
+                                                                confirmText: 'Destroy',
+                                                                variant: 'danger',
+                                                            });
+                                                            if (confirmed) {
+                                                                setIsCloudflareAction(true);
+                                                                router.post('/admin/settings/cloudflare/destroy', {}, {
+                                                                    preserveScroll: true,
+                                                                    onFinish: () => setIsCloudflareAction(false),
+                                                                });
+                                                            }
+                                                        }}
+                                                        disabled={isCloudflareAction}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        Destroy Tunnel
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
