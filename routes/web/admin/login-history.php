@@ -61,7 +61,7 @@ Route::get('/login-history', function (Request $request) {
         ->where('logged_at', '>=', now()->subHours(24))
         ->selectRaw('user_id, count(distinct ip_address) as ip_count')
         ->groupBy('user_id')
-        ->having('ip_count', '>=', 3)
+        ->havingRaw('count(distinct ip_address) >= 3')
         ->pluck('user_id')
         ->toArray();
 
