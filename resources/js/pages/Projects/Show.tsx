@@ -1031,14 +1031,14 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 <header className="flex h-12 items-center justify-between border-b border-border bg-background px-4">
                     <div className="flex items-center gap-3">
                         <Link href="/projects" className="flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Projects
+                            <ArrowLeft className="mr-2 h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Back to Projects</span>
                         </Link>
-                        <ChevronRight className="h-4 w-4 text-foreground-subtle" />
+                        <ChevronRight className="hidden sm:block h-4 w-4 text-foreground-subtle" />
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">{project.name}</span>
-                            <ChevronRight className="h-4 w-4 text-foreground-subtle" />
-                            <span className="text-foreground-muted">{selectedEnv?.name || 'production'}</span>
+                            <span className="hidden sm:inline font-medium text-foreground">{project.name}</span>
+                            <ChevronRight className="hidden sm:inline h-4 w-4 text-foreground-subtle" />
+                            <span className="font-medium sm:font-normal text-foreground sm:text-foreground-muted">{selectedEnv?.name || 'production'}</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1194,8 +1194,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 <div className="flex flex-1 overflow-hidden">
                     {activeView === 'architecture' && (
                         <>
-                    {/* Left Toolbar - Premium Style */}
-                    <div className="flex w-14 flex-col items-center gap-1 border-r border-border bg-background-secondary py-3">
+                    {/* Left Toolbar - Premium Style (hidden on mobile) */}
+                    <div className="hidden md:flex w-14 flex-col items-center gap-1 border-r border-border bg-background-secondary py-3">
                         {/* Add Service Button */}
                         <button
                             onClick={handleAddService}
@@ -1312,6 +1312,33 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             />
                         )}
 
+                        {/* Mobile floating toolbar (md:hidden) */}
+                        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-border bg-background-secondary/95 px-2 py-1.5 shadow-lg backdrop-blur-sm md:hidden">
+                            <button
+                                onClick={handleAddService}
+                                className="rounded-full p-2.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                title="Add Service"
+                            >
+                                <Plus className="h-5 w-5" />
+                            </button>
+                            <div className="h-5 w-px bg-border" />
+                            <button
+                                onClick={() => setShowGrid(!showGrid)}
+                                className={`rounded-full p-2.5 transition-colors ${showGrid ? 'text-primary' : 'text-foreground-muted hover:bg-background-tertiary hover:text-foreground'}`}
+                                title="Toggle Grid"
+                            >
+                                <Grid3x3 className="h-5 w-5" />
+                            </button>
+                            <div className="h-5 w-px bg-border" />
+                            <button
+                                onClick={handleFitView}
+                                className="rounded-full p-2.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                title="Fit View"
+                            >
+                                <Maximize2 className="h-5 w-5" />
+                            </button>
+                        </div>
+
                         {/* Canvas Overlay Buttons */}
                         <div className="absolute right-4 top-4 z-10 flex gap-2">
                             {/* Migrate Environment Button - only visible for dev/uat */}
@@ -1424,8 +1451,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             </button>
                         </div>
 
-                        {/* Activity Panel */}
-                        <ActivityPanel />
+                        {/* Activity Panel (hidden on mobile) */}
+                        <div className="hidden md:block">
+                            <ActivityPanel />
+                        </div>
                     </div>
                         </>
                     )}
@@ -1576,7 +1605,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
 
                     {/* Right Panel - Service Details */}
                     {selectedService && (
-                        <div className="flex w-[560px] flex-col border-l border-border bg-background">
+                        <div className="fixed inset-0 z-30 flex flex-col bg-background md:relative md:inset-auto md:z-auto md:w-[560px] md:border-l md:border-border">
                             {/* Panel Header */}
                             <div className="border-b border-border px-4 py-3">
                                 <div className="flex items-center justify-between">

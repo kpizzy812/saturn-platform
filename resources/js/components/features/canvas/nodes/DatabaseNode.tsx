@@ -189,7 +189,7 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
             >
                 {/* Quick Actions - visible on hover */}
                 {hasQuickActions && (
-                    <div className="absolute -top-3.5 right-2 z-10 flex items-center gap-1 opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0">
+                    <div className="absolute -top-3.5 right-2 z-10 flex items-center gap-1 opacity-100 translate-y-0 md:opacity-0 md:translate-y-1 transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-y-0">
                         {data.onQuickBrowseData && (
                             <QuickActionButton
                                 onClick={data.onQuickBrowseData}

@@ -808,8 +808,21 @@ function ProjectCanvasInner({
             {/* Selected edge hint */}
             {selectedEdge && (
                 <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs text-foreground-muted backdrop-blur-sm">
-                    Press <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Delete</kbd> or{' '}
-                    <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Backspace</kbd> to remove connection
+                    {/* Desktop: keyboard hint */}
+                    <span className="hidden md:inline">
+                        Press <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Delete</kbd> or{' '}
+                        <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Backspace</kbd> to remove connection
+                    </span>
+                    {/* Mobile: tap-to-delete button */}
+                    <button
+                        className="md:hidden flex items-center gap-2 text-danger"
+                        onClick={() => handleDeleteEdge(selectedEdge)}
+                    >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                        Tap to remove connection
+                    </button>
                 </div>
             )}
 
@@ -821,8 +834,8 @@ function ProjectCanvasInner({
                 </div>
             )}
 
-            {/* Legend - positioned at bottom left to avoid overlap with ActivityPanel */}
-            <div className="absolute bottom-16 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
+            {/* Legend - positioned at bottom left to avoid overlap with ActivityPanel (hidden on mobile) */}
+            <div className="hidden md:block absolute bottom-16 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                         <div className="h-0.5 w-4 bg-success"></div>
