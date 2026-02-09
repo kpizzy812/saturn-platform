@@ -1,18 +1,15 @@
 @extends('layouts.base')
-<div class="flex flex-col items-center justify-center h-full">
+
+@section('content')
+<div class="flex flex-col items-center justify-center min-h-screen">
     <div>
-        <p class="font-mono font-semibold text-7xl dark:text-warning">401</p>
-        <h1 class="mt-4 font-bold tracking-tight dark:text-white">You shall not pass!</h1>
-        <p class="text-base leading-7 dark:text-neutral-400 text-black">You don't have permission to access this page.
-        </p>
+        <p class="font-mono font-semibold text-7xl text-warning">401</p>
+        <h1 class="mt-4 font-bold tracking-tight text-white">You shall not pass!</h1>
+        <p class="text-base leading-7 text-neutral-400">You don't have permission to access this page.</p>
         <div class="flex items-center mt-10 gap-x-2">
-            <a href="{{ url()->previous() }}">
-                <x-forms.button>Go back</x-forms.button>
-            </a>
-            <a href="{{ route('dashboard') }}" {{ wireNavigate() }}>
-                <x-forms.button>Dashboard</x-forms.button>
-            </a>
-            <a target="_blank" class="text-xs hover:underline" href="{{ config('constants.urls.contact') }}">Contact support ↗</a>
+            <a href="{{ url()->previous() }}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-neutral-800 border border-neutral-700 rounded-md hover:bg-neutral-700">Go back</a>
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-neutral-800 border border-neutral-700 rounded-md hover:bg-neutral-700">Dashboard</a>
         </div>
     </div>
 </div>
+@endsection
