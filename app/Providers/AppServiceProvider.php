@@ -166,6 +166,21 @@ class AppServiceProvider extends ServiceProvider
         if ($settings->horizon_queue_wait_threshold !== null) {
             config(['horizon.waits.redis:default' => $settings->horizon_queue_wait_threshold]);
         }
+
+        // Override S3 storage settings from DB
+        $s3Map = [
+            'filesystems.disks.s3.key' => $settings->s3_key,
+            'filesystems.disks.s3.secret' => $settings->s3_secret,
+            'filesystems.disks.s3.region' => $settings->s3_region,
+            'filesystems.disks.s3.bucket' => $settings->s3_bucket,
+            'filesystems.disks.s3.endpoint' => $settings->s3_endpoint,
+            'filesystems.disks.s3.url' => $settings->s3_path,
+        ];
+        foreach ($s3Map as $key => $value) {
+            if (! empty($value)) {
+                config([$key => $value]);
+            }
+        }
     }
 
     private function configureGitHubHttp(): void

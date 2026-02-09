@@ -176,6 +176,11 @@ interface Props {
     envStatus?: {
         anthropic_key: boolean;
         openai_key: boolean;
+        smtp_host: boolean;
+        smtp_password: boolean;
+        resend_api_key: boolean;
+        s3_key: boolean;
+        s3_secret: boolean;
     };
 }
 
@@ -604,6 +609,12 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
                                                                 {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                             </button>
                                                         </div>
+                                                        {envStatus?.smtp_password && !formData.smtp_password && (
+                                                            <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                MAIL_PASSWORD set in .env
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="grid gap-4 sm:grid-cols-2">
@@ -702,6 +713,12 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
                                                         {showResendKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                     </button>
                                                 </div>
+                                                {envStatus?.resend_api_key && !formData.resend_api_key && (
+                                                    <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                        RESEND_API_KEY set in .env
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
                                     </CardContent>
@@ -1287,6 +1304,12 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
                                                                 {showS3Key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                             </button>
                                                         </div>
+                                                        {envStatus?.s3_key && !formData.s3_key && (
+                                                            <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                AWS_ACCESS_KEY_ID set in .env
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <label className="mb-1.5 block text-sm font-medium text-foreground">
@@ -1308,6 +1331,12 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
                                                                 {showS3Secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                             </button>
                                                         </div>
+                                                        {envStatus?.s3_secret && !formData.s3_secret && (
+                                                            <p className="mt-1 flex items-center gap-1 text-xs text-success">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                AWS_SECRET_ACCESS_KEY set in .env
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </>

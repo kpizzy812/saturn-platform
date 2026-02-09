@@ -33,6 +33,11 @@ Route::get('/settings', function () {
     $envStatus = [
         'anthropic_key' => ! empty(config('ai.providers.claude.api_key')),
         'openai_key' => ! empty(config('ai.providers.openai.api_key')),
+        'smtp_host' => ! empty(env('MAIL_HOST')),
+        'smtp_password' => ! empty(env('MAIL_PASSWORD')),
+        'resend_api_key' => ! empty(env('RESEND_API_KEY')),
+        's3_key' => ! empty(env('AWS_ACCESS_KEY_ID')),
+        's3_secret' => ! empty(env('AWS_SECRET_ACCESS_KEY')),
     ];
 
     return Inertia::render('Admin/Settings/Index', [
