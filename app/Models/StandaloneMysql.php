@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\Auditable;
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
+use App\Traits\ValidatesPublicPort;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class StandaloneMysql extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes;
+    use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
 
     /**
      * The attributes that are mass assignable.

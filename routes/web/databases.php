@@ -246,6 +246,16 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
         'custom_docker_run_options' => 'sometimes|nullable|string',
     ]);
 
+    // Validate public_port uniqueness on the same server
+    if (isset($validated['public_port']) && $validated['public_port']) {
+        $server = $database->destination?->server;
+        if ($server && isPublicPortAlreadyUsed($server, (int) $validated['public_port'], $database->id)) {
+            return redirect()->back()->withErrors([
+                'public_port' => 'Port '.$validated['public_port'].' is already in use by another database on this server.',
+            ]);
+        }
+    }
+
     // Determine if we need to start/stop the database proxy
     $wasPublic = $database->is_public;
     $database->update($validated);
