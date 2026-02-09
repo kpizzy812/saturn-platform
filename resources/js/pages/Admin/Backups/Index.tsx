@@ -68,7 +68,13 @@ interface BackupSchedule {
 }
 
 interface Props {
-    backups: BackupSchedule[];
+    backups: {
+        data: BackupSchedule[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
     stats: {
         total: number;
         enabled: number;
@@ -82,6 +88,11 @@ interface Props {
         total_storage_local: number;
         total_storage_s3: number;
         estimated_monthly_cost: number;
+    };
+    databaseTypes: string[];
+    filters: {
+        search: string;
+        type: string;
     };
 }
 
@@ -321,20 +332,44 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
-export default function AdminBackupsIndex({ backups: initialBackups, stats }: Props) {
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [typeFilter, setTypeFilter] = React.useState<string>('all');
+export default function AdminBackupsIndex({ backups: paginatedBackups, stats, databaseTypes: serverDbTypes, filters }: Props) {
+    const [searchQuery, setSearchQuery] = React.useState(filters?.search ?? '');
+    const [typeFilter, setTypeFilter] = React.useState<string>(filters?.type || 'all');
     const [showAdvancedStats, setShowAdvancedStats] = React.useState(false);
 
-    const backups = initialBackups ?? [];
+    const items = paginatedBackups?.data ?? [];
+    const databaseTypes = (serverDbTypes ?? []).map((t) => t.toLowerCase());
 
-    const filteredBackups = backups.filter((backup) => {
-        const matchesSearch =
-            backup.database_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            backup.team_name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = typeFilter === 'all' || backup.database_type.toLowerCase() === typeFilter;
-        return matchesSearch && matchesType;
-    });
+    // Server-side search with debounce
+    const applyFilters = (newFilters: { search?: string; type?: string }) => {
+        const params: Record<string, string> = {};
+        const merged = {
+            search: filters?.search ?? '',
+            type: filters?.type ?? '',
+            ...newFilters,
+        };
+        if (merged.search) params.search = merged.search;
+        if (merged.type && merged.type !== 'all') params.type = merged.type;
+
+        router.get('/admin/backups', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery !== (filters?.search ?? '')) {
+                applyFilters({ search: searchQuery });
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleTypeChange = (type: string) => {
+        setTypeFilter(type);
+        applyFilters({ type: type === 'all' ? '' : type });
+    };
 
     const handleRunBackup = (uuid: string) => {
         router.post(`/admin/backups/${uuid}/run`, {}, {
@@ -342,8 +377,15 @@ export default function AdminBackupsIndex({ backups: initialBackups, stats }: Pr
         });
     };
 
-    // Get unique database types for filter
-    const databaseTypes = [...new Set(backups.map((b) => b.database_type.toLowerCase()))];
+    const handlePageChange = (page: number) => {
+        const params: Record<string, string> = { page: String(page) };
+        if (filters?.search) params.search = filters.search;
+        if (filters?.type) params.type = filters.type;
+        router.get('/admin/backups', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     return (
         <AdminLayout
@@ -516,7 +558,7 @@ export default function AdminBackupsIndex({ backups: initialBackups, stats }: Pr
                                 <Button
                                     variant={typeFilter === 'all' ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => setTypeFilter('all')}
+                                    onClick={() => handleTypeChange('all')}
                                 >
                                     All
                                 </Button>
@@ -525,7 +567,7 @@ export default function AdminBackupsIndex({ backups: initialBackups, stats }: Pr
                                         key={type}
                                         variant={typeFilter === type ? 'primary' : 'secondary'}
                                         size="sm"
-                                        onClick={() => setTypeFilter(type)}
+                                        onClick={() => handleTypeChange(type)}
                                     >
                                         {type.charAt(0).toUpperCase() + type.slice(1)}
                                     </Button>
@@ -538,31 +580,65 @@ export default function AdminBackupsIndex({ backups: initialBackups, stats }: Pr
                 {/* Backups List */}
                 <Card variant="glass">
                     <CardHeader>
-                        <CardTitle>Backup Schedules ({filteredBackups.length})</CardTitle>
-                        <CardDescription>Scheduled database backups across all databases</CardDescription>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Backup Schedules ({paginatedBackups?.total ?? 0})</CardTitle>
+                                <CardDescription>Scheduled database backups across all databases</CardDescription>
+                            </div>
+                            {paginatedBackups?.last_page > 1 && (
+                                <p className="text-sm text-foreground-muted">
+                                    Page {paginatedBackups.current_page} of {paginatedBackups.last_page}
+                                </p>
+                            )}
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        {filteredBackups.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="py-12 text-center">
                                 <HardDrive className="mx-auto h-12 w-12 text-foreground-muted" />
                                 <p className="mt-4 text-sm text-foreground-muted">
-                                    {backups.length === 0 ? 'No backup schedules configured' : 'No matching backups'}
+                                    {!filters?.search && !filters?.type ? 'No backup schedules configured' : 'No matching backups'}
                                 </p>
                                 <p className="text-xs text-foreground-subtle">
-                                    {backups.length === 0
+                                    {!filters?.search && !filters?.type
                                         ? 'Configure backups for your databases to see them here'
                                         : 'Try adjusting your search or filters'}
                                 </p>
                             </div>
                         ) : (
                             <div>
-                                {filteredBackups.map((backup) => (
+                                {items.map((backup) => (
                                     <BackupRow
                                         key={backup.id}
                                         backup={backup}
                                         onRunNow={() => handleRunBackup(backup.uuid)}
                                     />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {paginatedBackups?.last_page > 1 && (
+                            <div className="mt-6 flex items-center justify-center gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handlePageChange(paginatedBackups.current_page - 1)}
+                                    disabled={paginatedBackups.current_page <= 1}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="px-3 text-sm text-foreground-muted">
+                                    {paginatedBackups.current_page} / {paginatedBackups.last_page}
+                                </span>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handlePageChange(paginatedBackups.current_page + 1)}
+                                    disabled={paginatedBackups.current_page >= paginatedBackups.last_page}
+                                >
+                                    Next
+                                </Button>
                             </div>
                         )}
                     </CardContent>

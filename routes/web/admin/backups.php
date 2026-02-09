@@ -10,52 +10,71 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/backups', function () {
-    // Get all scheduled backups
-    $backups = \App\Models\ScheduledDatabaseBackup::with(['database', 'latest_log', 's3'])
-        ->get()
-        ->map(function ($backup) {
-            $database = $backup->database;
-            $server = $backup->server();
+    $search = request()->query('search', '');
+    $type = request()->query('type', '');
 
-            return [
-                'id' => $backup->id,
-                'uuid' => $backup->uuid,
-                'database_id' => $database?->id,
-                'database_uuid' => $database?->uuid,
-                'database_name' => $database?->name ?? 'Unknown',
-                'database_type' => $database ? class_basename($database) : 'Unknown',
-                'team_id' => $backup->team_id,
-                'team_name' => $backup->team?->name ?? 'Unknown',
-                'frequency' => $backup->frequency,
-                'enabled' => $backup->enabled,
-                'save_s3' => $backup->save_s3,
-                's3_storage_name' => $backup->s3?->name,
-                'verify_after_backup' => $backup->verify_after_backup ?? true,
-                'restore_test_enabled' => $backup->restore_test_enabled ?? false,
-                'restore_test_frequency' => $backup->restore_test_frequency ?? 'weekly',
-                'last_restore_test_at' => $backup->last_restore_test_at,
-                'last_execution' => $backup->latest_log ? [
-                    'id' => $backup->latest_log->id,
-                    'uuid' => $backup->latest_log->uuid ?? '',
-                    'status' => $backup->latest_log->status,
-                    'size' => $backup->latest_log->size,
-                    'filename' => $backup->latest_log->filename,
-                    'message' => $backup->latest_log->message,
-                    'verification_status' => $backup->latest_log->verification_status,
-                    'restore_test_status' => $backup->latest_log->restore_test_status,
-                    's3_integrity_status' => $backup->latest_log->s3_integrity_status,
-                    'created_at' => $backup->latest_log->created_at,
-                ] : null,
-                'executions_count' => $backup->executions()->count(),
-                'created_at' => $backup->created_at,
-            ];
+    // Build query with filters
+    $query = \App\Models\ScheduledDatabaseBackup::with(['database', 'latest_log', 's3']);
+
+    // Server-side paginate with mapping
+    $backups = $query->paginate(50)->through(function ($backup) {
+        $database = $backup->database;
+
+        return [
+            'id' => $backup->id,
+            'uuid' => $backup->uuid,
+            'database_id' => $database?->id,
+            'database_uuid' => $database?->uuid,
+            'database_name' => $database?->name ?? 'Unknown',
+            'database_type' => $database ? class_basename($database) : 'Unknown',
+            'team_id' => $backup->team_id,
+            'team_name' => $backup->team?->name ?? 'Unknown',
+            'frequency' => $backup->frequency,
+            'enabled' => $backup->enabled,
+            'save_s3' => $backup->save_s3,
+            's3_storage_name' => $backup->s3?->name,
+            'verify_after_backup' => $backup->verify_after_backup ?? true,
+            'restore_test_enabled' => $backup->restore_test_enabled ?? false,
+            'restore_test_frequency' => $backup->restore_test_frequency ?? 'weekly',
+            'last_restore_test_at' => $backup->last_restore_test_at,
+            'last_execution' => $backup->latest_log ? [
+                'id' => $backup->latest_log->id,
+                'uuid' => $backup->latest_log->uuid ?? '',
+                'status' => $backup->latest_log->status,
+                'size' => $backup->latest_log->size,
+                'filename' => $backup->latest_log->filename,
+                'message' => $backup->latest_log->message,
+                'verification_status' => $backup->latest_log->verification_status,
+                'restore_test_status' => $backup->latest_log->restore_test_status,
+                's3_integrity_status' => $backup->latest_log->s3_integrity_status,
+                'created_at' => $backup->latest_log->created_at,
+            ] : null,
+            'executions_count' => $backup->executions()->count(),
+            'created_at' => $backup->created_at,
+        ];
+    });
+
+    // Apply search and type filters on the mapped data (post-paginate filtering)
+    // Since ScheduledDatabaseBackup uses polymorphic `database` relation,
+    // filtering by database_name/type must happen after mapping.
+    if ($search || $type) {
+        $filtered = collect($backups->items())->filter(function ($item) use ($search, $type) {
+            $matchesSearch = ! $search
+                || str_contains(strtolower($item['database_name']), strtolower($search))
+                || str_contains(strtolower($item['team_name']), strtolower($search));
+            $matchesType = ! $type || strtolower($item['database_type']) === strtolower($type);
+
+            return $matchesSearch && $matchesType;
         });
+        $backups->setCollection($filtered->values());
+    }
 
-    // Calculate stats including verification and restore test stats
-    $allExecutions = \App\Models\ScheduledDatabaseBackupExecution::query();
+    // Calculate stats from DB queries (not from paginated collection)
+    $backupModel = \App\Models\ScheduledDatabaseBackup::query();
     $recentExecutions = \App\Models\ScheduledDatabaseBackupExecution::where('created_at', '>=', now()->subDay());
+    $allExecutions = \App\Models\ScheduledDatabaseBackupExecution::query();
 
-    // Calculate total storage used (size is stored as text, need to cast)
+    // Calculate total storage used
     $totalStorageLocal = (int) \App\Models\ScheduledDatabaseBackupExecution::where('local_storage_deleted', false)
         ->whereNotNull('size')
         ->where('size', '!=', '')
@@ -66,30 +85,43 @@ Route::get('/backups', function () {
         ->whereNotNull('s3_file_size')
         ->sum('s3_file_size');
 
-    // Estimate S3 costs (rough estimate: $0.023 per GB/month for S3 Standard)
     $s3CostPerGBMonth = 0.023;
     $estimatedMonthlyCost = $totalStorageS3 > 0
         ? ($totalStorageS3 / (1024 * 1024 * 1024)) * $s3CostPerGBMonth
         : 0;
 
     $stats = [
-        'total' => $backups->count(),
-        'enabled' => $backups->where('enabled', true)->count(),
-        'with_s3' => $backups->where('save_s3', true)->count(),
+        'total' => (clone $backupModel)->count(),
+        'enabled' => (clone $backupModel)->where('enabled', true)->count(),
+        'with_s3' => (clone $backupModel)->where('save_s3', true)->count(),
         'failed_last_24h' => (clone $recentExecutions)->where('status', 'failed')->count(),
         'verified_last_24h' => (clone $recentExecutions)->where('verification_status', 'verified')->count(),
         'verification_failed_last_24h' => (clone $recentExecutions)->where('verification_status', 'failed')->count(),
-        'restore_test_enabled_count' => $backups->where('restore_test_enabled', true)->count(),
-        'restore_tests_passed' => $allExecutions->where('restore_test_status', 'success')->count(),
+        'restore_test_enabled_count' => (clone $backupModel)->where('restore_test_enabled', true)->count(),
+        'restore_tests_passed' => (clone $allExecutions)->where('restore_test_status', 'success')->count(),
         'restore_tests_failed' => (clone $allExecutions)->where('restore_test_status', 'failed')->count(),
         'total_storage_local' => $totalStorageLocal,
         'total_storage_s3' => $totalStorageS3,
         'estimated_monthly_cost' => round($estimatedMonthlyCost, 2),
     ];
 
+    // Get unique database types for filter buttons
+    $databaseTypes = \App\Models\ScheduledDatabaseBackup::with('database')
+        ->get()
+        ->map(fn ($b) => $b->database ? class_basename($b->database) : null)
+        ->filter()
+        ->unique()
+        ->values()
+        ->toArray();
+
     return Inertia::render('Admin/Backups/Index', [
         'backups' => $backups,
         'stats' => $stats,
+        'databaseTypes' => $databaseTypes,
+        'filters' => [
+            'search' => $search,
+            'type' => $type,
+        ],
     ]);
 })->name('admin.backups.index');
 
