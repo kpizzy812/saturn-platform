@@ -24,8 +24,26 @@ class CloudflareProtectionService
     {
         return Http::withToken($this->settings()->cloudflare_api_token)
             ->baseUrl($this->baseUrl)
-            ->timeout(30)
-            ->throw();
+            ->timeout(30);
+    }
+
+    /**
+     * Execute an API call with token-safe error handling.
+     * Prevents API token from leaking in exception stack traces.
+     */
+    private function safeApiCall(callable $callback): mixed
+    {
+        try {
+            return $callback($this->client());
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            $response = $e->response;
+            $status = $response?->status() ?? 'unknown';
+            $cfError = $response?->json('errors.0.message') ?? $e->getMessage();
+
+            throw new \RuntimeException("Cloudflare API error (HTTP {$status}): {$cfError}");
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            throw new \RuntimeException('Cloudflare API connection failed: '.$e->getMessage());
+        }
     }
 
     public function isConfigured(): bool
@@ -40,6 +58,7 @@ class CloudflareProtectionService
 
     /**
      * Create a Cloudflare Tunnel and deploy cloudflared container on the master server.
+     * Includes rollback on partial failure to avoid "Tunnel already exists" deadlock.
      */
     public function initializeTunnel(): void
     {
@@ -54,44 +73,74 @@ class CloudflareProtectionService
         }
 
         $tunnelName = 'saturn-'.($settings->instance_name ?: 'platform');
+        $tunnelId = null;
 
-        // Create tunnel via Cloudflare API
-        $response = $this->client()->post(
-            "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel",
-            [
-                'name' => $tunnelName,
-                'tunnel_secret' => base64_encode(random_bytes(32)),
-                'config_src' => 'cloudflare',
-            ]
-        );
+        try {
+            // Create tunnel via Cloudflare API
+            $response = $this->safeApiCall(fn ($client) => $client->post(
+                "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel",
+                [
+                    'name' => $tunnelName,
+                    'tunnel_secret' => base64_encode(random_bytes(32)),
+                    'config_src' => 'cloudflare',
+                ]
+            ));
 
-        $tunnelId = $response->json('result.id');
-        if (! $tunnelId) {
-            throw new \RuntimeException('Failed to create tunnel: '.($response->json('errors.0.message') ?? 'Unknown error'));
+            $tunnelId = $response->json('result.id');
+            if (! $tunnelId) {
+                throw new \RuntimeException('Failed to create tunnel: no tunnel ID returned.');
+            }
+
+            // Get tunnel token
+            $tokenResponse = $this->safeApiCall(fn ($client) => $client->get(
+                "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$tunnelId}/token"
+            ));
+
+            $tunnelToken = $tokenResponse->json('result');
+            if (! $tunnelToken) {
+                throw new \RuntimeException('Failed to get tunnel token.');
+            }
+
+            // Save tunnel info
+            $settings->update([
+                'cloudflare_tunnel_id' => $tunnelId,
+                'cloudflare_tunnel_token' => $tunnelToken,
+                'is_cloudflare_protection_enabled' => true,
+            ]);
+
+            // Deploy cloudflared container on master server
+            $this->deployCloudflaredContainer($tunnelToken);
+
+            // Sync all routes
+            $this->syncAllRoutes();
+        } catch (\Throwable $e) {
+            // Rollback: if tunnel was created in Cloudflare but subsequent steps failed
+            if ($tunnelId) {
+                Log::error('initializeTunnel partial failure, rolling back tunnel '.$tunnelId, [
+                    'error' => $e->getMessage(),
+                ]);
+
+                try {
+                    $this->client()->delete(
+                        "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$tunnelId}/connections"
+                    );
+                    $this->client()->delete(
+                        "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$tunnelId}"
+                    );
+                } catch (\Throwable $rollbackError) {
+                    Log::error('Failed to rollback tunnel: '.$rollbackError->getMessage());
+                }
+
+                // Clear any partially saved state
+                $settings->update([
+                    'cloudflare_tunnel_id' => null,
+                    'cloudflare_tunnel_token' => null,
+                    'is_cloudflare_protection_enabled' => false,
+                ]);
+            }
+
+            throw $e;
         }
-
-        // Get tunnel token
-        $tokenResponse = $this->client()->get(
-            "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$tunnelId}/token"
-        );
-
-        $tunnelToken = $tokenResponse->json('result');
-        if (! $tunnelToken) {
-            throw new \RuntimeException('Failed to get tunnel token.');
-        }
-
-        // Save tunnel info
-        $settings->update([
-            'cloudflare_tunnel_id' => $tunnelId,
-            'cloudflare_tunnel_token' => $tunnelToken,
-            'is_cloudflare_protection_enabled' => true,
-        ]);
-
-        // Deploy cloudflared container on master server
-        $this->deployCloudflaredContainer($tunnelToken);
-
-        // Sync all routes
-        $this->syncAllRoutes();
     }
 
     /**
@@ -153,14 +202,14 @@ class CloudflareProtectionService
         $ingressRules = $this->buildIngressRules();
 
         // Update tunnel configuration (ingress rules)
-        $this->client()->put(
+        $this->safeApiCall(fn ($client) => $client->put(
             "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$settings->cloudflare_tunnel_id}/configurations",
             [
                 'config' => [
                     'ingress' => $ingressRules,
                 ],
             ]
-        );
+        ));
 
         // Sync DNS records (CNAME to tunnel)
         $this->syncDnsRecords($ingressRules);
@@ -171,11 +220,13 @@ class CloudflareProtectionService
     }
 
     /**
-     * Build ingress rules from all Applications and ServiceApplications with FQDNs.
+     * Build ingress rules from all Applications, ServiceApplications, and Previews with FQDNs.
+     * Logs invalid FQDNs, filters wildcards, and warns about duplicate hostnames.
      */
     public function buildIngressRules(): array
     {
         $rules = [];
+        $seenHostnames = [];
 
         // Platform FQDN
         $settings = $this->settings();
@@ -186,6 +237,7 @@ class CloudflareProtectionService
                     'hostname' => $platformHost,
                     'service' => 'http://localhost:80',
                 ];
+                $seenHostnames[$platformHost] = 'platform';
             }
         }
 
@@ -202,7 +254,30 @@ class CloudflareProtectionService
             foreach ($fqdns as $fqdn) {
                 $host = parse_url($fqdn, PHP_URL_HOST);
                 if (! $host) {
+                    Log::warning('Cloudflare: invalid FQDN skipped', [
+                        'fqdn' => $fqdn,
+                        'source' => 'application',
+                        'id' => $app->id,
+                    ]);
+
                     continue;
+                }
+
+                // Skip wildcard hostnames (cannot create CNAME for wildcards without special handling)
+                if (str_starts_with($host, '*.')) {
+                    Log::info('Cloudflare: wildcard hostname skipped for DNS', ['hostname' => $host]);
+
+                    continue;
+                }
+
+                if (isset($seenHostnames[$host])) {
+                    Log::warning('Cloudflare: duplicate hostname detected (first-match-wins)', [
+                        'hostname' => $host,
+                        'first_owner' => $seenHostnames[$host],
+                        'duplicate_owner' => "application:{$app->id}",
+                    ]);
+                } else {
+                    $seenHostnames[$host] = "application:{$app->id}";
                 }
 
                 $scheme = parse_url($fqdn, PHP_URL_SCHEME) ?: 'http';
@@ -228,7 +303,29 @@ class CloudflareProtectionService
             foreach ($fqdns as $fqdn) {
                 $host = parse_url($fqdn, PHP_URL_HOST);
                 if (! $host) {
+                    Log::warning('Cloudflare: invalid FQDN skipped', [
+                        'fqdn' => $fqdn,
+                        'source' => 'service_application',
+                        'id' => $serviceApp->id,
+                    ]);
+
                     continue;
+                }
+
+                if (str_starts_with($host, '*.')) {
+                    Log::info('Cloudflare: wildcard hostname skipped for DNS', ['hostname' => $host]);
+
+                    continue;
+                }
+
+                if (isset($seenHostnames[$host])) {
+                    Log::warning('Cloudflare: duplicate hostname detected (first-match-wins)', [
+                        'hostname' => $host,
+                        'first_owner' => $seenHostnames[$host],
+                        'duplicate_owner' => "service_application:{$serviceApp->id}",
+                    ]);
+                } else {
+                    $seenHostnames[$host] = "service_application:{$serviceApp->id}";
                 }
 
                 $rules[] = [
@@ -251,7 +348,27 @@ class CloudflareProtectionService
             foreach ($fqdns as $fqdn) {
                 $host = parse_url($fqdn, PHP_URL_HOST);
                 if (! $host) {
+                    Log::warning('Cloudflare: invalid FQDN skipped', [
+                        'fqdn' => $fqdn,
+                        'source' => 'application_preview',
+                        'id' => $preview->id,
+                    ]);
+
                     continue;
+                }
+
+                if (str_starts_with($host, '*.')) {
+                    continue;
+                }
+
+                if (isset($seenHostnames[$host])) {
+                    Log::warning('Cloudflare: duplicate hostname detected (first-match-wins)', [
+                        'hostname' => $host,
+                        'first_owner' => $seenHostnames[$host],
+                        'duplicate_owner' => "preview:{$preview->id}",
+                    ]);
+                } else {
+                    $seenHostnames[$host] = "preview:{$preview->id}";
                 }
 
                 $port = $this->resolveAppPort($preview->application);
@@ -280,18 +397,19 @@ class CloudflareProtectionService
         $tunnelCname = "{$settings->cloudflare_tunnel_id}.cfargotunnel.com";
 
         // Get existing DNS records
-        $existingRecords = $this->client()
-            ->get("/zones/{$settings->cloudflare_zone_id}/dns_records", [
+        $existingRecords = $this->safeApiCall(fn ($client) => $client->get(
+            "/zones/{$settings->cloudflare_zone_id}/dns_records",
+            [
                 'type' => 'CNAME',
                 'per_page' => 100,
-            ])
-            ->json('result', []);
+            ]
+        ));
 
-        $existingByName = collect($existingRecords)->keyBy('name');
+        $existingByName = collect($existingRecords->json('result', []))->keyBy('name');
 
-        // Collect all hostnames from ingress (excluding catch-all)
+        // Collect all hostnames from ingress (excluding catch-all and wildcards)
         $hostnames = collect($ingressRules)
-            ->filter(fn ($rule) => isset($rule['hostname']))
+            ->filter(fn ($rule) => isset($rule['hostname']) && ! str_starts_with($rule['hostname'], '*.'))
             ->pluck('hostname')
             ->unique();
 
@@ -301,20 +419,24 @@ class CloudflareProtectionService
             if ($existing) {
                 // Update if content differs
                 if ($existing['content'] !== $tunnelCname) {
-                    $this->client()->put(
-                        "/zones/{$settings->cloudflare_zone_id}/dns_records/{$existing['id']}",
-                        [
-                            'type' => 'CNAME',
-                            'name' => $hostname,
-                            'content' => $tunnelCname,
-                            'proxied' => true,
-                        ]
-                    );
+                    try {
+                        $this->safeApiCall(fn ($client) => $client->put(
+                            "/zones/{$settings->cloudflare_zone_id}/dns_records/{$existing['id']}",
+                            [
+                                'type' => 'CNAME',
+                                'name' => $hostname,
+                                'content' => $tunnelCname,
+                                'proxied' => true,
+                            ]
+                        ));
+                    } catch (\RuntimeException $e) {
+                        Log::warning("Failed to update DNS record for {$hostname}: ".$e->getMessage());
+                    }
                 }
             } else {
                 // Create new record
                 try {
-                    $this->client()->post(
+                    $this->safeApiCall(fn ($client) => $client->post(
                         "/zones/{$settings->cloudflare_zone_id}/dns_records",
                         [
                             'type' => 'CNAME',
@@ -322,8 +444,8 @@ class CloudflareProtectionService
                             'content' => $tunnelCname,
                             'proxied' => true,
                         ]
-                    );
-                } catch (\Exception $e) {
+                    ));
+                } catch (\RuntimeException $e) {
                     // DNS record may already exist with A record, log and continue
                     Log::warning("Failed to create DNS record for {$hostname}: ".$e->getMessage());
                 }
@@ -355,13 +477,13 @@ class CloudflareProtectionService
         if (! empty($settings->cloudflare_tunnel_id) && ! empty($settings->cloudflare_api_token)) {
             try {
                 // Clean up tunnel connections first
-                $this->client()->delete(
+                $this->safeApiCall(fn ($client) => $client->delete(
                     "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$settings->cloudflare_tunnel_id}/connections"
-                );
+                ));
 
-                $this->client()->delete(
+                $this->safeApiCall(fn ($client) => $client->delete(
                     "/accounts/{$settings->cloudflare_account_id}/cfd_tunnel/{$settings->cloudflare_tunnel_id}"
-                );
+                ));
             } catch (\Exception $e) {
                 Log::warning('Failed to delete Cloudflare tunnel via API: '.$e->getMessage());
             }

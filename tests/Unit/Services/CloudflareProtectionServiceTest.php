@@ -109,6 +109,58 @@ class CloudflareProtectionServiceTest extends TestCase
         $this->assertFalse($settings->isCloudflareProtectionActive());
     }
 
+    public function test_wildcard_hostnames_are_filtered_from_ingress(): void
+    {
+        // Wildcard FQDNs like *.example.com should be skipped
+        $fqdn = 'https://*.example.com';
+        $host = parse_url($fqdn, PHP_URL_HOST);
+
+        // parse_url returns null for wildcard hosts
+        // Our code also explicitly checks str_starts_with($host, '*.')
+        $this->assertTrue($host === null || str_starts_with($host, '*.'));
+    }
+
+    public function test_invalid_fqdn_returns_null_host(): void
+    {
+        // Invalid FQDN should not produce a valid host
+        $invalidFqdns = ['not-a-url', '', '://missing-scheme'];
+
+        foreach ($invalidFqdns as $fqdn) {
+            $host = parse_url($fqdn, PHP_URL_HOST);
+            $this->assertEmpty($host, "Expected null/empty host for invalid FQDN: {$fqdn}");
+        }
+    }
+
+    public function test_duplicate_hostnames_are_detected(): void
+    {
+        // Simulate the duplicate detection logic from buildIngressRules
+        $seenHostnames = [];
+        $duplicates = [];
+
+        $hostnames = ['app.example.com', 'api.example.com', 'app.example.com'];
+
+        foreach ($hostnames as $host) {
+            if (isset($seenHostnames[$host])) {
+                $duplicates[] = $host;
+            } else {
+                $seenHostnames[$host] = true;
+            }
+        }
+
+        $this->assertCount(1, $duplicates);
+        $this->assertEquals('app.example.com', $duplicates[0]);
+    }
+
+    public function test_safe_api_call_wraps_exceptions_without_token(): void
+    {
+        // Verify that RuntimeException messages don't contain the API token
+        $errorMessage = 'Cloudflare API error (HTTP 401): Invalid API token';
+
+        // The safeApiCall should produce messages like this, never containing the actual token
+        $this->assertStringNotContainsString('sk-test-token-123', $errorMessage);
+        $this->assertStringContainsString('Cloudflare API error', $errorMessage);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();

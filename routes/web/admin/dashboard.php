@@ -18,13 +18,39 @@ Route::get('/', function () {
     $successDeployments7d = \App\Models\ApplicationDeploymentQueue::where('created_at', '>=', now()->subDays(7))
         ->where('status', 'finished')->count();
 
+    // Trend calculations: current 30d vs previous 30d
+    $totalUsers = \App\Models\User::count();
+    $newUsersThisPeriod = \App\Models\User::where('created_at', '>=', now()->subDays(30))->count();
+    $newUsersPrevPeriod = \App\Models\User::whereBetween('created_at', [now()->subDays(60), now()->subDays(30)])->count();
+
+    $totalServers = \App\Models\Server::count();
+    $newServersThisPeriod = \App\Models\Server::where('created_at', '>=', now()->subDays(30))->count();
+    $newServersPrevPeriod = \App\Models\Server::whereBetween('created_at', [now()->subDays(60), now()->subDays(30)])->count();
+
+    $deploymentsThisPeriod = \App\Models\ApplicationDeploymentQueue::where('created_at', '>=', now()->subDays(30))->count();
+    $deploymentsPrevPeriod = \App\Models\ApplicationDeploymentQueue::whereBetween('created_at', [now()->subDays(60), now()->subDays(30)])->count();
+    $failedDeployments = \App\Models\ApplicationDeploymentQueue::where('status', 'failed')->count();
+
+    $totalTeams = \App\Models\Team::count();
+    $newTeamsThisPeriod = \App\Models\Team::where('created_at', '>=', now()->subDays(30))->count();
+    $newTeamsPrevPeriod = \App\Models\Team::whereBetween('created_at', [now()->subDays(60), now()->subDays(30)])->count();
+
+    // Helper to calculate trend percentage
+    $calcTrend = function (int $current, int $previous): ?int {
+        if ($previous === 0) {
+            return $current > 0 ? 100 : null;
+        }
+
+        return (int) round((($current - $previous) / $previous) * 100);
+    };
+
     $stats = [
-        'totalUsers' => \App\Models\User::count(),
-        'activeUsers' => \App\Models\User::where('created_at', '>=', now()->subDays(30))->count(),
-        'totalServers' => \App\Models\Server::count(),
+        'totalUsers' => $totalUsers,
+        'activeUsers' => $newUsersThisPeriod,
+        'totalServers' => $totalServers,
         'totalDeployments' => \App\Models\ApplicationDeploymentQueue::count(),
-        'failedDeployments' => \App\Models\ApplicationDeploymentQueue::where('status', 'failed')->count(),
-        'totalTeams' => \App\Models\Team::count(),
+        'failedDeployments' => $failedDeployments,
+        'totalTeams' => $totalTeams,
         'totalApplications' => \App\Models\Application::count(),
         'totalServices' => \App\Models\Service::count(),
         'totalDatabases' => \App\Models\StandalonePostgresql::count()
@@ -43,6 +69,13 @@ Route::get('/', function () {
             : 100,
         'queuePending' => \App\Models\ApplicationDeploymentQueue::whereIn('status', ['queued', 'in_progress'])->count(),
         'queueFailed' => \Illuminate\Support\Facades\DB::table('failed_jobs')->count(),
+        // Trends (current 30d vs previous 30d)
+        'trends' => [
+            'users' => $calcTrend($newUsersThisPeriod, $newUsersPrevPeriod),
+            'servers' => $calcTrend($newServersThisPeriod, $newServersPrevPeriod),
+            'deployments' => $calcTrend($deploymentsThisPeriod, $deploymentsPrevPeriod),
+            'teams' => $calcTrend($newTeamsThisPeriod, $newTeamsPrevPeriod),
+        ],
     ];
 
     // Recent activity from deployments (primary source of activity)

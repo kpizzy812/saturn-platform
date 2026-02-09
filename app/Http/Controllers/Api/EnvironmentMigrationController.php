@@ -159,6 +159,7 @@ class EnvironmentMigrationController extends Controller
                 ->whereRelation('settings', 'is_usable', true)
                 ->whereRelation('settings', 'is_reachable', true)
                 ->get(['id', 'name', 'ip'])
+                ->map(fn ($s) => $this->maskServerIp($s))
                 ->toArray();
         }
 
@@ -567,7 +568,8 @@ class EnvironmentMigrationController extends Controller
         })
             ->whereRelation('settings', 'is_usable', true)
             ->whereRelation('settings', 'is_reachable', true)
-            ->get(['id', 'name', 'ip']);
+            ->get(['id', 'name', 'ip'])
+            ->map(fn ($s) => $this->maskServerIp($s));
 
         return response()->json([
             'source' => [
@@ -625,7 +627,8 @@ class EnvironmentMigrationController extends Controller
         })
             ->whereRelation('settings', 'is_usable', true)
             ->whereRelation('settings', 'is_reachable', true)
-            ->get(['id', 'name', 'ip']);
+            ->get(['id', 'name', 'ip'])
+            ->map(fn ($s) => $this->maskServerIp($s));
 
         return response()->json([
             'source' => [
@@ -683,5 +686,20 @@ class EnvironmentMigrationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Mask server IP when Cloudflare protection is active and user is not admin/superadmin.
+     */
+    private function maskServerIp(Server $server): Server
+    {
+        $user = auth()->user();
+        $isAdmin = $user && ($user->is_superadmin || $user->platform_role === 'admin');
+
+        if (! $isAdmin && instanceSettings()->isCloudflareProtectionActive()) {
+            $server->ip = '[protected]';
+        }
+
+        return $server;
     }
 }

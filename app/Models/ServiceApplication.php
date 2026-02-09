@@ -29,10 +29,7 @@ class ServiceApplication extends BaseModel
     protected static function booted()
     {
         static::deleting(function ($service) {
-            $service->update(['fqdn' => null]);
-            $service->persistentStorages()->delete();
-            $service->fileStorages()->delete();
-
+            // Dispatch Cloudflare sync BEFORE nulling fqdn so buildIngressRules() removes old routes
             try {
                 if (instanceSettings()->isCloudflareProtectionActive()) {
                     \App\Jobs\SyncCloudflareRoutesJob::dispatch();
@@ -40,6 +37,10 @@ class ServiceApplication extends BaseModel
             } catch (\Throwable $e) {
                 // Don't block deletion if Cloudflare cleanup fails
             }
+
+            $service->update(['fqdn' => null]);
+            $service->persistentStorages()->delete();
+            $service->fileStorages()->delete();
         });
         static::updated(function ($service) {
             if ($service->wasChanged('fqdn')) {

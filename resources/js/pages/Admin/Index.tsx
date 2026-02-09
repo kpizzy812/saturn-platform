@@ -15,6 +15,8 @@ import {
     Webhook,
     Code2,
     ExternalLink,
+    TrendingUp,
+    TrendingDown,
 } from 'lucide-react';
 
 interface SystemStats {
@@ -33,6 +35,12 @@ interface SystemStats {
     queueFailed: number;
     diskUsage: number;
     cpuUsage: number;
+    trends?: {
+        users: number | null;
+        servers: number | null;
+        deployments: number | null;
+        teams: number | null;
+    };
 }
 
 interface RecentActivity {
@@ -89,11 +97,12 @@ const defaultActivity: RecentActivity[] = [];
 
 const defaultHealthChecks: HealthCheck[] = [];
 
-function StatCard({ title, value, subtitle, icon: Icon }: {
+function StatCard({ title, value, subtitle, icon: Icon, trend }: {
     title: string;
     value: number | string;
     subtitle?: string;
     icon: React.ComponentType<{ className?: string }>;
+    trend?: number | null;
 }) {
     return (
         <Card variant="glass" hover>
@@ -102,9 +111,17 @@ function StatCard({ title, value, subtitle, icon: Icon }: {
                     <div>
                         <p className="text-sm text-foreground-muted">{title}</p>
                         <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
-                        {subtitle && (
-                            <p className="mt-1 text-xs text-foreground-subtle">{subtitle}</p>
-                        )}
+                        <div className="mt-1 flex items-center gap-2">
+                            {subtitle && (
+                                <p className="text-xs text-foreground-subtle">{subtitle}</p>
+                            )}
+                            {trend != null && (
+                                <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${trend > 0 ? 'text-success' : trend < 0 ? 'text-danger' : 'text-foreground-muted'}`}>
+                                    {trend > 0 ? <TrendingUp className="h-3 w-3" /> : trend < 0 ? <TrendingDown className="h-3 w-3" /> : null}
+                                    {trend > 0 ? '+' : ''}{trend}%
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <div className="rounded-lg bg-primary/10 p-3">
                         <Icon className="h-6 w-6 text-primary" />
@@ -338,26 +355,30 @@ export default function AdminDashboard({
                     <StatCard
                         title="Total Users"
                         value={stats.totalUsers}
-                        subtitle={`${stats.activeUsers} active (30d)`}
+                        subtitle={`${stats.activeUsers} new (30d)`}
                         icon={Users}
+                        trend={stats.trends?.users}
                     />
                     <StatCard
                         title="Servers"
                         value={stats.totalServers}
                         subtitle="Connected servers"
                         icon={Server}
+                        trend={stats.trends?.servers}
                     />
                     <StatCard
                         title="Deployments"
                         value={stats.totalDeployments}
                         subtitle={`${stats.failedDeployments} failed`}
                         icon={Activity}
+                        trend={stats.trends?.deployments}
                     />
                     <StatCard
                         title="Teams"
                         value={stats.totalTeams}
                         subtitle="Active teams"
                         icon={Users}
+                        trend={stats.trends?.teams}
                     />
                     <StatCard
                         title="Applications"
