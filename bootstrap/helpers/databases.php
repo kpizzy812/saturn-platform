@@ -654,16 +654,17 @@ function getRandomPublicPort(StandaloneDocker $destination): int
     return random_int(10000, 65535);
 }
 
-function isPublicPortAlreadyUsed(Server $server, int $port, ?string $id = null): bool
+function isPublicPortAlreadyUsed(Server $server, int $port, ?string $excludeUuid = null): bool
 {
-    if ($id) {
-        $foundDatabase = $server->databases()->where('public_port', $port)->where('is_public', true)->where('id', '!=', $id)->first();
-    } else {
-        $foundDatabase = $server->databases()->where('public_port', $port)->where('is_public', true)->first();
-    }
-    if ($foundDatabase) {
-        return true;
+    $databases = $server->databases()
+        ->where('public_port', $port)
+        ->where('is_public', true);
+
+    if ($excludeUuid) {
+        // Use uuid (not id) because different DB types are in separate tables
+        // and can share the same auto-increment id
+        $databases = $databases->where('uuid', '!=', $excludeUuid);
     }
 
-    return false;
+    return $databases->isNotEmpty();
 }

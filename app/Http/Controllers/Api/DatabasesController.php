@@ -278,7 +278,7 @@ class DatabasesController extends Controller
             'description' => 'string|nullable',
             'image' => 'string',
             'is_public' => 'boolean',
-            'public_port' => 'numeric|nullable',
+            'public_port' => 'integer|nullable|min:1024|max:65535',
             'limits_memory' => 'string',
             'limits_memory_swap' => 'string',
             'limits_memory_swappiness' => 'numeric',
@@ -304,7 +304,7 @@ class DatabasesController extends Controller
         $this->authorize('update', $database);
 
         if ($request->is_public && $request->public_port) {
-            if (isPublicPortAlreadyUsed($database->destination->server, $request->public_port, $database->id)) {
+            if (isPublicPortAlreadyUsed($database->destination->server, $request->public_port, $database->uuid)) {
                 return response()->json(['message' => 'Public port already used by another database.'], 400);
             }
         }

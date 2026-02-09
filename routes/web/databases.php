@@ -233,7 +233,7 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
         'storage_limit' => 'sometimes|integer|min:0|max:10000',
         'auto_scaling_enabled' => 'sometimes|boolean',
         'is_public' => 'sometimes|boolean',
-        'public_port' => 'sometimes|nullable|numeric',
+        'public_port' => 'sometimes|nullable|integer|min:1024|max:65535',
         // Security
         'enable_ssl' => 'sometimes|boolean',
         'allowed_ips' => 'sometimes|nullable|string|max:10000',
@@ -249,7 +249,7 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
     // Validate public_port uniqueness on the same server
     if (isset($validated['public_port']) && $validated['public_port']) {
         $server = $database->destination?->server;
-        if ($server && isPublicPortAlreadyUsed($server, (int) $validated['public_port'], $database->id)) {
+        if ($server && isPublicPortAlreadyUsed($server, (int) $validated['public_port'], $database->uuid)) {
             return redirect()->back()->withErrors([
                 'public_port' => 'Port '.$validated['public_port'].' is already in use by another database on this server.',
             ]);

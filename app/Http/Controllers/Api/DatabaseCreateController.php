@@ -658,7 +658,7 @@ class DatabaseCreateController extends Controller
             'server_uuid' => 'string|required',
             'destination_uuid' => 'string',
             'is_public' => 'boolean',
-            'public_port' => 'numeric|nullable',
+            'public_port' => 'integer|nullable|min:1024|max:65535',
             'limits_memory' => 'string',
             'limits_memory_swap' => 'string',
             'limits_memory_swappiness' => 'numeric',
