@@ -39,3 +39,5 @@ CHANGELOG.md
 /.workspaces
 .claude/settings.local.json
 .claudeignore
+.claude
+.phpstan-cache

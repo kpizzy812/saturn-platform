@@ -1,10 +1,10 @@
 # =============================================================================
 # Saturn Platform - VPS Deployment Workflow
 # =============================================================================
-# Builds Saturn Docker image and deploys to your VPS via SSH.
+# Runs tests, builds Saturn Docker image, and deploys to your VPS via SSH.
 #
 # Triggers:
-#   - Push to dev/main → Build image + Auto deploy
+#   - Push to dev/main → Test + Build image + Auto deploy
 #   - Manual trigger
 #
 # GitHub Environments:
@@ -48,9 +48,60 @@ env:
 
 jobs:
   # =============================================================================
-  # Job 1: Build and push Docker image
+  # Job 1: Run tests and static analysis
+  # =============================================================================
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, redis, pcntl, zip, bcmath, intl
+          coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run Pint (code style)
+        run: ./vendor/bin/pint --test
+
+      - name: Run PHPStan (static analysis)
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Run PHP Unit tests
+        run: ./vendor/bin/pest tests/Unit --no-interaction
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Run JS tests
+        run: npm run test -- --run
+
+  # =============================================================================
+  # Job 2: Build and push Docker image
   # =============================================================================
   build:
+    needs: [test]
     if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-24.04
     permissions:
@@ -96,11 +147,11 @@ jobs:
             CLOUDFLARED_VERSION=2025.7.0
 
   # =============================================================================
-  # Job 2: Deploy to VPS
+  # Job 3: Deploy to VPS
   # =============================================================================
   deploy:
-    needs: [build]
-    if: always() && (needs.build.result == 'success' || inputs.skip_build)
+    needs: [test, build]
+    if: always() && (needs.build.result == 'success' || inputs.skip_build) && needs.test.result == 'success'
     runs-on: ubuntu-24.04
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
     steps:
@@ -167,4 +218,3 @@ jobs:
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "- **Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **URL:** http://${{ secrets.VPS_HOST }}:8000" >> $GITHUB_STEP_SUMMARY
-# Trigger Wed Jan 28 17:07:58 MSK 2026

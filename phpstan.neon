@@ -1,11 +1,10 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
 parameters:
-    level: 0
+    level: 5
     paths:
         - app
-
-    # Ignore false positives from Eloquent static calls (without larastan)
-    ignoreErrors:
-        # Eloquent Model static methods like Server::where(), User::count(), etc.
-        -
-            message: '#Static call to instance method Illuminate\\Support\\Collection<\(int\|string\),mixed>::(where|whereNotNull|count|pluck|whereIn)\(\)#'
-            reportUnmatched: false
+    tmpDir: .phpstan-cache
+    reportUnmatchedIgnoredErrors: false

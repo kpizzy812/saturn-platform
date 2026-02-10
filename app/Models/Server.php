@@ -779,17 +779,17 @@ $schema://$host {
 
     public function stopUnmanaged($id)
     {
-        return instant_remote_process(["docker stop -t 0 $id"], $this);
+        return instant_remote_process(['docker stop -t 0 '.escapeshellarg($id)], $this);
     }
 
     public function restartUnmanaged($id)
     {
-        return instant_remote_process(["docker restart $id"], $this);
+        return instant_remote_process(['docker restart '.escapeshellarg($id)], $this);
     }
 
     public function startUnmanaged($id)
     {
-        return instant_remote_process(["docker start $id"], $this);
+        return instant_remote_process(['docker start '.escapeshellarg($id)], $this);
     }
 
     public function getContainers()

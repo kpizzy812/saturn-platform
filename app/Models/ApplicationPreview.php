@@ -36,18 +36,18 @@ class ApplicationPreview extends BaseModel
                 $networkKeys = collect($networks)->keys();
                 $volumeKeys = collect($volumes)->keys();
                 $volumeKeys->each(function ($key) use ($server) {
-                    instant_remote_process(["docker volume rm -f $key"], $server, false);
+                    instant_remote_process(['docker volume rm -f '.escapeshellarg($key)], $server, false);
                 });
                 $networkKeys->each(function ($key) use ($server) {
-                    instant_remote_process(["docker network disconnect $key saturn-proxy"], $server, false);
-                    instant_remote_process(["docker network rm $key"], $server, false);
+                    instant_remote_process(['docker network disconnect '.escapeshellarg($key).' saturn-proxy'], $server, false);
+                    instant_remote_process(['docker network rm '.escapeshellarg($key)], $server, false);
                 });
             } else {
                 // Regular application volume cleanup
                 $persistentStorages = $preview->persistentStorages()->get() ?? collect();
                 if ($persistentStorages->count() > 0) {
                     foreach ($persistentStorages as $storage) {
-                        instant_remote_process(["docker volume rm -f $storage->name"], $server, false);
+                        instant_remote_process(['docker volume rm -f '.escapeshellarg($storage->name)], $server, false);
                     }
                 }
             }

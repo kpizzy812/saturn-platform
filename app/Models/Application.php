@@ -519,7 +519,10 @@ class Application extends BaseModel
         $server = data_get($this, 'destination.server');
         $workdir = $this->workdir();
         if (str($workdir)->endsWith($this->uuid)) {
-            instant_remote_process(['rm -rf '.$this->workdir()], $server, false);
+            if (! preg_match('/^[a-zA-Z0-9\-_\/\.]+$/', $workdir)) {
+                throw new \RuntimeException('Invalid workdir path: '.$workdir);
+            }
+            instant_remote_process(['rm -rf '.escapeshellarg($workdir)], $server, false);
         }
     }
 
@@ -535,17 +538,16 @@ class Application extends BaseModel
             }
             $server = data_get($this, 'destination.server');
             foreach ($persistentStorages as $storage) {
-                instant_remote_process(["docker volume rm -f $storage->name"], $server, false);
+                instant_remote_process(['docker volume rm -f '.escapeshellarg($storage->name)], $server, false);
             }
         }
     }
 
     public function deleteConnectedNetworks()
     {
-        $uuid = $this->uuid;
         $server = data_get($this, 'destination.server');
-        instant_remote_process(["docker network disconnect {$uuid} saturn-proxy"], $server, false);
-        instant_remote_process(["docker network rm {$uuid}"], $server, false);
+        instant_remote_process(['docker network disconnect '.escapeshellarg($this->uuid).' saturn-proxy'], $server, false);
+        instant_remote_process(['docker network rm '.escapeshellarg($this->uuid)], $server, false);
     }
 
     public function additional_servers()

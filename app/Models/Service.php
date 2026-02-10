@@ -234,15 +234,18 @@ class Service extends BaseModel
         $server = data_get($this, 'destination.server');
         $workdir = $this->workdir();
         if (str($workdir)->endsWith($this->uuid)) {
-            instant_remote_process(['rm -rf '.$this->workdir()], $server, false);
+            if (! preg_match('/^[a-zA-Z0-9\-_\/\.]+$/', $workdir)) {
+                throw new \RuntimeException('Invalid workdir path: '.$workdir);
+            }
+            instant_remote_process(['rm -rf '.escapeshellarg($workdir)], $server, false);
         }
     }
 
     public function deleteConnectedNetworks()
     {
         $server = data_get($this, 'destination.server');
-        instant_remote_process(["docker network disconnect {$this->uuid} saturn-proxy"], $server, false);
-        instant_remote_process(["docker network rm {$this->uuid}"], $server, false);
+        instant_remote_process(['docker network disconnect '.escapeshellarg($this->uuid).' saturn-proxy'], $server, false);
+        instant_remote_process(['docker network rm '.escapeshellarg($this->uuid)], $server, false);
     }
 
     /**
