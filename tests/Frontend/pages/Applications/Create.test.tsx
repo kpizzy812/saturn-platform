@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 const mockRouterPost = vi.fn();
 
 vi.mock('@inertiajs/react', () => ({
-    Head: ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+    Head: ({ title }: { children?: React.ReactNode; title?: string }) => (
         <title>{title}</title>
     ),
     Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
@@ -89,29 +89,28 @@ describe('Applications Create Page', () => {
     });
 
     it('renders the page header', () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
         expect(screen.getByText('Create Application')).toBeInTheDocument();
         expect(screen.getByText('Deploy from Git or Docker image')).toBeInTheDocument();
     });
 
     it('shows step indicators', () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
         expect(screen.getByText('Source')).toBeInTheDocument();
         expect(screen.getByText('Configure')).toBeInTheDocument();
         expect(screen.getByText('Deploy')).toBeInTheDocument();
     });
 
     it('renders source selection cards on step 1', () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
-        expect(screen.getByText('Select Source')).toBeInTheDocument();
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
+        expect(screen.getByText('Select Git Provider')).toBeInTheDocument();
         expect(screen.getByText('GitHub')).toBeInTheDocument();
         expect(screen.getByText('GitLab')).toBeInTheDocument();
         expect(screen.getByText('Bitbucket')).toBeInTheDocument();
-        expect(screen.getByText('Docker Image')).toBeInTheDocument();
     });
 
     it('advances to step 2 when source is selected', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         expect(githubButton).toBeInTheDocument();
@@ -126,7 +125,7 @@ describe('Applications Create Page', () => {
     });
 
     it('renders configuration form on step 2', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         // Click GitHub to advance to step 2
         const githubButton = screen.getByText('GitHub').closest('button');
@@ -142,7 +141,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows repository fields for Git sources', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -156,14 +155,8 @@ describe('Applications Create Page', () => {
         });
     });
 
-    it('shows Docker image field for Docker source', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
-
-        const dockerButton = screen.getByText('Docker Image').closest('button');
-        if (dockerButton) {
-            fireEvent.click(dockerButton);
-        }
-
+    it('shows Docker image field when preselected as docker', async () => {
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} preselectedSource="docker" />);
         await waitFor(() => {
             expect(screen.getByText('Docker Image *')).toBeInTheDocument();
             expect(screen.getByPlaceholderText('nginx:latest')).toBeInTheDocument();
@@ -171,7 +164,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows project and environment selects', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -181,12 +174,12 @@ describe('Applications Create Page', () => {
         await waitFor(() => {
             expect(screen.getByText('Project *')).toBeInTheDocument();
             expect(screen.getByText('Environment *')).toBeInTheDocument();
-            expect(screen.getByText('Server *')).toBeInTheDocument();
+            expect(screen.getByText('Server')).toBeInTheDocument();
         });
     });
 
     it('shows server selection', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -199,7 +192,7 @@ describe('Applications Create Page', () => {
     });
 
     it('has back button on step 2', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -213,7 +206,7 @@ describe('Applications Create Page', () => {
     });
 
     it('has continue button on step 2', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -221,12 +214,12 @@ describe('Applications Create Page', () => {
         }
 
         await waitFor(() => {
-            expect(screen.getByText('Continue')).toBeInTheDocument();
+            expect(screen.getByText('Manual Setup')).toBeInTheDocument();
         });
     });
 
     it('advances to step 3 when continue is clicked', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         // Step 1: Select GitHub
         const githubButton = screen.getByText('GitHub').closest('button');
@@ -234,9 +227,9 @@ describe('Applications Create Page', () => {
             fireEvent.click(githubButton);
         }
 
-        // Step 2: Click Continue
+        // Step 2: Click Manual Setup
         await waitFor(() => {
-            const continueButton = screen.getByText('Continue');
+            const continueButton = screen.getByText('Manual Setup');
             fireEvent.click(continueButton);
         });
 
@@ -247,7 +240,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows review summary on step 3', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         // Navigate to step 3
         const githubButton = screen.getByText('GitHub').closest('button');
@@ -256,7 +249,7 @@ describe('Applications Create Page', () => {
         }
 
         await waitFor(() => {
-            const continueButton = screen.getByText('Continue');
+            const continueButton = screen.getByText('Manual Setup');
             fireEvent.click(continueButton);
         });
 
@@ -270,7 +263,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows Create & Deploy button on step 3', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -278,7 +271,7 @@ describe('Applications Create Page', () => {
         }
 
         await waitFor(() => {
-            const continueButton = screen.getByText('Continue');
+            const continueButton = screen.getByText('Manual Setup');
             fireEvent.click(continueButton);
         });
 
@@ -289,7 +282,7 @@ describe('Applications Create Page', () => {
 
     it.skip('validates required fields on submit', async () => {
         // Skipped: Validation logic not yet implemented
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         // Navigate to step 3
         const githubButton = screen.getByText('GitHub').closest('button');
@@ -298,7 +291,7 @@ describe('Applications Create Page', () => {
         }
 
         await waitFor(() => {
-            const continueButton = screen.getByText('Continue');
+            const continueButton = screen.getByText('Manual Setup');
             fireEvent.click(continueButton);
         });
 
@@ -317,7 +310,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows build pack options', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -332,7 +325,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows optional FQDN field', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
@@ -346,7 +339,7 @@ describe('Applications Create Page', () => {
     });
 
     it('shows description field', async () => {
-        render(<ApplicationsCreate projects={mockProjects} servers={mockServers} />);
+        render(<ApplicationsCreate projects={mockProjects} userServers={mockServers} />);
 
         const githubButton = screen.getByText('GitHub').closest('button');
         if (githubButton) {
