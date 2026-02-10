@@ -129,7 +129,7 @@ export function NotificationDropdown({ unreadCount, notifications }: Notificatio
     }, []);
 
     return (
-        <Dropdown>
+        <Dropdown backdrop>
             <DropdownTrigger>
                 <button className="relative rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground">
                     <Bell className="h-5 w-5" />
@@ -140,7 +140,7 @@ export function NotificationDropdown({ unreadCount, notifications }: Notificatio
                     )}
                 </button>
             </DropdownTrigger>
-            <DropdownContent align="right" width="lg" className="max-h-[420px] overflow-hidden p-0">
+            <DropdownContent align="right" width="lg" mobileFullWidth className="max-h-[420px] overflow-hidden p-0">
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
                     <h3 className="font-semibold text-foreground">Notifications</h3>

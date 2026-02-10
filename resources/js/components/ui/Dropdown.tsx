@@ -12,13 +12,20 @@ const DropdownContext = React.createContext<DropdownContextValue>({ isOpen: fals
 // Main Dropdown component
 interface DropdownProps {
     children: React.ReactNode;
+    backdrop?: boolean;
 }
 
-export function Dropdown({ children }: DropdownProps) {
+export function Dropdown({ children, backdrop }: DropdownProps) {
     return (
         <Menu as="div" className="relative inline-block text-left">
             {({ open }) => (
                 <DropdownContext.Provider value={{ isOpen: open }}>
+                    {backdrop && open && (
+                        <div
+                            className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm md:hidden"
+                            aria-hidden="true"
+                        />
+                    )}
                     {children}
                 </DropdownContext.Provider>
             )}
@@ -47,6 +54,7 @@ interface DropdownContentProps {
     sideOffset?: number;
     className?: string;
     width?: 'auto' | 'sm' | 'md' | 'lg' | 'xl';
+    mobileFullWidth?: boolean;
 }
 
 const widthClasses = {
@@ -62,6 +70,7 @@ export function DropdownContent({
     align = 'right',
     sideOffset = 8,
     width = 'md',
+    mobileFullWidth,
     className,
 }: DropdownContentProps) {
     const anchorPosition = align === 'left' ? 'bottom start' : align === 'center' ? 'bottom' : 'bottom end';
@@ -69,7 +78,7 @@ export function DropdownContent({
     return (
         <MenuItems
             portal
-            anchor={{ to: anchorPosition as any, gap: sideOffset }}
+            anchor={{ to: anchorPosition as any, gap: sideOffset, padding: 12 }}
             transition
             className={cn(
                 // Base styles with high z-index for portal
@@ -87,6 +96,8 @@ export function DropdownContent({
                 'focus:outline-none',
                 // Transitions
                 'transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0',
+                // Mobile full-width (uses CSS class from app.css to override floating-ui inline styles)
+                mobileFullWidth && 'dropdown-mobile-full',
                 className
             )}
         >
