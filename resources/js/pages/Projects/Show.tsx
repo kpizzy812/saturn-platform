@@ -1710,31 +1710,31 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             {/* Panel Tabs - Different for Apps vs Databases */}
                             {selectedService.type === 'app' ? (
                                 /* Application Tabs */
-                                <div className="flex border-b border-border">
+                                <div className="flex overflow-x-auto border-b border-border">
                                     <button
                                         onClick={() => setActiveAppTab('deployments')}
-                                        className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'deployments' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'deployments' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
                                     >
                                         <Activity className="h-4 w-4" />
                                         Deployments
                                     </button>
                                     <button
                                         onClick={() => setActiveAppTab('variables')}
-                                        className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'variables' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'variables' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
                                     >
                                         <Variable className="h-4 w-4" />
                                         Variables
                                     </button>
                                     <button
                                         onClick={() => setActiveAppTab('metrics')}
-                                        className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'metrics' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'metrics' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
                                     >
                                         <Gauge className="h-4 w-4" />
                                         Metrics
                                     </button>
                                     <button
                                         onClick={() => setActiveAppTab('settings')}
-                                        className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'settings' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeAppTab === 'settings' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
                                     >
                                         <Cog className="h-4 w-4" />
                                         Settings
