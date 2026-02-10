@@ -89,6 +89,12 @@ it('logs comprehensive error details when failed() is called', function () {
     $containerNameProperty->setAccessible(true);
     $containerNameProperty->setValue($job, 'test-container');
 
+    // Set the server property to prevent uninitialized typed property error
+    $mockServer = Mockery::mock(\App\Models\Server::class);
+    $serverProperty = $reflection->getProperty('server');
+    $serverProperty->setAccessible(true);
+    $serverProperty->setValue($job, $mockServer);
+
     // Mock the failDeployment method to prevent errors
     $job->shouldReceive('failDeployment')->andReturn();
     $job->shouldReceive('execute_remote_command')->andReturn();
@@ -198,6 +204,12 @@ it('handles exceptions with no message gracefully', function () {
     $containerNameProperty->setAccessible(true);
     $containerNameProperty->setValue($job, 'test-container');
 
+    // Set the server property to prevent uninitialized typed property error
+    $mockServer = Mockery::mock(\App\Models\Server::class);
+    $serverProperty = $reflection->getProperty('server');
+    $serverProperty->setAccessible(true);
+    $serverProperty->setValue($job, $mockServer);
+
     $job->shouldReceive('failDeployment')->andReturn();
     $job->shouldReceive('execute_remote_command')->andReturn();
 
@@ -288,6 +300,12 @@ it('logs error code 0 correctly', function () {
     $containerNameProperty = $reflection->getProperty('container_name');
     $containerNameProperty->setAccessible(true);
     $containerNameProperty->setValue($job, 'test-container');
+
+    // Set the server property to prevent uninitialized typed property error
+    $mockServer = Mockery::mock(\App\Models\Server::class);
+    $serverProperty = $reflection->getProperty('server');
+    $serverProperty->setAccessible(true);
+    $serverProperty->setValue($job, $mockServer);
 
     $job->shouldReceive('failDeployment')->andReturn();
     $job->shouldReceive('execute_remote_command')->andReturn();

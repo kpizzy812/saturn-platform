@@ -92,12 +92,14 @@ class PromoteResourceActionTest extends TestCase
     }
 
     /**
-     * Test database models constant is properly defined.
+     * Test database models static property is properly defined.
      */
     public function test_database_models_are_defined(): void
     {
         $reflection = new ReflectionClass(PromoteResourceAction::class);
-        $models = $reflection->getConstant('DATABASE_MODELS');
+        $property = $reflection->getProperty('databaseModels');
+
+        $models = $property->getValue();
 
         $this->assertIsArray($models);
         $this->assertContains('App\Models\StandalonePostgresql', $models);

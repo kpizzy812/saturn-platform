@@ -190,8 +190,8 @@ function formatBytes(?int $bytes, int $precision = 2): string
         return '0 B';
     }
 
-    // Handle negative numbers
-    if ($bytes < 0) {
+    // Handle zero and negative numbers
+    if ($bytes <= 0) {
         return '0 B';
     }
 

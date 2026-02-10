@@ -76,10 +76,15 @@ class UploadControllerSecurityTest extends TestCase
     #[Test]
     public function it_allows_valid_redis_rdb_files(): void
     {
-        $file = UploadedFile::fake()->create('dump.rdb', 100, 'application/octet-stream');
+        // Create a temp file with correct Redis RDB magic bytes (REDI = 0x52454449)
+        $tempPath = tempnam(sys_get_temp_dir(), 'rdb_test_');
+        file_put_contents($tempPath, hex2bin('52454449').random_bytes(96));
+
+        $file = new UploadedFile($tempPath, 'dump.rdb', 'application/octet-stream', null, true);
         $result = $this->validateFile($file);
 
-        $this->assertNull($result, 'Valid .rdb file should be allowed');
+        @unlink($tempPath);
+        $this->assertNull($result, 'Valid .rdb file with correct magic bytes should be allowed');
     }
 
     #[Test]
@@ -235,9 +240,9 @@ class UploadControllerSecurityTest extends TestCase
 
     #[Test]
     #[DataProvider('allowedExtensionsProvider')]
-    public function it_allows_valid_backup_extensions(string $extension): void
+    public function it_allows_valid_backup_extensions(string $extension, string $mimeType): void
     {
-        $file = UploadedFile::fake()->create("backup.{$extension}", 100, 'application/octet-stream');
+        $file = UploadedFile::fake()->create("backup.{$extension}", 100, $mimeType);
         $result = $this->validateFile($file);
 
         $this->assertNull($result, "{$extension} files should be allowed");
@@ -245,19 +250,21 @@ class UploadControllerSecurityTest extends TestCase
 
     public static function allowedExtensionsProvider(): array
     {
+        // Use appropriate MIME types to avoid magic bytes validation for binary formats.
+        // Files with application/octet-stream trigger magic bytes checks for gz, tar, zip, bz2, rdb.
         return [
-            'sql' => ['sql'],
-            'dump' => ['dump'],
-            'backup' => ['backup'],
-            'gz' => ['gz'],
-            'tar' => ['tar'],
-            'zip' => ['zip'],
-            'bz2' => ['bz2'],
-            'archive' => ['archive'],
-            'bson' => ['bson'],
-            'json' => ['json'],
-            'rdb' => ['rdb'],
-            'aof' => ['aof'],
+            'sql' => ['sql', 'text/plain'],
+            'dump' => ['dump', 'application/octet-stream'],  // No magic bytes defined for .dump
+            'backup' => ['backup', 'application/octet-stream'],  // No magic bytes defined for .backup
+            'gz' => ['gz', 'application/gzip'],
+            'tar' => ['tar', 'application/x-tar'],
+            'zip' => ['zip', 'application/zip'],
+            'bz2' => ['bz2', 'application/x-bzip2'],
+            'archive' => ['archive', 'application/octet-stream'],  // No magic bytes defined for .archive
+            'bson' => ['bson', 'application/octet-stream'],  // No magic bytes defined for .bson
+            'json' => ['json', 'application/json'],
+            'rdb' => ['rdb', 'text/plain'],  // Use text/plain to avoid magic bytes check; magic bytes tested separately
+            'aof' => ['aof', 'application/octet-stream'],  // No magic bytes defined for .aof
         ];
     }
 }

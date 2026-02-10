@@ -18,8 +18,9 @@ it('escapes malicious repository URLs in deploy_key type', function () {
     $application->git_branch = 'main';
     $application->shouldReceive('deploymentType')->andReturn('deploy_key');
     $application->shouldReceive('customRepository')->andReturn([
-        'repository' => $maliciousRepo,
-        'port' => 22,
+        'git_repository' => $maliciousRepo,
+        'git_port' => 22,
+        'git_base_url' => 'github.com',
     ]);
 
     // Mock private key
@@ -53,8 +54,9 @@ it('escapes malicious repository URLs in source type with public repo', function
     $application->git_branch = 'main';
     $application->shouldReceive('deploymentType')->andReturn('source');
     $application->shouldReceive('customRepository')->andReturn([
-        'repository' => $maliciousRepo,
-        'port' => 22,
+        'git_repository' => $maliciousRepo,
+        'git_port' => 22,
+        'git_base_url' => 'github.com',
     ]);
 
     // Mock GithubApp source
@@ -85,10 +87,13 @@ it('escapes repository URLs in other deployment type', function () {
     // Mock the application
     $application = Mockery::mock(Application::class)->makePartial();
     $application->git_branch = 'main';
+    // Set git_repository so the code detects it as an HTTPS URL and uses escapeshellarg on the original
+    $application->shouldReceive('getAttribute')->with('git_repository')->andReturn($maliciousRepo);
     $application->shouldReceive('deploymentType')->andReturn('other');
     $application->shouldReceive('customRepository')->andReturn([
-        'repository' => $maliciousRepo,
-        'port' => 22,
+        'git_repository' => $maliciousRepo,
+        'git_port' => 22,
+        'git_base_url' => 'github.com',
     ]);
 
     // Act: Generate git ls-remote commands

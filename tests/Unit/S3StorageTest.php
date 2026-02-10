@@ -45,9 +45,20 @@ test('S3Storage awsUrl method constructs correct URL format', function () {
     expect($s3Storage->awsUrl())->toBe('https://minio.example.com:9000/backups');
 });
 
-test('S3Storage model is guarded correctly', function () {
+test('S3Storage model has correct fillable fields', function () {
     $s3Storage = new S3Storage;
 
-    // The model should have $guarded = [] which means everything is fillable
-    expect($s3Storage->getGuarded())->toBe([]);
+    // The model should use explicit $fillable instead of $guarded = [] for security
+    $fillable = $s3Storage->getFillable();
+    expect($fillable)->toContain('uuid');
+    expect($fillable)->toContain('name');
+    expect($fillable)->toContain('key');
+    expect($fillable)->toContain('secret');
+    expect($fillable)->toContain('bucket');
+    expect($fillable)->toContain('region');
+    expect($fillable)->toContain('endpoint');
+    // Security-sensitive fields should NOT be in fillable
+    expect($fillable)->not->toContain('id');
+    expect($fillable)->not->toContain('team_id');
+    expect($fillable)->not->toContain('is_usable');
 });

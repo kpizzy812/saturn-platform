@@ -25,10 +25,10 @@ test('getApplicationDefaults returns correct mapping with default values', funct
 
     $defaults = $settings->getApplicationDefaults();
 
-    // Verify all 17 keys are present
-    expect($defaults)->toHaveCount(17);
+    // Verify all 18 keys are present (17 ApplicationSetting fields + build_pack on Application)
+    expect($defaults)->toHaveCount(18);
 
-    // Verify mapping to ApplicationSetting field names
+    // Verify mapping to ApplicationSetting field names + build_pack
     expect($defaults)->toHaveKeys([
         'is_auto_deploy_enabled',
         'is_force_https_enabled',
@@ -47,6 +47,7 @@ test('getApplicationDefaults returns correct mapping with default values', funct
         'rollback_on_health_check_fail',
         'rollback_on_crash_loop',
         'is_debug_enabled',
+        'build_pack',
     ]);
 
     // Verify values match
@@ -176,7 +177,7 @@ test('all app_default fields are in casts array', function () {
     }
 });
 
-test('getApplicationDefaults keys match ApplicationSetting fillable fields', function () {
+test('getApplicationDefaults keys match ApplicationSetting fillable fields or Application model fields', function () {
     $settings = new InstanceSettings([
         'app_default_auto_deploy' => true,
         'app_default_force_https' => true,
@@ -200,7 +201,14 @@ test('getApplicationDefaults keys match ApplicationSetting fillable fields', fun
     $defaults = $settings->getApplicationDefaults();
     $appSettingFillable = (new \App\Models\ApplicationSetting)->getFillable();
 
+    // Keys that belong to the Application model directly (not ApplicationSetting)
+    $applicationModelFields = ['build_pack'];
+
     foreach (array_keys($defaults) as $key) {
+        if (in_array($key, $applicationModelFields)) {
+            // These fields are set on Application model, not ApplicationSetting
+            continue;
+        }
         expect($appSettingFillable)->toContain($key);
     }
 });

@@ -31,6 +31,10 @@ class UserNotificationPreferenceTest extends TestCase
             'in_app_billing',
             'in_app_security',
             'digest_frequency',
+            // Security-specific notification preferences
+            'security_new_login',
+            'security_failed_login',
+            'security_api_access',
         ], $preference->getFillable());
     }
 
