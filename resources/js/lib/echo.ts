@@ -56,12 +56,16 @@ export function initializeEcho(): Echo<'pusher'> | null {
             console.debug('Echo: VITE_PUSHER_HOST is internal Docker hostname, using auto-detection instead:', wsHost);
         }
 
-        const wsScheme = import.meta.env.VITE_PUSHER_SCHEME || (window.location.protocol === 'https:' ? 'wss' : 'ws');
+        // When auto-detected (internal Docker host), use page protocol and port
+        // so WebSocket goes through Nginx which proxies /app/{key} to Soketi
+        const wsScheme = isAutoDetected
+            ? (window.location.protocol === 'https:' ? 'wss' : 'ws')
+            : (import.meta.env.VITE_PUSHER_SCHEME || (window.location.protocol === 'https:' ? 'wss' : 'ws'));
         const forceTLS = wsScheme === 'wss' || wsScheme === 'https';
-        // In production with auto-detection, use the same port as the page (nginx proxies WebSocket)
-        // For HTTPS: 443, for HTTP: current port or 80
         const currentPort = window.location.port ? parseInt(window.location.port, 10) : (forceTLS ? 443 : 80);
-        const wsPort = import.meta.env.VITE_PUSHER_PORT || (isAutoDetected ? currentPort : 6001);
+        const wsPort = isAutoDetected
+            ? currentPort
+            : (import.meta.env.VITE_PUSHER_PORT || 6001);
         const wssPort = import.meta.env.VITE_PUSHER_WSS_PORT || wsPort;
         const wsKey = import.meta.env.VITE_PUSHER_APP_KEY || 'saturn';
 
