@@ -360,7 +360,7 @@ function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; 
             {/* Mobile sidebar drawer */}
             <aside
                 className={cn(
-                    'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-primary/20 bg-gradient-to-b from-primary/5 via-background to-background transition-transform duration-300 lg:hidden',
+                    'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-primary/20 bg-background bg-gradient-to-b from-primary/5 via-background to-background transition-transform duration-300 lg:hidden',
                     isMobileOpen ? 'translate-x-0' : '-translate-x-full'
                 )}
             >
