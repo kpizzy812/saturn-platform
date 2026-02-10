@@ -24,8 +24,11 @@ Route::get('/metrics', function () {
     $totalResources = $totalApplications + $totalServices + $totalDatabases;
 
     // Count "active" resources (applications with recent deployments)
-    $activeResources = \App\Models\Application::whereHas('deployments', function ($q) {
-        $q->where('created_at', '>=', now()->subDays(7));
+    // Note: Application::deployments() is not an Eloquent relationship, so use whereIn with subquery
+    $activeResources = \App\Models\Application::whereIn('id', function ($query) {
+        $query->select('application_id')
+            ->from('application_deployment_queues')
+            ->where('created_at', '>=', now()->subDays(7));
     })->count();
 
     $totalDeployments = \App\Models\ApplicationDeploymentQueue::count();
