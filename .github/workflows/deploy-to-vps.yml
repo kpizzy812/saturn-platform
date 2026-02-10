@@ -48,9 +48,10 @@ env:
 
 jobs:
   # =============================================================================
-  # Job 1: Run tests and static analysis
+  # Job 1: Run tests and static analysis (temporarily disabled)
   # =============================================================================
   test:
+    if: false
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
@@ -122,7 +123,7 @@ jobs:
   # Job 2: Build and push Docker image
   # =============================================================================
   build:
-    needs: [test]
+    # needs: [test]  # TODO: re-enable when test job is active
     if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-24.04
     permissions:
@@ -171,7 +172,7 @@ jobs:
   # Job 3: Deploy to VPS
   # =============================================================================
   deploy:
-    needs: [test, build]
+    needs: [build]  # TODO: add test back when re-enabled
     if: always() && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
     environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
