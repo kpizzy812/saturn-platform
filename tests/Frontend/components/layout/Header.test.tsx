@@ -1,21 +1,29 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '../../utils/test-utils';
 
-// Mock the @inertiajs/react module
-vi.mock('@inertiajs/react', () => ({
-    Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-        <a href={href}>{children}</a>
-    ),
-    usePage: () => ({
-        props: {
-            auth: {
-                user: { id: 1, name: 'Test User', email: 'test@example.com' },
-            },
-        },
-    }),
+// Mock ThemeProvider useTheme hook
+vi.mock('@/components/ui/ThemeProvider', async (importOriginal) => {
+    const actual = await importOriginal() as any;
+    return {
+        ...actual,
+        useTheme: () => ({
+            isDark: false,
+            toggleTheme: vi.fn(),
+        }),
+    };
+});
+
+// Mock TeamSwitcher
+vi.mock('@/components/ui/TeamSwitcher', () => ({
+    TeamSwitcher: () => <div>Team Switcher</div>,
 }));
 
-// Import after mock
+// Mock NotificationDropdown
+vi.mock('@/components/ui/NotificationDropdown', () => ({
+    NotificationDropdown: () => <div>Notifications</div>,
+}));
+
+// Import after mocks
 import { Header } from '@/components/layout/Header';
 
 describe('Header Component', () => {
@@ -44,7 +52,10 @@ describe('Header Component', () => {
 
     it('shows user avatar with first letter of name', () => {
         render(<Header />);
-        expect(screen.getByText('T')).toBeInTheDocument(); // First letter of "Test User"
+        // Avatar is rendered in a gradient div element
+        const avatarDiv = document.querySelector('.bg-gradient-to-br');
+        expect(avatarDiv).toBeInTheDocument();
+        expect(avatarDiv?.textContent).toBe('T'); // First letter of "Test User"
     });
 
     it('links logo to dashboard', () => {

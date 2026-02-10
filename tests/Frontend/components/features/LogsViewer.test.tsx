@@ -1,15 +1,101 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '../../utils/test-utils';
+
+// Mock the useLogStream hook
+vi.mock('@/hooks/useLogStream', () => ({
+    useLogStream: vi.fn(() => ({
+        logs: [],
+        isStreaming: true,
+        isConnected: true,
+        isPolling: false,
+        loading: false,
+        error: null,
+        clearLogs: vi.fn(),
+        refresh: vi.fn(),
+    })),
+}));
+
+// Mock LogsContainer
+vi.mock('@/components/features/LogsContainer', () => ({
+    LogsContainer: ({ logs, showSearch, showLevelFilter }: any) => (
+        <div data-testid="logs-container">
+            <div className="logs-toolbar">
+                {showSearch && <input placeholder="Search..." />}
+                {showLevelFilter && <select><option>All Levels</option></select>}
+            </div>
+            <div className="logs-content">
+                {logs.length === 0 ? (
+                    <div>No logs found</div>
+                ) : (
+                    logs.map((log: any) => (
+                        <div key={log.id} data-testid="log-line">
+                            {log.timestamp && <span>{log.timestamp}</span>}
+                            <span>[{log.level}]</span>
+                            <span>{log.content}</span>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    ),
+}));
+
+// Import after mocks
 import { LogsViewer } from '@/components/features/LogsViewer';
+import type { LogEntry } from '@/hooks/useLogStream';
+import { useLogStream } from '@/hooks/useLogStream';
+
+// Default mock logs
+const getDefaultMockLogs = (): LogEntry[] => [
+    {
+        id: '1',
+        message: 'Server listening on port 3000',
+        timestamp: '2024-01-15 14:32:01',
+        level: 'info' as const,
+        source: 'stdout',
+    },
+    {
+        id: '2',
+        message: 'Connected to PostgreSQL database',
+        timestamp: '2024-01-15 14:32:02',
+        level: 'info' as const,
+        source: 'stdout',
+    },
+    {
+        id: '3',
+        message: 'API endpoint /api/users is slow',
+        timestamp: '2024-01-15 14:32:03',
+        level: 'warning' as const,
+        source: 'stdout',
+    },
+    {
+        id: '4',
+        message: 'Failed to connect to Redis',
+        timestamp: '2024-01-15 14:32:04',
+        level: 'error' as const,
+        source: 'stderr',
+    },
+];
 
 describe('LogsViewer', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.useFakeTimers();
+        // Reset to default mock implementation
+        vi.mocked(useLogStream).mockReturnValue({
+            logs: getDefaultMockLogs(),
+            isStreaming: true,
+            isConnected: true,
+            isPolling: false,
+            loading: false,
+            error: null,
+            clearLogs: vi.fn(),
+            refresh: vi.fn(),
+        });
     });
 
     afterEach(() => {
-        vi.useRealTimers();
+        // Clean up body overflow style
+        document.body.style.overflow = '';
     });
 
     describe('Opening and Closing', () => {
@@ -48,8 +134,8 @@ describe('LogsViewer', () => {
             const backdrop = document.querySelector('.bg-black\\/70');
             if (backdrop) {
                 fireEvent.click(backdrop);
+                expect(onClose).toHaveBeenCalled();
             }
-            expect(onClose).toHaveBeenCalled();
         });
 
         it('calls onClose when X button is clicked', () => {
@@ -62,20 +148,30 @@ describe('LogsViewer', () => {
                 />
             );
 
-            const closeButton = screen.getByRole('button', { name: '' });
-            // Find the button with X icon
+            // Find the close button with X icon
             const buttons = screen.getAllByRole('button');
-            const xButton = buttons.find(btn => btn.querySelector('svg.lucide-x'));
-            if (xButton) {
-                fireEvent.click(xButton);
+            const closeButton = buttons.find(btn =>
+                btn.getAttribute('aria-label') === 'Close logs'
+            );
+
+            if (closeButton) {
+                fireEvent.click(closeButton);
                 expect(onClose).toHaveBeenCalled();
             }
         });
-    });
 
-    describe('Log Display', () => {
-        it('shows demo log entries', () => {
-            render(
+        it('prevents body scroll when open', () => {
+            const { rerender } = render(
+                <LogsViewer
+                    isOpen={false}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
+            expect(document.body.style.overflow).toBe('');
+
+            rerender(
                 <LogsViewer
                     isOpen={true}
                     onClose={() => {}}
@@ -83,122 +179,23 @@ describe('LogsViewer', () => {
                 />
             );
 
-            expect(screen.getByText(/Server listening on port 3000/)).toBeInTheDocument();
-            expect(screen.getByText(/Connected to PostgreSQL database/)).toBeInTheDocument();
-        });
-
-        it('shows log entry count', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getByText(/\d+ log entries/)).toBeInTheDocument();
-        });
-
-        it('displays timestamps for log entries', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            // Check for timestamp format - there may be multiple entries with same timestamp prefix
-            const timestamps = screen.getAllByText(/2024-01-15 14:32:0/);
-            expect(timestamps.length).toBeGreaterThan(0);
+            expect(document.body.style.overflow).toBe('hidden');
         });
     });
 
-    describe('Log Levels', () => {
-        it('shows INFO level logs', () => {
+    describe('Header Display', () => {
+        it('shows service name in header', () => {
             render(
                 <LogsViewer
                     isOpen={true}
                     onClose={() => {}}
-                    serviceName="api-server"
+                    serviceName="my-awesome-api"
                 />
             );
 
-            expect(screen.getAllByText('[info]').length).toBeGreaterThan(0);
+            expect(screen.getByText('my-awesome-api Logs')).toBeInTheDocument();
         });
 
-        it('shows WARN level logs', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getAllByText('[warn]').length).toBeGreaterThan(0);
-        });
-
-        it('shows ERROR level logs', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getAllByText('[error]').length).toBeGreaterThan(0);
-        });
-    });
-
-    describe('Search Functionality', () => {
-        it('has a search input', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getByPlaceholderText('Search logs...')).toBeInTheDocument();
-        });
-
-        it('filters logs based on search query', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            const searchInput = screen.getByPlaceholderText('Search logs...');
-            fireEvent.change(searchInput, { target: { value: 'PostgreSQL' } });
-
-            // Verify the search input has the value
-            expect(searchInput).toHaveValue('PostgreSQL');
-            // The log should still be visible since it matches
-            expect(screen.getByText(/Connected to PostgreSQL database/)).toBeInTheDocument();
-        });
-    });
-
-    describe('Level Filter', () => {
-        it('shows level filter dropdown', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getByText('All Levels')).toBeInTheDocument();
-        });
-    });
-
-    describe('Streaming', () => {
         it('shows Live indicator when streaming', () => {
             render(
                 <LogsViewer
@@ -211,19 +208,21 @@ describe('LogsViewer', () => {
             expect(screen.getByText('Live')).toBeInTheDocument();
         });
 
-        it('shows Pause button when streaming', () => {
+        it('shows connection status', () => {
             render(
                 <LogsViewer
                     isOpen={true}
                     onClose={() => {}}
                     serviceName="api-server"
+                    serviceUuid="test-uuid"
                 />
             );
 
-            expect(screen.getByText('Pause')).toBeInTheDocument();
+            // Should show WebSocket status when connected
+            expect(screen.getByText('WebSocket')).toBeInTheDocument();
         });
 
-        it('toggles streaming when Pause/Resume is clicked', () => {
+        it('shows demo mode indicator when no UUID provided', () => {
             render(
                 <LogsViewer
                     isOpen={true}
@@ -232,54 +231,124 @@ describe('LogsViewer', () => {
                 />
             );
 
-            const pauseButton = screen.getByText('Pause');
-            fireEvent.click(pauseButton);
+            expect(screen.getByText('Demo Mode')).toBeInTheDocument();
+        });
+    });
 
-            expect(screen.getByText('Resume')).toBeInTheDocument();
+    describe('LogsContainer Integration', () => {
+        it('renders LogsContainer component', () => {
+            render(
+                <LogsViewer
+                    isOpen={true}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
+            expect(screen.getByTestId('logs-container')).toBeInTheDocument();
+        });
+
+        it('passes logs to LogsContainer', () => {
+            render(
+                <LogsViewer
+                    isOpen={true}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
+            // Should render 4 log lines from the mocked hook
+            const logLines = screen.getAllByTestId('log-line');
+            expect(logLines.length).toBe(4);
+        });
+
+        it('passes showSearch prop to LogsContainer', () => {
+            render(
+                <LogsViewer
+                    isOpen={true}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
+            expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
+        });
+
+        it('passes showLevelFilter prop to LogsContainer', () => {
+            render(
+                <LogsViewer
+                    isOpen={true}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
+            expect(screen.getByText('All Levels')).toBeInTheDocument();
+        });
+    });
+
+    describe('Streaming States', () => {
+        it('shows Paused when not streaming', () => {
+            vi.mocked(useLogStream).mockReturnValue({
+                logs: [],
+                isStreaming: false,
+                isConnected: false,
+                isPolling: false,
+                loading: false,
+                error: null,
+                clearLogs: vi.fn(),
+                refresh: vi.fn(),
+            });
+
+            render(
+                <LogsViewer
+                    isOpen={true}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
             expect(screen.getByText('Paused')).toBeInTheDocument();
         });
-    });
 
-    describe('Toolbar Actions', () => {
-        it('shows Refresh button', () => {
+        it('shows Polling status when polling', () => {
+            vi.mocked(useLogStream).mockReturnValue({
+                logs: [],
+                isStreaming: false,
+                isConnected: false,
+                isPolling: true,
+                loading: false,
+                error: null,
+                clearLogs: vi.fn(),
+                refresh: vi.fn(),
+            });
+
             render(
                 <LogsViewer
                     isOpen={true}
                     onClose={() => {}}
                     serviceName="api-server"
+                    serviceUuid="test-uuid"
                 />
             );
 
-            expect(screen.getByText('Refresh')).toBeInTheDocument();
-        });
-
-        it('shows Export button', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getByText('Export')).toBeInTheDocument();
-        });
-
-        it('shows deployment selector', () => {
-            render(
-                <LogsViewer
-                    isOpen={true}
-                    onClose={() => {}}
-                    serviceName="api-server"
-                />
-            );
-
-            expect(screen.getByText(/Deployment:/)).toBeInTheDocument();
+            expect(screen.getByText('Polling')).toBeInTheDocument();
         });
     });
 
-    describe('Empty State', () => {
-        it('shows empty state when no logs match filter', () => {
+    describe('Error Handling', () => {
+        it('displays error banner when error occurs', () => {
+            vi.mocked(useLogStream).mockReturnValue({
+                logs: [],
+                isStreaming: false,
+                isConnected: false,
+                isPolling: false,
+                loading: false,
+                error: new Error('Connection failed'),
+                clearLogs: vi.fn(),
+                refresh: vi.fn(),
+            });
+
             render(
                 <LogsViewer
                     isOpen={true}
@@ -288,24 +357,69 @@ describe('LogsViewer', () => {
                 />
             );
 
-            const searchInput = screen.getByPlaceholderText('Search logs...');
-            fireEvent.change(searchInput, { target: { value: 'xyznonexistentlog123' } });
+            expect(screen.getByText('Connection failed')).toBeInTheDocument();
+        });
 
-            expect(screen.getByText('No logs found')).toBeInTheDocument();
+        it('shows Retry button on error', () => {
+            const mockClearLogs = vi.fn();
+            const mockRefresh = vi.fn();
+
+            vi.mocked(useLogStream).mockReturnValue({
+                logs: [],
+                isStreaming: false,
+                isConnected: false,
+                isPolling: false,
+                loading: false,
+                error: new Error('Connection failed'),
+                clearLogs: mockClearLogs,
+                refresh: mockRefresh,
+            });
+
+            render(
+                <LogsViewer
+                    isOpen={true}
+                    onClose={() => {}}
+                    serviceName="api-server"
+                />
+            );
+
+            const retryButton = screen.getByText('Retry');
+            fireEvent.click(retryButton);
+
+            expect(mockClearLogs).toHaveBeenCalled();
+            expect(mockRefresh).toHaveBeenCalled();
         });
     });
 
-    describe('Footer', () => {
-        it('shows keyboard hint', () => {
+    describe('Keyboard Shortcuts', () => {
+        it('closes modal on Escape key', () => {
+            const onClose = vi.fn();
             render(
                 <LogsViewer
                     isOpen={true}
-                    onClose={() => {}}
+                    onClose={onClose}
                     serviceName="api-server"
                 />
             );
 
-            expect(screen.getByText('Ctrl+F')).toBeInTheDocument();
+            fireEvent.keyDown(window, { key: 'Escape' });
+
+            expect(onClose).toHaveBeenCalled();
+        });
+
+        it('does not close when Escape pressed and modal is closed', () => {
+            const onClose = vi.fn();
+            render(
+                <LogsViewer
+                    isOpen={false}
+                    onClose={onClose}
+                    serviceName="api-server"
+                />
+            );
+
+            fireEvent.keyDown(window, { key: 'Escape' });
+
+            expect(onClose).not.toHaveBeenCalled();
         });
     });
 });

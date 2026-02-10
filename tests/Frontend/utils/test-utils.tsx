@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmationProvider } from '@/components/ui/ConfirmationModal';
+import { ThemeProvider } from '@/components/ui/ThemeProvider';
 
 // Mock Inertia
 vi.mock('@inertiajs/react', () => ({
@@ -19,7 +20,12 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         url: '/dashboard',
         props: {
+            // Support both legacy (auth.user) and new (auth) structure
             auth: {
+                // New structure: auth directly contains user fields
+                name: 'Test User',
+                email: 'test@example.com',
+                // Legacy structure: auth.user
                 user: { id: 1, name: 'Test User', email: 'test@example.com' },
                 team: { id: 1, name: 'Test Team' },
             },
@@ -38,11 +44,13 @@ vi.mock('@inertiajs/react', () => ({
 // Providers wrapper
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
     return (
-        <ToastProvider>
-            <ConfirmationProvider>
-                {children}
-            </ConfirmationProvider>
-        </ToastProvider>
+        <ThemeProvider>
+            <ToastProvider>
+                <ConfirmationProvider>
+                    {children}
+                </ConfirmationProvider>
+            </ToastProvider>
+        </ThemeProvider>
     );
 };
 
