@@ -108,7 +108,7 @@ export default function ObservabilityMetrics({ servers = [] }: Props) {
                 includeContainers: 'false',
             });
 
-            const response = await fetch(`/api/v1/servers/${selectedServer}/sentinel/metrics?${params}`, {
+            const response = await fetch(`/servers/${selectedServer}/sentinel/metrics/json?${params}`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
