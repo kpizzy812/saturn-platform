@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 const mockRouterPost = vi.fn();
 
 vi.mock('@inertiajs/react', () => ({
-    Head: ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+    Head: ({ title }: { children?: React.ReactNode; title?: string }) => (
         <title>{title}</title>
     ),
     Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
@@ -47,10 +47,18 @@ describe('Service Create Page', () => {
         mockRouterPost.mockClear();
     });
 
+    const navigateToCustomMode = async () => {
+        const customButton = screen.getByText('Custom Docker Compose');
+        fireEvent.click(customButton);
+        await waitFor(() => {
+            expect(screen.getByText('Configure')).toBeInTheDocument();
+        });
+    };
+
     it('renders the page header', () => {
         render(<ServiceCreate />);
         expect(screen.getByText('Create a new service')).toBeInTheDocument();
-        expect(screen.getByText('Deploy multi-container applications with Docker Compose')).toBeInTheDocument();
+        expect(screen.getByText('Choose how you want to create your service')).toBeInTheDocument();
     });
 
     it('shows back to services link', () => {
@@ -60,48 +68,55 @@ describe('Service Create Page', () => {
         expect(backLink?.getAttribute('href')).toBe('/services');
     });
 
-    it('shows step indicators', () => {
+    it('shows step indicators', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         expect(screen.getByText('Configure')).toBeInTheDocument();
         expect(screen.getByText('Review')).toBeInTheDocument();
     });
 
-    it('starts on step 1 (Configure)', () => {
+    it('starts on step 1 (Configure)', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         // Step 1 indicator should be active
         const stepIndicators = document.querySelectorAll('[class*="border-primary"]');
         expect(stepIndicators.length).toBeGreaterThan(0);
     });
 
-    it('renders service name input on step 1', () => {
+    it('renders service name input on step 1', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         const nameInput = screen.getByPlaceholderText('my-service');
         expect(nameInput).toBeInTheDocument();
         expect(screen.getByText('Service Name')).toBeInTheDocument();
     });
 
-    it('renders description input on step 1', () => {
+    it('renders description input on step 1', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         const descInput = screen.getByPlaceholderText('Production multi-container application');
         expect(descInput).toBeInTheDocument();
         expect(screen.getByText('Description (Optional)')).toBeInTheDocument();
     });
 
-    it('renders docker compose textarea on step 1', () => {
+    it('renders docker compose textarea on step 1', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         expect(screen.getByText('Docker Compose Configuration')).toBeInTheDocument();
         const textarea = document.querySelector('textarea');
         expect(textarea).toBeInTheDocument();
     });
 
-    it('continue button is disabled when form is incomplete', () => {
+    it('continue button is disabled when form is incomplete', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         const continueButton = screen.getByText('Continue').closest('button');
         expect(continueButton).toBeDisabled();
     });
 
     it('continue button is enabled when required fields are filled', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -117,6 +132,7 @@ describe('Service Create Page', () => {
 
     it('validates docker compose configuration', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
 
@@ -128,8 +144,9 @@ describe('Service Create Page', () => {
         });
     });
 
-    it('allows user to fill in service name', () => {
+    it('allows user to fill in service name', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
 
         fireEvent.change(nameInput, { target: { value: 'production-service' } });
@@ -137,8 +154,9 @@ describe('Service Create Page', () => {
         expect(nameInput.value).toBe('production-service');
     });
 
-    it('allows user to fill in description', () => {
+    it('allows user to fill in description', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
         const descInput = screen.getByPlaceholderText('Production multi-container application') as HTMLInputElement;
 
         fireEvent.change(descInput, { target: { value: 'My test service' } });
@@ -148,6 +166,7 @@ describe('Service Create Page', () => {
 
     it('advances to step 2 when continue is clicked', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -167,6 +186,7 @@ describe('Service Create Page', () => {
 
     it('shows review summary on step 2', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -186,6 +206,7 @@ describe('Service Create Page', () => {
 
     it('shows what happens next section on step 2', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -206,6 +227,7 @@ describe('Service Create Page', () => {
 
     it('shows back button on step 2', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -223,6 +245,7 @@ describe('Service Create Page', () => {
 
     it('shows create service button on step 2', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -240,6 +263,7 @@ describe('Service Create Page', () => {
 
     it('can navigate back from step 2 to step 1', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
@@ -264,6 +288,7 @@ describe('Service Create Page', () => {
 
     it('create service button is available on step 2', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const descInput = screen.getByPlaceholderText('Production multi-container application') as HTMLInputElement;
@@ -285,6 +310,7 @@ describe('Service Create Page', () => {
 
     it('displays docker compose preview on step 2', async () => {
         render(<ServiceCreate />);
+        await navigateToCustomMode();
 
         const nameInput = screen.getByPlaceholderText('my-service') as HTMLInputElement;
         const dockerComposeInput = document.querySelector('textarea') as HTMLTextAreaElement;
