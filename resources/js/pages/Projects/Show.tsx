@@ -1027,24 +1027,20 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 onAddService={handleAddService}
             />
             <div className="flex h-screen flex-col overflow-x-hidden bg-background">
-                {/* Top Header */}
-                <header className="flex h-12 min-w-0 items-center justify-between border-b border-border bg-background px-2 sm:px-4">
-                    <div className="flex min-w-0 items-center gap-1 sm:gap-3">
-                        <Link href="/projects" className="flex flex-shrink-0 items-center text-sm text-foreground-muted transition-colors hover:text-foreground">
-                            <ArrowLeft className="h-4 w-4" />
-                            <span className="ml-2 hidden sm:inline">Back to Projects</span>
-                        </Link>
-                        <ChevronRight className="hidden sm:block h-4 w-4 flex-shrink-0 text-foreground-subtle" />
-                        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-                            <span className="hidden sm:inline font-medium text-foreground">{project.name}</span>
-                            <ChevronRight className="hidden sm:inline h-4 w-4 flex-shrink-0 text-foreground-subtle" />
-                            {/* Desktop: plain text */}
-                            <span className="hidden truncate sm:inline sm:font-normal sm:text-foreground-muted">{selectedEnv?.name || 'production'}</span>
-                            {/* Mobile: env name as dropdown trigger */}
+                {/* Top Header — single row on desktop, two rows on mobile */}
+                <header className="border-b border-border bg-background">
+                    {/* Mobile: Row 1 — navigation */}
+                    <div className="flex h-10 items-center justify-between px-3 md:hidden">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Link href="/projects" className="flex-shrink-0 text-foreground-muted hover:text-foreground">
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                            <span className="truncate text-sm font-medium text-foreground">{project.name}</span>
+                            <ChevronRight className="h-3 w-3 flex-shrink-0 text-foreground-subtle" />
                             <Dropdown>
                                 <DropdownTrigger>
-                                    <button className="flex items-center gap-1 truncate font-medium text-foreground sm:hidden">
-                                        {selectedEnv?.name || 'production'}
+                                    <button className="flex items-center gap-1 text-sm font-medium text-foreground">
+                                        <span className="truncate">{selectedEnv?.name || 'production'}</span>
                                         <ChevronDown className="h-3 w-3 flex-shrink-0 text-foreground-muted" />
                                     </button>
                                 </DropdownTrigger>
@@ -1058,80 +1054,97 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 </DropdownContent>
                             </Dropdown>
                         </div>
+                        <button
+                            onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                            className="flex-shrink-0 rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground"
+                        >
+                            <Search className="h-4 w-4" />
+                        </button>
                     </div>
-                    <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
-                        {/* Command Palette Trigger */}
-                        <button
-                            onClick={() => {
-                                // Dispatch a keyboard event to open the palette
-                                window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-                            }}
-                            className="flex items-center gap-2 rounded-md border border-border bg-background-secondary p-1.5 text-sm text-foreground-muted hover:bg-background-tertiary hover:text-foreground transition-colors sm:px-3 sm:py-1.5"
-                        >
-                            <Search className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Search...</span>
-                            <kbd className="hidden sm:flex items-center gap-0.5 rounded bg-background px-1.5 py-0.5 text-xs">
-                                <Command className="h-3 w-3" />K
-                            </kbd>
-                        </button>
 
-                        <Dropdown>
-                            <DropdownTrigger>
-                                <button className="hidden sm:flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-foreground-muted hover:bg-background-secondary hover:text-foreground">
-                                    <span>{selectedEnv?.name || 'production'}</span>
-                                    <ChevronDown className="h-4 w-4" />
-                                </button>
-                            </DropdownTrigger>
-                            <DropdownContent align="right">
-                                {project.environments?.map((env) => (
-                                    <div key={env.id} className="flex items-center justify-between">
-                                        <DropdownItem
-                                            onClick={() => handleSwitchEnv(env)}
-                                            className="flex-1"
-                                        >
-                                            {env.name}
-                                            {env.id === selectedEnv?.id && (
-                                                <span className="ml-2 text-primary">✓</span>
-                                            )}
-                                        </DropdownItem>
-                                        {canManageEnvironments && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    router.visit(`/environments/${env.uuid}/settings`);
-                                                }}
-                                                className="p-1.5 text-foreground-muted hover:text-foreground hover:bg-background-tertiary rounded"
-                                                title="Environment Settings"
-                                            >
-                                                <Cog className="h-4 w-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                <DropdownDivider />
-                                <DropdownItem onClick={() => setShowNewEnvModal(true)}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    New Environment
-                                </DropdownItem>
-                            </DropdownContent>
-                        </Dropdown>
-                        <button
-                            onClick={toggleTheme}
-                            className="hidden rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground sm:block"
-                            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                        >
-                            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                        </button>
-                        <Link href={`/projects/${project.uuid}/settings`} className="hidden sm:block">
-                            <button className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground">
-                                <Settings className="h-4 w-4" />
+                    {/* Desktop: single row */}
+                    <div className="hidden h-12 items-center justify-between px-4 md:flex">
+                        <div className="flex items-center gap-3">
+                            <Link href="/projects" className="flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Projects
+                            </Link>
+                            <ChevronRight className="h-4 w-4 text-foreground-subtle" />
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-foreground">{project.name}</span>
+                                <ChevronRight className="h-4 w-4 text-foreground-subtle" />
+                                <span className="text-foreground-muted">{selectedEnv?.name || 'production'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+                                className="flex items-center gap-2 rounded-md border border-border bg-background-secondary px-3 py-1.5 text-sm text-foreground-muted hover:bg-background-tertiary hover:text-foreground transition-colors"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                <span>Search...</span>
+                                <kbd className="flex items-center gap-0.5 rounded bg-background px-1.5 py-0.5 text-xs">
+                                    <Command className="h-3 w-3" />K
+                                </kbd>
                             </button>
-                        </Link>
+                            <Dropdown>
+                                <DropdownTrigger>
+                                    <button className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-foreground-muted hover:bg-background-secondary hover:text-foreground">
+                                        <span>{selectedEnv?.name || 'production'}</span>
+                                        <ChevronDown className="h-4 w-4" />
+                                    </button>
+                                </DropdownTrigger>
+                                <DropdownContent align="right">
+                                    {project.environments?.map((env) => (
+                                        <div key={env.id} className="flex items-center justify-between">
+                                            <DropdownItem
+                                                onClick={() => handleSwitchEnv(env)}
+                                                className="flex-1"
+                                            >
+                                                {env.name}
+                                                {env.id === selectedEnv?.id && (
+                                                    <span className="ml-2 text-primary">✓</span>
+                                                )}
+                                            </DropdownItem>
+                                            {canManageEnvironments && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        router.visit(`/environments/${env.uuid}/settings`);
+                                                    }}
+                                                    className="p-1.5 text-foreground-muted hover:text-foreground hover:bg-background-tertiary rounded"
+                                                    title="Environment Settings"
+                                                >
+                                                    <Cog className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <DropdownDivider />
+                                    <DropdownItem onClick={() => setShowNewEnvModal(true)}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        New Environment
+                                    </DropdownItem>
+                                </DropdownContent>
+                            </Dropdown>
+                            <button
+                                onClick={toggleTheme}
+                                className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground"
+                                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                            >
+                                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                            </button>
+                            <Link href={`/projects/${project.uuid}/settings`}>
+                                <button className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground">
+                                    <Settings className="h-4 w-4" />
+                                </button>
+                            </Link>
+                        </div>
                     </div>
                 </header>
 
                 {/* View Tabs */}
-                <div className="flex items-center gap-3 overflow-x-auto border-b border-border bg-background px-3 sm:gap-6 sm:px-6">
+                <div className="flex items-center gap-3 overflow-x-auto border-b border-border bg-background px-3 md:gap-6 md:px-6">
                     <button
                         onClick={() => setActiveView('architecture')}
                         className={`whitespace-nowrap py-3 text-sm font-medium transition-colors ${
@@ -1358,13 +1371,13 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         </div>
 
                         {/* Canvas Overlay Buttons */}
-                        <div className="absolute right-2 top-2 z-10 flex gap-1.5 sm:right-4 sm:top-4 sm:gap-2">
-                            {/* Migrate Environment Button - only visible for dev/uat, hidden on mobile */}
+                        <div className="absolute right-2 top-2 z-10 flex gap-1.5 md:right-4 md:top-4 md:gap-2">
+                            {/* Migrate Environment Button - hidden on mobile */}
                             {selectedEnv && (selectedEnv as any).type !== 'production' && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="hidden shadow-lg sm:flex"
+                                    className="hidden shadow-lg md:flex"
                                     onClick={() => setShowEnvMigrateModal(true)}
                                 >
                                     <ArrowUpRight className="mr-2 h-4 w-4" />
@@ -1374,9 +1387,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             <Dropdown>
                                 <DropdownTrigger>
                                     <Button size="sm" className="shadow-lg">
-                                        <Plus className="h-4 w-4 sm:mr-2" />
-                                        <span className="hidden sm:inline">Create</span>
-                                        <ChevronDown className="ml-1 h-3 w-3 sm:ml-2" />
+                                        <Plus className="h-4 w-4 md:mr-2" />
+                                        <span className="hidden md:inline">Create</span>
+                                        <ChevronDown className="ml-1 h-3 w-3 md:ml-2" />
                                     </Button>
                                 </DropdownTrigger>
                                 <DropdownContent align="right" className="w-64">
