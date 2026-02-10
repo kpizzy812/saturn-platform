@@ -46,16 +46,22 @@ vi.mock('@inertiajs/react', () => ({
     usePage: () => ({
         props: {
             auth: {
+                id: 1, // User ID at root level (required by hook)
                 user: { id: 1, name: 'Test User', email: 'test@example.com' },
-                team: { id: 1, name: 'Test Team' },
             },
+            team: { id: 1, name: 'Test Team' }, // Team at root level (required by hook)
         },
     }),
 }));
 
 describe('useRealtimeStatus', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         vi.clearAllMocks();
+
+        // Reset getEcho mock to default working state
+        const { getEcho } = await import('@/lib/echo');
+        const mockGetEchoFn = vi.mocked(getEcho);
+        mockGetEchoFn.mockImplementation(() => mockEcho);
     });
 
     describe('initial state', () => {
@@ -341,7 +347,7 @@ describe('useRealtimeStatus', () => {
                 throw new Error('Connection failed');
             });
 
-            const { result } = renderHook(() => useRealtimeStatus({
+            const { result, unmount } = renderHook(() => useRealtimeStatus({
                 enableWebSocket: true,
             }));
 
@@ -350,8 +356,9 @@ describe('useRealtimeStatus', () => {
                 expect(result.current.isConnected).toBe(false);
             });
 
-            // Restore original mock
+            // Restore original mock BEFORE unmount to avoid errors in cleanup
             mockGetEchoFn.mockImplementation(() => mockEcho);
+            unmount();
         });
 
         it('should call onConnectionChange with false on error', async () => {
@@ -365,7 +372,7 @@ describe('useRealtimeStatus', () => {
                 throw new Error('Connection failed');
             });
 
-            renderHook(() => useRealtimeStatus({
+            const { unmount } = renderHook(() => useRealtimeStatus({
                 enableWebSocket: true,
                 onConnectionChange,
             }));
@@ -374,8 +381,9 @@ describe('useRealtimeStatus', () => {
                 expect(onConnectionChange).toHaveBeenCalledWith(false);
             });
 
-            // Restore original mock
+            // Restore original mock BEFORE unmount to avoid errors in cleanup
             mockGetEchoFn.mockImplementation(() => mockEcho);
+            unmount();
         });
     });
 

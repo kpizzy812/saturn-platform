@@ -467,9 +467,15 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
                 pollingIntervalRef.current = null;
             }
 
-            const echo = getEcho();
-            if (echo && teamId != null) {
-                echo.leave(`team.${teamId}`);
+            // Safely leave Echo channels (getEcho might fail in tests or during errors)
+            try {
+                const echo = getEcho();
+                if (echo && teamId != null) {
+                    echo.leave(`team.${teamId}`);
+                }
+            } catch (err) {
+                // Ignore errors during cleanup (e.g., Echo initialization failed)
+                console.debug('[useRealtimeStatus] Failed to leave channel during cleanup:', err);
             }
 
             // Reset connection state
