@@ -31,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureGitHubHttp();
         $this->ensureStorageLink();
         $this->configureInfrastructureOverrides();
+        $this->configureSanctumStatefulDomains();
     }
 
     /**
@@ -180,6 +181,35 @@ class AppServiceProvider extends ServiceProvider
             if (! empty($value)) {
                 config([$key => $value]);
             }
+        }
+    }
+
+    /**
+     * Add the platform FQDN to Sanctum's stateful domains so SPA
+     * session-based auth works for /api/v1/ endpoints.
+     */
+    private function configureSanctumStatefulDomains(): void
+    {
+        try {
+            $settings = \App\Models\InstanceSettings::get();
+        } catch (\Throwable) {
+            return;
+        }
+
+        $fqdn = $settings->fqdn ?? null;
+        if (! $fqdn) {
+            return;
+        }
+
+        $host = parse_url($fqdn, PHP_URL_HOST);
+        if (! $host) {
+            return;
+        }
+
+        $stateful = config('sanctum.stateful', []);
+        if (! in_array($host, $stateful)) {
+            $stateful[] = $host;
+            config(['sanctum.stateful' => $stateful]);
         }
     }
 
