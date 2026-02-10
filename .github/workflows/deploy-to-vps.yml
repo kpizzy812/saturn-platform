@@ -101,7 +101,8 @@ jobs:
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
       - name: Run PHP Unit tests
-        run: ./vendor/bin/pest tests/Unit
+        timeout-minutes: 5
+        run: php -d memory_limit=1G ./vendor/bin/pest tests/Unit
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -113,6 +114,7 @@ jobs:
         run: npm ci
 
       - name: Run JS tests
+        timeout-minutes: 3
         run: npm run test -- --run
 
   # =============================================================================
