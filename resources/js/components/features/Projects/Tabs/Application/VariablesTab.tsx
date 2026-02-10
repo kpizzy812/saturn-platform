@@ -43,7 +43,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
         const fetchEnvs = async () => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`/api/v1/applications/${service.uuid}/envs`, {
+                const response = await fetch(`/applications/${service.uuid}/envs/json`, {
                     headers: { 'Accept': 'application/json' },
                     credentials: 'include',
                 });
@@ -68,7 +68,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
         try {
             setIsSubmitting(true);
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch(`/api/v1/applications/${service.uuid}/envs`, {
+            const response = await fetch(`/applications/${service.uuid}/envs/json`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -109,7 +109,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
         try {
             setIsSaving(true);
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch(`/api/v1/applications/${service.uuid}/envs`, {
+            const response = await fetch(`/applications/${service.uuid}/envs/json`, {
                 method: 'PATCH',
                 headers: {
                     'Accept': 'application/json',
@@ -162,7 +162,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
         try {
             setDeletingIds(prev => new Set(prev).add(envUuid));
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch(`/api/v1/applications/${service.uuid}/envs/${envUuid}`, {
+            const response = await fetch(`/applications/${service.uuid}/envs/${envUuid}/json`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',

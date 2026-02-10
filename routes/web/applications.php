@@ -680,8 +680,11 @@ Route::get('/applications/{uuid}/envs/json', function (string $uuid) {
         ->map(function ($var) {
             return [
                 'id' => $var->id,
+                'uuid' => $var->uuid,
                 'key' => $var->key,
                 'value' => $var->value,
+                'real_value' => $var->real_value ?? $var->value,
+                'is_preview' => $var->is_preview,
                 'is_buildtime' => $var->is_buildtime,
             ];
         });

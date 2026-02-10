@@ -308,4 +308,90 @@ Route::post('/web-api/applications/{uuid}/scan-env-example', function (string $u
     }
 })->name('web-api.applications.scan-env-example');
 
+// Application deployments JSON (for Show page DeploymentsTab)
+Route::get('/applications/{uuid}/deployments/json', function (string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->first();
+
+    if (! $application) {
+        return response()->json(['message' => 'Application not found.'], 404);
+    }
+
+    $deployments = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+        ->orderBy('created_at', 'desc')
+        ->limit(20)
+        ->get()
+        ->map(fn ($d) => [
+            'id' => $d->id,
+            'uuid' => $d->deployment_uuid,
+            'application_id' => $d->application_id,
+            'status' => $d->status,
+            'commit' => $d->commit,
+            'commit_message' => $d->commit_message,
+            'created_at' => $d->created_at?->toISOString(),
+            'updated_at' => $d->updated_at?->toISOString(),
+            'service_name' => $d->application_name,
+            'trigger' => $d->is_webhook ? 'push' : ($d->rollback ? 'rollback' : 'manual'),
+        ]);
+
+    return response()->json($deployments);
+})->name('applications.deployments.json');
+
+// Application environment variables CRUD (web, session-auth)
+Route::post('/applications/{uuid}/envs/json', function (string $uuid, Request $request) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate(['key' => 'required|string']);
+
+    $env = $application->environment_variables()->create([
+        'key' => $request->input('key'),
+        'value' => $request->input('value', ''),
+        'is_preview' => false,
+        'is_buildtime' => $request->input('is_build_time', false),
+        'is_runtime' => true,
+    ]);
+
+    return response()->json(['uuid' => $env->uuid, 'id' => $env->id, 'key' => $env->key, 'value' => $env->value]);
+})->name('applications.envs.json.create');
+
+Route::patch('/applications/{uuid}/envs/json', function (string $uuid, Request $request) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate(['key' => 'required|string', 'value' => 'nullable|string']);
+
+    $env = $application->environment_variables()
+        ->where('key', $request->input('key'))
+        ->first();
+
+    if (! $env) {
+        return response()->json(['message' => 'Variable not found.'], 404);
+    }
+
+    $env->update([
+        'key' => $request->input('key'),
+        'value' => $request->input('value', ''),
+    ]);
+
+    return response()->json(['uuid' => $env->uuid, 'key' => $env->key, 'value' => $env->value]);
+})->name('applications.envs.json.update');
+
+Route::delete('/applications/{uuid}/envs/{env_uuid}/json', function (string $uuid, string $env_uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $env = $application->environment_variables()
+        ->where('uuid', $env_uuid)
+        ->firstOrFail();
+
+    $env->delete();
+
+    return response()->json(['message' => 'Variable deleted.']);
+})->name('applications.envs.json.delete');
+
 // AI Analysis routes are defined in routes/web/web-api.php

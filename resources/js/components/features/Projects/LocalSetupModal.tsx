@@ -99,7 +99,7 @@ function EnvVarsSection({ applications }: { applications: Application[] }) {
             await Promise.all(
                 applications.map(async (app) => {
                     try {
-                        const response = await fetch(`/api/v1/applications/${app.uuid}/envs`, {
+                        const response = await fetch(`/applications/${app.uuid}/envs/json`, {
                             headers: { 'Accept': 'application/json' },
                             credentials: 'include',
                         });
