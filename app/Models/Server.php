@@ -482,7 +482,7 @@ class Server extends BaseModel
                                     0 => 'http',
                                 ],
                                 'service' => 'saturn-realtime',
-                                'rule' => "Host(`{$host}`) && PathPrefix(`/app`)",
+                                'rule' => "Host(`{$host}`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)",
                             ],
                             'saturn-terminal-ws' => [
                                 'entryPoints' => [
@@ -544,7 +544,7 @@ class Server extends BaseModel
                             0 => 'https',
                         ],
                         'service' => 'saturn-realtime',
-                        'rule' => "Host(`{$host}`) && PathPrefix(`/app`)",
+                        'rule' => "Host(`{$host}`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)",
                         'tls' => [
                             'certresolver' => 'letsencrypt',
                         ],

@@ -129,7 +129,7 @@ export function useSentinelMetrics({
                 includeContainers: includeContainers.toString(),
             });
 
-            const response = await fetch(`/api/v1/servers/${serverUuid}/sentinel/metrics?${params}`, {
+            const response = await fetch(`/servers/${serverUuid}/sentinel/metrics/json?${params}`, {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',

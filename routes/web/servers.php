@@ -554,6 +554,10 @@ Route::prefix('/servers/{uuid}/sentinel')->group(function () {
             'server' => $server,
         ]);
     })->name('servers.sentinel.metrics');
+
+    // JSON endpoint for sentinel metrics (session-auth, used by useSentinelMetrics hook)
+    Route::get('/metrics/json', [\App\Http\Controllers\Api\SentinelMetricsController::class, 'metrics'])
+        ->name('servers.sentinel.metrics.json');
 });
 
 // Server action routes
