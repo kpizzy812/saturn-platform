@@ -332,8 +332,9 @@ class InfrastructureProvisioner
             $application->monorepo_group_id = $groupId;
         }
 
-        // Generate FQDN using Saturn's helper
-        $application->fqdn = generateFqdn($server, $application->uuid);
+        // Generate FQDN from app name (e.g. "PixelPets" → pixelpets.saturn.ac)
+        $slug = generateSubdomainFromName($application->name, $server);
+        $application->fqdn = generateFqdn($server, $slug);
 
         $application->save();
 

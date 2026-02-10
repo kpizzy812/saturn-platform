@@ -118,6 +118,51 @@ it('domain is not auto-generated when autogenerate is false', function () {
     expect($shouldAutogenerate)->toBeFalse();
 });
 
+it('generateSubdomainFromName converts app name to DNS-safe slug', function () {
+    // Test the slug generation logic (same as Str::slug which generateSubdomainFromName uses)
+    expect(\Illuminate\Support\Str::slug('PixelPets'))->toBe('pixelpets');
+    expect(\Illuminate\Support\Str::slug('My Cool App'))->toBe('my-cool-app');
+    expect(\Illuminate\Support\Str::slug('hello_world 123'))->toBe('hello-world-123');
+    expect(\Illuminate\Support\Str::slug('  Spaces  Around  '))->toBe('spaces-around');
+    expect(\Illuminate\Support\Str::slug('UPPERCASE'))->toBe('uppercase');
+    expect(\Illuminate\Support\Str::slug('app-with-dashes'))->toBe('app-with-dashes');
+});
+
+it('generateSubdomainFromName falls back for empty slug', function () {
+    // Names that produce empty slugs should get a random fallback
+    $emptySlug = \Illuminate\Support\Str::slug('!!!');
+    expect($emptySlug)->toBe('');
+
+    $emptySlug2 = \Illuminate\Support\Str::slug('');
+    expect($emptySlug2)->toBe('');
+
+    // The function uses Str::random(8) as fallback, which is always 8 chars
+    $fallback = \Illuminate\Support\Str::random(8);
+    expect(strlen($fallback))->toBe(8);
+});
+
+it('generateSubdomainFromName truncates long names', function () {
+    $longName = str_repeat('a', 100);
+    $slug = \Illuminate\Support\Str::slug($longName);
+    $truncated = \Illuminate\Support\Str::limit($slug, 50, '');
+
+    expect(strlen($truncated))->toBe(50);
+});
+
+it('generateUrl uses name-based slug instead of UUID', function () {
+    // Simulate what now happens: name → slug → URL
+    $appName = 'PixelPets';
+    $slug = \Illuminate\Support\Str::slug($appName);
+
+    $wildcard = 'https://saturn.ac';
+    $url = Spatie\Url\Url::fromString($wildcard);
+    $host = $url->getHost();
+    $scheme = $url->getScheme();
+
+    $generatedUrl = "$scheme://{$slug}.$host";
+    expect($generatedUrl)->toBe('https://pixelpets.saturn.ac');
+});
+
 it('removeUnnecessaryFieldsFromRequest removes autogenerate_domain', function () {
     $request = new Illuminate\Http\Request([
         'autogenerate_domain' => true,

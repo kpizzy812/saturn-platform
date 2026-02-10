@@ -118,6 +118,40 @@ function resolveWildcardDomain(Server $server): string
 }
 
 /**
+ * Generate a DNS-safe subdomain slug from an application name.
+ *
+ * Converts "PixelPets" → "pixelpets", "My Cool App" → "my-cool-app".
+ * Ensures uniqueness by appending -2, -3, etc. if the FQDN is already taken.
+ * Falls back to a short UUID segment if the name produces an empty slug.
+ */
+function generateSubdomainFromName(string $name, Server $server): string
+{
+    $slug = \Illuminate\Support\Str::slug($name);
+
+    // Fallback if name results in empty slug (e.g. only special characters)
+    if (empty($slug)) {
+        return \Illuminate\Support\Str::random(8);
+    }
+
+    // Truncate to 50 chars to leave room for uniqueness suffix (DNS label max = 63)
+    $slug = \Illuminate\Support\Str::limit($slug, 50, '');
+
+    // Check uniqueness against existing application FQDNs
+    $wildcard = resolveWildcardDomain($server);
+    $url = Url::fromString($wildcard);
+    $host = $url->getHost();
+
+    $baseSlug = $slug;
+    $counter = 1;
+    while (\App\Models\Application::where('fqdn', 'like', "%{$slug}.{$host}%")->exists()) {
+        $counter++;
+        $slug = "{$baseSlug}-{$counter}";
+    }
+
+    return $slug;
+}
+
+/**
  * Generate a URL using sslip.io for a server.
  */
 function generateUrl(Server $server, string $random, bool $forceHttps = false): string

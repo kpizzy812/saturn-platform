@@ -113,9 +113,10 @@ Route::post('/boarding/deploy', function (Request $request) {
 
     $application->save();
 
-    // Auto-generate domain
+    // Auto-generate domain from app name
     if (empty($application->fqdn)) {
-        $application->fqdn = generateUrl(server: $server, random: $application->uuid);
+        $slug = generateSubdomainFromName($application->name, $server);
+        $application->fqdn = generateUrl(server: $server, random: $slug);
         $application->save();
     }
 

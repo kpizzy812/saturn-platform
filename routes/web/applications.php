@@ -203,9 +203,10 @@ Route::post('/applications', function (Request $request) {
 
     $application->save();
 
-    // Auto-generate domain if not provided
+    // Auto-generate domain from app name if not provided
     if (empty($application->fqdn)) {
-        $application->fqdn = generateUrl(server: $server, random: $application->uuid);
+        $slug = generateSubdomainFromName($application->name, $server);
+        $application->fqdn = generateUrl(server: $server, random: $slug);
         $application->save();
     }
 
