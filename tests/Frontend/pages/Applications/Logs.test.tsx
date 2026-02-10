@@ -51,6 +51,7 @@ vi.mock('@/hooks/useLogStream', () => ({
                 message: 'Database connection failed',
             },
         ],
+        availableContainers: ['app-container-1', 'app-container-2'],
         isStreaming: true,
         isConnected: true,
         isPolling: false,
