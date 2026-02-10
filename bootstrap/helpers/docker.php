@@ -394,7 +394,12 @@ function fqdnLabelsForCaddy(string $network, string $uuid, Collection $domains, 
     }
 
     foreach ($domains as $loop => $domain) {
-        $url = Url::fromString($domain);
+        // Ensure domain has a scheme for proper URL parsing (parser v5 stores domains without scheme)
+        $domainToParse = $domain;
+        if (! str_starts_with($domainToParse, 'http://') && ! str_starts_with($domainToParse, 'https://')) {
+            $domainToParse = 'https://'.$domainToParse;
+        }
+        $url = Url::fromString($domainToParse);
         $host = $url->getHost();
         $path = $url->getPath();
         $host_without_www = str($host)->replace('www.', '');
@@ -488,7 +493,12 @@ function fqdnLabelsForTraefik(string $uuid, Collection $domains, bool $is_force_
                 $uuid = new Cuid2;
             }
 
-            $url = Url::fromString($domain);
+            // Ensure domain has a scheme for proper URL parsing (parser v5 stores domains without scheme)
+            $domainToParse = $domain;
+            if (! str_starts_with($domainToParse, 'http://') && ! str_starts_with($domainToParse, 'https://')) {
+                $domainToParse = 'https://'.$domainToParse;
+            }
+            $url = Url::fromString($domainToParse);
             $host = $url->getHost();
             $path = $url->getPath();
             $schema = $url->getScheme();
