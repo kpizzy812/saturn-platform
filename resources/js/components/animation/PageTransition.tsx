@@ -10,7 +10,7 @@ export function PageTransition({ children }: PageTransitionProps) {
     const { url } = usePage();
 
     return (
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false}>
             <m.div
                 key={url}
                 initial={{ opacity: 0 }}
