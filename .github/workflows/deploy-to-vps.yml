@@ -78,20 +78,20 @@ jobs:
 
       - name: Create CI .env
         run: |
-          cat > .env << 'ENVEOF'
-          APP_ENV=testing
-          APP_KEY=base64:dGVzdGluZ2tleXRoYXRpczMyY2hhcmFjdGVycw==
-          APP_URL=http://localhost
-          DB_CONNECTION=sqlite
-          DB_DATABASE=:memory:
-          BROADCAST_DRIVER=log
-          PUSHER_APP_ID=test
-          PUSHER_APP_KEY=test
-          PUSHER_APP_SECRET=test
-          PUSHER_HOST=localhost
-          PUSHER_PORT=6001
-          PUSHER_SCHEME=http
-          ENVEOF
+          php -r "file_put_contents('.env', implode(\"\n\", [
+            'APP_ENV=testing',
+            'APP_KEY=base64:' . base64_encode(random_bytes(32)),
+            'APP_URL=http://localhost',
+            'DB_CONNECTION=sqlite',
+            'DB_DATABASE=:memory:',
+            'BROADCAST_DRIVER=log',
+            'PUSHER_APP_ID=test',
+            'PUSHER_APP_KEY=test',
+            'PUSHER_APP_SECRET=test',
+            'PUSHER_HOST=localhost',
+            'PUSHER_PORT=6001',
+            'PUSHER_SCHEME=http',
+          ]));"
 
       - name: Run Pint (code style)
         run: ./vendor/bin/pint --test
