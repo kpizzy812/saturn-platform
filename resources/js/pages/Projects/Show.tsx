@@ -1026,29 +1026,47 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 onViewLogs={handlePaletteViewLogs}
                 onAddService={handleAddService}
             />
-            <div className="flex h-screen flex-col bg-background">
+            <div className="flex h-screen flex-col overflow-x-hidden bg-background">
                 {/* Top Header */}
-                <header className="flex h-12 items-center justify-between border-b border-border bg-background px-4">
-                    <div className="flex items-center gap-3">
-                        <Link href="/projects" className="flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground">
-                            <ArrowLeft className="mr-2 h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Back to Projects</span>
+                <header className="flex h-12 min-w-0 items-center justify-between border-b border-border bg-background px-2 sm:px-4">
+                    <div className="flex min-w-0 items-center gap-1 sm:gap-3">
+                        <Link href="/projects" className="flex flex-shrink-0 items-center text-sm text-foreground-muted transition-colors hover:text-foreground">
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="ml-2 hidden sm:inline">Back to Projects</span>
                         </Link>
-                        <ChevronRight className="hidden sm:block h-4 w-4 text-foreground-subtle" />
-                        <div className="flex items-center gap-2">
+                        <ChevronRight className="hidden sm:block h-4 w-4 flex-shrink-0 text-foreground-subtle" />
+                        <div className="flex min-w-0 items-center gap-1 sm:gap-2">
                             <span className="hidden sm:inline font-medium text-foreground">{project.name}</span>
-                            <ChevronRight className="hidden sm:inline h-4 w-4 text-foreground-subtle" />
-                            <span className="font-medium sm:font-normal text-foreground sm:text-foreground-muted">{selectedEnv?.name || 'production'}</span>
+                            <ChevronRight className="hidden sm:inline h-4 w-4 flex-shrink-0 text-foreground-subtle" />
+                            {/* Desktop: plain text */}
+                            <span className="hidden truncate sm:inline sm:font-normal sm:text-foreground-muted">{selectedEnv?.name || 'production'}</span>
+                            {/* Mobile: env name as dropdown trigger */}
+                            <Dropdown>
+                                <DropdownTrigger>
+                                    <button className="flex items-center gap-1 truncate font-medium text-foreground sm:hidden">
+                                        {selectedEnv?.name || 'production'}
+                                        <ChevronDown className="h-3 w-3 flex-shrink-0 text-foreground-muted" />
+                                    </button>
+                                </DropdownTrigger>
+                                <DropdownContent>
+                                    {project.environments?.map((env) => (
+                                        <DropdownItem key={env.id} onClick={() => handleSwitchEnv(env)}>
+                                            {env.name}
+                                            {env.id === selectedEnv?.id && <span className="ml-2 text-primary">✓</span>}
+                                        </DropdownItem>
+                                    ))}
+                                </DropdownContent>
+                            </Dropdown>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-shrink-0 items-center gap-1 sm:gap-2">
                         {/* Command Palette Trigger */}
                         <button
                             onClick={() => {
                                 // Dispatch a keyboard event to open the palette
                                 window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
                             }}
-                            className="flex items-center gap-2 rounded-md border border-border bg-background-secondary px-3 py-1.5 text-sm text-foreground-muted hover:bg-background-tertiary hover:text-foreground transition-colors"
+                            className="flex items-center gap-2 rounded-md border border-border bg-background-secondary p-1.5 text-sm text-foreground-muted hover:bg-background-tertiary hover:text-foreground transition-colors sm:px-3 sm:py-1.5"
                         >
                             <Search className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Search...</span>
@@ -1059,7 +1077,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
 
                         <Dropdown>
                             <DropdownTrigger>
-                                <button className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-foreground-muted hover:bg-background-secondary hover:text-foreground">
+                                <button className="hidden sm:flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-foreground-muted hover:bg-background-secondary hover:text-foreground">
                                     <span>{selectedEnv?.name || 'production'}</span>
                                     <ChevronDown className="h-4 w-4" />
                                 </button>
@@ -1099,12 +1117,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         </Dropdown>
                         <button
                             onClick={toggleTheme}
-                            className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground"
+                            className="hidden rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground sm:block"
                             title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                         >
                             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                         </button>
-                        <Link href={`/projects/${project.uuid}/settings`}>
+                        <Link href={`/projects/${project.uuid}/settings`} className="hidden sm:block">
                             <button className="rounded-md p-1.5 text-foreground-muted hover:bg-background-secondary hover:text-foreground">
                                 <Settings className="h-4 w-4" />
                             </button>
@@ -1113,10 +1131,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 </header>
 
                 {/* View Tabs */}
-                <div className="flex items-center gap-6 border-b border-border bg-background px-6">
+                <div className="flex items-center gap-3 overflow-x-auto border-b border-border bg-background px-3 sm:gap-6 sm:px-6">
                     <button
                         onClick={() => setActiveView('architecture')}
-                        className={`py-3 text-sm font-medium transition-colors ${
+                        className={`whitespace-nowrap py-3 text-sm font-medium transition-colors ${
                             activeView === 'architecture'
                                 ? 'border-b-2 border-primary text-foreground'
                                 : 'text-foreground-muted hover:text-foreground'
@@ -1126,7 +1144,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     </button>
                     <button
                         onClick={() => setActiveView('observability')}
-                        className={`py-3 text-sm font-medium transition-colors ${
+                        className={`whitespace-nowrap py-3 text-sm font-medium transition-colors ${
                             activeView === 'observability'
                                 ? 'border-b-2 border-primary text-foreground'
                                 : 'text-foreground-muted hover:text-foreground'
@@ -1136,7 +1154,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     </button>
                     <button
                         onClick={() => setActiveView('logs')}
-                        className={`py-3 text-sm font-medium transition-colors ${
+                        className={`whitespace-nowrap py-3 text-sm font-medium transition-colors ${
                             activeView === 'logs'
                                 ? 'border-b-2 border-primary text-foreground'
                                 : 'text-foreground-muted hover:text-foreground'
@@ -1146,7 +1164,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     </button>
                     <Link
                         href={`/projects/${project.uuid}/settings`}
-                        className="py-3 text-sm font-medium text-foreground-muted transition-colors hover:text-foreground"
+                        className="whitespace-nowrap py-3 text-sm font-medium text-foreground-muted transition-colors hover:text-foreground"
                     >
                         Settings
                     </Link>
@@ -1340,13 +1358,13 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         </div>
 
                         {/* Canvas Overlay Buttons */}
-                        <div className="absolute right-4 top-4 z-10 flex gap-2">
-                            {/* Migrate Environment Button - only visible for dev/uat */}
+                        <div className="absolute right-2 top-2 z-10 flex gap-1.5 sm:right-4 sm:top-4 sm:gap-2">
+                            {/* Migrate Environment Button - only visible for dev/uat, hidden on mobile */}
                             {selectedEnv && (selectedEnv as any).type !== 'production' && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="shadow-lg"
+                                    className="hidden shadow-lg sm:flex"
                                     onClick={() => setShowEnvMigrateModal(true)}
                                 >
                                     <ArrowUpRight className="mr-2 h-4 w-4" />
@@ -1356,9 +1374,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             <Dropdown>
                                 <DropdownTrigger>
                                     <Button size="sm" className="shadow-lg">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create
-                                        <ChevronDown className="ml-2 h-3 w-3" />
+                                        <Plus className="h-4 w-4 sm:mr-2" />
+                                        <span className="hidden sm:inline">Create</span>
+                                        <ChevronDown className="ml-1 h-3 w-3 sm:ml-2" />
                                     </Button>
                                 </DropdownTrigger>
                                 <DropdownContent align="right" className="w-64">
@@ -1441,7 +1459,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             </Dropdown>
                         </div>
 
-                        <div className="absolute bottom-4 left-4 z-10">
+                        <div className="absolute bottom-4 left-4 z-10 hidden md:block">
                             <button
                                 onClick={() => setShowLocalSetup(true)}
                                 className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground-muted shadow-lg transition-colors hover:bg-background-secondary hover:text-foreground"
