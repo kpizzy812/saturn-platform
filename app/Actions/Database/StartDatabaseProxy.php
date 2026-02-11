@@ -127,14 +127,19 @@ class StartDatabaseProxy
             "echo '{$dockercompose_base64}' | base64 -d | tee $configuration_dir/docker-compose.yaml > /dev/null",
         ], $server);
 
+        // Use unique project name per database to prevent --remove-orphans
+        // from killing proxy containers of other databases (all share the same
+        // directory name "proxy", causing Docker to treat them as one project)
+        $projectName = "db-proxy-{$database->uuid}";
+
         // Pull image silently (don't fail if pull errors but image exists locally)
         instant_remote_process([
-            "docker compose --project-directory {$configuration_dir} pull 2>/dev/null || true",
+            "docker compose --project-name {$projectName} --project-directory {$configuration_dir} pull 2>/dev/null || true",
         ], $server, false);
 
-        // Start the proxy container - this is where real errors should surface
+        // Start the proxy container
         instant_remote_process([
-            "docker compose --project-directory {$configuration_dir} up -d --remove-orphans",
+            "docker compose --project-name {$projectName} --project-directory {$configuration_dir} up -d",
         ], $server);
     }
 }

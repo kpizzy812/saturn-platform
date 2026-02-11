@@ -28,7 +28,13 @@ class StopDatabaseProxy
             $uuid = $database->service->uuid;
             $server = data_get($database, 'service.server');
         }
-        instant_remote_process(["docker rm -f {$uuid}-proxy"], $server);
+        $configuration_dir = database_proxy_dir($uuid);
+        $projectName = "db-proxy-{$uuid}";
+
+        // Try docker compose down first (clean shutdown), fall back to docker rm
+        instant_remote_process([
+            "docker compose --project-name {$projectName} --project-directory {$configuration_dir} down 2>/dev/null || docker rm -f {$uuid}-proxy",
+        ], $server);
 
         $database->save();
 
