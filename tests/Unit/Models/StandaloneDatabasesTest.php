@@ -183,19 +183,19 @@ test('portsMappingsArray returns single port mapping', function () {
 // Redis-specific: getRedisVersion Tests
 test('getRedisVersion extracts version from image tag', function () {
     $redis = new StandaloneRedis;
-    $redis->image = 'redis:7.0';
+    $redis->setRawAttributes(['image' => 'redis:7.0'], true);
     expect($redis->getRedisVersion())->toBe('7.0');
 });
 
 test('getRedisVersion returns 0.0 when no tag', function () {
     $redis = new StandaloneRedis;
-    $redis->image = 'redis';
+    $redis->setRawAttributes(['image' => 'redis'], true);
     expect($redis->getRedisVersion())->toBe('0.0');
 });
 
 test('getRedisVersion extracts version from complex image', function () {
     $redis = new StandaloneRedis;
-    $redis->image = 'bitnami/redis:7.2.4';
+    $redis->setRawAttributes(['image' => 'bitnami/redis:7.2.4'], true);
     expect($redis->getRedisVersion())->toBe('7.2.4');
 });
 

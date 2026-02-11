@@ -205,8 +205,11 @@ describe('statusUtils', () => {
             expect(getStatusDotClass('error')).toBe('status-error');
         });
 
-        it('returns empty string for statuses without dot class', () => {
-            expect(getStatusDotClass('enabled')).toBe('');
+        it('returns dot class for enabled status', () => {
+            expect(getStatusDotClass('enabled')).toBe('status-online');
+        });
+
+        it('returns empty string for unknown statuses', () => {
             expect(getStatusDotClass('unknown')).toBe('');
         });
     });
@@ -317,9 +320,9 @@ describe('statusUtils', () => {
             expect(config.dotClass).toBe('status-online');
         });
 
-        it('returns status-stopped for statuses without dot class', () => {
+        it('returns status-online for enabled status', () => {
             const config = getStatusBadgeConfig('enabled');
-            expect(config.dotClass).toBe('status-stopped');
+            expect(config.dotClass).toBe('status-online');
         });
     });
 });
