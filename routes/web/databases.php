@@ -246,6 +246,17 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
         'custom_docker_run_options' => 'sometimes|nullable|string',
     ]);
 
+    // Only admin+ can toggle public network access (exposes server IP)
+    if (isset($validated['is_public']) && $validated['is_public']) {
+        $user = auth()->user();
+        $role = $user->role();
+        if (! in_array($role, ['owner', 'admin'])) {
+            return redirect()->back()->withErrors([
+                'is_public' => 'Only team admins can enable public network access.',
+            ]);
+        }
+    }
+
     // Validate public_port uniqueness on the same server
     if (isset($validated['public_port']) && $validated['public_port']) {
         $server = $database->destination?->server;
@@ -253,6 +264,14 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
             return redirect()->back()->withErrors([
                 'public_port' => 'Port '.$validated['public_port'].' is already in use by another database on this server.',
             ]);
+        }
+    }
+
+    // Auto-assign public port when enabling public access without one
+    if (isset($validated['is_public']) && $validated['is_public'] && empty($validated['public_port']) && empty($database->public_port)) {
+        $destination = $database->destination;
+        if ($destination) {
+            $validated['public_port'] = getRandomPublicPort($destination);
         }
     }
 

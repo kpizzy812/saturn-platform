@@ -303,6 +303,15 @@ class DatabasesController extends Controller
 
         $this->authorize('update', $database);
 
+        // Only admin+ can toggle public network access (exposes server IP)
+        if ($request->is_public === true) {
+            $user = auth()->user();
+            $role = $user?->role();
+            if (! in_array($role, ['owner', 'admin'])) {
+                return response()->json(['message' => 'Only team admins can enable public network access.'], 403);
+            }
+        }
+
         if ($request->is_public && $request->public_port) {
             if (isPublicPortAlreadyUsed($database->destination->server, $request->public_port, $database->uuid)) {
                 return response()->json(['message' => 'Public port already used by another database.'], 400);

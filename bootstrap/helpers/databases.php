@@ -27,8 +27,7 @@ function create_standalone_postgresql($environmentId, $destinationUuid, ?array $
     $database->environment_id = $environmentId;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -53,8 +52,7 @@ function create_standalone_redis($environment_id, $destination_uuid, ?array $oth
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -89,8 +87,7 @@ function create_standalone_mongodb($environment_id, $destination_uuid, ?array $o
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -110,8 +107,7 @@ function create_standalone_mysql($environment_id, $destination_uuid, ?array $oth
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -131,8 +127,7 @@ function create_standalone_mariadb($environment_id, $destination_uuid, ?array $o
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -151,8 +146,7 @@ function create_standalone_keydb($environment_id, $destination_uuid, ?array $oth
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -171,8 +165,7 @@ function create_standalone_dragonfly($environment_id, $destination_uuid, ?array 
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
@@ -191,8 +184,7 @@ function create_standalone_clickhouse($environment_id, $destination_uuid, ?array
     $database->environment_id = $environment_id;
     $database->destination_id = $destination->id;
     $database->destination_type = $destination->getMorphClass();
-    $database->is_public = true;
-    $database->public_port = getRandomPublicPort($destination);
+    $database->is_public = false;
     if ($otherData) {
         $database->fill($otherData);
     }
