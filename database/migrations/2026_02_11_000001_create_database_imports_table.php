@@ -28,7 +28,6 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['team_id', 'status']);
-            $table->index(['database_type', 'database_id']);
         });
     }
 
