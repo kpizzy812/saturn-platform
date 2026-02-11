@@ -72,8 +72,10 @@ describe('Database Query Page', () => {
 
     it('displays database selector', () => {
         render(<DatabaseQuery database={mockDatabase} databases={mockDatabases} />);
-        const selector = screen.getByDisplayValue('Production DB');
+        // The selector now shows database name as option
+        const selector = screen.getByRole('combobox');
         expect(selector).toBeInTheDocument();
+        expect(screen.getAllByText(/Production DB/).length).toBeGreaterThan(0);
     });
 
     it('shows query history section', () => {

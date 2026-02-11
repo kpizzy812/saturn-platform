@@ -366,7 +366,10 @@ const defaultStatusConfig: StatusConfig = {
  * Handles Coolify's colon-separated status format (e.g., "running:healthy", "degraded:unhealthy").
  * Tries exact match first, then falls back to the base state (before colon).
  */
-export function getStatusConfig(status: string): StatusConfig {
+export function getStatusConfig(status: string | undefined | null): StatusConfig {
+    if (!status) {
+        return defaultStatusConfig;
+    }
     const normalizedStatus = status.toLowerCase();
     if (statusRegistry[normalizedStatus]) {
         return statusRegistry[normalizedStatus];

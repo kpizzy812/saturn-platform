@@ -3,6 +3,47 @@ import { render, screen, waitFor } from '../../../utils/test-utils';
 import { MySQLPanel } from '@/components/features/databases/MySQLPanel';
 import type { StandaloneDatabase } from '@/types';
 
+// Mock hooks module before imports
+vi.mock('@/hooks', () => ({
+    useDatabaseMetrics: vi.fn(() => ({
+        metrics: {
+            activeConnections: 15,
+            maxConnections: 150,
+            databaseSize: '512 MB',
+            queriesPerSec: 125,
+            slowQueries: 3,
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useDatabaseLogs: vi.fn(() => ({
+        logs: [],
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useDatabaseUsers: vi.fn(() => ({
+        users: [],
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useMysqlSettings: vi.fn(() => ({
+        settings: {
+            slowQueryLog: true,
+            binaryLogging: false,
+            maxConnections: 150,
+            innodbBufferPoolSize: '128M',
+            queryCacheSize: 'N/A (deprecated in MySQL 8.0)',
+            queryTimeout: 28800,
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    formatMetricValue: vi.fn((value, suffix = '') => {
+        if (value === null || value === undefined) return 'N/A';
+        return `${value}${suffix}`;
+    }),
+}));
+
 // Mock clipboard API
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 
@@ -27,6 +68,13 @@ const mockDatabase: StandaloneDatabase = {
     status: 'running',
     created_at: '2024-01-01',
     updated_at: '2024-01-01',
+    internal_db_url: 'mysql://root:password@localhost:3306/test-mysql',
+    connection: {
+        internal_host: 'localhost',
+        port: '3306',
+        username: 'root',
+        password: 'password',
+    },
 };
 
 describe('MySQLPanel', () => {

@@ -3,6 +3,71 @@ import { render, screen, fireEvent, waitFor } from '../../../utils/test-utils';
 import { RedisPanel } from '@/components/features/databases/RedisPanel';
 import type { StandaloneDatabase } from '@/types';
 
+// Mock hooks module before imports
+vi.mock('@/hooks', () => ({
+    useDatabaseMetrics: vi.fn(() => ({
+        metrics: {
+            totalKeys: 152,
+            memoryUsed: '1.2 MB',
+            opsPerSec: 250,
+            hitRate: '95.5%',
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useDatabaseLogs: vi.fn(() => ({
+        logs: [],
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useRedisKeys: vi.fn(() => ({
+        keys: [],
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useRedisMemory: vi.fn(() => ({
+        memory: {
+            usedMemory: '1.2 MB',
+            peakMemory: '2.5 MB',
+            fragmentationRatio: '1.05',
+            maxMemory: '2 GB',
+            evictionPolicy: 'noeviction',
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useRedisFlush: vi.fn(() => ({
+        flush: vi.fn(async () => true),
+        isLoading: false,
+    })),
+    useRedisPersistence: vi.fn(() => ({
+        persistence: {
+            rdbEnabled: true,
+            rdbSaveRules: '3600:1,300:100,60:10000',
+            rdbLastSaveTime: '2024-01-01 12:00:00',
+            rdbLastBgsaveStatus: 'ok',
+            aofEnabled: false,
+            aofFsync: 'everysec',
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useRedisKeyValue: vi.fn(() => ({
+        keyValue: null,
+        isLoading: false,
+        fetchKeyValue: vi.fn(async () => null),
+    })),
+    useRedisSetKeyValue: vi.fn(() => ({
+        setKeyValue: vi.fn(async () => true),
+        isLoading: false,
+    })),
+    formatMetricValue: vi.fn((value, suffix = '') => {
+        if (value === null || value === undefined) return 'N/A';
+        return `${value}${suffix}`;
+    }),
+    formatRdbSaveRules: vi.fn((rules) => rules || 'N/A'),
+}));
+
 // Mock clipboard API
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 

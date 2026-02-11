@@ -169,7 +169,7 @@ describe('LocalSetupModal', () => {
 
             await waitFor(() => {
                 expect(global.fetch).toHaveBeenCalledWith(
-                    '/api/v1/applications/app-1/envs',
+                    '/applications/app-1/envs/json',
                     expect.objectContaining({
                         headers: { 'Accept': 'application/json' },
                         credentials: 'include',
@@ -179,7 +179,7 @@ describe('LocalSetupModal', () => {
 
             await waitFor(() => {
                 expect(global.fetch).toHaveBeenCalledWith(
-                    '/api/v1/applications/app-2/envs',
+                    '/applications/app-2/envs/json',
                     expect.objectContaining({
                         headers: { 'Accept': 'application/json' },
                         credentials: 'include',

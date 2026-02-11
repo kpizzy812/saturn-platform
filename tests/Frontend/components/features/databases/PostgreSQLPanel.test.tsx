@@ -3,6 +3,59 @@ import { render, screen, fireEvent, waitFor } from '../../../utils/test-utils';
 import { PostgreSQLPanel } from '@/components/features/databases/PostgreSQLPanel';
 import type { StandaloneDatabase } from '@/types';
 
+// Mock hooks module before imports
+vi.mock('@/hooks', () => ({
+    useDatabaseMetrics: vi.fn(() => ({
+        metrics: {
+            activeConnections: 5,
+            maxConnections: 100,
+            databaseSize: '245 MB',
+            queriesPerSec: 42,
+            cacheHitRatio: '98.5%',
+        },
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useDatabaseLogs: vi.fn(() => ({
+        logs: [
+            { timestamp: '2024-01-01 12:00:00', level: 'INFO', message: 'Database started' },
+            { timestamp: '2024-01-01 12:01:00', level: 'WARNING', message: 'Slow query detected' },
+        ],
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    useDatabaseExtensions: vi.fn(() => ({
+        extensions: [
+            { name: 'pg_stat_statements', enabled: true, version: '1.9', description: 'Track execution statistics' },
+            { name: 'pgcrypto', enabled: false, version: '1.3', description: 'Cryptographic functions' },
+            { name: 'uuid-ossp', enabled: true, version: '1.1', description: 'UUID generation functions' },
+            { name: 'hstore', enabled: false, version: '1.8', description: 'Key-value pair data type' },
+            { name: 'pg_trgm', enabled: true, version: '1.6', description: 'Text similarity using trigrams' },
+            { name: 'postgis', enabled: false, version: '3.3', description: 'Geospatial objects and functions' },
+        ],
+        isLoading: false,
+        refetch: vi.fn(),
+        toggleExtension: vi.fn(async () => true),
+    })),
+    useDatabaseUsers: vi.fn(() => ({
+        users: [
+            { name: 'postgres', role: 'Superuser', connections: 5 },
+            { name: 'app_user', role: 'Standard', connections: 12 },
+            { name: 'readonly', role: 'Read-only', connections: 0 },
+        ],
+        isLoading: false,
+        refetch: vi.fn(),
+    })),
+    usePostgresMaintenance: vi.fn(() => ({
+        runMaintenance: vi.fn(async () => true),
+        isLoading: false,
+    })),
+    formatMetricValue: vi.fn((value, suffix = '') => {
+        if (value === null || value === undefined) return 'N/A';
+        return `${value}${suffix}`;
+    }),
+}));
+
 // Mock clipboard API
 const writeTextMock = vi.fn().mockResolvedValue(undefined);
 
@@ -199,8 +252,10 @@ describe('PostgreSQLPanel', () => {
             await user.click(screen.getByText('Users'));
 
             await waitFor(() => {
-                const postgresRow = screen.getByText('postgres').closest('div');
-                expect(postgresRow?.querySelector('[data-icon="trash-2"]')).not.toBeInTheDocument();
+                const postgresText = screen.getByText('postgres');
+                const postgresRow = postgresText.closest('div[class*="rounded-lg"]');
+                const deleteButton = postgresRow?.querySelector('button[class*="danger"]');
+                expect(deleteButton).not.toBeInTheDocument();
             });
         });
     });
@@ -218,16 +273,14 @@ describe('PostgreSQLPanel', () => {
             });
         });
 
-        it('should display connection pooling settings', async () => {
+        it('should display connection settings', async () => {
             const { user } = render(<PostgreSQLPanel database={mockDatabase} />);
 
             await user.click(screen.getByText('Settings'));
 
             await waitFor(() => {
-                expect(screen.getByText('Connection Pooling')).toBeInTheDocument();
+                expect(screen.getByText('Connection Settings')).toBeInTheDocument();
                 expect(screen.getByText('Max Connections')).toBeInTheDocument();
-                expect(screen.getByText('Pool Size')).toBeInTheDocument();
-                expect(screen.getByText('Idle Timeout')).toBeInTheDocument();
             });
         });
 

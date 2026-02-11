@@ -78,6 +78,7 @@ describe('useDeployments', () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
             });
@@ -114,10 +115,11 @@ describe('useDeployments', () => {
 
             expect(result.current.deployments).toEqual(mockDeployments);
             expect(result.current.error).toBe(null);
-            expect(mockFetch).toHaveBeenCalledWith('/api/v1/deployments/applications/app-1', {
+            expect(mockFetch).toHaveBeenCalledWith('/applications/app-1/deployments/json', {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
             });
@@ -284,6 +286,7 @@ describe('useDeployments', () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -341,6 +344,7 @@ describe('useDeployments', () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -425,6 +429,7 @@ describe('useDeployments', () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
             });
@@ -547,6 +552,7 @@ describe('useDeployment', () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
             });
@@ -686,6 +692,7 @@ describe('useDeployment', () => {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': 'test-csrf-token',
                 },
                 credentials: 'include',
             });

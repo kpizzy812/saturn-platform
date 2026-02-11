@@ -32,10 +32,10 @@ describe('Project Create Page', () => {
         expect(screen.getByText('Choose how you want to deploy your project')).toBeInTheDocument();
     });
 
-    it('shows GitHub Repository option', () => {
+    it('shows Git Repository option', () => {
         render(<ProjectCreate />);
-        expect(screen.getByText('GitHub Repository')).toBeInTheDocument();
-        expect(screen.getByText('Deploy from a GitHub repository')).toBeInTheDocument();
+        expect(screen.getByText('Git Repository')).toBeInTheDocument();
+        expect(screen.getByText('GitHub, GitLab, Bitbucket')).toBeInTheDocument();
     });
 
     it('shows Database option', () => {
@@ -59,6 +59,7 @@ describe('Project Create Page', () => {
     it('shows Function option with Coming Soon badge', () => {
         render(<ProjectCreate />);
         expect(screen.getByText('Function')).toBeInTheDocument();
+        expect(screen.getByText('Deploy serverless functions')).toBeInTheDocument();
         expect(screen.getByText('Coming Soon')).toBeInTheDocument();
     });
 
@@ -78,7 +79,7 @@ describe('Project Create Page', () => {
     it('renders all 6 deploy options', () => {
         render(<ProjectCreate />);
         // Count deploy option titles
-        const options = ['GitHub Repository', 'Database', 'Template', 'Docker Image', 'Function', 'Empty Project'];
+        const options = ['Git Repository', 'Database', 'Template', 'Docker Image', 'Function', 'Empty Project'];
         options.forEach(option => {
             expect(screen.getByText(option)).toBeInTheDocument();
         });

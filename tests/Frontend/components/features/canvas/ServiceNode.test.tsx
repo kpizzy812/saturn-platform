@@ -103,14 +103,14 @@ describe('ServiceNode', () => {
             expect(statusDot).toBeTruthy();
         });
 
-        it('uses muted color for non-running status', () => {
+        it('uses red color for stopped status', () => {
             const stoppedProps = {
                 ...mockNodeProps,
                 data: { ...mockNodeProps.data, status: 'stopped' },
             };
             const { container } = render(<ServiceNode {...stoppedProps} />);
-            // Stopped services use foreground-subtle background
-            const statusDot = container.querySelector('.bg-foreground-subtle');
+            // Stopped services use red background (error state)
+            const statusDot = container.querySelector('.bg-red-500');
             expect(statusDot).toBeTruthy();
         });
     });
@@ -131,7 +131,7 @@ describe('ServiceNode', () => {
         it('has Saturn design token background', () => {
             const { container } = render(<ServiceNode {...mockNodeProps} />);
             // Uses Saturn design tokens for background
-            const card = container.querySelector('.bg-background-secondary\\/80');
+            const card = container.querySelector('.bg-background-secondary\\/95');
             expect(card).toBeTruthy();
         });
     });

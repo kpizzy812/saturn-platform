@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ProjectSettings from '../Settings';
 
@@ -149,10 +149,24 @@ describe('ProjectSettings', () => {
         expect(screen.getByText('test-uuid-123')).toBeInTheDocument();
     });
 
-    it('shows resource warning when project is not empty', () => {
-        render(<ProjectSettings {...defaultProps} />);
+    it('shows resource warning when attempting to delete non-empty project', async () => {
+        const { user } = render(<ProjectSettings {...defaultProps} />);
 
-        expect(screen.getByText('Project cannot be deleted')).toBeInTheDocument();
+        // Find delete button by looking for buttons with "Delete Project" text
+        const allButtons = screen.getAllByRole('button');
+        const deleteButton = allButtons.find(btn => btn.textContent?.includes('Delete Project'));
+
+        if (!deleteButton) {
+            throw new Error('Delete Project button not found');
+        }
+
+        // Use fireEvent instead of user.click for simpler interaction
+        fireEvent.click(deleteButton);
+
+        // Now the warning should appear
+        await waitFor(() => {
+            expect(screen.getByText(/This will also delete/)).toBeInTheDocument();
+        });
         expect(screen.getByText(/2 application/)).toBeInTheDocument();
         expect(screen.getByText(/1 service/)).toBeInTheDocument();
     });

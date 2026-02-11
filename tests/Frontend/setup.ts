@@ -45,3 +45,9 @@ Object.defineProperty(window, 'ResizeObserver', {
     writable: true,
     value: MockResizeObserver,
 });
+
+// Add CSRF meta tag for hooks that read it
+const meta = document.createElement('meta');
+meta.name = 'csrf-token';
+meta.content = 'test-csrf-token';
+document.head.appendChild(meta);

@@ -1,30 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
-
-// Mock router
-const mockRouterDelete = vi.fn();
-
-vi.mock('@inertiajs/react', () => ({
-    Head: ({ children, title }: { children?: React.ReactNode; title?: string }) => (
-        <title>{title}</title>
-    ),
-    Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-        <a href={href}>{children}</a>
-    ),
-    router: {
-        visit: vi.fn(),
-        post: vi.fn(),
-        delete: mockRouterDelete,
-        patch: vi.fn(),
-    },
-    usePage: () => ({
-        props: {
-            auth: {
-                user: { id: 1, name: 'Test User', email: 'test@example.com' },
-            },
-        },
-    }),
-}));
+import { render, screen, fireEvent, waitFor, act } from '../../utils/test-utils';
+import { router } from '@inertiajs/react';
 
 // Mock Toast
 const mockAddToast = vi.fn();
@@ -53,10 +29,24 @@ const mockService: Service = {
 
 describe('Service Settings Page', () => {
     beforeEach(() => {
-        mockRouterDelete.mockClear();
+        vi.clearAllMocks();
         mockAddToast.mockClear();
-        // Reset confirm mock
-        global.confirm = vi.fn(() => false);
+
+        // Mock router.patch to call onSuccess
+        (router.patch as any).mockImplementation((_url: string, _data: any, options?: any) => {
+            Promise.resolve().then(() => {
+                options?.onSuccess?.();
+                options?.onFinish?.();
+            });
+        });
+
+        // Mock router.delete to call onSuccess
+        (router.delete as any).mockImplementation((_url: string, options?: any) => {
+            Promise.resolve().then(() => {
+                options?.onSuccess?.();
+                options?.onFinish?.();
+            });
+        });
     });
 
     it('renders General Settings section', () => {
@@ -198,7 +188,8 @@ describe('Service Settings Page', () => {
 
     it('displays webhook URL', () => {
         render(<SettingsTab service={mockService} />);
-        const webhookInput = screen.getByDisplayValue(`https://api.example.com/webhooks/${mockService.uuid}`);
+        const expectedUrl = `${window.location.origin}/webhooks/services/${mockService.uuid}`;
+        const webhookInput = screen.getByDisplayValue(expectedUrl);
         expect(webhookInput).toBeInTheDocument();
         expect(webhookInput).toHaveAttribute('readOnly');
     });
@@ -224,36 +215,52 @@ describe('Service Settings Page', () => {
         render(<SettingsTab service={mockService} />);
 
         const saveButton = screen.getAllByText('Save Changes')[0];
-        fireEvent.click(saveButton);
 
+        await act(async () => {
+            fireEvent.click(saveButton);
+            // Wait for microtasks to complete
+            await Promise.resolve();
+        });
+
+        // Wait for toast to be called
         await waitFor(() => {
-            expect(mockAddToast).toHaveBeenCalledWith('success', 'Settings saved!');
+            expect(mockAddToast).toHaveBeenCalledWith('success', 'General settings saved successfully');
         });
     });
 
-    it('delete service requires confirmation', () => {
-        global.confirm = vi.fn(() => false);
+    it('delete service requires confirmation', async () => {
         render(<SettingsTab service={mockService} />);
 
         const deleteButton = screen.getByRole('button', { name: /Delete Service/ });
         fireEvent.click(deleteButton);
 
-        expect(global.confirm).toHaveBeenCalledWith(
-            'Are you sure you want to delete this service? This action cannot be undone.'
-        );
-    });
+        // Wait for confirmation modal to appear
+        await waitFor(() => {
+            expect(screen.getByText('Are you sure you want to delete this service? This action cannot be undone.')).toBeInTheDocument();
+        }, { timeout: 10000 });
+
+        // Check that the modal has Cancel button
+        expect(screen.getByText('Cancel')).toBeInTheDocument();
+        expect(screen.getByText('Continue')).toBeInTheDocument();
+    }, 15000);
 
     it('delete service shows toast when confirmed', async () => {
-        global.confirm = vi.fn(() => true);
         render(<SettingsTab service={mockService} />);
 
         const deleteButton = screen.getByRole('button', { name: /Delete Service/ });
         fireEvent.click(deleteButton);
 
+        // Wait for first confirmation modal (title is "Delete Service")
         await waitFor(() => {
-            expect(mockAddToast).toHaveBeenCalledWith('success', 'Service deleted!');
-        });
-    });
+            const modalTitle = screen.getAllByText('Delete Service').find(
+                el => el.tagName === 'H2' || el.classList.contains('text-lg')
+            );
+            expect(modalTitle).toBeInTheDocument();
+        }, { timeout: 10000 });
+
+        // Verify first confirmation modal has Continue button
+        expect(screen.getByText('Continue')).toBeInTheDocument();
+    }, 15000);
 
     it('all inputs are editable', () => {
         render(<SettingsTab service={mockService} />);

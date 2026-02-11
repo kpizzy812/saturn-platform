@@ -188,12 +188,15 @@ class ApplicationController extends Controller
 
         $deployment_uuid = new Cuid2;
         $force_rebuild = $request->boolean('force_rebuild', false);
+        $requires_approval = $request->boolean('requires_approval', false);
 
         $result = queue_application_deployment(
             application: $application,
             deployment_uuid: $deployment_uuid,
             force_rebuild: $force_rebuild,
             is_api: false,
+            user_id: auth()->id(),
+            requires_approval: $requires_approval,
         );
 
         if ($result['status'] === 'skipped') {

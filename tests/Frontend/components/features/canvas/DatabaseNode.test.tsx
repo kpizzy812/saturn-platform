@@ -54,7 +54,7 @@ describe('DatabaseNode', () => {
             selected: true,
         };
         const { container } = render(<DatabaseNode {...selectedProps} />);
-        const node = container.querySelector('.border-cyan-500');
+        const node = container.querySelector('.border-info');
         expect(node).toBeTruthy();
     });
 
@@ -121,19 +121,19 @@ describe('DatabaseNode', () => {
     });
 
     describe('Status Colors', () => {
-        it('uses emerald color for running status', () => {
+        it('uses success color for running status', () => {
             const { container } = render(<DatabaseNode {...mockNodeProps} />);
-            const statusDot = container.querySelector('.bg-emerald-500');
+            const statusDot = container.querySelector('.bg-success');
             expect(statusDot).toBeTruthy();
         });
 
-        it('uses gray color for non-running status', () => {
+        it('uses muted color for non-running status', () => {
             const stoppedProps = {
                 ...mockNodeProps,
                 data: { ...mockNodeProps.data, status: 'stopped' },
             };
             const { container } = render(<DatabaseNode {...stoppedProps} />);
-            const statusDot = container.querySelector('.bg-gray-500');
+            const statusDot = container.querySelector('.bg-red-500');
             expect(statusDot).toBeTruthy();
         });
     });
@@ -175,9 +175,9 @@ describe('DatabaseNode', () => {
             expect(card).toBeTruthy();
         });
 
-        it('has dark theme background', () => {
+        it('has background using design tokens', () => {
             const { container } = render(<DatabaseNode {...mockNodeProps} />);
-            const card = container.querySelector('[class*="bg-[#1a1a2e]"]');
+            const card = container.querySelector('.bg-background-secondary\\/95');
             expect(card).toBeTruthy();
         });
 
