@@ -372,12 +372,18 @@ Route::patch('/applications/{uuid}/envs/json', function (string $uuid, Request $
         return response()->json(['message' => 'Variable not found.'], 404);
     }
 
-    $env->update([
+    $updateData = [
         'key' => $request->input('key'),
         'value' => $request->input('value', ''),
-    ]);
+    ];
 
-    return response()->json(['uuid' => $env->uuid, 'key' => $env->key, 'value' => $env->value]);
+    if ($request->has('is_build_time')) {
+        $updateData['is_buildtime'] = $request->boolean('is_build_time');
+    }
+
+    $env->update($updateData);
+
+    return response()->json(['uuid' => $env->uuid, 'key' => $env->key, 'value' => $env->value, 'is_buildtime' => $env->is_buildtime]);
 })->name('applications.envs.json.update');
 
 Route::delete('/applications/{uuid}/envs/{env_uuid}/json', function (string $uuid, string $env_uuid) {

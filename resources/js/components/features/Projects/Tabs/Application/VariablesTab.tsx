@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
-import { Plus, RefreshCw, Eye, EyeOff, Copy, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Plus, RefreshCw, Eye, EyeOff, Copy, Trash2, Pencil, Check, X, Hammer } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import type { SelectedService } from '../../types';
 
@@ -12,6 +12,7 @@ interface EnvVariable {
     real_value?: string;
     is_preview?: boolean;
     is_shown_once?: boolean;
+    is_buildtime?: boolean;
 }
 
 interface VariablesTabProps {
@@ -32,6 +33,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [newKey, setNewKey] = useState('');
     const [newValue, setNewValue] = useState('');
+    const [newIsBuildtime, setNewIsBuildtime] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -76,21 +78,22 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                     'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
-                body: JSON.stringify({ key: newKey, value: newValue }),
+                body: JSON.stringify({ key: newKey, value: newValue, is_build_time: newIsBuildtime }),
             });
             if (response.ok) {
                 const created = await response.json();
-                // API returns only { uuid }, so construct full object for display
                 setVariables(prev => [...prev, {
-                    id: Date.now(), // Temporary ID for React key until refetch
+                    id: created.id || Date.now(),
                     uuid: created.uuid,
                     key: newKey,
                     value: newValue,
                     real_value: newValue,
+                    is_buildtime: newIsBuildtime,
                 }]);
                 setShowAddModal(false);
                 setNewKey('');
                 setNewValue('');
+                setNewIsBuildtime(false);
                 toast({ title: 'Variable created' });
                 onChangeStaged?.();
             } else {
@@ -189,6 +192,32 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
         }
     };
 
+    const handleToggleBuildtime = async (v: EnvVariable) => {
+        const newValue = !v.is_buildtime;
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch(`/applications/${service.uuid}/envs/json`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ key: v.key, is_build_time: newValue }),
+            });
+            if (response.ok) {
+                setVariables(prev => prev.map(ev =>
+                    ev.uuid === v.uuid ? { ...ev, is_buildtime: newValue } : ev
+                ));
+                toast({ title: `${v.key}: Build ${newValue ? 'enabled' : 'disabled'}` });
+                onChangeStaged?.();
+            }
+        } catch {
+            toast({ title: 'Failed to update variable', variant: 'error' });
+        }
+    };
+
     const startEditing = (v: EnvVariable) => {
         setEditing({ uuid: v.uuid, key: v.key, value: v.real_value || v.value });
         // Auto-reveal the value being edited
@@ -235,6 +264,16 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                             className="w-full rounded-md border border-border bg-background-secondary px-3 py-2 text-sm font-mono"
                         />
                     </div>
+                    <label className="flex items-center gap-2 text-sm text-foreground-muted cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={newIsBuildtime}
+                            onChange={(e) => setNewIsBuildtime(e.target.checked)}
+                            className="rounded border-border"
+                        />
+                        <Hammer className="h-3.5 w-3.5" />
+                        Build (available during docker build)
+                    </label>
                     <div className="flex gap-2">
                         <Button size="sm" onClick={handleAddVariable} disabled={isSubmitting}>
                             {isSubmitting ? 'Creating...' : 'Create'}
@@ -291,12 +330,27 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                                 ) : (
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1 min-w-0">
-                                            <code className="text-sm font-medium text-foreground">{v.key}</code>
+                                            <div className="flex items-center gap-2">
+                                                <code className="text-sm font-medium text-foreground">{v.key}</code>
+                                                {v.is_buildtime && (
+                                                    <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
+                                                        <Hammer className="h-2.5 w-2.5" />
+                                                        Build
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-foreground-muted font-mono truncate">
                                                 {revealedIds.has(v.id) ? (v.real_value || v.value) : maskValue(v.real_value || v.value)}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleToggleBuildtime(v)}
+                                                className={`rounded p-1 ${v.is_buildtime ? 'text-primary' : 'text-foreground-muted'} hover:bg-background hover:text-primary`}
+                                                title={v.is_buildtime ? 'Build enabled (click to disable)' : 'Build disabled (click to enable)'}
+                                            >
+                                                <Hammer className="h-4 w-4" />
+                                            </button>
                                             <button
                                                 onClick={() => toggleReveal(v.id)}
                                                 className="rounded p-1 text-foreground-muted hover:bg-background hover:text-foreground"

@@ -2342,12 +2342,15 @@ class Application extends BaseModel
                 continue;
             }
 
+            // For app-to-app links, make buildtime too (Next.js etc. need URL at docker build)
+            $isBuildtime = $target instanceof self;
+
             // Create or update the environment variable
             $this->environment_variables()->updateOrCreate(
                 ['key' => $envKey, 'is_preview' => false],
                 [
                     'value' => $url,
-                    'is_buildtime' => false,
+                    'is_buildtime' => $isBuildtime,
                     'is_runtime' => true,
                 ]
             );
