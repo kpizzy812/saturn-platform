@@ -107,7 +107,8 @@
     "extra": {
         "laravel": {
             "dont-discover": [
-                "laravel/telescope"
+                "laravel/telescope",
+                "log1x/laravel-webfonts"
             ]
         }
     },
