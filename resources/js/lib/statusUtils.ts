@@ -173,6 +173,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         colorClass: 'bg-orange-500',
         textColorClass: 'text-warning',
         animate: true,
+        dotClass: 'status-deploying',
     },
 
     // Resource statuses
@@ -235,6 +236,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'CheckCircle',
         colorClass: 'bg-green-500',
         textColorClass: 'text-primary',
+        dotClass: 'status-online',
     },
     disabled: {
         label: 'Disabled',
@@ -242,6 +244,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'Ban',
         colorClass: 'bg-gray-500',
         textColorClass: 'text-foreground-muted',
+        dotClass: 'status-stopped',
     },
 
     // ScheduledTask / Execution statuses
@@ -251,6 +254,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'Clock',
         colorClass: 'bg-blue-500',
         textColorClass: 'text-info',
+        dotClass: 'status-initializing',
     },
     completed: {
         label: 'Completed',
@@ -258,6 +262,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'CheckCircle',
         colorClass: 'bg-green-500',
         textColorClass: 'text-primary',
+        dotClass: 'status-online',
     },
     success: {
         label: 'Success',
@@ -265,6 +270,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'CheckCircle',
         colorClass: 'bg-green-500',
         textColorClass: 'text-primary',
+        dotClass: 'status-online',
     },
 
     // Volume & Destination statuses
@@ -274,6 +280,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'CheckCircle',
         colorClass: 'bg-green-500',
         textColorClass: 'text-primary',
+        dotClass: 'status-online',
     },
     inactive: {
         label: 'Inactive',
@@ -281,6 +288,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'XCircle',
         colorClass: 'bg-gray-500',
         textColorClass: 'text-foreground-muted',
+        dotClass: 'status-stopped',
     },
     creating: {
         label: 'Creating',
@@ -289,6 +297,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         colorClass: 'bg-yellow-500',
         textColorClass: 'text-warning',
         animate: true,
+        dotClass: 'status-deploying',
     },
 
     // Domain statuses
@@ -299,6 +308,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         colorClass: 'bg-blue-500',
         textColorClass: 'text-info',
         animate: true,
+        dotClass: 'status-initializing',
     },
 
     // SSL statuses
@@ -308,6 +318,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'ShieldAlert',
         colorClass: 'bg-red-500',
         textColorClass: 'text-danger',
+        dotClass: 'status-error',
     },
     expiring_soon: {
         label: 'Expiring Soon',
@@ -315,6 +326,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'AlertTriangle',
         colorClass: 'bg-orange-500',
         textColorClass: 'text-warning',
+        dotClass: 'status-deploying',
     },
 
     // Health statuses
@@ -324,6 +336,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'CheckCircle',
         colorClass: 'bg-green-500',
         textColorClass: 'text-primary',
+        dotClass: 'status-online',
     },
     unhealthy: {
         label: 'Unhealthy',
@@ -331,6 +344,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'XCircle',
         colorClass: 'bg-red-500',
         textColorClass: 'text-danger',
+        dotClass: 'status-error',
     },
     degraded: {
         label: 'Degraded',
@@ -338,6 +352,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'AlertTriangle',
         colorClass: 'bg-yellow-500',
         textColorClass: 'text-warning',
+        dotClass: 'status-deploying',
     },
 
     // Rollback specific
@@ -347,6 +362,7 @@ const statusRegistry: Record<string, StatusConfig> = {
         iconName: 'AlertCircle',
         colorClass: 'bg-orange-500',
         textColorClass: 'text-warning',
+        dotClass: 'status-deploying',
     },
 };
 
