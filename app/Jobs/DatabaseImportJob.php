@@ -18,15 +18,15 @@ class DatabaseImportJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $queue = 'high';
-
     public $timeout = 7200;
 
     public $tries = 1;
 
     public function __construct(
         public int $importId,
-    ) {}
+    ) {
+        $this->onQueue('high');
+    }
 
     public function handle(): void
     {
