@@ -60,7 +60,10 @@ class StartDatabase
         }
 
         if ($database->is_public && $database->public_port) {
-            StartDatabaseProxy::dispatch($database);
+            // Delay proxy start to give the database container time to be created
+            // by the SaturnTask (remote_process is async — dispatches SSH commands to queue).
+            // The proxy's nginx needs the DB container to exist for DNS resolution.
+            StartDatabaseProxy::dispatch($database)->delay(now()->addSeconds(15));
         }
 
         // Schedule a delayed status check to update the database status in real-time

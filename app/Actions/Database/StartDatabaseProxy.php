@@ -20,11 +20,11 @@ class StartDatabaseProxy
 
     public string $jobQueue = 'high';
 
-    public int $jobTries = 3;
+    public int $jobTries = 5;
 
-    public int $jobMaxExceptions = 3;
+    public int $jobMaxExceptions = 5;
 
-    public array $jobBackoff = [10, 30, 60];
+    public array $jobBackoff = [10, 15, 30, 60, 120];
 
     public function handle(StandaloneRedis|StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse|ServiceDatabase $database)
     {
@@ -41,6 +41,18 @@ class StartDatabaseProxy
             $server = data_get($database, 'service.destination.server');
             $proxyContainerName = "{$database->service->uuid}-proxy";
             $containerName = "{$database->name}-{$database->service->uuid}";
+        }
+
+        // Verify the database container exists before starting proxy.
+        // Nginx stream proxy needs the container for DNS resolution.
+        // If the container isn't ready yet, the job will retry with backoff.
+        $containerExists = instant_remote_process(
+            ["docker inspect {$containerName} --format '{{.State.Status}}' 2>/dev/null || echo 'not_found'"],
+            $server,
+            false
+        );
+        if (trim($containerExists) === 'not_found') {
+            throw new \RuntimeException("Database container {$containerName} not found yet, will retry.");
         }
         $internalPort = match ($databaseType) {
             'standalone-mariadb', 'standalone-mysql' => 3306,
