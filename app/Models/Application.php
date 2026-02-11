@@ -2318,7 +2318,16 @@ class Application extends BaseModel
                 }
 
                 if ($shouldUseExternal && $target->fqdn) {
-                    $url = $target->fqdn;
+                    // fqdn may contain multiple comma-separated domains; take the first one
+                    $fqdn = str_contains($target->fqdn, ',')
+                        ? trim(explode(',', $target->fqdn)[0])
+                        : $target->fqdn;
+
+                    // Ensure the URL has a protocol (new parser stores bare domains without scheme)
+                    if (! preg_match('#^https?://#', $fqdn)) {
+                        $fqdn = 'https://'.$fqdn;
+                    }
+                    $url = $fqdn;
                 } else {
                     $url = $target->internal_app_url;
                 }
