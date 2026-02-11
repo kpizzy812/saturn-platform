@@ -902,9 +902,9 @@ function ProjectCanvasInner({
                 onToggleExternalUrl={handleToggleExternalUrl}
             />
 
-            {/* Selected edge hint */}
+            {/* Selected edge hint - above legend and external "Set up locally" button */}
             {selectedEdge && (
-                <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs text-foreground-muted backdrop-blur-sm">
+                <div className="absolute bottom-32 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs text-foreground-muted backdrop-blur-sm">
                     {/* Desktop: keyboard hint */}
                     <span className="hidden md:inline">
                         Press <kbd className="rounded bg-background-tertiary px-1.5 py-0.5">Delete</kbd> or{' '}
@@ -931,8 +931,8 @@ function ProjectCanvasInner({
                 </div>
             )}
 
-            {/* Legend - positioned at bottom left to avoid overlap with ActivityPanel (hidden on mobile) */}
-            <div className="hidden md:block absolute bottom-16 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
+            {/* Legend - above external "Set up locally" button (bottom-4) */}
+            <div className="hidden md:block absolute bottom-20 left-4 z-10 rounded-lg border border-border bg-background-secondary/90 px-3 py-2 text-xs backdrop-blur-sm">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
                         <div className="h-0.5 w-4 bg-success"></div>
