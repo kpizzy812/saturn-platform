@@ -296,7 +296,7 @@ class StandaloneMysql extends BaseModel
         return new Attribute(
             get: function () {
                 if ($this->is_public && $this->public_port) {
-                    $serverIp = $this->destination->server->getIp;
+                    $serverIp = getServerPublicHost($this->destination->server);
                     if (empty($serverIp)) {
                         return null;
                     }

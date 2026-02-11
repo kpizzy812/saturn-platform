@@ -35,6 +35,28 @@ function base_ip(): string
 }
 
 /**
+ * Get the public host for a server, preferring wildcard domain over raw IP.
+ *
+ * For the master server (localhost), this avoids exposing the real IP address
+ * by using the wildcard domain hostname (e.g. "saturn.ac" instead of "157.x.x.x").
+ */
+function getServerPublicHost(\App\Models\Server $server): string
+{
+    // For master server, prefer wildcard domain to hide IP
+    if ($server->id === 0 || $server->checkIsLocalhost()) {
+        $wildcard = data_get($server, 'settings.wildcard_domain');
+        if ($wildcard) {
+            $host = Url::fromString($wildcard)->getHost();
+            if ($host && $host !== 'localhost') {
+                return $host;
+            }
+        }
+    }
+
+    return $server->getIp;
+}
+
+/**
  * Get FQDN without the port number.
  */
 function getFqdnWithoutPort(string $fqdn)
