@@ -5,7 +5,7 @@ import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
-import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Trash2, Server, HardDrive, Activity, Loader2, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Upload, Trash2, Server, HardDrive, Activity, Loader2, ArrowRightLeft } from 'lucide-react';
 import { TransferModal } from '@/components/transfer';
 import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
@@ -169,6 +169,12 @@ export default function DatabaseShow({ database }: Props) {
                         <ArrowRightLeft className="mr-2 h-4 w-4" />
                         Transfer
                     </Button>
+                    <Link href={`/databases/${database.uuid}/import`}>
+                        <Button variant="secondary" size="sm">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import
+                        </Button>
+                    </Link>
                     <Link href={`/databases/${database.uuid}/backups`}>
                         <Button variant="secondary" size="sm">
                             <Download className="mr-2 h-4 w-4" />

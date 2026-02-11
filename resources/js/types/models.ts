@@ -245,6 +245,17 @@ export type DatabaseType =
     | 'dragonfly'
     | 'clickhouse';
 
+export interface DatabaseImportStatus {
+    uuid: string;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    progress: number;
+    mode: 'remote_pull' | 'file_upload';
+    output: string | null;
+    error: string | null;
+    started_at: string | null;
+    finished_at: string | null;
+}
+
 export interface ServiceContainer {
     name: string;
     label: string;

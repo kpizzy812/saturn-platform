@@ -670,6 +670,105 @@ Route::get('/databases/{uuid}/import', function (string $uuid) {
     ]);
 })->name('databases.import');
 
+// Import: Pull from remote database
+Route::post('/databases/{uuid}/import/remote', function (string $uuid, Request $request) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $request->validate([
+        'connection_string' => 'required|string|max:2000',
+    ]);
+
+    $parser = new \App\Services\Database\ConnectionStringParser;
+
+    try {
+        $parsed = $parser->parse($request->connection_string);
+    } catch (\InvalidArgumentException $e) {
+        return response()->json(['success' => false, 'error' => $e->getMessage()], 422);
+    }
+
+    if (! $parser->validateCompatibility($parsed['type'], $type)) {
+        return response()->json([
+            'success' => false,
+            'error' => "Source type ({$parsed['type']}) is not compatible with target database type ({$type}).",
+        ], 422);
+    }
+
+    $import = \App\Models\DatabaseImport::create([
+        'database_type' => $database->getMorphClass(),
+        'database_id' => $database->id,
+        'team_id' => currentTeam()->id,
+        'mode' => 'remote_pull',
+        'status' => 'pending',
+        'connection_string' => $request->connection_string,
+        'source_type' => $parsed['type'],
+    ]);
+
+    \App\Jobs\DatabaseImportJob::dispatch($import->id);
+
+    return response()->json(['success' => true, 'import_id' => $import->uuid]);
+})->name('databases.import.remote');
+
+// Import: Restore uploaded file
+Route::post('/databases/{uuid}/import/upload', function (string $uuid, Request $request) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    // Check for uploaded file in the upload storage path
+    $uploadDir = "upload/{$database->uuid}/restore";
+    $storagePath = storage_path("app/{$uploadDir}");
+
+    if (! is_dir($storagePath)) {
+        return response()->json(['success' => false, 'error' => 'No uploaded file found. Please upload a file first.'], 422);
+    }
+
+    // Find the first file in the upload directory
+    $files = array_diff(scandir($storagePath), ['.', '..']);
+    if (empty($files)) {
+        return response()->json(['success' => false, 'error' => 'No uploaded file found. Please upload a file first.'], 422);
+    }
+
+    $fileName = reset($files);
+    $filePath = "{$uploadDir}/{$fileName}";
+    $fullPath = storage_path("app/{$filePath}");
+    $fileSize = filesize($fullPath);
+
+    $import = \App\Models\DatabaseImport::create([
+        'database_type' => $database->getMorphClass(),
+        'database_id' => $database->id,
+        'team_id' => currentTeam()->id,
+        'mode' => 'file_upload',
+        'status' => 'pending',
+        'file_path' => $filePath,
+        'file_name' => $fileName,
+        'file_size' => $fileSize,
+    ]);
+
+    \App\Jobs\DatabaseImportJob::dispatch($import->id);
+
+    return response()->json(['success' => true, 'import_id' => $import->uuid]);
+})->name('databases.import.upload');
+
+// Import: Status polling
+Route::get('/databases/{uuid}/import/status/{importUuid}', function (string $uuid, string $importUuid) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $import = \App\Models\DatabaseImport::where('uuid', $importUuid)
+        ->where('team_id', currentTeam()->id)
+        ->where('database_id', $database->id)
+        ->where('database_type', $database->getMorphClass())
+        ->firstOrFail();
+
+    return response()->json([
+        'uuid' => $import->uuid,
+        'status' => $import->status,
+        'progress' => $import->progress,
+        'mode' => $import->mode,
+        'output' => $import->output,
+        'error' => $import->error,
+        'started_at' => $import->started_at?->toISOString(),
+        'finished_at' => $import->finished_at?->toISOString(),
+    ]);
+})->name('databases.import.status');
+
 Route::get('/databases/{uuid}/overview', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 
