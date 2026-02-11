@@ -101,12 +101,14 @@ function EdgeContextMenu({
     reverseLink,
     onDelete,
     onClose,
+    onToggleExternalUrl,
 }: {
     position: { x: number; y: number } | null;
     link: ResourceLink | null;
     reverseLink?: ResourceLink | null;
     onDelete: () => void;
     onClose: () => void;
+    onToggleExternalUrl?: () => void;
 }) {
     useEffect(() => {
         if (!position) return;
@@ -118,6 +120,8 @@ function EdgeContextMenu({
     if (!position) return null;
 
     const isBidirectional = !!reverseLink;
+    const isAppToApp = link?.target_type === 'application';
+    const isExternal = link?.use_external_url ?? false;
 
     return (
         <div
@@ -147,6 +151,35 @@ function EdgeContextMenu({
                         )}
                     </div>
                 </div>
+            )}
+            {/* External/Internal URL toggle for app-to-app edges */}
+            {isAppToApp && onToggleExternalUrl && (
+                <button
+                    onClick={onToggleExternalUrl}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-background-tertiary transition-colors"
+                >
+                    {isExternal ? (
+                        <>
+                            {/* Server/Container icon - switch to internal */}
+                            <svg className="h-4 w-4 text-foreground-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="2" width="20" height="8" rx="2" />
+                                <rect x="2" y="14" width="20" height="8" rx="2" />
+                                <circle cx="6" cy="6" r="1" fill="currentColor" />
+                                <circle cx="6" cy="18" r="1" fill="currentColor" />
+                            </svg>
+                            Use internal URL (Docker)
+                        </>
+                    ) : (
+                        <>
+                            {/* Globe icon - switch to external */}
+                            <svg className="h-4 w-4 text-foreground-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                            </svg>
+                            Use external URL (domain)
+                        </>
+                    )}
+                </button>
             )}
             <button
                 onClick={onDelete}
@@ -653,6 +686,63 @@ function ProjectCanvasInner({
         []
     );
 
+    // Toggle external/internal URL for app-to-app links
+    const handleToggleExternalUrl = useCallback(
+        async () => {
+            if (!edgeContextMenu || !environmentUuid) return;
+
+            const edge = edges.find((e) => e.id === edgeContextMenu.edgeId);
+            const link = edge?.data?.link as ResourceLink | undefined;
+            const reverseLink = edge?.data?.reverseLink as ResourceLink | undefined;
+            if (!link) return;
+
+            const newValue = !link.use_external_url;
+
+            try {
+                // Update forward link
+                const response = await axios.patch(
+                    `/environments/${environmentUuid}/links/${link.id}/json`,
+                    { use_external_url: newValue },
+                    {
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                        },
+                    }
+                );
+
+                // Update reverse link if bidirectional
+                if (reverseLink) {
+                    await axios.patch(
+                        `/environments/${environmentUuid}/links/${reverseLink.id}/json`,
+                        { use_external_url: newValue },
+                        {
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                            },
+                        }
+                    );
+                }
+
+                // Update local state
+                setResourceLinks((prev) =>
+                    prev.map((l) => {
+                        if (l.id === link.id || (reverseLink && l.id === reverseLink.id)) {
+                            return { ...l, use_external_url: newValue };
+                        }
+                        return l;
+                    })
+                );
+
+                setEdgeContextMenu(null);
+                addToast('success', 'Updated', `Now using ${newValue ? 'external domain' : 'internal Docker'} URL.`);
+            } catch (error) {
+                console.error('Failed to toggle external URL:', error);
+                addToast('error', 'Error', 'Failed to update link settings.');
+            }
+        },
+        [edgeContextMenu, edges, environmentUuid, addToast]
+    );
+
     // Delete edge/link
     const handleDeleteEdge = useCallback(
         async (edgeId: string) => {
@@ -803,6 +893,7 @@ function ProjectCanvasInner({
                 reverseLink={edgeContextMenu?.reverseLink || null}
                 onDelete={() => edgeContextMenu && handleDeleteEdge(edgeContextMenu.edgeId)}
                 onClose={() => setEdgeContextMenu(null)}
+                onToggleExternalUrl={handleToggleExternalUrl}
             />
 
             {/* Selected edge hint */}

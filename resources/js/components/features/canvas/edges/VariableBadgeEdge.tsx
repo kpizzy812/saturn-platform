@@ -2,7 +2,7 @@ import { memo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type Position } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import { Link2, Zap, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Link2, Zap, ArrowRight, ArrowLeft, Globe, Container } from 'lucide-react';
 
 interface ResourceLink {
     id: number;
@@ -11,6 +11,7 @@ interface ResourceLink {
     source_name?: string;
     target_name?: string;
     target_type: string;
+    use_external_url?: boolean;
 }
 
 interface VariableBadgeEdgeData {
@@ -76,6 +77,8 @@ export const VariableBadgeEdge = memo(({
     const isBidirectional = !!reverseLink;
     const isAutoInject = link?.auto_inject || reverseLink?.auto_inject;
     const isDbConnection = link?.target_type && link.target_type !== 'application';
+    const isAppToApp = link?.target_type === 'application';
+    const isExternal = link?.use_external_url ?? false;
 
     // Determine edge color
     const getEdgeColor = () => {
@@ -157,14 +160,18 @@ export const VariableBadgeEdge = memo(({
                             {/* Badge Content */}
                             <div className="px-2.5 py-1.5">
                                 {isBidirectional ? (
-                                    // Bidirectional: two rows
-                                    // Arrow direction shows where the URL comes FROM (target → source)
+                                    // Bidirectional: two rows with external/internal indicator
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-1.5">
                                             <ArrowLeft className="w-3 h-3 text-primary flex-shrink-0" />
                                             <code className="text-[10px] font-mono text-success truncate max-w-[120px]">
                                                 {link.env_key}
                                             </code>
+                                            {isAppToApp && (
+                                                isExternal
+                                                    ? <Globe className="w-2.5 h-2.5 text-sky-400 flex-shrink-0" />
+                                                    : <Container className="w-2.5 h-2.5 text-foreground-subtle flex-shrink-0" />
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <ArrowRight className="w-3 h-3 text-pink-500 flex-shrink-0" />
@@ -183,6 +190,11 @@ export const VariableBadgeEdge = memo(({
                                         <code className="text-[10px] font-mono text-success truncate max-w-[120px]">
                                             {link.env_key}
                                         </code>
+                                        {isAppToApp && (
+                                            isExternal
+                                                ? <Globe className="w-2.5 h-2.5 text-sky-400 flex-shrink-0" />
+                                                : <Container className="w-2.5 h-2.5 text-foreground-subtle flex-shrink-0" />
+                                        )}
                                         {isAutoInject && (
                                             <Zap className="w-3 h-3 text-warning flex-shrink-0" />
                                         )}
@@ -245,14 +257,27 @@ export const VariableBadgeEdge = memo(({
                                     </div>
 
                                     {/* Status */}
-                                    <div className="mt-2 pt-2 border-t border-border flex items-center gap-2">
-                                        <div className={cn(
-                                            'w-2 h-2 rounded-full',
-                                            isAutoInject ? 'bg-success animate-pulse' : 'bg-foreground-subtle'
-                                        )} />
-                                        <span className="text-[10px] text-foreground-muted">
-                                            {isAutoInject ? 'Auto-inject enabled' : 'Manual injection'}
-                                        </span>
+                                    <div className="mt-2 pt-2 border-t border-border space-y-1.5">
+                                        <div className="flex items-center gap-2">
+                                            <div className={cn(
+                                                'w-2 h-2 rounded-full',
+                                                isAutoInject ? 'bg-success animate-pulse' : 'bg-foreground-subtle'
+                                            )} />
+                                            <span className="text-[10px] text-foreground-muted">
+                                                {isAutoInject ? 'Auto-inject enabled' : 'Manual injection'}
+                                            </span>
+                                        </div>
+                                        {isAppToApp && (
+                                            <div className="flex items-center gap-2">
+                                                {isExternal
+                                                    ? <Globe className="w-3 h-3 text-sky-400" />
+                                                    : <Container className="w-3 h-3 text-foreground-subtle" />
+                                                }
+                                                <span className="text-[10px] text-foreground-muted">
+                                                    {isExternal ? 'External URL (domain)' : 'Internal URL (Docker)'}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>,

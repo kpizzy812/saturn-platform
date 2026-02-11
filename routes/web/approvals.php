@@ -156,18 +156,21 @@ Route::get('/applications/{uuid}/check-approval/json', function (string $uuid) {
 })->name('applications.check-approval.json');
 
 // Deploy application (JSON response for AJAX)
-Route::post('/applications/{uuid}/deploy/json', function (string $uuid) {
+Route::post('/applications/{uuid}/deploy/json', function (\Illuminate\Http\Request $request, string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
 
     $deployment_uuid = new \Visus\Cuid2\Cuid2;
+    $requires_approval = $request->boolean('requires_approval', false);
 
     $result = queue_application_deployment(
         application: $application,
         deployment_uuid: $deployment_uuid,
         force_rebuild: false,
         is_api: false,
+        user_id: auth()->id(),
+        requires_approval: $requires_approval,
     );
 
     if ($result['status'] === 'skipped') {
@@ -288,6 +291,9 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
         return response()->json($formatResourceLink($existingLink));
     }
 
+    // Default use_external_url to true for app-to-app links (browser needs FQDN, not Docker DNS)
+    $useExternalUrl = $targetClass === \App\Models\Application::class;
+
     $link = \App\Models\ResourceLink::create([
         'environment_id' => $environment->id,
         'source_type' => \App\Models\Application::class,
@@ -295,6 +301,7 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
         'target_type' => $targetClass,
         'target_id' => $validated['target_id'],
         'auto_inject' => $validated['auto_inject'] ?? true,
+        'use_external_url' => $useExternalUrl,
     ]);
 
     // Auto-inject database URL if enabled
@@ -318,6 +325,7 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
             'target_type' => \App\Models\Application::class,
             'target_id' => $validated['source_id'],
             'auto_inject' => $validated['auto_inject'] ?? true,
+            'use_external_url' => true,
         ]);
 
         // Auto-inject for target application too
@@ -346,6 +354,51 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
 
     return response()->json($formatResourceLink($link));
 })->name('environments.links.store.json');
+
+Route::patch('/environments/{uuid}/links/{linkId}/json', function (\Illuminate\Http\Request $request, string $uuid, int $linkId) use ($formatResourceLink) {
+    $environment = \App\Models\Environment::where('uuid', $uuid)
+        ->whereHas('project', function ($query) {
+            $query->whereRelation('team', 'id', currentTeam()->id);
+        })
+        ->firstOrFail();
+
+    $link = \App\Models\ResourceLink::where('id', $linkId)
+        ->where('environment_id', $environment->id)
+        ->firstOrFail();
+
+    $validated = $request->validate([
+        'use_external_url' => 'boolean',
+        'auto_inject' => 'boolean',
+        'inject_as' => 'nullable|string|max:255',
+    ]);
+
+    // Determine old env key before update
+    $oldEnvKey = $link->target_type === \App\Models\Application::class
+        ? $link->getSmartAppEnvKey()
+        : $link->getEnvKey();
+
+    $link->update($validated);
+
+    // Determine new env key after update
+    $newEnvKey = $link->target_type === \App\Models\Application::class
+        ? $link->getSmartAppEnvKey()
+        : $link->getEnvKey();
+
+    // Re-inject if auto_inject is enabled (value may have changed due to use_external_url toggle)
+    if ($link->auto_inject && $link->source instanceof \App\Models\Application) {
+        // Remove old env var if key changed
+        if ($oldEnvKey !== $newEnvKey) {
+            $link->source->environment_variables()
+                ->where('key', $oldEnvKey)
+                ->delete();
+        }
+        $link->source->autoInjectDatabaseUrl();
+    }
+
+    $link->load(['source', 'target']);
+
+    return response()->json($formatResourceLink($link));
+})->name('environments.links.update.json');
 
 Route::delete('/environments/{uuid}/links/{linkId}/json', function (string $uuid, int $linkId) {
     $environment = \App\Models\Environment::where('uuid', $uuid)

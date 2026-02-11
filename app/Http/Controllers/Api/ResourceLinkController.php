@@ -144,8 +144,8 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => "{$targetLabel} not found in this environment."], 404);
         }
 
-        // For app-to-app links, detect cross-server and auto-fallback to external URL
-        $useExternalUrl = $validated['use_external_url'] ?? false;
+        // For app-to-app links, default to external URL (browser needs FQDN, not Docker DNS)
+        $useExternalUrl = $validated['use_external_url'] ?? ($targetClass === Application::class);
         if ($targetClass === Application::class && ! $useExternalUrl) {
             $sourceServer = $application->destination?->server;
             $targetServer = $target->destination?->server;
