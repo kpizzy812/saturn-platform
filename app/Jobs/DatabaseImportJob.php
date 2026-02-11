@@ -133,15 +133,20 @@ class DatabaseImportJob implements ShouldBeEncrypted, ShouldQueue
         $dumpUuid = $import->uuid;
         $remoteDumpPath = "/tmp/saturn-import-{$dumpUuid}.dump";
 
-        // Transfer file to target server
+        // Transfer file from Saturn container to target server.
+        // The job runs inside the Saturn container, so the file exists at $localFilePath
+        // inside this container. instant_remote_process runs on the HOST via SSH,
+        // so we must use `docker cp` to extract the file from this container first.
+        $saturnContainer = trim((string) gethostname());
+        $escapedRemote = escapeshellarg($remoteDumpPath);
+
         if ($server->is_localhost) {
-            // Just copy the file
-            $escapedLocal = escapeshellarg($localFilePath);
-            $escapedRemote = escapeshellarg($remoteDumpPath);
-            instant_remote_process(["cp {$escapedLocal} {$escapedRemote}"], $server, true);
+            // Localhost: use docker cp via SSH to extract file from Saturn container to host
+            $escapedContainerPath = escapeshellarg("{$saturnContainer}:{$localFilePath}");
+            instant_remote_process(["docker cp {$escapedContainerPath} {$escapedRemote}"], $server, true);
         } else {
-            // SCP file to target server
-            $server->transfer($localFilePath, $remoteDumpPath);
+            // Remote server: SCP directly from Saturn container to remote server
+            instant_scp($localFilePath, $remoteDumpPath, $server);
         }
 
         $this->broadcastProgress($import, 'in_progress', 40, 'File transferred, restoring database...');
