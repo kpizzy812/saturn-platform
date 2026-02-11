@@ -300,7 +300,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
             if ($this->application->build_pack === 'dockerfile') {
                 if (data_get($this->application, 'dockerfile_location')) {
-                    $this->dockerfile_location = $this->application->dockerfile_location;
+                    $this->dockerfile_location = $this->normalizeDockerfileLocation($this->application->dockerfile_location);
                 }
             }
         }
@@ -596,7 +596,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->server = $this->build_server;
         }
         if (data_get($this->application, 'dockerfile_location')) {
-            $this->dockerfile_location = $this->application->dockerfile_location;
+            $this->dockerfile_location = $this->normalizeDockerfileLocation($this->application->dockerfile_location);
         }
         $this->prepare_builder_image();
         $this->check_git_if_build_needed();
@@ -820,6 +820,26 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->save_runtime_environment_variables();
         $this->push_to_docker_registry();
         $this->rolling_update();
+    }
+
+    /**
+     * Strip base_directory prefix from dockerfile_location to prevent path doubling.
+     * E.g. base_directory="/backend" + dockerfile_location="/backend/Dockerfile" → "/Dockerfile"
+     */
+    private function normalizeDockerfileLocation(string $dockerfileLocation): string
+    {
+        $baseDir = rtrim($this->application->base_directory, '/');
+
+        if ($baseDir && $baseDir !== '/' && str_starts_with($dockerfileLocation, $baseDir.'/')) {
+            $normalized = str_replace($baseDir, '', $dockerfileLocation);
+            $this->application_deployment_queue->addLogEntry(
+                "Normalized dockerfile_location: '{$dockerfileLocation}' → '{$normalized}' (base_directory '{$baseDir}' prefix stripped to avoid path doubling)."
+            );
+
+            return $normalized;
+        }
+
+        return $dockerfileLocation;
     }
 
     private function create_workdir()
