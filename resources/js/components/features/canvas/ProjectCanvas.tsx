@@ -57,6 +57,8 @@ interface ProjectCanvasProps {
     databases: StandaloneDatabase[];
     services: Service[];
     environmentUuid?: string;
+    /** Map of application IDs to deployment status ('queued' | 'in_progress') */
+    deployingApps?: Record<number, string>;
     /** Initial resource links for testing purposes */
     initialResourceLinks?: ResourceLink[];
     onNodeClick?: (id: string, type: string) => void;
@@ -226,6 +228,7 @@ function ProjectCanvasInner({
     databases,
     services,
     environmentUuid,
+    deployingApps,
     initialResourceLinks = [],
     onNodeClick,
     onNodeContextMenu,
@@ -320,6 +323,7 @@ function ProjectCanvasInner({
                     fqdn: app.fqdn,
                     buildPack: app.build_pack,
                     uuid: app.uuid,
+                    isDeployingBuild: !!deployingApps?.[app.id],
                     onQuickDeploy: onQuickDeploy ? () => onQuickDeploy(app.uuid) : undefined,
                     onQuickOpenUrl: onQuickOpenUrl && app.fqdn ? () => onQuickOpenUrl(app.fqdn!) : undefined,
                     onQuickViewLogs: onQuickViewLogs ? () => onQuickViewLogs(app.uuid, app.name, 'application') : undefined,
@@ -374,7 +378,7 @@ function ProjectCanvasInner({
         });
 
         return nodes;
-    }, [applications, databases, services, savedPositions, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs, onQuickBrowseData, onQuickRestartService, onQuickStopService]);
+    }, [applications, databases, services, savedPositions, deployingApps, onQuickDeploy, onQuickOpenUrl, onQuickViewLogs, onQuickBrowseData, onQuickRestartService, onQuickStopService]);
 
     // Convert resource links to edges, merging bidirectional app-to-app pairs into one edge
     const linkedEdges = useMemo(() => {
@@ -498,8 +502,9 @@ function ProjectCanvasInner({
                 .map((node) => {
                     const app = appMap.get(node.id);
                     if (app) {
-                        // Only update if status actually changed
-                        if (node.data.status !== app.status) {
+                        const isDeploying = !!deployingApps?.[app.id];
+                        // Only update if status or deploying state changed
+                        if (node.data.status !== app.status || node.data.isDeployingBuild !== isDeploying) {
                             return {
                                 ...node,
                                 data: {
@@ -507,6 +512,7 @@ function ProjectCanvasInner({
                                     status: app.status,
                                     label: app.name,
                                     fqdn: app.fqdn,
+                                    isDeployingBuild: isDeploying,
                                 },
                             };
                         }
@@ -556,7 +562,7 @@ function ProjectCanvasInner({
 
             return updatedNodes;
         });
-    }, [applications, databases, services, initialNodes, setNodes]);
+    }, [applications, databases, services, deployingApps, initialNodes, setNodes]);
 
     // Edge selection and context menu state
     const [selectedEdge, setSelectedEdge] = useState<string | null>(null);

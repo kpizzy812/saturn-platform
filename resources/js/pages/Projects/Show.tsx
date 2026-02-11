@@ -4,7 +4,7 @@ import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon, ArrowUpRight } from 'lucide-react';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon, ArrowUpRight, Import } from 'lucide-react';
 import type { Project, Environment, Application, StandaloneDatabase } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
@@ -30,6 +30,7 @@ import {
     DatabaseBackupsTab,
     DatabaseExtensionsTab,
     DatabaseSettingsTab,
+    DatabaseImportTab,
     LocalSetupModal,
 } from '@/components/features/Projects';
 import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
@@ -48,7 +49,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [selectedEnv, setSelectedEnv] = useState<Environment | null>(project?.environments?.[0] || null);
     const [selectedService, setSelectedService] = useState<SelectedService | null>(null);
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
-    const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'extensions' | 'settings'>('connect');
+    const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'import' | 'extensions' | 'settings'>('connect');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs'>('architecture');
     const [stagedChanges, setStagedChanges] = useState<{ variables: number; configs: number }>({ variables: 0, configs: 0 });
     const hasStagedChanges = stagedChanges.variables > 0 || stagedChanges.configs > 0;
@@ -61,6 +62,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [appStatuses, setAppStatuses] = useState<Record<number, string>>({});
     const [dbStatuses, setDbStatuses] = useState<Record<number, string>>({});
     const [serviceStatuses, setServiceStatuses] = useState<Record<number, string>>({});
+    const [deployingApps, setDeployingApps] = useState<Record<number, string>>({});
 
     // Hooks - must be called before early return
     const { addToast } = useToast();
@@ -154,6 +156,19 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 setSelectedService((prev) => prev ? { ...prev, status: data.status } : null);
             }
         },
+        onDeploymentCreated: (data) => {
+            setDeployingApps((prev) => ({
+                ...prev,
+                [data.applicationId]: data.status,
+            }));
+        },
+        onDeploymentFinished: (data) => {
+            setDeployingApps((prev) => {
+                const next = { ...prev };
+                delete next[data.applicationId];
+                return next;
+            });
+        },
     });
 
     // Polling fallback for status updates (works with session auth, no WebSocket needed)
@@ -174,6 +189,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     applications: Record<string, string>;
                     databases: Record<string, string>;
                     services: Record<string, string>;
+                    deploying: Record<string, string>;
                 };
 
                 // Update app statuses
@@ -213,6 +229,21 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         }
                     }
                     return changed ? next : prev;
+                });
+
+                // Update deploying apps
+                setDeployingApps((prev) => {
+                    const next: Record<number, string> = {};
+                    for (const [id, status] of Object.entries(data.deploying || {})) {
+                        next[Number(id)] = status;
+                    }
+                    // Quick equality check
+                    const prevKeys = Object.keys(prev);
+                    const nextKeys = Object.keys(next);
+                    if (prevKeys.length === nextKeys.length && prevKeys.every((k) => prev[Number(k)] === next[Number(k)])) {
+                        return prev;
+                    }
+                    return next;
                 });
 
                 // Sync selected service panel status
@@ -1330,6 +1361,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 databases={(envWithRealtimeStatuses.databases || []) as any}
                                 services={(envWithRealtimeStatuses.services || []) as any}
                                 environmentUuid={envWithRealtimeStatuses.uuid}
+                                deployingApps={deployingApps}
                                 onNodeClick={handleNodeClick}
                                 onNodeContextMenu={handleNodeContextMenu}
                                 onViewportChange={handleViewportChange}
@@ -1656,6 +1688,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                             <div className="flex items-center gap-1.5 text-xs text-foreground-muted">
                                                 <div className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(selectedService.status || 'stopped')}`} />
                                                 <span className="capitalize">{getStatusLabel(selectedService.status || 'stopped')}</span>
+                                                {selectedService.type === 'app' && deployingApps[Number(selectedService.id)] && (selectedService.status || '').startsWith('running') && (
+                                                    <span className="flex items-center gap-1 ml-1">
+                                                        <div className="h-1.5 w-1.5 rounded-full status-deploying" />
+                                                        <span className="text-amber-500">Building</span>
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -1771,6 +1809,13 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         <HardDrive className="h-4 w-4" />
                                         Backups
                                     </button>
+                                    <button
+                                        onClick={() => setActiveDbTab('import')}
+                                        className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors whitespace-nowrap ${activeDbTab === 'import' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                    >
+                                        <Import className="h-4 w-4" />
+                                        Import
+                                    </button>
                                     {/* Extensions tab - only for PostgreSQL */}
                                     {(selectedService.dbType?.toLowerCase() === 'postgresql' || selectedService.dbType?.toLowerCase() === 'postgres') && (
                                         <button
@@ -1808,6 +1853,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         {activeDbTab === 'connect' && <DatabaseConnectTab service={selectedService} />}
                                         {activeDbTab === 'credentials' && <DatabaseCredentialsTab service={selectedService} />}
                                         {activeDbTab === 'backups' && <DatabaseBackupsTab service={selectedService} />}
+                                        {activeDbTab === 'import' && <DatabaseImportTab service={selectedService} />}
                                         {activeDbTab === 'extensions' && <DatabaseExtensionsTab service={selectedService} />}
                                         {activeDbTab === 'settings' && <DatabaseSettingsTab service={selectedService} />}
                                     </>

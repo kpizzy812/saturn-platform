@@ -10,6 +10,7 @@ interface ServiceNodeData {
     buildPack?: string;
     repository?: string;
     uuid?: string;
+    isDeployingBuild?: boolean;
     onQuickDeploy?: () => void;
     onQuickOpenUrl?: () => void;
     onQuickViewLogs?: () => void;
@@ -53,6 +54,7 @@ const arePropsEqual = (prevProps: { data: ServiceNodeData; selected?: boolean },
         prevProps.data.status === nextProps.data.status &&
         prevProps.data.label === nextProps.data.label &&
         prevProps.data.fqdn === nextProps.data.fqdn &&
+        prevProps.data.isDeployingBuild === nextProps.data.isDeployingBuild &&
         prevProps.selected === nextProps.selected
     );
 };
@@ -151,6 +153,13 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
                         )}>
                             {isOnline ? 'Online' : statusBase || 'unknown'}
                         </span>
+                        {/* Building indicator when app is online but has active deployment */}
+                        {isOnline && data.isDeployingBuild && (
+                            <span className="flex items-center gap-1 ml-1">
+                                <div className="w-2 h-2 rounded-full status-deploying" />
+                                <span className="text-xs text-amber-500">Building</span>
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>

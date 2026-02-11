@@ -936,9 +936,17 @@ Route::get('/web-api/environments/{uuid}/statuses', function (string $uuid) {
     // Services: 'status' is an accessor, not a real column - must load full models
     $services = $environment->services()->with(['applications', 'databases'])->get();
 
+    // Active deployments (queued or in_progress) for all apps in this environment
+    $activeDeployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))
+        ->whereIn('status', [\App\Enums\ApplicationDeploymentStatus::QUEUED->value, \App\Enums\ApplicationDeploymentStatus::IN_PROGRESS->value])
+        ->select('application_id', 'status')
+        ->get()
+        ->pluck('status', 'application_id');
+
     return response()->json([
         'applications' => $applications->pluck('status', 'id'),
         'databases' => $databases->mapWithKeys(fn ($db) => [$db->id => $db->status]),
         'services' => $services->mapWithKeys(fn ($svc) => [$svc->id => $svc->status]),
+        'deploying' => $activeDeployments,
     ]);
 })->name('web-api.environment.statuses');
