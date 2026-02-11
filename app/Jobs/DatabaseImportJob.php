@@ -134,7 +134,7 @@ class DatabaseImportJob implements ShouldBeEncrypted, ShouldQueue
         $remoteDumpPath = "/tmp/saturn-import-{$dumpUuid}.dump";
 
         // Transfer file to target server
-        if ($server->isLocalhost()) {
+        if ($server->is_localhost) {
             // Just copy the file
             $escapedLocal = escapeshellarg($localFilePath);
             $escapedRemote = escapeshellarg($remoteDumpPath);
