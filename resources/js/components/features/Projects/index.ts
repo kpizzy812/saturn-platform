@@ -34,4 +34,5 @@ export {
     DatabaseBackupsTab,
     DatabaseExtensionsTab,
     DatabaseSettingsTab,
+    DatabaseImportTab,
 } from './Tabs/Database';
