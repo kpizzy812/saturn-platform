@@ -217,9 +217,16 @@ class UploadController extends BaseController
     protected function saveFile(UploadedFile $file, $resource)
     {
         $mime = str_replace('/', '-', $file->getMimeType());
-        $filePath = "upload/{$resource->uuid}";
-        $finalPath = storage_path('app/'.$filePath);
-        $file->move($finalPath, 'restore');
+        $restoreDir = "upload/{$resource->uuid}/restore";
+        $finalPath = storage_path('app/'.$restoreDir);
+
+        // Clean up any previous uploads in the restore directory
+        if (is_dir($finalPath)) {
+            array_map('unlink', glob("{$finalPath}/*"));
+        }
+
+        // Save with original filename so the restore endpoint can find it
+        $file->move($finalPath, $file->getClientOriginalName());
 
         return response()->json([
             'mime_type' => $mime,
