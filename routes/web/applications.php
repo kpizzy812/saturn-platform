@@ -96,12 +96,27 @@ Route::get('/applications/create', function () {
         ->whereRelation('settings', 'is_usable', true)
         ->get();
 
+    // Extract wildcard domain info for subdomain input UI
+    $wildcardDomain = null;
+    $masterServer = $localhost;
+    if ($masterServer) {
+        $wildcard = data_get($masterServer, 'settings.wildcard_domain');
+        if ($wildcard) {
+            $url = \Spatie\Url\Url::fromString($wildcard);
+            $wildcardDomain = [
+                'host' => $url->getHost(),
+                'scheme' => $url->getScheme(),
+            ];
+        }
+    }
+
     return Inertia::render('Applications/Create', [
         'projects' => $projects,
         'localhost' => $localhost,
         'userServers' => $userServers,
         'needsProject' => $projects->isEmpty(),
         'preselectedSource' => request()->query('source'),
+        'wildcardDomain' => $wildcardDomain,
     ]);
 })->name('applications.create');
 
@@ -203,9 +218,14 @@ Route::post('/applications', function (Request $request) {
 
     $application->save();
 
-    // Auto-generate domain from app name if not provided
-    if (empty($application->fqdn)) {
-        $slug = generateSubdomainFromName($application->name, $server);
+    // Handle domain: expand subdomain-only input or auto-generate if empty
+    if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {
+        // User entered just a subdomain (e.g. "uranus") — expand to full URL
+        $application->fqdn = generateUrl(server: $server, random: $application->fqdn);
+        $application->save();
+    } elseif (empty($application->fqdn)) {
+        // No domain provided — auto-generate from project name
+        $slug = generateSubdomainFromName($application->name, $server, $project->name);
         $application->fqdn = generateUrl(server: $server, random: $slug);
         $application->save();
     }

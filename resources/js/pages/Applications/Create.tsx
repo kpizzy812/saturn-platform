@@ -7,12 +7,18 @@ import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
 import type { Project, Environment, Server } from '@/types';
 
+interface WildcardDomain {
+    host: string;
+    scheme: string;
+}
+
 interface Props {
     projects?: Project[];
     localhost?: Server;
     userServers?: Server[];
     needsProject?: boolean;
     preselectedSource?: SourceType | null;
+    wildcardDomain?: WildcardDomain | null;
 }
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
@@ -32,7 +38,7 @@ interface FormData {
     docker_image?: string;
 }
 
-export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null }: Props) {
+export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null }: Props) {
     const validSources: SourceType[] = ['github', 'gitlab', 'bitbucket', 'docker'];
     const initialSource = preselectedSource && validSources.includes(preselectedSource) ? preselectedSource : null;
 
@@ -608,13 +614,27 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">
-                                            Domain (FQDN)
+                                            {wildcardDomain ? 'Domain (subdomain)' : 'Domain (FQDN)'}
                                         </label>
-                                        <Input
-                                            value={formData.fqdn}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, fqdn: e.target.value }))}
-                                            placeholder="app.example.com"
-                                        />
+                                        {wildcardDomain ? (
+                                            <div className="flex items-center gap-0">
+                                                <Input
+                                                    value={formData.fqdn}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, fqdn: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                                                    placeholder="my-app"
+                                                    className="rounded-r-none"
+                                                />
+                                                <span className="inline-flex items-center px-3 h-9 rounded-r-md border border-l-0 border-border bg-muted text-sm text-foreground-muted whitespace-nowrap">
+                                                    .{wildcardDomain.host}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <Input
+                                                value={formData.fqdn}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, fqdn: e.target.value }))}
+                                                placeholder="app.example.com"
+                                            />
+                                        )}
                                         <p className="mt-1 text-xs text-foreground-muted">
                                             Leave empty for auto-generated domain
                                         </p>

@@ -332,8 +332,9 @@ class InfrastructureProvisioner
             $application->monorepo_group_id = $groupId;
         }
 
-        // Generate FQDN from app name (e.g. "PixelPets" → pixelpets.saturn.ac)
-        $slug = generateSubdomainFromName($application->name, $server);
+        // Generate FQDN from project name + short ID (e.g. "pix11-a1b2c3.saturn.ac")
+        $projectName = $environment->project?->name;
+        $slug = generateSubdomainFromName($application->name, $server, $projectName);
         $application->fqdn = generateFqdn($server, $slug);
 
         $application->save();

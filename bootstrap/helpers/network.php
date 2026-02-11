@@ -120,17 +120,27 @@ function resolveWildcardDomain(Server $server): string
 /**
  * Generate a DNS-safe subdomain slug from an application name.
  *
- * Converts "PixelPets" → "pixelpets", "My Cool App" → "my-cool-app".
+ * When $projectName is provided, generates "{project}-{shortId}" format
+ * (e.g. "pix11-a1b2c3") for better uniqueness across projects.
+ *
+ * Without $projectName, falls back to Str::slug($name) for backwards compatibility
+ * (e.g. "PixelPets" → "pixelpets", "My Cool App" → "my-cool-app").
+ *
  * Ensures uniqueness by appending -2, -3, etc. if the FQDN is already taken.
- * Falls back to a short UUID segment if the name produces an empty slug.
  */
-function generateSubdomainFromName(string $name, Server $server): string
+function generateSubdomainFromName(string $name, Server $server, ?string $projectName = null): string
 {
-    $slug = \Illuminate\Support\Str::slug($name);
+    if ($projectName) {
+        $projectSlug = \Illuminate\Support\Str::slug($projectName);
+        $shortId = strtolower(\Illuminate\Support\Str::random(6));
+        $slug = $projectSlug ? "{$projectSlug}-{$shortId}" : $shortId;
+    } else {
+        $slug = \Illuminate\Support\Str::slug($name);
+    }
 
     // Fallback if name results in empty slug (e.g. only special characters)
     if (empty($slug)) {
-        return \Illuminate\Support\Str::random(8);
+        return strtolower(\Illuminate\Support\Str::random(8));
     }
 
     // Truncate to 50 chars to leave room for uniqueness suffix (DNS label max = 63)
