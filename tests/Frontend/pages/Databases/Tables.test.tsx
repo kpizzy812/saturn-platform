@@ -76,8 +76,10 @@ describe('Database Tables Page', () => {
 
             render(<DatabaseTables database={mockDatabase} />);
 
-            expect(screen.getByText('Database Tables')).toBeInTheDocument();
-            expect(screen.getByText('Browse tables and explore schemas')).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText('Database Tables')).toBeInTheDocument();
+                expect(screen.getByText('Browse tables and explore schemas')).toBeInTheDocument();
+            });
         });
 
         it('should display refresh and query browser buttons', async () => {
@@ -87,8 +89,10 @@ describe('Database Tables Page', () => {
 
             render(<DatabaseTables database={mockDatabase} />);
 
-            expect(screen.getByText('Refresh')).toBeInTheDocument();
-            expect(screen.getByText('Query Browser')).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText('Refresh')).toBeInTheDocument();
+                expect(screen.getByText('Query Browser')).toBeInTheDocument();
+            });
         });
     });
 
