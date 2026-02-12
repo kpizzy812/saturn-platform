@@ -6,11 +6,13 @@ class SwarmDocker extends BaseModel
 {
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, server_id (relationship)
+     * uuid and server_id are needed for programmatic creation in Server::created boot event.
      */
     protected $fillable = [
         'name',
         'network',
+        'uuid',
+        'server_id',
     ];
 
     public function applications()

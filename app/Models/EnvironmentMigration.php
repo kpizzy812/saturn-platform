@@ -285,9 +285,9 @@ class EnvironmentMigration extends Model
      */
     public function markAsCancelled(): void
     {
-        $this->update([
+        $this->forceFill([
             'status' => self::STATUS_CANCELLED,
-        ]);
+        ])->save();
 
         $this->broadcastProgress('Migration cancelled');
     }
@@ -313,11 +313,11 @@ class EnvironmentMigration extends Model
             throw new \LogicException("Cannot approve migration in status: {$this->status}");
         }
 
-        $this->update([
+        $this->forceFill([
             'status' => self::STATUS_APPROVED,
             'approved_by' => $approver->id,
             'approved_at' => Carbon::now(),
-        ]);
+        ])->save();
     }
 
     /**
@@ -331,12 +331,12 @@ class EnvironmentMigration extends Model
             throw new \LogicException("Cannot reject migration in status: {$this->status}");
         }
 
-        $this->update([
+        $this->forceFill([
             'status' => self::STATUS_REJECTED,
             'approved_by' => $approver->id,
             'rejection_reason' => $reason,
             'approved_at' => Carbon::now(),
-        ]);
+        ])->save();
     }
 
     // Status update methods
@@ -352,11 +352,11 @@ class EnvironmentMigration extends Model
             throw new \LogicException("Cannot mark migration as in_progress from status: {$this->status}");
         }
 
-        $this->update([
+        $this->forceFill([
             'status' => self::STATUS_IN_PROGRESS,
             'current_step' => $step ?? 'Starting migration...',
             'started_at' => $this->started_at ?? now(),
-        ]);
+        ])->save();
 
         $this->broadcastProgress($step ?? 'Starting migration...');
     }
@@ -384,7 +384,7 @@ class EnvironmentMigration extends Model
             $data['target_id'] = $targetId;
         }
 
-        $this->update($data);
+        $this->forceFill($data)->save();
 
         $this->broadcastProgress('Migration completed');
     }
@@ -406,12 +406,12 @@ class EnvironmentMigration extends Model
             throw new \LogicException("Cannot mark migration as failed from status: {$this->status}");
         }
 
-        $this->update([
+        $this->forceFill([
             'status' => self::STATUS_FAILED,
             'error_message' => $errorMessage,
             'current_step' => 'Migration failed',
             'completed_at' => now(),
-        ]);
+        ])->save();
 
         $this->broadcastProgress('Migration failed');
     }
@@ -427,11 +427,11 @@ class EnvironmentMigration extends Model
             throw new \LogicException("Cannot mark migration as rolled_back from status: {$this->status}");
         }
 
-        $this->update([
+        $this->forceFill([
             'status' => self::STATUS_ROLLED_BACK,
             'current_step' => 'Migration rolled back',
             'rolled_back_at' => now(),
-        ]);
+        ])->save();
     }
 
     /**

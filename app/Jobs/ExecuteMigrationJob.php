@@ -8,17 +8,19 @@ use App\Notifications\Migration\MigrationCompleted;
 use App\Notifications\Migration\MigrationFailed;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
  * Job for executing an approved environment migration.
  * Runs in the background to clone/update resources between environments.
  */
-class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
+class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -27,6 +29,12 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
      * Allows retry on transient failures (network timeout, docker restart).
      */
     public int $tries = 3;
+
+    /**
+     * Maximum number of unhandled exceptions before marking as permanently failed.
+     * Prevents infinite retry loops on non-transient errors (e.g., missing model, logic error).
+     */
+    public int $maxExceptions = 3;
 
     /**
      * Backoff intervals in seconds between retries (1 min, 5 min, 15 min).
@@ -51,6 +59,14 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
     public function __construct(EnvironmentMigration $migration)
     {
         $this->migration = $migration;
+    }
+
+    /**
+     * Unique ID to prevent duplicate job dispatches for the same migration.
+     */
+    public function uniqueId(): string
+    {
+        return 'migration-'.$this->migration->id;
     }
 
     /**
@@ -112,9 +128,22 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldQueue
 
     /**
      * Handle a job failure (called by Laravel after all retries exhausted or exception thrown).
+     * This is the Dead Letter Queue handler — the job is written to the failed_jobs table
+     * and will not be retried unless manually dispatched via queue:retry.
      */
     public function failed(Throwable $exception): void
     {
+        // Log at critical level for monitoring/alerting (DLQ entry)
+        Log::critical('Migration job permanently failed — written to failed_jobs (DLQ)', [
+            'migration_uuid' => $this->migration->uuid,
+            'migration_id' => $this->migration->id,
+            'team_id' => $this->migration->team_id,
+            'source_type' => $this->migration->source_type,
+            'source_id' => $this->migration->source_id,
+            'exception' => $exception->getMessage(),
+            'exception_class' => get_class($exception),
+        ]);
+
         try {
             $this->migration->markAsFailed($exception->getMessage());
             $this->migration->appendLog('Job failed permanently: '.$exception->getMessage());
