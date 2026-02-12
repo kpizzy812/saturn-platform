@@ -261,3 +261,235 @@ test('isSaturnHost attribute returns false for non-zero id', function () {
 
     expect($server->is_saturn_host)->toBeFalse();
 });
+
+// Fillable Security Tests
+test('model uses fillable array for mass assignment protection', function () {
+    $server = new Server;
+
+    expect($server->getFillable())->not->toBeEmpty();
+});
+
+test('fillable does not include id or uuid', function () {
+    $fillable = (new Server)->getFillable();
+
+    expect($fillable)
+        ->not->toContain('id')
+        ->not->toContain('uuid');
+});
+
+test('fillable includes expected fields', function () {
+    $fillable = (new Server)->getFillable();
+
+    expect($fillable)
+        ->toContain('name')
+        ->toContain('ip')
+        ->toContain('port')
+        ->toContain('user')
+        ->toContain('description')
+        ->toContain('private_key_id')
+        ->toContain('team_id');
+});
+
+// Hidden Attributes Tests
+test('hidden includes sensitive API keys', function () {
+    $server = new Server;
+    $hidden = $server->getHidden();
+
+    expect($hidden)
+        ->toContain('logdrain_axiom_api_key')
+        ->toContain('logdrain_newrelic_license_key');
+});
+
+// Casts Tests
+test('delete_unused_volumes is cast to boolean', function () {
+    $casts = (new Server)->getCasts();
+
+    expect($casts['delete_unused_volumes'])->toBe('boolean');
+});
+
+test('delete_unused_networks is cast to boolean', function () {
+    $casts = (new Server)->getCasts();
+
+    expect($casts['delete_unused_networks'])->toBe('boolean');
+});
+
+test('logdrain_axiom_api_key is cast to encrypted', function () {
+    $casts = (new Server)->getCasts();
+
+    expect($casts['logdrain_axiom_api_key'])->toBe('encrypted');
+});
+
+test('logdrain_newrelic_license_key is cast to encrypted', function () {
+    $casts = (new Server)->getCasts();
+
+    expect($casts['logdrain_newrelic_license_key'])->toBe('encrypted');
+});
+
+test('traefik_outdated_info is cast to array', function () {
+    $casts = (new Server)->getCasts();
+
+    expect($casts['traefik_outdated_info'])->toBe('array');
+});
+
+// Relationship Type Tests
+test('settings relationship returns hasOne', function () {
+    $relation = (new Server)->settings();
+
+    expect($relation)->toBeInstanceOf(\Illuminate\Database\Eloquent\Relations\HasOne::class);
+});
+
+test('dockerCleanupExecutions relationship returns hasMany', function () {
+    $relation = (new Server)->dockerCleanupExecutions();
+
+    expect($relation)->toBeInstanceOf(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+});
+
+test('healthChecks relationship returns hasMany', function () {
+    $relation = (new Server)->healthChecks();
+
+    expect($relation)->toBeInstanceOf(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+});
+
+// Appends Tests
+test('appends includes expected attributes', function () {
+    $server = new Server;
+    $appends = (new \ReflectionProperty($server, 'appends'))->getValue($server);
+
+    expect($appends)
+        ->toContain('is_saturn_host')
+        ->toContain('is_localhost')
+        ->toContain('is_reachable')
+        ->toContain('is_usable');
+});
+
+// SoftDeletes Tests
+test('server uses soft deletes', function () {
+    $server = new Server;
+
+    expect(method_exists($server, 'trashed'))->toBeTrue()
+        ->and(method_exists($server, 'restore'))->toBeTrue();
+});
+
+// waitBeforeDoingSshCheck Tests
+test('waitBeforeDoingSshCheck returns at least 120', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) ['sentinel_push_interval_seconds' => 10]);
+
+    expect($server->waitBeforeDoingSshCheck())->toBe(120);
+});
+
+test('waitBeforeDoingSshCheck returns 3x sentinel_push_interval when above 40', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) ['sentinel_push_interval_seconds' => 60]);
+
+    expect($server->waitBeforeDoingSshCheck())->toBe(180);
+});
+
+// isSentinelEnabled Tests
+test('isSentinelEnabled returns true when metrics enabled and not build server', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) [
+        'is_metrics_enabled' => true,
+        'is_sentinel_enabled' => false,
+        'is_build_server' => false,
+    ]);
+
+    expect($server->isSentinelEnabled())->toBeTrue();
+});
+
+test('isSentinelEnabled returns true when server api enabled and not build server', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) [
+        'is_metrics_enabled' => false,
+        'is_sentinel_enabled' => true,
+        'is_build_server' => false,
+    ]);
+
+    expect($server->isSentinelEnabled())->toBeTrue();
+});
+
+test('isSentinelEnabled returns false when build server', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) [
+        'is_metrics_enabled' => true,
+        'is_sentinel_enabled' => true,
+        'is_build_server' => true,
+    ]);
+
+    expect($server->isSentinelEnabled())->toBeFalse();
+});
+
+test('isSentinelEnabled returns false when neither metrics nor api enabled', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) [
+        'is_metrics_enabled' => false,
+        'is_sentinel_enabled' => false,
+        'is_build_server' => false,
+    ]);
+
+    expect($server->isSentinelEnabled())->toBeFalse();
+});
+
+// isMetricsEnabled Tests
+test('isMetricsEnabled returns setting value', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) ['is_metrics_enabled' => true]);
+
+    expect($server->isMetricsEnabled())->toBeTrue();
+});
+
+// isServerApiEnabled Tests
+test('isServerApiEnabled returns setting value', function () {
+    $server = new Server;
+    $server->setRelation('settings', (object) ['is_sentinel_enabled' => true]);
+
+    expect($server->isServerApiEnabled())->toBeTrue();
+});
+
+// proxyPath Tests
+test('proxyPath returns traefik path for traefik proxy', function () {
+    $server = new Server;
+    $server->proxy = (object) ['type' => 'TRAEFIK'];
+
+    $path = $server->proxyPath();
+
+    expect($path)->toEndWith('/proxy/');
+});
+
+test('proxyPath returns caddy path for caddy proxy', function () {
+    $server = new Server;
+    $server->proxy = (object) ['type' => 'CADDY'];
+
+    $path = $server->proxyPath();
+
+    expect($path)->toEndWith('/proxy/caddy');
+});
+
+// Attribute Tests
+test('server has name attribute', function () {
+    $server = new Server;
+    $server->name = 'production-01';
+
+    expect($server->name)->toBe('production-01');
+});
+
+test('server has ip attribute', function () {
+    $server = new Server;
+    $server->ip = '192.168.1.100';
+
+    expect($server->ip)->toBe('192.168.1.100');
+});
+
+test('server has user attribute', function () {
+    $server = new Server;
+    $server->user = 'root';
+
+    expect($server->user)->toBe('root');
+});
+
+test('server has description attribute', function () {
+    $server = new Server;
+    $server->description = 'Main production server';
+
+    expect($server->description)->toBe('Main production server');
+});

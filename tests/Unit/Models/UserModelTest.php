@@ -1,8 +1,468 @@
 <?php
 
+use App\Models\Project;
+use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// =============================================================================
+// RELATIONSHIPS
+// =============================================================================
+
+test('teams relationship returns BelongsToMany', function () {
+    $user = new User;
+    $relation = $user->teams();
+
+    expect($relation)->toBeInstanceOf(BelongsToMany::class);
+    expect($relation->getRelated())->toBeInstanceOf(Team::class);
+});
+
+test('teams relationship has role pivot', function () {
+    $user = new User;
+    $relation = $user->teams();
+
+    expect($relation->getPivotColumns())->toContain('role');
+});
+
+test('projectMemberships relationship returns BelongsToMany', function () {
+    $user = new User;
+    $relation = $user->projectMemberships();
+
+    expect($relation)->toBeInstanceOf(BelongsToMany::class);
+    expect($relation->getRelated())->toBeInstanceOf(Project::class);
+    expect($relation->getTable())->toBe('project_user');
+});
+
+test('projectMemberships relationship has role and environment_permissions pivot', function () {
+    $user = new User;
+    $relation = $user->projectMemberships();
+
+    $pivotColumns = $relation->getPivotColumns();
+    expect($pivotColumns)->toContain('role');
+    expect($pivotColumns)->toContain('environment_permissions');
+});
+
+test('changelogReads relationship returns HasMany', function () {
+    $user = new User;
+    $relation = $user->changelogReads();
+
+    expect($relation)->toBeInstanceOf(HasMany::class);
+    expect($relation->getRelated())->toBeInstanceOf(App\Models\UserChangelogRead::class);
+});
+
+// =============================================================================
+// FILLABLE ATTRIBUTES & SECURITY
+// =============================================================================
+
+test('fillable does not contain is_superadmin', function () {
+    $user = new User;
+
+    expect($user->getFillable())->not->toContain('is_superadmin');
+});
+
+test('fillable does not contain platform_role', function () {
+    $user = new User;
+
+    expect($user->getFillable())->not->toContain('platform_role');
+});
+
+test('fillable is not empty', function () {
+    $user = new User;
+
+    expect($user->getFillable())->not->toBeEmpty();
+});
+
+test('fillable contains expected safe attributes', function () {
+    $user = new User;
+    $fillable = $user->getFillable();
+
+    expect($fillable)->toContain('name');
+    expect($fillable)->toContain('email');
+    expect($fillable)->toContain('password');
+});
+
+test('fillable contains status and suspended_at for user management', function () {
+    $user = new User;
+    $fillable = $user->getFillable();
+
+    expect($fillable)->toContain('status');
+    expect($fillable)->toContain('suspended_at');
+    expect($fillable)->toContain('suspended_by');
+    expect($fillable)->toContain('suspension_reason');
+});
+
+// =============================================================================
+// HIDDEN ATTRIBUTES
+// =============================================================================
+
+test('password is hidden', function () {
+    $user = new User;
+
+    expect($user->getHidden())->toContain('password');
+});
+
+test('remember_token is hidden', function () {
+    $user = new User;
+
+    expect($user->getHidden())->toContain('remember_token');
+});
+
+test('two_factor_recovery_codes is hidden', function () {
+    $user = new User;
+
+    expect($user->getHidden())->toContain('two_factor_recovery_codes');
+});
+
+test('two_factor_secret is hidden', function () {
+    $user = new User;
+
+    expect($user->getHidden())->toContain('two_factor_secret');
+});
+
+// =============================================================================
+// CASTS
+// =============================================================================
+
+test('email_verified_at is cast to datetime', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('email_verified_at', 'datetime');
+});
+
+test('force_password_reset is cast to boolean', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('force_password_reset', 'boolean');
+});
+
+test('show_boarding is cast to boolean', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('show_boarding', 'boolean');
+});
+
+test('is_superadmin is cast to boolean', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('is_superadmin', 'boolean');
+});
+
+test('platform_role is cast to string', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('platform_role', 'string');
+});
+
+test('suspended_at is cast to datetime', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('suspended_at', 'datetime');
+});
+
+test('last_login_at is cast to datetime', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('last_login_at', 'datetime');
+});
+
+test('email_change_code_expires_at is cast to datetime', function () {
+    $user = new User;
+
+    expect($user->getCasts())->toHaveKey('email_change_code_expires_at', 'datetime');
+});
+
+// =============================================================================
+// MUTATORS & ACCESSORS
+// =============================================================================
+
+test('setEmailAttribute converts email to lowercase', function () {
+    $user = new User;
+    $user->email = 'TEST@EXAMPLE.COM';
+
+    expect($user->email)->toBe('test@example.com');
+});
+
+test('setEmailAttribute handles mixed case email', function () {
+    $user = new User;
+    $user->email = 'TeSt@ExAmPlE.CoM';
+
+    expect($user->email)->toBe('test@example.com');
+});
+
+test('setPendingEmailAttribute converts email to lowercase', function () {
+    $user = new User;
+    $user->pending_email = 'NEW@EXAMPLE.COM';
+
+    expect($user->pending_email)->toBe('new@example.com');
+});
+
+test('setPendingEmailAttribute handles null value', function () {
+    $user = new User;
+    $user->pending_email = null;
+
+    expect($user->pending_email)->toBeNull();
+});
+
+// =============================================================================
+// TEAM ROLE METHODS
+// =============================================================================
+
+test('isAdminOfTeam returns true when user has admin role', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $team1 = new stdClass;
+    $team1->id = 1;
+    $team1->pivot = (object) ['role' => 'admin'];
+
+    $team2 = new stdClass;
+    $team2->id = 2;
+    $team2->pivot = (object) ['role' => 'member'];
+
+    $user->setRelation('teams', collect([$team1, $team2]));
+
+    expect($user->isAdminOfTeam(1))->toBeTrue();
+});
+
+test('isAdminOfTeam returns true when user has owner role', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $team = new stdClass;
+    $team->id = 1;
+    $team->pivot = (object) ['role' => 'owner'];
+
+    $user->setRelation('teams', collect([$team]));
+
+    expect($user->isAdminOfTeam(1))->toBeTrue();
+});
+
+test('isAdminOfTeam returns false when user has member role', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $team = new stdClass;
+    $team->id = 1;
+    $team->pivot = (object) ['role' => 'member'];
+
+    $user->setRelation('teams', collect([$team]));
+
+    expect($user->isAdminOfTeam(1))->toBeFalse();
+});
+
+test('isAdminOfTeam returns false when user is not in team', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $team = new stdClass;
+    $team->id = 1;
+    $team->pivot = (object) ['role' => 'owner'];
+
+    $user->setRelation('teams', collect([$team]));
+
+    expect($user->isAdminOfTeam(999))->toBeFalse();
+});
+
+test('canAccessSystemResources returns true for admin of root team', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $rootTeam = new stdClass;
+    $rootTeam->id = 0;
+    $rootTeam->pivot = (object) ['role' => 'admin'];
+
+    $user->setRelation('teams', collect([$rootTeam]));
+
+    expect($user->canAccessSystemResources())->toBeTrue();
+});
+
+test('canAccessSystemResources returns false when user not in root team', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $team = new stdClass;
+    $team->id = 5;
+    $team->pivot = (object) ['role' => 'owner'];
+
+    $user->setRelation('teams', collect([$team]));
+
+    expect($user->canAccessSystemResources())->toBeFalse();
+});
+
+test('canAccessSystemResources returns false when user is member of root team', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+
+    $rootTeam = new stdClass;
+    $rootTeam->id = 0;
+    $rootTeam->pivot = (object) ['role' => 'member'];
+
+    $user->setRelation('teams', collect([$rootTeam]));
+
+    expect($user->canAccessSystemResources())->toBeFalse();
+});
+
+// =============================================================================
+// ROLE HELPER METHODS (TEAM CONTEXT)
+// =============================================================================
+
+test('isOwner returns true when role is owner', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'owner'];
+
+    expect($user->isOwner())->toBeTrue();
+});
+
+test('isOwner returns false when role is admin', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'admin'];
+
+    expect($user->isOwner())->toBeFalse();
+});
+
+test('isAdmin returns true when role is owner', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'owner'];
+
+    expect($user->isAdmin())->toBeTrue();
+});
+
+test('isAdmin returns true when role is admin', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'admin'];
+
+    expect($user->isAdmin())->toBeTrue();
+});
+
+test('isAdmin returns true when role is developer', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'developer'];
+
+    expect($user->isAdmin())->toBeTrue();
+});
+
+test('isAdmin returns false when role is member', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'member'];
+
+    expect($user->isAdmin())->toBeFalse();
+});
+
+test('isMember returns true when role is member', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'member'];
+
+    expect($user->isMember())->toBeTrue();
+});
+
+test('isMember returns false when role is owner', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'owner'];
+
+    expect($user->isMember())->toBeFalse();
+});
+
+test('isDeveloper returns true when role is developer', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'developer'];
+
+    expect($user->isDeveloper())->toBeTrue();
+});
+
+test('isDeveloper returns false when role is member', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'member'];
+
+    expect($user->isDeveloper())->toBeFalse();
+});
+
+test('isViewer returns true when role is viewer', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'viewer'];
+
+    expect($user->isViewer())->toBeTrue();
+});
+
+test('isViewer returns false when role is member', function () {
+    $user = new User;
+    $user->setRawAttributes(['id' => 1], true);
+    $user->pivot = (object) ['role' => 'member'];
+
+    expect($user->isViewer())->toBeFalse();
+});
+
+// =============================================================================
+// PROJECT PERMISSIONS
+// =============================================================================
+
+test('roleInProject returns owner when user has owner role', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->setRawAttributes(['id' => 1], true);
+
+    $project = Mockery::mock(Project::class)->makePartial();
+    $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+
+    $membership = new stdClass;
+    $membership->pivot = (object) ['role' => 'owner'];
+
+    $relation = Mockery::mock(BelongsToMany::class);
+    $relation->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+    $relation->shouldReceive('first')->andReturn($membership);
+
+    $user->shouldReceive('projectMemberships')->andReturn($relation);
+
+    expect($user->roleInProject($project))->toBe('owner');
+});
+
+test('roleInProject returns admin when user has admin role', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->setRawAttributes(['id' => 1], true);
+
+    $project = Mockery::mock(Project::class)->makePartial();
+    $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+
+    $membership = new stdClass;
+    $membership->pivot = (object) ['role' => 'admin'];
+
+    $relation = Mockery::mock(BelongsToMany::class);
+    $relation->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+    $relation->shouldReceive('first')->andReturn($membership);
+
+    $user->shouldReceive('projectMemberships')->andReturn($relation);
+
+    expect($user->roleInProject($project))->toBe('admin');
+});
+
+test('roleInProject returns null when user not project member', function () {
+    $user = Mockery::mock(User::class)->makePartial();
+    $user->setRawAttributes(['id' => 1], true);
+
+    $project = Mockery::mock(Project::class)->makePartial();
+    $project->shouldReceive('getAttribute')->with('id')->andReturn(1);
+
+    $relation = Mockery::mock(BelongsToMany::class);
+    $relation->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
+    $relation->shouldReceive('first')->andReturn(null);
+
+    $user->shouldReceive('projectMemberships')->andReturn($relation);
+
+    expect($user->roleInProject($project))->toBeNull();
+});
+
+// =============================================================================
 // Platform Role Tests
 test('platformRole returns platform_role when set', function () {
     $user = new User;

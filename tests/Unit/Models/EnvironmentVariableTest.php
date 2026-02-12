@@ -176,3 +176,162 @@ test('updateIsShared sets is_shared to false for regular value', function () {
 
     expect($env->is_shared)->toBeFalse();
 });
+
+// Fillable Security Tests
+test('model uses fillable array for mass assignment protection', function () {
+    $env = new EnvironmentVariable;
+
+    expect($env->getFillable())->not->toBeEmpty();
+});
+
+test('fillable does not include id', function () {
+    $fillable = (new EnvironmentVariable)->getFillable();
+
+    expect($fillable)->not->toContain('id');
+});
+
+test('fillable includes expected fields', function () {
+    $fillable = (new EnvironmentVariable)->getFillable();
+
+    expect($fillable)
+        ->toContain('key')
+        ->toContain('value')
+        ->toContain('is_literal')
+        ->toContain('is_multiline')
+        ->toContain('is_preview')
+        ->toContain('is_runtime')
+        ->toContain('is_buildtime')
+        ->toContain('is_shown_once')
+        ->toContain('is_required')
+        ->toContain('description')
+        ->toContain('source_template')
+        ->toContain('version')
+        ->toContain('resourceable_type')
+        ->toContain('resourceable_id');
+});
+
+// Casts Tests
+test('value is cast to encrypted', function () {
+    $casts = (new EnvironmentVariable)->getCasts();
+
+    expect($casts['value'])->toBe('encrypted');
+});
+
+test('is_multiline is cast to boolean', function () {
+    $casts = (new EnvironmentVariable)->getCasts();
+
+    expect($casts['is_multiline'])->toBe('boolean');
+});
+
+test('is_preview is cast to boolean', function () {
+    $casts = (new EnvironmentVariable)->getCasts();
+
+    expect($casts['is_preview'])->toBe('boolean');
+});
+
+test('is_runtime is cast to boolean', function () {
+    $casts = (new EnvironmentVariable)->getCasts();
+
+    expect($casts['is_runtime'])->toBe('boolean');
+});
+
+test('is_buildtime is cast to boolean', function () {
+    $casts = (new EnvironmentVariable)->getCasts();
+
+    expect($casts['is_buildtime'])->toBe('boolean');
+});
+
+test('resourceable_id is cast to integer', function () {
+    $casts = (new EnvironmentVariable)->getCasts();
+
+    expect($casts['resourceable_id'])->toBe('integer');
+});
+
+// Relationship Tests
+test('service relationship returns belongsTo', function () {
+    $relation = (new EnvironmentVariable)->service();
+
+    expect($relation)->toBeInstanceOf(\Illuminate\Database\Eloquent\Relations\BelongsTo::class);
+});
+
+test('resourceable relationship returns morphTo', function () {
+    $relation = (new EnvironmentVariable)->resourceable();
+
+    expect($relation)->toBeInstanceOf(\Illuminate\Database\Eloquent\Relations\MorphTo::class);
+});
+
+// Appends Tests
+test('appends includes expected computed attributes', function () {
+    $env = new EnvironmentVariable;
+    $appends = (new \ReflectionProperty($env, 'appends'))->getValue($env);
+
+    expect($appends)
+        ->toContain('real_value')
+        ->toContain('is_shared')
+        ->toContain('is_really_required')
+        ->toContain('is_nixpacks')
+        ->toContain('is_saturn');
+});
+
+// PROTECTED_KEYS Comprehensive Tests
+test('PROTECTED_KEYS blocks DOCKER_HOST', function () {
+    $env = new EnvironmentVariable;
+    expect(fn () => $env->key = 'DOCKER_HOST')->toThrow(\InvalidArgumentException::class, 'protected');
+});
+
+test('PROTECTED_KEYS blocks SSH_AUTH_SOCK', function () {
+    $env = new EnvironmentVariable;
+    expect(fn () => $env->key = 'SSH_AUTH_SOCK')->toThrow(\InvalidArgumentException::class, 'protected');
+});
+
+test('PROTECTED_KEYS blocks LD_AUDIT', function () {
+    $env = new EnvironmentVariable;
+    expect(fn () => $env->key = 'LD_AUDIT')->toThrow(\InvalidArgumentException::class, 'protected');
+});
+
+test('key setter allows non-protected keys', function () {
+    $env = new EnvironmentVariable;
+    $env->key = 'DATABASE_URL';
+    expect($env->key)->toBe('DATABASE_URL');
+});
+
+test('key setter allows NIXPACKS prefixed keys', function () {
+    $env = new EnvironmentVariable;
+    $env->key = 'NIXPACKS_NODE_VERSION';
+    expect($env->key)->toBe('NIXPACKS_NODE_VERSION');
+});
+
+test('key setter allows SERVICE prefixed keys', function () {
+    $env = new EnvironmentVariable;
+    $env->key = 'SERVICE_FQDN_APP';
+    expect($env->key)->toBe('SERVICE_FQDN_APP');
+});
+
+// Boolean Attribute Tests
+test('is_literal attribute works', function () {
+    $env = new EnvironmentVariable;
+    $env->is_literal = true;
+
+    expect($env->is_literal)->toBeTrue();
+});
+
+test('is_shown_once attribute works', function () {
+    $env = new EnvironmentVariable;
+    $env->is_shown_once = true;
+
+    expect($env->is_shown_once)->toBeTrue();
+});
+
+test('description attribute works', function () {
+    $env = new EnvironmentVariable;
+    $env->description = 'API key for external service';
+
+    expect($env->description)->toBe('API key for external service');
+});
+
+test('source_template attribute works', function () {
+    $env = new EnvironmentVariable;
+    $env->source_template = 'env_example';
+
+    expect($env->source_template)->toBe('env_example');
+});
