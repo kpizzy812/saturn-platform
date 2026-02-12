@@ -125,6 +125,10 @@ class RotateCredentialsAction
                 $changed = false;
 
                 foreach ($oldPasswords as $field => $oldValue) {
+                    // Skip short passwords to avoid false matches in env var values
+                    if (strlen($oldValue) < 8) {
+                        continue;
+                    }
                     if (str_contains($value, $oldValue)) {
                         $value = str_replace($oldValue, $newPasswords[$field], $value);
                         $changed = true;

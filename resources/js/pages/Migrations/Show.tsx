@@ -23,7 +23,7 @@ import {
 import { useMigrationProgress } from '@/hooks/useMigrationProgress';
 import type { EnvironmentMigration, EnvironmentMigrationStatus } from '@/types';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Props {
     migration: EnvironmentMigration;
@@ -153,10 +153,10 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
     };
 
     // Auto-scroll logs to bottom
-    const logsRef = useState<HTMLPreElement | null>(null);
+    const logsRef = useRef<HTMLPreElement | null>(null);
     useEffect(() => {
-        if (logsRef[0]) {
-            logsRef[0].scrollTop = logsRef[0].scrollHeight;
+        if (logsRef.current) {
+            logsRef.current.scrollTop = logsRef.current.scrollHeight;
         }
     }, [logEntries.length]);
 
@@ -469,7 +469,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
                         <CardContent>
                             {logEntries.length > 0 ? (
                                 <pre
-                                    ref={(el) => { logsRef[1](el); }}
+                                    ref={logsRef}
                                     className="text-xs bg-background-tertiary rounded-lg p-4 overflow-x-auto max-h-96 overflow-y-auto font-mono"
                                 >
                                     {logEntries.join('\n')}

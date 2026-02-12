@@ -643,6 +643,12 @@ class EnvironmentMigrationController extends Controller
             return response()->json(['message' => 'Migration not found.'], 404);
         }
 
+        // Only the requester or someone with cancel permission can cancel
+        $user = auth()->user();
+        if ($user && (int) $user->id !== (int) $migration->requested_by && ! Gate::allows('approve', $migration)) {
+            return response()->json(['message' => 'You are not authorized to cancel this migration.'], 403);
+        }
+
         if (! $migration->canBeCancelled()) {
             return response()->json([
                 'message' => 'Migration cannot be cancelled. Current status: '.$migration->status,

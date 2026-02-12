@@ -113,7 +113,7 @@ class MigrateResourceAction
                     'requires_approval' => $requiresApproval,
                     'requested_by' => $requestedBy->id,
                     'rollback_snapshot' => $rollbackSnapshot,
-                    'team_id' => currentTeam()->id,
+                    'team_id' => ($team = currentTeam()) ? $team->id : $requestedBy->currentTeam()->id,
                 ]);
             });
         } catch (QueryException $e) {

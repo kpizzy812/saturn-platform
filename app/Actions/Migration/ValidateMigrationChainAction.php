@@ -89,7 +89,12 @@ class ValidateMigrationChainAction
         }
 
         // Get environments of the next type in the same project
-        return $sourceEnv->project
+        $project = $sourceEnv->project;
+        if (! $project) {
+            return collect();
+        }
+
+        return $project
             ->environments()
             ->where('type', $nextType)
             ->get();

@@ -60,8 +60,10 @@ export function useMigrationProgress({
 
     const onCompleteRef = React.useRef(onComplete);
     const onFailedRef = React.useRef(onFailed);
+    const migrationRef = React.useRef(migration);
     onCompleteRef.current = onComplete;
     onFailedRef.current = onFailed;
+    migrationRef.current = migration;
 
     // Fetch migration data from API
     const fetchMigration = React.useCallback(async () => {
@@ -135,9 +137,9 @@ export function useMigrationProgress({
                 setLogEntries(prev => [...prev, event.log_entry!]);
             }
 
-            // Trigger callbacks for terminal states
+            // Trigger callbacks for terminal states (use ref to avoid stale closure)
             if (event.status === 'completed') {
-                onCompleteRef.current?.(migration!);
+                onCompleteRef.current?.(migrationRef.current!);
             } else if (event.status === 'failed') {
                 onFailedRef.current?.(event.error_message ?? 'Migration failed');
             }

@@ -433,7 +433,7 @@ class ExecuteMigrationAction
 
         return [
             'success' => true,
-            'target' => $target->fresh(),
+            'target' => $target->fresh() ?? $target,
         ];
     }
 
@@ -469,7 +469,7 @@ class ExecuteMigrationAction
 
         return [
             'success' => true,
-            'target' => $target->fresh(),
+            'target' => $target->fresh() ?? $target,
         ];
     }
 
