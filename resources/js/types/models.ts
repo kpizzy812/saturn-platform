@@ -734,6 +734,12 @@ export interface ResourceTransfer {
     user_id?: number;
     user?: User;
     team_id: number;
+    // Approval fields
+    requires_approval?: boolean;
+    approved_by?: number;
+    approved_by_user?: User;
+    approved_at?: string;
+    rejection_reason?: string;
     started_at?: string;
     completed_at?: string;
     created_at: string;
@@ -744,6 +750,20 @@ export interface ResourceTransfer {
     source_type_name?: string;
     formatted_progress?: string;
     estimated_time_remaining?: string;
+}
+
+// Pending transfer approval (lightweight shape returned by /transfers/pending/json)
+export interface PendingTransferApproval {
+    uuid: string;
+    status: TransferStatus;
+    source_name: string;
+    source_type_name: string;
+    transfer_mode: TransferMode;
+    mode_label: string;
+    target_environment_name: string;
+    target_server_name: string;
+    requested_by: string;
+    requested_at: string;
 }
 
 export interface DatabaseStructure {
@@ -829,7 +849,8 @@ export type EnvironmentMigrationStatus =
     | 'in_progress'
     | 'completed'
     | 'failed'
-    | 'rolled_back';
+    | 'rolled_back'
+    | 'cancelled';
 
 export type MigrationMode = 'clone' | 'promote';
 
@@ -841,6 +862,8 @@ export interface EnvironmentMigrationOptions {
     config_only?: boolean;
     rewire_connections?: boolean;
     auto_deploy?: boolean;
+    wait_for_ready?: boolean;
+    copy_data?: boolean;
     fqdn?: string;
 }
 

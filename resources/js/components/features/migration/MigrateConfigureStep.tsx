@@ -37,6 +37,8 @@ export function MigrateConfigureStep({
     const isDatabase = sourceType === 'database';
     const hasTargets = targets?.target_environments && targets.target_environments.length > 0;
     const hasServers = targets?.servers && targets.servers.length > 0;
+    const selectedEnv = targets?.target_environments.find(e => e.id === selectedEnvironmentId);
+    const isTargetProduction = selectedEnv?.type === 'production';
 
     if (isLoading) {
         return (
@@ -157,6 +159,17 @@ export function MigrateConfigureStep({
                             checked={options.config_only}
                             onCheckedChange={(checked) =>
                                 onOptionsChange({ ...options, config_only: checked })
+                            }
+                        />
+                    )}
+
+                    {isDatabase && !isTargetProduction && (
+                        <Checkbox
+                            label="Copy test data"
+                            hint="Copy database contents from source to target. WARNING: All data in the target database will be replaced!"
+                            checked={options.copy_data ?? false}
+                            onCheckedChange={(checked) =>
+                                onOptionsChange({ ...options, copy_data: checked })
                             }
                         />
                     )}

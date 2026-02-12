@@ -42,6 +42,7 @@ const statusConfig: Record<EnvironmentMigrationStatus, {
     completed: { icon: CheckCircle, color: 'text-green-500', bgColor: 'bg-green-500/10', label: 'Completed' },
     failed: { icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-500/10', label: 'Failed' },
     rolled_back: { icon: RotateCcw, color: 'text-orange-500', bgColor: 'bg-orange-500/10', label: 'Rolled Back' },
+    cancelled: { icon: XCircle, color: 'text-gray-500', bgColor: 'bg-gray-500/10', label: 'Cancelled' },
 };
 
 function getSourceTypeName(sourceType: string): string {
@@ -133,6 +134,16 @@ export default function MigrationShow({ migration: initialMigration }: Props) {
         }
     };
 
+    const handleCancel = () => {
+        if (confirm('Are you sure you want to cancel this migration?')) {
+            fetch(`/api/v1/migrations/${migration.uuid}/cancel`, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+                credentials: 'include',
+            }).then(() => router.reload());
+        }
+    };
+
     // Auto-scroll logs to bottom
     const logsRef = useState<HTMLPreElement | null>(null);
     useEffect(() => {
@@ -198,6 +209,9 @@ export default function MigrationShow({ migration: initialMigration }: Props) {
                                 <Button variant="success" onClick={handleApprove}>Approve</Button>
                                 <Button variant="danger" onClick={handleReject}>Reject</Button>
                             </>
+                        )}
+                        {(migration.status === 'pending' || migration.status === 'approved') && (
+                            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                         )}
                         {canRollback && (
                             <Button variant="danger" onClick={handleRollback}>

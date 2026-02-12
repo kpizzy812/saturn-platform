@@ -21,6 +21,7 @@ interface UseMigrationsReturn {
     approveMigration: (uuid: string) => Promise<void>;
     rejectMigration: (uuid: string, reason: string) => Promise<void>;
     rollbackMigration: (uuid: string) => Promise<void>;
+    cancelMigration: (uuid: string) => Promise<void>;
 }
 
 interface CreateMigrationData {
@@ -29,6 +30,27 @@ interface CreateMigrationData {
     target_environment_id: number;
     target_server_id: number;
     options?: EnvironmentMigrationOptions;
+}
+
+interface BatchMigrationData {
+    target_environment_id: number;
+    target_server_id: number;
+    resources: Array<{ type: 'application' | 'service' | 'database'; uuid: string }>;
+    options?: EnvironmentMigrationOptions;
+}
+
+interface BatchMigrationResult {
+    migrations: Array<{
+        type: string;
+        name: string;
+        migration: EnvironmentMigration;
+        requires_approval: boolean;
+    }>;
+    errors: Array<{
+        type: string;
+        name: string;
+        error: string;
+    }>;
 }
 
 interface UsePendingMigrationsReturn {
@@ -190,6 +212,27 @@ export function useMigrations({
         [fetchMigrations]
     );
 
+    const cancelMigration = React.useCallback(
+        async (uuid: string) => {
+            const response = await fetch(`/api/v1/migrations/${uuid}/cancel`, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to cancel migration: ${response.statusText}`);
+            }
+
+            await fetchMigrations();
+        },
+        [fetchMigrations]
+    );
+
     // Initial fetch
     React.useEffect(() => {
         fetchMigrations();
@@ -215,6 +258,7 @@ export function useMigrations({
         approveMigration,
         rejectMigration,
         rollbackMigration,
+        cancelMigration,
     };
 }
 
@@ -433,4 +477,27 @@ export function useEnvironmentMigrationTargets(
         error,
         refetch: fetchTargets,
     };
+}
+
+/**
+ * Batch create migrations for multiple resources.
+ * Backend handles dependency ordering: databases → services → applications.
+ */
+export async function batchCreateMigrations(data: BatchMigrationData): Promise<BatchMigrationResult> {
+    const response = await fetch('/api/v1/migrations/batch', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to create batch migrations: ${response.statusText}`);
+    }
+
+    return response.json();
 }

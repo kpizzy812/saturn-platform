@@ -3383,6 +3383,23 @@ paths:
       security:
         -
           bearerAuth: []
+  /api/v1/migrations/batch:
+    post:
+      tags:
+        - Migrations
+      summary: 'Batch create migrations'
+      description: "Batch create migrations for multiple resources.\nResources are processed in dependency order: databases → services → applications."
+      operationId: 93986d9b96dffae812c7d2a0b25018ae
+      responses:
+        '201':
+          description: 'Migrations created'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: Unauthorized
+      security:
+        -
+          bearerAuth: []
   '/api/v1/migrations/{uuid}':
     get:
       tags:
@@ -3482,6 +3499,30 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden
+      security:
+        -
+          bearerAuth: []
+  '/api/v1/migrations/{uuid}/cancel':
+    post:
+      tags:
+        - Migrations
+      summary: 'Cancel migration'
+      description: 'Cancel a pending or approved migration.'
+      operationId: a37d0300c0e30bc4184bc3ecd1dfd0ce
+      parameters:
+        -
+          name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Migration cancelled'
+        '400':
+          description: 'Bad request'
+        '401':
+          description: Unauthorized
       security:
         -
           bearerAuth: []

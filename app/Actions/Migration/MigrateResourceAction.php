@@ -189,6 +189,11 @@ class MigrateResourceAction
             $options[EnvironmentMigration::OPTION_CONFIG_ONLY] = true;
         }
 
+        // SECURITY: Never allow data copy to production
+        if ($targetEnv->isProduction()) {
+            $options[EnvironmentMigration::OPTION_COPY_DATA] = false;
+        }
+
         return $options;
     }
 

@@ -66,6 +66,8 @@ class EnvironmentMigration extends Model
 
     public const STATUS_ROLLED_BACK = 'rolled_back';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     // Migration modes
     public const MODE_CLONE = 'clone';
 
@@ -88,6 +90,10 @@ class EnvironmentMigration extends Model
 
     public const OPTION_OVERWRITE_VALUES = 'overwrite_values';
 
+    public const OPTION_WAIT_FOR_READY = 'wait_for_ready';
+
+    public const OPTION_COPY_DATA = 'copy_data';
+
     /**
      * Get all possible statuses.
      */
@@ -101,6 +107,7 @@ class EnvironmentMigration extends Model
             self::STATUS_COMPLETED,
             self::STATUS_FAILED,
             self::STATUS_ROLLED_BACK,
+            self::STATUS_CANCELLED,
         ];
     }
 
@@ -271,6 +278,18 @@ class EnvironmentMigration extends Model
             self::STATUS_PENDING,
             self::STATUS_APPROVED,
         ]);
+    }
+
+    /**
+     * Cancel a pending/approved migration.
+     */
+    public function markAsCancelled(): void
+    {
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+        ]);
+
+        $this->broadcastProgress('Migration cancelled');
     }
 
     /**

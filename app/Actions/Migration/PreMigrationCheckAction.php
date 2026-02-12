@@ -81,6 +81,22 @@ class PreMigrationCheckAction
             $warnings[] = 'Resource configuration has not changed since the last migration. This migration may be redundant.';
         }
 
+        // 7. Disk space check on target server
+        $diskSpaceResult = $this->checkDiskSpace($targetServer);
+        $checks['disk_space'] = $diskSpaceResult['pass'];
+        if (! $diskSpaceResult['pass'] && $diskSpaceResult['critical']) {
+            $errors[] = $diskSpaceResult['message'];
+        } elseif (! $diskSpaceResult['pass']) {
+            $warnings[] = $diskSpaceResult['message'];
+        }
+
+        // 8. Port conflict detection
+        $portConflicts = $this->checkPortConflicts($resource, $targetServer);
+        $checks['port_conflicts'] = empty($portConflicts);
+        if (! empty($portConflicts)) {
+            $warnings[] = 'Potential port conflicts on target server: '.implode(', ', $portConflicts).'. Consider changing port mappings.';
+        }
+
         return [
             'pass' => empty($errors),
             'errors' => $errors,
@@ -200,5 +216,105 @@ class PreMigrationCheckAction
         ];
 
         return MigrationHistory::hasConfigChanged($resource, $currentConfig);
+    }
+
+    /**
+     * Check disk space on target server via SSH.
+     *
+     * @return array{pass: bool, critical: bool, message: string, usage?: int}
+     */
+    protected function checkDiskSpace(Server $targetServer): array
+    {
+        try {
+            $usage = $targetServer->getDiskUsage();
+            if ($usage === null || $usage === '') {
+                return ['pass' => true, 'critical' => false, 'message' => ''];
+            }
+
+            $usagePercent = (int) $usage;
+
+            if ($usagePercent >= 95) {
+                return [
+                    'pass' => false,
+                    'critical' => true,
+                    'message' => "Target server disk is critically full ({$usagePercent}% used). Migration cannot proceed safely.",
+                    'usage' => $usagePercent,
+                ];
+            }
+
+            if ($usagePercent >= 80) {
+                return [
+                    'pass' => false,
+                    'critical' => false,
+                    'message' => "Target server disk usage is high ({$usagePercent}% used). Consider freeing space before migrating.",
+                    'usage' => $usagePercent,
+                ];
+            }
+
+            return ['pass' => true, 'critical' => false, 'message' => '', 'usage' => $usagePercent];
+        } catch (\Throwable) {
+            // SSH failure - don't block migration, just warn
+            return [
+                'pass' => false,
+                'critical' => false,
+                'message' => 'Could not check disk space on target server. Verify server connectivity.',
+            ];
+        }
+    }
+
+    /**
+     * Check if resource ports conflict with existing services on target server.
+     *
+     * @return array<string> List of conflicting port descriptions
+     */
+    protected function checkPortConflicts(Model $resource, Server $targetServer): array
+    {
+        $ports = $this->extractPorts($resource);
+        if (empty($ports)) {
+            return [];
+        }
+
+        $conflicts = [];
+
+        try {
+            foreach ($ports as $port) {
+                $output = instant_remote_process(
+                    ["ss -Htuln state listening sport = :{$port} 2>/dev/null | head -1"],
+                    $targetServer,
+                    false
+                );
+
+                if ($output !== null && trim($output) !== '') {
+                    $conflicts[] = "port {$port}";
+                }
+            }
+        } catch (\Throwable) {
+            // SSH failure - don't block, just skip port check
+        }
+
+        return $conflicts;
+    }
+
+    /**
+     * Extract exposed/mapped ports from a resource.
+     *
+     * @return array<string>
+     */
+    protected function extractPorts(Model $resource): array
+    {
+        $ports = [];
+
+        // ports_mappings: "8080:80,9090:9090" — host ports are before the colon
+        $mappings = $resource->getAttribute('ports_mappings');
+        if ($mappings && is_string($mappings)) {
+            foreach (explode(',', $mappings) as $mapping) {
+                $parts = explode(':', trim($mapping));
+                if (count($parts) >= 2 && is_numeric($parts[0])) {
+                    $ports[] = trim($parts[0]);
+                }
+            }
+        }
+
+        return array_unique($ports);
     }
 }

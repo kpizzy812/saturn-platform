@@ -467,11 +467,13 @@ Route::group([
     Route::get('/migrations/targets/{source_type}/{source_uuid}', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'targets'])->middleware(['api.ability:read']);
     Route::get('/migrations/environment-targets/{environment_uuid}', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'environmentTargets'])->middleware(['api.ability:read']);
     Route::post('/migrations/environment-check', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'environmentCheck'])->middleware(['api.ability:read']);
+    Route::post('/migrations/batch', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'batchStore'])->middleware(['api.ability:write']);
     Route::post('/migrations', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'store'])->middleware(['api.ability:write']);
     Route::get('/migrations/{uuid}', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'show'])->middleware(['api.ability:read']);
     Route::post('/migrations/{uuid}/approve', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'approve'])->middleware(['api.ability:write']);
     Route::post('/migrations/{uuid}/reject', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'reject'])->middleware(['api.ability:write']);
     Route::post('/migrations/{uuid}/rollback', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'rollback'])->middleware(['api.ability:write']);
+    Route::post('/migrations/{uuid}/cancel', [\App\Http\Controllers\Api\EnvironmentMigrationController::class, 'cancel'])->middleware(['api.ability:write']);
 
     Route::get('/services', [ServicesController::class, 'services'])->middleware(['api.ability:read']);
     Route::post('/services', [ServicesController::class, 'create_service'])->middleware(['api.ability:write']);

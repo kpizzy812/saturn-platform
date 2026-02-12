@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Migration\BatchMigrateAction;
 use App\Actions\Migration\MigrateResourceAction;
 use App\Actions\Migration\MigrationDiffAction;
 use App\Actions\Migration\PreMigrationCheckAction;
@@ -298,6 +299,90 @@ class EnvironmentMigrationController extends Controller
     }
 
     /**
+     * Batch create migrations for multiple resources.
+     * Resources are processed in dependency order: databases → services → applications.
+     */
+    #[OA\Post(
+        path: '/api/v1/migrations/batch',
+        summary: 'Batch create migrations',
+        tags: ['Migrations'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(response: 201, description: 'Migrations created'),
+            new OA\Response(response: 400, description: 'Bad request'),
+            new OA\Response(response: 401, description: 'Unauthorized'),
+        ]
+    )]
+    public function batchStore(Request $request): JsonResponse
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $validated = $request->validate([
+            'target_environment_id' => 'required|integer|exists:environments,id',
+            'target_server_id' => 'required|integer|exists:servers,id',
+            'resources' => 'required|array|min:1|max:50',
+            'resources.*.type' => 'required|string|in:application,service,database',
+            'resources.*.uuid' => 'required|string',
+            'options' => 'nullable|array',
+        ]);
+
+        $targetEnvironment = Environment::find($validated['target_environment_id']);
+        $targetServer = Server::find($validated['target_server_id']);
+
+        if (! $targetEnvironment || ! $targetServer) {
+            return response()->json(['message' => 'Target environment or server not found.'], 404);
+        }
+
+        if ($targetServer->team_id !== $teamId) {
+            return response()->json(['message' => 'Target server does not belong to your team.'], 403);
+        }
+
+        $user = auth()->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Resolve resources
+        $resources = [];
+        $notFound = [];
+
+        foreach ($validated['resources'] as $item) {
+            $resource = $this->findResource($item['type'], $item['uuid'], $teamId);
+            if ($resource) {
+                $resources[] = ['type' => $item['type'], 'resource' => $resource];
+            } else {
+                $notFound[] = ['type' => $item['type'], 'uuid' => $item['uuid']];
+            }
+        }
+
+        if (! empty($notFound)) {
+            return response()->json([
+                'message' => 'Some resources were not found.',
+                'not_found' => $notFound,
+            ], 404);
+        }
+
+        $result = BatchMigrateAction::run(
+            $resources,
+            $targetEnvironment,
+            $targetServer,
+            $user,
+            $validated['options'] ?? []
+        );
+
+        $statusCode = $result['success'] ? 201 : 207; // 207 Multi-Status if partial
+
+        return response()->json([
+            'message' => $result['success'] ? 'All migrations created.' : 'Some migrations failed.',
+            'migrations' => $result['migrations'],
+            'errors' => $result['errors'],
+        ], $statusCode);
+    }
+
+    /**
      * Get migration details.
      */
     #[OA\Get(
@@ -520,6 +605,52 @@ class EnvironmentMigrationController extends Controller
 
         return response()->json([
             'message' => 'Migration rolled back successfully.',
+            'migration' => $migration->fresh(),
+        ]);
+    }
+
+    /**
+     * Cancel a pending or approved migration.
+     */
+    #[OA\Post(
+        path: '/api/v1/migrations/{uuid}/cancel',
+        summary: 'Cancel migration',
+        tags: ['Migrations'],
+        security: [['bearerAuth' => []]],
+        parameters: [
+            new OA\Parameter(name: 'uuid', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Migration cancelled'),
+            new OA\Response(response: 400, description: 'Bad request'),
+            new OA\Response(response: 401, description: 'Unauthorized'),
+        ]
+    )]
+    public function cancel(Request $request, string $uuid): JsonResponse
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $migration = EnvironmentMigration::where('uuid', $uuid)
+            ->where('team_id', $teamId)
+            ->first();
+
+        if (! $migration) {
+            return response()->json(['message' => 'Migration not found.'], 404);
+        }
+
+        if (! $migration->canBeCancelled()) {
+            return response()->json([
+                'message' => 'Migration cannot be cancelled. Current status: '.$migration->status,
+            ], 400);
+        }
+
+        $migration->markAsCancelled();
+
+        return response()->json([
+            'message' => 'Migration cancelled successfully.',
             'migration' => $migration->fresh(),
         ]);
     }

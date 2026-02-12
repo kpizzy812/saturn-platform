@@ -171,6 +171,41 @@ class ExecuteMigrationAction
                 $this->getResourceConfig($target)
             );
 
+            // Copy test data if requested (non-production only)
+            $copyData = $options[EnvironmentMigration::OPTION_COPY_DATA] ?? false;
+            if ($copyData && $this->isDatabase($source)) {
+                if ($targetEnv instanceof Environment && $targetEnv->isProduction()) {
+                    $migration->appendLog('Warning: Data copy to production is forbidden. Skipping.');
+                } else {
+                    $migration->updateProgress(86, 'Copying database data...');
+                    $copyResult = CopyDatabaseDataAction::run($source, $target, $targetEnv, $migration);
+                    if ($copyResult['success']) {
+                        $migration->appendLog('Database data copied successfully.');
+                    } else {
+                        $migration->appendLog('Warning: Data copy failed - '.($copyResult['error'] ?? 'Unknown'));
+                    }
+                }
+            }
+
+            // Webhook reminder for first clone to production
+            if ($mode === EnvironmentMigration::MODE_CLONE && $targetEnv instanceof Environment && $targetEnv->isProduction()) {
+                if ($target instanceof Application && $target->getAttribute('source_id')) {
+                    $migration->appendLog('Reminder: Configure webhook for production. Source repository webhooks point to the development environment and need manual reconfiguration for production deployments.');
+                }
+            }
+
+            // Wait for health check if requested
+            $waitForReady = $options[EnvironmentMigration::OPTION_WAIT_FOR_READY] ?? false;
+            if ($waitForReady && $target instanceof Application && $target->health_check_enabled) {
+                $migration->updateProgress(95, 'Waiting for health check to pass...');
+                $healthResult = $this->waitForHealthCheck($target, $migration);
+                if (! $healthResult['healthy']) {
+                    $migration->appendLog('Warning: Health check did not pass within timeout. '.$healthResult['message']);
+                } else {
+                    $migration->appendLog('Health check passed successfully.');
+                }
+            }
+
             // Mark as completed
             $migration->markAsCompleted(get_class($target), $target->id);
 
@@ -617,6 +652,48 @@ class ExecuteMigrationAction
             ]);
             $migration->appendLog('Warning: Pre-migration backup failed - '.($backupResult['error'] ?? 'Unknown'));
         }
+    }
+
+    /**
+     * Wait for application health check to pass after deploy.
+     * Polls status every 10 seconds for up to 5 minutes.
+     *
+     * @return array{healthy: bool, message: string}
+     */
+    protected function waitForHealthCheck(Application $application, EnvironmentMigration $migration): array
+    {
+        $maxAttempts = 30; // 30 * 10s = 5 minutes
+        $intervalSeconds = 10;
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            sleep($intervalSeconds);
+
+            $application->refresh();
+            $status = $application->status ?? '';
+
+            // Docker status format: "running:healthy" or "running:unhealthy"
+            if (str_contains($status, ':healthy')) {
+                return ['healthy' => true, 'message' => 'Health check passed'];
+            }
+
+            if (str_contains($status, ':unhealthy')) {
+                return [
+                    'healthy' => false,
+                    'message' => "Application is unhealthy after deploy (status: {$status})",
+                ];
+            }
+
+            // Still starting up - update progress
+            if ($i % 3 === 0) {
+                $elapsed = ($i + 1) * $intervalSeconds;
+                $migration->updateProgress(95 + min(4, intdiv($i, 6)), "Waiting for health check ({$elapsed}s elapsed)...");
+            }
+        }
+
+        return [
+            'healthy' => false,
+            'message' => 'Health check did not pass within 5 minutes timeout',
+        ];
     }
 
     /**
