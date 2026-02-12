@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { HelpCircle, ChevronDown, Settings, Users, LogOut, Moon, Sun, FileText, Headphones, Plus, Search, Command } from 'lucide-react';
+import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
@@ -74,23 +74,14 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                     </Link>
                 )}
 
-                {/* Help */}
-                <Dropdown>
-                    <DropdownTrigger>
-                        <button className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground">
-                            <HelpCircle className="h-4 w-4" />
-                            <span className="hidden sm:inline">Help</span>
-                        </button>
-                    </DropdownTrigger>
-                    <DropdownContent align="right">
-                        <DropdownItem icon={<FileText className="h-4 w-4" />}>
-                            Documentation
-                        </DropdownItem>
-                        <DropdownItem icon={<Headphones className="h-4 w-4" />}>
-                            Support
-                        </DropdownItem>
-                    </DropdownContent>
-                </Dropdown>
+                {/* Theme Toggle */}
+                <button
+                    onClick={toggleTheme}
+                    className="rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground"
+                    title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                >
+                    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </button>
 
                 {/* Notifications */}
                 <NotificationDropdown
@@ -133,13 +124,6 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                             icon={<Users className="h-4 w-4" />}
                         >
                             Workspace Settings
-                        </DropdownItem>
-                        <DropdownDivider />
-                        <DropdownItem
-                            onClick={toggleTheme}
-                            icon={isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                        >
-                            {isDark ? 'Light Theme' : 'Dark Theme'}
                         </DropdownItem>
                         <DropdownDivider />
                         <DropdownItem
