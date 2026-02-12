@@ -246,7 +246,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     {
         return $this->belongsToMany(User::class, 'team_user', 'team_id', 'user_id')
             ->using(TeamUser::class)
-            ->withPivot('role', 'allowed_projects')
+            ->withPivot('role', 'allowed_projects', 'permission_set_id')
             ->withTimestamps();
     }
 

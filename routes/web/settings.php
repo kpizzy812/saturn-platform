@@ -561,6 +561,60 @@ Route::post('/settings/team/members/{id}/role', function (string $id, Request $r
     return redirect()->back()->with('success', 'Member role updated successfully');
 })->name('settings.team.members.update-role');
 
+Route::post('/settings/team/members/{id}/permission-set', function (Request $request, string $id) {
+    $request->validate([
+        'permission_set_id' => 'nullable|integer',
+    ]);
+
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only owner/admin can assign permission sets
+    if (! $currentUser->isAdmin()) {
+        return redirect()->back()->withErrors(['permission_set' => 'You do not have permission to assign permission sets']);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        return redirect()->back()->withErrors(['permission_set' => 'Member not found in this team']);
+    }
+
+    $memberRole = $member->pivot->role;
+
+    // Cannot assign permission set to self
+    if ((int) $id === $currentUser->id) {
+        return redirect()->back()->withErrors(['permission_set' => 'You cannot change your own permission set']);
+    }
+
+    // Admin cannot modify admin/owner
+    if ($currentUser->isAdmin() && ! $currentUser->isOwner()) {
+        if (in_array($memberRole, ['owner', 'admin'])) {
+            return redirect()->back()->withErrors(['permission_set' => 'Only owner can configure permission sets for admins']);
+        }
+    }
+
+    // Owner cannot be restricted
+    if ($memberRole === 'owner') {
+        return redirect()->back()->withErrors(['permission_set' => 'Owner cannot have a restricted permission set']);
+    }
+
+    // Validate permission set belongs to this team
+    $permissionSetId = $request->permission_set_id;
+    if ($permissionSetId !== null) {
+        $exists = \App\Models\PermissionSet::forTeam($team->id)
+            ->where('id', $permissionSetId)
+            ->exists();
+
+        if (! $exists) {
+            return redirect()->back()->withErrors(['permission_set' => 'Permission set not found for this team']);
+        }
+    }
+
+    $team->members()->updateExistingPivot($id, ['permission_set_id' => $permissionSetId]);
+
+    return redirect()->back()->with('success', 'Permission set updated successfully');
+})->name('settings.team.members.update-permission-set');
+
 Route::delete('/settings/team/members/{id}', function (string $id) {
     $team = currentTeam();
     $currentUser = auth()->user();
@@ -1065,54 +1119,97 @@ Route::get('/settings/members/{id}', function (string $id) {
         'email' => $member->email,
         'avatar' => $member->avatar ? '/storage/'.$member->avatar : null,
         'role' => $member->pivot->role ?? 'member',
+        'permissionSetId' => $member->pivot->permission_set_id,
         'joinedAt' => $member->pivot->created_at?->toDateString() ?? $member->created_at->toDateString(),
         'lastActive' => $lastActive,
     ];
 
-    // Get team projects (all members have access to team projects)
+    // Fetch permission sets for the team
+    $permissionSets = \App\Models\PermissionSet::forTeam($team->id)
+        ->withCount('permissions')
+        ->with('permissions')
+        ->orderBy('is_system', 'desc')
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($set) => [
+            'id' => $set->id,
+            'name' => $set->name,
+            'slug' => $set->slug,
+            'description' => $set->description,
+            'is_system' => $set->is_system,
+            'color' => $set->color,
+            'icon' => $set->icon,
+            'permissions_count' => $set->permissions_count,
+            'permissions' => $set->permissions->map(fn ($p) => [
+                'id' => $p->id,
+                'key' => $p->key,
+                'name' => $p->name,
+                'description' => $p->description,
+                'category' => $p->category,
+                'is_sensitive' => $p->is_sensitive ?? false,
+            ])->values()->all(),
+        ]);
+
+    // Get allowed projects info
+    $allowedProjects = $member->pivot->allowed_projects;
+    $hasFullAccess = $allowedProjects === null
+        || (is_array($allowedProjects) && in_array('*', $allowedProjects, true));
+
+    // Get team projects with access info
+    $teamProjectIds = is_array($allowedProjects) ? $allowedProjects : [];
     $projects = $team->projects()->get()->map(fn ($project) => [
         'id' => $project->id,
         'name' => $project->name,
         'role' => $member->pivot->role ?? 'member',
+        'hasAccess' => $hasFullAccess || in_array($project->id, $teamProjectIds),
         'lastAccessed' => $project->updated_at->toISOString(),
     ]);
 
-    // Get recent activities for this user from activity_log table
-    $activities = \Spatie\Activitylog\Models\Activity::query()
-        ->where('causer_type', 'App\\Models\\User')
-        ->where('causer_id', $member->id)
-        ->orderByDesc('created_at')
+    // Get recent activities from AuditLog (uses stored resource_name, survives deletion)
+    $activities = \App\Models\AuditLog::forTeam($team->id)
+        ->byUser($member->id)
+        ->latest()
         ->limit(20)
         ->get()
-        ->map(function ($activity) use ($member) {
-            // Map activity to frontend format
-            $resourceType = match ($activity->subject_type) {
-                'App\\Models\\Application' => 'application',
-                'App\\Models\\Service' => 'service',
-                'App\\Models\\StandalonePostgresql', 'App\\Models\\StandaloneMysql',
-                'App\\Models\\StandaloneRedis', 'App\\Models\\StandaloneMongodb' => 'database',
-                'App\\Models\\Server' => 'server',
-                'App\\Models\\Project' => 'project',
-                'App\\Models\\Team' => 'team',
+        ->map(function ($auditLog) use ($member) {
+            // Map resource_type to frontend type
+            $resourceType = match (true) {
+                str_contains($auditLog->resource_type ?? '', 'Application') => 'application',
+                str_contains($auditLog->resource_type ?? '', 'Service') => 'application',
+                str_contains($auditLog->resource_type ?? '', 'Standalone') => 'database',
+                str_contains($auditLog->resource_type ?? '', 'Server') => 'server',
+                str_contains($auditLog->resource_type ?? '', 'Project') => 'project',
+                str_contains($auditLog->resource_type ?? '', 'Team') => 'team',
                 default => 'application',
             };
 
-            $resourceName = $activity->subject?->name ?? 'Unknown';
+            // Map action to ActivityAction enum
+            $action = match (true) {
+                $auditLog->action === 'deploy' => 'deployment_started',
+                $auditLog->action === 'create' && $resourceType === 'database' => 'database_created',
+                $auditLog->action === 'create' && $resourceType === 'server' => 'server_connected',
+                $auditLog->action === 'start' => 'application_started',
+                $auditLog->action === 'stop' => 'application_stopped',
+                $auditLog->action === 'restart' => 'application_restarted',
+                $auditLog->action === 'delete' && $resourceType === 'database' => 'database_deleted',
+                $auditLog->action === 'update' => 'settings_updated',
+                default => 'settings_updated',
+            };
 
             return [
-                'id' => (string) $activity->id,
-                'action' => $activity->event ?? $activity->log_name ?? 'action',
-                'description' => $activity->description,
+                'id' => (string) $auditLog->id,
+                'action' => $action,
+                'description' => $auditLog->description ?? $auditLog->formatted_action,
                 'user' => [
                     'name' => $member->name,
                     'email' => $member->email,
                 ],
                 'resource' => [
                     'type' => $resourceType,
-                    'name' => $resourceName,
-                    'id' => (string) ($activity->subject_id ?? 0),
+                    'name' => $auditLog->resource_name ?? 'Unknown',
+                    'id' => (string) ($auditLog->resource_id ?? 0),
                 ],
-                'timestamp' => $activity->created_at->toISOString(),
+                'timestamp' => $auditLog->created_at->toISOString(),
             ];
         });
 
@@ -1122,6 +1219,9 @@ Route::get('/settings/members/{id}', function (string $id) {
         'activities' => $activities,
         'isCurrentUser' => $isCurrentUser,
         'canManageTeam' => $canManageTeam,
+        'permissionSets' => $permissionSets,
+        'allowedProjects' => $allowedProjects,
+        'hasFullProjectAccess' => $hasFullAccess,
     ]);
 })->name('settings.members.show');
 
@@ -1256,12 +1356,20 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
 
     // Only owner/admin can update project access
     if (! $currentUser->isOwner() && ! $currentUser->isAdmin()) {
-        return response()->json(['message' => 'Unauthorized'], 403);
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return redirect()->back()->withErrors(['projects' => 'Unauthorized']);
     }
 
     $member = $team->members()->where('user_id', $id)->first();
     if (! $member) {
-        return response()->json(['message' => 'Member not found'], 404);
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Member not found'], 404);
+        }
+
+        return redirect()->back()->withErrors(['projects' => 'Member not found']);
     }
 
     $memberRole = $member->pivot->role;
@@ -1270,13 +1378,21 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
     // Admin cannot manage owner or other admins
     if ($currentUser->isAdmin() && ! $currentUser->isOwner()) {
         if (in_array($memberRole, ['owner', 'admin'])) {
-            return response()->json(['message' => 'Only owner can configure project access for admins'], 403);
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Only owner can configure project access for admins'], 403);
+            }
+
+            return redirect()->back()->withErrors(['projects' => 'Only owner can configure project access for admins']);
         }
     }
 
     // Owner always has full access - cannot be restricted
     if ($memberRole === 'owner') {
-        return response()->json(['message' => 'Owner always has full access and cannot be restricted'], 422);
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Owner always has full access and cannot be restricted'], 422);
+        }
+
+        return redirect()->back()->withErrors(['projects' => 'Owner always has full access and cannot be restricted']);
     }
 
     // Determine allowed_projects value based on allow-by-default model
@@ -1298,9 +1414,13 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
         } elseif (! empty($allowedProjects)) {
             // Validate that all project IDs belong to this team
             $teamProjectIds = $team->projects()->pluck('id')->toArray();
-            $invalidIds = array_diff($allowedProjects, $teamProjectIds);
+            $invalidIds = array_diff((array) $allowedProjects, $teamProjectIds);
             if (! empty($invalidIds)) {
-                return response()->json(['message' => 'Invalid project IDs'], 422);
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => 'Invalid project IDs'], 422);
+                }
+
+                return redirect()->back()->withErrors(['projects' => 'Invalid project IDs']);
             }
         }
         // If empty array, keep it as [] - means no access
@@ -1310,7 +1430,11 @@ Route::post('/settings/team/members/{id}/projects', function (Request $request, 
         'allowed_projects' => $allowedProjects,
     ]);
 
-    return response()->json(['message' => 'Project access updated successfully']);
+    if ($request->wantsJson()) {
+        return response()->json(['message' => 'Project access updated successfully']);
+    }
+
+    return redirect()->back()->with('success', 'Project access updated successfully');
 })->name('settings.team.members.projects.update');
 
 // Team Switcher - switch to a different team
