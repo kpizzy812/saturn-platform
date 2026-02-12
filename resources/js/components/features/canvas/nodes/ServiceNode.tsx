@@ -141,26 +141,34 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
                 {/* Status */}
                 <div className="px-4 pb-4">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                            <div className={cn(
-                                'w-2 h-2 rounded-full transition-all duration-200',
-                                isOnline && 'status-online',
-                                isDeploying && 'status-deploying',
-                                isError && 'bg-red-500',
-                                !isOnline && !isDeploying && !isError && 'bg-foreground-subtle'
-                            )} />
-                            <span className={cn(
-                                'text-sm transition-colors duration-200',
-                                isOnline && 'text-success',
-                                isDeploying && 'text-primary',
-                                isError && 'text-red-400',
-                                !isOnline && !isDeploying && !isError && 'text-foreground-muted'
-                            )}>
-                                {isOnline ? 'Online' : statusBase || 'unknown'}
-                            </span>
-                        </div>
+                        {/* Building takes priority as primary status when app is not online */}
+                        {data.isDeployingBuild && !isOnline ? (
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full status-deploying" />
+                                <span className="text-sm text-amber-500">Building</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5">
+                                <div className={cn(
+                                    'w-2 h-2 rounded-full transition-all duration-200',
+                                    isOnline && 'status-online',
+                                    isDeploying && 'status-deploying',
+                                    isError && 'bg-red-500',
+                                    !isOnline && !isDeploying && !isError && 'bg-foreground-subtle'
+                                )} />
+                                <span className={cn(
+                                    'text-sm transition-colors duration-200',
+                                    isOnline && 'text-success',
+                                    isDeploying && 'text-primary',
+                                    isError && 'text-red-400',
+                                    !isOnline && !isDeploying && !isError && 'text-foreground-muted'
+                                )}>
+                                    {isOnline ? 'Online' : statusBase || 'unknown'}
+                                </span>
+                            </div>
+                        )}
                         {/* Health indicator */}
-                        {healthBase && healthBase !== 'unknown' && (
+                        {healthBase && healthBase !== 'unknown' && !data.isDeployingBuild && (
                             <div className="flex items-center gap-1.5">
                                 <div className={cn(
                                     'w-2 h-2 rounded-full',
@@ -178,7 +186,7 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
                                 </span>
                             </div>
                         )}
-                        {/* Building indicator when app is online but has active deployment */}
+                        {/* Building indicator alongside Online status (re-deploy) */}
                         {isOnline && data.isDeployingBuild && (
                             <span className="flex items-center gap-1 ml-1">
                                 <div className="w-2 h-2 rounded-full status-deploying" />
