@@ -6,6 +6,10 @@ import type {
     MigrationTargets,
 } from '@/types';
 
+function getCsrfToken(): string {
+    return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+}
+
 interface UseMigrationsOptions {
     autoRefresh?: boolean;
     refreshInterval?: number;
@@ -128,6 +132,7 @@ export function useMigrations({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
                 body: JSON.stringify(data),
@@ -155,6 +160,7 @@ export function useMigrations({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });
@@ -176,6 +182,7 @@ export function useMigrations({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
                 body: JSON.stringify({ reason }),
@@ -198,6 +205,7 @@ export function useMigrations({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });
@@ -219,6 +227,7 @@ export function useMigrations({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
             });
@@ -330,6 +339,7 @@ export function useMigrationCheck({
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -489,6 +499,7 @@ export async function batchCreateMigrations(data: BatchMigrationData): Promise<B
         headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
         },
         credentials: 'include',
         body: JSON.stringify(data),
