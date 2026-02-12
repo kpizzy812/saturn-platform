@@ -92,6 +92,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Resource Transfers
     require __DIR__.'/web/transfers.php';
 
+    // Migrations
+    require __DIR__.'/web/migrations.php';
+
     // Domains and SSL
     require __DIR__.'/web/domains.php';
 

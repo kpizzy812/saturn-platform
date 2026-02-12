@@ -93,3 +93,9 @@ Broadcast::channel('ai-chat.{sessionUuid}', function (User $user, string $sessio
 
     return $session && $session->user_id === $user->id;
 });
+
+Broadcast::channel('migration.{migrationUuid}', function (User $user, string $migrationUuid) {
+    $migration = \App\Models\EnvironmentMigration::where('uuid', $migrationUuid)->first();
+
+    return $migration && $user->teams->pluck('id')->contains($migration->team_id);
+});

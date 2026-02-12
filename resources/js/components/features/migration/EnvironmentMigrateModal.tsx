@@ -916,15 +916,33 @@ export function EnvironmentMigrateModal({
                                         <Spinner size="sm" />
                                     )}
                                     {result.status === 'success' && result.requires_approval && (
-                                        <span className="flex items-center gap-1 text-sm text-warning">
+                                        <span className="flex items-center gap-2 text-sm text-warning">
                                             <Clock className="h-4 w-4" />
                                             Pending Approval
+                                            {result.migration_uuid && (
+                                                <a
+                                                    href={`/migrations/${result.migration_uuid}`}
+                                                    className="text-primary hover:underline text-xs"
+                                                    onClick={(e) => { e.stopPropagation(); }}
+                                                >
+                                                    View
+                                                </a>
+                                            )}
                                         </span>
                                     )}
                                     {result.status === 'success' && !result.requires_approval && (
-                                        <span className="flex items-center gap-1 text-sm text-success">
+                                        <span className="flex items-center gap-2 text-sm text-success">
                                             <CheckCircle2 className="h-4 w-4" />
                                             Started
+                                            {result.migration_uuid && (
+                                                <a
+                                                    href={`/migrations/${result.migration_uuid}`}
+                                                    className="text-primary hover:underline text-xs"
+                                                    onClick={(e) => { e.stopPropagation(); }}
+                                                >
+                                                    View
+                                                </a>
+                                            )}
                                         </span>
                                     )}
                                     {result.status === 'error' && (

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Events\MigrationProgressUpdated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -337,6 +338,8 @@ class EnvironmentMigration extends Model
             'current_step' => $step ?? 'Starting migration...',
             'started_at' => $this->started_at ?? now(),
         ]);
+
+        $this->broadcastProgress($step ?? 'Starting migration...');
     }
 
     /**
@@ -363,6 +366,8 @@ class EnvironmentMigration extends Model
         }
 
         $this->update($data);
+
+        $this->broadcastProgress('Migration completed');
     }
 
     /**
@@ -388,6 +393,8 @@ class EnvironmentMigration extends Model
             'current_step' => 'Migration failed',
             'completed_at' => now(),
         ]);
+
+        $this->broadcastProgress('Migration failed');
     }
 
     /**
@@ -409,7 +416,7 @@ class EnvironmentMigration extends Model
     }
 
     /**
-     * Update progress.
+     * Update progress and broadcast via WebSocket.
      */
     public function updateProgress(int $progress, ?string $step = null): void
     {
@@ -420,10 +427,12 @@ class EnvironmentMigration extends Model
         }
 
         $this->update($data);
+
+        $this->broadcastProgress($step);
     }
 
     /**
-     * Append to logs.
+     * Append to logs and broadcast via WebSocket.
      */
     public function appendLog(string $message): void
     {
@@ -433,6 +442,28 @@ class EnvironmentMigration extends Model
         $this->update([
             'logs' => $this->logs ? $this->logs."\n".$logEntry : $logEntry,
         ]);
+
+        $this->broadcastProgress(logEntry: $logEntry);
+    }
+
+    /**
+     * Broadcast current migration state via WebSocket.
+     */
+    protected function broadcastProgress(?string $step = null, ?string $logEntry = null): void
+    {
+        try {
+            MigrationProgressUpdated::dispatch(
+                $this->uuid,
+                $this->status,
+                $this->progress ?? 0,
+                $step ?? $this->current_step,
+                $logEntry,
+                $this->error_message,
+                $this->team_id,
+            );
+        } catch (\Throwable) {
+            // Broadcasting failures should not break migration execution
+        }
     }
 
     // Query scopes

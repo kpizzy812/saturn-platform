@@ -58,6 +58,11 @@ class ExecuteMigrationAction
 
             // Promote mode: update existing resource config without copying env vars
             if ($mode === EnvironmentMigration::MODE_PROMOTE) {
+                // Auto-backup before production promotion
+                if ($targetEnv instanceof Environment && $targetEnv->isProduction()) {
+                    $this->createPreMigrationBackup($migration, $source, $targetEnv);
+                }
+
                 $result = PromoteResourceAction::run($migration);
 
                 if (! $result['success']) {
@@ -119,6 +124,23 @@ class ExecuteMigrationAction
                 }
             }
 
+            // Rotate credentials for databases cloned to production
+            $rotatedCredentials = [];
+            if ($targetEnv instanceof Environment && $targetEnv->isProduction() && RotateCredentialsAction::supportsRotation($target)) {
+                $migration->updateProgress(83, 'Rotating database credentials for production...');
+                $rotationResult = RotateCredentialsAction::run($target, $targetEnv);
+                if ($rotationResult['success'] && ! empty($rotationResult['rotated_fields'])) {
+                    $rotatedCredentials = $rotationResult['rotated_fields'];
+                    $migration->appendLog('Database credentials rotated for production security ('.$rotationResult['updated_env_vars'].' env vars updated)');
+                } elseif (! $rotationResult['success']) {
+                    Log::warning('Credential rotation failed', [
+                        'migration_id' => $migration->id,
+                        'error' => $rotationResult['error'] ?? 'Unknown error',
+                    ]);
+                    $migration->appendLog('Warning: Credential rotation failed - '.$rotationResult['error']);
+                }
+            }
+
             // Rewire env var connections (replace source UUIDs with target UUIDs)
             $rewiredConnections = [];
             if (($options[EnvironmentMigration::OPTION_COPY_ENV_VARS] ?? true) && $sourceEnv) {
@@ -157,6 +179,7 @@ class ExecuteMigrationAction
                 'target' => $target,
                 'rewired_connections' => $rewiredConnections,
                 'cloned_links' => $clonedLinks,
+                'rotated_credentials' => $rotatedCredentials,
             ];
 
         } catch (\Throwable $e) {
@@ -558,6 +581,42 @@ class ExecuteMigrationAction
         }
 
         return null;
+    }
+
+    /**
+     * Create a pre-migration backup of the target resource in production.
+     * For promote mode: backs up the existing target before updating.
+     */
+    protected function createPreMigrationBackup(
+        EnvironmentMigration $migration,
+        Model $source,
+        Environment $targetEnv
+    ): void {
+        // Find existing target resource in production
+        $existingTarget = $this->findExistingTarget($source, $targetEnv);
+        if (! $existingTarget) {
+            return;
+        }
+
+        if (! CreatePreMigrationBackupAction::isBackupable($existingTarget)) {
+            $migration->appendLog('Pre-migration backup skipped (not a backupable database type)');
+
+            return;
+        }
+
+        $migration->updateProgress(5, 'Creating pre-migration backup...');
+        $backupResult = CreatePreMigrationBackupAction::run($existingTarget, $migration);
+
+        if ($backupResult['success']) {
+            $migration->appendLog('Pre-migration backup completed: '.($backupResult['message'] ?? 'OK'));
+        } else {
+            // Backup failure is a warning, not a blocker
+            Log::warning('Pre-migration backup failed', [
+                'migration_id' => $migration->id,
+                'error' => $backupResult['error'] ?? 'Unknown error',
+            ]);
+            $migration->appendLog('Warning: Pre-migration backup failed - '.($backupResult['error'] ?? 'Unknown'));
+        }
     }
 
     /**
