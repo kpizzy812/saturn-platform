@@ -188,8 +188,13 @@ class CloneApplicationAction
             $attributes['name'] = $source->name.' (Clone)';
         }
 
-        // Clear FQDN - will be auto-generated if server supports it
-        $attributes['fqdn'] = null;
+        // Generate a new unique FQDN for the cloned application
+        $server = $destination->server ?? null;
+        if ($server && $source->fqdn) {
+            $attributes['fqdn'] = generateFqdn($server, $newUuid);
+        } else {
+            $attributes['fqdn'] = null;
+        }
 
         $clonedApplication = Application::create($attributes);
 

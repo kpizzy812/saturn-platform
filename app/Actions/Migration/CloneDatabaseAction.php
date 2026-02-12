@@ -139,6 +139,14 @@ class CloneDatabaseAction
         // Keep original name — environment label distinguishes (same as applications)
         $attributes['name'] = $source->name;
 
+        // Reassign public_port to avoid conflicts on the same server
+        if (! empty($attributes['public_port']) && ! empty($attributes['is_public'])) {
+            $server = $destination->server;
+            if ($server && isPublicPortAlreadyUsed($server, (int) $attributes['public_port'])) {
+                $attributes['public_port'] = getRandomPublicPort($destination);
+            }
+        }
+
         // Create the cloned database
         $class = get_class($source);
         $clonedDatabase = new $class($attributes);
