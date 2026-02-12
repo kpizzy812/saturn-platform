@@ -652,11 +652,141 @@ Route::delete('/settings/team/members/{id}', function (string $id) {
         return redirect()->back()->withErrors(['member' => 'Cannot remove the last owner of the team']);
     }
 
-    // Remove the member from the team
-    $team->members()->detach($id);
+    // Archive and kick using the action (backward compatible with simple DELETE)
+    $action = new \App\Actions\Team\ArchiveAndKickMemberAction;
+    $action->execute($team, $member, $currentUser);
 
     return redirect()->back()->with('success', 'Member removed from team successfully');
 })->name('settings.team.members.destroy');
+
+// Get member contributions (JSON) for kick modal preview
+Route::get('/settings/team/members/{id}/contributions', function (string $id) {
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    if (! $currentUser->isAdmin()) {
+        abort(403);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        abort(404);
+    }
+
+    $action = new \App\Actions\Team\ArchiveAndKickMemberAction;
+    $contributions = $action->getContributions($team, $member);
+
+    // Also return other team members (for transfer target selection)
+    $otherMembers = $team->members()
+        ->where('user_id', '!=', $id)
+        ->where('user_id', '!=', $currentUser->id)
+        ->get()
+        ->map(fn ($m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+            'email' => $m->email,
+        ]);
+
+    return response()->json([
+        'contributions' => $contributions,
+        'teamMembers' => $otherMembers,
+    ]);
+})->name('settings.team.members.contributions');
+
+// Kick member with archive and optional transfers
+Route::post('/settings/team/members/{id}/kick', function (Request $request, string $id) {
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    if (! $currentUser->isAdmin()) {
+        return redirect()->back()->withErrors(['member' => 'You do not have permission to remove members']);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        return redirect()->back()->withErrors(['member' => 'Member not found in this team']);
+    }
+
+    // Cannot kick owner if last owner
+    $owners = $team->members()->wherePivot('role', 'owner')->get();
+    if ($member->pivot->role === 'owner' && $owners->count() <= 1) {
+        return redirect()->back()->withErrors(['member' => 'Cannot remove the last owner of the team']);
+    }
+
+    $reason = $request->input('reason');
+    $transfers = $request->input('transfers', []);
+
+    $action = new \App\Actions\Team\ArchiveAndKickMemberAction;
+    $archive = $action->execute($team, $member, $currentUser, $reason, $transfers);
+
+    return response()->json([
+        'success' => true,
+        'archive_id' => $archive->id,
+        'archive_uuid' => $archive->uuid,
+    ]);
+})->name('settings.team.members.kick');
+
+// Member Archives list page
+Route::get('/settings/team/archives', function () {
+    $team = currentTeam();
+
+    $archives = \App\Models\MemberArchive::forTeam($team->id)
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(fn ($a) => [
+            'id' => $a->id,
+            'uuid' => $a->uuid,
+            'member_name' => $a->member_name,
+            'member_email' => $a->member_email,
+            'member_role' => $a->member_role,
+            'member_joined_at' => $a->member_joined_at?->toISOString(),
+            'kicked_by_name' => $a->kicked_by_name,
+            'kick_reason' => $a->kick_reason,
+            'total_actions' => $a->contribution_summary['total_actions'] ?? 0,
+            'deploy_count' => $a->contribution_summary['deploy_count'] ?? 0,
+            'status' => $a->status,
+            'created_at' => $a->created_at->toISOString(),
+        ]);
+
+    return Inertia::render('Settings/Team/Archives', [
+        'archives' => $archives,
+    ]);
+})->name('settings.team.archives');
+
+// Member Archive detail page
+Route::get('/settings/team/archives/{id}', function (string $id) {
+    $team = currentTeam();
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+
+    $transfers = $archive->getTransfers()->map(fn ($t) => [
+        'id' => $t->id,
+        'resource_type' => class_basename($t->transferable_type),
+        'resource_name' => $t->resource_snapshot['name'] ?? 'Unknown',
+        'to_user' => $t->toUser?->name ?? 'Unknown',
+        'status' => $t->status,
+        'completed_at' => $t->completed_at?->toISOString(),
+    ]);
+
+    return Inertia::render('Settings/Team/ArchiveDetail', [
+        'archive' => [
+            'id' => $archive->id,
+            'uuid' => $archive->uuid,
+            'member_name' => $archive->member_name,
+            'member_email' => $archive->member_email,
+            'member_role' => $archive->member_role,
+            'member_joined_at' => $archive->member_joined_at?->toISOString(),
+            'kicked_by_name' => $archive->kicked_by_name,
+            'kick_reason' => $archive->kick_reason,
+            'contribution_summary' => $archive->contribution_summary,
+            'access_snapshot' => $archive->access_snapshot,
+            'status' => $archive->status,
+            'notes' => $archive->notes,
+            'created_at' => $archive->created_at->toISOString(),
+        ],
+        'transfers' => $transfers,
+    ]);
+})->name('settings.team.archive.detail');
 
 Route::post('/settings/team/invite', function (Request $request) {
     $request->validate([
@@ -1221,6 +1351,16 @@ Route::get('/settings/members/{id}', function (string $id) {
             ];
         });
 
+    // Other team members for transfer target selection in kick modal
+    $teamMembers = $team->members()
+        ->where('user_id', '!=', $id)
+        ->get()
+        ->map(fn ($m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+            'email' => $m->email,
+        ]);
+
     return Inertia::render('Settings/Members/Show', [
         'member' => $memberData,
         'projects' => $projects,
@@ -1231,6 +1371,7 @@ Route::get('/settings/members/{id}', function (string $id) {
         'permissionSets' => $permissionSets,
         'allowedProjects' => $allowedProjects,
         'hasFullProjectAccess' => $hasFullAccess,
+        'teamMembers' => $teamMembers,
     ]);
 })->name('settings.members.show');
 

@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Link, router } from '@inertiajs/react';
 import { useToast } from '@/components/ui/Toast';
+import { KickMemberModal } from '@/components/team/KickMemberModal';
 import type { ActivityLog } from '@/types';
 import {
     ArrowLeft,
@@ -79,6 +80,7 @@ interface Props {
     permissionSets: PermissionSetSummary[];
     allowedProjects: number[] | null;
     hasFullProjectAccess: boolean;
+    teamMembers: Array<{ id: number; name: string; email: string }>;
 }
 
 export default function MemberShow({
@@ -91,14 +93,14 @@ export default function MemberShow({
     permissionSets,
     allowedProjects,
     hasFullProjectAccess,
+    teamMembers,
 }: Props) {
     const { toast } = useToast();
-    const [showRemoveModal, setShowRemoveModal] = React.useState(false);
+    const [showKickModal, setShowKickModal] = React.useState(false);
     const [showLeaveModal, setShowLeaveModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [selectedRole, setSelectedRole] = React.useState(member.role);
     const [isUpdatingRole, setIsUpdatingRole] = React.useState(false);
-    const [isRemoving, setIsRemoving] = React.useState(false);
     const [isLeaving, setIsLeaving] = React.useState(false);
 
     // Permission set state
@@ -168,32 +170,6 @@ export default function MemberShow({
             .join('')
             .toUpperCase()
             .slice(0, 2);
-    };
-
-    const handleRemoveMember = () => {
-        setIsRemoving(true);
-        router.delete(`/settings/team/members/${member.id}`, {
-            onSuccess: () => {
-                toast({
-                    title: 'Member removed',
-                    description: `${member.name} has been removed from the team.`,
-                    variant: 'success',
-                });
-                setShowRemoveModal(false);
-                router.visit('/settings/team/index');
-            },
-            onError: (errors) => {
-                toast({
-                    title: 'Error',
-                    description: Object.values(errors).flat().join(', ') || 'Failed to remove member',
-                    variant: 'error',
-                });
-                setIsRemoving(false);
-            },
-            onFinish: () => {
-                setIsRemoving(false);
-            },
-        });
     };
 
     const handleLeaveTeam = () => {
@@ -436,7 +412,7 @@ export default function MemberShow({
                                         </Button>
                                     ) : (
                                         canManageTeam && (
-                                            <Button variant="danger" onClick={() => setShowRemoveModal(true)}>
+                                            <Button variant="danger" onClick={() => setShowKickModal(true)}>
                                                 <UserX className="mr-2 h-4 w-4" />
                                                 Remove
                                             </Button>
@@ -752,29 +728,13 @@ export default function MemberShow({
                 </ModalFooter>
             </Modal>
 
-            {/* Remove Member Modal */}
-            <Modal
-                isOpen={showRemoveModal}
-                onClose={() => !isRemoving && setShowRemoveModal(false)}
-                title="Remove Team Member"
-                description={`Are you sure you want to remove ${member.name} from the team? They will lose access to all team resources.`}
-            >
-                <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)} disabled={isRemoving}>
-                        Cancel
-                    </Button>
-                    <Button variant="danger" onClick={handleRemoveMember} disabled={isRemoving}>
-                        {isRemoving ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Removing...
-                            </>
-                        ) : (
-                            'Remove Member'
-                        )}
-                    </Button>
-                </ModalFooter>
-            </Modal>
+            {/* Kick Member Modal */}
+            <KickMemberModal
+                isOpen={showKickModal}
+                onClose={() => setShowKickModal(false)}
+                member={member}
+                teamMembers={teamMembers}
+            />
 
             {/* Leave Team Modal */}
             <Modal

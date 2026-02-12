@@ -32,6 +32,7 @@ class TeamResourceTransfer extends Model
         'initiated_by',
         'resource_snapshot',
         'related_transfers',
+        'reason',
         'error_message',
         'notes',
     ];

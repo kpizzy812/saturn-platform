@@ -19,9 +19,11 @@ import {
     Activity,
     Lock,
     FolderCog,
-    Code
+    Code,
+    Archive,
 } from 'lucide-react';
 import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
+import { KickMemberModal } from '@/components/team/KickMemberModal';
 
 interface TeamMember {
     id: number;
@@ -54,13 +56,12 @@ interface Props {
 
 export default function TeamIndex({ team, members: initialMembers }: Props) {
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
-    const [showRemoveModal, setShowRemoveModal] = React.useState(false);
+    const [showKickModal, setShowKickModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [showProjectsModal, setShowProjectsModal] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);
     const [newRole, setNewRole] = React.useState<TeamMember['role']>('member');
     const [isChangingRole, setIsChangingRole] = React.useState(false);
-    const [isRemoving, setIsRemoving] = React.useState(false);
     const { toast } = useToast();
 
     const getRoleIcon = (role: string) => {
@@ -137,34 +138,6 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
         }
     };
 
-    const handleRemoveMember = () => {
-        if (selectedMember) {
-            setIsRemoving(true);
-
-            router.delete(`/settings/team/members/${selectedMember.id}`, {
-                onSuccess: () => {
-                    setMembers(members.filter(m => m.id !== selectedMember.id));
-                    toast({
-                        title: 'Member removed',
-                        description: `${selectedMember.name} has been removed from the team.`,
-                    });
-                    setShowRemoveModal(false);
-                    setSelectedMember(null);
-                },
-                onError: () => {
-                    toast({
-                        title: 'Failed to remove member',
-                        description: 'An error occurred while removing the team member.',
-                        variant: 'error',
-                    });
-                },
-                onFinish: () => {
-                    setIsRemoving(false);
-                }
-            });
-        }
-    };
-
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -197,6 +170,12 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
+                                <Link href="/settings/team/archives">
+                                    <Button variant="secondary" size="sm">
+                                        <Archive className="mr-2 h-4 w-4" />
+                                        Archives
+                                    </Button>
+                                </Link>
                                 <Link href="/settings/team/activity">
                                     <Button variant="secondary" size="sm">
                                         <Activity className="mr-2 h-4 w-4" />
@@ -330,7 +309,7 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                                         danger
                                                         onClick={() => {
                                                             setSelectedMember(member);
-                                                            setShowRemoveModal(true);
+                                                            setShowKickModal(true);
                                                         }}
                                                     >
                                                         <UserX className="h-4 w-4" />
@@ -397,22 +376,17 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                 </ModalFooter>
             </Modal>
 
-            {/* Remove Member Modal */}
-            <Modal
-                isOpen={showRemoveModal}
-                onClose={() => setShowRemoveModal(false)}
-                title="Remove Team Member"
-                description={`Are you sure you want to remove ${selectedMember?.name} from the team? They will lose access to all team resources.`}
-            >
-                <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)} disabled={isRemoving}>
-                        Cancel
-                    </Button>
-                    <Button variant="danger" onClick={handleRemoveMember} loading={isRemoving}>
-                        Remove Member
-                    </Button>
-                </ModalFooter>
-            </Modal>
+            {/* Kick Member Modal */}
+            {selectedMember && (
+                <KickMemberModal
+                    isOpen={showKickModal}
+                    onClose={() => {
+                        setShowKickModal(false);
+                        setSelectedMember(null);
+                    }}
+                    member={selectedMember}
+                />
+            )}
 
             {/* Configure Projects Modal */}
             <ConfigureProjectsModal
