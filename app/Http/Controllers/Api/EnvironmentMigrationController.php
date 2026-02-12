@@ -227,11 +227,13 @@ class EnvironmentMigrationController extends Controller
             'target_environment_id' => 'required|integer|exists:environments,id',
             'target_server_id' => 'required|integer|exists:servers,id',
             'options' => 'nullable|array',
+            'options.mode' => 'nullable|string|in:clone,promote',
             'options.copy_env_vars' => 'nullable|boolean',
             'options.copy_volumes' => 'nullable|boolean',
             'options.update_existing' => 'nullable|boolean',
             'options.config_only' => 'nullable|boolean',
             'options.auto_deploy' => 'nullable|boolean',
+            'options.fqdn' => 'nullable|string|max:255',
             'dry_run' => 'nullable|boolean',
         ]);
 
@@ -641,6 +643,147 @@ class EnvironmentMigrationController extends Controller
             'target_environments' => $targetEnvironments,
             'servers' => $servers,
         ]);
+    }
+
+    /**
+     * Bulk check migration feasibility for all resources in an environment.
+     * Returns per-resource check results including auto-detected mode (clone vs promote)
+     * and diff previews.
+     */
+    #[OA\Post(
+        path: '/api/v1/migrations/environment-check',
+        summary: 'Bulk check migration for an environment',
+        tags: ['Migrations'],
+        security: [['bearerAuth' => []]],
+        responses: [
+            new OA\Response(response: 200, description: 'Bulk migration check result'),
+            new OA\Response(response: 401, description: 'Unauthorized'),
+        ]
+    )]
+    public function environmentCheck(Request $request): JsonResponse
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $validated = $request->validate([
+            'source_environment_uuid' => 'required|string',
+            'target_environment_id' => 'required|integer|exists:environments,id',
+            'target_server_id' => 'required|integer|exists:servers,id',
+            'resources' => 'required|array|min:1',
+            'resources.*.type' => 'required|string|in:application,service,database',
+            'resources.*.uuid' => 'required|string',
+        ]);
+
+        $sourceEnv = Environment::where('uuid', $validated['source_environment_uuid'])
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+
+        if (! $sourceEnv) {
+            return response()->json(['message' => 'Source environment not found.'], 404);
+        }
+
+        $targetEnv = Environment::find($validated['target_environment_id']);
+        $targetServer = Server::find($validated['target_server_id']);
+
+        if (! $targetEnv || ! $targetServer) {
+            return response()->json(['message' => 'Target environment or server not found.'], 404);
+        }
+
+        $isTargetProduction = $targetEnv->isProduction();
+        $results = [];
+
+        foreach ($validated['resources'] as $resourceData) {
+            $resource = $this->findResource($resourceData['type'], $resourceData['uuid'], $teamId);
+
+            if (! $resource) {
+                $results[] = [
+                    'uuid' => $resourceData['uuid'],
+                    'type' => $resourceData['type'],
+                    'error' => 'Resource not found',
+                ];
+
+                continue;
+            }
+
+            // Auto-detect mode: check if resource already exists in target env
+            $existingTarget = $this->findExistingInEnvironment($resource, $targetEnv);
+            $mode = $existingTarget ? 'promote' : 'clone';
+
+            // Run pre-checks
+            $options = ['mode' => $mode];
+            if ($mode === 'promote') {
+                $options['update_existing'] = true;
+            }
+
+            $preChecks = PreMigrationCheckAction::run($resource, $targetEnv, $targetServer, $options);
+
+            // Generate diff preview
+            $preview = MigrationDiffAction::run($resource, $targetEnv, $options);
+
+            $results[] = [
+                'uuid' => $resourceData['uuid'],
+                'type' => $resourceData['type'],
+                'name' => $resource->name ?? 'unnamed',
+                'mode' => $mode,
+                'target_exists' => $existingTarget !== null,
+                'target_fqdn' => $existingTarget ? $existingTarget->getAttribute('fqdn') : null,
+                'is_production' => $isTargetProduction,
+                'pre_checks' => $preChecks,
+                'preview' => $preview,
+            ];
+        }
+
+        return response()->json([
+            'target_environment' => [
+                'name' => $targetEnv->name,
+                'type' => $targetEnv->type ?? 'development',
+                'is_production' => $isTargetProduction,
+            ],
+            'resources' => $results,
+        ]);
+    }
+
+    /**
+     * Find an existing resource in target environment by name.
+     */
+    protected function findExistingInEnvironment(\Illuminate\Database\Eloquent\Model $resource, Environment $targetEnv): ?\Illuminate\Database\Eloquent\Model
+    {
+        $name = $resource->name ?? null;
+        if (! $name) {
+            return null;
+        }
+
+        if ($resource instanceof Application) {
+            return $targetEnv->applications()->where('name', $name)->first();
+        }
+
+        if ($resource instanceof Service) {
+            return $targetEnv->services()->where('name', $name)->first();
+        }
+
+        // Check databases
+        $databaseClasses = [
+            \App\Models\StandalonePostgresql::class => 'postgresqls',
+            \App\Models\StandaloneMysql::class => 'mysqls',
+            \App\Models\StandaloneMariadb::class => 'mariadbs',
+            \App\Models\StandaloneMongodb::class => 'mongodbs',
+            \App\Models\StandaloneRedis::class => 'redis',
+            \App\Models\StandaloneClickhouse::class => 'clickhouses',
+            \App\Models\StandaloneKeydb::class => 'keydbs',
+            \App\Models\StandaloneDragonfly::class => 'dragonflies',
+        ];
+
+        $resourceClass = get_class($resource);
+        if (isset($databaseClasses[$resourceClass])) {
+            $relation = $databaseClasses[$resourceClass];
+            if (method_exists($targetEnv, $relation)) {
+                return $targetEnv->$relation()->where('name', $name)->first();
+            }
+        }
+
+        return null;
     }
 
     /**

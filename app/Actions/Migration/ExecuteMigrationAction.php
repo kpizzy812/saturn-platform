@@ -17,6 +17,7 @@ use App\Models\MigrationHistory;
 use App\Models\Server;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -101,6 +102,22 @@ class ExecuteMigrationAction
 
             $target = $result['target'];
             $sourceEnv = $migration->sourceEnvironment;
+
+            // Assign production domain if provided (first clone to production only)
+            $fqdn = $options['fqdn'] ?? null;
+            if ($fqdn && $target instanceof Application) {
+                $migration->updateProgress(82, 'Assigning production domain...');
+                $domainResult = AssignProductionDomainAction::run($target, $fqdn);
+                if ($domainResult['success']) {
+                    $migration->appendLog('Production domain assigned: '.$domainResult['fqdn']);
+                } else {
+                    Log::warning('Failed to assign production domain', [
+                        'migration_id' => $migration->id,
+                        'error' => $domainResult['error'] ?? 'Unknown error',
+                    ]);
+                    $migration->appendLog('Warning: Failed to assign production domain - '.$domainResult['error']);
+                }
+            }
 
             // Rewire env var connections (replace source UUIDs with target UUIDs)
             $rewiredConnections = [];

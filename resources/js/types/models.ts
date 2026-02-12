@@ -841,6 +841,64 @@ export interface EnvironmentMigrationOptions {
     config_only?: boolean;
     rewire_connections?: boolean;
     auto_deploy?: boolean;
+    fqdn?: string;
+}
+
+export interface PreMigrationCheck {
+    pass: boolean;
+    errors: string[];
+    warnings: string[];
+    checks: Record<string, boolean>;
+}
+
+export interface MigrationDiffPreview {
+    mode: 'clone' | 'promote' | 'config_only' | 'update_existing';
+    summary: {
+        action: 'create_new' | 'update_existing';
+        resource_name: string;
+        resource_type: string;
+        env_vars_count?: number;
+        persistent_volumes_count?: number;
+        file_volumes_count?: number;
+        target_id?: number;
+    };
+    attribute_diff?: Record<string, { from: unknown; to: unknown }>;
+    env_var_diff?: {
+        added: string[];
+        removed: string[];
+        changed: string[];
+    };
+    volume_diff?: {
+        added: string[];
+        removed: string[];
+    };
+    rewire_preview?: Array<{
+        key: string;
+        current_value_masked: string;
+        will_rewire: boolean;
+    }>;
+}
+
+export interface BulkCheckResourceResult {
+    uuid: string;
+    type: string;
+    name: string;
+    mode: MigrationMode;
+    target_exists: boolean;
+    target_fqdn: string | null;
+    is_production: boolean;
+    pre_checks: PreMigrationCheck;
+    preview: MigrationDiffPreview;
+    error?: string;
+}
+
+export interface BulkCheckResult {
+    target_environment: {
+        name: string;
+        type: string;
+        is_production: boolean;
+    };
+    resources: BulkCheckResourceResult[];
 }
 
 export interface EnvironmentMigration {

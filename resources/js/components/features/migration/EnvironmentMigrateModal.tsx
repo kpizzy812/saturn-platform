@@ -1,9 +1,16 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { Modal, Button, Alert, Spinner, Checkbox, Select } from '@/components/ui';
-import { ArrowRight, Box, Database, Layers, Server as ServerIcon, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Modal, Button, Alert, Spinner, Checkbox, Select, Input } from '@/components/ui';
+import {
+    ArrowRight, Box, Database, Layers, Server as ServerIcon,
+    AlertTriangle, CheckCircle2, Clock, Info, Plus, RefreshCw, XCircle,
+    Globe, Shield,
+} from 'lucide-react';
 import { useEnvironmentMigrationTargets } from '@/hooks/useMigrations';
-import type { Application, StandaloneDatabase, Service, Environment, Server } from '@/types';
+import type {
+    Application, StandaloneDatabase, Service, Environment, Server,
+    BulkCheckResult, BulkCheckResourceResult, MigrationMode,
+} from '@/types';
 import axios from 'axios';
 
 interface EnvironmentMigrateModalProps {
@@ -19,8 +26,6 @@ interface EnvironmentMigrateModalProps {
 interface MigrationOptions {
     copy_env_vars: boolean;
     copy_volumes: boolean;
-    update_existing: boolean;
-    config_only: boolean;
     auto_deploy: boolean;
 }
 
@@ -33,7 +38,11 @@ interface MigrationResult {
     error?: string;
 }
 
-type MigrationStep = 'configure' | 'confirm' | 'progress';
+interface DomainConfig {
+    [uuid: string]: string; // resource uuid -> domain string
+}
+
+type MigrationStep = 'configure' | 'validate' | 'review' | 'confirm' | 'progress';
 
 export function EnvironmentMigrateModal({
     open,
@@ -49,6 +58,7 @@ export function EnvironmentMigrateModal({
     const [step, setStep] = useState<MigrationStep>('configure');
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isValidating, setIsValidating] = useState(false);
     const [results, setResults] = useState<MigrationResult[]>([]);
     const [anyRequiresApproval, setAnyRequiresApproval] = useState(false);
 
@@ -58,8 +68,6 @@ export function EnvironmentMigrateModal({
     const [options, setOptions] = useState<MigrationOptions>({
         copy_env_vars: true,
         copy_volumes: true,
-        update_existing: false,
-        config_only: false,
         auto_deploy: true,
     });
 
@@ -74,6 +82,12 @@ export function EnvironmentMigrateModal({
         services: [],
     });
 
+    // Bulk check results (auto-detect clone/promote + pre-checks + diff)
+    const [checkResult, setCheckResult] = useState<BulkCheckResult | null>(null);
+
+    // Domain configuration for production clone
+    const [domainConfigs, setDomainConfigs] = useState<DomainConfig>({});
+
     // Fetch targets for environment migration
     const { targets, isLoading: isLoadingTargets } = useEnvironmentMigrationTargets(
         environment?.uuid || '',
@@ -83,12 +97,22 @@ export function EnvironmentMigrateModal({
     // Total count of resources
     const totalResources = applications.length + databases.length + services.length;
 
+    // Computed: is target environment production?
+    const isTargetProduction = React.useMemo(() => {
+        if (!selectedEnvironmentId || !targets?.target_environments) return false;
+        const targetEnv = targets.target_environments.find(
+            (e: any) => e.id === parseInt(selectedEnvironmentId, 10)
+        ) as any;
+        return targetEnv?.type === 'production';
+    }, [selectedEnvironmentId, targets]);
+
     // Reset state when modal closes
     useEffect(() => {
         if (!open) {
             setStep('configure');
             setError(null);
             setIsSubmitting(false);
+            setIsValidating(false);
             setResults([]);
             setAnyRequiresApproval(false);
             setSelectedEnvironmentId('');
@@ -96,10 +120,10 @@ export function EnvironmentMigrateModal({
             setOptions({
                 copy_env_vars: true,
                 copy_volumes: true,
-                update_existing: false,
-                config_only: false,
                 auto_deploy: true,
             });
+            setCheckResult(null);
+            setDomainConfigs({});
         }
     }, [open]);
 
@@ -140,6 +164,58 @@ export function EnvironmentMigrateModal({
         selectedResources.databases.length +
         selectedResources.services.length;
 
+    // Get resource check result from bulk check
+    const getResourceCheck = useCallback((uuid: string): BulkCheckResourceResult | undefined => {
+        return checkResult?.resources?.find(r => r.uuid === uuid);
+    }, [checkResult]);
+
+    // Run bulk pre-migration validation
+    const runValidation = async () => {
+        if (!selectedEnvironmentId || !selectedServerId || !environment) return;
+
+        setIsValidating(true);
+        setError(null);
+
+        try {
+            // Build resources list
+            const resources: Array<{ type: string; uuid: string }> = [];
+            for (const uuid of selectedResources.databases) {
+                resources.push({ type: 'database', uuid });
+            }
+            for (const uuid of selectedResources.services) {
+                resources.push({ type: 'service', uuid });
+            }
+            for (const uuid of selectedResources.applications) {
+                resources.push({ type: 'application', uuid });
+            }
+
+            const response = await axios.post('/api/v1/migrations/environment-check', {
+                source_environment_uuid: environment.uuid,
+                target_environment_id: parseInt(selectedEnvironmentId, 10),
+                target_server_id: parseInt(selectedServerId, 10),
+                resources,
+            });
+
+            setCheckResult(response.data);
+
+            // Check if there are any blocking errors
+            const hasBlockingErrors = response.data.resources?.some(
+                (r: BulkCheckResourceResult) => r.pre_checks && !r.pre_checks.pass
+            );
+
+            if (hasBlockingErrors) {
+                setStep('validate');
+            } else {
+                // Skip validation step if no errors — go directly to review
+                setStep('review');
+            }
+        } catch (err) {
+            setError(axios.isAxiosError(err) ? err.response?.data?.message || 'Validation failed' : 'Validation failed');
+        } finally {
+            setIsValidating(false);
+        }
+    };
+
     const handleConfigure = () => {
         if (!selectedEnvironmentId || !selectedServerId) {
             setError('Please select target environment and server.');
@@ -148,6 +224,27 @@ export function EnvironmentMigrateModal({
         if (selectedCount === 0) {
             setError('Please select at least one resource to migrate.');
             return;
+        }
+        setError(null);
+        runValidation();
+    };
+
+    const handleValidationContinue = () => {
+        setStep('review');
+    };
+
+    const handleReviewContinue = () => {
+        // Validate domain inputs for production clone apps
+        if (isTargetProduction && checkResult) {
+            for (const res of checkResult.resources) {
+                if (res.type === 'application' && res.mode === 'clone') {
+                    const domain = domainConfigs[res.uuid];
+                    if (!domain || domain.trim() === '') {
+                        setError(`Please enter a domain for "${res.name}".`);
+                        return;
+                    }
+                }
+            }
         }
         setError(null);
         setStep('confirm');
@@ -163,21 +260,34 @@ export function EnvironmentMigrateModal({
         let hasApproval = false;
         const targetEnvId = parseInt(selectedEnvironmentId, 10);
         const targetServId = parseInt(selectedServerId, 10);
-        const isTargetProduction = (targets?.target_environments.find(e => e.id === targetEnvId) as any)?.type === 'production';
 
         // Migrate each selected resource
         const migrateResource = async (type: 'application' | 'database' | 'service', uuid: string, name: string, index: number) => {
             try {
+                const resourceCheck = getResourceCheck(uuid);
+                const mode: MigrationMode = resourceCheck?.mode || 'clone';
+
+                const migrationOptions: Record<string, unknown> = {
+                    ...options,
+                    mode,
+                    // For databases going to production, force config_only
+                    config_only: type === 'database' && isTargetProduction ? true : false,
+                };
+
+                // Add FQDN for production clone apps
+                if (isTargetProduction && mode === 'clone' && type === 'application') {
+                    const domain = domainConfigs[uuid];
+                    if (domain) {
+                        migrationOptions.fqdn = domain;
+                    }
+                }
+
                 const response = await axios.post('/api/v1/migrations', {
                     source_type: type,
                     source_uuid: uuid,
                     target_environment_id: targetEnvId,
                     target_server_id: targetServId,
-                    options: {
-                        ...options,
-                        // For databases going to production, force config_only (protect prod data!)
-                        config_only: type === 'database' && isTargetProduction ? true : options.config_only,
-                    },
+                    options: migrationOptions,
                 });
 
                 if (response.data.requires_approval) {
@@ -209,31 +319,19 @@ export function EnvironmentMigrateModal({
         for (const uuid of selectedResources.databases) {
             const db = databases.find(d => d.uuid === uuid);
             if (db) {
-                allResults.push({
-                    resource_type: 'database',
-                    resource_name: db.name,
-                    status: 'pending',
-                });
+                allResults.push({ resource_type: 'database', resource_name: db.name, status: 'pending' });
             }
         }
         for (const uuid of selectedResources.services) {
             const svc = services.find(s => s.uuid === uuid);
             if (svc) {
-                allResults.push({
-                    resource_type: 'service',
-                    resource_name: svc.name,
-                    status: 'pending',
-                });
+                allResults.push({ resource_type: 'service', resource_name: svc.name, status: 'pending' });
             }
         }
         for (const uuid of selectedResources.applications) {
             const app = applications.find(a => a.uuid === uuid);
             if (app) {
-                allResults.push({
-                    resource_type: 'application',
-                    resource_name: app.name,
-                    status: 'pending',
-                });
+                allResults.push({ resource_type: 'application', resource_name: app.name, status: 'pending' });
             }
         }
         setResults([...allResults]);
@@ -279,6 +377,10 @@ export function EnvironmentMigrateModal({
         switch (step) {
             case 'configure':
                 return 'Migrate Environment';
+            case 'validate':
+                return 'Validation Results';
+            case 'review':
+                return 'Review Changes';
             case 'confirm':
                 return 'Confirm Migration';
             case 'progress':
@@ -290,6 +392,10 @@ export function EnvironmentMigrateModal({
         switch (step) {
             case 'configure':
                 return `Migrate resources from "${environment?.name || 'environment'}" to another environment.`;
+            case 'validate':
+                return 'Some checks found issues that need your attention.';
+            case 'review':
+                return 'Review what will happen for each resource.';
             case 'confirm':
                 return `You are about to migrate ${selectedCount} resource(s).`;
             case 'progress':
@@ -299,7 +405,7 @@ export function EnvironmentMigrateModal({
         }
     };
 
-    const selectedEnvName = targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10))?.name || '';
+    const selectedEnvName = targets?.target_environments.find((e: any) => e.id === parseInt(selectedEnvironmentId, 10))?.name || '';
     const selectedServerName = targets?.servers.find((s: { id: number; name: string; ip: string }) => s.id === parseInt(selectedServerId, 10))?.name || '';
 
     if (!environment) return null;
@@ -312,6 +418,7 @@ export function EnvironmentMigrateModal({
             description={getStepDescription()}
             size="lg"
         >
+            {/* Step 1: Configure */}
             {step === 'configure' && (
                 <div className="space-y-6">
                     {/* Source environment info */}
@@ -449,26 +556,19 @@ export function EnvironmentMigrateModal({
                                     Copy environment variables
                                 </label>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="copy-volumes"
-                                    checked={options.copy_volumes}
-                                    onCheckedChange={(checked) => setOptions({ ...options, copy_volumes: !!checked })}
-                                />
-                                <label htmlFor="copy-volumes" className="text-sm cursor-pointer">
-                                    Copy volume configurations
-                                </label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Checkbox
-                                    id="update-existing"
-                                    checked={options.update_existing}
-                                    onCheckedChange={(checked) => setOptions({ ...options, update_existing: !!checked })}
-                                />
-                                <label htmlFor="update-existing" className="text-sm cursor-pointer">
-                                    Update existing resources (if found)
-                                </label>
-                            </div>
+                            {/* Hide copy volumes for production targets */}
+                            {!isTargetProduction && (
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        id="copy-volumes"
+                                        checked={options.copy_volumes}
+                                        onCheckedChange={(checked) => setOptions({ ...options, copy_volumes: !!checked })}
+                                    />
+                                    <label htmlFor="copy-volumes" className="text-sm cursor-pointer">
+                                        Copy volume configurations
+                                    </label>
+                                </div>
+                            )}
                             <div className="flex items-center gap-2">
                                 <Checkbox
                                     id="auto-deploy"
@@ -489,14 +589,231 @@ export function EnvironmentMigrateModal({
                         <Button variant="outline" onClick={handleClose}>
                             Cancel
                         </Button>
-                        <Button onClick={handleConfigure} disabled={selectedCount === 0}>
-                            Next
+                        <Button onClick={handleConfigure} disabled={selectedCount === 0 || isValidating}>
+                            {isValidating ? (
+                                <>
+                                    <Spinner size="sm" className="mr-2" />
+                                    Checking...
+                                </>
+                            ) : (
+                                <>
+                                    Next
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 2: Validation Results (only shown if there are errors/warnings) */}
+            {step === 'validate' && checkResult && (
+                <div className="space-y-6">
+                    <div className="space-y-3">
+                        {checkResult.resources.map((res) => (
+                            <div key={res.uuid} className="rounded-lg border border-border p-4 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {res.type === 'application' && <Box className="h-4 w-4" />}
+                                        {res.type === 'database' && <Database className="h-4 w-4" />}
+                                        {res.type === 'service' && <Layers className="h-4 w-4" />}
+                                        <span className="font-medium text-sm">{res.name}</span>
+                                    </div>
+                                    <ModeLabel mode={res.mode} />
+                                </div>
+
+                                {/* Errors */}
+                                {res.pre_checks?.errors?.length > 0 && (
+                                    <div className="space-y-1">
+                                        {res.pre_checks.errors.map((err, i) => (
+                                            <div key={i} className="flex items-start gap-2 text-sm text-destructive">
+                                                <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                                <span>{err}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Warnings */}
+                                {res.pre_checks?.warnings?.length > 0 && (
+                                    <div className="space-y-1">
+                                        {res.pre_checks.warnings.map((warn, i) => (
+                                            <div key={i} className="flex items-start gap-2 text-sm text-warning">
+                                                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                                                <span>{warn}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* All clear */}
+                                {res.pre_checks?.pass && !res.pre_checks?.warnings?.length && (
+                                    <div className="flex items-center gap-2 text-sm text-success">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        All checks passed
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Block continue if any critical errors */}
+                    {checkResult.resources.some(r => r.pre_checks && !r.pre_checks.pass) && (
+                        <Alert variant="danger">
+                            <XCircle className="h-4 w-4" />
+                            <div>
+                                <p className="font-medium">Critical issues found</p>
+                                <p className="text-sm">Fix the errors above before proceeding.</p>
+                            </div>
+                        </Alert>
+                    )}
+
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setStep('configure')}>
+                            Back
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => runValidation()}
+                            disabled={isValidating}
+                        >
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
+                            Re-check
+                        </Button>
+                        <Button
+                            onClick={handleValidationContinue}
+                            disabled={checkResult.resources.some(r => r.pre_checks && !r.pre_checks.pass)}
+                        >
+                            Continue with warnings
                             <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </div>
                 </div>
             )}
 
+            {/* Step 3: Review Changes + Domain Config */}
+            {step === 'review' && checkResult && (
+                <div className="space-y-6">
+                    {/* Per-resource review */}
+                    <div className="space-y-4 max-h-[50vh] overflow-y-auto">
+                        {checkResult.resources.map((res) => (
+                            <div key={res.uuid} className="rounded-lg border border-border p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {res.type === 'application' && <Box className="h-4 w-4" />}
+                                        {res.type === 'database' && <Database className="h-4 w-4" />}
+                                        {res.type === 'service' && <Layers className="h-4 w-4" />}
+                                        <span className="font-medium text-sm">{res.name}</span>
+                                    </div>
+                                    <ModeLabel mode={res.mode} />
+                                </div>
+
+                                {/* Clone summary */}
+                                {res.mode === 'clone' && res.preview && (
+                                    <div className="text-sm text-foreground-muted space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <Plus className="h-3 w-3" />
+                                            New {res.preview.summary.resource_type} will be created
+                                        </div>
+                                        {res.preview.summary.env_vars_count !== undefined && res.preview.summary.env_vars_count > 0 && (
+                                            <div className="ml-5">{res.preview.summary.env_vars_count} environment variable(s) will be copied</div>
+                                        )}
+                                        {res.preview.summary.persistent_volumes_count !== undefined && res.preview.summary.persistent_volumes_count > 0 && (
+                                            <div className="ml-5">{res.preview.summary.persistent_volumes_count} volume(s) will be configured</div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Promote diff */}
+                                {res.mode === 'promote' && res.preview && (
+                                    <div className="text-sm space-y-2">
+                                        {res.preview.attribute_diff && Object.keys(res.preview.attribute_diff).length > 0 ? (
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-medium text-foreground-muted">Configuration changes:</p>
+                                                {Object.entries(res.preview.attribute_diff).map(([field, diff]) => (
+                                                    <div key={field} className="ml-2 flex items-center gap-2 text-xs">
+                                                        <span className="font-mono text-warning">{field}</span>
+                                                        <span className="text-foreground-muted">→</span>
+                                                        <span className="text-success truncate max-w-[200px]">{String(diff.to)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-foreground-muted">
+                                                <Info className="h-3 w-3" />
+                                                No configuration changes detected
+                                            </div>
+                                        )}
+
+                                        {/* Rewire preview */}
+                                        {res.preview.rewire_preview && res.preview.rewire_preview.length > 0 && (
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-medium text-foreground-muted">Connections to rewire:</p>
+                                                {res.preview.rewire_preview.map((rw) => (
+                                                    <div key={rw.key} className="ml-2 text-xs">
+                                                        <span className="font-mono">{rw.key}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Domain input for production clone applications */}
+                                {isTargetProduction && res.type === 'application' && res.mode === 'clone' && (
+                                    <div className="border-t border-border pt-3 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Globe className="h-4 w-4 text-primary" />
+                                            <p className="text-sm font-medium">Production Domain</p>
+                                        </div>
+                                        <p className="text-xs text-foreground-muted">
+                                            Enter a subdomain (e.g., myapp.saturn.ac) or custom domain (e.g., app.company.com)
+                                        </p>
+                                        <Input
+                                            value={domainConfigs[res.uuid] || ''}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                                setDomainConfigs(prev => ({ ...prev, [res.uuid]: e.target.value }))
+                                            }
+                                            placeholder="myapp.saturn.ac"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Show existing FQDN for promote apps */}
+                                {isTargetProduction && res.type === 'application' && res.mode === 'promote' && res.target_fqdn && (
+                                    <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                                        <Globe className="h-3 w-3" />
+                                        Domain: <span className="font-mono text-foreground">{res.target_fqdn}</span>
+                                        <span className="text-xs">(unchanged)</span>
+                                    </div>
+                                )}
+
+                                {/* Production database protection */}
+                                {isTargetProduction && res.type === 'database' && (
+                                    <div className="flex items-center gap-2 text-sm text-warning">
+                                        <Shield className="h-3 w-3" />
+                                        Config-only mode (production data protected)
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {error && <Alert variant="danger">{error}</Alert>}
+
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setStep('configure')}>
+                            Back
+                        </Button>
+                        <Button onClick={handleReviewContinue}>
+                            Continue
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 4: Confirm */}
             {step === 'confirm' && (
                 <div className="space-y-6">
                     {/* Summary */}
@@ -521,45 +838,30 @@ export function EnvironmentMigrateModal({
                         </div>
                     </div>
 
-                    {/* Resources to migrate */}
+                    {/* Resources to migrate with mode badges */}
                     <div className="space-y-2">
                         <p className="text-sm font-medium">Resources to migrate ({selectedCount})</p>
                         <div className="max-h-48 space-y-1 overflow-y-auto">
-                            {selectedResources.applications.map(uuid => {
-                                const app = applications.find(a => a.uuid === uuid);
-                                return app && (
-                                    <div key={uuid} className="flex items-center gap-2 text-sm">
-                                        <Box className="h-4 w-4 text-foreground-muted" />
-                                        {app.name}
-                                    </div>
-                                );
-                            })}
-                            {selectedResources.databases.map(uuid => {
-                                const db = databases.find(d => d.uuid === uuid);
-                                return db && (
-                                    <div key={uuid} className="flex items-center gap-2 text-sm">
-                                        <Database className="h-4 w-4 text-foreground-muted" />
-                                        {db.name}
-                                        {(targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10)) as any)?.type === 'production' && (
-                                            <span className="text-xs text-warning">(config only)</span>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            {selectedResources.services.map(uuid => {
-                                const svc = services.find(s => s.uuid === uuid);
-                                return svc && (
-                                    <div key={uuid} className="flex items-center gap-2 text-sm">
-                                        <Layers className="h-4 w-4 text-foreground-muted" />
-                                        {svc.name}
-                                    </div>
-                                );
-                            })}
+                            {checkResult?.resources.map(res => (
+                                <div key={res.uuid} className="flex items-center gap-2 text-sm">
+                                    {res.type === 'application' && <Box className="h-4 w-4 text-foreground-muted" />}
+                                    {res.type === 'database' && <Database className="h-4 w-4 text-foreground-muted" />}
+                                    {res.type === 'service' && <Layers className="h-4 w-4 text-foreground-muted" />}
+                                    <span>{res.name}</span>
+                                    <ModeLabel mode={res.mode} />
+                                    {isTargetProduction && res.type === 'database' && (
+                                        <span className="text-xs text-warning">(config only)</span>
+                                    )}
+                                    {isTargetProduction && res.type === 'application' && res.mode === 'clone' && domainConfigs[res.uuid] && (
+                                        <span className="text-xs text-primary">{domainConfigs[res.uuid]}</span>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
 
                     {/* Warning for production */}
-                    {(targets?.target_environments.find(e => e.id === parseInt(selectedEnvironmentId, 10)) as any)?.type === 'production' && (
+                    {isTargetProduction && (
                         <Alert variant="warning">
                             <AlertTriangle className="h-4 w-4" />
                             <div>
@@ -576,7 +878,7 @@ export function EnvironmentMigrateModal({
 
                     {/* Actions */}
                     <div className="flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setStep('configure')} disabled={isSubmitting}>
+                        <Button variant="outline" onClick={() => setStep('review')} disabled={isSubmitting}>
                             Back
                         </Button>
                         <Button onClick={handleConfirm} disabled={isSubmitting}>
@@ -593,6 +895,7 @@ export function EnvironmentMigrateModal({
                 </div>
             )}
 
+            {/* Step 5: Progress */}
             {step === 'progress' && (
                 <div className="space-y-6">
                     {/* Results */}
@@ -656,5 +959,25 @@ export function EnvironmentMigrateModal({
                 </div>
             )}
         </Modal>
+    );
+}
+
+/**
+ * Mode label component — shows "New" or "Update" badge
+ */
+function ModeLabel({ mode }: { mode: MigrationMode }) {
+    if (mode === 'clone') {
+        return (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">
+                <Plus className="h-3 w-3" />
+                New
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            <RefreshCw className="h-3 w-3" />
+            Update
+        </span>
     );
 }

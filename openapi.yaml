@@ -3539,6 +3539,21 @@ paths:
       security:
         -
           bearerAuth: []
+  /api/v1/migrations/environment-check:
+    post:
+      tags:
+        - Migrations
+      summary: 'Bulk check migration for an environment'
+      description: "Bulk check migration feasibility for all resources in an environment.\nReturns per-resource check results including auto-detected mode (clone vs promote)\nand diff previews."
+      operationId: b4118bd5065f57436652cb6b8088c7c9
+      responses:
+        '200':
+          description: 'Bulk migration check result'
+        '401':
+          description: Unauthorized
+      security:
+        -
+          bearerAuth: []
   /git/branches:
     get:
       tags:
