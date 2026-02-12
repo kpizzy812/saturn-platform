@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import { Link, usePage } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Select } from '@/components/ui';
-import { ArrowLeft, ChevronRight, Database, Check, Settings2 } from 'lucide-react';
+import { Card, CardContent, Button, Input, Select, BrandIcon } from '@/components/ui';
+import { ArrowLeft, ChevronRight, Check, Settings2 } from 'lucide-react';
 import type { DatabaseType } from '@/types';
 
 interface Environment {
@@ -169,7 +169,7 @@ export default function DatabaseCreate() {
                                             <CardContent className="flex items-center justify-between p-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${db.iconBg} ${db.iconColor} shadow-lg transition-transform duration-300 group-hover:scale-110`}>
-                                                        <Database className="h-5 w-5" />
+                                                        <BrandIcon name={db.type} className="h-5 w-5" />
                                                     </div>
                                                     <div>
                                                         <h3 className="font-medium text-foreground transition-colors group-hover:text-white">
@@ -193,7 +193,7 @@ export default function DatabaseCreate() {
                                 <CardContent className="p-6">
                                     <div className="mb-6 flex items-center gap-3">
                                         <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${selectedDbType.iconBg} ${selectedDbType.iconColor} shadow-lg`}>
-                                            <Database className="h-5 w-5" />
+                                            <BrandIcon name={selectedDbType.type} className="h-5 w-5" />
                                         </div>
                                         <div>
                                             <h3 className="font-medium text-foreground">{selectedDbType.displayName}</h3>
@@ -317,7 +317,7 @@ export default function DatabaseCreate() {
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-3 rounded-lg border border-border bg-background-secondary p-4">
                                             <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${selectedDbType.iconBg} ${selectedDbType.iconColor} shadow-lg`}>
-                                                <Database className="h-5 w-5" />
+                                                <BrandIcon name={selectedDbType.type} className="h-5 w-5" />
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-medium text-foreground">{name}</p>
