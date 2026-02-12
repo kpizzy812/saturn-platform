@@ -59,7 +59,8 @@ class EnvironmentMigrationController extends Controller
             $query->where('status', $request->input('status'));
         }
 
-        $migrations = $query->paginate($request->input('per_page', 25));
+        $perPage = min($request->integer('per_page', 25), 100);
+        $migrations = $query->paginate($perPage);
 
         return response()->json($migrations);
     }
@@ -89,9 +90,10 @@ class EnvironmentMigrationController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
+        $perPage = min($request->integer('per_page', 25), 100);
         $migrations = EnvironmentMigration::pendingForApprover($user)
             ->where('team_id', $teamId)
-            ->paginate($request->input('per_page', 25));
+            ->paginate($perPage);
 
         return response()->json($migrations);
     }
@@ -131,7 +133,9 @@ class EnvironmentMigrationController extends Controller
         }
 
         $sourceEnvironment = $resource->environment;
-        $targetEnvironment = Environment::find($validated['target_environment_id']);
+        $targetEnvironment = Environment::where('id', $validated['target_environment_id'])
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
 
         if (! $targetEnvironment) {
             return response()->json(['message' => 'Target environment not found.'], 404);
@@ -183,7 +187,7 @@ class EnvironmentMigrationController extends Controller
 
         // Run pre-migration checks if target server is specified
         if (isset($validated['target_server_id'])) {
-            $targetServer = Server::find($validated['target_server_id']);
+            $targetServer = $this->findTeamServer($validated['target_server_id'], $teamId);
             if ($targetServer) {
                 $options = $validated['options'] ?? [];
                 $response['pre_checks'] = PreMigrationCheckAction::run(
@@ -244,16 +248,13 @@ class EnvironmentMigrationController extends Controller
             return response()->json(['message' => 'Source resource not found.'], 404);
         }
 
-        $targetEnvironment = Environment::find($validated['target_environment_id']);
-        $targetServer = Server::find($validated['target_server_id']);
+        $targetEnvironment = Environment::where('id', $validated['target_environment_id'])
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+        $targetServer = $this->findTeamServer($validated['target_server_id'], $teamId);
 
         if (! $targetEnvironment || ! $targetServer) {
             return response()->json(['message' => 'Target environment or server not found.'], 404);
-        }
-
-        // Verify server belongs to team
-        if ($targetServer->team_id !== $teamId) {
-            return response()->json(['message' => 'Target server does not belong to your team.'], 403);
         }
 
         $options = $validated['options'] ?? [];
@@ -329,15 +330,13 @@ class EnvironmentMigrationController extends Controller
             'options' => 'nullable|array',
         ]);
 
-        $targetEnvironment = Environment::find($validated['target_environment_id']);
-        $targetServer = Server::find($validated['target_server_id']);
+        $targetEnvironment = Environment::where('id', $validated['target_environment_id'])
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+        $targetServer = $this->findTeamServer($validated['target_server_id'], $teamId);
 
         if (! $targetEnvironment || ! $targetServer) {
             return response()->json(['message' => 'Target environment or server not found.'], 404);
-        }
-
-        if ($targetServer->team_id !== $teamId) {
-            return response()->json(['message' => 'Target server does not belong to your team.'], 403);
         }
 
         $user = auth()->user();
@@ -414,6 +413,9 @@ class EnvironmentMigrationController extends Controller
         if (! $migration) {
             return response()->json(['message' => 'Migration not found.'], 404);
         }
+
+        // Hide sensitive snapshot data from API response
+        $migration->makeHidden(['rollback_snapshot']);
 
         return response()->json($migration);
     }
@@ -815,8 +817,10 @@ class EnvironmentMigrationController extends Controller
             return response()->json(['message' => 'Source environment not found.'], 404);
         }
 
-        $targetEnv = Environment::find($validated['target_environment_id']);
-        $targetServer = Server::find($validated['target_server_id']);
+        $targetEnv = Environment::where('id', $validated['target_environment_id'])
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->first();
+        $targetServer = $this->findTeamServer($validated['target_server_id'], $teamId);
 
         if (! $targetEnv || ! $targetServer) {
             return response()->json(['message' => 'Target environment or server not found.'], 404);
@@ -961,6 +965,19 @@ class EnvironmentMigrationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Find a server that belongs to the team (or is localhost).
+     */
+    private function findTeamServer(int $serverId, int $teamId): ?Server
+    {
+        return Server::where('id', $serverId)
+            ->where(function ($query) use ($teamId) {
+                $query->where('team_id', $teamId)
+                    ->orWhere('id', 0); // localhost (Saturn host)
+            })
+            ->first();
     }
 
     /**

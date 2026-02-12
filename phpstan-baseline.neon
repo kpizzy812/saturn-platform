@@ -1869,7 +1869,7 @@ parameters:
 		-
 			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
 			identifier: larastan.relationExistence
-			count: 2
+			count: 6
 			path: app/Http/Controllers/Api/EnvironmentMigrationController.php
 
 		-

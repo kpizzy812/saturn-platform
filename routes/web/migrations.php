@@ -9,6 +9,7 @@
 
 use App\Models\EnvironmentMigration;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -54,7 +55,13 @@ Route::get('/migrations/{uuid}', function (string $uuid) {
         ])
         ->firstOrFail();
 
+    // Hide rollback snapshot from frontend
+    $migration->makeHidden(['rollback_snapshot']);
+
     return Inertia::render('Migrations/Show', [
         'migration' => $migration,
+        'canApprove' => Gate::allows('approve', $migration),
+        'canReject' => Gate::allows('reject', $migration),
+        'canRollback' => Gate::allows('rollback', $migration),
     ]);
 })->name('migrations.show');

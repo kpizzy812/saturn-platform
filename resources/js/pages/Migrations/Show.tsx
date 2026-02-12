@@ -27,6 +27,9 @@ import { useState, useEffect } from 'react';
 
 interface Props {
     migration: EnvironmentMigration;
+    canApprove?: boolean;
+    canReject?: boolean;
+    canRollback?: boolean;
 }
 
 const statusConfig: Record<EnvironmentMigrationStatus, {
@@ -69,7 +72,7 @@ function getResourceIcon(sourceType: string) {
     return Database;
 }
 
-export default function MigrationShow({ migration: initialMigration }: Props) {
+export default function MigrationShow({ migration: initialMigration, canApprove = false, canReject = false, canRollback: canRollbackPerm = false }: Props) {
     const [showLogs, setShowLogs] = useState(true);
 
     const {
@@ -95,7 +98,7 @@ export default function MigrationShow({ migration: initialMigration }: Props) {
     const StatusIcon = config.icon;
     const isAnimated = migration.status === 'in_progress';
     const isActive = ['pending', 'approved', 'in_progress'].includes(migration.status);
-    const canRollback = migration.status === 'completed' && migration.rollback_snapshot;
+    const canRollback = migration.status === 'completed' && canRollbackPerm;
     const ResourceIcon = getResourceIcon(migration.source_type);
 
     const mode = migration.options?.mode || 'clone';
@@ -104,43 +107,48 @@ export default function MigrationShow({ migration: initialMigration }: Props) {
     const targetEnvName = migration.target_environment?.name || 'Target';
     const projectName = (migration.source_environment as any)?.project?.name;
 
-    const handleRollback = () => {
-        if (confirm('Are you sure you want to rollback this migration? This will restore the previous configuration.')) {
-            fetch(`/api/v1/migrations/${migration.uuid}/rollback`, {
+    const [actionError, setActionError] = useState<string | null>(null);
+
+    const fetchAction = async (url: string, body?: object) => {
+        setActionError(null);
+        try {
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
                 credentials: 'include',
-            }).then(() => router.reload());
+                ...(body ? { body: JSON.stringify(body) } : {}),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setActionError(data.message || `Request failed (${res.status})`);
+                return;
+            }
+            router.reload();
+        } catch {
+            setActionError('Network error. Please try again.');
+        }
+    };
+
+    const handleRollback = () => {
+        if (confirm('Are you sure you want to rollback this migration? This will restore the previous configuration.')) {
+            fetchAction(`/api/v1/migrations/${migration.uuid}/rollback`);
         }
     };
 
     const handleApprove = () => {
-        fetch(`/api/v1/migrations/${migration.uuid}/approve`, {
-            method: 'POST',
-            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-            credentials: 'include',
-        }).then(() => router.reload());
+        fetchAction(`/api/v1/migrations/${migration.uuid}/approve`);
     };
 
     const handleReject = () => {
         const reason = prompt('Rejection reason:');
         if (reason) {
-            fetch(`/api/v1/migrations/${migration.uuid}/reject`, {
-                method: 'POST',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ reason }),
-            }).then(() => router.reload());
+            fetchAction(`/api/v1/migrations/${migration.uuid}/reject`, { reason });
         }
     };
 
     const handleCancel = () => {
         if (confirm('Are you sure you want to cancel this migration?')) {
-            fetch(`/api/v1/migrations/${migration.uuid}/cancel`, {
-                method: 'POST',
-                headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-                credentials: 'include',
-            }).then(() => router.reload());
+            fetchAction(`/api/v1/migrations/${migration.uuid}/cancel`);
         }
     };
 
@@ -204,11 +212,11 @@ export default function MigrationShow({ migration: initialMigration }: Props) {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {migration.status === 'pending' && migration.requires_approval && (
-                            <>
-                                <Button variant="success" onClick={handleApprove}>Approve</Button>
-                                <Button variant="danger" onClick={handleReject}>Reject</Button>
-                            </>
+                        {migration.status === 'pending' && migration.requires_approval && canApprove && (
+                            <Button variant="success" onClick={handleApprove}>Approve</Button>
+                        )}
+                        {migration.status === 'pending' && migration.requires_approval && canReject && (
+                            <Button variant="danger" onClick={handleReject}>Reject</Button>
                         )}
                         {(migration.status === 'pending' || migration.status === 'approved') && (
                             <Button variant="outline" onClick={handleCancel}>Cancel</Button>
@@ -224,6 +232,21 @@ export default function MigrationShow({ migration: initialMigration }: Props) {
                         </Badge>
                     </div>
                 </div>
+
+                {/* Action error */}
+                {actionError && (
+                    <Card className="mb-6 border-red-500/50">
+                        <CardContent className="py-4">
+                            <div className="flex items-start gap-3">
+                                <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-medium text-red-500">Action Failed</p>
+                                    <p className="text-sm text-foreground-muted mt-1">{actionError}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Progress bar */}
                 {(isActive || migration.status === 'in_progress') && (

@@ -130,22 +130,23 @@ class CopyDatabaseDataAction
         $containerName = escapeshellarg((string) $source->getAttribute('uuid'));
         $timestamp = now()->format('Ymd_His');
         $dumpFile = "/tmp/saturn_migration_dump_{$timestamp}";
+        $escapedDumpFile = escapeshellarg($dumpFile);
 
         if ($source instanceof StandalonePostgresql) {
             $database = escapeshellarg($source->postgres_db ?? 'postgres');
             $user = escapeshellarg($source->postgres_user ?? 'postgres');
-            $cmd = "docker exec {$containerName} pg_dump --format=custom --no-acl --no-owner --username {$user} {$database} > {$dumpFile}";
+            $cmd = "docker exec {$containerName} pg_dump --format=custom --no-acl --no-owner --username {$user} {$database} > {$escapedDumpFile}";
         } elseif ($source instanceof StandaloneMysql) {
             $database = escapeshellarg($source->mysql_database ?? 'mysql');
             $password = $source->mysql_root_password ?? '';
-            $cmd = "docker exec {$containerName} mysqldump -u root -p".escapeshellarg($password)." {$database} --single-transaction --quick > {$dumpFile}";
+            $cmd = "docker exec {$containerName} mysqldump -u root -p".escapeshellarg($password)." {$database} --single-transaction --quick > {$escapedDumpFile}";
         } elseif ($source instanceof StandaloneMariadb) {
             $database = escapeshellarg($source->mariadb_database ?? 'mariadb');
             $password = $source->mariadb_root_password ?? '';
-            $cmd = "docker exec {$containerName} mariadb-dump -u root -p".escapeshellarg($password)." {$database} --single-transaction --quick > {$dumpFile}";
+            $cmd = "docker exec {$containerName} mariadb-dump -u root -p".escapeshellarg($password)." {$database} --single-transaction --quick > {$escapedDumpFile}";
         } elseif ($source instanceof StandaloneMongodb) {
             $url = $source->internal_db_url ?? 'mongodb://localhost:27017';
-            $cmd = "docker exec {$containerName} mongodump --authenticationDatabase=admin --uri=".escapeshellarg($url)." --gzip --archive > {$dumpFile}";
+            $cmd = "docker exec {$containerName} mongodump --authenticationDatabase=admin --uri=".escapeshellarg($url)." --gzip --archive > {$escapedDumpFile}";
         } else {
             return null;
         }
@@ -154,7 +155,7 @@ class CopyDatabaseDataAction
 
         // Verify dump was created
         $check = instant_remote_process(
-            ["test -f {$dumpFile} && du -b {$dumpFile} | cut -f1 || echo '0'"],
+            ["test -f {$escapedDumpFile} && du -b {$escapedDumpFile} | cut -f1 || echo '0'"],
             $server,
             false
         );
@@ -172,16 +173,18 @@ class CopyDatabaseDataAction
      */
     protected function transferDump(string $dumpFile, \App\Models\Server $source, \App\Models\Server $target): void
     {
+        $escapedDumpFile = escapeshellarg($dumpFile);
+
         // Use scp-like approach via the target server pulling from source
         // This avoids needing direct server-to-server SSH keys
         $content = instant_remote_process(
-            ["cat {$dumpFile} | base64"],
+            ["cat {$escapedDumpFile} | base64"],
             $source
         );
 
         if ($content) {
             instant_remote_process(
-                ['echo '.escapeshellarg($content)." | base64 -d > {$dumpFile}"],
+                ['echo '.escapeshellarg($content)." | base64 -d > {$escapedDumpFile}"],
                 $target
             );
         }
@@ -193,23 +196,24 @@ class CopyDatabaseDataAction
     protected function restoreDatabase(Model $target, \App\Models\Server $server, string $dumpFile): void
     {
         $containerName = escapeshellarg((string) $target->getAttribute('uuid'));
+        $escapedDumpFile = escapeshellarg($dumpFile);
 
         if ($target instanceof StandalonePostgresql) {
             $database = escapeshellarg($target->postgres_db ?? 'postgres');
             $user = escapeshellarg($target->postgres_user ?? 'postgres');
             $password = $target->postgres_password ?? '';
-            $cmd = 'docker exec -e PGPASSWORD='.escapeshellarg($password)." {$containerName} pg_restore --username {$user} --dbname {$database} --clean --if-exists --no-owner --no-acl < {$dumpFile} 2>/dev/null || true";
+            $cmd = 'docker exec -e PGPASSWORD='.escapeshellarg($password)." {$containerName} pg_restore --username {$user} --dbname {$database} --clean --if-exists --no-owner --no-acl < {$escapedDumpFile} 2>/dev/null || true";
         } elseif ($target instanceof StandaloneMysql) {
             $database = escapeshellarg($target->mysql_database ?? 'mysql');
             $password = $target->mysql_root_password ?? '';
-            $cmd = "docker exec -i {$containerName} mysql -u root -p".escapeshellarg($password)." {$database} < {$dumpFile}";
+            $cmd = "docker exec -i {$containerName} mysql -u root -p".escapeshellarg($password)." {$database} < {$escapedDumpFile}";
         } elseif ($target instanceof StandaloneMariadb) {
             $database = escapeshellarg($target->mariadb_database ?? 'mariadb');
             $password = $target->mariadb_root_password ?? '';
-            $cmd = "docker exec -i {$containerName} mariadb -u root -p".escapeshellarg($password)." {$database} < {$dumpFile}";
+            $cmd = "docker exec -i {$containerName} mariadb -u root -p".escapeshellarg($password)." {$database} < {$escapedDumpFile}";
         } elseif ($target instanceof StandaloneMongodb) {
             $url = $target->internal_db_url ?? 'mongodb://localhost:27017';
-            $cmd = "docker exec {$containerName} mongorestore --authenticationDatabase=admin --uri=".escapeshellarg($url)." --gzip --archive={$dumpFile} --drop 2>/dev/null || true";
+            $cmd = "docker exec {$containerName} mongorestore --authenticationDatabase=admin --uri=".escapeshellarg($url)." --gzip --archive={$escapedDumpFile} --drop 2>/dev/null || true";
         } else {
             return;
         }
@@ -223,7 +227,8 @@ class CopyDatabaseDataAction
     protected function cleanupDump(string $dumpFile, \App\Models\Server $server): void
     {
         try {
-            instant_remote_process(["rm -f {$dumpFile}"], $server, false);
+            $escapedDumpFile = escapeshellarg($dumpFile);
+            instant_remote_process(["rm -f {$escapedDumpFile}"], $server, false);
         } catch (\Throwable) {
             // Cleanup failure is non-critical
         }

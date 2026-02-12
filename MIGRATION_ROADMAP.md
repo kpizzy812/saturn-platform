@@ -1,6 +1,6 @@
 # Migration System Roadmap
 
-## Current Status: ~98% complete (Phase 1-3 done)
+## Current Status: 100% complete (All phases done)
 
 The 3-stage deployment pipeline (dev -> uat -> production) is fully implemented with:
 approval workflow, rollback, chain validation, UUID rewiring, ResourceLink cloning,
@@ -23,135 +23,56 @@ port conflict detection, health check after deploy, test data copy, webhook remi
 ## P0 — Blockers (must fix before production use)
 
 ### 1. Production FQDN/Domain Management
-**Status:** Not implemented
-**Problem:** When cloning to production for the first time, FQDN is set to null.
-No UI to assign production domain. On subsequent promotes, FQDN should stay as-is.
-
-**Requirements:**
-- On FIRST clone to production: show domain input in EnvironmentMigrateModal
-- Support two modes:
-  - Subdomain of platform: `*.saturn.ac` (e.g., `myapp.saturn.ac`)
-  - Custom domain: any user-provided domain (e.g., `app.company.com`)
-- On subsequent promotes: domain is already configured, skip this step
-- After domain assignment: update Traefik/Caddy proxy labels to match new domain
-- Trigger SSL certificate provisioning (Let's Encrypt) automatically
-
-**Files to create:**
-- `app/Actions/Migration/AssignProductionDomainAction.php`
-- `app/Actions/Migration/UpdateProxyLabelsAction.php`
-
-**Files to modify:**
-- `resources/js/components/features/migration/EnvironmentMigrateModal.tsx` — add domain input for production
-- `app/Actions/Migration/ExecuteMigrationAction.php` — call domain action after clone to prod
-- `app/Actions/Migration/PromoteResourceAction.php` — skip FQDN (already works)
+**Status:** ✅ Implemented (Phase 1)
+- `AssignProductionDomainAction.php` — domain assignment with subdomain/custom modes
+- `UpdateProxyLabelsAction.php` — Traefik/Caddy label update after FQDN change
+- UI domain input in EnvironmentMigrateModal for production clone
+- Promote mode skips FQDN (preserves existing domain)
 
 ### 2. SSL Certificate Auto-Provisioning
-**Status:** Not implemented
-**Problem:** After assigning production FQDN, no Let's Encrypt certificate is requested.
-Production site won't work on HTTPS.
-
-**Requirements:**
-- After successful deploy with new FQDN, dispatch certificate provisioning job
-- Integrate with existing Let's Encrypt / Caddy auto-SSL system
-
-**Files to modify:**
-- `app/Actions/Migration/ExecuteMigrationAction.php` — dispatch cert job after deploy
+**Status:** ✅ Handled by infrastructure
+- Traefik ACME resolver auto-provisions Let's Encrypt certs for HTTPS FQDNs
+- Caddy has built-in automatic HTTPS (no config needed)
+- `AssignProductionDomainAction` normalizes FQDN to `https://` scheme
+- Docker labels include `tls.certresolver=letsencrypt` for HTTPS domains
+- `MasterProxyConfigService` includes TLS config for remote app routing
 
 ### 3. Pre-Migration Validation in UI
-**Status:** Backend exists, UI doesn't call it
-**Problem:** Backend has excellent `POST /api/v1/migrations/check` endpoint that checks
-disk space, port conflicts, health status, config drift. But the UI never calls it.
-
-**Requirements:**
-- Call `/api/v1/migrations/check` after user selects target environment and server
-- Show warnings/errors before user clicks "Start Migration"
-- Block migration if critical checks fail (server not functional, active migration exists)
-- Show advisory warnings (empty env vars, config drift, disk space low)
-
-**Files to modify:**
-- `resources/js/components/features/migration/MigrateConfigureStep.tsx` — add validation call
-- `resources/js/components/features/migration/EnvironmentMigrateModal.tsx` — display results
+**Status:** ✅ Implemented (Phase 1)
+- UI calls `POST /api/v1/migrations/check` before migration start
+- Shows warnings/errors (disk space, port conflicts, config drift, empty env vars)
+- Blocks migration on critical failures (server not functional, active migration)
 
 ---
 
 ## P1 — High Priority (UX and reliability)
 
 ### 4. Migration Detail Page with Real-Time Progress
-**Status:** Partially implemented (backend writes progress, frontend doesn't read it)
-**Problem:** After migration starts, UI shows only "Started" status. No real-time updates.
-User doesn't know if migration is in progress, waiting for approval, or failed.
-
-**Requirements:**
-- After migration starts, redirect to a dedicated migration detail page
-- Show: approval status, progress percentage, current step, logs
-- WebSocket listener for `environment_migration_progress` events
-- If migration requires approval: show "Waiting for approval" state with approver info
-- If migration fails: show error with log output and retry/rollback options
-- If migration succeeds: show summary of what was done (rewired connections, cloned links)
-
-**Files to create:**
-- `resources/js/pages/Migrations/Show.tsx` — migration detail page
-- `resources/js/hooks/useMigrationProgress.ts` — WebSocket hook for progress
-
-**Files to modify:**
-- `resources/js/components/features/migration/EnvironmentMigrateModal.tsx` — redirect after start
-- `routes/web.php` — add route for migration detail page
+**Status:** ✅ Implemented (Phase 2)
+- `pages/Migrations/Show.tsx` — dedicated migration detail page
+- `useMigrationProgress.ts` — WebSocket hook for real-time progress
+- Shows approval status, progress %, current step, logs
+- Redirect after migration starts from modal
 
 ### 5. Diff Preview Before Migration
-**Status:** Backend fully implemented, UI missing
-**Problem:** `MigrationDiffAction` generates detailed diff (attribute changes, env var
-additions/removals, connection rewiring preview) but UI doesn't show it.
-
-**Requirements:**
-- Add a "Review Changes" step between configure and confirm in the wizard
-- Show for each resource:
-  - Attributes that will change (for promote mode)
-  - Env vars that will be added (for clone mode)
-  - Connections that will be rewired (UUID replacements)
-  - ResourceLinks that will be created
+**Status:** ✅ Implemented (Phase 1)
+- `MigrateDiffStep.tsx` — review step in migration wizard
 - Color-coded: green=added, red=removed, yellow=changed
-- Allow user to cancel if preview looks wrong
-
-**Files to create:**
-- `resources/js/components/features/migration/MigrateDiffStep.tsx`
-
-**Files to modify:**
-- `resources/js/components/features/migration/EnvironmentMigrateModal.tsx` — add diff step
+- Shows attribute changes, env var additions, UUID rewiring, ResourceLink creation
 
 ### 6. Automatic Backup Before Production Migration
-**Status:** Not implemented
-**Problem:** When promoting to production (updating existing resources), no automatic
-backup is created. If something goes wrong, rollback depends on snapshot in migration
-record, but physical DB data could be lost.
-
-**Requirements:**
-- Before promote to production: automatically create backup of target resource
-- For databases: trigger `pg_dump` / `mysqldump` / `mongodump` via existing backup system
-- For applications: snapshot current config (already done via MigrationHistory)
-- Store backup reference in migration record for easy restore
-- Show backup status in migration progress
-
-**Files to modify:**
-- `app/Actions/Migration/ExecuteMigrationAction.php` — add pre-migration backup step
-- `app/Actions/Migration/PromoteResourceAction.php` — integrate with backup system
+**Status:** ✅ Implemented (Phase 2)
+- Auto-creates backup before promote to production
+- For databases: dispatches backup via existing backup system
+- Backup reference stored in migration record
+- Progress shown in migration detail
 
 ### 7. Auto-Detect Clone vs Promote Mode
-**Status:** Backend supports both, UI always sends clone
-**Problem:** `EnvironmentMigrateModal` always sends `mode: clone`. The `promote` mode
-(update existing resource config) is only available via API.
-
-**Requirements:**
-- Auto-detect mode per resource (NO manual toggle needed):
-  - Resource does NOT exist in target env -> `clone` (first deployment)
-  - Resource already exists in target env -> `promote` (config update)
-- Use `/api/v1/migrations/check` response to determine existence
-- Show informational badge per resource: "New" (clone) or "Update" (promote)
-- For promote: show which fields will be updated (from diff preview)
-- For clone: show that new resource will be created + domain input if production
-
-**Files to modify:**
-- `resources/js/components/features/migration/EnvironmentMigrateModal.tsx` — auto-detect from check response
-- `resources/js/components/features/migration/MigrateConfigureStep.tsx` — info badges
+**Status:** ✅ Implemented (Phase 1)
+- Auto-detects mode per resource (no manual toggle)
+- Uses `/api/v1/migrations/check` to determine existence
+- Shows "New" (clone) or "Update" (promote) badges
+- Domain input shown only for production clone
 
 ---
 
@@ -177,14 +98,10 @@ it's useful to copy seed/test data.
 - `app/Actions/Database/RestoreDatabaseAction.php`
 
 ### 9. Database Credential Rotation for Production
-**Status:** Not implemented
-**Problem:** When cloning to production, database credentials (passwords) are the
-same as in UAT. Production should have unique credentials.
-
-**Requirements:**
-- On first clone to production: generate new passwords for database
-- Update all env vars that reference the old password
-- Show new credentials in migration summary (one time display)
+**Status:** ✅ Implemented (Phase 2)
+- On first clone to production: generates new passwords for databases
+- Updates all env vars referencing old credentials
+- New credentials shown in migration summary
 
 ### 10. Port Conflict Detection
 **Status:** ✅ Implemented (Phase 3)
@@ -205,14 +122,9 @@ clone another one, both will try to use 5432.
 - Block if less than 5% free space
 
 ### 12. Proxy Labels Update for Production Domains
-**Status:** Not implemented
-**Problem:** Traefik/Caddy labels may contain UAT domain after clone.
-`traefik.http.routers.*.rule` says `Host(app-uat.company.com)` but should say
-`Host(app.company.com)`.
-
-**Requirements:**
-- After AssignProductionDomainAction: update all proxy labels
-- Replace old FQDN with new production FQDN in custom_labels
+**Status:** ✅ Implemented (Phase 1)
+- `UpdateProxyLabelsAction` replaces old FQDN with new production FQDN in custom_labels
+- Called automatically after `AssignProductionDomainAction`
 
 ### 13. Batch/Parallel Migrations
 **Status:** ✅ Implemented (Phase 3)
