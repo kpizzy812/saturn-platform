@@ -51,8 +51,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'import' | 'extensions' | 'settings'>('connect');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs'>('architecture');
-    const [stagedChanges, setStagedChanges] = useState<{ variables: number; configs: number }>({ variables: 0, configs: 0 });
-    const hasStagedChanges = stagedChanges.variables > 0 || stagedChanges.configs > 0;
+    const [changedResources, setChangedResources] = useState<Map<string, { uuid: string; type: 'app' | 'db' | 'service'; name: string; kind: 'variables' | 'config' }>>(new Map());
+    const hasStagedChanges = changedResources.size > 0;
     const [showLocalSetup, setShowLocalSetup] = useState(false);
     const [showNewEnvModal, setShowNewEnvModal] = useState(false);
     const [newEnvName, setNewEnvName] = useState('');
@@ -759,30 +759,42 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         }
     }, [contextMenuNode, addToast]);
 
-    // Callback for child tabs to report staged changes
+    // Callback for child tabs to report staged changes per resource
     const handleVariableChanged = useCallback(() => {
-        setStagedChanges(prev => ({ ...prev, variables: prev.variables + 1 }));
-    }, []);
+        if (!selectedService) return;
+        setChangedResources(prev => {
+            const next = new Map(prev);
+            next.set(selectedService.uuid, { uuid: selectedService.uuid, type: selectedService.type, name: selectedService.name, kind: 'variables' });
+            return next;
+        });
+    }, [selectedService]);
 
     const handleConfigChanged = useCallback(() => {
-        setStagedChanges(prev => ({ ...prev, configs: prev.configs + 1 }));
-    }, []);
+        if (!selectedService) return;
+        setChangedResources(prev => {
+            const next = new Map(prev);
+            next.set(selectedService.uuid, { uuid: selectedService.uuid, type: selectedService.type, name: selectedService.name, kind: 'config' });
+            return next;
+        });
+    }, [selectedService]);
 
     const handleDiscardStagedChanges = useCallback(() => {
-        setStagedChanges({ variables: 0, configs: 0 });
+        setChangedResources(new Map());
     }, []);
 
-    // Deploy all applications in the current environment
+    // Deploy only changed resources
     const handleDeployChanges = useCallback(async () => {
-        if (!selectedEnv?.applications?.length) {
-            setStagedChanges({ variables: 0, configs: 0 });
-            return;
-        }
+        if (changedResources.size === 0) return;
 
         try {
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const deployPromises = selectedEnv.applications.map(app =>
-                fetch(`/api/v1/applications/${app.uuid}/start`, {
+            const deployPromises = Array.from(changedResources.values()).map(resource => {
+                const endpoint = resource.type === 'app'
+                    ? `/api/v1/applications/${resource.uuid}/restart`
+                    : resource.type === 'db'
+                        ? `/api/v1/databases/${resource.uuid}/restart`
+                        : `/api/v1/services/${resource.uuid}/restart`;
+                return fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -790,17 +802,18 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         'X-CSRF-TOKEN': csrfToken,
                     },
                     credentials: 'include',
-                })
-            );
+                });
+            });
 
             await Promise.all(deployPromises);
-            setStagedChanges({ variables: 0, configs: 0 });
-            addToast('success', 'Deploy started', 'All applications in this environment are being redeployed.');
+            const names = Array.from(changedResources.values()).map(r => r.name).join(', ');
+            setChangedResources(new Map());
+            addToast('success', 'Deploy started', `Redeploying: ${names}`);
             router.reload();
         } catch (err) {
             addToast('error', 'Deploy failed', err instanceof Error ? err.message : 'Failed to deploy changes');
         }
-    }, [selectedEnv, addToast]);
+    }, [changedResources, addToast]);
 
     // Database backup handlers
     const handleCreateBackup = useCallback(async (_nodeId: string) => {
@@ -1223,13 +1236,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-foreground">
-                                    You have unsaved changes that require redeployment
+                                    Changes require redeployment
                                 </p>
                                 <p className="text-xs text-foreground-muted">
-                                    {[
-                                        stagedChanges.variables > 0 && `${stagedChanges.variables} environment variable(s) modified`,
-                                        stagedChanges.configs > 0 && `${stagedChanges.configs} configuration(s) updated`,
-                                    ].filter(Boolean).join(', ')}
+                                    {Array.from(changedResources.values()).map(r =>
+                                        `${r.name} (${r.kind === 'variables' ? 'env variables' : 'config'})`
+                                    ).join(', ')}
                                 </p>
                             </div>
                         </div>
