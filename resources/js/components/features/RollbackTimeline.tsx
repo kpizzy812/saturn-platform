@@ -36,7 +36,7 @@ const getTimelineNodeClass = (status: string, isCurrent: boolean): string => {
     return isCurrent ? styles.active : styles.normal;
 };
 
-interface Deployment {
+export interface TimelineDeployment {
     id: number;
     deployment_uuid: string;
     commit: string;
@@ -47,9 +47,9 @@ interface Deployment {
 }
 
 interface RollbackTimelineProps {
-    deployments: Deployment[];
+    deployments: TimelineDeployment[];
     currentDeploymentId?: number;
-    onSelectDeployment?: (deployment: Deployment) => void;
+    onSelectDeployment?: (deployment: TimelineDeployment) => void;
 }
 
 export function RollbackTimeline({

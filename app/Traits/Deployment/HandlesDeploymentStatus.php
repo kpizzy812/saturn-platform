@@ -5,6 +5,7 @@ namespace App\Traits\Deployment;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Events\ApplicationConfigurationChanged;
 use App\Exceptions\DeploymentException;
+use App\Jobs\MonitorDeploymentHealthJob;
 use App\Notifications\Application\DeploymentFailed;
 use App\Notifications\Application\DeploymentSuccess;
 use App\Services\MasterProxyConfigService;
@@ -113,6 +114,22 @@ trait HandlesDeploymentStatus
         }
 
         $this->sendDeploymentNotification(DeploymentSuccess::class);
+
+        // Start health monitoring for auto-rollback (skip PR deployments)
+        if ($this->application->settings?->auto_rollback_enabled
+            && ($this->application_deployment_queue->pull_request_id ?? 0) === 0
+            && ! ($this->application_deployment_queue->rollback ?? false)
+        ) {
+            $validationSeconds = $this->application->settings->rollback_validation_seconds ?? 300;
+            $checkInterval = 30;
+            $totalChecks = (int) ceil($validationSeconds / $checkInterval);
+
+            MonitorDeploymentHealthJob::dispatch(
+                deployment: $this->application_deployment_queue,
+                checkIntervalSeconds: $checkInterval,
+                totalChecks: $totalChecks
+            )->delay(now()->addSeconds(30));
+        }
     }
 
     /**

@@ -201,6 +201,10 @@ class Application extends BaseModel
         'monorepo_group_id',
         'auto_inject_database_url',
         'private_key_id',
+        'restart_count',
+        'last_restart_at',
+        'last_restart_type',
+        'last_successful_deployment_id',
     ];
 
     protected $appends = ['server_status'];
@@ -633,6 +637,16 @@ class Application extends BaseModel
     public function settings()
     {
         return $this->hasOne(ApplicationSetting::class);
+    }
+
+    public function lastSuccessfulDeployment()
+    {
+        return $this->belongsTo(ApplicationDeploymentQueue::class, 'last_successful_deployment_id');
+    }
+
+    public function rollbackEvents(): HasMany
+    {
+        return $this->hasMany(ApplicationRollbackEvent::class);
     }
 
     public function persistentStorages()

@@ -402,10 +402,73 @@ Route::get('/applications/{uuid}/rollback', function (string $uuid) {
     $project = $application->environment->project;
     $environment = $application->environment;
 
+    // Fetch deployments server-side
+    $deployments = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+        ->where('pull_request_id', 0)
+        ->orderBy('created_at', 'desc')
+        ->limit(50)
+        ->get()
+        ->map(function ($deployment) {
+            $duration = null;
+            if ($deployment->started_at && $deployment->finished_at) {
+                $duration = \Carbon\Carbon::parse($deployment->finished_at)
+                    ->diffInSeconds(\Carbon\Carbon::parse($deployment->started_at));
+            }
+
+            return [
+                'id' => $deployment->id,
+                'deployment_uuid' => $deployment->deployment_uuid,
+                'status' => $deployment->status,
+                'commit' => $deployment->commit,
+                'commit_message' => $deployment->commitMessage(),
+                'trigger' => $deployment->is_webhook ? 'push' : ($deployment->rollback ? 'rollback' : 'manual'),
+                'rollback' => (bool) $deployment->rollback,
+                'is_webhook' => (bool) $deployment->is_webhook,
+                'is_api' => (bool) $deployment->is_api,
+                'duration' => $duration,
+                'created_at' => $deployment->created_at?->toISOString(),
+                'updated_at' => $deployment->updated_at?->toISOString(),
+            ];
+        });
+
+    // Fetch rollback events server-side
+    $rollbackEvents = \App\Models\ApplicationRollbackEvent::where('application_id', $application->id)
+        ->with(['triggeredByUser:id,name,email'])
+        ->orderBy('created_at', 'desc')
+        ->limit(20)
+        ->get()
+        ->map(function ($event) {
+            return [
+                'id' => $event->id,
+                'trigger_reason' => $event->trigger_reason,
+                'trigger_type' => $event->trigger_type,
+                'status' => $event->status,
+                'from_commit' => $event->from_commit,
+                'to_commit' => $event->to_commit,
+                'error_message' => $event->error_message,
+                'triggered_at' => $event->triggered_at?->toISOString(),
+                'completed_at' => $event->completed_at?->toISOString(),
+                'triggered_by_user' => $event->triggeredByUser ? [
+                    'id' => $event->triggeredByUser->id,
+                    'name' => $event->triggeredByUser->name,
+                ] : null,
+            ];
+        });
+
+    // Auto-rollback settings
+    $settings = $application->settings;
+
     return Inertia::render('Applications/Rollback/Index', [
         'application' => $application,
         'projectUuid' => $project->uuid,
         'environmentUuid' => $environment->uuid,
+        'deployments' => $deployments,
+        'rollbackEvents' => $rollbackEvents,
+        'rollbackSettings' => [
+            'auto_rollback_enabled' => $settings->auto_rollback_enabled ?? false,
+            'rollback_validation_seconds' => $settings->rollback_validation_seconds ?? 300,
+            'rollback_max_restarts' => $settings->rollback_max_restarts ?? 3,
+        ],
     ]);
 })->name('applications.rollback');
 

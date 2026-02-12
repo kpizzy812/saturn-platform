@@ -329,7 +329,7 @@ Route::group([
     // Application Rollback Routes
     Route::get('/applications/{uuid}/deployments', [ApplicationDeploymentsController::class, 'get_deployments'])->middleware(['api.ability:read']);
     Route::get('/applications/{uuid}/rollback-events', [ApplicationDeploymentsController::class, 'get_rollback_events'])->middleware(['api.ability:read']);
-    Route::post('/applications/{uuid}/rollback/{deploymentUuid}', [ApplicationDeploymentsController::class, 'execute_rollback'])->middleware(['api.ability:deploy']);
+    Route::post('/applications/{uuid}/rollback/{deploymentUuid}', [ApplicationDeploymentsController::class, 'execute_rollback'])->middleware(['api.ability:deploy', 'throttle:5,1']);
 
     // Application Preview Deployment Routes
     Route::get('/applications/{uuid}/previews', function (string $uuid) {

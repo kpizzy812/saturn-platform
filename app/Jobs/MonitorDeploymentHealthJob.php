@@ -212,17 +212,17 @@ class MonitorDeploymentHealthJob implements ShouldQueue
 
     protected function sendRollbackNotification(Application $application, ApplicationRollbackEvent $event): void
     {
-        // Dispatch notification to team
         $team = $application->environment?->project?->team;
 
         if ($team) {
-            // Use existing notification system
             $team->notify(
                 new \App\Notifications\Application\DeploymentFailed(
                     $application,
-                    "Auto-rollback triggered: {$event->getReasonLabel()}"
+                    $this->deployment->deployment_uuid
                 )
             );
         }
+
+        Log::warning("Auto-rollback triggered for {$application->name}: {$event->getReasonLabel()}");
     }
 }
