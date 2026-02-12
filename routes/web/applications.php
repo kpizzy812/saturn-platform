@@ -480,13 +480,116 @@ Route::get('/applications/{uuid}/rollback/{deploymentUuid}', function (string $u
     $project = $application->environment->project;
     $environment = $application->environment;
 
+    // Fetch the specific deployment
+    $deployment = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+        ->where('deployment_uuid', $deploymentUuid)
+        ->firstOrFail();
+
+    $duration = null;
+    if ($deployment->started_at && $deployment->finished_at) {
+        $duration = \Carbon\Carbon::parse($deployment->finished_at)
+            ->diffInSeconds(\Carbon\Carbon::parse($deployment->started_at));
+    }
+
+    $deploymentData = [
+        'id' => $deployment->id,
+        'deployment_uuid' => $deployment->deployment_uuid,
+        'commit' => $deployment->commit,
+        'commit_message' => $deployment->commitMessage(),
+        'status' => $deployment->status,
+        'created_at' => $deployment->created_at?->toISOString(),
+        'updated_at' => $deployment->updated_at?->toISOString(),
+        'rollback' => (bool) $deployment->rollback,
+        'force_rebuild' => (bool) $deployment->force_rebuild,
+        'is_webhook' => (bool) $deployment->is_webhook,
+        'is_api' => (bool) $deployment->is_api,
+        'server_id' => $deployment->server_id,
+        'server_name' => $deployment->server?->name,
+        'duration' => $duration,
+    ];
+
+    // Fetch current (latest finished) deployment
+    $currentDeployment = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+        ->where('pull_request_id', 0)
+        ->orderBy('created_at', 'desc')
+        ->first();
+
+    $currentDeploymentData = null;
+    if ($currentDeployment) {
+        $currentDeploymentData = [
+            'id' => $currentDeployment->id,
+            'deployment_uuid' => $currentDeployment->deployment_uuid,
+            'commit' => $currentDeployment->commit,
+            'commit_message' => $currentDeployment->commitMessage(),
+            'status' => $currentDeployment->status,
+            'created_at' => $currentDeployment->created_at?->toISOString(),
+        ];
+    }
+
     return Inertia::render('Applications/Rollback/Show', [
         'application' => $application,
-        'deploymentUuid' => $deploymentUuid,
+        'deployment' => $deploymentData,
+        'currentDeployment' => $currentDeploymentData,
         'projectUuid' => $project->uuid,
         'environmentUuid' => $environment->uuid,
     ]);
 })->name('applications.rollback.show');
+
+Route::post('/applications/{uuid}/rollback/{deploymentUuid}', function (string $uuid, string $deploymentUuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    // Find the deployment to rollback to
+    $targetDeployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $deploymentUuid)
+        ->where('application_id', $application->id)
+        ->firstOrFail();
+
+    if ($targetDeployment->status !== 'finished') {
+        return response()->json(['message' => 'Can only rollback to successful deployments'], 400);
+    }
+
+    // Create rollback event
+    $currentDeployment = \App\Models\ApplicationDeploymentQueue::where('application_id', $application->id)
+        ->orderBy('created_at', 'desc')
+        ->first();
+
+    $event = \App\Models\ApplicationRollbackEvent::createEvent(
+        application: $application,
+        reason: \App\Models\ApplicationRollbackEvent::REASON_MANUAL,
+        type: 'manual',
+        failedDeployment: $currentDeployment,
+        user: auth()->user()
+    );
+
+    $event->update(['to_commit' => $targetDeployment->commit]);
+
+    // Queue rollback deployment
+    $rollback_deployment_uuid = new Cuid2;
+
+    $result = queue_application_deployment(
+        application: $application,
+        deployment_uuid: $rollback_deployment_uuid,
+        commit: $targetDeployment->commit,
+        rollback: true,
+        force_rebuild: false,
+    );
+
+    if ($result['status'] === 'queue_full') {
+        return response()->json(['message' => $result['message']], 429);
+    }
+
+    $rollbackDeployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $rollback_deployment_uuid)->first();
+
+    if ($rollbackDeployment) {
+        $event->markInProgress($rollbackDeployment->id);
+    }
+
+    return response()->json([
+        'message' => 'Rollback initiated successfully',
+        'deployment_uuid' => $rollback_deployment_uuid->toString(),
+    ]);
+})->name('applications.rollback.execute');
 
 // Application Preview Deployment Routes (Saturn)
 Route::get('/applications/{uuid}/previews', function (string $uuid) {

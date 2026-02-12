@@ -12,116 +12,124 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Monitors deployment health after a successful deploy.
+ *
+ * Uses self-dispatching pattern: each invocation performs ONE health check,
+ * then dispatches itself again with delay for the next check. This avoids
+ * blocking a queue worker with sleep() for the entire validation period.
+ */
 class MonitorDeploymentHealthJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
 
-    public int $timeout = 600;
-
-    protected string $rollbackReason = '';
-
-    protected array $metricsSnapshot = [];
+    public int $timeout = 60;
 
     public function __construct(
         public ApplicationDeploymentQueue $deployment,
         public int $checkIntervalSeconds = 30,
-        public int $totalChecks = 10
+        public int $totalChecks = 10,
+        public int $currentCheck = 0,
+        public int $initialRestartCount = -1
     ) {}
 
     public function handle(): void
     {
         $application = $this->deployment->application;
 
-        // Skip if auto-rollback is not enabled
-        if (! $application->settings->auto_rollback_enabled) {
+        if (! $application?->settings?->auto_rollback_enabled) {
             return;
         }
 
-        // Skip PR deployments
         if ($this->deployment->pull_request_id > 0) {
             return;
         }
 
-        // Skip if deployment failed (nothing to monitor)
         if ($this->deployment->status !== 'finished') {
             return;
         }
 
-        Log::info("Starting health monitoring for deployment {$this->deployment->deployment_uuid}");
-
-        $startedAt = now();
-        $validationSeconds = $application->settings->rollback_validation_seconds ?? 300;
-        $initialRestartCount = $application->restart_count ?? 0;
-
-        // Perform health checks over the validation period
-        for ($i = 0; $i < $this->totalChecks; $i++) {
-            sleep($this->checkIntervalSeconds);
-
-            // Refresh application status
-            $application->refresh();
-
-            // Capture metrics
-            $this->captureMetrics($application, $initialRestartCount);
-
-            // Check if rollback is needed
-            if ($this->shouldRollback($application, $initialRestartCount)) {
-                $this->triggerAutoRollback($application);
-
-                return;
-            }
-
-            // Check if validation period is complete
-            if (now()->diffInSeconds($startedAt) >= $validationSeconds) {
-                Log::info("Health monitoring complete for {$this->deployment->deployment_uuid} - all checks passed");
-
-                // Update last successful deployment
-                $application->update(['last_successful_deployment_id' => $this->deployment->id]);
-
-                return;
-            }
+        // Capture initial restart count on first check
+        if ($this->initialRestartCount < 0) {
+            $this->initialRestartCount = $application->restart_count ?? 0;
         }
 
-        Log::info("Health monitoring complete for {$this->deployment->deployment_uuid}");
+        if ($this->currentCheck === 0) {
+            Log::info("Starting health monitoring for deployment {$this->deployment->deployment_uuid} ({$this->totalChecks} checks)");
+        }
+
+        // Refresh application to get latest status
+        $application->refresh();
+
+        // Capture metrics
+        $metricsSnapshot = $this->captureMetrics($application);
+
+        // Check if rollback is needed
+        $rollbackReason = $this->checkForRollback($application);
+
+        if ($rollbackReason !== null) {
+            $this->triggerAutoRollback($application, $rollbackReason, $metricsSnapshot);
+
+            return;
+        }
+
+        $this->currentCheck++;
+
+        // Schedule next check or complete monitoring
+        if ($this->currentCheck < $this->totalChecks) {
+            self::dispatch(
+                deployment: $this->deployment,
+                checkIntervalSeconds: $this->checkIntervalSeconds,
+                totalChecks: $this->totalChecks,
+                currentCheck: $this->currentCheck,
+                initialRestartCount: $this->initialRestartCount
+            )->delay(now()->addSeconds($this->checkIntervalSeconds));
+        } else {
+            Log::info("Health monitoring complete for {$this->deployment->deployment_uuid} - all checks passed");
+        }
     }
 
-    protected function captureMetrics(Application $application, int $initialRestartCount): void
+    protected function captureMetrics(Application $application): array
     {
-        $this->metricsSnapshot = [
+        return [
             'status' => $application->status,
             'restart_count' => $application->restart_count ?? 0,
-            'initial_restart_count' => $initialRestartCount,
-            'restart_delta' => ($application->restart_count ?? 0) - $initialRestartCount,
+            'initial_restart_count' => $this->initialRestartCount,
+            'restart_delta' => ($application->restart_count ?? 0) - $this->initialRestartCount,
             'last_restart_at' => $application->last_restart_at?->toIso8601String(),
+            'check_number' => $this->currentCheck + 1,
+            'total_checks' => $this->totalChecks,
             'captured_at' => now()->toIso8601String(),
         ];
     }
 
-    protected function shouldRollback(Application $application, int $initialRestartCount): bool
+    /**
+     * Check if rollback should be triggered. Returns reason string or null.
+     */
+    protected function checkForRollback(Application $application): ?string
     {
         $settings = $application->settings;
 
         // Check 1: Crash loop detection
         if ($settings->rollback_on_crash_loop) {
             $maxRestarts = $settings->rollback_max_restarts ?? 3;
-            $restartDelta = ($application->restart_count ?? 0) - $initialRestartCount;
+            $restartDelta = ($application->restart_count ?? 0) - $this->initialRestartCount;
 
             if ($restartDelta >= $maxRestarts) {
-                $this->rollbackReason = ApplicationRollbackEvent::REASON_CRASH_LOOP;
                 Log::warning("Crash loop detected for {$application->name}: {$restartDelta} restarts since deployment");
 
-                return true;
+                return ApplicationRollbackEvent::REASON_CRASH_LOOP;
             }
         }
 
         // Check 2: Container exited/degraded
         $status = $application->status ?? '';
         if (str_starts_with($status, 'exited') || str_starts_with($status, 'degraded')) {
-            $this->rollbackReason = ApplicationRollbackEvent::REASON_CONTAINER_EXITED;
             Log::warning("Container unhealthy for {$application->name}: status={$status}");
 
-            return true;
+            return ApplicationRollbackEvent::REASON_CONTAINER_EXITED;
         }
 
         // Check 3: Health check failures
@@ -129,43 +137,36 @@ class MonitorDeploymentHealthJob implements ShouldQueue
             $healthStatus = str($status)->after(':')->value();
 
             if ($healthStatus === 'unhealthy') {
-                $this->rollbackReason = ApplicationRollbackEvent::REASON_HEALTH_CHECK_FAILED;
                 Log::warning("Health check failed for {$application->name}");
 
-                return true;
+                return ApplicationRollbackEvent::REASON_HEALTH_CHECK_FAILED;
             }
         }
 
-        return false;
+        return null;
     }
 
-    protected function triggerAutoRollback(Application $application): void
+    protected function triggerAutoRollback(Application $application, string $reason, array $metricsSnapshot): void
     {
-        Log::warning("Triggering auto-rollback for {$application->name} due to: {$this->rollbackReason}");
+        Log::warning("Triggering auto-rollback for {$application->name} due to: {$reason}");
 
-        // Find last successful deployment
-        $lastSuccessful = $application->lastSuccessfulDeployment;
-
-        if (! $lastSuccessful) {
-            // Try to find from history
-            $lastSuccessful = ApplicationDeploymentQueue::where('application_id', $application->id)
-                ->where('status', 'finished')
-                ->where('pull_request_id', 0)
-                ->where('id', '<', $this->deployment->id)
-                ->orderBy('created_at', 'desc')
-                ->first();
-        }
+        // Find last successful deployment (before the current one)
+        $lastSuccessful = ApplicationDeploymentQueue::where('application_id', $application->id)
+            ->where('status', 'finished')
+            ->where('pull_request_id', 0)
+            ->where('id', '<', $this->deployment->id)
+            ->orderBy('created_at', 'desc')
+            ->first();
 
         if (! $lastSuccessful) {
             Log::warning('No previous successful deployment found for rollback');
 
-            // Create event but mark as skipped
             ApplicationRollbackEvent::create([
                 'application_id' => $application->id,
                 'failed_deployment_id' => $this->deployment->id,
-                'trigger_reason' => $this->rollbackReason,
+                'trigger_reason' => $reason,
                 'trigger_type' => 'automatic',
-                'metrics_snapshot' => $this->metricsSnapshot,
+                'metrics_snapshot' => $metricsSnapshot,
                 'status' => ApplicationRollbackEvent::STATUS_SKIPPED,
                 'error_message' => 'No previous successful deployment found',
                 'from_commit' => $this->deployment->commit,
@@ -179,10 +180,10 @@ class MonitorDeploymentHealthJob implements ShouldQueue
         // Create rollback event
         $rollbackEvent = ApplicationRollbackEvent::createEvent(
             application: $application,
-            reason: $this->rollbackReason,
+            reason: $reason,
             type: 'automatic',
             failedDeployment: $this->deployment,
-            metrics: $this->metricsSnapshot
+            metrics: $metricsSnapshot
         );
 
         $rollbackEvent->update(['to_commit' => $lastSuccessful->commit]);
@@ -199,14 +200,12 @@ class MonitorDeploymentHealthJob implements ShouldQueue
             no_questions_asked: true
         );
 
-        // Find the queued deployment and update event
         $rollbackDeployment = ApplicationDeploymentQueue::where('deployment_uuid', $deployment_uuid)->first();
 
         if ($rollbackDeployment) {
             $rollbackEvent->markInProgress($rollbackDeployment->id);
         }
 
-        // Send notification
         $this->sendRollbackNotification($application, $rollbackEvent);
     }
 

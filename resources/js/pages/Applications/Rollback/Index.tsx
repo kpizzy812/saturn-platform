@@ -133,11 +133,12 @@ export default function ApplicationRollbackIndex({
         try {
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const response = await fetch(
-                `/api/v1/applications/${application.uuid}/rollback/${selectedDeployment.deployment_uuid}`,
+                `/applications/${application.uuid}/rollback/${selectedDeployment.deployment_uuid}`,
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
                     },
                     credentials: 'include',

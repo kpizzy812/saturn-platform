@@ -6,6 +6,7 @@ use App\Enums\ApplicationDeploymentStatus;
 use App\Events\ApplicationConfigurationChanged;
 use App\Exceptions\DeploymentException;
 use App\Jobs\MonitorDeploymentHealthJob;
+use App\Models\ApplicationRollbackEvent;
 use App\Notifications\Application\DeploymentFailed;
 use App\Notifications\Application\DeploymentSuccess;
 use App\Services\MasterProxyConfigService;
@@ -88,14 +89,23 @@ trait HandlesDeploymentStatus
      */
     private function handleSuccessfulDeployment(): void
     {
-        // Reset restart count after successful deployment
-        // This is done here (not in Livewire) to avoid race conditions
-        // with GetContainersStatus reading old container restart counts
+        $isRollback = (bool) ($this->application_deployment_queue->rollback ?? false);
+
+        // Reset restart count and track last successful deployment
         $this->application->update([
             'restart_count' => 0,
             'last_restart_at' => null,
             'last_restart_type' => null,
+            'last_successful_deployment_id' => $this->application_deployment_queue->id,
         ]);
+
+        // Update rollback event status if this is a rollback deployment
+        if ($isRollback) {
+            ApplicationRollbackEvent::where('rollback_deployment_id', $this->application_deployment_queue->id)
+                ->whereIn('status', [ApplicationRollbackEvent::STATUS_TRIGGERED, ApplicationRollbackEvent::STATUS_IN_PROGRESS])
+                ->first()
+                ?->markSuccess();
+        }
 
         event(new ApplicationConfigurationChanged($this->application->team()->id));
 
@@ -115,10 +125,10 @@ trait HandlesDeploymentStatus
 
         $this->sendDeploymentNotification(DeploymentSuccess::class);
 
-        // Start health monitoring for auto-rollback (skip PR deployments)
+        // Start health monitoring for auto-rollback (skip PR and rollback deployments)
         if ($this->application->settings?->auto_rollback_enabled
             && ($this->application_deployment_queue->pull_request_id ?? 0) === 0
-            && ! ($this->application_deployment_queue->rollback ?? false)
+            && ! $isRollback
         ) {
             $validationSeconds = $this->application->settings->rollback_validation_seconds ?? 300;
             $checkInterval = 30;
@@ -139,8 +149,13 @@ trait HandlesDeploymentStatus
     {
         $this->sendDeploymentNotification(DeploymentFailed::class);
 
-        // AI analysis is triggered manually from UI via AIAnalysisCard component
-        // No automatic dispatch - user clicks "Analyze" button when needed
+        // Update rollback event status if this is a rollback deployment
+        if ($this->application_deployment_queue->rollback ?? false) {
+            ApplicationRollbackEvent::where('rollback_deployment_id', $this->application_deployment_queue->id)
+                ->whereIn('status', [ApplicationRollbackEvent::STATUS_TRIGGERED, ApplicationRollbackEvent::STATUS_IN_PROGRESS])
+                ->first()
+                ?->markFailed('Rollback deployment failed');
+        }
     }
 
     /**
