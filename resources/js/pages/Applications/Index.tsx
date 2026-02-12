@@ -61,13 +61,23 @@ const getEnvironmentVariant = (type?: EnvironmentType): 'default' | 'primary' | 
     }
 };
 
-// Parse colon-separated status string to {state, health} object
-function parseStatusString(status: string): AppStatus {
-    const parts = status.split(':');
-    return {
-        state: parts[0] || 'unknown',
-        health: parts[1] || 'unknown',
-    };
+// Normalize status from any format (string "running:healthy", object {state,health}, or unknown) to AppStatus
+function normalizeStatus(status: unknown): AppStatus {
+    if (status && typeof status === 'object' && 'state' in status) {
+        const obj = status as { state?: string; health?: string };
+        return {
+            state: obj.state || 'unknown',
+            health: obj.health || 'unknown',
+        };
+    }
+    if (typeof status === 'string' && status.length > 0) {
+        const parts = status.split(':');
+        return {
+            state: parts[0] || 'unknown',
+            health: parts[1] || 'unknown',
+        };
+    }
+    return { state: 'unknown', health: 'unknown' };
 }
 
 export default function ApplicationsIndex({ applications = [] }: Props) {
@@ -83,14 +93,14 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
         onApplicationStatusChange: (data) => {
             setAppStatuses(prev => ({
                 ...prev,
-                [data.applicationId]: parseStatusString(String(data.status)),
+                [data.applicationId]: normalizeStatus(data.status),
             }));
         },
     });
 
-    // Get current status for an application
+    // Get current status for an application (handles both string and object formats)
     const getAppStatus = (app: ApplicationWithRelations): AppStatus => {
-        return appStatuses[app.id] || app.status;
+        return appStatuses[app.id] || normalizeStatus(app.status);
     };
 
     // Filter applications (exclude optimistically deleted ones)

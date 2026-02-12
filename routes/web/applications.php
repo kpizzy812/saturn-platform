@@ -32,16 +32,16 @@ Route::get('/applications', function () {
                 ->whereIn('status', ['in_progress', 'queued'])
                 ->exists();
 
-            // Determine display status
-            $containerStatus = str($app->status)->before(':')->toString();
+            // Parse status into state and health
+            $statusParts = explode(':', $app->status);
+            $containerStatus = $statusParts[0] ?: 'stopped';
+            $health = $statusParts[1] ?? 'unknown';
+
+            // Override state if actively deploying
             if ($hasActiveDeployment) {
-                $displayStatus = 'building';
-            } elseif ($containerStatus === 'running') {
-                $displayStatus = 'running';
-            } elseif (in_array($containerStatus, ['exited', 'stopped', ''])) {
-                $displayStatus = 'stopped';
-            } else {
-                $displayStatus = $containerStatus ?: 'stopped';
+                $containerStatus = 'building';
+            } elseif (in_array($containerStatus, ['exited', ''])) {
+                $containerStatus = 'stopped';
             }
 
             return [
@@ -53,9 +53,13 @@ Route::get('/applications', function () {
                 'git_repository' => $app->git_repository,
                 'git_branch' => $app->git_branch,
                 'build_pack' => $app->build_pack,
-                'status' => $displayStatus,
+                'status' => [
+                    'state' => $containerStatus,
+                    'health' => $health,
+                ],
                 'project_name' => $app->environment->project->name,
                 'environment_name' => $app->environment->name,
+                'environment_type' => $app->environment->type ?? 'development',
                 'created_at' => $app->created_at,
                 'updated_at' => $app->updated_at,
             ];
