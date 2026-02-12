@@ -51,7 +51,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'import' | 'extensions' | 'settings'>('connect');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs'>('architecture');
-    const [changedResources, setChangedResources] = useState<Map<string, { uuid: string; type: 'app' | 'db' | 'service'; name: string; kind: 'variables' | 'config' }>>(new Map());
+    const [changedResources, setChangedResources] = useState<Map<string, { uuid: string; type: 'app' | 'db' | 'service'; name: string; kind: 'variables' | 'config'; needsRebuild: boolean }>>(new Map());
     const hasStagedChanges = changedResources.size > 0;
     const [showLocalSetup, setShowLocalSetup] = useState(false);
     const [showNewEnvModal, setShowNewEnvModal] = useState(false);
@@ -760,11 +760,18 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     }, [contextMenuNode, addToast]);
 
     // Callback for child tabs to report staged changes per resource
-    const handleVariableChanged = useCallback(() => {
+    const handleVariableChanged = useCallback((isBuildTime?: boolean) => {
         if (!selectedService) return;
         setChangedResources(prev => {
             const next = new Map(prev);
-            next.set(selectedService.uuid, { uuid: selectedService.uuid, type: selectedService.type, name: selectedService.name, kind: 'variables' });
+            const existing = next.get(selectedService.uuid);
+            next.set(selectedService.uuid, {
+                uuid: selectedService.uuid,
+                type: selectedService.type,
+                name: selectedService.name,
+                kind: 'variables',
+                needsRebuild: existing?.needsRebuild || !!isBuildTime,
+            });
             return next;
         });
     }, [selectedService]);
@@ -773,7 +780,14 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         if (!selectedService) return;
         setChangedResources(prev => {
             const next = new Map(prev);
-            next.set(selectedService.uuid, { uuid: selectedService.uuid, type: selectedService.type, name: selectedService.name, kind: 'config' });
+            const existing = next.get(selectedService.uuid);
+            next.set(selectedService.uuid, {
+                uuid: selectedService.uuid,
+                type: selectedService.type,
+                name: selectedService.name,
+                kind: 'config',
+                needsRebuild: existing?.needsRebuild || false,
+            });
             return next;
         });
     }, [selectedService]);
@@ -782,18 +796,26 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         setChangedResources(new Map());
     }, []);
 
-    // Deploy only changed resources
+    // Deploy only changed resources (force rebuild for build-time env changes)
     const handleDeployChanges = useCallback(async () => {
         if (changedResources.size === 0) return;
 
         try {
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
             const deployPromises = Array.from(changedResources.values()).map(resource => {
-                const endpoint = resource.type === 'app'
-                    ? `/api/v1/applications/${resource.uuid}/restart`
-                    : resource.type === 'db'
-                        ? `/api/v1/databases/${resource.uuid}/restart`
-                        : `/api/v1/services/${resource.uuid}/restart`;
+                let endpoint: string;
+                let body: string | undefined;
+                if (resource.type === 'app' && resource.needsRebuild) {
+                    // Build-time env changed — full rebuild required
+                    endpoint = `/api/v1/applications/${resource.uuid}/start`;
+                    body = JSON.stringify({ force: true });
+                } else if (resource.type === 'app') {
+                    endpoint = `/api/v1/applications/${resource.uuid}/restart`;
+                } else if (resource.type === 'db') {
+                    endpoint = `/api/v1/databases/${resource.uuid}/restart`;
+                } else {
+                    endpoint = `/api/v1/services/${resource.uuid}/restart`;
+                }
                 return fetch(endpoint, {
                     method: 'POST',
                     headers: {
@@ -802,6 +824,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         'X-CSRF-TOKEN': csrfToken,
                     },
                     credentials: 'include',
+                    ...(body ? { body } : {}),
                 });
             });
 
@@ -1239,9 +1262,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     Changes require redeployment
                                 </p>
                                 <p className="text-xs text-foreground-muted">
-                                    {Array.from(changedResources.values()).map(r =>
-                                        `${r.name} (${r.kind === 'variables' ? 'env variables' : 'config'})`
-                                    ).join(', ')}
+                                    {Array.from(changedResources.values()).map(r => {
+                                        const detail = r.kind === 'variables' ? 'env variables' : 'config';
+                                        return r.needsRebuild ? `${r.name} (${detail}, rebuild)` : `${r.name} (${detail})`;
+                                    }).join(', ')}
                                 </p>
                             </div>
                         </div>

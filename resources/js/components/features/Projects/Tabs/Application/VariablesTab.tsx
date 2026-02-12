@@ -17,7 +17,7 @@ interface EnvVariable {
 
 interface VariablesTabProps {
     service: SelectedService;
-    onChangeStaged?: () => void;
+    onChangeStaged?: (isBuildTime?: boolean) => void;
 }
 
 interface EditState {
@@ -95,7 +95,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                 setNewValue('');
                 setNewIsBuildtime(false);
                 toast({ title: 'Variable created' });
-                onChangeStaged?.();
+                onChangeStaged?.(newIsBuildtime);
             } else {
                 const error = await response.json();
                 toast({ title: error.message || 'Failed to create variable', variant: 'error' });
@@ -128,9 +128,10 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                         ? { ...v, key: editing.key, value: editing.value, real_value: editing.value }
                         : v
                 ));
+                const editedVar = variables.find(v => v.uuid === editing.uuid);
                 setEditing(null);
                 toast({ title: `Updated ${editing.key}` });
-                onChangeStaged?.();
+                onChangeStaged?.(editedVar?.is_buildtime);
             } else {
                 const error = await response.json();
                 toast({ title: error.message || 'Failed to update variable', variant: 'error' });
@@ -174,9 +175,10 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                 credentials: 'include',
             });
             if (response.ok) {
+                const deletedVar = variables.find(v => v.uuid === envUuid);
                 setVariables(prev => prev.filter(v => v.uuid !== envUuid));
                 toast({ title: `Deleted ${key}` });
-                onChangeStaged?.();
+                onChangeStaged?.(deletedVar?.is_buildtime);
             } else {
                 const error = await response.json();
                 toast({ title: error.message || 'Failed to delete variable', variant: 'error' });
@@ -211,7 +213,7 @@ export function VariablesTab({ service, onChangeStaged }: VariablesTabProps) {
                     ev.uuid === v.uuid ? { ...ev, is_buildtime: newValue } : ev
                 ));
                 toast({ title: `${v.key}: Build ${newValue ? 'enabled' : 'disabled'}` });
-                onChangeStaged?.();
+                onChangeStaged?.(true);
             }
         } catch {
             toast({ title: 'Failed to update variable', variant: 'error' });
