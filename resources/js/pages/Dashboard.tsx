@@ -87,21 +87,21 @@ function ProjectCard({ project }: { project: Project }) {
     return (
         <Link
             href={projectUrl}
-            className={`group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20 ${config.glow}`}
+            className={`group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 ${config.glow}`}
         >
             {/* Subtle gradient overlay on hover */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
             <div className="relative flex items-start justify-between">
                 <div className="flex items-center gap-3">
                     <div className={`h-2.5 w-2.5 rounded-full ${config.dot}`} />
-                    <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{project.name}</h3>
+                    <h3 className="font-medium text-foreground transition-colors group-hover:text-primary">{project.name}</h3>
                 </div>
                 <Dropdown>
                     <DropdownTrigger>
                         <button
                             onClick={(e) => e.preventDefault()}
-                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-white/10 group-hover:opacity-100"
+                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-primary/10 group-hover:opacity-100"
                         >
                             <MoreHorizontal className="h-4 w-4 text-foreground-muted" />
                         </button>
