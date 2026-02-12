@@ -171,6 +171,9 @@ class CreateTransferAction
             ];
         }
 
+        // Check if user needs approval for target environment
+        $requiresApproval = $user->requiresApprovalForEnvironment($targetEnvironment);
+
         // Create transfer record
         $transfer = ResourceTransfer::create([
             'source_type' => get_class($sourceDatabase),
@@ -182,17 +185,27 @@ class CreateTransferAction
             'existing_target_uuid' => $existingTargetUuid,
             'status' => ResourceTransfer::STATUS_PENDING,
             'progress' => 0,
-            'current_step' => 'Queued for processing',
+            'current_step' => $requiresApproval ? 'Awaiting approval' : 'Queued for processing',
             'user_id' => $user->id,
             'team_id' => $team->id,
+            'requires_approval' => $requiresApproval,
         ]);
 
-        // Dispatch the transfer job
+        if ($requiresApproval) {
+            return [
+                'success' => true,
+                'transfer' => $transfer,
+                'requires_approval' => true,
+            ];
+        }
+
+        // No approval needed — dispatch immediately
         dispatch(new ResourceTransferJob($transfer->id, $targetDatabase?->id));
 
         return [
             'success' => true,
             'transfer' => $transfer,
+            'requires_approval' => false,
         ];
     }
 

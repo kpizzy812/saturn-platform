@@ -180,8 +180,9 @@ class ResourceTransferController extends Controller
         }
 
         return response()->json([
-            'message' => 'Transfer created.',
+            'message' => $result['requires_approval'] ? 'Transfer created, awaiting approval.' : 'Transfer created.',
             'transfer' => $result['transfer'],
+            'requires_approval' => $result['requires_approval'] ?? false,
         ], 201);
     }
 
