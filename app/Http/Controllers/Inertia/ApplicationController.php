@@ -30,6 +30,11 @@ class ApplicationController extends Controller
             ->with(['environment.project'])
             ->get()
             ->map(function ($app) {
+                // Parse status into state and health (same as databases)
+                $statusParts = explode(':', $app->status);
+                $state = $statusParts[0];
+                $health = $statusParts[1] ?? 'unknown';
+
                 return [
                     'id' => $app->id,
                     'uuid' => $app->uuid,
@@ -39,9 +44,13 @@ class ApplicationController extends Controller
                     'git_repository' => $app->git_repository,
                     'git_branch' => $app->git_branch,
                     'build_pack' => $app->build_pack,
-                    'status' => $app->status,
+                    'status' => [
+                        'state' => $state,
+                        'health' => $health,
+                    ],
                     'project_name' => $app->environment->project->name,
                     'environment_name' => $app->environment->name,
+                    'environment_type' => $app->environment->type ?? 'development',
                     'created_at' => $app->created_at,
                     'updated_at' => $app->updated_at,
                 ];

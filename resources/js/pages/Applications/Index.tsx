@@ -19,36 +19,77 @@ import {
     Trash2
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
-import type { Application, ApplicationStatus } from '@/types';
+import type { EnvironmentType } from '@/types';
 
-interface ApplicationWithRelations extends Application {
+interface AppStatus {
+    state: string;
+    health: string;
+}
+
+interface ApplicationWithRelations {
+    id: number;
+    uuid: string;
+    name: string;
+    description: string | null;
+    fqdn: string | null;
+    git_repository: string | null;
+    git_branch: string;
+    build_pack: 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage';
+    status: AppStatus;
     project_name?: string;
     environment_name?: string;
+    environment_type?: EnvironmentType;
+    created_at: string;
+    updated_at: string;
 }
 
 interface Props {
     applications: ApplicationWithRelations[];
 }
 
+// Get badge variant based on environment type (same as DatabaseCard)
+const getEnvironmentVariant = (type?: EnvironmentType): 'default' | 'primary' | 'success' | 'warning' | 'info' => {
+    switch (type) {
+        case 'production':
+            return 'warning';
+        case 'uat':
+            return 'warning';
+        case 'development':
+            return 'info';
+        default:
+            return 'default';
+    }
+};
+
+// Parse colon-separated status string to {state, health} object
+function parseStatusString(status: string): AppStatus {
+    const parts = status.split(':');
+    return {
+        state: parts[0] || 'unknown',
+        health: parts[1] || 'unknown',
+    };
+}
+
 export default function ApplicationsIndex({ applications = [] }: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterProject, setFilterProject] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
-    const [appStatuses, setAppStatuses] = useState<Record<number, ApplicationStatus>>({});
+    const [filterEnvironment, setFilterEnvironment] = useState<string>('all');
+    const [appStatuses, setAppStatuses] = useState<Record<number, AppStatus>>({});
     const [deletedUuids, setDeletedUuids] = useState<Set<string>>(new Set());
 
-    // Real-time status updates
+    // Real-time status updates (WebSocket sends colon-separated string)
     useRealtimeStatus({
         onApplicationStatusChange: (data) => {
             setAppStatuses(prev => ({
                 ...prev,
-                [data.applicationId]: data.status,
+                [data.applicationId]: parseStatusString(String(data.status)),
             }));
         },
     });
 
     // Get current status for an application
-    const getAppStatus = (app: ApplicationWithRelations): ApplicationStatus => {
+    const getAppStatus = (app: ApplicationWithRelations): AppStatus => {
         return appStatuses[app.id] || app.status;
     };
 
@@ -58,13 +99,24 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
         const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             app.git_repository?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesProject = filterProject === 'all' || app.project_name === filterProject;
-        const matchesStatus = filterStatus === 'all' || getAppStatus(app) === filterStatus;
+        const status = getAppStatus(app);
+        const matchesStatus = filterStatus === 'all' || status.state === filterStatus;
+        const matchesEnvironment = filterEnvironment === 'all' || app.environment_name === filterEnvironment;
 
-        return matchesSearch && matchesProject && matchesStatus;
+        return matchesSearch && matchesProject && matchesStatus && matchesEnvironment;
     });
 
     // Get unique projects for filter
     const projects = Array.from(new Set(applications.map(app => app.project_name).filter(Boolean)));
+
+    // Get unique environments for filter
+    const environments = Array.from(
+        new Map(
+            applications
+                .filter(app => app.environment_name)
+                .map(app => [app.environment_name!, { name: app.environment_name!, type: app.environment_type }])
+        ).values()
+    );
 
     return (
         <AppLayout
@@ -108,6 +160,16 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
                         ))}
                     </Select>
                     <Select
+                        value={filterEnvironment}
+                        onChange={(e) => setFilterEnvironment(e.target.value)}
+                        className="min-w-[180px]"
+                    >
+                        <option value="all">All Environments</option>
+                        {environments.map(env => (
+                            <option key={env.name} value={env.name}>{env.name}</option>
+                        ))}
+                    </Select>
+                    <Select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                         className="min-w-[150px]"
@@ -142,7 +204,7 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
 
 interface ApplicationCardProps {
     application: ApplicationWithRelations;
-    currentStatus: ApplicationStatus;
+    currentStatus: AppStatus;
     onDeleted: (uuid: string) => void;
 }
 
@@ -206,7 +268,7 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
                     <div className="min-w-0 flex-1">
                         <h3 className="font-medium text-foreground truncate transition-colors group-hover:text-white">{application.name}</h3>
                         <p className="text-sm text-foreground-muted truncate">
-                            {application.project_name} / {application.environment_name}
+                            {application.project_name}
                         </p>
                     </div>
                 </div>
@@ -233,7 +295,7 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
                                     Restart
                                 </DropdownItem>
                                 <DropdownDivider />
-                                {currentStatus === 'running' ? (
+                                {currentStatus.state === 'running' ? (
                                     <DropdownItem
                                         icon={<Square className="h-4 w-4" />}
                                         onClick={(e) => handleAction('stop', e)}
@@ -269,23 +331,34 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
                         </Dropdown>
                     </div>
 
-            {/* Status & Info */}
-            <div className="relative mt-4 space-y-2">
-                <div className="flex items-center gap-2">
-                    <StatusBadge status={currentStatus} />
-                    {application.fqdn && (
-                        <a
-                            href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-1 min-w-0 flex-1"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <Globe className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
-                        </a>
-                    )}
-                </div>
+            {/* Status, Health & Environment badges */}
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+                <StatusBadge status={currentStatus.state} size="sm" />
+                <StatusBadge status={currentStatus.health} size="sm" />
+                {application.environment_name && (
+                    <Badge
+                        variant={getEnvironmentVariant(application.environment_type)}
+                        size="sm"
+                    >
+                        {application.environment_name}
+                    </Badge>
+                )}
+            </div>
+
+            {/* Info */}
+            <div className="relative mt-3 space-y-2">
+                {application.fqdn && (
+                    <a
+                        href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline flex items-center gap-1 min-w-0"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <Globe className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
+                    </a>
+                )}
 
                 {/* Repository Info */}
                 {application.git_repository && (
@@ -300,7 +373,7 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
                     <div className="flex items-center gap-2 text-xs text-foreground-muted">
                         <GitBranch className="h-3 w-3" />
                         <span>{application.git_branch}</span>
-                        <span className="mx-1">•</span>
+                        <span className="mx-1">&bull;</span>
                         <Badge variant="outline" className="text-xs">
                             {application.build_pack}
                         </Badge>

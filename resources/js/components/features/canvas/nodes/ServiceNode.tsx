@@ -60,10 +60,14 @@ const arePropsEqual = (prevProps: { data: ServiceNodeData; selected?: boolean },
 };
 
 export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; selected?: boolean }) => {
-    const statusBase = (data.status || '').split(':')[0];
+    const statusParts = (data.status || '').split(':');
+    const statusBase = statusParts[0];
+    const healthBase = statusParts[1] || '';
     const isOnline = statusBase === 'running';
     const isDeploying = statusBase === 'deploying' || statusBase === 'restarting';
     const isError = statusBase === 'exited' || statusBase === 'stopped' || statusBase === 'crashed' || statusBase === 'failed';
+    const isHealthy = healthBase === 'healthy';
+    const isUnhealthy = healthBase === 'unhealthy';
     const hasQuickActions = data.onQuickDeploy || data.onQuickOpenUrl || data.onQuickViewLogs;
 
     return (
@@ -136,23 +140,44 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
 
                 {/* Status */}
                 <div className="px-4 pb-4">
-                    <div className="flex items-center gap-2">
-                        <div className={cn(
-                            'w-2 h-2 rounded-full transition-all duration-200',
-                            isOnline && 'status-online',
-                            isDeploying && 'status-deploying',
-                            isError && 'bg-red-500',
-                            !isOnline && !isDeploying && !isError && 'bg-foreground-subtle'
-                        )} />
-                        <span className={cn(
-                            'text-sm transition-colors duration-200',
-                            isOnline && 'text-success',
-                            isDeploying && 'text-primary',
-                            isError && 'text-red-400',
-                            !isOnline && !isDeploying && !isError && 'text-foreground-muted'
-                        )}>
-                            {isOnline ? 'Online' : statusBase || 'unknown'}
-                        </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                            <div className={cn(
+                                'w-2 h-2 rounded-full transition-all duration-200',
+                                isOnline && 'status-online',
+                                isDeploying && 'status-deploying',
+                                isError && 'bg-red-500',
+                                !isOnline && !isDeploying && !isError && 'bg-foreground-subtle'
+                            )} />
+                            <span className={cn(
+                                'text-sm transition-colors duration-200',
+                                isOnline && 'text-success',
+                                isDeploying && 'text-primary',
+                                isError && 'text-red-400',
+                                !isOnline && !isDeploying && !isError && 'text-foreground-muted'
+                            )}>
+                                {isOnline ? 'Online' : statusBase || 'unknown'}
+                            </span>
+                        </div>
+                        {/* Health indicator */}
+                        {healthBase && healthBase !== 'unknown' && (
+                            <div className="flex items-center gap-1.5">
+                                <div className={cn(
+                                    'w-2 h-2 rounded-full',
+                                    isHealthy && 'bg-success',
+                                    isUnhealthy && 'bg-red-500',
+                                    !isHealthy && !isUnhealthy && 'bg-foreground-subtle'
+                                )} />
+                                <span className={cn(
+                                    'text-xs capitalize',
+                                    isHealthy && 'text-success',
+                                    isUnhealthy && 'text-red-400',
+                                    !isHealthy && !isUnhealthy && 'text-foreground-muted'
+                                )}>
+                                    {healthBase}
+                                </span>
+                            </div>
+                        )}
                         {/* Building indicator when app is online but has active deployment */}
                         {isOnline && data.isDeployingBuild && (
                             <span className="flex items-center gap-1 ml-1">

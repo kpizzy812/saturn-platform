@@ -1566,13 +1566,26 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     <p className="mt-1 text-sm text-foreground-muted">Monitor health, performance and resource usage across all services.</p>
                                 </div>
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {(envWithRealtimeStatuses?.applications || []).map((app) => (
+                                    {(envWithRealtimeStatuses?.applications || []).map((app) => {
+                                        const appState = String(app.status || 'stopped').split(':')[0];
+                                        const appHealth = String(app.status || '').split(':')[1];
+                                        return (
                                         <div key={app.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{app.name}</span>
-                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(app.status || 'stopped')}`} />
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={`h-2 w-2 rounded-full ${getStatusDotClass(appState)}`} />
+                                                    {appHealth && appHealth !== 'unknown' && (
+                                                        <div className={`h-2 w-2 rounded-full ${appHealth === 'healthy' ? 'bg-success' : appHealth === 'unhealthy' ? 'bg-red-500' : 'bg-foreground-subtle'}`} />
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{getStatusLabel(app.status || 'stopped')}</p>
+                                            <p className="mt-1 text-xs text-foreground-muted">
+                                                <span className="capitalize">{getStatusLabel(appState)}</span>
+                                                {appHealth && appHealth !== 'unknown' && (
+                                                    <span className={`ml-1.5 capitalize ${appHealth === 'healthy' ? 'text-success' : appHealth === 'unhealthy' ? 'text-red-400' : ''}`}>· {appHealth}</span>
+                                                )}
+                                            </p>
                                             <div className="mt-3 flex items-center gap-2">
                                                 <button
                                                     onClick={() => {
@@ -1592,14 +1605,29 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                                 </Link>
                                             </div>
                                         </div>
-                                    ))}
-                                    {(envWithRealtimeStatuses?.databases || []).map((db) => (
+                                        );
+                                    })}
+                                    {(envWithRealtimeStatuses?.databases || []).map((db) => {
+                                        const dbStatusStr = typeof db.status === 'object' ? `${db.status.state}:${db.status.health}` : String(db.status || 'stopped');
+                                        const dbState = dbStatusStr.split(':')[0];
+                                        const dbHealth = dbStatusStr.split(':')[1];
+                                        return (
                                         <div key={db.id} className="rounded-lg border border-border bg-background-secondary p-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-foreground">{db.name}</span>
-                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(db.status || 'stopped')}`} />
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={`h-2 w-2 rounded-full ${getStatusDotClass(dbState)}`} />
+                                                    {dbHealth && dbHealth !== 'unknown' && (
+                                                        <div className={`h-2 w-2 rounded-full ${dbHealth === 'healthy' ? 'bg-success' : dbHealth === 'unhealthy' ? 'bg-red-500' : 'bg-foreground-subtle'}`} />
+                                                    )}
+                                                </div>
                                             </div>
-                                            <p className="mt-1 text-xs capitalize text-foreground-muted">{getStatusLabel(db.status || 'stopped')}</p>
+                                            <p className="mt-1 text-xs text-foreground-muted">
+                                                <span className="capitalize">{getStatusLabel(dbState)}</span>
+                                                {dbHealth && dbHealth !== 'unknown' && (
+                                                    <span className={`ml-1.5 capitalize ${dbHealth === 'healthy' ? 'text-success' : dbHealth === 'unhealthy' ? 'text-red-400' : ''}`}>· {dbHealth}</span>
+                                                )}
+                                            </p>
                                             <div className="mt-3">
                                                 <button
                                                     onClick={() => {
@@ -1615,7 +1643,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 {!(envWithRealtimeStatuses?.applications?.length || envWithRealtimeStatuses?.databases?.length) && (
                                     <div className="flex flex-col items-center justify-center py-16 text-foreground-muted">
@@ -1636,7 +1665,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     <p className="mt-1 text-sm text-foreground-muted">View logs for all services in this environment.</p>
                                 </div>
                                 <div className="space-y-3">
-                                    {(envWithRealtimeStatuses?.applications || []).map((app) => (
+                                    {(envWithRealtimeStatuses?.applications || []).map((app) => {
+                                        const logAppState = String(app.status || 'stopped').split(':')[0];
+                                        const logAppHealth = String(app.status || '').split(':')[1];
+                                        return (
                                         <button
                                             key={app.id}
                                             onClick={() => {
@@ -1658,12 +1690,20 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(app.status || 'stopped')}`} />
+                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(logAppState)}`} />
+                                                {logAppHealth && logAppHealth !== 'unknown' && (
+                                                    <div className={`h-2 w-2 rounded-full ${logAppHealth === 'healthy' ? 'bg-success' : logAppHealth === 'unhealthy' ? 'bg-red-500' : 'bg-foreground-subtle'}`} />
+                                                )}
                                                 <FileText className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </button>
-                                    ))}
-                                    {(envWithRealtimeStatuses?.databases || []).map((db) => (
+                                        );
+                                    })}
+                                    {(envWithRealtimeStatuses?.databases || []).map((db) => {
+                                        const logDbStatusStr = typeof db.status === 'object' ? `${db.status.state}:${db.status.health}` : String(db.status || 'stopped');
+                                        const logDbState = logDbStatusStr.split(':')[0];
+                                        const logDbHealth = logDbStatusStr.split(':')[1];
+                                        return (
                                         <button
                                             key={db.id}
                                             onClick={() => {
@@ -1685,11 +1725,15 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(db.status || 'stopped')}`} />
+                                                <div className={`h-2 w-2 rounded-full ${getStatusDotClass(logDbState)}`} />
+                                                {logDbHealth && logDbHealth !== 'unknown' && (
+                                                    <div className={`h-2 w-2 rounded-full ${logDbHealth === 'healthy' ? 'bg-success' : logDbHealth === 'unhealthy' ? 'bg-red-500' : 'bg-foreground-subtle'}`} />
+                                                )}
                                                 <FileText className="h-4 w-4 text-foreground-muted" />
                                             </div>
                                         </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 {!(envWithRealtimeStatuses?.applications?.length || envWithRealtimeStatuses?.databases?.length) && (
                                     <div className="flex flex-col items-center justify-center py-16 text-foreground-muted">
@@ -1722,8 +1766,21 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         <div>
                                             <span className="font-medium text-foreground">{selectedService.name}</span>
                                             <div className="flex items-center gap-1.5 text-xs text-foreground-muted">
-                                                <div className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass(selectedService.status || 'stopped')}`} />
-                                                <span className="capitalize">{getStatusLabel(selectedService.status || 'stopped')}</span>
+                                                <div className={`h-1.5 w-1.5 rounded-full ${getStatusDotClass((selectedService.status || 'stopped').split(':')[0])}`} />
+                                                <span className="capitalize">{getStatusLabel((selectedService.status || 'stopped').split(':')[0])}</span>
+                                                {/* Health indicator */}
+                                                {(() => {
+                                                    const health = (selectedService.status || '').split(':')[1];
+                                                    if (health && health !== 'unknown') {
+                                                        return (
+                                                            <span className="flex items-center gap-1 ml-0.5">
+                                                                <div className={`h-1.5 w-1.5 rounded-full ${health === 'healthy' ? 'bg-success' : health === 'unhealthy' ? 'bg-red-500' : 'bg-foreground-subtle'}`} />
+                                                                <span className={`capitalize ${health === 'healthy' ? 'text-success' : health === 'unhealthy' ? 'text-red-400' : ''}`}>{health}</span>
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                                 {selectedService.type === 'app' && deployingApps[Number(selectedService.id)] && (selectedService.status || '').startsWith('running') && (
                                                     <span className="flex items-center gap-1 ml-1">
                                                         <div className="h-1.5 w-1.5 rounded-full status-deploying" />
