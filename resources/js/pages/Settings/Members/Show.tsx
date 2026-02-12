@@ -75,6 +75,7 @@ interface Props {
     activities: ActivityLog[];
     isCurrentUser: boolean;
     canManageTeam: boolean;
+    canEditPermissions: boolean;
     permissionSets: PermissionSetSummary[];
     allowedProjects: number[] | null;
     hasFullProjectAccess: boolean;
@@ -86,6 +87,7 @@ export default function MemberShow({
     activities,
     isCurrentUser,
     canManageTeam,
+    canEditPermissions,
     permissionSets,
     allowedProjects,
     hasFullProjectAccess,
@@ -114,7 +116,8 @@ export default function MemberShow({
     });
     const [isUpdatingProjects, setIsUpdatingProjects] = React.useState(false);
 
-    const canEditMember = canManageTeam && !isCurrentUser && member.role !== 'owner';
+    // Use server-computed permission that accounts for admin-vs-admin restrictions
+    const canEditMember = canEditPermissions;
 
     const getRoleIcon = (role: string) => {
         switch (role) {
@@ -349,8 +352,9 @@ export default function MemberShow({
     const projectAccessChanged = React.useMemo(() => {
         if (fullAccess !== hasFullProjectAccess) return true;
         if (fullAccess) return false;
-        const original = allowedProjects ? allowedProjects.map(Number).sort() : [];
-        const current = [...selectedProjects].sort();
+        const numSort = (a: number, b: number) => a - b;
+        const original = allowedProjects ? allowedProjects.map(Number).sort(numSort) : [];
+        const current = [...selectedProjects].sort(numSort);
         if (original.length !== current.length) return true;
         return original.some((v, i) => v !== current[i]);
     }, [fullAccess, hasFullProjectAccess, allowedProjects, selectedProjects]);

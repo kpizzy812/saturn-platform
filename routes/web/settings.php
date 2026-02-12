@@ -1100,7 +1100,15 @@ Route::get('/settings/members/{id}', function (string $id) {
 
     // Get current user's role and permissions
     $currentUserRole = $currentUser->teams()->where('team_id', $team->id)->first()?->pivot->role ?? 'member';
-    $canManageTeam = in_array($currentUserRole, ['owner', 'admin']);
+    $canManageTeam = in_array($currentUserRole, ['owner', 'admin', 'developer']);
+
+    // Determine if current user can edit this member's permissions/projects
+    // Admin/developer cannot modify admin or owner; only owner can modify everyone
+    $memberRole = $member->pivot->role ?? 'member';
+    $canEditPermissions = $canManageTeam
+        && ! $isCurrentUser
+        && $memberRole !== 'owner'
+        && ($currentUserRole === 'owner' || ! in_array($memberRole, ['owner', 'admin']));
 
     // Get last activity from sessions table
     $lastSession = \Illuminate\Support\Facades\DB::table('sessions')
@@ -1219,6 +1227,7 @@ Route::get('/settings/members/{id}', function (string $id) {
         'activities' => $activities,
         'isCurrentUser' => $isCurrentUser,
         'canManageTeam' => $canManageTeam,
+        'canEditPermissions' => $canEditPermissions,
         'permissionSets' => $permissionSets,
         'allowedProjects' => $allowedProjects,
         'hasFullProjectAccess' => $hasFullAccess,
