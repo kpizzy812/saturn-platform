@@ -13,6 +13,7 @@ const mockRouter = {
     put: vi.fn(),
     patch: vi.fn(),
     delete: vi.fn(),
+    reload: vi.fn(),
 };
 
 // Mock Inertia

@@ -51,3 +51,15 @@ const meta = document.createElement('meta');
 meta.name = 'csrf-token';
 meta.content = 'test-csrf-token';
 document.head.appendChild(meta);
+
+// Mock clipboard API (make it configurable so userEvent can also configure it)
+if (!navigator.clipboard) {
+    Object.defineProperty(navigator, 'clipboard', {
+        writable: true,
+        configurable: true,
+        value: {
+            writeText: vi.fn(() => Promise.resolve()),
+            readText: vi.fn(() => Promise.resolve('')),
+        },
+    });
+}
