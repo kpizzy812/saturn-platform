@@ -135,6 +135,20 @@ class TransferController extends Controller
             return response()->json(['message' => 'Source application not found'], 404);
         }
 
+        // Check for duplicate in-progress transfer
+        $existingTransfer = ResourceTransfer::where('source_type', $sourceApplication->getMorphClass())
+            ->where('source_id', $sourceApplication->id)
+            ->inProgress()
+            ->first();
+        if ($existingTransfer) {
+            return response()->json(['message' => 'A transfer for this application is already in progress'], 409);
+        }
+
+        // Check if user needs approval for target environment
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        $requiresApproval = $user->requiresApprovalForEnvironment($targetEnvironment);
+
         // Create transfer record for tracking
         $transfer = ResourceTransfer::create([
             'team_id' => currentTeam()->id,
@@ -146,7 +160,18 @@ class TransferController extends Controller
             'transfer_mode' => ResourceTransfer::MODE_CLONE,
             'transfer_options' => $options,
             'status' => ResourceTransfer::STATUS_PENDING,
+            'requires_approval' => $requiresApproval,
+            'current_step' => $requiresApproval ? 'Awaiting approval' : null,
         ]);
+
+        // If approval is required, don't execute — wait for approval
+        if ($requiresApproval) {
+            return response()->json([
+                'success' => true,
+                'uuid' => $transfer->uuid,
+                'requires_approval' => true,
+            ]);
+        }
 
         // Execute clone action
         $action = new CloneApplicationAction;
@@ -173,6 +198,7 @@ class TransferController extends Controller
         return response()->json([
             'success' => true,
             'uuid' => $transfer->uuid,
+            'requires_approval' => false,
             'application_uuid' => $result['application']->uuid ?? null,
         ]);
     }
@@ -194,6 +220,20 @@ class TransferController extends Controller
             return response()->json(['message' => 'Source service not found'], 404);
         }
 
+        // Check for duplicate in-progress transfer
+        $existingTransfer = ResourceTransfer::where('source_type', $sourceService->getMorphClass())
+            ->where('source_id', $sourceService->id)
+            ->inProgress()
+            ->first();
+        if ($existingTransfer) {
+            return response()->json(['message' => 'A transfer for this service is already in progress'], 409);
+        }
+
+        // Check if user needs approval for target environment
+        /** @var \App\Models\User $user */
+        $user = auth()->user();
+        $requiresApproval = $user->requiresApprovalForEnvironment($targetEnvironment);
+
         // Create transfer record for tracking
         $transfer = ResourceTransfer::create([
             'team_id' => currentTeam()->id,
@@ -205,7 +245,18 @@ class TransferController extends Controller
             'transfer_mode' => ResourceTransfer::MODE_CLONE,
             'transfer_options' => $options,
             'status' => ResourceTransfer::STATUS_PENDING,
+            'requires_approval' => $requiresApproval,
+            'current_step' => $requiresApproval ? 'Awaiting approval' : null,
         ]);
+
+        // If approval is required, don't execute — wait for approval
+        if ($requiresApproval) {
+            return response()->json([
+                'success' => true,
+                'uuid' => $transfer->uuid,
+                'requires_approval' => true,
+            ]);
+        }
 
         // Execute clone action
         $action = new CloneServiceAction;
@@ -231,6 +282,7 @@ class TransferController extends Controller
         return response()->json([
             'success' => true,
             'uuid' => $transfer->uuid,
+            'requires_approval' => false,
             'service_uuid' => $result['service']->uuid ?? null,
         ]);
     }
@@ -269,6 +321,7 @@ class TransferController extends Controller
         return response()->json([
             'success' => true,
             'uuid' => $result['transfer']->uuid,
+            'requires_approval' => $result['requires_approval'] ?? false,
         ]);
     }
 

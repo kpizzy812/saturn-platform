@@ -62,12 +62,11 @@ export function useTransfers({
             const params = new URLSearchParams();
             if (statusFilter) params.set('status', statusFilter);
 
-            const response = await fetch(`/api/v1/transfers?${params.toString()}`, {
+            const response = await fetch(`/transfers?${params.toString()}`, {
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                credentials: 'include',
             });
 
             if (!response.ok) {
@@ -84,13 +83,13 @@ export function useTransfers({
     }, [statusFilter]);
 
     const createTransfer = React.useCallback(async (data: CreateTransferData): Promise<ResourceTransfer> => {
-        const response = await fetch('/api/v1/transfers', {
+        const response = await fetch('/transfers', {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             },
-            credentials: 'include',
             body: JSON.stringify(data),
         });
 
@@ -105,13 +104,12 @@ export function useTransfers({
     }, [fetchTransfers]);
 
     const cancelTransfer = React.useCallback(async (uuid: string) => {
-        const response = await fetch(`/api/v1/transfers/${uuid}/cancel`, {
+        const response = await fetch(`/transfers/${uuid}/cancel`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             },
-            credentials: 'include',
         });
 
         if (!response.ok) {

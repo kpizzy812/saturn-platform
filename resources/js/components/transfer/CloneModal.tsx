@@ -147,8 +147,10 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
                 setSuccess(true);
                 setTimeout(() => {
                     onClose();
-                    // Redirect to transfers page to see progress
-                    if (data.uuid) {
+                    // Redirect based on whether approval is required
+                    if (data.requires_approval) {
+                        router.visit('/approvals');
+                    } else if (data.uuid) {
                         router.visit(`/transfers/${data.uuid}`);
                     } else {
                         router.visit('/transfers');
@@ -183,9 +185,9 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
             {success ? (
                 <div className="flex flex-col items-center justify-center py-8">
                     <CheckCircle className="h-12 w-12 text-success mb-4" />
-                    <p className="text-lg font-medium">Clone started successfully!</p>
+                    <p className="text-lg font-medium">Clone submitted successfully!</p>
                     <p className="text-sm text-foreground-muted mt-2">
-                        Redirecting to transfer progress...
+                        Redirecting...
                     </p>
                 </div>
             ) : (

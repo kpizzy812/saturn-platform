@@ -10,6 +10,7 @@
 use App\Actions\Deployment\ApproveDeploymentAction;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\DeploymentApproval;
+use App\Models\ResourceTransfer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -182,6 +183,111 @@ Route::post('/applications/{uuid}/deploy/json', function (\Illuminate\Http\Reque
         'deployment_uuid' => (string) $deployment_uuid,
     ]);
 })->name('applications.deploy.json');
+
+// Transfer Approvals
+
+// Get pending transfer approvals for current user
+Route::get('/transfers/pending/json', function () {
+    /** @var \App\Models\User $user */
+    $user = auth()->user();
+
+    $transfers = ResourceTransfer::pendingForApprover($user)
+        ->with(['source', 'targetEnvironment', 'targetServer', 'user'])
+        ->get();
+
+    return response()->json($transfers->map(function ($transfer) {
+        /** @var ResourceTransfer $transfer */
+        $source = $transfer->source;
+        $targetEnv = $transfer->targetEnvironment;
+        $targetServer = $transfer->targetServer;
+        $requestedBy = $transfer->user;
+
+        return [
+            'uuid' => $transfer->uuid,
+            'status' => $transfer->status,
+            'source_name' => $source ? $source->name : 'Unknown',
+            'source_type_name' => $transfer->source_type_name,
+            'transfer_mode' => $transfer->transfer_mode,
+            'mode_label' => $transfer->mode_label,
+            'target_environment_name' => $targetEnv ? $targetEnv->name : null,
+            'target_server_name' => $targetServer ? $targetServer->name : null,
+            'requested_by' => $requestedBy ? $requestedBy->email : null,
+            'requested_at' => $transfer->created_at?->toIso8601String(),
+        ];
+    }));
+})->name('transfers.pending.json');
+
+// Approve a transfer
+Route::post('/transfers/{uuid}/approve/json', function (Request $request, string $uuid) {
+    $transfer = ResourceTransfer::where('uuid', $uuid)
+        ->where('team_id', currentTeam()->id)
+        ->where('requires_approval', true)
+        ->where('status', ResourceTransfer::STATUS_PENDING)
+        ->firstOrFail();
+
+    /** @var \App\Models\User $user */
+    $user = auth()->user();
+
+    // Role check: only admin/owner can approve transfers
+    $targetEnvironment = $transfer->targetEnvironment;
+    if ($targetEnvironment) {
+        $project = $targetEnvironment->project;
+        if ($project) {
+            $role = $user->roleInProject($project);
+            if (! in_array($role, ['admin', 'owner']) && ! $user->is_superadmin) {
+                return response()->json(['message' => 'You do not have permission to approve this transfer.'], 403);
+            }
+        }
+    }
+
+    try {
+        $transfer->approve($user, $request->input('comment'));
+
+        return response()->json([
+            'message' => 'Transfer approved successfully.',
+            'uuid' => $transfer->uuid,
+            'status' => 'approved',
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['message' => $e->getMessage()], 400);
+    }
+})->name('transfers.approve.json');
+
+// Reject a transfer
+Route::post('/transfers/{uuid}/reject/json', function (Request $request, string $uuid) {
+    $transfer = ResourceTransfer::where('uuid', $uuid)
+        ->where('team_id', currentTeam()->id)
+        ->where('requires_approval', true)
+        ->where('status', ResourceTransfer::STATUS_PENDING)
+        ->firstOrFail();
+
+    /** @var \App\Models\User $user */
+    $user = auth()->user();
+
+    // Role check: only admin/owner can reject transfers
+    $targetEnvironment = $transfer->targetEnvironment;
+    if ($targetEnvironment) {
+        $project = $targetEnvironment->project;
+        if ($project) {
+            $role = $user->roleInProject($project);
+            if (! in_array($role, ['admin', 'owner']) && ! $user->is_superadmin) {
+                return response()->json(['message' => 'You do not have permission to reject this transfer.'], 403);
+            }
+        }
+    }
+
+    try {
+        $transfer->reject($user, $request->input('reason', ''));
+
+        return response()->json([
+            'message' => 'Transfer rejected successfully.',
+            'uuid' => $transfer->uuid,
+            'status' => 'rejected',
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['message' => $e->getMessage()], 400);
+    }
+})->name('transfers.reject.json');
 
 // Resource Links (web routes for session auth)
 // Helper function to format link for JSON response

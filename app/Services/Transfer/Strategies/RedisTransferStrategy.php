@@ -80,13 +80,10 @@ class RedisTransferStrategy extends AbstractTransferStrategy
             }
 
             // Full backup using BGSAVE + copy RDB file
+            // Save initial LASTSAVE timestamp, trigger BGSAVE, then wait until LASTSAVE changes
             $commands = [
-                // Trigger BGSAVE
-                "docker exec {$containerName} redis-cli {$authArg} BGSAVE",
-                // Wait for BGSAVE to complete
-                'sleep 2',
-                // Wait for background save to finish
-                "while [ \"$(docker exec {$containerName} redis-cli {$authArg} LASTSAVE)\" = \"$(docker exec {$containerName} redis-cli {$authArg} LASTSAVE)\" ]; do sleep 1; done || true",
+                // Save initial timestamp and trigger BGSAVE, then poll until LASTSAVE changes
+                'INITIAL_LASTSAVE=$(docker exec '.$containerName.' redis-cli '.$authArg.' LASTSAVE) && docker exec '.$containerName.' redis-cli '.$authArg.' BGSAVE && for i in $(seq 1 120); do sleep 1; CURRENT=$(docker exec '.$containerName.' redis-cli '.$authArg.' LASTSAVE); if [ "$CURRENT" != "$INITIAL_LASTSAVE" ]; then break; fi; done',
                 // Copy RDB file out
                 "docker cp {$containerName}:/data/dump.rdb {$dumpPath}",
             ];

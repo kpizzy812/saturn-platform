@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Actions\Transfer\CloneApplicationAction;
+use App\Actions\Transfer\CloneServiceAction;
+use App\Jobs\Transfer\ResourceTransferJob;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -31,6 +35,7 @@ class ResourceTransfer extends Model
         'transferred_bytes',
         'total_bytes',
         'logs',
+        'requires_approval',
     ];
 
     protected $casts = [
@@ -39,8 +44,10 @@ class ResourceTransfer extends Model
         'progress' => 'integer',
         'transferred_bytes' => 'integer',
         'total_bytes' => 'integer',
+        'requires_approval' => 'boolean',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     // Status constants
@@ -168,6 +175,159 @@ class ResourceTransfer extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * The user who approved or rejected the transfer.
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
+     * Check if transfer is awaiting approval.
+     */
+    public function isAwaitingApproval(): bool
+    {
+        return $this->requires_approval && $this->status === self::STATUS_PENDING;
+    }
+
+    /**
+     * Approve the transfer and dispatch the job.
+     *
+     * Uses DB transaction with lock to prevent race conditions (double-approve).
+     */
+    public function approve(User $approver, ?string $comment = null): void
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($approver) {
+            $locked = self::where('id', $this->id)
+                ->where('status', self::STATUS_PENDING)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $locked) {
+                throw new \RuntimeException('Transfer is no longer pending approval.');
+            }
+
+            $locked->update([
+                'status' => self::STATUS_PREPARING,
+                'approved_by' => $approver->id,
+                'approved_at' => now(),
+                'current_step' => 'Approved, preparing transfer...',
+                'started_at' => now(),
+            ]);
+
+            // Dispatch appropriate action based on source type
+            $sourceClass = class_basename($locked->source_type);
+
+            if ($sourceClass === 'Application') {
+                $this->dispatchApplicationClone($locked);
+            } elseif ($sourceClass === 'Service') {
+                $this->dispatchServiceClone($locked);
+            } else {
+                // Database transfer — dispatch job
+                $targetDatabaseId = null;
+                if ($locked->transfer_mode === self::MODE_DATA_ONLY && $locked->existing_target_uuid) {
+                    $targetDb = queryDatabaseByUuidWithinTeam($locked->existing_target_uuid, (string) $locked->team_id);
+                    $targetDatabaseId = $targetDb?->id;
+                }
+
+                dispatch(new ResourceTransferJob($locked->id, $targetDatabaseId));
+            }
+        });
+
+        $this->refresh();
+    }
+
+    /**
+     * Dispatch application clone after approval.
+     */
+    private function dispatchApplicationClone(self $transfer): void
+    {
+        /** @var \App\Models\Application $source */
+        $source = $transfer->source;
+        /** @var \App\Models\Environment $targetEnvironment */
+        $targetEnvironment = $transfer->targetEnvironment;
+        /** @var \App\Models\Server $targetServer */
+        $targetServer = $transfer->targetServer;
+        $options = $transfer->transfer_options ?? [];
+
+        $action = new CloneApplicationAction;
+        $result = $action->handle(
+            sourceApplication: $source,
+            targetEnvironment: $targetEnvironment,
+            targetServer: $targetServer,
+            options: [
+                'copyEnvVars' => $options['copy_env_vars'] ?? true,
+                'copyVolumes' => $options['copy_volumes'] ?? true,
+                'copyTags' => $options['copy_tags'] ?? true,
+                'instantDeploy' => $options['instant_deploy'] ?? false,
+                'newName' => $options['new_name'] ?? null,
+                'transferId' => $transfer->id,
+            ]
+        );
+
+        if (! $result['success']) {
+            $transfer->markAsFailed($result['error']);
+        }
+    }
+
+    /**
+     * Dispatch service clone after approval.
+     */
+    private function dispatchServiceClone(self $transfer): void
+    {
+        /** @var \App\Models\Service $source */
+        $source = $transfer->source;
+        /** @var \App\Models\Environment $targetEnvironment */
+        $targetEnvironment = $transfer->targetEnvironment;
+        /** @var \App\Models\Server $targetServer */
+        $targetServer = $transfer->targetServer;
+        $options = $transfer->transfer_options ?? [];
+
+        $action = new CloneServiceAction;
+        $result = $action->handle(
+            sourceService: $source,
+            targetEnvironment: $targetEnvironment,
+            targetServer: $targetServer,
+            options: [
+                'copyEnvVars' => $options['copy_env_vars'] ?? true,
+                'copyVolumes' => $options['copy_volumes'] ?? true,
+                'copyTags' => $options['copy_tags'] ?? true,
+                'newName' => $options['new_name'] ?? null,
+                'transferId' => $transfer->id,
+            ]
+        );
+
+        if (! $result['success']) {
+            $transfer->markAsFailed($result['error']);
+        }
+    }
+
+    /**
+     * Reject the transfer.
+     */
+    public function reject(User $approver, string $reason): void
+    {
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+            'approved_by' => $approver->id,
+            'approved_at' => now(),
+            'rejection_reason' => $reason,
+            'current_step' => 'Transfer rejected',
+            'completed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Scope for transfers pending approval that the given user can approve.
+     */
+    public function scopePendingForApprover(Builder $query, User $user): Builder
+    {
+        return $query->where('requires_approval', true)
+            ->where('status', self::STATUS_PENDING)
+            ->where('team_id', currentTeam()->id);
     }
 
     /**

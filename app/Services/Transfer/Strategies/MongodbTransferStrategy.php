@@ -205,8 +205,13 @@ class MongodbTransferStrategy extends AbstractTransferStrategy
             $authFlag = $isMongoFour ? '' : '--authenticationDatabase admin';
 
             if ($options && ! empty($options['collections'])) {
-                // Calculate size for specific collections
-                $collectionList = array_map(fn ($c) => "'{$c}'", $options['collections']);
+                // Calculate size for specific collections — validate names to prevent JS injection
+                $collectionList = array_map(function ($c) {
+                    $this->validatePath($c, 'collection name');
+
+                    // Escape single quotes for JS string literals
+                    return "'".str_replace(["'", '\\'], ["\\'", '\\\\'], $c)."'";
+                }, $options['collections']);
                 $collectionListStr = implode(',', $collectionList);
 
                 $script = "var total = 0; [{$collectionListStr}].forEach(function(c) { total += db[c].stats().size; }); print(total);";

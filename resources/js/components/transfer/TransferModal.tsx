@@ -41,6 +41,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [successRequiresApproval, setSuccessRequiresApproval] = useState(false);
 
     // Fetch available targets
     const { targets, isLoading: isLoadingTargets } = useTransferTargets({
@@ -66,6 +67,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                 setSelectedItems([]);
                 setError(null);
                 setSuccess(false);
+                setSuccessRequiresApproval(false);
             }, 300);
         }
     }, [isOpen]);
@@ -136,16 +138,16 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                 }
             }
 
-            const response = await fetch('/api/v1/transfers', {
+            const response = await fetch('/transfers', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 },
-                credentials: 'include',
                 body: JSON.stringify({
                     source_uuid: database.uuid,
-                    source_type: database.database_type,
+                    source_type: 'database',
                     target_environment_id: targetEnvironmentId,
                     target_server_id: targetServerId,
                     transfer_mode: mode,
@@ -160,11 +162,16 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
             }
 
             const transfer = await response.json();
+            setSuccessRequiresApproval(!!transfer.requires_approval);
             setSuccess(true);
 
-            // Redirect to transfer detail page after short delay
+            // Redirect based on whether approval is required
             setTimeout(() => {
-                router.visit(`/transfers/${transfer.uuid}`);
+                if (transfer.requires_approval) {
+                    router.visit('/approvals');
+                } else {
+                    router.visit(`/transfers/${transfer.uuid}`);
+                }
             }, 1500);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to start transfer');
@@ -187,17 +194,18 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
 
     // Success state
     if (success) {
+        const needsApproval = successRequiresApproval;
         return (
-            <Modal isOpen={isOpen} onClose={onClose} title="Transfer Started">
+            <Modal isOpen={isOpen} onClose={onClose} title={needsApproval ? 'Transfer Submitted' : 'Transfer Started'}>
                 <div className="flex flex-col items-center py-6 text-center">
                     <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
                         <CheckCircle className="h-8 w-8 text-green-500" />
                     </div>
                     <h3 className="mb-2 text-lg font-medium text-foreground">
-                        Transfer Initiated Successfully
+                        {needsApproval ? 'Transfer Submitted for Approval' : 'Transfer Initiated Successfully'}
                     </h3>
                     <p className="text-sm text-foreground-muted">
-                        Redirecting to transfer details...
+                        {needsApproval ? 'Redirecting to approvals page...' : 'Redirecting to transfer details...'}
                     </p>
                 </div>
             </Modal>

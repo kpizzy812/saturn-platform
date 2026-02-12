@@ -202,11 +202,10 @@ class TransferDatabaseDataAction
 
             // Use SCP to transfer file
             // We'll execute SCP from source server to target server
-            $targetIp = $targetServer->ip;
-            $targetUser = $targetServer->user;
-            $targetPort = $targetServer->port ?? 22;
+            $targetIp = escapeshellarg($targetServer->ip);
+            $targetUser = escapeshellarg($targetServer->user);
+            $targetPort = escapeshellarg((string) ($targetServer->port ?? 22));
 
-            // Create a temporary script to handle the transfer
             // Using rsync for better reliability and progress
             $rsyncCommand = "rsync -avz --progress -e 'ssh -p {$targetPort} -o StrictHostKeyChecking=no' {$sourcePath} {$targetUser}@{$targetIp}:{$targetPath}";
 

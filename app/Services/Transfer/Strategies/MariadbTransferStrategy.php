@@ -181,11 +181,16 @@ class MariadbTransferStrategy extends AbstractTransferStrategy
             $password = $database->mariadb_root_password;
 
             if ($options && ! empty($options['tables'])) {
-                // Calculate size for specific tables
-                $tableList = array_map(fn ($t) => "'{$t}'", $options['tables']);
+                // Calculate size for specific tables — validate names to prevent SQL injection
+                $tableList = array_map(function ($t) {
+                    $this->validatePath($t, 'table name');
+
+                    return "'".str_replace("'", "''", $t)."'";
+                }, $options['tables']);
                 $tableListStr = implode(',', $tableList);
 
-                $query = "SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = '{$dbName}' AND table_name IN ({$tableListStr});";
+                $escapedDbName = str_replace("'", "''", $dbName);
+                $query = "SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = '{$escapedDbName}' AND table_name IN ({$tableListStr});";
             } else {
                 // Calculate total database size
                 $query = "SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = '{$dbName}';";

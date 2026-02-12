@@ -203,14 +203,19 @@ class PostgresqlTransferStrategy extends AbstractTransferStrategy
             $password = $database->postgres_password;
 
             if ($options && ! empty($options['tables'])) {
-                // Calculate size for specific tables
-                $tableList = array_map(fn ($t) => "'{$t}'", $options['tables']);
+                // Calculate size for specific tables — validate names to prevent SQL injection
+                $tableList = array_map(function ($t) {
+                    $this->validatePath($t, 'table name');
+
+                    return "'".str_replace("'", "''", $t)."'";
+                }, $options['tables']);
                 $tableListStr = implode(',', $tableList);
 
                 $query = "SELECT SUM(pg_total_relation_size(quote_ident(table_name))) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ({$tableListStr});";
             } else {
                 // Calculate total database size
-                $query = "SELECT pg_database_size('{$dbName}');";
+                $escapedDbName = str_replace("'", "''", $dbName);
+                $query = "SELECT pg_database_size('{$escapedDbName}');";
             }
 
             $command = "docker exec -e PGPASSWORD=\"{$password}\" {$containerName} psql -U {$user} -d {$dbName} -t -c \"{$query}\"";

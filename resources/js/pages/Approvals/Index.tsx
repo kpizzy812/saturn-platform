@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, Modal, ModalFooter, Input, useToast } from '@/components/ui';
-import { Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, Inbox, ArrowRight, Box, Database, Settings2 } from 'lucide-react';
-import type { DeploymentApproval, EnvironmentMigration } from '@/types/models';
+import { Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, Inbox, ArrowRight, Box, Database, Settings2, ArrowRightLeft } from 'lucide-react';
+import type { DeploymentApproval, EnvironmentMigration, PendingTransferApproval } from '@/types/models';
 
-type TabType = 'deployments' | 'migrations';
+type TabType = 'deployments' | 'migrations' | 'transfers';
 
 export default function ApprovalsIndex() {
     const { addToast } = useToast();
@@ -21,10 +21,15 @@ export default function ApprovalsIndex() {
     const [loadingMigrations, setLoadingMigrations] = useState(true);
     const [migrationsError, setMigrationsError] = useState('');
 
+    // Transfer approvals state
+    const [transfers, setTransfers] = useState<PendingTransferApproval[]>([]);
+    const [loadingTransfers, setLoadingTransfers] = useState(true);
+    const [transfersError, setTransfersError] = useState('');
+
     // Reject modal state
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectingUuid, setRejectingUuid] = useState<string | null>(null);
-    const [rejectingType, setRejectingType] = useState<'deployment' | 'migration'>('deployment');
+    const [rejectingType, setRejectingType] = useState<'deployment' | 'migration' | 'transfer'>('deployment');
     const [rejectReason, setRejectReason] = useState('');
 
     const fetchApprovals = async () => {
@@ -69,14 +74,37 @@ export default function ApprovalsIndex() {
         }
     };
 
+    const fetchTransfers = async () => {
+        setLoadingTransfers(true);
+        setTransfersError('');
+        try {
+            const res = await fetch('/transfers/pending/json', {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+            if (!res.ok) throw new Error('Failed to fetch');
+            const data = await res.json();
+            setTransfers(data);
+        } catch {
+            setTransfersError('Failed to load pending transfers');
+        } finally {
+            setLoadingTransfers(false);
+        }
+    };
+
     const refreshAll = () => {
         fetchApprovals();
         fetchMigrations();
+        fetchTransfers();
     };
 
     useEffect(() => {
         fetchApprovals();
         fetchMigrations();
+        fetchTransfers();
         // Poll every 30 seconds
         const interval = setInterval(refreshAll, 30000);
         return () => clearInterval(interval);
@@ -132,7 +160,32 @@ export default function ApprovalsIndex() {
         }
     };
 
-    const openRejectModal = (uuid: string, type: 'deployment' | 'migration') => {
+    const handleApproveTransfer = async (transferUuid: string) => {
+        setActionLoading(transferUuid);
+        try {
+            const res = await fetch(`/transfers/${transferUuid}/approve/json`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                addToast('error', 'Approval Failed', err.message || 'Failed to approve transfer');
+                return;
+            }
+            addToast('success', 'Transfer Approved', 'The transfer has been approved and will proceed.');
+            fetchTransfers();
+        } catch {
+            addToast('error', 'Approval Failed', 'Failed to approve transfer. Please try again.');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const openRejectModal = (uuid: string, type: 'deployment' | 'migration' | 'transfer') => {
         setRejectingUuid(uuid);
         setRejectingType(type);
         setRejectReason('');
@@ -146,7 +199,9 @@ export default function ApprovalsIndex() {
         try {
             const endpoint = rejectingType === 'deployment'
                 ? `/deployments/${rejectingUuid}/reject/json`
-                : `/api/v1/migrations/${rejectingUuid}/reject`;
+                : rejectingType === 'migration'
+                    ? `/api/v1/migrations/${rejectingUuid}/reject`
+                    : `/transfers/${rejectingUuid}/reject/json`;
 
             const res = await fetch(endpoint, {
                 method: 'POST',
@@ -162,13 +217,16 @@ export default function ApprovalsIndex() {
                 addToast('error', 'Rejection Failed', err.message || `Failed to reject ${rejectingType}`);
                 return;
             }
-            addToast('success', `${rejectingType === 'deployment' ? 'Deployment' : 'Migration'} Rejected`, `The ${rejectingType} has been rejected.`);
+            const typeLabel = rejectingType === 'deployment' ? 'Deployment' : rejectingType === 'migration' ? 'Migration' : 'Transfer';
+            addToast('success', `${typeLabel} Rejected`, `The ${rejectingType} has been rejected.`);
             setShowRejectModal(false);
             setRejectingUuid(null);
             if (rejectingType === 'deployment') {
                 fetchApprovals();
-            } else {
+            } else if (rejectingType === 'migration') {
                 fetchMigrations();
+            } else {
+                fetchTransfers();
             }
         } catch {
             addToast('error', 'Rejection Failed', `Failed to reject ${rejectingType}. Please try again.`);
@@ -199,7 +257,13 @@ export default function ApprovalsIndex() {
         return Box;
     };
 
-    const loading = loadingApprovals || loadingMigrations;
+    const getRejectTypeLabel = () => {
+        if (rejectingType === 'deployment') return 'Deployment';
+        if (rejectingType === 'migration') return 'Migration';
+        return 'Transfer';
+    };
+
+    const loading = loadingApprovals || loadingMigrations || loadingTransfers;
 
     return (
         <AppLayout
@@ -211,7 +275,7 @@ export default function ApprovalsIndex() {
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Pending Approvals</h1>
                         <p className="mt-1 text-foreground-muted">
-                            Review and approve deployment and migration requests
+                            Review and approve deployment, migration, and transfer requests
                         </p>
                     </div>
                     <Button variant="secondary" onClick={refreshAll} disabled={loading}>
@@ -255,6 +319,24 @@ export default function ApprovalsIndex() {
                             </Badge>
                         )}
                         {activeTab === 'migrations' && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('transfers')}
+                        className={`relative px-4 py-2 text-sm font-medium transition-colors ${
+                            activeTab === 'transfers'
+                                ? 'text-foreground'
+                                : 'text-foreground-muted hover:text-foreground'
+                        }`}
+                    >
+                        Transfers
+                        {transfers.length > 0 && (
+                            <Badge variant="warning" size="sm" className="ml-2">
+                                {transfers.length}
+                            </Badge>
+                        )}
+                        {activeTab === 'transfers' && (
                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                         )}
                     </button>
@@ -480,6 +562,117 @@ export default function ApprovalsIndex() {
                     </>
                 )}
 
+                {/* Transfers Tab */}
+                {activeTab === 'transfers' && (
+                    <>
+                        {transfersError && (
+                            <Card className="mb-6 border-danger/50">
+                                <CardContent className="flex items-center gap-3 py-4">
+                                    <AlertTriangle className="h-5 w-5 text-danger" />
+                                    <span className="text-danger">{transfersError}</span>
+                                    <Button variant="ghost" size="sm" onClick={fetchTransfers} className="ml-auto">
+                                        Retry
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {loadingTransfers && transfers.length === 0 ? (
+                            <Card>
+                                <CardContent className="py-12 text-center">
+                                    <RefreshCw className="mx-auto mb-3 h-8 w-8 animate-spin text-foreground-muted" />
+                                    <p className="text-foreground-muted">Loading pending transfers...</p>
+                                </CardContent>
+                            </Card>
+                        ) : transfers.length === 0 ? (
+                            <Card>
+                                <CardContent className="py-12 text-center">
+                                    <Inbox className="mx-auto mb-3 h-12 w-12 text-foreground-muted" />
+                                    <h3 className="text-lg font-medium text-foreground">No Pending Transfers</h3>
+                                    <p className="mt-1 text-foreground-muted">
+                                        All transfer requests have been processed
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="space-y-4">
+                                {transfers.map((transfer) => {
+                                    const TransferIcon = getResourceIcon(transfer.source_type_name);
+
+                                    return (
+                                        <Card key={transfer.uuid} className="border-warning/30">
+                                            <CardHeader className="pb-3">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="rounded-lg bg-muted p-2">
+                                                            <TransferIcon className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <CardTitle className="text-lg">{transfer.source_name}</CardTitle>
+                                                            <CardDescription>{transfer.source_type_name}</CardDescription>
+                                                        </div>
+                                                    </div>
+                                                    <Badge variant="warning">Pending Approval</Badge>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                {/* Transfer direction */}
+                                                <div className="flex items-center justify-center gap-4 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <ArrowRightLeft className="h-4 w-4 text-foreground-muted" />
+                                                        <Badge variant="outline">{transfer.mode_label}</Badge>
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 text-foreground-muted" />
+                                                    <div className="text-center">
+                                                        <p className="text-sm font-medium">{transfer.target_environment_name}</p>
+                                                        <p className="text-xs text-foreground-muted">{transfer.target_server_name}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Details */}
+                                                <div className="rounded-lg border p-3 space-y-2 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-foreground-muted">Requested by</span>
+                                                        <span className="font-medium">{transfer.requested_by}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-foreground-muted">Requested at</span>
+                                                        <span>{formatTimeAgo(transfer.requested_at)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-foreground-muted">Transfer mode</span>
+                                                        <span>{transfer.mode_label}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex items-center gap-3">
+                                                    <Button
+                                                        variant="success"
+                                                        onClick={() => handleApproveTransfer(transfer.uuid)}
+                                                        disabled={actionLoading === transfer.uuid}
+                                                    >
+                                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                                        Approve
+                                                    </Button>
+                                                    <Button
+                                                        variant="danger"
+                                                        onClick={() => openRejectModal(transfer.uuid, 'transfer')}
+                                                        disabled={actionLoading === transfer.uuid}
+                                                    >
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Reject
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </>
+                )}
+
                 {/* Info about approvals */}
                 <Card className="mt-8 border-info/30 bg-info/5">
                     <CardContent className="py-4">
@@ -490,7 +683,9 @@ export default function ApprovalsIndex() {
                                 <p className="mt-1 text-foreground-muted">
                                     {activeTab === 'deployments'
                                         ? 'Deployments to production environments require approval from a project admin or owner. This helps ensure code is reviewed before going live.'
-                                        : 'Migrations to production environments require approval from a project admin or owner. This helps ensure resources are properly reviewed before being promoted.'}
+                                        : activeTab === 'migrations'
+                                            ? 'Migrations to production environments require approval from a project admin or owner. This helps ensure resources are properly reviewed before being promoted.'
+                                            : 'Transfers to production environments require approval from a project admin or owner. This helps ensure data transfers are properly reviewed before execution.'}
                                 </p>
                             </div>
                         </div>
@@ -506,7 +701,7 @@ export default function ApprovalsIndex() {
                     setRejectingUuid(null);
                     setRejectReason('');
                 }}
-                title={`Reject ${rejectingType === 'deployment' ? 'Deployment' : 'Migration'}`}
+                title={`Reject ${getRejectTypeLabel()}`}
                 description={`Are you sure you want to reject this ${rejectingType}?`}
             >
                 <div className="space-y-4">
@@ -542,7 +737,7 @@ export default function ApprovalsIndex() {
                             loading={actionLoading === rejectingUuid}
                         >
                             <XCircle className="mr-2 h-4 w-4" />
-                            Reject {rejectingType === 'deployment' ? 'Deployment' : 'Migration'}
+                            Reject {getRejectTypeLabel()}
                         </Button>
                     </ModalFooter>
                 </div>

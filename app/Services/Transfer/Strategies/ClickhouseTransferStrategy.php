@@ -166,37 +166,51 @@ class ClickhouseTransferStrategy extends AbstractTransferStrategy
 
             $this->executeCommand($commands, $server, false, 300);
 
-            // Parse and execute the dump file
-            // This is a simplified approach - production would need more robust parsing
-            $restoreScript = <<<'BASH'
+            // Parse the dump file: extract CREATE TABLE statements and data blocks,
+            // then restore schema first and pipe data via INSERT FORMAT TabSeparatedWithNames
+            $escapedContainer = trim($containerName, "'");
+            $restoreScript = <<<BASH
 current_table=""
 in_data=false
+schema_line=""
+data_file=""
 while IFS= read -r line; do
-    if [[ $line == "-- Table: "* ]]; then
-        current_table="${line#-- Table: }"
+    if [[ \$line == "-- Table: "* ]]; then
+        current_table="\${line#-- Table: }"
         in_data=false
-    elif [[ $line == "CREATE TABLE"* ]] || [[ $line == "CREATE"* ]]; then
-        # Execute CREATE TABLE
-        docker exec CONTAINER clickhouse-client AUTH --query "$line" 2>/dev/null || true
-    elif [[ $line == "-- Data for table: "* ]]; then
-        current_table="${line#-- Data for table: }"
+    elif [[ \$line == "CREATE"* ]]; then
+        # Collect full CREATE TABLE statement (may be single line)
+        schema_line="\$line"
+        # Execute CREATE TABLE (drop existing first)
+        docker exec {$escapedContainer} clickhouse-client {$auth} --query "DROP TABLE IF EXISTS {$dbName}.\$current_table" 2>/dev/null || true
+        docker exec {$escapedContainer} clickhouse-client {$auth} --query "\$schema_line" 2>/dev/null || true
+    elif [[ \$line == "-- Data for table: "* ]]; then
+        current_table="\${line#-- Data for table: }"
         in_data=true
-    elif [[ $in_data == true ]] && [[ -n "$line" ]] && [[ "$line" != "--"* ]]; then
-        # This is data line - would need proper INSERT handling
-        # Skipping data restore in this basic implementation
-        :
+        data_file="{$dumpPath}.\${current_table}.tsv"
+        rm -f "\$data_file"
+    elif [[ \$in_data == true ]] && [[ -n "\$line" ]] && [[ "\$line" != "--"* ]]; then
+        echo "\$line" >> "\$data_file"
+    elif [[ \$in_data == true ]] && [[ -z "\$line" ]]; then
+        # Empty line marks end of data block — import collected data
+        if [[ -f "\$data_file" ]] && [[ -s "\$data_file" ]]; then
+            docker exec -i {$escapedContainer} clickhouse-client {$auth} --query "INSERT INTO {$dbName}.\$current_table FORMAT TabSeparatedWithNames" < "\$data_file" 2>/dev/null || true
+            rm -f "\$data_file"
+        fi
+        in_data=false
     fi
-done < DUMPPATH.sql
+done < {$dumpPath}.sql
+# Import last table if file didn't end with empty line
+if [[ \$in_data == true ]] && [[ -f "\$data_file" ]] && [[ -s "\$data_file" ]]; then
+    docker exec -i {$escapedContainer} clickhouse-client {$auth} --query "INSERT INTO {$dbName}.\$current_table FORMAT TabSeparatedWithNames" < "\$data_file" 2>/dev/null || true
+    rm -f "\$data_file"
+fi
 BASH;
-
-            $restoreScript = str_replace('CONTAINER', trim($containerName, "'"), $restoreScript);
-            $restoreScript = str_replace('AUTH', $auth, $restoreScript);
-            $restoreScript = str_replace('DUMPPATH', $dumpPath, $restoreScript);
 
             $this->executeCommand([$restoreScript], $server, false, 3600);
 
-            // Cleanup temp file
-            $this->executeCommand(["rm -f {$dumpPath}.sql"], $server, false);
+            // Cleanup temp files
+            $this->executeCommand(["rm -f {$dumpPath}.sql {$dumpPath}.*.tsv"], $server, false);
 
             return [
                 'success' => true,
@@ -268,8 +282,12 @@ BASH;
             $auth = "--user {$user} --password \"{$password}\"";
 
             if ($options && ! empty($options['tables'])) {
-                // Calculate size for specific tables
-                $tableList = array_map(fn ($t) => "'{$t}'", $options['tables']);
+                // Calculate size for specific tables — validate names to prevent SQL injection
+                $tableList = array_map(function ($t) {
+                    $this->validatePath($t, 'table name');
+
+                    return "'".str_replace("'", "\\'", $t)."'";
+                }, $options['tables']);
                 $tableListStr = implode(',', $tableList);
 
                 $query = "SELECT SUM(total_bytes) FROM system.tables WHERE database = 'default' AND name IN ({$tableListStr})";
