@@ -38,25 +38,18 @@ test('clickhouse external url uses correct database', function () {
     $clickhouse->is_public = true;
     $clickhouse->public_port = 8123;
 
-    $clickhouse->destination = new class
-    {
-        public $server;
+    $server = new \App\Models\Server;
+    $server->id = 99;
+    $server->ip = '1.2.3.4';
+    $server->setRelation('settings', (object) [
+        'is_swarm_manager' => false,
+        'is_swarm_worker' => false,
+        'wildcard_domain' => null,
+    ]);
 
-        public function __construct()
-        {
-            $this->server = new class
-            {
-                public function __get($name)
-                {
-                    if ($name === 'getIp') {
-                        return '1.2.3.4';
-                    }
-                }
-            };
-        }
-    };
+    $clickhouse->destination = (object) ['server' => $server];
+
     $externalUrl = $clickhouse->external_db_url;
 
     expect($externalUrl)->toContain('production');
-
 });

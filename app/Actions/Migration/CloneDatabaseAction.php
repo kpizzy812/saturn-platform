@@ -136,9 +136,8 @@ class CloneDatabaseAction
         $attributes['destination_type'] = $destination->getMorphClass();
         $attributes['status'] = 'exited'; // Start as stopped
 
-        // Append environment name to database name for clarity
-        $envSuffix = $environment->type ? " ({$environment->type})" : '';
-        $attributes['name'] = $source->name.$envSuffix;
+        // Keep original name — environment label distinguishes (same as applications)
+        $attributes['name'] = $source->name;
 
         // Create the cloned database
         $class = get_class($source);

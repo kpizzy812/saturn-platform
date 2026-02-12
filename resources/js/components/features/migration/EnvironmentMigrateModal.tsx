@@ -21,6 +21,7 @@ interface MigrationOptions {
     copy_volumes: boolean;
     update_existing: boolean;
     config_only: boolean;
+    auto_deploy: boolean;
 }
 
 interface MigrationResult {
@@ -59,6 +60,7 @@ export function EnvironmentMigrateModal({
         copy_volumes: true,
         update_existing: false,
         config_only: false,
+        auto_deploy: true,
     });
 
     // Selected resources to migrate
@@ -96,6 +98,7 @@ export function EnvironmentMigrateModal({
                 copy_volumes: true,
                 update_existing: false,
                 config_only: false,
+                auto_deploy: true,
             });
         }
     }, [open]);
@@ -464,6 +467,16 @@ export function EnvironmentMigrateModal({
                                 />
                                 <label htmlFor="update-existing" className="text-sm cursor-pointer">
                                     Update existing resources (if found)
+                                </label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="auto-deploy"
+                                    checked={options.auto_deploy}
+                                    onCheckedChange={(checked) => setOptions({ ...options, auto_deploy: !!checked })}
+                                />
+                                <label htmlFor="auto-deploy" className="text-sm cursor-pointer">
+                                    Auto-deploy resources after migration
                                 </label>
                             </div>
                         </div>

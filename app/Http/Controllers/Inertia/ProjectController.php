@@ -17,8 +17,25 @@ class ProjectController extends Controller
     public function index(): Response
     {
         $projects = Project::ownedByCurrentTeam()
-            ->with(['environments.applications', 'environments.databases'])
+            ->with([
+                'environments.applications',
+                'environments.postgresqls',
+                'environments.mysqls',
+                'environments.mariadbs',
+                'environments.mongodbs',
+                'environments.redis',
+                'environments.clickhouses',
+                'environments.keydbs',
+                'environments.dragonflies',
+            ])
             ->get();
+
+        // Compute databases attribute from individual DB type relationships
+        foreach ($projects as $project) {
+            foreach ($project->environments as $env) {
+                $env->setAttribute('databases', $env->databases());
+            }
+        }
 
         return Inertia::render('Projects/Index', [
             'projects' => $projects,
@@ -63,11 +80,23 @@ class ProjectController extends Controller
         $project = Project::ownedByCurrentTeam()
             ->with([
                 'environments.applications.destination.server',
-                'environments.databases.destination.server',
+                'environments.postgresqls.destination.server',
+                'environments.mysqls.destination.server',
+                'environments.mariadbs.destination.server',
+                'environments.mongodbs.destination.server',
+                'environments.redis.destination.server',
+                'environments.clickhouses.destination.server',
+                'environments.keydbs.destination.server',
+                'environments.dragonflies.destination.server',
                 'environments.services',
             ])
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        // Compute databases attribute from individual DB type relationships
+        foreach ($project->environments as $env) {
+            $env->setAttribute('databases', $env->databases());
+        }
 
         return Inertia::render('Projects/Show', [
             'project' => $project,

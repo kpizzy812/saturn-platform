@@ -2,7 +2,9 @@
 
 namespace App\Actions\Migration;
 
+use App\Actions\Database\StartDatabase;
 use App\Actions\Migration\Concerns\ResourceConfigFields;
+use App\Actions\Service\StartService;
 use App\Actions\Transfer\CloneApplicationAction;
 use App\Actions\Transfer\CloneServiceAction;
 use App\Models\Application;
@@ -98,6 +100,30 @@ class ExecuteMigrationAction
             }
 
             $target = $result['target'];
+            $sourceEnv = $migration->sourceEnvironment;
+
+            // Rewire env var connections (replace source UUIDs with target UUIDs)
+            $rewiredConnections = [];
+            if (($options[EnvironmentMigration::OPTION_COPY_ENV_VARS] ?? true) && $sourceEnv) {
+                $migration->updateProgress(85, 'Rewiring service connections...');
+                $rewiredConnections = RewireConnectionsAction::run($target, $sourceEnv, $targetEnv);
+
+                if (! empty($rewiredConnections)) {
+                    $migration->appendLog('Rewired connections: '.implode(', ', array_keys($rewiredConnections)));
+                }
+            }
+
+            // Clone ResourceLinks (architecture view connections)
+            $clonedLinks = [];
+            if ($sourceEnv) {
+                $migration->updateProgress(90, 'Cloning resource links...');
+                $clonedLinks = CloneResourceLinksAction::run($source, $target, $sourceEnv, $targetEnv);
+
+                if (! empty($clonedLinks)) {
+                    $linkNames = array_map(fn ($l) => $l['source'].' -> '.$l['target'], $clonedLinks);
+                    $migration->appendLog('Cloned resource links: '.implode(', ', $linkNames));
+                }
+            }
 
             // Create history entry for target
             MigrationHistory::createForResource(
@@ -112,6 +138,8 @@ class ExecuteMigrationAction
             return [
                 'success' => true,
                 'target' => $target,
+                'rewired_connections' => $rewiredConnections,
+                'cloned_links' => $clonedLinks,
             ];
 
         } catch (\Throwable $e) {
@@ -171,7 +199,7 @@ class ExecuteMigrationAction
             'copyVolumes' => $options[EnvironmentMigration::OPTION_COPY_VOLUMES] ?? true,
             'copyScheduledTasks' => true,
             'copyTags' => true,
-            'instantDeploy' => false,
+            'instantDeploy' => $options[EnvironmentMigration::OPTION_AUTO_DEPLOY] ?? false,
             'newName' => $source->name, // Keep original name — environment label distinguishes
         ];
 
@@ -218,6 +246,11 @@ class ExecuteMigrationAction
         $migration->updateProgress(80, 'Service cloned successfully');
 
         if ($result['success']) {
+            if ($options[EnvironmentMigration::OPTION_AUTO_DEPLOY] ?? false) {
+                $migration->updateProgress(85, 'Starting service...');
+                StartService::dispatch($result['service']);
+            }
+
             return [
                 'success' => true,
                 'target' => $result['service'],
@@ -246,6 +279,11 @@ class ExecuteMigrationAction
         $result = CloneDatabaseAction::run($source, $targetEnv, $targetServer, $options);
 
         $migration->updateProgress(80, 'Database cloned successfully');
+
+        if ($result['success'] && ($options[EnvironmentMigration::OPTION_AUTO_DEPLOY] ?? false)) {
+            $migration->updateProgress(85, 'Starting database...');
+            StartDatabase::dispatch($result['target']);
+        }
 
         return $result;
     }

@@ -231,6 +231,7 @@ class EnvironmentMigrationController extends Controller
             'options.copy_volumes' => 'nullable|boolean',
             'options.update_existing' => 'nullable|boolean',
             'options.config_only' => 'nullable|boolean',
+            'options.auto_deploy' => 'nullable|boolean',
             'dry_run' => 'nullable|boolean',
         ]);
 

@@ -73,7 +73,7 @@ const typeStyles: Record<ToastType, string> = {
 
 function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast: (id: string) => void }) {
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        <div className="fixed bottom-20 right-4 z-[60] flex flex-col gap-2">
             {toasts.map((toast) => (
                 <Transition
                     key={toast.id}
@@ -89,7 +89,7 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast:
                     <div
                         className={cn(
                             'w-80 rounded-lg border p-4 shadow-lg',
-                            'bg-background-secondary',
+                            'bg-background-secondary/80 backdrop-blur-md',
                             typeStyles[toast.type]
                         )}
                     >

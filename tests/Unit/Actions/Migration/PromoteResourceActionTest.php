@@ -146,16 +146,13 @@ class PromoteResourceActionTest extends TestCase
     }
 
     #[Test]
-    public function find_referenced_resource_regex_matches_dots_in_hostname(): void
+    public function rewire_connections_delegates_to_shared_action(): void
     {
-        $action = new PromoteResourceAction;
-        $method = new \ReflectionMethod($action, 'findReferencedResource');
-
-        // Verify the regex pattern matches dots (for FQDN / Kubernetes DNS names)
+        // Verify PromoteResourceAction delegates rewiring to RewireConnectionsAction
         $sourceCode = file_get_contents(
             base_path('app/Actions/Migration/PromoteResourceAction.php')
         );
-        $this->assertStringContainsString('[a-zA-Z0-9._-]+', $sourceCode);
+        $this->assertStringContainsString('RewireConnectionsAction::run', $sourceCode);
     }
 
     #[Test]
@@ -185,24 +182,15 @@ class PromoteResourceActionTest extends TestCase
     }
 
     #[Test]
-    public function action_has_resource_link_rewire_method(): void
+    public function action_delegates_rewiring_to_shared_action(): void
     {
         $class = new \ReflectionClass(PromoteResourceAction::class);
 
-        $this->assertTrue($class->hasMethod('rewireViaResourceLinks'));
-    }
-
-    #[Test]
-    public function action_has_connection_rewiring_methods(): void
-    {
-        $class = new \ReflectionClass(PromoteResourceAction::class);
-
+        // Core rewiring is delegated to RewireConnectionsAction
         $this->assertTrue($class->hasMethod('rewireConnections'));
-        $this->assertTrue($class->hasMethod('rewireViaResourceLinks'));
-        $this->assertTrue($class->hasMethod('tryRewireVariable'));
+        $this->assertTrue($class->hasMethod('resolveSourceEnvironment'));
+        // These utility methods remain for local use
         $this->assertTrue($class->hasMethod('isConnectionVariable'));
         $this->assertTrue($class->hasMethod('maskSensitiveValue'));
-        $this->assertTrue($class->hasMethod('findReferencedResource'));
-        $this->assertTrue($class->hasMethod('generateConnectionString'));
     }
 }

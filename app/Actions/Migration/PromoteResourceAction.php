@@ -7,8 +7,6 @@ use App\Actions\Service\RestartService;
 use App\Models\Application;
 use App\Models\Environment;
 use App\Models\EnvironmentMigration;
-use App\Models\EnvironmentVariable;
-use App\Models\ResourceLink;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -234,7 +232,7 @@ class PromoteResourceAction
 
     /**
      * Rewire environment variable connections to point to target environment resources.
-     * Uses ResourceLink graph when available, falls back to regex-based detection.
+     * Delegates to the shared RewireConnectionsAction for UUID-based replacement.
      *
      * @return array<string, array{old: string, new: string}> Rewired connections
      */
@@ -244,123 +242,39 @@ class PromoteResourceAction
             return [];
         }
 
-        // Try ResourceLink-based rewire first (more reliable, handles FQDNs)
-        $rewired = $this->rewireViaResourceLinks($target, $targetEnv);
-
-        // Fall back to regex-based rewire for any remaining connection variables
-        $envVars = $target->environment_variables()->get();
-        foreach ($envVars as $envVar) {
-            if (isset($rewired[$envVar->key])) {
-                continue; // Already rewired via ResourceLink
-            }
-
-            $result = $this->tryRewireVariable($envVar, $targetEnv);
-            if ($result) {
-                $rewired[$envVar->key] = $result;
-            }
+        // Determine source environment from the target resource's original env
+        $sourceEnv = $this->resolveSourceEnvironment($target, $targetEnv);
+        if (! $sourceEnv) {
+            return [];
         }
 
-        return $rewired;
+        return RewireConnectionsAction::run($target, $sourceEnv, $targetEnv);
     }
 
     /**
-     * Rewire connections using ResourceLink graph.
-     *
-     * @return array<string, array{old: string, new: string}>
+     * Resolve the source environment for rewiring.
+     * For promote mode, the source environment is the one before the target.
      */
-    protected function rewireViaResourceLinks(Model $target, Environment $targetEnv): array
+    protected function resolveSourceEnvironment(Model $target, Environment $targetEnv): ?Environment
     {
-        $rewired = [];
-
-        // Get all ResourceLinks where this resource is the source in its environment
-        $sourceLinks = ResourceLink::where('source_type', get_class($target))
-            ->where('source_id', $target->id)
-            ->with('target')
-            ->get();
-
-        if ($sourceLinks->isEmpty()) {
-            return $rewired;
-        }
-
-        foreach ($sourceLinks as $link) {
-            // Find the corresponding target resource in the target environment by name
-            $linkTarget = $link->target;
-            if (! $linkTarget || ! isset($linkTarget->name)) {
-                continue;
-            }
-
-            $targetResource = $this->findTargetResource($linkTarget, $targetEnv);
-            if (! $targetResource) {
-                continue;
-            }
-
-            // Get the env key from the link
-            $envKey = $link->getEnvKey();
-            $envVar = $target->environment_variables()->where('key', $envKey)->first();
-            if (! $envVar || empty($envVar->value)) {
-                continue;
-            }
-
-            // Generate new URL from the target environment's resource
-            $newUrl = null;
-            if (isset($targetResource->internal_db_url)) {
-                $newUrl = $targetResource->internal_db_url;
-            } elseif (method_exists($targetResource, 'getInternalDbUrl')) {
-                $newUrl = $targetResource->getInternalDbUrl();
-            } elseif (isset($targetResource->internal_app_url)) {
-                $newUrl = $targetResource->internal_app_url;
-            }
-
-            if ($newUrl && $newUrl !== $envVar->value) {
-                $old = $envVar->value;
-                $envVar->update(['value' => $newUrl]);
-                $rewired[$envKey] = [
-                    'old' => $this->maskSensitiveValue($old),
-                    'new' => $this->maskSensitiveValue($newUrl),
-                ];
-            }
-        }
-
-        return $rewired;
-    }
-
-    /**
-     * Try to rewire a single environment variable.
-     *
-     * @return array{old: string, new: string}|null
-     */
-    protected function tryRewireVariable(EnvironmentVariable $envVar, Environment $targetEnv): ?array
-    {
-        $value = $envVar->value;
-        if (empty($value)) {
+        // The target resource lives in targetEnv, but its env vars may reference
+        // resources from the source env. Find the source env via the project's
+        // environment chain (e.g., dev -> uat -> production).
+        $project = $targetEnv->project()->first();
+        if (! $project) {
             return null;
         }
 
-        // Check if this is a connection variable
-        if (! $this->isConnectionVariable($envVar->key)) {
+        // Get environments ordered by typical promotion chain
+        $environments = $project->environments()->orderBy('id')->get();
+        $targetIndex = $environments->search(fn ($env) => $env->id === $targetEnv->id);
+
+        if ($targetIndex === false || $targetIndex === 0) {
             return null;
         }
 
-        // Try to find the referenced resource in target environment
-        $referencedResource = $this->findReferencedResource($value, $targetEnv);
-        if (! $referencedResource) {
-            return null;
-        }
-
-        // Generate new connection string for target resource
-        $newValue = $this->generateConnectionString($referencedResource, $value);
-        if (! $newValue || $newValue === $value) {
-            return null;
-        }
-
-        // Update the variable
-        $oldValue = $value;
-        $envVar->update(['value' => $newValue]);
-
-        return [
-            'old' => $this->maskSensitiveValue($oldValue),
-            'new' => $this->maskSensitiveValue($newValue),
-        ];
+        // Source is the previous environment in the chain
+        return $environments[$targetIndex - 1] ?? null;
     }
 
     /**
@@ -385,79 +299,6 @@ class PromoteResourceAction
         }
 
         return false;
-    }
-
-    /**
-     * Find the resource referenced in a connection string within target environment.
-     */
-    protected function findReferencedResource(string $connectionString, Environment $targetEnv): ?Model
-    {
-        // Extract hostname/container name from connection string
-        // Patterns: postgresql://user:pass@hostname:port/db
-        //           redis://hostname:port
-        //           hostname:port
-
-        // Try to extract hostname from URL
-        $hostname = null;
-
-        if (preg_match('/[@\/]([a-zA-Z0-9._-]+)[:\/?]/', $connectionString, $matches)) {
-            $hostname = $matches[1];
-        } elseif (preg_match('/^([a-zA-Z0-9._-]+):(\d+)/', $connectionString, $matches)) {
-            $hostname = $matches[1];
-        }
-
-        if (! $hostname) {
-            return null;
-        }
-
-        // Search for resource with matching UUID or name in target environment
-        // Databases use UUID as container name
-        foreach (static::$databaseModels as $modelClass) {
-            $relationMethod = $this->getDatabaseRelationMethod($modelClass);
-            if ($relationMethod && method_exists($targetEnv, $relationMethod)) {
-                $resource = $targetEnv->$relationMethod()
-                    ->where(function ($query) use ($hostname) {
-                        $query->where('uuid', $hostname)
-                            ->orWhere('name', $hostname);
-                    })
-                    ->first();
-
-                if ($resource) {
-                    return $resource;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Generate connection string for a database resource.
-     */
-    protected function generateConnectionString(Model $resource, string $originalConnection): string
-    {
-        // Get internal database URL if available
-        if (method_exists($resource, 'getInternalDbUrl')) {
-            return $resource->getInternalDbUrl();
-        }
-
-        // For resources with internal_db_url attribute
-        if (isset($resource->internal_db_url)) {
-            return $resource->internal_db_url;
-        }
-
-        // Fallback: replace hostname in original connection
-        $uuid = $resource->uuid ?? null;
-        if (! $uuid) {
-            return $originalConnection;
-        }
-
-        // Replace hostname in connection string
-        return preg_replace(
-            '/(@|\/\/)([a-zA-Z0-9_-]+)([:\/])/',
-            '$1'.$uuid.'$3',
-            $originalConnection
-        );
     }
 
     /**
