@@ -236,13 +236,19 @@ export function EnvironmentMigrateModal({
     const handleReviewContinue = () => {
         // Validate domain inputs for production clone apps
         if (isTargetProduction && checkResult) {
+            const seenDomains: Record<string, string> = {};
             for (const res of checkResult.resources) {
                 if (res.type === 'application' && res.mode === 'clone') {
-                    const domain = domainConfigs[res.uuid];
-                    if (!domain || domain.trim() === '') {
+                    const domain = domainConfigs[res.uuid]?.trim().toLowerCase().replace(/^https?:\/\//, '');
+                    if (!domain || domain === '') {
                         setError(`Please enter a domain for "${res.name}".`);
                         return;
                     }
+                    if (seenDomains[domain]) {
+                        setError(`Domain "${domain}" is used for both "${seenDomains[domain]}" and "${res.name}". Each application must have a unique domain.`);
+                        return;
+                    }
+                    seenDomains[domain] = res.name;
                 }
             }
         }

@@ -45,6 +45,23 @@ class AssignProductionDomainAction
             ];
         }
 
+        // Check FQDN is not already used by another application on the same server
+        $host = parse_url($fqdn, PHP_URL_HOST);
+        if ($host) {
+            $conflict = Application::where('id', '!=', $resource->id)
+                ->where('fqdn', 'like', "%{$host}%")
+                ->where('destination_type', $resource->destination_type)
+                ->where('destination_id', $resource->destination_id)
+                ->first();
+
+            if ($conflict) {
+                return [
+                    'success' => false,
+                    'error' => "Domain '{$host}' is already used by application '{$conflict->name}' (ID: {$conflict->id}) on the same server.",
+                ];
+            }
+        }
+
         try {
             // Update the application FQDN
             $oldFqdn = $resource->fqdn;
