@@ -28,3 +28,4 @@ export { NotificationDropdown } from './NotificationDropdown';
 export { ActivityTimeline } from './ActivityTimeline';
 export { SaturnLogo, SaturnBrand, SaturnIcon } from './SaturnLogo';
 export { Progress } from './Progress';
+export { BrandIcon } from './BrandIcon';

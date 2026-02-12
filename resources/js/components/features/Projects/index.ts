@@ -3,11 +3,6 @@ export type { SelectedService } from './types';
 
 // Database Logos
 export {
-    PostgreSQLLogo,
-    RedisLogo,
-    MySQLLogo,
-    MongoDBLogo,
-    ClickHouseLogo,
     getDbLogo,
     getDbBgColor,
 } from './DatabaseLogos';
