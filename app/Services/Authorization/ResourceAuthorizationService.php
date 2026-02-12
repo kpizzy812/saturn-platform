@@ -75,7 +75,16 @@ class ResourceAuthorizationService
 
         // Through team() relationship
         if (method_exists($resource, 'team')) {
-            $team = $resource->team()->first();
+            $result = $resource->team();
+
+            // Some models (e.g. StandalonePostgresql) return a Team model
+            // directly from team() instead of a Relation. Calling ->first()
+            // on a model instance creates a new query and returns the wrong team.
+            if ($result instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
+                $team = $result->first();
+            } else {
+                $team = $result;
+            }
 
             return $team?->id;
         }
