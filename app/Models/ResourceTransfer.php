@@ -15,8 +15,7 @@ class ResourceTransfer extends Model
 {
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, uuid (auto-generated), status (system-managed), progress (system-managed),
-     * started_at, completed_at (system-managed)
+     * Excludes: id, uuid (auto-generated)
      */
     protected $fillable = [
         'team_id',
@@ -29,13 +28,21 @@ class ResourceTransfer extends Model
         'target_server_id',
         'transfer_mode',
         'transfer_options',
+        'status',
+        'progress',
         'current_step',
+        'started_at',
+        'completed_at',
         'error_message',
         'error_details',
         'transferred_bytes',
         'total_bytes',
         'logs',
         'requires_approval',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
+        'existing_target_uuid',
     ];
 
     protected $casts = [
