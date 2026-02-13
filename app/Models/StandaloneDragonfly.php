@@ -390,7 +390,7 @@ class StandaloneDragonfly extends BaseModel
 
     public function isBackupSolutionAvailable()
     {
-        return false;
+        return true;
     }
 
     public function environment_variables()

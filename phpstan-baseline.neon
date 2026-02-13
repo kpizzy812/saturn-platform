@@ -3403,13 +3403,13 @@ parameters:
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\:\:\$internal_db_url\.$#'
+			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$internal_db_url\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\:\:\$service\.$#'
+			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$service\.$#'
 			identifier: property.notFound
 			count: 4
 			path: app/Jobs/DatabaseBackupJob.php
@@ -3451,7 +3451,7 @@ parameters:
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
-			message: '#^Property App\\Jobs\\DatabaseBackupJob\:\:\$database \(App\\Models\\ServiceDatabase\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\) on left side of \?\? is not nullable\.$#'
+			message: '#^Property App\\Jobs\\DatabaseBackupJob\:\:\$database \(App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
 			count: 1
 			path: app/Jobs/DatabaseBackupJob.php
@@ -3499,13 +3499,13 @@ parameters:
 			path: app/Jobs/DatabaseRestoreJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\:\:\$internal_db_url\.$#'
+			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$internal_db_url\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/DatabaseRestoreJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\:\:\$service\.$#'
+			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$service\.$#'
 			identifier: property.notFound
 			count: 3
 			path: app/Jobs/DatabaseRestoreJob.php

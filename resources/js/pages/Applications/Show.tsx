@@ -743,7 +743,121 @@ interface AutoDeployCardProps {
     applicationUuid: string;
 }
 
-function AutoDeployCard({ status, enabled, sourceName, gitBranch, applicationUuid }: AutoDeployCardProps) {
+function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, sourceName: initialSourceName, gitBranch, applicationUuid }: AutoDeployCardProps) {
+    const [enabled, setEnabled] = useState(initialEnabled);
+    const [status, setStatus] = useState(initialStatus);
+    const [sourceName, setSourceName] = useState(initialSourceName);
+    const [isToggling, setIsToggling] = useState(false);
+    const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+    const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+    const [showSecret, setShowSecret] = useState(false);
+    const [copied, setCopied] = useState<string | null>(null);
+    const [githubApps, setGithubApps] = useState<Array<{ id: number; name: string; organization: string | null }>>([]);
+    const [showAppSelector, setShowAppSelector] = useState(false);
+    const [isLinking, setIsLinking] = useState(false);
+    const [detailsLoaded, setDetailsLoaded] = useState(false);
+
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
+    // Fetch full details on mount (webhook URL, secret, github apps)
+    useEffect(() => {
+        const loadDetails = async () => {
+            try {
+                const [appRes, ghRes] = await Promise.all([
+                    fetch(`/web-api/applications/${applicationUuid}`, {
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'include',
+                    }),
+                    fetch('/web-api/github-apps/active', {
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'include',
+                    }),
+                ]);
+                if (appRes.ok) {
+                    const data = await appRes.json();
+                    setWebhookUrl(data.webhook_url || null);
+                    setWebhookSecret(data.manual_webhook_secret_github || null);
+                    setStatus(data.auto_deploy_status || 'not_configured');
+                    setEnabled(data.is_auto_deploy_enabled ?? false);
+                    setSourceName(data.source_info?.name || null);
+                }
+                if (ghRes.ok) {
+                    const data = await ghRes.json();
+                    setGithubApps(data.github_apps || []);
+                }
+                setDetailsLoaded(true);
+            } catch {
+                setDetailsLoaded(true);
+            }
+        };
+        loadDetails();
+    }, [applicationUuid]);
+
+    const handleToggle = async () => {
+        const newValue = !enabled;
+        setIsToggling(true);
+        setEnabled(newValue);
+        try {
+            const res = await fetch(`/web-api/applications/${applicationUuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ is_auto_deploy_enabled: newValue }),
+            });
+            if (!res.ok) {
+                setEnabled(!newValue);
+            }
+        } catch {
+            setEnabled(!newValue);
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
+    const handleLinkGithubApp = async (appId: number) => {
+        setIsLinking(true);
+        try {
+            const res = await fetch(`/web-api/applications/${applicationUuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ github_app_id: appId }),
+            });
+            if (res.ok) {
+                // Re-fetch to get updated status
+                const appRes = await fetch(`/web-api/applications/${applicationUuid}`, {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'include',
+                });
+                if (appRes.ok) {
+                    const data = await appRes.json();
+                    setStatus(data.auto_deploy_status || 'not_configured');
+                    setSourceName(data.source_info?.name || null);
+                    setEnabled(data.is_auto_deploy_enabled ?? false);
+                }
+                setShowAppSelector(false);
+            }
+        } catch {
+            // Silently fail
+        } finally {
+            setIsLinking(false);
+        }
+    };
+
+    const copyText = (text: string, field: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(field);
+        setTimeout(() => setCopied(null), 2000);
+    };
+
     const statusConfig = {
         automatic: {
             borderClass: 'border-green-500/50',
@@ -751,10 +865,7 @@ function AutoDeployCard({ status, enabled, sourceName, gitBranch, applicationUui
             iconBg: 'bg-green-500/20',
             iconColor: 'text-green-500',
             icon: <Zap className="h-4 w-4" />,
-            title: 'Auto Deploy Active',
-            description: enabled
-                ? `Pushes to ${gitBranch || 'main'} trigger deploys automatically`
-                : 'Configured but currently disabled',
+            title: 'Auto Deploy',
         },
         manual_webhook: {
             borderClass: 'border-amber-500/50',
@@ -762,10 +873,7 @@ function AutoDeployCard({ status, enabled, sourceName, gitBranch, applicationUui
             iconBg: 'bg-amber-500/20',
             iconColor: 'text-amber-500',
             icon: <Webhook className="h-4 w-4" />,
-            title: 'Manual Webhook',
-            description: enabled
-                ? 'Deploys via webhook — configure in your Git provider'
-                : 'Webhook configured but auto-deploy disabled',
+            title: 'Auto Deploy',
         },
         not_configured: {
             borderClass: 'border-border',
@@ -773,8 +881,7 @@ function AutoDeployCard({ status, enabled, sourceName, gitBranch, applicationUui
             iconBg: 'bg-foreground-muted/20',
             iconColor: 'text-foreground-muted',
             icon: <AlertCircle className="h-4 w-4" />,
-            title: 'Auto Deploy Not Set Up',
-            description: 'Connect a GitHub App or set up webhooks for automatic deploys',
+            title: 'Auto Deploy',
         },
     };
 
@@ -783,46 +890,119 @@ function AutoDeployCard({ status, enabled, sourceName, gitBranch, applicationUui
     return (
         <Card className={`${config.borderClass} ${config.bgClass}`}>
             <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor} shrink-0`}>
-                        {config.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-foreground">{config.title}</h3>
-                            {status === 'automatic' && enabled && (
-                                <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            )}
+                {/* Header with toggle */}
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-md ${config.iconBg} ${config.iconColor} shrink-0`}>
+                            {config.icon}
                         </div>
-                        <p className="text-xs text-foreground-muted mt-0.5">{config.description}</p>
-                        {sourceName && status === 'automatic' && (
-                            <p className="text-xs text-foreground-subtle mt-1">
-                                via {sourceName}
-                            </p>
+                        <h3 className="text-sm font-semibold text-foreground">{config.title}</h3>
+                        {status === 'automatic' && enabled && (
+                            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                         )}
                     </div>
+                    <button
+                        onClick={handleToggle}
+                        disabled={isToggling}
+                        className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? 'bg-primary' : 'bg-gray-600'} ${isToggling ? 'opacity-50' : ''}`}
+                    >
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${enabled ? 'left-[18px]' : 'left-0.5'}`} />
+                    </button>
                 </div>
-                {status === 'not_configured' && (
-                    <div className="mt-3 pt-3 border-t border-border">
-                        <Link
-                            href={`/applications/${applicationUuid}/settings`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-                        >
-                            <Settings className="h-3.5 w-3.5" />
-                            Set up auto deploy
-                        </Link>
+
+                {/* Status description */}
+                <p className="text-xs text-foreground-muted mb-3">
+                    {status === 'automatic' && enabled && `Pushes to ${gitBranch || 'main'} auto-deploy via ${sourceName || 'GitHub App'}`}
+                    {status === 'automatic' && !enabled && 'GitHub App connected, toggle on to activate'}
+                    {status === 'manual_webhook' && enabled && 'Active via webhook — configure in your Git provider'}
+                    {status === 'manual_webhook' && !enabled && 'Webhook ready, toggle on to activate'}
+                    {status === 'not_configured' && 'Connect GitHub App for automatic deploys'}
+                </p>
+
+                {/* Webhook details for manual_webhook mode */}
+                {status === 'manual_webhook' && detailsLoaded && (
+                    <div className="space-y-2">
+                        {webhookUrl && (
+                            <div className="rounded bg-background/60 px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-1">Webhook URL</p>
+                                <div className="flex items-center gap-1.5">
+                                    <code className="flex-1 truncate text-xs text-foreground">{webhookUrl}</code>
+                                    <button onClick={() => copyText(webhookUrl, 'url')} className="shrink-0 rounded p-1 text-foreground-muted hover:text-foreground">
+                                        {copied === 'url' ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {webhookSecret && (
+                            <div className="rounded bg-background/60 px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-1">Secret</p>
+                                <div className="flex items-center gap-1.5">
+                                    <code className="flex-1 truncate text-xs text-foreground">
+                                        {showSecret ? webhookSecret : '\u2022'.repeat(20)}
+                                    </code>
+                                    <button onClick={() => setShowSecret(!showSecret)} className="shrink-0 rounded p-1 text-foreground-muted hover:text-foreground">
+                                        {showSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                    </button>
+                                    <button onClick={() => copyText(webhookSecret, 'secret')} className="shrink-0 rounded p-1 text-foreground-muted hover:text-foreground">
+                                        {copied === 'secret' ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
-                {status !== 'not_configured' && !enabled && (
-                    <div className="mt-3 pt-3 border-t border-border">
-                        <Link
-                            href={`/applications/${applicationUuid}/settings`}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+
+                {/* GitHub App connector for not_configured or manual_webhook upgrade */}
+                {(status === 'not_configured' || status === 'manual_webhook') && githubApps.length > 0 && detailsLoaded && (
+                    <div className={status === 'manual_webhook' ? 'mt-3 pt-3 border-t border-border/50' : ''}>
+                        {status === 'manual_webhook' && (
+                            <p className="text-[10px] uppercase tracking-wider text-foreground-subtle mb-2">Upgrade to automatic</p>
+                        )}
+                        <button
+                            onClick={() => setShowAppSelector(!showAppSelector)}
+                            disabled={isLinking}
+                            className="flex w-full items-center justify-between rounded-md border border-border bg-background/60 px-3 py-2 text-xs text-foreground hover:bg-background-secondary transition-colors"
                         >
-                            <Settings className="h-3.5 w-3.5" />
-                            Enable in settings
-                        </Link>
+                            <span>{isLinking ? 'Connecting...' : 'Connect GitHub App'}</span>
+                            {isLinking ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                                <Zap className="h-3.5 w-3.5 text-foreground-muted" />
+                            )}
+                        </button>
+                        {showAppSelector && !isLinking && (
+                            <div className="mt-1.5 rounded-md border border-border bg-background shadow-lg overflow-hidden">
+                                {githubApps.map((app) => (
+                                    <button
+                                        key={app.id}
+                                        onClick={() => handleLinkGithubApp(app.id)}
+                                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs hover:bg-background-secondary transition-colors"
+                                    >
+                                        <div className="flex h-6 w-6 items-center justify-center rounded bg-[#24292e] shrink-0">
+                                            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="#fff">
+                                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-foreground">{app.name}</p>
+                                            {app.organization && <p className="text-foreground-muted">{app.organization}</p>}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
+                )}
+
+                {/* No GitHub Apps available hint */}
+                {status === 'not_configured' && githubApps.length === 0 && detailsLoaded && (
+                    <a
+                        href="/sources"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                    >
+                        <Settings className="h-3 w-3" />
+                        Configure GitHub App in Sources
+                    </a>
                 )}
             </CardContent>
         </Card>

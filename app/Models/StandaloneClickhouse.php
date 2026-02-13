@@ -394,6 +394,6 @@ class StandaloneClickhouse extends BaseModel
 
     public function isBackupSolutionAvailable()
     {
-        return false;
+        return true;
     }
 }

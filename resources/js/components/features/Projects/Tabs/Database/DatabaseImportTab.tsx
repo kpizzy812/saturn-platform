@@ -99,11 +99,17 @@ function getExportFormatInfo(dbType: string): { format: string; description: str
         case 'postgres':
             return { format: 'pg_dump custom (.dmp)', description: 'Supports parallel restore and selective recovery' };
         case 'mysql':
-            return { format: 'mysqldump (.dmp)', description: 'Plain text SQL statements' };
+            return { format: 'mysqldump (.dmp)', description: 'SQL with routines, events, consistent snapshot' };
         case 'mariadb':
-            return { format: 'mariadb-dump (.dmp)', description: 'Plain text SQL statements' };
+            return { format: 'mariadb-dump (.dmp)', description: 'SQL with routines, events, consistent snapshot' };
         case 'mongodb':
             return { format: 'mongodump (.tar.gz)', description: 'Binary archive with gzip compression' };
+        case 'redis':
+        case 'keydb':
+        case 'dragonfly':
+            return { format: 'RDB snapshot (.rdb)', description: 'Full point-in-time snapshot of all keys' };
+        case 'clickhouse':
+            return { format: 'ClickHouse dump (.tar.gz)', description: 'DDL schemas + Native data for each table' };
         default:
             return { format: 'Native dump', description: 'Database-native backup format' };
     }

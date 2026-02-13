@@ -8,10 +8,14 @@ use App\Models\ScheduledDatabaseBackup;
 use App\Models\ScheduledDatabaseBackupExecution;
 use App\Models\Server;
 use App\Models\ServiceDatabase;
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
 use App\Models\StandaloneMariadb;
 use App\Models\StandaloneMongodb;
 use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
 use App\Models\Team;
 use App\Notifications\Database\BackupFailed;
 use App\Notifications\Database\BackupSuccess;
@@ -40,7 +44,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     public Server $server;
 
-    public StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|ServiceDatabase $database;
+    public StandalonePostgresql|StandaloneMongodb|StandaloneMysql|StandaloneMariadb|StandaloneRedis|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse|ServiceDatabase $database;
 
     public ?string $container_name = null;
 
@@ -272,6 +276,10 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     $databasesToBackup = [$this->database->mysql_database];
                 } elseif (str($databaseType)->contains('mariadb')) {
                     $databasesToBackup = [$this->database->mariadb_database];
+                } elseif (str($databaseType)->contains('redis') || str($databaseType)->contains('keydb') || str($databaseType)->contains('dragonfly')) {
+                    $databasesToBackup = ['all'];
+                } elseif (str($databaseType)->contains('clickhouse')) {
+                    $databasesToBackup = [$this->database->clickhouse_db ?? 'default'];
                 } else {
                     return;
                 }
@@ -295,6 +303,13 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     // Format: db1,db2,db3
                     $databasesToBackup = explode(',', $databasesToBackup);
                     $databasesToBackup = array_map('trim', $databasesToBackup);
+                } elseif (str($databaseType)->contains('redis') || str($databaseType)->contains('keydb') || str($databaseType)->contains('dragonfly')) {
+                    $databasesToBackup = ['all'];
+                } elseif (str($databaseType)->contains('clickhouse')) {
+                    if (is_string($databasesToBackup)) {
+                        $databasesToBackup = explode(',', $databasesToBackup);
+                        $databasesToBackup = array_map('trim', $databasesToBackup);
+                    }
                 } else {
                     return;
                 }
@@ -352,6 +367,16 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         $this->backup_location = $this->backup_dir.$this->backup_file;
                         $this->backup_log = $this->createOrReuseExecution($database, $this->backup_location);
                         $this->backup_standalone_mariadb($database);
+                    } elseif (str($databaseType)->contains('redis') || str($databaseType)->contains('keydb') || str($databaseType)->contains('dragonfly')) {
+                        $this->backup_file = "/redis-dump-$database-".Carbon::now()->timestamp.'.rdb';
+                        $this->backup_location = $this->backup_dir.$this->backup_file;
+                        $this->backup_log = $this->createOrReuseExecution($database, $this->backup_location);
+                        $this->backup_standalone_redis($databaseType);
+                    } elseif (str($databaseType)->contains('clickhouse')) {
+                        $this->backup_file = "/clickhouse-dump-$database-".Carbon::now()->timestamp.'.tar.gz';
+                        $this->backup_location = $this->backup_dir.$this->backup_file;
+                        $this->backup_log = $this->createOrReuseExecution($database, $this->backup_location);
+                        $this->backup_standalone_clickhouse($database);
                     } else {
                         throw new \Exception('Unsupported database type');
                     }
@@ -589,7 +614,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 // Validate and escape database name to prevent command injection
                 validateShellSafePath($database, 'database name');
                 $escapedDatabase = escapeshellarg($database);
-                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p\"{$this->database->mysql_root_password}\" $escapedDatabase > $this->backup_location";
+                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p\"{$this->database->mysql_root_password}\" --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
             }
             $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
             $this->backup_output = trim($this->backup_output);
@@ -613,8 +638,91 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 // Validate and escape database name to prevent command injection
                 validateShellSafePath($database, 'database name');
                 $escapedDatabase = escapeshellarg($database);
-                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p\"{$this->database->mariadb_root_password}\" $escapedDatabase > $this->backup_location";
+                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p\"{$this->database->mariadb_root_password}\" --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
             }
+            $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
+            $this->backup_output = trim($this->backup_output);
+            if ($this->backup_output === '') {
+                $this->backup_output = null;
+            }
+        } catch (\Throwable $e) {
+            $this->add_to_error_output($e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function backup_standalone_redis(string $databaseType): void
+    {
+        try {
+            $commands[] = 'mkdir -p '.$this->backup_dir;
+            $escapedContainerName = escapeshellarg($this->container_name);
+
+            // Get the password based on the database type
+            $password = match (true) {
+                str($databaseType)->contains('keydb') => $this->database->keydb_password ?? '',
+                str($databaseType)->contains('dragonfly') => $this->database->dragonfly_password ?? '',
+                default => $this->database->redis_password ?? '',
+            };
+
+            // Build auth flag
+            $authFlag = '';
+            if (filled($password)) {
+                $escapedPassword = escapeshellarg($password);
+                $authFlag = "-a {$escapedPassword} --no-auth-warning";
+            }
+
+            // Trigger synchronous SAVE to ensure data is flushed to disk
+            $commands[] = "docker exec {$escapedContainerName} redis-cli {$authFlag} SAVE";
+
+            // Copy the RDB file out of the container
+            $commands[] = "docker exec {$escapedContainerName} cat /data/dump.rdb > {$this->backup_location}";
+
+            $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
+            $this->backup_output = trim($this->backup_output);
+            if ($this->backup_output === '') {
+                $this->backup_output = null;
+            }
+        } catch (\Throwable $e) {
+            $this->add_to_error_output($e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function backup_standalone_clickhouse(string $database): void
+    {
+        try {
+            $commands[] = 'mkdir -p '.$this->backup_dir;
+            $escapedContainerName = escapeshellarg($this->container_name);
+
+            $user = $this->database->clickhouse_user ?? 'default';
+            $password = $this->database->clickhouse_password ?? '';
+
+            validateShellSafePath($database, 'database name');
+            $escapedDatabase = escapeshellarg($database);
+            $escapedUser = escapeshellarg($user);
+            $escapedPassword = escapeshellarg($password);
+
+            $tmpDir = '/tmp/ch_backup_'.Carbon::now()->timestamp;
+
+            // Build a shell script that runs inside the container:
+            // 1. Get list of tables
+            // 2. For each table: dump CREATE TABLE DDL + data in Native format
+            // 3. Package everything into tar.gz
+            $script = implode(' && ', [
+                "mkdir -p {$tmpDir}",
+                // Dump DDL for all tables
+                "clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query 'SHOW TABLES' | while read -r tbl; do "
+                    ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SHOW CREATE TABLE \\\"\${tbl}\\\"\" > {$tmpDir}/\${tbl}.sql; "
+                    ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SELECT * FROM \\\"\${tbl}\\\" FORMAT Native\" > {$tmpDir}/\${tbl}.native; "
+                    .'done',
+                "cd /tmp && tar czf ch_backup.tar.gz -C {$tmpDir} .",
+                "rm -rf {$tmpDir}",
+            ]);
+
+            $commands[] = "docker exec {$escapedContainerName} bash -c ".escapeshellarg($script);
+            $commands[] = "docker exec {$escapedContainerName} cat /tmp/ch_backup.tar.gz > {$this->backup_location}";
+            $commands[] = "docker exec {$escapedContainerName} rm -f /tmp/ch_backup.tar.gz";
+
             $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
             $this->backup_output = trim($this->backup_output);
             if ($this->backup_output === '') {

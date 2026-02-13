@@ -406,7 +406,7 @@ class StandaloneRedis extends BaseModel
 
     public function isBackupSolutionAvailable()
     {
-        return false;
+        return true;
     }
 
     public function redisPassword(): Attribute
