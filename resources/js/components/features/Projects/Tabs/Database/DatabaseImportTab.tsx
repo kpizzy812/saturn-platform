@@ -353,8 +353,22 @@ export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
         }
     };
 
+    // Export status state
+    const [exportStatus, setExportStatus] = useState<'idle' | 'in_progress' | 'completed' | 'failed'>('idle');
+    const exportPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Cleanup export polling on unmount
+    useEffect(() => {
+        return () => {
+            if (exportPollingRef.current) {
+                clearInterval(exportPollingRef.current);
+            }
+        };
+    }, []);
+
     const handleExport = async () => {
         setIsProcessing(true);
+        setExportStatus('in_progress');
         try {
             const response = await fetch(`/databases/${service.uuid}/export`, {
                 method: 'POST',
@@ -372,16 +386,58 @@ export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
                 }),
             });
 
+            if (response.status === 419) {
+                addToast('error', 'Session expired. Please refresh the page and try again.');
+                setExportStatus('idle');
+                setIsProcessing(false);
+                return;
+            }
+
             const data = await response.json().catch(() => ({}));
 
-            if (response.ok && data.success) {
-                addToast('success', data.message || 'Export initiated. Check the Backups tab for progress.');
+            if (response.ok && data.success && data.execution_id) {
+                addToast('success', 'Export started. The file will download automatically when ready.');
+                const pollExportStatus = async () => {
+                    try {
+                        const statusRes = await fetch(`/databases/${service.uuid}/export/status/${data.execution_id}`, {
+                            headers: { 'Accept': 'application/json' },
+                            credentials: 'include',
+                        });
+                        if (statusRes.status === 419) {
+                            addToast('error', 'Session expired. Please refresh the page.');
+                            if (exportPollingRef.current) clearInterval(exportPollingRef.current);
+                            setExportStatus('failed');
+                            setIsProcessing(false);
+                            return;
+                        }
+                        if (statusRes.ok) {
+                            const statusData = await statusRes.json();
+                            setExportStatus(statusData.status);
+                            if (statusData.status === 'completed' && statusData.download_url) {
+                                if (exportPollingRef.current) clearInterval(exportPollingRef.current);
+                                setIsProcessing(false);
+                                addToast('success', 'Export complete! Downloading...');
+                                window.location.href = statusData.download_url;
+                            } else if (statusData.status === 'failed') {
+                                if (exportPollingRef.current) clearInterval(exportPollingRef.current);
+                                setIsProcessing(false);
+                                addToast('error', statusData.error || 'Export failed.');
+                            }
+                        }
+                    } catch {
+                        // Silently retry on network errors
+                    }
+                };
+                pollExportStatus();
+                exportPollingRef.current = setInterval(pollExportStatus, 2000);
             } else {
                 addToast('error', data.error || 'Failed to initiate export.');
+                setExportStatus('idle');
+                setIsProcessing(false);
             }
         } catch {
             addToast('error', 'Failed to connect to the server.');
-        } finally {
+            setExportStatus('idle');
             setIsProcessing(false);
         }
     };
@@ -793,6 +849,17 @@ export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
                                     <div className="text-xs text-foreground-muted">Reduce file size</div>
                                 </div>
                             </label>
+                        </div>
+                    )}
+
+                    {/* Export Status */}
+                    {exportStatus === 'in_progress' && isProcessing && (
+                        <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <div>
+                                <p className="text-xs font-medium text-foreground">Creating backup...</p>
+                                <p className="text-xs text-foreground-muted">Auto-download when ready</p>
+                            </div>
                         </div>
                     )}
 

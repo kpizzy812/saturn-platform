@@ -674,12 +674,18 @@ Route::post('/databases/{uuid}/export', function (string $uuid, Request $request
             ]);
         }
 
-        // Dispatch the backup job
-        \App\Jobs\DatabaseBackupJob::dispatch($backup);
+        // Pre-create execution record so frontend can poll for status
+        $execution = \App\Models\ScheduledDatabaseBackupExecution::create([
+            'scheduled_database_backup_id' => $backup->id,
+            'status' => 'running',
+        ]);
+
+        // Dispatch the backup job with the pre-created execution ID
+        \App\Jobs\DatabaseBackupJob::dispatch($backup, $execution->id);
 
         return response()->json([
             'success' => true,
-            'message' => 'Database export initiated. Check the Backups tab for progress.',
+            'execution_id' => $execution->id,
         ]);
     } catch (\Exception $e) {
         return response()->json([
@@ -688,6 +694,34 @@ Route::post('/databases/{uuid}/export', function (string $uuid, Request $request
         ], 500);
     }
 })->name('databases.export');
+
+// Export status polling endpoint
+Route::get('/databases/{uuid}/export/status/{executionId}', function (string $uuid, int $executionId) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $execution = \App\Models\ScheduledDatabaseBackupExecution::where('id', $executionId)
+        ->whereHas('scheduledDatabaseBackup', function ($query) use ($database) {
+            $query->where('database_id', $database->id)
+                ->where('database_type', $database->getMorphClass());
+        })
+        ->firstOrFail();
+
+    // Map internal statuses to frontend-friendly ones
+    $status = match ($execution->status) {
+        'success' => 'completed',
+        'running' => 'in_progress',
+        default => $execution->status,
+    };
+
+    return response()->json([
+        'status' => $status,
+        'size' => $execution->size,
+        'filename' => $execution->filename ? basename($execution->filename) : null,
+        'execution_id' => $execution->id,
+        'download_url' => $status === 'completed' ? "/download/backup/{$execution->id}" : null,
+        'error' => $status === 'failed' ? ($execution->message ?? 'Export failed') : null,
+    ]);
+})->name('databases.export.status');
 
 Route::get('/databases/{uuid}/connections', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);

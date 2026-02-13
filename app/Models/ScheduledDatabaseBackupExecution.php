@@ -8,14 +8,16 @@ class ScheduledDatabaseBackupExecution extends BaseModel
 {
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, scheduled_database_backup_id (relationship),
-     * verified_at, restore_test_at, s3_integrity_checked_at (system-managed)
+     * Excludes: id, verified_at, restore_test_at, s3_integrity_checked_at (system-managed)
      */
     protected $fillable = [
+        'scheduled_database_backup_id',
         'status',
         'message',
         'filename',
         'size',
+        'database_name',
+        'finished_at',
         's3_uploaded',
         's3_file_size',
         's3_object_key',
@@ -36,6 +38,7 @@ class ScheduledDatabaseBackupExecution extends BaseModel
             's3_uploaded' => 'boolean',
             'local_storage_deleted' => 'boolean',
             's3_storage_deleted' => 'boolean',
+            'finished_at' => 'datetime',
             'verified_at' => 'datetime',
             'restore_test_at' => 'datetime',
             's3_integrity_checked_at' => 'datetime',

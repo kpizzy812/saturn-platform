@@ -76,8 +76,11 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     public ?string $backup_log_uuid = null;
 
-    public function __construct(public ScheduledDatabaseBackup $backup)
+    public ?int $preCreatedExecutionId = null;
+
+    public function __construct(public ScheduledDatabaseBackup $backup, ?int $preCreatedExecutionId = null)
     {
+        $this->preCreatedExecutionId = $preCreatedExecutionId;
         $this->onQueue('high');
         $this->timeout = max(60, $backup->timeout ?? 3600);
     }
@@ -304,17 +307,6 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 $this->backup_dir = backup_dir().'/saturn'."/saturn-db-$ip";
             }
             foreach ($databasesToBackup as $database) {
-                // Generate unique UUID for each database backup execution
-                $attempts = 0;
-                do {
-                    $this->backup_log_uuid = (string) new Cuid2;
-                    $exists = ScheduledDatabaseBackupExecution::where('uuid', $this->backup_log_uuid)->exists();
-                    $attempts++;
-                    if ($attempts >= 3 && $exists) {
-                        throw new \Exception('Unable to generate unique UUID for backup execution after 3 attempts');
-                    }
-                } while ($exists);
-
                 $size = 0;
                 $localBackupSucceeded = false;
                 $s3UploadError = null;
@@ -327,13 +319,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                             $this->backup_file = '/pg-dump-all-'.Carbon::now()->timestamp.'.gz';
                         }
                         $this->backup_location = $this->backup_dir.$this->backup_file;
-                        $this->backup_log = ScheduledDatabaseBackupExecution::create([
-                            'uuid' => $this->backup_log_uuid,
-                            'database_name' => $database,
-                            'filename' => $this->backup_location,
-                            'scheduled_database_backup_id' => $this->backup->id,
-                            'local_storage_deleted' => false,
-                        ]);
+                        $this->backup_log = $this->createOrReuseExecution($database, $this->backup_location);
                         $this->backup_standalone_postgresql($database);
                     } elseif (str($databaseType)->contains('mongo')) {
                         if ($database === '*') {
@@ -348,13 +334,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         }
                         $this->backup_file = "/mongo-dump-$databaseName-".Carbon::now()->timestamp.'.tar.gz';
                         $this->backup_location = $this->backup_dir.$this->backup_file;
-                        $this->backup_log = ScheduledDatabaseBackupExecution::create([
-                            'uuid' => $this->backup_log_uuid,
-                            'database_name' => $databaseName,
-                            'filename' => $this->backup_location,
-                            'scheduled_database_backup_id' => $this->backup->id,
-                            'local_storage_deleted' => false,
-                        ]);
+                        $this->backup_log = $this->createOrReuseExecution($databaseName, $this->backup_location);
                         $this->backup_standalone_mongodb($database);
                     } elseif (str($databaseType)->contains('mysql')) {
                         $this->backup_file = "/mysql-dump-$database-".Carbon::now()->timestamp.'.dmp';
@@ -362,13 +342,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                             $this->backup_file = '/mysql-dump-all-'.Carbon::now()->timestamp.'.gz';
                         }
                         $this->backup_location = $this->backup_dir.$this->backup_file;
-                        $this->backup_log = ScheduledDatabaseBackupExecution::create([
-                            'uuid' => $this->backup_log_uuid,
-                            'database_name' => $database,
-                            'filename' => $this->backup_location,
-                            'scheduled_database_backup_id' => $this->backup->id,
-                            'local_storage_deleted' => false,
-                        ]);
+                        $this->backup_log = $this->createOrReuseExecution($database, $this->backup_location);
                         $this->backup_standalone_mysql($database);
                     } elseif (str($databaseType)->contains('mariadb')) {
                         $this->backup_file = "/mariadb-dump-$database-".Carbon::now()->timestamp.'.dmp';
@@ -376,13 +350,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                             $this->backup_file = '/mariadb-dump-all-'.Carbon::now()->timestamp.'.gz';
                         }
                         $this->backup_location = $this->backup_dir.$this->backup_file;
-                        $this->backup_log = ScheduledDatabaseBackupExecution::create([
-                            'uuid' => $this->backup_log_uuid,
-                            'database_name' => $database,
-                            'filename' => $this->backup_location,
-                            'scheduled_database_backup_id' => $this->backup->id,
-                            'local_storage_deleted' => false,
-                        ]);
+                        $this->backup_log = $this->createOrReuseExecution($database, $this->backup_location);
                         $this->backup_standalone_mariadb($database);
                     } else {
                         throw new \Exception('Unsupported database type');
@@ -475,6 +443,47 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 ]);
             }
         }
+    }
+
+    /**
+     * Create a new execution record or reuse a pre-created one (from manual export).
+     */
+    private function createOrReuseExecution(string $databaseName, string $filename): ScheduledDatabaseBackupExecution
+    {
+        // If a pre-created execution exists (from manual export), reuse it on first iteration
+        if ($this->preCreatedExecutionId) {
+            $execution = ScheduledDatabaseBackupExecution::find($this->preCreatedExecutionId);
+            if ($execution) {
+                $execution->update([
+                    'database_name' => $databaseName,
+                    'filename' => $filename,
+                    'status' => 'running',
+                ]);
+                $this->backup_log_uuid = $execution->uuid;
+                $this->preCreatedExecutionId = null; // Only reuse once
+
+                return $execution;
+            }
+        }
+
+        // Generate unique UUID for new execution
+        $attempts = 0;
+        do {
+            $this->backup_log_uuid = (string) new Cuid2;
+            $exists = ScheduledDatabaseBackupExecution::where('uuid', $this->backup_log_uuid)->exists();
+            $attempts++;
+            if ($attempts >= 3 && $exists) {
+                throw new \Exception('Unable to generate unique UUID for backup execution after 3 attempts');
+            }
+        } while ($exists);
+
+        return ScheduledDatabaseBackupExecution::create([
+            'uuid' => $this->backup_log_uuid,
+            'database_name' => $databaseName,
+            'filename' => $filename,
+            'scheduled_database_backup_id' => $this->backup->id,
+            'local_storage_deleted' => false,
+        ]);
     }
 
     private function backup_standalone_mongodb(string $databaseWithCollections): void

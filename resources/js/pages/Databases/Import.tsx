@@ -332,8 +332,22 @@ export default function DatabaseImport({ database }: Props) {
         }
     };
 
+    // Export status state
+    const [exportStatus, setExportStatus] = useState<'idle' | 'in_progress' | 'completed' | 'failed'>('idle');
+    const exportPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Cleanup export polling on unmount
+    useEffect(() => {
+        return () => {
+            if (exportPollingRef.current) {
+                clearInterval(exportPollingRef.current);
+            }
+        };
+    }, []);
+
     const handleExport = async () => {
         setIsProcessing(true);
+        setExportStatus('in_progress');
         try {
             const response = await fetch(`/databases/${database.uuid}/export`, {
                 method: 'POST',
@@ -351,16 +365,59 @@ export default function DatabaseImport({ database }: Props) {
                 }),
             });
 
+            if (response.status === 419) {
+                addToast('error', 'Session expired. Please refresh the page and try again.');
+                setExportStatus('idle');
+                setIsProcessing(false);
+                return;
+            }
+
             const data = await response.json().catch(() => ({}));
 
-            if (response.ok && data.success) {
-                addToast('success', data.message || 'Export initiated. Check the Backups tab for progress.');
+            if (response.ok && data.success && data.execution_id) {
+                addToast('success', 'Export started. The file will download automatically when ready.');
+                // Start polling for export status
+                const pollExportStatus = async () => {
+                    try {
+                        const statusRes = await fetch(`/databases/${database.uuid}/export/status/${data.execution_id}`, {
+                            headers: { 'Accept': 'application/json' },
+                            credentials: 'include',
+                        });
+                        if (statusRes.status === 419) {
+                            addToast('error', 'Session expired. Please refresh the page.');
+                            if (exportPollingRef.current) clearInterval(exportPollingRef.current);
+                            setExportStatus('failed');
+                            setIsProcessing(false);
+                            return;
+                        }
+                        if (statusRes.ok) {
+                            const statusData = await statusRes.json();
+                            setExportStatus(statusData.status);
+                            if (statusData.status === 'completed' && statusData.download_url) {
+                                if (exportPollingRef.current) clearInterval(exportPollingRef.current);
+                                setIsProcessing(false);
+                                addToast('success', 'Export complete! Downloading...');
+                                window.location.href = statusData.download_url;
+                            } else if (statusData.status === 'failed') {
+                                if (exportPollingRef.current) clearInterval(exportPollingRef.current);
+                                setIsProcessing(false);
+                                addToast('error', statusData.error || 'Export failed.');
+                            }
+                        }
+                    } catch {
+                        // Silently retry on network errors
+                    }
+                };
+                pollExportStatus();
+                exportPollingRef.current = setInterval(pollExportStatus, 2000);
             } else {
                 addToast('error', data.error || 'Failed to initiate export.');
+                setExportStatus('idle');
+                setIsProcessing(false);
             }
         } catch {
             addToast('error', 'Failed to connect to the server.');
-        } finally {
+            setExportStatus('idle');
             setIsProcessing(false);
         }
     };
@@ -891,6 +948,23 @@ export default function DatabaseImport({ database }: Props) {
                                 </div>
                             </div>
                         </Card>
+
+                        {/* Export Status */}
+                        {exportStatus === 'in_progress' && isProcessing && (
+                            <Card className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <Icons.Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">
+                                            Creating backup...
+                                        </p>
+                                        <p className="text-xs text-foreground-muted">
+                                            The file will download automatically when ready
+                                        </p>
+                                    </div>
+                                </div>
+                            </Card>
+                        )}
 
                         {/* Export Button */}
                         <Button
