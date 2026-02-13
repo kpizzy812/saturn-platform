@@ -365,6 +365,7 @@ test('clickhouse backup source dumps DDL and Native data', function () {
     $method = extractMethodSource($source, 'backup_standalone_clickhouse');
 
     expect($method)->toContain('SHOW CREATE TABLE');
+    expect($method)->toContain('--format TSVRaw');
     expect($method)->toContain('FORMAT Native');
     expect($method)->toContain('SHOW TABLES');
     expect($method)->toContain('tar czf');

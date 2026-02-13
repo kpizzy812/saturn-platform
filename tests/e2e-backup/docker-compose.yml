@@ -1,0 +1,79 @@
+services:
+  test-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass123
+      POSTGRES_DB: testdb
+    ports:
+      - "25432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  test-mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass123
+      MYSQL_DATABASE: testdb
+    ports:
+      - "23306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass123"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  test-mariadb:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass123
+      MARIADB_DATABASE: testdb
+    ports:
+      - "23307:3306"
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-prootpass123"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  test-mongodb:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: rootpass123
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "-u", "root", "-p", "rootpass123", "--authenticationDatabase", "admin"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  test-redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass testpass123
+    ports:
+      - "26379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "testpass123", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  test-clickhouse:
+    image: clickhouse/clickhouse-server:24
+    environment:
+      CLICKHOUSE_USER: testuser
+      CLICKHOUSE_PASSWORD: testpass123
+      CLICKHOUSE_DB: testdb
+    ports:
+      - "29000:9000"
+      - "28123:8123"
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user testuser --password testpass123 --query 'SELECT 1'"]
+      interval: 2s
+      timeout: 5s
+      retries: 15

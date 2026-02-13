@@ -712,7 +712,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 "mkdir -p {$tmpDir}",
                 // Dump DDL for all tables
                 "clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query 'SHOW TABLES' | while read -r tbl; do "
-                    ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SHOW CREATE TABLE \\\"\${tbl}\\\"\" > {$tmpDir}/\${tbl}.sql; "
+                    ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SHOW CREATE TABLE \\\"\${tbl}\\\"\" --format TSVRaw > {$tmpDir}/\${tbl}.sql; "
                     ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SELECT * FROM \\\"\${tbl}\\\" FORMAT Native\" > {$tmpDir}/\${tbl}.native; "
                     .'done',
                 "cd /tmp && tar czf ch_backup.tar.gz -C {$tmpDir} .",
