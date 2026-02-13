@@ -183,7 +183,7 @@ return [
         's6' => [
             'connection' => 'redis',
             'balance' => env('HORIZON_BALANCE', 'false'),
-            'queue' => env('HORIZON_QUEUES', 'high,default'),
+            'queue' => env('HORIZON_QUEUES', 'high,default,long'),
             'maxTime' => 3600,
             'maxJobs' => 400,
             'memory' => 128,
