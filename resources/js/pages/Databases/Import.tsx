@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import type { DatabaseImportStatus, StandaloneDatabase } from '@/types';
 
 type TabId = 'remote' | 'upload' | 'cli' | 'export';
-type ExportFormat = 'sql' | 'csv' | 'json';
 
 interface Props {
     database: StandaloneDatabase;
@@ -76,6 +75,21 @@ function getImportCommands(database: StandaloneDatabase): { label: string; comma
     }
 }
 
+function getExportFormatInfo(dbType: string): { format: string; description: string; extension: string } {
+    switch (dbType) {
+        case 'postgresql':
+            return { format: 'pg_dump custom', description: 'PostgreSQL custom format — supports parallel restore and selective table recovery', extension: '.dmp' };
+        case 'mysql':
+            return { format: 'mysqldump', description: 'MySQL SQL dump — plain text SQL statements', extension: '.dmp' };
+        case 'mariadb':
+            return { format: 'mariadb-dump', description: 'MariaDB SQL dump — plain text SQL statements', extension: '.dmp' };
+        case 'mongodb':
+            return { format: 'mongodump', description: 'MongoDB binary archive with gzip compression', extension: '.tar.gz' };
+        default:
+            return { format: 'Native dump', description: 'Database-native backup format', extension: '.dmp' };
+    }
+}
+
 function ImportProgressCard({ status, onReset }: { status: DatabaseImportStatus; onReset: () => void }) {
     const isActive = status.status === 'pending' || status.status === 'in_progress';
     const isFailed = status.status === 'failed';
@@ -124,13 +138,7 @@ function ImportProgressCard({ status, onReset }: { status: DatabaseImportStatus;
 
 export default function DatabaseImport({ database }: Props) {
     const [activeTab, setActiveTab] = useState<TabId>('remote');
-    const [exportFormat, setExportFormat] = useState<ExportFormat>('sql');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [exportOptions, setExportOptions] = useState({
-        includeData: true,
-        includeStructure: true,
-        compress: false,
-    });
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const { addToast } = useToast();
 
@@ -357,12 +365,6 @@ export default function DatabaseImport({ database }: Props) {
                     'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
-                body: JSON.stringify({
-                    format: exportFormat,
-                    includeData: exportOptions.includeData,
-                    includeStructure: exportOptions.includeStructure,
-                    compress: exportOptions.compress,
-                }),
             });
 
             if (response.status === 419) {
@@ -789,150 +791,22 @@ export default function DatabaseImport({ database }: Props) {
                 {/* Tab: Export */}
                 {activeTab === 'export' && (
                     <div className="space-y-6">
-                        {/* Export Format */}
-                        <Card className="p-6">
-                            <h2 className="mb-4 text-lg font-semibold text-foreground">
-                                Export Format
-                            </h2>
-                            <div className="grid gap-4 sm:grid-cols-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setExportFormat('sql')}
-                                    className={cn(
-                                        'rounded-lg border-2 p-4 text-center transition-all',
-                                        exportFormat === 'sql'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border hover:border-border/80'
-                                    )}
-                                >
-                                    <Icons.Database className="mx-auto mb-2 h-6 w-6 text-primary" />
-                                    <h3 className="mb-1 text-sm font-semibold text-foreground">SQL</h3>
-                                    <p className="text-xs text-foreground-muted">
-                                        Standard SQL dump
-                                    </p>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setExportFormat('csv')}
-                                    className={cn(
-                                        'rounded-lg border-2 p-4 text-center transition-all',
-                                        exportFormat === 'csv'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border hover:border-border/80'
-                                    )}
-                                >
-                                    <Icons.FileText className="mx-auto mb-2 h-6 w-6 text-primary" />
-                                    <h3 className="mb-1 text-sm font-semibold text-foreground">CSV</h3>
-                                    <p className="text-xs text-foreground-muted">
-                                        Comma-separated values
-                                    </p>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setExportFormat('json')}
-                                    className={cn(
-                                        'rounded-lg border-2 p-4 text-center transition-all',
-                                        exportFormat === 'json'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-border hover:border-border/80'
-                                    )}
-                                >
-                                    <Icons.Braces className="mx-auto mb-2 h-6 w-6 text-primary" />
-                                    <h3 className="mb-1 text-sm font-semibold text-foreground">JSON</h3>
-                                    <p className="text-xs text-foreground-muted">
-                                        JavaScript Object Notation
-                                    </p>
-                                </button>
-                            </div>
-                        </Card>
-
-                        {/* Export Options */}
-                        {exportFormat === 'sql' && (
-                            <Card className="p-6">
-                                <h2 className="mb-4 text-lg font-semibold text-foreground">
-                                    Export Options
-                                </h2>
-                                <div className="space-y-3">
-                                    <label className="flex items-center gap-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={exportOptions.includeStructure}
-                                            onChange={(e) =>
-                                                setExportOptions({
-                                                    ...exportOptions,
-                                                    includeStructure: e.target.checked,
-                                                })
-                                            }
-                                            className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                                        />
-                                        <div>
-                                            <div className="text-sm font-medium text-foreground">
-                                                Include Structure
-                                            </div>
-                                            <div className="text-xs text-foreground-muted">
-                                                Export table schemas and indexes
-                                            </div>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={exportOptions.includeData}
-                                            onChange={(e) =>
-                                                setExportOptions({
-                                                    ...exportOptions,
-                                                    includeData: e.target.checked,
-                                                })
-                                            }
-                                            className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                                        />
-                                        <div>
-                                            <div className="text-sm font-medium text-foreground">
-                                                Include Data
-                                            </div>
-                                            <div className="text-xs text-foreground-muted">
-                                                Export all table rows
-                                            </div>
-                                        </div>
-                                    </label>
-
-                                    <label className="flex items-center gap-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={exportOptions.compress}
-                                            onChange={(e) =>
-                                                setExportOptions({
-                                                    ...exportOptions,
-                                                    compress: e.target.checked,
-                                                })
-                                            }
-                                            className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
-                                        />
-                                        <div>
-                                            <div className="text-sm font-medium text-foreground">
-                                                Compress (GZIP)
-                                            </div>
-                                            <div className="text-xs text-foreground-muted">
-                                                Reduce file size with compression
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-                            </Card>
-                        )}
-
                         {/* Export Info */}
                         <Card className="p-6">
-                            <h2 className="mb-4 text-lg font-semibold text-foreground">
-                                Database Information
-                            </h2>
+                            <div className="mb-4 flex items-center gap-3">
+                                <Icons.Download className="h-6 w-6 text-primary" />
+                                <h2 className="text-lg font-semibold text-foreground">
+                                    Export Database
+                                </h2>
+                            </div>
+                            <p className="mb-6 text-sm text-foreground-muted">
+                                Create a full backup of your database. The file will download automatically when ready.
+                            </p>
+
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <div className="mb-1 text-xs text-foreground-muted">
-                                        Database Name
+                                        Database
                                     </div>
                                     <div className="font-medium text-foreground">
                                         {database.name}
@@ -940,13 +814,32 @@ export default function DatabaseImport({ database }: Props) {
                                 </div>
                                 <div>
                                     <div className="mb-1 text-xs text-foreground-muted">
-                                        Database Type
+                                        Type
                                     </div>
                                     <div className="font-medium text-foreground">
                                         {database.database_type?.toUpperCase() || 'Unknown'}
                                     </div>
                                 </div>
                             </div>
+
+                            {(() => {
+                                const formatInfo = getExportFormatInfo(database.database_type);
+                                return (
+                                    <div className="mt-4 rounded-lg border border-border bg-background-secondary p-4">
+                                        <div className="flex items-start gap-3">
+                                            <Icons.FileArchive className="mt-0.5 h-5 w-5 text-foreground-muted" />
+                                            <div>
+                                                <div className="text-sm font-medium text-foreground">
+                                                    Format: {formatInfo.format} <span className="text-foreground-muted">({formatInfo.extension})</span>
+                                                </div>
+                                                <div className="mt-1 text-xs text-foreground-muted">
+                                                    {formatInfo.description}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </Card>
 
                         {/* Export Status */}
@@ -969,12 +862,7 @@ export default function DatabaseImport({ database }: Props) {
                         {/* Export Button */}
                         <Button
                             onClick={handleExport}
-                            disabled={
-                                isProcessing ||
-                                (exportFormat === 'sql' &&
-                                    !exportOptions.includeData &&
-                                    !exportOptions.includeStructure)
-                            }
+                            disabled={isProcessing}
                             className="w-full"
                         >
                             {isProcessing ? (

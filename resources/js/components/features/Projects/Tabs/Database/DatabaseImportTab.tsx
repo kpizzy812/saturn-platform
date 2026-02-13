@@ -19,9 +19,6 @@ import {
     Copy,
     Check,
     Info,
-    Database,
-    FileText,
-    Braces,
     DatabaseBackup,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,7 +26,6 @@ import type { DatabaseImportStatus } from '@/types';
 import type { SelectedService } from '../../types';
 
 type SubTab = 'remote' | 'upload' | 'cli' | 'export';
-type ExportFormat = 'sql' | 'csv' | 'json';
 
 interface DatabaseImportTabProps {
     service: SelectedService;
@@ -97,6 +93,22 @@ function getImportCommands(uuid: string, dbType: string): { label: string; comma
     }
 }
 
+function getExportFormatInfo(dbType: string): { format: string; description: string } {
+    switch (dbType) {
+        case 'postgresql':
+        case 'postgres':
+            return { format: 'pg_dump custom (.dmp)', description: 'Supports parallel restore and selective recovery' };
+        case 'mysql':
+            return { format: 'mysqldump (.dmp)', description: 'Plain text SQL statements' };
+        case 'mariadb':
+            return { format: 'mariadb-dump (.dmp)', description: 'Plain text SQL statements' };
+        case 'mongodb':
+            return { format: 'mongodump (.tar.gz)', description: 'Binary archive with gzip compression' };
+        default:
+            return { format: 'Native dump', description: 'Database-native backup format' };
+    }
+}
+
 function ImportProgressCard({ status, onReset }: { status: DatabaseImportStatus; onReset: () => void }) {
     const isActive = status.status === 'pending' || status.status === 'in_progress';
     const isFailed = status.status === 'failed';
@@ -145,13 +157,7 @@ function ImportProgressCard({ status, onReset }: { status: DatabaseImportStatus;
 
 export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
     const [activeSubTab, setActiveSubTab] = useState<SubTab>('remote');
-    const [exportFormat, setExportFormat] = useState<ExportFormat>('sql');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [exportOptions, setExportOptions] = useState({
-        includeData: true,
-        includeStructure: true,
-        compress: false,
-    });
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
     const { addToast } = useToast();
 
@@ -378,12 +384,6 @@ export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
                     'X-CSRF-TOKEN': getCsrfToken(),
                 },
                 credentials: 'include',
-                body: JSON.stringify({
-                    format: exportFormat,
-                    includeData: exportOptions.includeData,
-                    includeStructure: exportOptions.includeStructure,
-                    compress: exportOptions.compress,
-                }),
             });
 
             if (response.status === 419) {
@@ -762,95 +762,20 @@ export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
                         <Download className="h-4 w-4 text-primary" />
                         <h3 className="text-sm font-semibold text-foreground">Export Database</h3>
                     </div>
+                    <p className="text-xs text-foreground-muted">
+                        Create a full backup. The file will download automatically when ready.
+                    </p>
 
-                    {/* Format selector */}
-                    <div className="grid grid-cols-3 gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setExportFormat('sql')}
-                            className={cn(
-                                'rounded-lg border-2 p-2.5 text-center transition-all',
-                                exportFormat === 'sql'
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-border/80'
-                            )}
-                        >
-                            <Database className="mx-auto mb-1 h-4 w-4 text-primary" />
-                            <div className="text-xs font-semibold text-foreground">SQL</div>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setExportFormat('csv')}
-                            className={cn(
-                                'rounded-lg border-2 p-2.5 text-center transition-all',
-                                exportFormat === 'csv'
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-border/80'
-                            )}
-                        >
-                            <FileText className="mx-auto mb-1 h-4 w-4 text-primary" />
-                            <div className="text-xs font-semibold text-foreground">CSV</div>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setExportFormat('json')}
-                            className={cn(
-                                'rounded-lg border-2 p-2.5 text-center transition-all',
-                                exportFormat === 'json'
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-border/80'
-                            )}
-                        >
-                            <Braces className="mx-auto mb-1 h-4 w-4 text-primary" />
-                            <div className="text-xs font-semibold text-foreground">JSON</div>
-                        </button>
-                    </div>
-
-                    {/* SQL-specific options */}
-                    {exportFormat === 'sql' && (
-                        <div className="space-y-2 rounded-lg border border-border bg-background-secondary p-3">
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={exportOptions.includeStructure}
-                                    onChange={(e) => setExportOptions({ ...exportOptions, includeStructure: e.target.checked })}
-                                    className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-1 focus:ring-primary"
-                                />
-                                <div>
-                                    <div className="text-xs font-medium text-foreground">Include Structure</div>
-                                    <div className="text-xs text-foreground-muted">Table schemas and indexes</div>
-                                </div>
-                            </label>
-
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={exportOptions.includeData}
-                                    onChange={(e) => setExportOptions({ ...exportOptions, includeData: e.target.checked })}
-                                    className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-1 focus:ring-primary"
-                                />
-                                <div>
-                                    <div className="text-xs font-medium text-foreground">Include Data</div>
-                                    <div className="text-xs text-foreground-muted">All table rows</div>
-                                </div>
-                            </label>
-
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={exportOptions.compress}
-                                    onChange={(e) => setExportOptions({ ...exportOptions, compress: e.target.checked })}
-                                    className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-1 focus:ring-primary"
-                                />
-                                <div>
-                                    <div className="text-xs font-medium text-foreground">Compress (GZIP)</div>
-                                    <div className="text-xs text-foreground-muted">Reduce file size</div>
-                                </div>
-                            </label>
-                        </div>
-                    )}
+                    {/* Format info */}
+                    {(() => {
+                        const formatInfo = getExportFormatInfo(dbType);
+                        return (
+                            <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                <div className="text-xs font-medium text-foreground">{formatInfo.format}</div>
+                                <div className="text-xs text-foreground-muted">{formatInfo.description}</div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Export Status */}
                     {exportStatus === 'in_progress' && isProcessing && (
@@ -866,10 +791,7 @@ export function DatabaseImportTab({ service }: DatabaseImportTabProps) {
                     <Button
                         size="sm"
                         onClick={handleExport}
-                        disabled={
-                            isProcessing ||
-                            (exportFormat === 'sql' && !exportOptions.includeData && !exportOptions.includeStructure)
-                        }
+                        disabled={isProcessing}
                         className="w-full"
                     >
                         {isProcessing ? (
