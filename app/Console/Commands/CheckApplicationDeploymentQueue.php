@@ -14,7 +14,7 @@ class CheckApplicationDeploymentQueue extends Command
 
     public function handle()
     {
-        $seconds = $this->option('seconds');
+        $seconds = (int) $this->option('seconds');
         $deployments = ApplicationDeploymentQueue::whereIn('status', [
             ApplicationDeploymentStatus::IN_PROGRESS,
             ApplicationDeploymentStatus::QUEUED,

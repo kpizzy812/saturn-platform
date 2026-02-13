@@ -589,6 +589,14 @@ function ProjectCanvasInner({
             const sourceIsDb = /^db-\d+$/.test(sourceNode);
             const targetIsApp = /^app-\d+$/.test(targetNode);
             const targetIsDb = /^db-\d+$/.test(targetNode);
+            const sourceIsSvc = /^svc-\d+$/.test(sourceNode);
+            const targetIsSvc = /^svc-\d+$/.test(targetNode);
+
+            // Service nodes don't support linking yet
+            if (sourceIsSvc || targetIsSvc) {
+                addToast('info', 'Not supported', 'Compose service connections are not supported yet.');
+                return;
+            }
 
             // For app-to-db: always make app the source
             if (sourceIsDb && targetIsApp) {
@@ -598,7 +606,6 @@ function ProjectCanvasInner({
             // Re-parse after normalization
             const appSourceMatch = sourceNode.match(/^app-(\d+)$/);
             if (!appSourceMatch) {
-                console.error('Invalid connection: one side must be an application');
                 return;
             }
             const sourceId = parseInt(appSourceMatch[1]);
@@ -607,7 +614,6 @@ function ProjectCanvasInner({
             const appTargetMatch = targetNode.match(/^app-(\d+)$/);
 
             if (!dbTargetMatch && !appTargetMatch) {
-                console.error('Invalid connection: target must be a database or application');
                 return;
             }
 

@@ -22,6 +22,9 @@ use Spatie\Activitylog\Traits\LogsActivity;
         'description' => ['type' => 'string'],
     ]
 )]
+/**
+ * @property Project|null $project
+ */
 class Environment extends BaseModel
 {
     use Auditable;

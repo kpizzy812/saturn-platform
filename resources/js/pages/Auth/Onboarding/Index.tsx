@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Input, Button, Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui';
+import { Input, Button, Card, CardHeader, CardTitle, CardDescription, CardContent, BrandIcon } from '@/components/ui';
 import { Rocket, FolderKanban, Github, Zap, CheckCircle2, ChevronRight } from 'lucide-react';
 
 interface Template {
@@ -59,10 +59,10 @@ export default function Onboarding({ userName: initialUserName, templates = [] }
     const availableTemplates = templates.length > 0 ? templates : defaultTemplates;
 
     const services = [
-        { id: 'postgresql', name: 'PostgreSQL', icon: '🐘' },
-        { id: 'redis', name: 'Redis', icon: '🔴' },
-        { id: 'mongodb', name: 'MongoDB', icon: '🍃' },
-        { id: 'mysql', name: 'MySQL', icon: '🐬' },
+        { id: 'postgresql', name: 'PostgreSQL', icon: <BrandIcon name="postgresql" className="h-8 w-8" /> },
+        { id: 'redis', name: 'Redis', icon: <BrandIcon name="redis" className="h-8 w-8" /> },
+        { id: 'mongodb', name: 'MongoDB', icon: <BrandIcon name="mongodb" className="h-8 w-8" /> },
+        { id: 'mysql', name: 'MySQL', icon: <BrandIcon name="mysql" className="h-8 w-8" /> },
     ];
 
     const handleNext = () => {
@@ -393,7 +393,7 @@ export default function Onboarding({ userName: initialUserName, templates = [] }
                                                 : 'border-border bg-background hover:border-primary/50'
                                         }`}
                                     >
-                                        <div className="text-3xl">{service.icon}</div>
+                                        <div className="flex h-8 w-8 items-center justify-center">{service.icon}</div>
                                         <div className="flex-1 font-semibold text-foreground">
                                             {service.name}
                                         </div>

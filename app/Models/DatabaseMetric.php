@@ -112,10 +112,10 @@ class DatabaseMetric extends Model
     {
         $format = match ($interval) {
             'minute' => 'Y-m-d H:i',
-            '5 minutes' => fn ($date) => $date->format('Y-m-d H:').str_pad((int) floor($date->format('i') / 5) * 5, 2, '0', STR_PAD_LEFT),
-            '15 minutes' => fn ($date) => $date->format('Y-m-d H:').str_pad((int) floor($date->format('i') / 15) * 15, 2, '0', STR_PAD_LEFT),
+            '5 minutes' => fn ($date) => $date->format('Y-m-d H:').str_pad((string) ((int) floor($date->format('i') / 5) * 5), 2, '0', STR_PAD_LEFT),
+            '15 minutes' => fn ($date) => $date->format('Y-m-d H:').str_pad((string) ((int) floor($date->format('i') / 15) * 15), 2, '0', STR_PAD_LEFT),
             '1 hour' => 'Y-m-d H:00',
-            '6 hours' => fn ($date) => $date->format('Y-m-d ').str_pad((int) floor($date->format('H') / 6) * 6, 2, '0', STR_PAD_LEFT).':00',
+            '6 hours' => fn ($date) => $date->format('Y-m-d ').str_pad((string) ((int) floor($date->format('H') / 6) * 6), 2, '0', STR_PAD_LEFT).':00',
             default => 'Y-m-d H:i',
         };
 

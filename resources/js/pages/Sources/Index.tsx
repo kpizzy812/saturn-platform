@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge, BrandIcon } from '@/components/ui';
 import { Plus, Github, GitlabIcon as GitLab, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
+import { Bitbucket } from '@/components/icons/Bitbucket';
 
 interface GitSource {
     id: number;
@@ -22,7 +23,7 @@ export default function SourcesIndex({ sources = [] }: Props) {
         switch (type) {
             case 'github': return <Github className="h-8 w-8" />;
             case 'gitlab': return <GitLab className="h-8 w-8" />;
-            case 'bitbucket': return <div className="h-8 w-8 flex items-center justify-center text-2xl font-bold text-blue-500">B</div>;
+            case 'bitbucket': return <Bitbucket className="h-8 w-8 text-blue-500" />;
             default: return null;
         }
     };

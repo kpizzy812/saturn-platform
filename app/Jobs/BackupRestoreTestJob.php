@@ -102,7 +102,7 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
             };
 
             if ($success) {
-                $duration = now()->diffInSeconds($this->startTime);
+                $duration = (int) now()->diffInSeconds($this->startTime);
                 $this->execution->update([
                     'restore_test_status' => 'success',
                     'restore_test_message' => 'Restore test completed successfully',
@@ -499,7 +499,7 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
 
     private function markFailed(string $message): bool
     {
-        $duration = now()->diffInSeconds($this->startTime);
+        $duration = (int) now()->diffInSeconds($this->startTime);
         $this->execution->update([
             'restore_test_status' => 'failed',
             'restore_test_message' => $message,

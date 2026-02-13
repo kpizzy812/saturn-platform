@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+/**
+ * @property Server $server
+ * @property string $network
+ */
 class SwarmDocker extends BaseModel
 {
     /**

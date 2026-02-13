@@ -435,8 +435,11 @@ describe('Server Create Page', () => {
 
             await user.type(screen.getByPlaceholderText('production-server'), 'test-server');
             await user.type(screen.getByPlaceholderText('192.168.1.1'), '192.168.1.100');
-            await user.clear(screen.getByPlaceholderText('root'));
-            await user.type(screen.getByPlaceholderText('root'), 'root');
+
+            // Wait for re-render after IP validation before accessing other fields
+            const rootInput = await screen.findByPlaceholderText('root');
+            await user.clear(rootInput);
+            await user.type(rootInput, 'root');
 
             await user.click(screen.getByText('Continue'));
 
@@ -457,8 +460,11 @@ describe('Server Create Page', () => {
 
             await user.type(screen.getByPlaceholderText('production-server'), 'test-server');
             await user.type(screen.getByPlaceholderText('192.168.1.1'), '192.168.1.100');
-            await user.clear(screen.getByPlaceholderText('root'));
-            await user.type(screen.getByPlaceholderText('root'), 'root');
+
+            // Wait for re-render after IP validation before accessing other fields
+            const rootInput = await screen.findByPlaceholderText('root');
+            await user.clear(rootInput);
+            await user.type(rootInput, 'root');
 
             await user.click(screen.getByText('Continue'));
 

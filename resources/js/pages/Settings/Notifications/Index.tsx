@@ -2,7 +2,10 @@ import * as React from 'react';
 import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { Link, useForm } from '@inertiajs/react';
-import { Bell, MessageSquare, Send, Mail, Webhook as WebhookIcon, Smartphone, Settings, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
+import { Bell, Mail, Webhook as WebhookIcon, Smartphone, Settings, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
+import { Discord } from '@/components/icons/Discord';
+import { Slack } from '@/components/icons/Slack';
+import { Telegram } from '@/components/icons/Telegram';
 
 interface NotificationChannel {
     id: string;
@@ -31,7 +34,7 @@ export default function NotificationsIndex({ channels }: Props) {
             id: 'discord',
             name: 'Discord',
             description: 'Send notifications to Discord channels via webhooks',
-            icon: MessageSquare,
+            icon: Discord,
             enabled: channels.discord.enabled,
             configured: channels.discord.configured,
             href: '/settings/notifications/discord',
@@ -40,7 +43,7 @@ export default function NotificationsIndex({ channels }: Props) {
             id: 'slack',
             name: 'Slack',
             description: 'Send notifications to Slack channels via webhooks',
-            icon: MessageSquare,
+            icon: Slack,
             enabled: channels.slack.enabled,
             configured: channels.slack.configured,
             href: '/settings/notifications/slack',
@@ -49,7 +52,7 @@ export default function NotificationsIndex({ channels }: Props) {
             id: 'telegram',
             name: 'Telegram',
             description: 'Send notifications to Telegram via bot',
-            icon: Send,
+            icon: Telegram,
             enabled: channels.telegram.enabled,
             configured: channels.telegram.configured,
             href: '/settings/notifications/telegram',

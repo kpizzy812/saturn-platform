@@ -16,6 +16,7 @@ import {
     CheckCircle2,
     XCircle,
 } from 'lucide-react';
+import { BrandIcon } from '@/components/ui/BrandIcon';
 
 interface OAuthProvider {
     id: number;
@@ -33,18 +34,18 @@ interface Props {
 }
 
 // Provider display info
-const providerMeta: Record<string, { label: string; color: string; icon: string; docsUrl: string; fields: string[] }> = {
+const providerMeta: Record<string, { label: string; color: string; icon: React.ReactNode; docsUrl: string; fields: string[] }> = {
     github: {
         label: 'GitHub',
         color: 'from-gray-700 to-gray-900',
-        icon: 'GH',
+        icon: <BrandIcon name="github" className="h-5 w-5" />,
         docsUrl: 'https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app',
         fields: ['client_id', 'client_secret'],
     },
     gitlab: {
         label: 'GitLab',
         color: 'from-orange-500 to-orange-700',
-        icon: 'GL',
+        icon: <BrandIcon name="gitlab" className="h-5 w-5" />,
         docsUrl: 'https://docs.gitlab.com/ee/integration/oauth_provider.html',
         fields: ['client_id', 'client_secret', 'base_url'],
     },

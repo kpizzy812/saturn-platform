@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Butto
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
 import { KickMemberModal } from '@/components/team/KickMemberModal';
+import { QuickPermissionsModal } from '@/components/team/QuickPermissionsModal';
 import { useToast } from '@/components/ui/Toast';
 import {
     Mail,
@@ -112,6 +113,7 @@ export default function TeamSettings({
     const [showKickModal, setShowKickModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [showProjectsModal, setShowProjectsModal] = React.useState(false);
+    const [showPermissionsModal, setShowPermissionsModal] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);
     const [inviteEmail, setInviteEmail] = React.useState('');
     const [inviteRole, setInviteRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
@@ -567,6 +569,16 @@ export default function TeamSettings({
                                                                     )}
                                                                 </span>
                                                             </DropdownItem>
+                                                            {/* Edit Permissions */}
+                                                            <DropdownItem
+                                                                onClick={() => {
+                                                                    setSelectedMember(member);
+                                                                    setShowPermissionsModal(true);
+                                                                }}
+                                                            >
+                                                                <Shield className="h-4 w-4" />
+                                                                Edit Permissions
+                                                            </DropdownItem>
                                                             <DropdownDivider />
                                                             <DropdownItem
                                                                 danger
@@ -823,6 +835,19 @@ export default function TeamSettings({
                     toast({
                         title: 'Project access updated',
                         description: `${selectedMember?.name}'s project access has been updated.`,
+                    });
+                }}
+            />
+
+            {/* Quick Permissions Modal */}
+            <QuickPermissionsModal
+                isOpen={showPermissionsModal}
+                onClose={() => setShowPermissionsModal(false)}
+                member={selectedMember}
+                onSuccess={() => {
+                    toast({
+                        title: 'Permissions updated',
+                        description: `${selectedMember?.name}'s permissions have been updated.`,
                     });
                 }}
             />

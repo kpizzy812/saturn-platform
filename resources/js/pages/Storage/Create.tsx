@@ -4,6 +4,7 @@ import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Textarea, Select } from '@/components/ui';
 import { ArrowLeft, ChevronRight, Cloud, Check, Loader2 } from 'lucide-react';
+import { BrandIcon } from '@/components/ui/BrandIcon';
 import type { S3Provider } from '@/types';
 
 interface ProviderOption {
@@ -11,7 +12,7 @@ interface ProviderOption {
     displayName: string;
     description: string;
     iconBg: string;
-    icon: string;
+    icon: React.ReactNode;
     defaultRegion: string;
     defaultEndpoint?: string;
 }
@@ -48,7 +49,7 @@ const providerTypes: ProviderOption[] = [
         displayName: 'MinIO',
         description: 'Self-hosted S3-compatible storage',
         iconBg: 'bg-gradient-to-br from-pink-500 to-pink-600',
-        icon: '🪣',
+        icon: <BrandIcon name="minio" className="h-6 w-6" />,
         defaultRegion: 'us-east-1',
         defaultEndpoint: '',
     },

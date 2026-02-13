@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Github, GitBranch, MessageSquare, Zap, Settings, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
+import { Github, GitlabIcon as Gitlab, MessageSquare, Zap, Settings, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
 
 declare function route(name: string, params?: Record<string, any>): string;
@@ -34,7 +34,7 @@ interface Props {
 
 const sourceIcons = {
     github: Github,
-    gitlab: GitBranch,
+    gitlab: Gitlab,
 };
 
 const notificationIcons = {

@@ -131,8 +131,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private string $production_image_name;
 
-    private bool $is_debug_enabled;
-
     private Collection|string $build_args;
 
     private $env_args;
@@ -272,8 +270,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->basedir = $this->application->generateBaseDir($this->deployment_uuid);
         $this->workdir = "{$this->basedir}".rtrim($this->application->base_directory, '/');
         $this->configuration_dir = application_configuration_dir()."/{$this->application->uuid}";
-        $this->is_debug_enabled = $this->application->settings->is_debug_enabled;
-
         $this->container_name = generateApplicationContainerName($this->application, $this->pull_request_id);
         if ($this->application->settings->custom_internal_name && ! $this->application->settings->is_consistent_container_name_enabled) {
             if ($this->pull_request_id === 0) {

@@ -11,13 +11,13 @@ import {
     ArrowRight,
     CheckCircle,
     GitBranch,
-    FolderGit,
     Zap,
     Loader2,
     AlertCircle,
     Plus,
     ExternalLink,
 } from 'lucide-react';
+import { Bitbucket } from '@/components/icons/Bitbucket';
 
 interface Props {
     provider?: 'github' | 'gitlab' | 'bitbucket';
@@ -244,7 +244,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
                                 <ProviderButton
                                     provider="bitbucket"
                                     selected={selectedProvider === 'bitbucket'}
-                                    icon={<FolderGit className="h-6 w-6" />}
+                                    icon={<Bitbucket className="h-6 w-6" />}
                                     label="Bitbucket"
                                     connected={false}
                                     onClick={() => setSelectedProvider('bitbucket')}

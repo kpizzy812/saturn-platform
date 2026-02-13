@@ -569,33 +569,41 @@ Route::post('/settings/team/members/{id}/permission-set', function (Request $req
     $team = currentTeam();
     $currentUser = auth()->user();
 
+    $errorResponse = function (string $message) use ($request) {
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message], 422);
+        }
+
+        return redirect()->back()->withErrors(['permission_set' => $message]);
+    };
+
     // Only owner/admin can assign permission sets
     if (! $currentUser->isAdmin()) {
-        return redirect()->back()->withErrors(['permission_set' => 'You do not have permission to assign permission sets']);
+        return $errorResponse('You do not have permission to assign permission sets');
     }
 
     $member = $team->members()->where('user_id', $id)->first();
     if (! $member) {
-        return redirect()->back()->withErrors(['permission_set' => 'Member not found in this team']);
+        return $errorResponse('Member not found in this team');
     }
 
     $memberRole = $member->pivot->role;
 
     // Cannot assign permission set to self
     if ((int) $id === $currentUser->id) {
-        return redirect()->back()->withErrors(['permission_set' => 'You cannot change your own permission set']);
+        return $errorResponse('You cannot change your own permission set');
     }
 
     // Admin cannot modify admin/owner
     if ($currentUser->isAdmin() && ! $currentUser->isOwner()) {
         if (in_array($memberRole, ['owner', 'admin'])) {
-            return redirect()->back()->withErrors(['permission_set' => 'Only owner can configure permission sets for admins']);
+            return $errorResponse('Only owner can configure permission sets for admins');
         }
     }
 
     // Owner cannot be restricted
     if ($memberRole === 'owner') {
-        return redirect()->back()->withErrors(['permission_set' => 'Owner cannot have a restricted permission set']);
+        return $errorResponse('Owner cannot have a restricted permission set');
     }
 
     // Validate permission set belongs to this team
@@ -606,14 +614,206 @@ Route::post('/settings/team/members/{id}/permission-set', function (Request $req
             ->exists();
 
         if (! $exists) {
-            return redirect()->back()->withErrors(['permission_set' => 'Permission set not found for this team']);
+            return $errorResponse('Permission set not found for this team');
         }
     }
 
     $team->members()->updateExistingPivot($id, ['permission_set_id' => $permissionSetId]);
 
+    // Clear permission cache
+    $permissionService = app(\App\Services\Authorization\PermissionService::class);
+    $permissionService->clearTeamCache($team);
+
+    if ($request->expectsJson()) {
+        return response()->json(['message' => 'Permission set updated successfully']);
+    }
+
     return redirect()->back()->with('success', 'Permission set updated successfully');
 })->name('settings.team.members.update-permission-set');
+
+// Get member permissions data (JSON) for quick permissions modal
+Route::get('/settings/team/members/{id}/permissions', function (string $id) {
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only owner/admin can view permission settings
+    if (! $currentUser->isAdmin()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        return response()->json(['message' => 'Member not found'], 404);
+    }
+
+    $memberRole = $member->pivot->role;
+
+    // Cannot edit own permissions
+    if ((int) $id === $currentUser->id) {
+        return response()->json(['message' => 'Cannot edit your own permissions'], 403);
+    }
+
+    // Owner cannot be restricted
+    if ($memberRole === 'owner') {
+        return response()->json(['message' => 'Owner cannot have restricted permissions'], 403);
+    }
+
+    // Admin cannot modify admin/owner
+    if (! $currentUser->isOwner() && in_array($memberRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'Only owner can configure permissions for admins'], 403);
+    }
+
+    // Get all permission sets for this team
+    $permissionSets = \App\Models\PermissionSet::forTeam($team->id)
+        ->withCount('permissions')
+        ->orderBy('is_system', 'desc')
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($set) => [
+            'id' => $set->id,
+            'name' => $set->name,
+            'slug' => $set->slug,
+            'description' => $set->description,
+            'is_system' => $set->is_system,
+            'color' => $set->color,
+            'icon' => $set->icon,
+            'permissions_count' => $set->permissions_count,
+        ]);
+
+    // Get all permissions grouped by category
+    $allPermissions = \App\Models\Permission::orderBy('sort_order')
+        ->get()
+        ->groupBy('category')
+        ->map(fn ($group) => $group->map(fn ($p) => [
+            'id' => $p->id,
+            'key' => $p->key,
+            'name' => $p->name,
+            'description' => $p->description,
+            'resource' => $p->resource,
+            'action' => $p->action,
+            'is_sensitive' => $p->is_sensitive,
+        ])->values()->all());
+
+    // Get current permission set assignment
+    $currentPermissionSetId = $member->pivot->permission_set_id;
+    $currentPermissions = [];
+    $isPersonalSet = false;
+    $personalSetId = null;
+
+    // Check if the current set is a personal set
+    if ($currentPermissionSetId) {
+        $currentSet = \App\Models\PermissionSet::with('permissions')->find($currentPermissionSetId);
+        if ($currentSet) {
+            $isPersonalSet = str_starts_with($currentSet->slug, 'personal-') && ! $currentSet->is_system;
+            if ($isPersonalSet) {
+                $personalSetId = $currentSet->id;
+            }
+            $currentPermissions = $currentSet->permissions->map(fn ($p) => [
+                'permission_id' => $p->id,
+                'environment_restrictions' => $p->pivot->environment_restrictions ?? [],
+            ])->values()->all();
+        }
+    }
+
+    // Get environments for restriction options
+    $environments = \App\Models\Environment::whereHas('project', function ($query) use ($team) {
+        $query->where('team_id', $team->id);
+    })
+        ->select('id', 'name')
+        ->distinct('name')
+        ->get()
+        ->map(fn ($e) => ['id' => $e->id, 'name' => $e->name]);
+
+    return response()->json([
+        'permissionSets' => $permissionSets,
+        'allPermissions' => $allPermissions,
+        'currentPermissionSetId' => $currentPermissionSetId,
+        'currentPermissions' => $currentPermissions,
+        'isPersonalSet' => $isPersonalSet,
+        'personalSetId' => $personalSetId,
+        'environments' => $environments,
+        'member' => [
+            'id' => $member->id,
+            'name' => $member->name,
+            'role' => $memberRole,
+        ],
+    ]);
+})->name('settings.team.members.permissions');
+
+// Save custom permissions for a member (creates/updates personal permission set)
+Route::post('/settings/team/members/{id}/permissions/custom', function (Request $request, string $id) {
+    $request->validate([
+        'permissions' => 'required|array',
+        'permissions.*.permission_id' => 'required|integer|exists:permissions,id',
+        'permissions.*.environment_restrictions' => 'nullable|array',
+    ]);
+
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only owner/admin can assign permissions
+    if (! $currentUser->isAdmin()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $member = $team->members()->where('user_id', $id)->first();
+    if (! $member) {
+        return response()->json(['message' => 'Member not found'], 404);
+    }
+
+    $memberRole = $member->pivot->role;
+
+    // Cannot edit own permissions
+    if ((int) $id === $currentUser->id) {
+        return response()->json(['message' => 'Cannot edit your own permissions'], 403);
+    }
+
+    // Owner cannot be restricted
+    if ($memberRole === 'owner') {
+        return response()->json(['message' => 'Owner cannot have restricted permissions'], 403);
+    }
+
+    // Admin cannot modify admin/owner
+    if (! $currentUser->isOwner() && in_array($memberRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'Only owner can configure permissions for admins'], 403);
+    }
+
+    // Find or create personal permission set
+    $nameSlug = \Illuminate\Support\Str::slug($member->name);
+    $personalSlug = "personal-{$nameSlug}-{$member->id}";
+
+    $personalSet = \App\Models\PermissionSet::forTeam($team->id)
+        ->where('slug', $personalSlug)
+        ->first();
+
+    if (! $personalSet) {
+        $personalSet = \App\Models\PermissionSet::create([
+            'name' => "Personal ({$member->name})",
+            'slug' => $personalSlug,
+            'description' => "Custom permissions for {$member->name}",
+            'scope_type' => 'team',
+            'scope_id' => $team->id,
+            'is_system' => false,
+            'color' => 'foreground-muted',
+            'icon' => 'user',
+        ]);
+    }
+
+    // Sync permissions
+    $personalSet->syncPermissionsWithRestrictions($request->permissions);
+
+    // Assign permission set to the member
+    $permissionService = app(\App\Services\Authorization\PermissionService::class);
+    $permissionService->assignPermissionSet($member, $personalSet, 'team', $team->id);
+
+    // Clear cache
+    $permissionService->clearTeamCache($team);
+
+    return response()->json([
+        'message' => 'Custom permissions saved successfully',
+        'permission_set_id' => $personalSet->id,
+    ]);
+})->name('settings.team.members.permissions.custom');
 
 Route::delete('/settings/team/members/{id}', function (string $id) {
     $team = currentTeam();

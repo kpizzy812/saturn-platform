@@ -53,9 +53,9 @@ return [
         'testing' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_TEST_URL'),
-            'host' => env('DB_TEST_HOST', 'postgres'),
+            'host' => env('DB_TEST_HOST', 'saturn-db'),
             'port' => env('DB_TEST_PORT', '5432'),
-            'database' => env('DB_TEST_DATABASE', 'saturn_test'),
+            'database' => env('DB_TEST_DATABASE', 'saturn'),
             'username' => env('DB_TEST_USERNAME', 'saturn'),
             'password' => env('DB_TEST_PASSWORD', 'password'),
             'charset' => 'utf8',

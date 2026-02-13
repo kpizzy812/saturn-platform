@@ -149,6 +149,12 @@ class AuditLog extends Model
             }
         }
 
+        // If deleting a Team resource, the team no longer exists in DB
+        // Set team_id to null to avoid FK constraint violation
+        if ($action === 'delete' && $resource instanceof Team) {
+            $currentTeam = null;
+        }
+
         return static::create([
             'user_id' => $user?->id,
             'team_id' => $currentTeam?->id,

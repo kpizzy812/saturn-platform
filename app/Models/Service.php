@@ -20,6 +20,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
+/**
+ * @property Server $server
+ * @property StandaloneDocker|SwarmDocker $destination
+ */
 #[OA\Schema(
     description: 'Service model',
     type: 'object',

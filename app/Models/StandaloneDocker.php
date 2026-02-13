@@ -5,6 +5,10 @@ namespace App\Models;
 use App\Jobs\ConnectProxyToNetworksJob;
 use App\Traits\HasSafeStringAttribute;
 
+/**
+ * @property Server $server
+ * @property string $network
+ */
 class StandaloneDocker extends BaseModel
 {
     use HasSafeStringAttribute;

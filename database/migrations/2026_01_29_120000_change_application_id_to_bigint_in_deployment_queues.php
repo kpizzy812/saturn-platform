@@ -14,8 +14,10 @@ return new class extends Migration
     public function up(): void
     {
         // PostgreSQL requires explicit type casting
-        if (config('database.default') === 'pgsql') {
-            DB::statement('ALTER TABLE application_deployment_queues ALTER COLUMN application_id TYPE bigint USING application_id::bigint');
+        $driver = Schema::getConnection()->getDriverName();
+        if ($driver === 'pgsql') {
+            DB::connection(Schema::getConnection()->getName())
+                ->statement('ALTER TABLE application_deployment_queues ALTER COLUMN application_id TYPE bigint USING application_id::bigint');
         } else {
             Schema::table('application_deployment_queues', function (Blueprint $table) {
                 $table->bigInteger('application_id')->change();

@@ -115,12 +115,6 @@ parameters:
 			path: app/Actions/Database/StartDatabaseProxy.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Actions/Database/StartDatabaseProxy.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneDragonfly\:\:\$destination\.$#'
 			identifier: property.notFound
 			count: 7
@@ -367,12 +361,6 @@ parameters:
 			path: app/Actions/Database/StopDatabase.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StopDatabaseProxy.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -505,12 +493,6 @@ parameters:
 			path: app/Actions/Migration/ExecuteMigrationAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/MigrateResourceAction.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment\.$#'
 			identifier: property.notFound
 			count: 1
@@ -601,39 +583,15 @@ parameters:
 			path: app/Actions/Migration/PreMigrationCheckAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Migration/PromoteResourceAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$key\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/PromoteResourceAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$value\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/PromoteResourceAction.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 2
 			path: app/Actions/Migration/PromoteResourceAction.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 3
-			path: app/Actions/Migration/PromoteResourceAction.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:environment_variables\(\)\.$#'
-			identifier: method.notFound
-			count: 1
 			path: app/Actions/Migration/PromoteResourceAction.php
 
 		-
@@ -665,12 +623,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Actions/Migration/PromoteResourceAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/RollbackMigrationAction.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
@@ -823,28 +775,10 @@ parameters:
 			path: app/Actions/Service/DeleteService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Service/StartService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Service/StartService.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Actions/Service/StartService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Service/StopService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
@@ -892,12 +826,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$persistentStorages\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Actions/Transfer/CloneApplicationAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Actions/Transfer/CloneApplicationAction.php
 
 		-
@@ -1093,12 +1021,6 @@ parameters:
 			path: app/Console/Commands/CheckApplicationDeploymentQueue.php
 
 		-
-			message: '#^Parameter \#1 \$value of method Carbon\\Carbon\:\:subSeconds\(\) expects float\|int, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Console/Commands/CheckApplicationDeploymentQueue.php
-
-		-
 			message: '#^Parameter \#3 \$type of function remote_process expects string\|null, false given\.$#'
 			identifier: argument.type
 			count: 1
@@ -1151,12 +1073,6 @@ parameters:
 			identifier: booleanNot.alwaysFalse
 			count: 1
 			path: app/Console/Commands/CleanupStuckedResources.php
-
-		-
-			message: '#^Parameter \#1 \$teamId of method App\\Console\\Commands\\ClearGlobalSearchCache\:\:clearTeamCache\(\) expects int, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Console/Commands/ClearGlobalSearchCache.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members\.$#'
@@ -1670,12 +1586,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$external_db_url\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/DatabaseCreateController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$internal_db_url\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Api/DatabaseCreateController.php
@@ -2665,12 +2575,6 @@ parameters:
 			path: app/Http/Controllers/Webhook/Bitbucket.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Webhook/Bitbucket.php
-
-		-
 			message: '#^Parameter \#2 \$values of method Illuminate\\Http\\Response\:\:header\(\) expects array\|string, int given\.$#'
 			identifier: argument.type
 			count: 2
@@ -2708,12 +2612,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Webhook/Gitea.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Webhook/Gitea.php
@@ -2803,12 +2701,6 @@ parameters:
 			path: app/Http/Controllers/Webhook/Github.php
 
 		-
-			message: '#^Parameter \#1 \$content of static method Illuminate\\Support\\Facades\\Http\:\:withBody\(\) expects Psr\\Http\\Message\\StreamInterface\|string, null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Webhook/Github.php
-
-		-
 			message: '#^Parameter \#2 \$values of method Illuminate\\Http\\Response\:\:header\(\) expects array\|string, int given\.$#'
 			identifier: argument.type
 			count: 4
@@ -2870,12 +2762,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Webhook/Gitlab.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Webhook/Gitlab.php
@@ -3061,12 +2947,6 @@ parameters:
 			path: app/Jobs/ApplicationDeploymentJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 51
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$source\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3092,18 +2972,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDocker\|App\\Models\\SwarmDocker\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDocker\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StandaloneDocker\>\:\:\$server\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/ApplicationDeploymentJob.php
@@ -3277,12 +3145,6 @@ parameters:
 			path: app/Jobs/BackupRestoreTestJob.php
 
 		-
-			message: '#^Parameter \#1 \$duration of method App\\Jobs\\BackupRestoreTestJob\:\:notifySuccess\(\) expects int, float given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Jobs/BackupRestoreTestJob.php
-
-		-
 			message: '#^Property App\\Jobs\\BackupRestoreTestJob\:\:\$execution \(App\\Models\\ScheduledDatabaseBackupExecution\|null\) does not accept Illuminate\\Database\\Eloquent\\Model\|null\.$#'
 			identifier: assign.propertyType
 			count: 1
@@ -3403,18 +3265,6 @@ parameters:
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$internal_db_url\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$network\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3499,18 +3349,6 @@ parameters:
 			path: app/Jobs/DatabaseRestoreJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$internal_db_url\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/DatabaseRestoreJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Jobs/DatabaseRestoreJob.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$network\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3590,18 +3428,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/MonitorDeploymentHealthJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$lastSuccessfulDeployment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/MonitorDeploymentHealthJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/MonitorDeploymentHealthJob.php
@@ -3805,13 +3631,7 @@ parameters:
 			path: app/Jobs/ScheduledTaskJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\|App\\Models\\Service\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ScheduledTaskJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$server\.$#'
+			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/ScheduledTaskJob.php
@@ -4081,12 +3901,6 @@ parameters:
 			path: app/Models/Application.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 10
-			path: app/Models/Application.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$source\.$#'
 			identifier: property.notFound
 			count: 18
@@ -4343,12 +4157,6 @@ parameters:
 			identifier: method.notFound
 			count: 3
 			path: app/Models/CloudProviderToken.php
-
-		-
-			message: '#^Parameter \#1 \$string of function str_pad expects string, int given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Models/DatabaseMetric.php
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
@@ -4957,12 +4765,6 @@ parameters:
 			path: app/Models/S3Storage.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ScheduledDatabaseBackup.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
 			identifier: method.notFound
 			count: 3
@@ -5215,12 +5017,6 @@ parameters:
 			path: app/Models/Service.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/Service.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$exclude_from_status\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5327,12 +5123,6 @@ parameters:
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Models/ServiceApplication.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServiceDatabase\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Models/ServiceDatabase.php
 
 		-
 			message: '#^Relation ''service'' is not found in App\\Models\\ServiceDatabase model\.$#'
@@ -6373,6 +6163,12 @@ parameters:
 			path: app/Parsers/DockerVolumeParser.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Parsers/ServiceComposeParser.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6382,12 +6178,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment_variables\.$#'
 			identifier: property.notFound
 			count: 3
-			path: app/Parsers/ServiceComposeParser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Parsers/ServiceComposeParser.php
 
 		-
@@ -6499,22 +6289,10 @@ parameters:
 			path: app/Policies/SharedEnvironmentVariablePolicy.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDocker\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/StandaloneDockerPolicy.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Policies/StandaloneDockerPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SwarmDocker\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/SwarmDockerPolicy.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
@@ -6673,12 +6451,6 @@ parameters:
 			path: app/Services/AI/Chat/CommandExecutor.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6800,12 +6572,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$destination\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
@@ -6962,12 +6728,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables_preview\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ConfigurationGenerator.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/ConfigurationGenerator.php
@@ -7159,6 +6919,12 @@ parameters:
 			path: app/Services/RepositoryAnalyzer/Detectors/PortDetector.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/RepositoryAnalyzer/InfrastructureProvisioner.php
+
+		-
 			message: '#^Parameter \$previous of class App\\Services\\RepositoryAnalyzer\\Exceptions\\ProvisioningException constructor expects Exception\|null, Throwable given\.$#'
 			identifier: argument.type
 			count: 1
@@ -7229,12 +6995,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/ServerSelectionService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$internal_db_url\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/Transfer/Strategies/MongodbTransferStrategy.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$redis_password\.$#'

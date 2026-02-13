@@ -1,6 +1,7 @@
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
-import { GitBranch, Database, FileCode, Container, Zap, Folder, ArrowLeft, ChevronRight } from 'lucide-react';
+import { GitBranch, Database, FileCode, Zap, Folder, ArrowLeft, ChevronRight } from 'lucide-react';
+import { BrandIcon } from '@/components/ui/BrandIcon';
 
 interface DeployOption {
     icon: React.ReactNode;
@@ -38,7 +39,7 @@ const deployOptions: DeployOption[] = [
         iconColor: 'text-white',
     },
     {
-        icon: <Container className="h-5 w-5" />,
+        icon: <BrandIcon name="docker" className="h-5 w-5" />,
         title: 'Docker Image',
         description: 'Deploy from Docker Hub or private registry',
         href: '/applications/create?source=docker',

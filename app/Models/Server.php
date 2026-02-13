@@ -105,6 +105,9 @@ use Visus\Cuid2\Cuid2;
     ]
 )]
 
+/**
+ * @property ServerSetting|null $settings
+ */
 class Server extends BaseModel
 {
     use Auditable, ClearsGlobalSearchCache, HasFactory, LogsActivity, SchemalessAttributesTrait, SoftDeletes;
