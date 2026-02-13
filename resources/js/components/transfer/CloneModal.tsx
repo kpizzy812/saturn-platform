@@ -101,7 +101,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
         if (step === 'options') {
             setStep('target');
         } else if (step === 'target') {
-            if (!targetEnvironmentId || !targetServerId) {
+            if (targetEnvironmentId === null || targetServerId === null) {
                 setError('Please select a target environment and server');
                 return;
             }
@@ -110,7 +110,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
     };
 
     const handleSubmit = async () => {
-        if (!targetEnvironmentId || !targetServerId) {
+        if (targetEnvironmentId === null || targetServerId === null) {
             setError('Target not selected');
             return;
         }
@@ -343,8 +343,10 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
                                         <select
                                             value={targetEnvironmentId || ''}
                                             onChange={(e) => {
-                                                setTargetEnvironmentId(Number(e.target.value) || null);
+                                                const val = e.target.value;
+                                                setTargetEnvironmentId(val === '' ? null : Number(val));
                                                 setTargetServerId(null);
+                                                setError(null);
                                             }}
                                             className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                                         >
@@ -357,7 +359,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
                                         </select>
                                     </div>
 
-                                    {targetEnvironmentId && (
+                                    {targetEnvironmentId !== null && (
                                         <div>
                                             <label className="block text-sm font-medium mb-2">
                                                 <Server className="inline h-4 w-4 mr-1" />
@@ -365,7 +367,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
                                             </label>
                                             <select
                                                 value={targetServerId || ''}
-                                                onChange={(e) => setTargetServerId(Number(e.target.value) || null)}
+                                                onChange={(e) => { const val = e.target.value; setTargetServerId(val === '' ? null : Number(val)); setError(null); }}
                                                 className="w-full px-3 py-2 rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                                             >
                                                 <option value="">Select server...</option>

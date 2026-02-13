@@ -94,11 +94,11 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
         if (step === 'mode') {
             setStep('target');
         } else if (step === 'target') {
-            if (!targetEnvironmentId || !targetServerId) {
+            if (targetEnvironmentId === null || targetServerId === null) {
                 setError('Please select a target environment and server');
                 return;
             }
-            if (mode === 'data_only' && !targetDatabaseUuid) {
+            if (mode === 'data_only' && targetDatabaseUuid === null) {
                 setError('Please select a target database');
                 return;
             }
@@ -117,7 +117,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
     };
 
     const handleSubmit = async () => {
-        if (!targetEnvironmentId || !targetServerId) return;
+        if (targetEnvironmentId === null || targetServerId === null) return;
 
         setIsSubmitting(true);
         setError(null);
@@ -291,6 +291,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                                                     setTargetEnvironmentId(env.id);
                                                     setTargetServerId(null);
                                                     setTargetDatabaseUuid(null);
+                                                    setError(null);
                                                 }}
                                                 className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                                                     targetEnvironmentId === env.id
@@ -314,7 +315,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                                 </div>
 
                                 {/* Server selection */}
-                                {targetEnvironmentId && (
+                                {targetEnvironmentId !== null && (
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-foreground">
                                             Target Server
@@ -326,6 +327,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                                                     onClick={() => {
                                                         setTargetServerId(server.id);
                                                         setTargetDatabaseUuid(null);
+                                                        setError(null);
                                                     }}
                                                     className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                                                         targetServerId === server.id
@@ -350,7 +352,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                                 )}
 
                                 {/* Existing database selection for data_only mode */}
-                                {mode === 'data_only' && targetServerId && (
+                                {mode === 'data_only' && targetServerId !== null && (
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-foreground">
                                             Target Database
@@ -359,7 +361,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                                             {availableDatabases.map((db) => (
                                                 <button
                                                     key={db.uuid}
-                                                    onClick={() => setTargetDatabaseUuid(db.uuid)}
+                                                    onClick={() => { setTargetDatabaseUuid(db.uuid); setError(null); }}
                                                     className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                                                         targetDatabaseUuid === db.uuid
                                                             ? 'border-primary bg-primary/5'
@@ -423,7 +425,7 @@ export function TransferModal({ isOpen, onClose, database }: TransferModalProps)
                                         {getSelectedServer()?.name}
                                     </span>
                                 </div>
-                                {mode === 'data_only' && targetDatabaseUuid && (
+                                {mode === 'data_only' && targetDatabaseUuid !== null && (
                                     <div className="flex justify-between">
                                         <span className="text-foreground-muted">Target Database</span>
                                         <span className="font-medium text-foreground">
