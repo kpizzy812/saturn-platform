@@ -1,8 +1,10 @@
 <?php
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
+use Monolog\Processor\UidProcessor;
 
 return [
 
@@ -55,6 +57,15 @@ return [
             'driver' => 'stack',
             'channels' => ['single'],
             'ignore_exceptions' => false,
+        ],
+
+        'production' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => env('LOG_LEVEL', 'warning'),
+            'days' => 30,
+            'formatter' => JsonFormatter::class,
+            'processors' => [UidProcessor::class],
         ],
 
         'single' => [

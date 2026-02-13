@@ -183,22 +183,14 @@ Remaining work: improve edge cases where rolling update is unsupported.
 
 ---
 
-### [ ] 14. Structured Logging (JSON)
-**Effort:** 1 day
+### [x] 14. ~~Structured Logging (JSON)~~ — DONE
+**Fixed:** 2026-02-13
 
-> **Verified:** All channels use plain text. Default LOG_LEVEL is `debug`. No JSON formatter, no correlation IDs.
-
-```php
-// config/logging.php
-'production' => [
-    'driver' => 'daily',
-    'level' => 'warning',
-    'days' => 30,
-    'formatter' => \Monolog\Formatter\JsonFormatter::class,
-],
-```
-
-Add RequestIdProcessor for correlation IDs.
+- `production` log channel: JSON format, daily rotation, 30 days, `warning` level
+- `AddRequestId` middleware: generates/preserves `X-Request-ID` for correlation
+- `UidProcessor`: adds unique ID to every log entry
+- `.env.production`: `LOG_CHANNEL=production`, `LOG_LEVEL=warning`
+- 4 unit tests for middleware
 
 ---
 
