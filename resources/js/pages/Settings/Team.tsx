@@ -4,6 +4,7 @@ import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
+import { KickMemberModal } from '@/components/team/KickMemberModal';
 import { useToast } from '@/components/ui/Toast';
 import {
     Mail,
@@ -22,7 +23,8 @@ import {
     Activity,
     Clock,
     Search,
-    Filter
+    Filter,
+    Archive
 } from 'lucide-react';
 
 interface TeamMember {
@@ -107,7 +109,7 @@ export default function TeamSettings({
         setReceivedInvitations(initialReceivedInvitations);
     }, [initialReceivedInvitations]);
     const [showInviteModal, setShowInviteModal] = React.useState(false);
-    const [showRemoveModal, setShowRemoveModal] = React.useState(false);
+    const [showKickModal, setShowKickModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
     const [showProjectsModal, setShowProjectsModal] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);
@@ -116,7 +118,6 @@ export default function TeamSettings({
     const [newRole, setNewRole] = React.useState<TeamMember['role']>('member');
     const [isInviting, setIsInviting] = React.useState(false);
     const [isChangingRole, setIsChangingRole] = React.useState(false);
-    const [isRemoving, setIsRemoving] = React.useState(false);
     const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
     const [processingInviteId, setProcessingInviteId] = React.useState<number | null>(null);
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -187,34 +188,6 @@ export default function TeamSettings({
                 },
                 onFinish: () => {
                     setIsChangingRole(false);
-                }
-            });
-        }
-    };
-
-    const handleRemoveMember = () => {
-        if (selectedMember) {
-            setIsRemoving(true);
-
-            router.delete(`/settings/team/members/${selectedMember.id}`, {
-                onSuccess: () => {
-                    setMembers(members.filter(m => m.id !== selectedMember.id));
-                    toast({
-                        title: 'Member removed',
-                        description: `${selectedMember.name} has been removed from the team.`,
-                    });
-                    setShowRemoveModal(false);
-                    setSelectedMember(null);
-                },
-                onError: () => {
-                    toast({
-                        title: 'Failed to remove member',
-                        description: 'An error occurred while removing the team member.',
-                        variant: 'error',
-                    });
-                },
-                onFinish: () => {
-                    setIsRemoving(false);
                 }
             });
         }
@@ -353,12 +326,20 @@ export default function TeamSettings({
                                     </Button>
                                 </Link>
                                 {canManageTeam && (
-                                    <Link href="/settings/team/permission-sets">
-                                        <Button variant="secondary" size="sm">
-                                            <Shield className="mr-2 h-4 w-4" />
-                                            Permission Sets
-                                        </Button>
-                                    </Link>
+                                    <>
+                                        <Link href="/settings/team/permission-sets">
+                                            <Button variant="secondary" size="sm">
+                                                <Shield className="mr-2 h-4 w-4" />
+                                                Permission Sets
+                                            </Button>
+                                        </Link>
+                                        <Link href="/settings/team/archives">
+                                            <Button variant="secondary" size="sm">
+                                                <Archive className="mr-2 h-4 w-4" />
+                                                Archives
+                                            </Button>
+                                        </Link>
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -591,7 +572,7 @@ export default function TeamSettings({
                                                                 danger
                                                                 onClick={() => {
                                                                     setSelectedMember(member);
-                                                                    setShowRemoveModal(true);
+                                                                    setShowKickModal(true);
                                                                 }}
                                                             >
                                                                 <UserX className="h-4 w-4" />
@@ -817,22 +798,21 @@ export default function TeamSettings({
                 </ModalFooter>
             </Modal>
 
-            {/* Remove Member Modal */}
-            <Modal
-                isOpen={showRemoveModal}
-                onClose={() => setShowRemoveModal(false)}
-                title="Remove Team Member"
-                description={`Are you sure you want to remove ${selectedMember?.name} from the team? They will lose access to all team resources.`}
-            >
-                <ModalFooter>
-                    <Button variant="secondary" onClick={() => setShowRemoveModal(false)} disabled={isRemoving}>
-                        Cancel
-                    </Button>
-                    <Button variant="danger" onClick={handleRemoveMember} loading={isRemoving}>
-                        Remove Member
-                    </Button>
-                </ModalFooter>
-            </Modal>
+            {/* Kick Member Modal */}
+            {selectedMember && (
+                <KickMemberModal
+                    isOpen={showKickModal}
+                    onClose={() => {
+                        setShowKickModal(false);
+                        setSelectedMember(null);
+                        router.reload();
+                    }}
+                    member={selectedMember}
+                    teamMembers={members
+                        .filter(m => m.id !== selectedMember.id && m.role !== 'owner')
+                        .map(m => ({ id: m.id, name: m.name, email: m.email }))}
+                />
+            )}
 
             {/* Configure Projects Modal */}
             <ConfigureProjectsModal
