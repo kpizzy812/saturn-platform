@@ -307,34 +307,40 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
         ->with(['executions' => function ($query) {
             $query->orderBy('created_at', 'desc')->limit(50);
         }, 's3'])
-        ->get()
-        ->map(function ($backup) {
+        ->get();
+
+    // Extract first scheduled backup config for the frontend
+    $firstScheduled = $scheduledBackups->first();
+    $scheduledBackup = $firstScheduled ? [
+        'uuid' => $firstScheduled->uuid,
+        'enabled' => $firstScheduled->enabled,
+        'frequency' => $firstScheduled->frequency,
+        'databases_to_backup' => $firstScheduled->databases_to_backup,
+        'created_at' => $firstScheduled->created_at,
+        'updated_at' => $firstScheduled->updated_at,
+    ] : null;
+
+    // Flatten all executions into a single backups list for the frontend
+    $backups = $scheduledBackups->flatMap(function ($backup) {
+        return $backup->executions->map(function ($execution) {
             return [
-                'id' => $backup->id,
-                'uuid' => $backup->uuid,
-                'enabled' => $backup->enabled,
-                'frequency' => $backup->frequency,
-                'save_s3' => $backup->save_s3,
-                's3_storage_id' => $backup->s3_storage_id,
-                'databases_to_backup' => $backup->databases_to_backup,
-                'executions' => $backup->executions->map(function ($execution) {
-                    return [
-                        'id' => $execution->id,
-                        'status' => $execution->status,
-                        'message' => $execution->message,
-                        'size' => $execution->size,
-                        'filename' => $execution->filename,
-                        's3_uploaded' => $execution->s3_uploaded,
-                        'created_at' => $execution->created_at,
-                        'updated_at' => $execution->updated_at,
-                    ];
-                }),
+                'id' => $execution->id,
+                'filename' => $execution->filename ?? 'backup-'.$execution->id,
+                'size' => $execution->size ?? 'Unknown',
+                'status' => match ($execution->status) {
+                    'success' => 'completed',
+                    'running' => 'in_progress',
+                    default => $execution->status,
+                },
+                'created_at' => $execution->created_at,
             ];
         });
+    })->sortByDesc('created_at')->values();
 
     return Inertia::render('Databases/Backups', [
         'database' => formatDatabaseForView([$database, $type]),
-        'scheduledBackups' => $scheduledBackups,
+        'backups' => $backups,
+        'scheduledBackup' => $scheduledBackup,
     ]);
 })->name('databases.backups');
 
