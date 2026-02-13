@@ -16,6 +16,7 @@ import {
     AlertCircle,
     Save,
 } from 'lucide-react';
+import { BrandIcon } from '@/components/ui/BrandIcon';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 
 interface Props {
@@ -548,8 +549,8 @@ export default function DatabaseSettings({ database }: Props) {
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${config.bgColor}`}>
-                        <Database className={`h-6 w-6 ${config.color}`} />
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${config.bgColor} ${config.color}`}>
+                        <BrandIcon name={database.database_type} className="h-6 w-6" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Database Settings</h1>

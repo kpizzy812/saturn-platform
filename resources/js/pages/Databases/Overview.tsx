@@ -17,6 +17,7 @@ import {
     type LucideIcon
 } from 'lucide-react';
 import { useDatabaseMetrics, type DatabaseMetrics } from '@/hooks';
+import { BrandIcon } from '@/components/ui/BrandIcon';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 
 /**
@@ -140,8 +141,8 @@ export default function DatabaseOverview({ database }: Props) {
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${config.bgColor}`}>
-                        <Database className={`h-6 w-6 ${config.color}`} />
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${config.bgColor} ${config.color}`}>
+                        <BrandIcon name={database.database_type} className="h-6 w-6" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">{database.name}</h1>
