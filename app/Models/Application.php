@@ -24,6 +24,9 @@ use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
+/**
+ * @property ApplicationSetting|null $settings
+ */
 #[OA\Schema(
     description: 'Application model',
     type: 'object',
@@ -1151,20 +1154,12 @@ class Application extends BaseModel
 
     public function isDeployable(): bool
     {
-        if ($this->settings->is_auto_deploy_enabled) {
-            return true;
-        }
-
-        return false;
+        return (bool) $this->settings?->is_auto_deploy_enabled;
     }
 
     public function isPRDeployable(): bool
     {
-        if ($this->settings->is_preview_deployments_enabled) {
-            return true;
-        }
-
-        return false;
+        return (bool) $this->settings?->is_preview_deployments_enabled;
     }
 
     public function deploymentType()
