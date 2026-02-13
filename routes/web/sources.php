@@ -95,14 +95,14 @@ Route::prefix('sources')->group(function () {
 
             $team = auth()->user()->currentTeam();
 
-            $githubApp = \App\Models\GithubApp::create([
-                'uuid' => (string) new \Visus\Cuid2\Cuid2,
-                'name' => 'github-app-pending',
-                'api_url' => 'https://api.github.com',
-                'html_url' => 'https://github.com',
-                'team_id' => $team->id,
-                'is_public' => $validated['is_public'] ?? false,
-            ]);
+            $githubApp = new \App\Models\GithubApp;
+            $githubApp->uuid = (string) new \Visus\Cuid2\Cuid2;
+            $githubApp->name = 'github-app-pending';
+            $githubApp->api_url = 'https://api.github.com';
+            $githubApp->html_url = 'https://github.com';
+            $githubApp->team_id = $team->id;
+            $githubApp->is_public = $validated['is_public'] ?? false;
+            $githubApp->save();
 
             return response()->json([
                 'uuid' => $githubApp->uuid,
@@ -201,16 +201,16 @@ Route::prefix('sources')->group(function () {
 
             $team = auth()->user()->currentTeam();
 
-            $gitlabApp = \App\Models\GitlabApp::create([
-                'uuid' => (string) new \Visus\Cuid2\Cuid2,
-                'name' => $validated['name'],
-                'api_url' => $validated['api_url'],
-                'html_url' => $validated['html_url'],
-                'app_id' => $validated['app_id'] ?? null,
-                'app_secret' => $validated['app_secret'] ?? null,
-                'group_name' => $validated['group_name'] ?? null,
-                'team_id' => $team->id,
-            ]);
+            $gitlabApp = new \App\Models\GitlabApp;
+            $gitlabApp->uuid = (string) new \Visus\Cuid2\Cuid2;
+            $gitlabApp->name = $validated['name'];
+            $gitlabApp->api_url = $validated['api_url'];
+            $gitlabApp->html_url = $validated['html_url'];
+            $gitlabApp->app_id = $validated['app_id'] ?? null;
+            $gitlabApp->app_secret = $validated['app_secret'] ?? null;
+            $gitlabApp->group_name = $validated['group_name'] ?? null;
+            $gitlabApp->team_id = $team->id;
+            $gitlabApp->save();
 
             return redirect()->route('sources.gitlab.show', ['id' => $gitlabApp->id])
                 ->with('success', 'GitLab connection created successfully');
