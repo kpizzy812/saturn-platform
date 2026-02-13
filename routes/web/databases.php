@@ -344,6 +344,52 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
     ]);
 })->name('databases.backups');
 
+Route::post('/databases/{uuid}/backups', function (string $uuid) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    // Get or create a scheduled backup for this database
+    $scheduledBackup = $database->scheduledBackups()->first();
+    if (! $scheduledBackup) {
+        $scheduledBackup = $database->scheduledBackups()->make([
+            'uuid' => (string) new \Visus\Cuid2\Cuid2,
+            'enabled' => false,
+            'frequency' => '0 0 * * *',
+            'save_s3' => false,
+        ]);
+        $scheduledBackup->team_id = currentTeam()->id;
+        $scheduledBackup->save();
+    }
+
+    \App\Jobs\DatabaseBackupJob::dispatch($scheduledBackup);
+
+    return back()->with('success', 'Backup job queued successfully. Check back shortly for results.');
+})->name('databases.backups.create');
+
+Route::patch('/databases/{uuid}/backups/schedule', function (string $uuid, \Illuminate\Http\Request $request) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $validated = $request->validate([
+        'enabled' => 'required|boolean',
+        'frequency' => 'required|string',
+    ]);
+
+    $scheduledBackup = $database->scheduledBackups()->first();
+    if ($scheduledBackup) {
+        $scheduledBackup->update($validated);
+    } else {
+        $scheduledBackup = $database->scheduledBackups()->make([
+            'uuid' => (string) new \Visus\Cuid2\Cuid2,
+            'enabled' => $validated['enabled'],
+            'frequency' => $validated['frequency'],
+            'save_s3' => false,
+        ]);
+        $scheduledBackup->team_id = currentTeam()->id;
+        $scheduledBackup->save();
+    }
+
+    return back()->with('success', 'Backup schedule updated successfully.');
+})->name('databases.backups.schedule');
+
 Route::get('/databases/{uuid}/logs', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);
 
