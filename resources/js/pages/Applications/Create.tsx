@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge, BranchSelector } from '@/components/ui';
-import { Github, Gitlab, Package, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap } from 'lucide-react';
+import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook } from 'lucide-react';
+import { Bitbucket } from '@/components/icons/Bitbucket';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
 import type { Project, Environment, Server } from '@/types';
@@ -19,6 +20,7 @@ interface Props {
     needsProject?: boolean;
     preselectedSource?: SourceType | null;
     wildcardDomain?: WildcardDomain | null;
+    hasGithubApp?: boolean;
 }
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
@@ -38,7 +40,7 @@ interface FormData {
     docker_image?: string;
 }
 
-export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null }: Props) {
+export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null, hasGithubApp = false }: Props) {
     const validSources: SourceType[] = ['github', 'gitlab', 'bitbucket', 'docker'];
     const initialSource = preselectedSource && validSources.includes(preselectedSource) ? preselectedSource : null;
 
@@ -295,7 +297,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     selected={formData.source_type === 'gitlab'}
                                 />
                                 <SourceCard
-                                    icon={<Package className="h-6 w-6" />}
+                                    icon={<Bitbucket className="h-6 w-6" />}
                                     title="Bitbucket"
                                     description="Deploy from Bitbucket repository"
                                     onClick={() => handleSourceSelect('bitbucket')}
@@ -740,6 +742,32 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     } />
                                     {formData.fqdn && <ReviewItem label="Domain" value={formData.fqdn} />}
                                 </div>
+
+                                {/* Auto-deploy status indicator */}
+                                {formData.source_type !== 'docker' && (
+                                    <div className={`rounded-lg p-4 flex gap-3 ${
+                                        hasGithubApp
+                                            ? 'bg-green-500/10 border border-green-500/30'
+                                            : 'bg-amber-500/10 border border-amber-500/30'
+                                    }`}>
+                                        {hasGithubApp ? (
+                                            <Zap className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                                        ) : (
+                                            <Webhook className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                        )}
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium text-foreground">
+                                                {hasGithubApp ? 'Auto-deploy will be enabled' : 'Manual webhook for auto-deploy'}
+                                            </p>
+                                            <p className="text-sm text-foreground-muted">
+                                                {hasGithubApp
+                                                    ? 'Pushes to this repo will automatically trigger deploys via your connected GitHub App.'
+                                                    : 'A webhook secret will be generated. Set up a webhook in your Git provider to enable auto-deploy.'
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4 flex gap-3">
                                     <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />

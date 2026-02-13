@@ -114,6 +114,13 @@ Route::get('/applications/create', function () {
         }
     }
 
+    // Check if team has an active GitHub App for auto-deploy
+    $hasGithubApp = \App\Models\GithubApp::where('team_id', $team->id)
+        ->whereNotNull('app_id')
+        ->whereNotNull('installation_id')
+        ->where('is_public', false)
+        ->exists();
+
     return Inertia::render('Applications/Create', [
         'projects' => $projects,
         'localhost' => $localhost,
@@ -121,6 +128,7 @@ Route::get('/applications/create', function () {
         'needsProject' => $projects->isEmpty(),
         'preselectedSource' => request()->query('source'),
         'wildcardDomain' => $wildcardDomain,
+        'hasGithubApp' => $hasGithubApp,
     ]);
 })->name('applications.create');
 
@@ -324,6 +332,23 @@ Route::get('/applications/{uuid}', function (string $uuid) {
         $displayStatus = $containerStatus ?: 'stopped';
     }
 
+    // Auto-deploy status
+    $source = $application->source;
+    $settings = $application->settings;
+    $hasRealGithubApp = $source
+        && $source instanceof \App\Models\GithubApp
+        && $source->id !== 0
+        && ! $source->is_public
+        && $source->app_id
+        && $source->installation_id;
+
+    $autoDeployStatus = 'not_configured';
+    if ($hasRealGithubApp && $application->repository_project_id) {
+        $autoDeployStatus = 'automatic';
+    } elseif ($application->manual_webhook_secret_github) {
+        $autoDeployStatus = 'manual_webhook';
+    }
+
     return Inertia::render('Applications/Show', [
         'application' => [
             'id' => $application->id,
@@ -341,6 +366,11 @@ Route::get('/applications/{uuid}', function (string $uuid) {
             'environment' => $application->environment,
             'recent_deployments' => $recentDeployments,
             'environment_variables_count' => $envVarsCount,
+            'auto_deploy_status' => $autoDeployStatus,
+            'is_auto_deploy_enabled' => $settings?->is_auto_deploy_enabled ?? false,
+            'source_name' => $hasRealGithubApp ? $source->name : null,
+            'webhook_url' => url('/webhooks/source/github/events/manual'),
+            'has_webhook_secret' => ! empty($application->manual_webhook_secret_github),
         ],
     ]);
 })->name('applications.show');

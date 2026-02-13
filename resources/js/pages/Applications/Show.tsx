@@ -27,6 +27,9 @@ import {
     Loader2,
     History,
     AlertTriangle,
+    Zap,
+    Webhook,
+    AlertCircle,
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
@@ -39,6 +42,11 @@ interface ApplicationWithRelations extends Application {
     environment: Environment;
     recent_deployments?: Deployment[];
     environment_variables_count?: number;
+    auto_deploy_status?: 'automatic' | 'manual_webhook' | 'not_configured';
+    is_auto_deploy_enabled?: boolean;
+    source_name?: string | null;
+    webhook_url?: string;
+    has_webhook_secret?: boolean;
 }
 
 interface Props {
@@ -374,6 +382,15 @@ export default function ApplicationShow({ application: initialApplication }: Pro
 
                     {/* Sidebar */}
                     <div className="space-y-6">
+                        {/* Auto Deploy Status */}
+                        <AutoDeployCard
+                            status={application.auto_deploy_status || 'not_configured'}
+                            enabled={application.is_auto_deploy_enabled ?? false}
+                            sourceName={application.source_name}
+                            gitBranch={application.git_branch}
+                            applicationUuid={application.uuid}
+                        />
+
                         {/* Application Info */}
                         <Card>
                             <CardHeader>
@@ -715,6 +732,100 @@ function ResourceBar({ label, value, max, unit }: ResourceBarProps) {
                 />
             </div>
         </div>
+    );
+}
+
+interface AutoDeployCardProps {
+    status: 'automatic' | 'manual_webhook' | 'not_configured';
+    enabled: boolean;
+    sourceName?: string | null;
+    gitBranch?: string | null;
+    applicationUuid: string;
+}
+
+function AutoDeployCard({ status, enabled, sourceName, gitBranch, applicationUuid }: AutoDeployCardProps) {
+    const statusConfig = {
+        automatic: {
+            borderClass: 'border-green-500/50',
+            bgClass: 'bg-green-500/10',
+            iconBg: 'bg-green-500/20',
+            iconColor: 'text-green-500',
+            icon: <Zap className="h-4 w-4" />,
+            title: 'Auto Deploy Active',
+            description: enabled
+                ? `Pushes to ${gitBranch || 'main'} trigger deploys automatically`
+                : 'Configured but currently disabled',
+        },
+        manual_webhook: {
+            borderClass: 'border-amber-500/50',
+            bgClass: 'bg-amber-500/10',
+            iconBg: 'bg-amber-500/20',
+            iconColor: 'text-amber-500',
+            icon: <Webhook className="h-4 w-4" />,
+            title: 'Manual Webhook',
+            description: enabled
+                ? 'Deploys via webhook — configure in your Git provider'
+                : 'Webhook configured but auto-deploy disabled',
+        },
+        not_configured: {
+            borderClass: 'border-border',
+            bgClass: '',
+            iconBg: 'bg-foreground-muted/20',
+            iconColor: 'text-foreground-muted',
+            icon: <AlertCircle className="h-4 w-4" />,
+            title: 'Auto Deploy Not Set Up',
+            description: 'Connect a GitHub App or set up webhooks for automatic deploys',
+        },
+    };
+
+    const config = statusConfig[status];
+
+    return (
+        <Card className={`${config.borderClass} ${config.bgClass}`}>
+            <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${config.iconBg} ${config.iconColor} shrink-0`}>
+                        {config.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-foreground">{config.title}</h3>
+                            {status === 'automatic' && enabled && (
+                                <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                            )}
+                        </div>
+                        <p className="text-xs text-foreground-muted mt-0.5">{config.description}</p>
+                        {sourceName && status === 'automatic' && (
+                            <p className="text-xs text-foreground-subtle mt-1">
+                                via {sourceName}
+                            </p>
+                        )}
+                    </div>
+                </div>
+                {status === 'not_configured' && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                        <Link
+                            href={`/applications/${applicationUuid}/settings`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        >
+                            <Settings className="h-3.5 w-3.5" />
+                            Set up auto deploy
+                        </Link>
+                    </div>
+                )}
+                {status !== 'not_configured' && !enabled && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                        <Link
+                            href={`/applications/${applicationUuid}/settings`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        >
+                            <Settings className="h-3.5 w-3.5" />
+                            Enable in settings
+                        </Link>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
