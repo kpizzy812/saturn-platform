@@ -71,7 +71,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
     const fetchTargets = async () => {
         setIsLoadingTargets(true);
         try {
-            const response = await fetch(`/transfers/targets?source_type=${resourceType}&source_uuid=${resource.uuid}`);
+            const response = await fetch(`/_internal/transfers/targets?source_type=${resourceType}&source_uuid=${resource.uuid}`);
             if (response.ok) {
                 const data = await response.json();
                 setTargets(data);
