@@ -82,8 +82,8 @@ Route::prefix('sources')->group(function () {
             $fqdn = config('app.url');
 
             return Inertia::render('Sources/GitHub/Create', [
-                'webhookUrl' => $fqdn.'/source/github/events',
-                'callbackUrl' => $fqdn.'/source/github/redirect',
+                'webhookUrl' => $fqdn.'/webhooks/source/github/events',
+                'callbackUrl' => $fqdn.'/webhooks/source/github/redirect',
             ]);
         })->name('sources.github.create');
 

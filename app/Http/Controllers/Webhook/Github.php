@@ -527,21 +527,54 @@ class Github extends Controller
         try {
             $code = $request->get('code');
             $state = $request->get('state');
-            $github_app = GithubApp::where('uuid', $state)->firstOrFail();
+
+            if (! $code || ! $state) {
+                \Log::error('GitHub App redirect: missing code or state', [
+                    'code' => $code,
+                    'state' => $state,
+                ]);
+
+                return redirect()->route('sources.github.index')
+                    ->with('error', 'Invalid GitHub callback — missing parameters.');
+            }
+
+            $github_app = GithubApp::where('uuid', $state)->first();
+            if (! $github_app) {
+                \Log::error('GitHub App redirect: GithubApp not found', ['state' => $state]);
+
+                return redirect()->route('sources.github.index')
+                    ->with('error', 'GitHub App record not found. Please try creating again.');
+            }
+
             $api_url = data_get($github_app, 'api_url');
-            $data = Http::accept('application/vnd.github+json')->post("$api_url/app-manifests/$code/conversions")->throw()->json();
+            $response = Http::accept('application/vnd.github+json')
+                ->post("$api_url/app-manifests/$code/conversions");
+
+            if ($response->failed()) {
+                \Log::error('GitHub App redirect: manifest conversion failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return redirect()->route('sources.github.index')
+                    ->with('error', 'Failed to complete GitHub App setup. Please try again.');
+            }
+
+            $data = $response->json();
             $id = data_get($data, 'id');
             $slug = data_get($data, 'slug');
             $client_id = data_get($data, 'client_id');
             $client_secret = data_get($data, 'client_secret');
-            $private_key = data_get($data, 'pem');
+            $pem = data_get($data, 'pem');
             $webhook_secret = data_get($data, 'webhook_secret');
+
             $private_key = PrivateKey::create([
                 'name' => "github-app-{$slug}",
-                'private_key' => $private_key,
+                'private_key' => $pem,
                 'team_id' => $github_app->team_id,
                 'is_git_related' => true,
             ]);
+
             $github_app->name = $slug;
             $github_app->app_id = $id;
             $github_app->client_id = $client_id;
@@ -550,9 +583,21 @@ class Github extends Controller
             $github_app->private_key_id = $private_key->id;
             $github_app->save();
 
+            \Log::info('GitHub App created successfully', [
+                'github_app_id' => $github_app->id,
+                'app_id' => $id,
+                'slug' => $slug,
+            ]);
+
             return redirect()->route('sources.github.show', ['id' => $github_app->id]);
         } catch (Exception $e) {
-            return handleError($e);
+            \Log::error('GitHub App redirect error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('sources.github.index')
+                ->with('error', 'GitHub App setup failed: '.$e->getMessage());
         }
     }
 
@@ -562,15 +607,44 @@ class Github extends Controller
             $installation_id = $request->get('installation_id');
             $source = $request->get('source');
             $setup_action = $request->get('setup_action');
-            $github_app = GithubApp::where('uuid', $source)->firstOrFail();
+
+            if (! $installation_id || ! $source) {
+                \Log::error('GitHub App install: missing parameters', [
+                    'installation_id' => $installation_id,
+                    'source' => $source,
+                ]);
+
+                return redirect()->route('sources.github.index')
+                    ->with('error', 'Invalid GitHub install callback — missing parameters.');
+            }
+
+            $github_app = GithubApp::where('uuid', $source)->first();
+            if (! $github_app) {
+                \Log::error('GitHub App install: GithubApp not found', ['source' => $source]);
+
+                return redirect()->route('sources.github.index')
+                    ->with('error', 'GitHub App record not found.');
+            }
+
             if ($setup_action === 'install') {
                 $github_app->installation_id = $installation_id;
                 $github_app->save();
+
+                \Log::info('GitHub App installed', [
+                    'github_app_id' => $github_app->id,
+                    'installation_id' => $installation_id,
+                ]);
             }
 
             return redirect()->route('sources.github.show', ['id' => $github_app->id]);
         } catch (Exception $e) {
-            return handleError($e);
+            \Log::error('GitHub App install error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('sources.github.index')
+                ->with('error', 'GitHub App installation failed: '.$e->getMessage());
         }
     }
 }

@@ -29,7 +29,7 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
         },
         redirect_url: callbackUrl,
         callback_urls: [callbackUrl],
-        setup_url: `${window.location.origin}/source/github/install`,
+        setup_url: `${window.location.origin}/webhooks/source/github/install`,
         setup_on_update: true,
         public: isPublic,
         default_permissions: {
