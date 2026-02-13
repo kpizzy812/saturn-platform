@@ -756,6 +756,7 @@ function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, source
     const [showAppSelector, setShowAppSelector] = useState(false);
     const [isLinking, setIsLinking] = useState(false);
     const [detailsLoaded, setDetailsLoaded] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
@@ -788,15 +789,18 @@ function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, source
                 setDetailsLoaded(true);
             } catch {
                 setDetailsLoaded(true);
+                setError('Failed to load auto-deploy details');
             }
         };
         loadDetails();
     }, [applicationUuid]);
 
     const handleToggle = async () => {
+        if (isToggling) return;
         const newValue = !enabled;
         setIsToggling(true);
         setEnabled(newValue);
+        setError(null);
         try {
             const res = await fetch(`/web-api/applications/${applicationUuid}`, {
                 method: 'PATCH',
@@ -810,9 +814,11 @@ function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, source
             });
             if (!res.ok) {
                 setEnabled(!newValue);
+                setError('Failed to update auto-deploy');
             }
         } catch {
             setEnabled(!newValue);
+            setError('Failed to update auto-deploy');
         } finally {
             setIsToggling(false);
         }
@@ -820,6 +826,7 @@ function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, source
 
     const handleLinkGithubApp = async (appId: number) => {
         setIsLinking(true);
+        setError(null);
         try {
             const res = await fetch(`/web-api/applications/${applicationUuid}`, {
                 method: 'PATCH',
@@ -842,11 +849,16 @@ function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, source
                     setStatus(data.auto_deploy_status || 'not_configured');
                     setSourceName(data.source_info?.name || null);
                     setEnabled(data.is_auto_deploy_enabled ?? false);
+                    setWebhookUrl(data.webhook_url || null);
+                    setWebhookSecret(data.manual_webhook_secret_github || null);
                 }
                 setShowAppSelector(false);
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setError(data.message || 'Failed to connect GitHub App');
             }
         } catch {
-            // Silently fail
+            setError('Failed to connect GitHub App');
         } finally {
             setIsLinking(false);
         }
@@ -904,11 +916,21 @@ function AutoDeployCard({ status: initialStatus, enabled: initialEnabled, source
                     <button
                         onClick={handleToggle}
                         disabled={isToggling}
+                        role="switch"
+                        aria-checked={enabled}
+                        aria-label="Toggle auto-deploy"
                         className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? 'bg-primary' : 'bg-gray-600'} ${isToggling ? 'opacity-50' : ''}`}
                     >
                         <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${enabled ? 'left-[18px]' : 'left-0.5'}`} />
                     </button>
                 </div>
+
+                {/* Error message */}
+                {error && (
+                    <div className="mb-3 rounded bg-red-500/10 border border-red-500/30 px-3 py-2 text-xs text-red-400">
+                        {error}
+                    </div>
+                )}
 
                 {/* Status description */}
                 <p className="text-xs text-foreground-muted mb-3">

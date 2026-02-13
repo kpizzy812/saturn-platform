@@ -219,6 +219,7 @@ Route::post('/applications', function (Request $request) {
     // Set source type for git — prefer team's active GitHub App for auto-deploy
     if (in_array($validated['source_type'], ['github', 'gitlab', 'bitbucket'])) {
         $githubApp = null;
+        $repositoryProjectId = null;
 
         if ($validated['source_type'] === 'github') {
             // Find team's active GitHub App (has app_id + installation_id = real credentials)
@@ -229,14 +230,46 @@ Route::post('/applications', function (Request $request) {
                 ->first();
         }
 
-        // Fallback to public source
-        if (! $githubApp) {
-            $githubApp = \App\Models\GithubApp::find(0);
+        // Fetch repository_project_id BEFORE saving — ensures webhook matching works
+        if ($githubApp && ! empty($validated['git_repository'])) {
+            $repoFullName = str($validated['git_repository'])
+                ->replace('https://github.com/', '')
+                ->replace('http://github.com/', '')
+                ->replace('.git', '')
+                ->toString();
+
+            // Validate repo URL format: must be owner/repo
+            if (preg_match('#^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$#', $repoFullName)) {
+                try {
+                    $token = generateGithubInstallationToken($githubApp);
+                    $repoResponse = \Illuminate\Support\Facades\Http::GitHub($githubApp->api_url, $token)
+                        ->timeout(10)
+                        ->get("/repos/{$repoFullName}");
+                    if ($repoResponse->successful()) {
+                        $repositoryProjectId = $repoResponse->json('id');
+                    }
+                } catch (\Throwable $e) {
+                    // GitHub API failed — fall back to public source, warn user
+                    \Illuminate\Support\Facades\Log::warning("GitHub API failed during app creation: {$e->getMessage()}");
+                    $githubApp = null;
+                }
+            } else {
+                // Invalid repo format — fall back to public source
+                $githubApp = null;
+            }
         }
 
-        if ($githubApp) {
+        // Set source: real GitHub App (with verified repo ID) or public fallback
+        if ($githubApp && $repositoryProjectId) {
             $application->source_type = \App\Models\GithubApp::class;
             $application->source_id = $githubApp->id;
+            $application->repository_project_id = $repositoryProjectId;
+        } else {
+            $publicSource = \App\Models\GithubApp::find(0);
+            if ($publicSource) {
+                $application->source_type = \App\Models\GithubApp::class;
+                $application->source_id = $publicSource->id;
+            }
         }
 
         // Auto-generate manual webhook secret for fallback manual webhooks
@@ -247,31 +280,6 @@ Route::post('/applications', function (Request $request) {
     $application->ports_exposes = '80';
 
     $application->save();
-
-    // Fetch repository_project_id via GitHub API for webhook matching
-    if ($application->source_id && $application->source_id !== 0 && $application->git_repository) {
-        try {
-            $source = $application->source;
-            if ($source && $source->app_id && $source->installation_id) {
-                $repoFullName = str($application->git_repository)
-                    ->replace('https://github.com/', '')
-                    ->replace('http://github.com/', '')
-                    ->replace('.git', '')
-                    ->toString();
-                $token = generateGithubInstallationToken($source);
-                $repoResponse = \Illuminate\Support\Facades\Http::GitHub($source->api_url, $token)
-                    ->timeout(10)
-                    ->get("/repos/{$repoFullName}");
-                if ($repoResponse->successful()) {
-                    $application->repository_project_id = $repoResponse->json('id');
-                    $application->save();
-                }
-            }
-        } catch (\Throwable $e) {
-            // Non-critical: auto-deploy won't work but app still created
-            \Illuminate\Support\Facades\Log::warning("Failed to fetch repository_project_id for app {$application->uuid}: {$e->getMessage()}");
-        }
-    }
 
     // Handle domain: expand subdomain-only input or auto-generate if empty
     if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {

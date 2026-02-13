@@ -600,6 +600,9 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     <h3 className="text-sm font-medium text-foreground">Health Check</h3>
                     <button
                         onClick={() => setHealthCheckEnabled(!healthCheckEnabled)}
+                        role="switch"
+                        aria-checked={healthCheckEnabled}
+                        aria-label="Toggle health check"
                         className={`relative h-5 w-9 rounded-full transition-colors ${healthCheckEnabled ? 'bg-primary' : 'bg-background-tertiary'}`}
                     >
                         <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${healthCheckEnabled ? 'left-[18px]' : 'left-0.5'}`} />
@@ -735,6 +738,9 @@ function AutoDeploySection({
                 <h3 className="text-sm font-medium text-foreground">Auto Deploy</h3>
                 <button
                     onClick={() => onToggleAutoDeploy(!autoDeployEnabled)}
+                    role="switch"
+                    aria-checked={autoDeployEnabled}
+                    aria-label="Toggle auto-deploy"
                     className={`relative h-5 w-9 rounded-full transition-colors ${autoDeployEnabled ? 'bg-primary' : 'bg-background-tertiary'}`}
                 >
                     <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${autoDeployEnabled ? 'left-[18px]' : 'left-0.5'}`} />

@@ -103,9 +103,16 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
 
     // Handle is_auto_deploy_enabled (stored in application_settings)
     if ($request->has('is_auto_deploy_enabled')) {
-        $application->settings->update([
-            'is_auto_deploy_enabled' => (bool) $request->input('is_auto_deploy_enabled'),
-        ]);
+        $settings = $application->settings;
+        if ($settings) {
+            $settings->update([
+                'is_auto_deploy_enabled' => (bool) $request->input('is_auto_deploy_enabled'),
+            ]);
+        } else {
+            $application->settings()->create([
+                'is_auto_deploy_enabled' => (bool) $request->input('is_auto_deploy_enabled'),
+            ]);
+        }
     }
 
     // Handle GitHub App re-linking
@@ -130,43 +137,53 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
                 ->whereNotNull('installation_id')
                 ->first();
 
-            if ($githubApp) {
-                $application->source_id = $githubApp->id;
-                $application->source_type = \App\Models\GithubApp::class;
-                $application->save();
-
-                // Fetch repository_project_id via GitHub API
-                if ($application->git_repository) {
-                    try {
-                        $repoFullName = str($application->git_repository)
-                            ->replace('https://github.com/', '')
-                            ->replace('http://github.com/', '')
-                            ->replace('.git', '')
-                            ->toString();
-                        $token = generateGithubInstallationToken($githubApp);
-                        $repoResponse = Http::GitHub($githubApp->api_url, $token)
-                            ->timeout(10)
-                            ->get("/repos/{$repoFullName}");
-                        if ($repoResponse->successful()) {
-                            $application->repository_project_id = $repoResponse->json('id');
-                            $application->save();
-                        }
-                    } catch (\Throwable $e) {
-                        return response()->json([
-                            'message' => 'GitHub App linked but failed to fetch repository ID: '.$e->getMessage(),
-                            'application' => $application->fresh(),
-                        ], 200);
-                    }
-                }
-
-                // Auto-generate webhook secret if missing
-                if (! $application->manual_webhook_secret_github) {
-                    $application->manual_webhook_secret_github = \Illuminate\Support\Str::random(32);
-                    $application->save();
-                }
-            } else {
+            if (! $githubApp) {
                 return response()->json(['message' => 'GitHub App not found or not accessible.'], 404);
             }
+
+            // Fetch repository_project_id BEFORE updating source — atomic operation
+            $repositoryProjectId = null;
+            if ($application->git_repository) {
+                $repoFullName = str($application->git_repository)
+                    ->replace('https://github.com/', '')
+                    ->replace('http://github.com/', '')
+                    ->replace('.git', '')
+                    ->toString();
+
+                if (! preg_match('#^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$#', $repoFullName)) {
+                    return response()->json(['message' => 'Invalid repository URL format for GitHub API.'], 422);
+                }
+
+                try {
+                    $token = generateGithubInstallationToken($githubApp);
+                    $repoResponse = Http::GitHub($githubApp->api_url, $token)
+                        ->timeout(10)
+                        ->get("/repos/{$repoFullName}");
+                    if ($repoResponse->successful()) {
+                        $repositoryProjectId = $repoResponse->json('id');
+                    } else {
+                        return response()->json([
+                            'message' => 'GitHub API returned '.$repoResponse->status().': could not verify repository access. Check that your GitHub App has access to this repo.',
+                        ], 422);
+                    }
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'message' => 'Failed to connect to GitHub API: '.$e->getMessage(),
+                    ], 422);
+                }
+            }
+
+            // All verified — update atomically
+            $application->source_id = $githubApp->id;
+            $application->source_type = \App\Models\GithubApp::class;
+            $application->repository_project_id = $repositoryProjectId;
+
+            // Ensure webhook secret exists
+            if (! $application->manual_webhook_secret_github) {
+                $application->manual_webhook_secret_github = \Illuminate\Support\Str::random(32);
+            }
+
+            $application->save();
         }
     }
 
