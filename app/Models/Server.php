@@ -127,19 +127,7 @@ class Server extends BaseModel
     protected static function booted()
     {
         static::saving(function ($server) {
-            $payload = [];
-            if ($server->user) {
-                $payload['user'] = str($server->user)->trim();
-            }
-            if ($server->ip) {
-                $payload['ip'] = str($server->ip)->trim();
-
-                // Update ip_previous when ip is being changed
-                if ($server->isDirty('ip') && $server->getOriginal('ip')) {
-                    $payload['ip_previous'] = $server->getOriginal('ip');
-                }
-            }
-            $server->forceFill($payload);
+            $server->validateAndSanitizeConnection();
         });
         static::saved(function ($server) {
             if ($server->privateKey?->isDirty()) {
@@ -248,6 +236,46 @@ class Server extends BaseModel
     public function type()
     {
         return 'server';
+    }
+
+    /**
+     * Validate and sanitize IP and user fields before saving.
+     *
+     * @throws \InvalidArgumentException
+     */
+    /**
+     * Validate and sanitize IP and user fields before saving.
+     * Uses raw attributes to bypass the ip() accessor sanitizer.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function validateAndSanitizeConnection(): void
+    {
+        $payload = [];
+        // Use raw attributes to validate BEFORE accessor strips characters
+        $rawUser = $this->getAttributes()['user'] ?? null;
+        $rawIp = $this->getAttributes()['ip'] ?? null;
+
+        if ($rawUser) {
+            $user = trim($rawUser);
+            if (! preg_match('/^[a-zA-Z0-9_-]+$/', $user)) {
+                throw new \InvalidArgumentException('Server user contains invalid characters. Only alphanumeric, underscore and hyphen are allowed.');
+            }
+            $payload['user'] = $user;
+        }
+        if ($rawIp) {
+            $ip = trim($rawIp);
+            if (! filter_var($ip, FILTER_VALIDATE_IP)
+                && ! preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/', $ip)) {
+                throw new \InvalidArgumentException('Server IP must be a valid IP address or hostname.');
+            }
+            $payload['ip'] = $ip;
+
+            if ($this->isDirty('ip') && $this->getOriginal('ip')) {
+                $payload['ip_previous'] = $this->getOriginal('ip');
+            }
+        }
+        $this->forceFill($payload);
     }
 
     protected function isSaturnHost(): Attribute

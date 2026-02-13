@@ -35,9 +35,14 @@ Route::post('/servers', function (Request $request) {
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string|max:500',
-        'ip' => 'required|string|max:255',
+        'ip' => ['required', 'string', 'max:255', function ($attribute, $value, $fail) {
+            $v = trim($value);
+            if (! filter_var($v, FILTER_VALIDATE_IP) && ! preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/', $v)) {
+                $fail('The IP must be a valid IP address or hostname.');
+            }
+        }],
         'port' => 'required|integer|min:1|max:65535',
-        'user' => 'required|string|max:255',
+        'user' => ['required', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
         'private_key' => 'required_without:private_key_id|nullable|string',
         'private_key_id' => 'required_without:private_key|nullable|exists:private_keys,id',
     ]);
@@ -92,9 +97,14 @@ Route::patch('/servers/{uuid}/settings/general', function (string $uuid, Request
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string|max:500',
-        'ip' => 'required|string|max:255',
+        'ip' => ['required', 'string', 'max:255', function ($attribute, $value, $fail) {
+            $v = trim($value);
+            if (! filter_var($v, FILTER_VALIDATE_IP) && ! preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/', $v)) {
+                $fail('The IP must be a valid IP address or hostname.');
+            }
+        }],
         'port' => 'required|integer|min:1|max:65535',
-        'user' => 'required|string|max:255',
+        'user' => ['required', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
     ]);
 
     $server->update($validated);

@@ -46,9 +46,14 @@ class ServerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'ip' => 'required|string|max:255',
+            'ip' => ['required', 'string', 'max:255', function ($attribute, $value, $fail) {
+                $v = trim($value);
+                if (! filter_var($v, FILTER_VALIDATE_IP) && ! preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/', $v)) {
+                    $fail('The IP must be a valid IP address or hostname.');
+                }
+            }],
             'port' => 'required|integer|min:1|max:65535',
-            'user' => 'required|string|max:255',
+            'user' => ['required', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
             'private_key_id' => 'required|exists:private_keys,id',
         ]);
 

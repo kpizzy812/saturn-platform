@@ -476,10 +476,15 @@ class ServersController extends Controller
         $validator = customApiValidator($request->all(), [
             'name' => 'string|max:255',
             'description' => 'string|nullable',
-            'ip' => 'string|required',
+            'ip' => ['string', 'required', 'max:255', function ($attribute, $value, $fail) {
+                $v = trim($value);
+                if (! filter_var($v, FILTER_VALIDATE_IP) && ! preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/', $v)) {
+                    $fail('The IP must be a valid IP address or hostname.');
+                }
+            }],
             'port' => 'integer|nullable',
             'private_key_uuid' => 'string|required',
-            'user' => 'string|nullable',
+            'user' => ['string', 'nullable', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
             'is_build_server' => 'boolean|nullable',
             'instant_validate' => 'boolean|nullable',
             'proxy_type' => 'string|nullable',
@@ -638,10 +643,15 @@ class ServersController extends Controller
         $validator = customApiValidator($request->all(), [
             'name' => 'string|max:255|nullable',
             'description' => 'string|nullable',
-            'ip' => 'string|nullable',
+            'ip' => ['string', 'nullable', 'max:255', function ($attribute, $value, $fail) {
+                $v = trim($value);
+                if (! filter_var($v, FILTER_VALIDATE_IP) && ! preg_match('/^[a-zA-Z0-9]([a-zA-Z0-9\-\.]*[a-zA-Z0-9])?$/', $v)) {
+                    $fail('The IP must be a valid IP address or hostname.');
+                }
+            }],
             'port' => 'integer|nullable',
             'private_key_uuid' => 'string|nullable',
-            'user' => 'string|nullable',
+            'user' => ['string', 'nullable', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
             'is_build_server' => 'boolean|nullable',
             'instant_validate' => 'boolean|nullable',
             'proxy_type' => 'string|nullable',

@@ -249,11 +249,13 @@ Candidates:
 - [ ] Login → Create Project → Deploy App flow
 - [ ] Database creation → Import data flow
 
-### [ ] 21. Server Model Input Validation
-> **Verified PARTIALLY DONE:** `Server` already uses `HasSafeStringAttribute` trait (strips HTML from name/description). But no `FILTER_VALIDATE_IP` for `ip` field, no regex for `user` field. SSH-specific validation still missing.
+### [x] 21. ~~Server Model Input Validation~~ — DONE
+**Fixed:** 2026-02-13
 
-- [ ] `Server->user` — regex `/^[a-zA-Z0-9_-]+$/`
-- [ ] `Server->ip` — `filter_var(FILTER_VALIDATE_IP)` or hostname regex
+Validation at 3 levels: model boot hook, web routes, API controller.
+- [x] `Server->user` — regex `/^[a-zA-Z0-9_-]+$/` (rejects shell injection like `root; rm -rf /`)
+- [x] `Server->ip` — `filter_var(FILTER_VALIDATE_IP)` + hostname regex (supports IPv4/IPv6/hostnames)
+- [x] 9 unit tests covering valid/invalid inputs
 
 ### [x] 22. ~~Remove/Fix CanUpdateResource Middleware~~ — CONFIRMED
 > **Verified:** `CanUpdateResource::handle()` does `return $next($request)` immediately (line 28), all logic commented out. Dead middleware registered in Kernel. Thesis 100% correct.

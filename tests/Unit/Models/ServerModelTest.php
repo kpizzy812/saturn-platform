@@ -493,3 +493,85 @@ test('server has description attribute', function () {
 
     expect($server->description)->toBe('Main production server');
 });
+
+// Input Validation Tests (validateAndSanitizeConnection)
+test('validateAndSanitizeConnection rejects user with shell injection', function () {
+    $server = new Server;
+    $server->user = 'root; rm -rf /';
+    $server->ip = '1.2.3.4';
+    $server->validateAndSanitizeConnection();
+})->throws(\InvalidArgumentException::class, 'Server user contains invalid characters');
+
+test('validateAndSanitizeConnection rejects user with spaces', function () {
+    $server = new Server;
+    $server->user = 'my user';
+    $server->ip = '1.2.3.4';
+    $server->validateAndSanitizeConnection();
+})->throws(\InvalidArgumentException::class, 'Server user contains invalid characters');
+
+test('validateAndSanitizeConnection accepts valid unix usernames', function () {
+    $validUsers = ['root', 'ubuntu', 'deploy-user', 'user_123', 'ec2-user'];
+    foreach ($validUsers as $user) {
+        $server = new Server;
+        $server->user = $user;
+        $server->ip = '1.2.3.4';
+        $server->validateAndSanitizeConnection();
+        expect($server->user)->toBe($user);
+    }
+});
+
+test('validateAndSanitizeConnection rejects IP with shell injection', function () {
+    $server = new Server;
+    $server->user = 'root';
+    $server->ip = '1.2.3.4; cat /etc/passwd';
+    $server->validateAndSanitizeConnection();
+})->throws(\InvalidArgumentException::class, 'Server IP must be a valid IP address or hostname');
+
+test('validateAndSanitizeConnection rejects IP with backticks', function () {
+    $server = new Server;
+    $server->user = 'root';
+    $server->ip = '`whoami`.example.com';
+    $server->validateAndSanitizeConnection();
+})->throws(\InvalidArgumentException::class, 'Server IP must be a valid IP address or hostname');
+
+test('validateAndSanitizeConnection accepts valid IPv4 addresses', function () {
+    $validIps = ['192.168.1.1', '10.0.0.1', '127.0.0.1', '255.255.255.255'];
+    foreach ($validIps as $ip) {
+        $server = new Server;
+        $server->user = 'root';
+        $server->ip = $ip;
+        $server->validateAndSanitizeConnection();
+        expect($server->ip)->toBe($ip);
+    }
+});
+
+test('validateAndSanitizeConnection accepts valid IPv6 addresses', function () {
+    $validIps = ['2001:0db8:85a3:0000:0000:8a2e:0370:7334', '::1', '2001:db8::1'];
+    foreach ($validIps as $ip) {
+        $server = new Server;
+        $server->user = 'root';
+        $server->ip = $ip;
+        $server->validateAndSanitizeConnection();
+        expect($server->ip)->toBe($ip);
+    }
+});
+
+test('validateAndSanitizeConnection accepts valid hostnames', function () {
+    $validHostnames = ['host.docker.internal', 'my-server', 'server01.example.com', 'a'];
+    foreach ($validHostnames as $hostname) {
+        $server = new Server;
+        $server->user = 'root';
+        $server->ip = $hostname;
+        $server->validateAndSanitizeConnection();
+        expect($server->ip)->toBe($hostname);
+    }
+});
+
+test('validateAndSanitizeConnection trims whitespace from ip and user', function () {
+    $server = new Server;
+    $server->user = '  root  ';
+    $server->ip = '  192.168.1.1  ';
+    $server->validateAndSanitizeConnection();
+    expect($server->user)->toBe('root');
+    expect($server->ip)->toBe('192.168.1.1');
+});
