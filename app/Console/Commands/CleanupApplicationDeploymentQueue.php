@@ -19,7 +19,7 @@ class CleanupApplicationDeploymentQueue extends Command
             $deployments = ApplicationDeploymentQueue::whereIn('status', ['in_progress', 'queued'])->where('server_id', $server->id)->get();
             foreach ($deployments as $deployment) {
                 $deployment->update(['status' => 'failed']);
-                instant_remote_process(['docker rm -f '.$deployment->deployment_uuid], $server, false);
+                instant_remote_process(['docker rm -f '.escapeshellarg($deployment->deployment_uuid)], $server, false);
             }
         }
     }

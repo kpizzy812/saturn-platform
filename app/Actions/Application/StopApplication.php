@@ -26,7 +26,7 @@ class StopApplication
                 }
 
                 if ($server->isSwarm()) {
-                    instant_remote_process(["docker stack rm {$application->uuid}"], $server);
+                    instant_remote_process(['docker stack rm '.escapeshellarg($application->uuid)], $server);
 
                     return;
                 }
@@ -38,9 +38,10 @@ class StopApplication
                 $containersToStop = $containers->pluck('Names')->toArray();
 
                 foreach ($containersToStop as $containerName) {
+                    $escapedName = escapeshellarg($containerName);
                     instant_remote_process(command: [
-                        "docker stop -t 30 $containerName",
-                        "docker rm -f $containerName",
+                        "docker stop -t 30 $escapedName",
+                        "docker rm -f $escapedName",
                     ], server: $server, throwError: false);
                 }
 

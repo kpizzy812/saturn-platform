@@ -1260,7 +1260,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 } else {
                     $this->application_deployment_queue->addLogEntry('Deployment failed. Removing the new version of your application.', 'stderr');
                     $this->execute_remote_command(
-                        ["docker rm -f $this->container_name >/dev/null 2>&1", 'hidden' => true, 'ignore_errors' => true]
+                        ['docker rm -f '.escapeshellarg($this->container_name).' >/dev/null 2>&1', 'hidden' => true, 'ignore_errors' => true]
                     );
                 }
             }

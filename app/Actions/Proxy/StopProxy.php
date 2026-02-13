@@ -23,12 +23,13 @@ class StopProxy
                 ProxyStatusChangedUI::dispatch($server->team_id);
             }
 
+            $escapedName = escapeshellarg($containerName);
             instant_remote_process(command: [
-                "docker stop -t=$timeout $containerName 2>/dev/null || true",
-                "docker rm -f $containerName 2>/dev/null || true",
+                "docker stop -t=$timeout $escapedName 2>/dev/null || true",
+                "docker rm -f $escapedName 2>/dev/null || true",
                 '# Wait for container to be fully removed',
                 'for i in {1..10}; do',
-                "    if ! docker ps -a --format \"{{.Names}}\" | grep -q \"^$containerName$\"; then",
+                "    if ! docker ps -a --format \"{{.Names}}\" | grep -q \"^{$containerName}$\"; then",
                 '        break',
                 '    fi',
                 '    sleep 1',

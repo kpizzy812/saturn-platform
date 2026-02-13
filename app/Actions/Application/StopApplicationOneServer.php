@@ -24,10 +24,11 @@ class StopApplicationOneServer
                 foreach ($containers as $container) {
                     $containerName = data_get($container, 'Names');
                     if ($containerName) {
+                        $escapedName = escapeshellarg($containerName);
                         instant_remote_process(
                             [
-                                "docker stop -t 30 $containerName",
-                                "docker rm -f $containerName",
+                                "docker stop -t 30 $escapedName",
+                                "docker rm -f $escapedName",
                             ],
                             $server
                         );

@@ -52,9 +52,10 @@ class StopDatabase
     private function stopContainer($database, string $containerName, int $timeout = 30): void
     {
         $server = $database->destination->server;
+        $escapedName = escapeshellarg($containerName);
         instant_remote_process(command: [
-            "docker stop -t $timeout $containerName",
-            "docker rm -f $containerName",
+            "docker stop -t $timeout $escapedName",
+            "docker rm -f $escapedName",
         ], server: $server, throwError: false);
     }
 }

@@ -27,14 +27,15 @@ trait HandlesContainerOperations
     {
         try {
             $timeout = isDev() ? 1 : 30;
+            $escapedName = escapeshellarg($containerName);
             if ($skipRemove) {
                 $this->execute_remote_command(
-                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true]
+                    ["docker stop -t $timeout $escapedName", 'hidden' => true, 'ignore_errors' => true]
                 );
             } else {
                 $this->execute_remote_command(
-                    ["docker stop -t $timeout $containerName", 'hidden' => true, 'ignore_errors' => true],
-                    ["docker rm -f $containerName", 'hidden' => true, 'ignore_errors' => true]
+                    ["docker stop -t $timeout $escapedName", 'hidden' => true, 'ignore_errors' => true],
+                    ["docker rm -f $escapedName", 'hidden' => true, 'ignore_errors' => true]
                 );
             }
         } catch (Exception $error) {

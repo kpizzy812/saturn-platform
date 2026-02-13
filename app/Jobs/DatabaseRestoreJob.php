@@ -70,12 +70,11 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 throw new \Exception('Team not found');
             }
 
-            if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
-                $this->database = data_get($this->backup, 'database');
+            $this->database = data_get($this->backup, 'database');
+            if ($this->database instanceof ServiceDatabase) {
                 $this->server = $this->database->service->server;
                 $this->s3 = $this->backup->s3;
             } else {
-                $this->database = data_get($this->backup, 'database');
                 $this->server = $this->database->destination->server;
                 $this->s3 = $this->backup->s3;
             }
@@ -163,7 +162,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
     private function getDatabaseType(): string
     {
-        if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
+        if ($this->database instanceof ServiceDatabase) {
             return $this->database->databaseType();
         }
 
@@ -172,7 +171,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
     private function getContainerName(): string
     {
-        if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
+        if ($this->database instanceof ServiceDatabase) {
             $serviceUuid = $this->database->service->uuid;
 
             return "{$this->database->name}-{$serviceUuid}";
@@ -194,7 +193,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
         $this->s3->testConnection(shouldSave: true);
 
-        if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
+        if ($this->database instanceof ServiceDatabase) {
             $network = $this->database->service->destination->network;
         } else {
             $network = $this->database->destination->network;
@@ -203,13 +202,15 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
         $fullImageName = $this->getFullImageName();
         $tempContainerName = "restore-download-{$this->execution->uuid}";
         $localPath = $this->execution->filename;
+        $escapedContainer = escapeshellarg($tempContainerName);
+        $escapedNetwork = escapeshellarg($network);
 
         // Ensure directory exists
-        $commands[] = 'mkdir -p '.dirname($localPath);
+        $commands[] = 'mkdir -p '.escapeshellarg(dirname($localPath));
 
         // Remove existing container if any
         $containerExists = instant_remote_process(
-            ["docker ps -a -q -f name={$tempContainerName}"],
+            ["docker ps -a -q -f name={$escapedContainer}"],
             $this->server,
             false,
             false,
@@ -219,7 +220,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
         if (filled($containerExists)) {
             instant_remote_process(
-                ["docker rm -f {$tempContainerName}"],
+                ["docker rm -f {$escapedContainer}"],
                 $this->server,
                 false,
                 false,
@@ -232,10 +233,12 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
         $escapedEndpoint = escapeshellarg($endpoint);
         $escapedKey = escapeshellarg($key);
         $escapedSecret = escapeshellarg($secret);
+        $escapedBucket = escapeshellarg("temporary/{$bucket}{$localPath}");
+        $escapedLocalPath = escapeshellarg($localPath);
 
-        $commands[] = "docker run -d --network {$network} --name {$tempContainerName} -v ".dirname($localPath).':'.dirname($localPath)." {$fullImageName}";
-        $commands[] = "docker exec {$tempContainerName} mc alias set temporary {$escapedEndpoint} {$escapedKey} {$escapedSecret}";
-        $commands[] = "docker exec {$tempContainerName} mc cp temporary/{$bucket}{$localPath} {$localPath}";
+        $commands[] = "docker run -d --network {$escapedNetwork} --name {$escapedContainer} -v ".escapeshellarg(dirname($localPath).':'.dirname($localPath))." {$fullImageName}";
+        $commands[] = "docker exec {$escapedContainer} mc alias set temporary {$escapedEndpoint} {$escapedKey} {$escapedSecret}";
+        $commands[] = "docker exec {$escapedContainer} mc cp {$escapedBucket} {$escapedLocalPath}";
 
         try {
             instant_remote_process($commands, $this->server, true, false, null, disableMultiplexing: true);
@@ -243,7 +246,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             return $localPath;
         } finally {
             instant_remote_process(
-                ["docker rm -f {$tempContainerName}"],
+                ["docker rm -f {$escapedContainer}"],
                 $this->server,
                 true,
                 false,
@@ -346,7 +349,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $this->getMongoCredentials();
 
-            $url = $this->database->internal_db_url;
+            $url = $this->database instanceof StandaloneMongodb ? $this->database->internal_db_url : null;
             if (blank($url)) {
                 if (filled($this->mongo_root_username) && filled($this->mongo_root_password)) {
                     $url = "mongodb://{$this->mongo_root_username}:{$this->mongo_root_password}@{$this->container_name}:27017";
@@ -374,7 +377,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
     private function getPostgresPassword(): void
     {
-        if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
+        if ($this->database instanceof ServiceDatabase) {
             $commands = [];
             $escapedContainerName = escapeshellarg($this->container_name);
             $commands[] = "docker exec {$escapedContainerName} env | grep POSTGRES_PASSWORD=";
@@ -395,7 +398,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
     private function getMongoCredentials(): void
     {
-        if (data_get($this->backup, 'database_type') === ServiceDatabase::class) {
+        if ($this->database instanceof ServiceDatabase) {
             $commands = [];
             $escapedContainerName = escapeshellarg($this->container_name);
             $commands[] = "docker exec {$escapedContainerName} env | grep MONGO_INITDB_";

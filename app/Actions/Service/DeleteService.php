@@ -33,7 +33,7 @@ class DeleteService
                     }
                 }
                 foreach ($storagesToDelete as $storage) {
-                    $commands[] = "docker volume rm -f $storage->name";
+                    $commands[] = 'docker volume rm -f '.escapeshellarg($storage->name);
                 }
 
                 // Execute volume deletion first, this must be done first otherwise volumes will not be deleted.
@@ -51,7 +51,7 @@ class DeleteService
                 $service->deleteConnectedNetworks();
             }
 
-            instant_remote_process(["docker rm -f $service->uuid"], $server, throwError: false);
+            instant_remote_process(['docker rm -f '.escapeshellarg($service->uuid)], $server, throwError: false);
         } catch (\Exception $e) {
             throw new \RuntimeException($e->getMessage());
         } finally {

@@ -96,25 +96,26 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
         $commands = collect([]);
 
         // === STOP PHASE ===
+        $escapedName = escapeshellarg($containerName);
         $commands = $commands->merge([
             "echo 'Stopping proxy...'",
-            "docker stop -t=$stopTimeout $containerName 2>/dev/null || true",
-            "docker rm -f $containerName 2>/dev/null || true",
+            "docker stop -t=$stopTimeout $escapedName 2>/dev/null || true",
+            "docker rm -f $escapedName 2>/dev/null || true",
             '# Wait for container to be fully removed',
             'for i in {1..15}; do',
-            "    if ! docker ps -a --format \"{{.Names}}\" | grep -q \"^$containerName$\"; then",
+            "    if ! docker ps -a --format \"{{.Names}}\" | grep -q \"^{$containerName}$\"; then",
             "        echo 'Container removed successfully.'",
             '        break',
             '    fi',
             '    echo "Waiting for container to be removed... ($i/15)"',
             '    sleep 1',
             '    # Force remove on each iteration in case it got stuck',
-            "    docker rm -f $containerName 2>/dev/null || true",
+            "    docker rm -f $escapedName 2>/dev/null || true",
             'done',
             '# Final verification and force cleanup',
-            "if docker ps -a --format \"{{.Names}}\" | grep -q \"^$containerName$\"; then",
+            "if docker ps -a --format \"{{.Names}}\" | grep -q \"^{$containerName}$\"; then",
             "    echo 'Container still exists after wait, forcing removal...'",
-            "    docker rm -f $containerName 2>/dev/null || true",
+            "    docker rm -f $escapedName 2>/dev/null || true",
             '    sleep 2',
             'fi',
             "echo 'Proxy stopped successfully.'",

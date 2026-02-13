@@ -759,6 +759,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     private function upload_to_s3(): void
     {
+        $escapedContainer = escapeshellarg("backup-of-{$this->backup_log_uuid}");
         try {
             if (is_null($this->s3)) {
                 return;
@@ -776,22 +777,23 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             $fullImageName = $this->getFullImageName();
+            $escapedNetwork = escapeshellarg($network);
 
-            $containerExists = instant_remote_process(["docker ps -a -q -f name=backup-of-{$this->backup_log_uuid}"], $this->server, false, false, null, disableMultiplexing: true);
+            $containerExists = instant_remote_process(["docker ps -a -q -f name={$escapedContainer}"], $this->server, false, false, null, disableMultiplexing: true);
             if (filled($containerExists)) {
-                instant_remote_process(["docker rm -f backup-of-{$this->backup_log_uuid}"], $this->server, false, false, null, disableMultiplexing: true);
+                instant_remote_process(["docker rm -f {$escapedContainer}"], $this->server, false, false, null, disableMultiplexing: true);
             }
 
             if (isDev()) {
                 if ($this->database->name === 'saturn-db') {
                     $backup_location_from = '/var/lib/docker/volumes/saturn_dev_backups_data/_data/saturn/saturn-db-'.$this->server->ip.$this->backup_file;
-                    $commands[] = "docker run -d --network {$network} --name backup-of-{$this->backup_log_uuid} --rm -v $backup_location_from:$this->backup_location:ro {$fullImageName}";
+                    $commands[] = "docker run -d --network {$escapedNetwork} --name {$escapedContainer} --rm -v ".escapeshellarg($backup_location_from.':'.$this->backup_location.':ro')." {$fullImageName}";
                 } else {
                     $backup_location_from = '/var/lib/docker/volumes/saturn_dev_backups_data/_data/databases/'.str($this->team->name)->slug().'-'.$this->team->id.'/'.$this->directory_name.$this->backup_file;
-                    $commands[] = "docker run -d --network {$network} --name backup-of-{$this->backup_log_uuid} --rm -v $backup_location_from:$this->backup_location:ro {$fullImageName}";
+                    $commands[] = "docker run -d --network {$escapedNetwork} --name {$escapedContainer} --rm -v ".escapeshellarg($backup_location_from.':'.$this->backup_location.':ro')." {$fullImageName}";
                 }
             } else {
-                $commands[] = "docker run -d --network {$network} --name backup-of-{$this->backup_log_uuid} --rm -v $this->backup_location:$this->backup_location:ro {$fullImageName}";
+                $commands[] = "docker run -d --network {$escapedNetwork} --name {$escapedContainer} --rm -v ".escapeshellarg($this->backup_location.':'.$this->backup_location.':ro')." {$fullImageName}";
             }
 
             // Escape S3 credentials to prevent command injection
@@ -799,8 +801,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             $escapedKey = escapeshellarg($key);
             $escapedSecret = escapeshellarg($secret);
 
-            $commands[] = "docker exec backup-of-{$this->backup_log_uuid} mc alias set temporary {$escapedEndpoint} {$escapedKey} {$escapedSecret}";
-            $commands[] = "docker exec backup-of-{$this->backup_log_uuid} mc cp $this->backup_location temporary/$bucket{$this->backup_dir}/";
+            $commands[] = "docker exec {$escapedContainer} mc alias set temporary {$escapedEndpoint} {$escapedKey} {$escapedSecret}";
+            $commands[] = "docker exec {$escapedContainer} mc cp ".escapeshellarg($this->backup_location).' '.escapeshellarg("temporary/{$bucket}{$this->backup_dir}/");
             instant_remote_process($commands, $this->server, true, false, null, disableMultiplexing: true);
 
             $this->s3_uploaded = true;
@@ -809,8 +811,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             $this->add_to_error_output($e->getMessage());
             throw $e;
         } finally {
-            $command = "docker rm -f backup-of-{$this->backup_log_uuid}";
-            instant_remote_process([$command], $this->server, true, false, null, disableMultiplexing: true);
+            instant_remote_process(["docker rm -f {$escapedContainer}"], $this->server, true, false, null, disableMultiplexing: true);
         }
     }
 

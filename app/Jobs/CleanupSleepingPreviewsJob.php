@@ -86,7 +86,7 @@ class CleanupSleepingPreviewsJob implements ShouldQueue
 
         // Stop the container (but don't remove it)
         instant_remote_process(
-            ["docker stop {$containerName} 2>/dev/null || true"],
+            ['docker stop '.escapeshellarg($containerName).' 2>/dev/null || true'],
             $server
         );
 
