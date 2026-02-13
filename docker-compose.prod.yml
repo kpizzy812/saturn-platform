@@ -1,6 +1,11 @@
 services:
   saturn:
     image: "${REGISTRY_URL:-ghcr.io}/coollabsio/saturn:${LATEST_IMAGE:-latest}"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2.0'
     volumes:
       - type: bind
         source: /data/saturn/source/.env
@@ -38,6 +43,11 @@ services:
       soketi:
         condition: service_healthy
   postgres:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     volumes:
       - saturn-db:/var/lib/postgresql/data
     environment:
@@ -50,6 +60,11 @@ services:
       retries: 10
       timeout: 2s
   redis:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
     environment:
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
@@ -61,6 +76,11 @@ services:
       retries: 10
       timeout: 2s
   soketi:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
     image: '${REGISTRY_URL:-ghcr.io}/coollabsio/saturn-realtime:1.0.10'
     ports:
       - "${SOKETI_PORT:-6001}:6001"

@@ -237,11 +237,11 @@ Candidates:
 - [ ] Add PgBouncer service to docker-compose
 - [ ] Configure POOL_MODE=transaction, DEFAULT_POOL_SIZE=25
 
-### [ ] 19. CDN + Compression
-> **Verified:** No gzip/brotli in nginx config. Valid.
+### [x] 19. ~~CDN + Compression~~ — DONE
+**Fixed:** 2026-02-13
 
-- [ ] Add Gzip/Brotli in Nginx (60-80% reduction)
-- [ ] Static asset caching (Cache-Control: immutable)
+- [x] Gzip compression in `docker/production/etc/nginx/conf.d/compression.conf`
+- [x] Static asset caching (1y, immutable) in `site-opts.d/http.conf`
 
 ### [ ] 20. E2E Tests (Playwright)
 > **Verified:** No Playwright in package.json. Thesis valid.
@@ -262,8 +262,14 @@ Validation at 3 levels: model boot hook, web routes, API controller.
 
 - [ ] Either delete from Kernel.php or implement proper policy checks
 
-### [ ] 23. Docker Resource Limits
-> **Verified:** No resource limits in any docker-compose. Valid for hardening.
+### [x] 23. ~~Docker Resource Limits~~ — DONE
+**Fixed:** 2026-02-13
+
+`docker-compose.prod.yml`:
+- saturn: 1G RAM / 2 CPU
+- postgres: 512M RAM / 1 CPU
+- redis: 256M RAM / 0.5 CPU
+- soketi: 256M RAM / 0.5 CPU
 
 ### [ ] 24. Automated Rollback on Failed Deploy
 > **Verified:** `deploy/scripts/deploy.sh` exists (referenced in CI). Note: application-level rollback already has `MonitorDeploymentHealthJob`. This thesis is about PLATFORM deploy rollback, not app deploy. Valid.
