@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     Github, ArrowLeft, CheckCircle2, AlertCircle, ExternalLink,
-    Trash2, Settings, Save, Copy, Shield
+    Trash2, Settings, Save, Copy, Shield, RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
@@ -29,10 +29,11 @@ interface GitHubSource {
 
 interface Props {
     source: GitHubSource;
+    installationPath: string | null;
     applicationsCount: number;
 }
 
-export default function GitHubShow({ source, applicationsCount }: Props) {
+export default function GitHubShow({ source, installationPath, applicationsCount }: Props) {
     const { addToast } = useToast();
     const confirm = useConfirm();
     const [editing, setEditing] = useState(false);
@@ -263,16 +264,39 @@ export default function GitHubShow({ source, applicationsCount }: Props) {
                                 {source.app_id && !source.installation_id && (
                                     <>
                                         <p>The GitHub App needs to be installed on your GitHub account or organization.</p>
-                                        <a
-                                            href={`${source.html_url}/settings/apps`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <Button size="sm" className="mt-2">
-                                                <ExternalLink className="h-4 w-4 mr-2" />
-                                                Install App on GitHub
+                                        <div className="flex gap-2 mt-2">
+                                            {installationPath ? (
+                                                <a
+                                                    href={installationPath}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Button size="sm">
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        Install App on GitHub
+                                                    </Button>
+                                                </a>
+                                            ) : (
+                                                <a
+                                                    href={`${source.html_url}/settings/apps`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Button size="sm">
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        Go to GitHub Apps
+                                                    </Button>
+                                                </a>
+                                            )}
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => router.post(`/sources/github/${source.id}/sync`)}
+                                            >
+                                                <RefreshCw className="h-4 w-4 mr-2" />
+                                                Check Connection
                                             </Button>
-                                        </a>
+                                        </div>
                                     </>
                                 )}
                             </div>

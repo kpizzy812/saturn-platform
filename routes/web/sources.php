@@ -120,6 +120,12 @@ Route::prefix('sources')->group(function () {
                 ? $query->findOrFail($id)
                 : $query->where('uuid', $id)->firstOrFail();
 
+            // Build installation path for the "Install on GitHub" button
+            $installationPath = null;
+            if (! is_null($source->app_id) && $source->name !== 'github-app-pending') {
+                $installationPath = getInstallationPath($source);
+            }
+
             return Inertia::render('Sources/GitHub/Show', [
                 'source' => [
                     'id' => $source->id,
@@ -137,6 +143,7 @@ Route::prefix('sources')->group(function () {
                     'created_at' => $source->created_at?->toISOString(),
                     'updated_at' => $source->updated_at?->toISOString(),
                 ],
+                'installationPath' => $installationPath,
                 'applicationsCount' => $source->applications()->count(),
             ]);
         })->name('sources.github.show');
@@ -155,6 +162,60 @@ Route::prefix('sources')->group(function () {
 
             return back()->with('success', 'GitHub App updated');
         })->name('sources.github.update');
+
+        Route::post('/{id}/sync', function (string $id) {
+            $query = \App\Models\GithubApp::ownedByCurrentTeam();
+            $source = is_numeric($id)
+                ? $query->findOrFail($id)
+                : $query->where('uuid', $id)->firstOrFail();
+
+            if (is_null($source->app_id) || is_null($source->private_key_id)) {
+                return back()->with('error', 'GitHub App is not fully configured yet.');
+            }
+
+            try {
+                // Generate JWT and fetch installations to verify connection
+                $jwt = generateGithubJwt($source);
+                $response = \Illuminate\Support\Facades\Http::withHeaders([
+                    'Authorization' => "Bearer $jwt",
+                    'Accept' => 'application/vnd.github+json',
+                ])->get("{$source->api_url}/app/installations");
+
+                if ($response->failed()) {
+                    return back()->with('error', 'Failed to connect to GitHub API. Please check your app configuration.');
+                }
+
+                $installations = $response->json();
+
+                // If installation_id is missing, try to find and set it
+                if (is_null($source->installation_id) && is_array($installations) && count($installations) > 0) {
+                    $source->installation_id = $installations[0]['id'];
+                    $source->save();
+                }
+
+                // Verify existing installation_id is still valid
+                if (! is_null($source->installation_id)) {
+                    $validIds = collect($installations)->pluck('id')->toArray();
+                    if (! in_array($source->installation_id, $validIds)) {
+                        $source->installation_id = null;
+                        $source->save();
+
+                        return back()->with('error', 'GitHub App installation was removed. Please reinstall the app on GitHub.');
+                    }
+                }
+
+                $source->touch();
+
+                return back()->with('success', 'GitHub App synced successfully.');
+            } catch (\Exception $e) {
+                \Log::error('GitHub App sync error', [
+                    'github_app_id' => $source->id,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return back()->with('error', 'Sync failed: '.$e->getMessage());
+            }
+        })->name('sources.github.sync');
 
         Route::delete('/{id}', function (string $id) {
             $query = \App\Models\GithubApp::ownedByCurrentTeam();

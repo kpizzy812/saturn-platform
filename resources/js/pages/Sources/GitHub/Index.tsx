@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
-import { Plus, Github, CheckCircle2, RefreshCw, Trash2, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Plus, Github, CheckCircle2, RefreshCw, Trash2, ExternalLink, ArrowLeft, Settings } from 'lucide-react';
 
 interface GitHubApp {
     id: number;
@@ -119,20 +119,31 @@ export default function GitHubIndex({ apps = [] }: Props) {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => handleSync(app.uuid)}>
-                                                <RefreshCw className="h-4 w-4 mr-2" />
-                                                Sync
-                                            </Button>
-                                            <a
-                                                href={`https://github.com/settings/installations/${app.installation_id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                            >
-                                                <Button variant="ghost" size="sm">
-                                                    <ExternalLink className="h-4 w-4 mr-2" />
-                                                    GitHub Settings
+                                            {app.status === 'active' && (
+                                                <Button variant="ghost" size="sm" onClick={() => handleSync(app.uuid)}>
+                                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                                    Sync
                                                 </Button>
-                                            </a>
+                                            )}
+                                            {app.installation_id ? (
+                                                <a
+                                                    href={`https://github.com/settings/installations/${app.installation_id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <Button variant="ghost" size="sm">
+                                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                                        GitHub Settings
+                                                    </Button>
+                                                </a>
+                                            ) : (
+                                                <Link href={`/sources/github/${app.id}`}>
+                                                    <Button variant="secondary" size="sm">
+                                                        <Settings className="h-4 w-4 mr-2" />
+                                                        Complete Setup
+                                                    </Button>
+                                                </Link>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="sm"

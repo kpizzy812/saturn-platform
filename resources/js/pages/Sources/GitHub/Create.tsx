@@ -19,28 +19,6 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
 
     const appName = 'saturn-' + Math.random().toString(36).substring(2, 8);
 
-    // GitHub App Manifest — all permissions and config are set automatically
-    const manifest = JSON.stringify({
-        name: appName,
-        url: window.location.origin,
-        hook_attributes: {
-            url: webhookUrl,
-            active: true,
-        },
-        redirect_url: callbackUrl,
-        callback_urls: [callbackUrl],
-        setup_url: `${window.location.origin}/webhooks/source/github/install`,
-        setup_on_update: true,
-        public: isPublic,
-        default_permissions: {
-            contents: 'write',
-            metadata: 'read',
-            pull_requests: 'write',
-            administration: 'read',
-        },
-        default_events: ['push', 'pull_request'],
-    });
-
     const handleCreateApp = async () => {
         setCreating(true);
 
@@ -63,9 +41,35 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
 
             const data = await response.json();
 
+            // Build manifest with the UUID in setup_url so install callback can find the app
+            const manifest = JSON.stringify({
+                name: appName,
+                url: window.location.origin,
+                hook_attributes: {
+                    url: webhookUrl,
+                    active: true,
+                },
+                redirect_url: callbackUrl,
+                callback_urls: [callbackUrl],
+                setup_url: `${window.location.origin}/webhooks/source/github/install?source=${data.uuid}`,
+                setup_on_update: true,
+                public: isPublic,
+                default_permissions: {
+                    contents: 'write',
+                    metadata: 'read',
+                    pull_requests: 'write',
+                    administration: 'read',
+                },
+                default_events: ['push', 'pull_request'],
+            });
+
             // Submit the manifest form to GitHub with the uuid as state
             if (formRef.current) {
+                const manifestInput = formRef.current.querySelector<HTMLInputElement>('input[name="manifest"]');
                 const stateInput = formRef.current.querySelector<HTMLInputElement>('input[name="state"]');
+                if (manifestInput) {
+                    manifestInput.value = manifest;
+                }
                 if (stateInput) {
                     stateInput.value = data.uuid;
                 }
@@ -90,7 +94,7 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
 
             {/* Hidden form for GitHub App Manifest submission */}
             <form ref={formRef} method="post" action="https://github.com/settings/apps/new" className="hidden">
-                <input type="hidden" name="manifest" value={manifest} />
+                <input type="hidden" name="manifest" value="" />
                 <input type="hidden" name="state" value="" />
             </form>
 

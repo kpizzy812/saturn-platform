@@ -608,19 +608,49 @@ class Github extends Controller
             $source = $request->get('source');
             $setup_action = $request->get('setup_action');
 
-            if (! $installation_id || ! $source) {
-                \Log::error('GitHub App install: missing parameters', [
-                    'installation_id' => $installation_id,
-                    'source' => $source,
-                ]);
+            if (! $installation_id) {
+                \Log::error('GitHub App install: missing installation_id');
 
                 return redirect()->route('sources.github.index')
-                    ->with('error', 'Invalid GitHub install callback — missing parameters.');
+                    ->with('error', 'Invalid GitHub install callback — missing installation_id.');
             }
 
-            $github_app = GithubApp::where('uuid', $source)->first();
+            // Find GithubApp by UUID if source is provided
+            $github_app = null;
+            if ($source) {
+                $github_app = GithubApp::where('uuid', $source)->first();
+            }
+
+            // Fallback: find by checking which app owns this installation via GitHub API
             if (! $github_app) {
-                \Log::error('GitHub App install: GithubApp not found', ['source' => $source]);
+                $candidates = GithubApp::whereNotNull('app_id')
+                    ->whereNull('installation_id')
+                    ->whereNotNull('private_key_id')
+                    ->get();
+
+                foreach ($candidates as $candidate) {
+                    try {
+                        $jwt = generateGithubJwt($candidate);
+                        $response = Http::withHeaders([
+                            'Authorization' => "Bearer $jwt",
+                            'Accept' => 'application/vnd.github+json',
+                        ])->get("{$candidate->api_url}/app/installations/{$installation_id}");
+
+                        if ($response->successful()) {
+                            $github_app = $candidate;
+                            break;
+                        }
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
+            }
+
+            if (! $github_app) {
+                \Log::error('GitHub App install: GithubApp not found', [
+                    'source' => $source,
+                    'installation_id' => $installation_id,
+                ]);
 
                 return redirect()->route('sources.github.index')
                     ->with('error', 'GitHub App record not found.');
