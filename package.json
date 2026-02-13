@@ -46,7 +46,6 @@
         "@formkit/auto-animate": "^0.9.0",
         "@headlessui/react": "^2.2.9",
         "@inertiajs/react": "^2.3.6",
-        "@rollup/rollup-darwin-x64": "^4.57.1",
         "@sentry/react": "^10.36.0",
         "@tailwindcss/forms": "0.5.10",
         "@tailwindcss/typography": "0.5.16",
