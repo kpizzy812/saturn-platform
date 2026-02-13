@@ -34,6 +34,7 @@ Route::get('/web-api/team/activities', function (Request $request) {
 // Application settings JSON endpoints
 Route::get('/web-api/applications/{uuid}', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
+        ->with(['settings', 'source'])
         ->where('uuid', $uuid)
         ->first();
 
@@ -41,7 +42,42 @@ Route::get('/web-api/applications/{uuid}', function (string $uuid) {
         return response()->json(['message' => 'Application not found.'], 404);
     }
 
-    return response()->json($application);
+    $appData = $application->toArray();
+
+    // Add auto-deploy info
+    $source = $application->source;
+    $settings = $application->settings;
+    $hasRealGithubApp = $source
+        && $source instanceof \App\Models\GithubApp
+        && $source->id !== 0
+        && ! $source->is_public
+        && $source->app_id
+        && $source->installation_id;
+
+    $autoDeployStatus = 'not_configured';
+    if ($hasRealGithubApp && $application->repository_project_id) {
+        $autoDeployStatus = 'automatic';
+    } elseif ($application->manual_webhook_secret_github) {
+        $autoDeployStatus = 'manual_webhook';
+    }
+
+    $appData['is_auto_deploy_enabled'] = $settings?->is_auto_deploy_enabled ?? false;
+    $appData['auto_deploy_status'] = $autoDeployStatus;
+    $appData['has_webhook_secret'] = ! empty($application->manual_webhook_secret_github);
+    $appData['manual_webhook_secret_github'] = $application->manual_webhook_secret_github;
+    $appData['webhook_url'] = url('/webhooks/source/github/events/manual');
+    $appData['repository_project_id'] = $application->repository_project_id;
+    $appData['source_info'] = $hasRealGithubApp ? [
+        'id' => $source->id,
+        'name' => $source->name,
+        'type' => 'github_app',
+    ] : ($source ? [
+        'id' => $source->id,
+        'name' => $source->name ?? 'Public GitHub',
+        'type' => 'public',
+    ] : null);
+
+    return response()->json($appData);
 })->name('web-api.applications.show');
 
 Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $request) {
@@ -65,7 +101,76 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
     $data = $request->only($allowedFields);
     $application->update($data);
 
-    return response()->json($application->fresh());
+    // Handle is_auto_deploy_enabled (stored in application_settings)
+    if ($request->has('is_auto_deploy_enabled')) {
+        $application->settings->update([
+            'is_auto_deploy_enabled' => (bool) $request->input('is_auto_deploy_enabled'),
+        ]);
+    }
+
+    // Handle GitHub App re-linking
+    if ($request->has('github_app_id')) {
+        $githubAppId = (int) $request->input('github_app_id');
+        $team = currentTeam();
+
+        if ($githubAppId === 0) {
+            // Unlink: revert to public source
+            $publicSource = \App\Models\GithubApp::find(0);
+            if ($publicSource) {
+                $application->source_id = $publicSource->id;
+                $application->source_type = \App\Models\GithubApp::class;
+                $application->repository_project_id = null;
+                $application->save();
+            }
+        } else {
+            // Link to specific GitHub App
+            $githubApp = \App\Models\GithubApp::where('id', $githubAppId)
+                ->where('team_id', $team->id)
+                ->whereNotNull('app_id')
+                ->whereNotNull('installation_id')
+                ->first();
+
+            if ($githubApp) {
+                $application->source_id = $githubApp->id;
+                $application->source_type = \App\Models\GithubApp::class;
+                $application->save();
+
+                // Fetch repository_project_id via GitHub API
+                if ($application->git_repository) {
+                    try {
+                        $repoFullName = str($application->git_repository)
+                            ->replace('https://github.com/', '')
+                            ->replace('http://github.com/', '')
+                            ->replace('.git', '')
+                            ->toString();
+                        $token = generateGithubInstallationToken($githubApp);
+                        $repoResponse = Http::GitHub($githubApp->api_url, $token)
+                            ->timeout(10)
+                            ->get("/repos/{$repoFullName}");
+                        if ($repoResponse->successful()) {
+                            $application->repository_project_id = $repoResponse->json('id');
+                            $application->save();
+                        }
+                    } catch (\Throwable $e) {
+                        return response()->json([
+                            'message' => 'GitHub App linked but failed to fetch repository ID: '.$e->getMessage(),
+                            'application' => $application->fresh(),
+                        ], 200);
+                    }
+                }
+
+                // Auto-generate webhook secret if missing
+                if (! $application->manual_webhook_secret_github) {
+                    $application->manual_webhook_secret_github = \Illuminate\Support\Str::random(32);
+                    $application->save();
+                }
+            } else {
+                return response()->json(['message' => 'GitHub App not found or not accessible.'], 404);
+            }
+        }
+    }
+
+    return response()->json($application->fresh()->load(['settings', 'source']));
 })->name('web-api.applications.update');
 
 Route::delete('/web-api/applications/{uuid}', function (string $uuid) {
@@ -81,6 +186,24 @@ Route::delete('/web-api/applications/{uuid}', function (string $uuid) {
 
     return response()->json(['message' => 'Application deleted.']);
 })->name('web-api.applications.delete');
+
+// Active GitHub Apps for team (for auto-deploy dropdown)
+Route::get('/web-api/github-apps/active', function () {
+    $team = currentTeam();
+    $githubApps = \App\Models\GithubApp::where('team_id', $team->id)
+        ->whereNotNull('app_id')
+        ->whereNotNull('installation_id')
+        ->where('is_public', false)
+        ->get(['id', 'name', 'organization', 'app_id', 'installation_id']);
+
+    return response()->json([
+        'github_apps' => $githubApps->map(fn ($app) => [
+            'id' => $app->id,
+            'name' => $app->name,
+            'organization' => $app->organization,
+        ]),
+    ]);
+})->name('web-api.github-apps.active');
 
 // GitHub App API routes
 Route::get('/web-api/github-apps/{github_app_id}/repositories', function ($github_app_id) {

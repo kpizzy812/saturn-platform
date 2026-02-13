@@ -208,19 +208,62 @@ Route::post('/applications', function (Request $request) {
         $application->docker_registry_image_name = $validated['docker_image'];
     }
 
-    // Set source type for git
+    // Set source type for git — prefer team's active GitHub App for auto-deploy
     if (in_array($validated['source_type'], ['github', 'gitlab', 'bitbucket'])) {
-        $githubApp = \App\Models\GithubApp::find(0); // Default public source
+        $githubApp = null;
+
+        if ($validated['source_type'] === 'github') {
+            // Find team's active GitHub App (has app_id + installation_id = real credentials)
+            $githubApp = \App\Models\GithubApp::where('team_id', $team->id)
+                ->whereNotNull('app_id')
+                ->whereNotNull('installation_id')
+                ->where('is_public', false)
+                ->first();
+        }
+
+        // Fallback to public source
+        if (! $githubApp) {
+            $githubApp = \App\Models\GithubApp::find(0);
+        }
+
         if ($githubApp) {
             $application->source_type = \App\Models\GithubApp::class;
             $application->source_id = $githubApp->id;
         }
+
+        // Auto-generate manual webhook secret for fallback manual webhooks
+        $application->manual_webhook_secret_github = \Illuminate\Support\Str::random(32);
     }
 
     // Set default ports
     $application->ports_exposes = '80';
 
     $application->save();
+
+    // Fetch repository_project_id via GitHub API for webhook matching
+    if ($application->source_id && $application->source_id !== 0 && $application->git_repository) {
+        try {
+            $source = $application->source;
+            if ($source && $source->app_id && $source->installation_id) {
+                $repoFullName = str($application->git_repository)
+                    ->replace('https://github.com/', '')
+                    ->replace('http://github.com/', '')
+                    ->replace('.git', '')
+                    ->toString();
+                $token = generateGithubInstallationToken($source);
+                $repoResponse = \Illuminate\Support\Facades\Http::GitHub($source->api_url, $token)
+                    ->timeout(10)
+                    ->get("/repos/{$repoFullName}");
+                if ($repoResponse->successful()) {
+                    $application->repository_project_id = $repoResponse->json('id');
+                    $application->save();
+                }
+            }
+        } catch (\Throwable $e) {
+            // Non-critical: auto-deploy won't work but app still created
+            \Illuminate\Support\Facades\Log::warning("Failed to fetch repository_project_id for app {$application->uuid}: {$e->getMessage()}");
+        }
+    }
 
     // Handle domain: expand subdomain-only input or auto-generate if empty
     if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {

@@ -1,8 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Badge, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2 } from 'lucide-react';
+import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import type { SelectedService } from '../../types';
+
+interface SourceInfo {
+    id: number;
+    name: string;
+    type: 'github_app' | 'public';
+}
+
+interface GithubAppOption {
+    id: number;
+    name: string;
+    organization: string | null;
+}
 
 interface ApplicationData {
     uuid: string;
@@ -47,6 +59,14 @@ interface ApplicationData {
             ip: string;
         };
     };
+    // Auto-deploy fields
+    is_auto_deploy_enabled?: boolean;
+    auto_deploy_status?: 'automatic' | 'manual_webhook' | 'not_configured';
+    has_webhook_secret?: boolean;
+    manual_webhook_secret_github?: string | null;
+    webhook_url?: string | null;
+    repository_project_id?: number | null;
+    source_info?: SourceInfo | null;
 }
 
 interface AppSettingsTabProps {
@@ -76,6 +96,15 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
     const [startCommand, setStartCommand] = useState('');
     const [watchPaths, setWatchPaths] = useState('');
 
+    // Auto-deploy state
+    const [autoDeployEnabled, setAutoDeployEnabled] = useState(false);
+    const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+    const [githubApps, setGithubApps] = useState<GithubAppOption[]>([]);
+    const [isLinkingApp, setIsLinkingApp] = useState(false);
+    const [showGithubAppSelector, setShowGithubAppSelector] = useState(false);
+
+    const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
     const fetchApplication = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -100,6 +129,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 setBuildCommand(data.build_command || '');
                 setStartCommand(data.start_command || '');
                 setWatchPaths(data.watch_paths || '');
+                setAutoDeployEnabled(data.is_auto_deploy_enabled ?? false);
             } else {
                 addToast('error', 'Failed to load application settings');
             }
@@ -110,9 +140,79 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
         }
     }, [service.uuid, addToast]);
 
+    const fetchGithubApps = useCallback(async () => {
+        try {
+            const response = await fetch('/web-api/github-apps/active', {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include',
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setGithubApps(data.github_apps || []);
+            }
+        } catch {
+            // Non-critical
+        }
+    }, []);
+
     useEffect(() => {
         fetchApplication();
-    }, [fetchApplication]);
+        fetchGithubApps();
+    }, [fetchApplication, fetchGithubApps]);
+
+    const handleToggleAutoDeploy = async (enabled: boolean) => {
+        setAutoDeployEnabled(enabled);
+        try {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ is_auto_deploy_enabled: enabled }),
+            });
+            if (!response.ok) {
+                setAutoDeployEnabled(!enabled);
+                addToast('error', 'Failed to update auto-deploy setting');
+            } else {
+                addToast('success', enabled ? 'Auto-deploy enabled' : 'Auto-deploy disabled');
+                await fetchApplication();
+            }
+        } catch {
+            setAutoDeployEnabled(!enabled);
+            addToast('error', 'Failed to update auto-deploy setting');
+        }
+    };
+
+    const handleLinkGithubApp = async (githubAppId: number) => {
+        setIsLinkingApp(true);
+        try {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ github_app_id: githubAppId }),
+            });
+            if (response.ok) {
+                addToast('success', 'GitHub App connected successfully');
+                setShowGithubAppSelector(false);
+                await fetchApplication();
+            } else {
+                const error = await response.json();
+                addToast('error', error.message || 'Failed to connect GitHub App');
+            }
+        } catch {
+            addToast('error', 'Failed to connect GitHub App');
+        } finally {
+            setIsLinkingApp(false);
+        }
+    };
 
     const handleSaveSettings = async () => {
         setIsSaving(true);
@@ -122,7 +222,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -171,7 +271,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
                 credentials: 'include',
             });
@@ -228,6 +328,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
     };
 
     const source = sourceLabel();
+    const deployStatus = app.auto_deploy_status || 'not_configured';
 
     return (
         <div className="space-y-6">
@@ -265,7 +366,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                                 {source.type === 'git' ? 'GitHub Repository' : 'Docker Image'}
                             </p>
                             <p className="truncate text-xs text-foreground-muted">
-                                {source.repo}{source.branch ? ` • ${source.branch}` : ''}
+                                {source.repo}{source.branch ? ` \u2022 ${source.branch}` : ''}
                             </p>
                         </div>
                     </div>
@@ -278,6 +379,24 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     )}
                 </div>
             </div>
+
+            {/* Auto Deploy Section */}
+            {source.type === 'git' && (
+                <AutoDeploySection
+                    app={app}
+                    autoDeployEnabled={autoDeployEnabled}
+                    onToggleAutoDeploy={handleToggleAutoDeploy}
+                    deployStatus={deployStatus}
+                    showWebhookSecret={showWebhookSecret}
+                    onToggleShowSecret={() => setShowWebhookSecret(!showWebhookSecret)}
+                    githubApps={githubApps}
+                    showGithubAppSelector={showGithubAppSelector}
+                    onToggleSelector={() => setShowGithubAppSelector(!showGithubAppSelector)}
+                    onLinkGithubApp={handleLinkGithubApp}
+                    isLinkingApp={isLinkingApp}
+                    addToast={addToast}
+                />
+            )}
 
             {/* Build Configuration */}
             <div>
@@ -415,7 +534,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                                     <div key={i} className="flex items-center justify-between rounded bg-background px-2 py-1.5">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-foreground">PORT</span>
-                                            <span className="text-sm text-foreground-muted">→</span>
+                                            <span className="text-sm text-foreground-muted">&rarr;</span>
                                             <code className="text-sm font-medium text-primary">{port}</code>
                                         </div>
                                         <Badge variant="default" size="sm">HTTP</Badge>
@@ -550,6 +669,271 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     Delete Application
                 </Button>
             </div>
+        </div>
+    );
+}
+
+function AutoDeploySection({
+    app,
+    autoDeployEnabled,
+    onToggleAutoDeploy,
+    deployStatus,
+    showWebhookSecret,
+    onToggleShowSecret,
+    githubApps,
+    showGithubAppSelector,
+    onToggleSelector,
+    onLinkGithubApp,
+    isLinkingApp,
+    addToast,
+}: {
+    app: ApplicationData;
+    autoDeployEnabled: boolean;
+    onToggleAutoDeploy: (enabled: boolean) => void;
+    deployStatus: string;
+    showWebhookSecret: boolean;
+    onToggleShowSecret: () => void;
+    githubApps: GithubAppOption[];
+    showGithubAppSelector: boolean;
+    onToggleSelector: () => void;
+    onLinkGithubApp: (id: number) => void;
+    isLinkingApp: boolean;
+    addToast: (type: 'success' | 'error', message: string) => void;
+}) {
+    const statusConfig = {
+        automatic: {
+            icon: <Zap className="h-4 w-4 text-green-500" />,
+            label: 'Automatic',
+            sublabel: `via ${app.source_info?.name || 'GitHub App'}`,
+            color: 'text-green-500',
+            borderColor: 'border-green-500/20',
+            bgColor: 'bg-green-500/5',
+        },
+        manual_webhook: {
+            icon: <Webhook className="h-4 w-4 text-yellow-500" />,
+            label: 'Manual Webhook',
+            sublabel: 'Webhook secret configured',
+            color: 'text-yellow-500',
+            borderColor: 'border-yellow-500/20',
+            bgColor: 'bg-yellow-500/5',
+        },
+        not_configured: {
+            icon: <AlertCircle className="h-4 w-4 text-red-400" />,
+            label: 'Not Configured',
+            sublabel: 'No webhook integration set up',
+            color: 'text-red-400',
+            borderColor: 'border-red-500/20',
+            bgColor: 'bg-red-500/5',
+        },
+    };
+
+    const status = statusConfig[deployStatus as keyof typeof statusConfig] || statusConfig.not_configured;
+
+    return (
+        <div>
+            <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-foreground">Auto Deploy</h3>
+                <button
+                    onClick={() => onToggleAutoDeploy(!autoDeployEnabled)}
+                    className={`relative h-5 w-9 rounded-full transition-colors ${autoDeployEnabled ? 'bg-primary' : 'bg-background-tertiary'}`}
+                >
+                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${autoDeployEnabled ? 'left-[18px]' : 'left-0.5'}`} />
+                </button>
+            </div>
+
+            <div className={`rounded-lg border ${status.borderColor} ${status.bgColor} p-4`}>
+                {/* Status indicator */}
+                <div className="mb-3 flex items-center gap-2">
+                    {status.icon}
+                    <div>
+                        <span className={`text-sm font-medium ${status.color}`}>{status.label}</span>
+                        <span className="ml-2 text-xs text-foreground-muted">{status.sublabel}</span>
+                    </div>
+                </div>
+
+                {/* Automatic mode details */}
+                {deployStatus === 'automatic' && (
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 rounded bg-background/50 px-3 py-2">
+                            <Check className="h-3.5 w-3.5 text-green-500" />
+                            <span className="text-xs text-foreground-muted">
+                                Connected to <span className="font-medium text-foreground">{app.source_info?.name}</span>
+                            </span>
+                        </div>
+                        {app.repository_project_id && (
+                            <div className="flex items-center gap-2 rounded bg-background/50 px-3 py-2">
+                                <Check className="h-3.5 w-3.5 text-green-500" />
+                                <span className="text-xs text-foreground-muted">
+                                    Repository ID: <code className="rounded bg-background px-1 text-xs">{app.repository_project_id}</code>
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Manual webhook details */}
+                {deployStatus === 'manual_webhook' && app.webhook_url && (
+                    <div className="space-y-2">
+                        <div className="rounded bg-background/50 p-3">
+                            <p className="mb-1 text-xs text-foreground-muted">Webhook URL</p>
+                            <div className="flex items-center gap-2">
+                                <code className="flex-1 truncate text-xs text-foreground">{app.webhook_url}</code>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(app.webhook_url || '');
+                                        addToast('success', 'Webhook URL copied');
+                                    }}
+                                    className="rounded p-1 text-foreground-muted hover:text-foreground"
+                                >
+                                    <Copy className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                        {app.manual_webhook_secret_github && (
+                            <div className="rounded bg-background/50 p-3">
+                                <p className="mb-1 text-xs text-foreground-muted">Webhook Secret</p>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 truncate text-xs text-foreground">
+                                        {showWebhookSecret ? app.manual_webhook_secret_github : '\u2022'.repeat(32)}
+                                    </code>
+                                    <button
+                                        onClick={onToggleShowSecret}
+                                        className="rounded p-1 text-foreground-muted hover:text-foreground"
+                                    >
+                                        {showWebhookSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(app.manual_webhook_secret_github || '');
+                                            addToast('success', 'Secret copied');
+                                        }}
+                                        className="rounded p-1 text-foreground-muted hover:text-foreground"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Show GitHub App connector for manual webhook mode */}
+                        {githubApps.length > 0 && (
+                            <div className="border-t border-border/50 pt-2">
+                                <p className="mb-2 text-xs text-foreground-muted">
+                                    Upgrade to automatic deploy by connecting a GitHub App:
+                                </p>
+                                <GithubAppSelector
+                                    githubApps={githubApps}
+                                    showSelector={showGithubAppSelector}
+                                    onToggle={onToggleSelector}
+                                    onSelect={onLinkGithubApp}
+                                    isLinking={isLinkingApp}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Not configured */}
+                {deployStatus === 'not_configured' && (
+                    <div className="space-y-3">
+                        {githubApps.length > 0 ? (
+                            <div>
+                                <p className="mb-2 text-xs text-foreground-muted">
+                                    Connect a GitHub App for automatic deployments on push:
+                                </p>
+                                <GithubAppSelector
+                                    githubApps={githubApps}
+                                    showSelector={showGithubAppSelector}
+                                    onToggle={onToggleSelector}
+                                    onSelect={onLinkGithubApp}
+                                    isLinking={isLinkingApp}
+                                />
+                            </div>
+                        ) : (
+                            <div className="rounded bg-background/50 p-3">
+                                <p className="text-xs text-foreground-muted">
+                                    To enable auto-deploy, configure a GitHub App in{' '}
+                                    <a href="/sources" className="text-primary hover:underline">Sources</a>
+                                    {' '}or set up a manual webhook.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Always show webhook info if secret exists */}
+                        {app.has_webhook_secret && app.webhook_url && (
+                            <div className="rounded bg-background/50 p-3">
+                                <p className="mb-1 text-xs text-foreground-muted">Manual Webhook URL</p>
+                                <div className="flex items-center gap-2">
+                                    <code className="flex-1 truncate text-xs text-foreground">{app.webhook_url}</code>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(app.webhook_url || '');
+                                            addToast('success', 'Webhook URL copied');
+                                        }}
+                                        className="rounded p-1 text-foreground-muted hover:text-foreground"
+                                    >
+                                        <Copy className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function GithubAppSelector({
+    githubApps,
+    showSelector,
+    onToggle,
+    onSelect,
+    isLinking,
+}: {
+    githubApps: GithubAppOption[];
+    showSelector: boolean;
+    onToggle: () => void;
+    onSelect: (id: number) => void;
+    isLinking: boolean;
+}) {
+    return (
+        <div>
+            <button
+                onClick={onToggle}
+                disabled={isLinking}
+                className="flex w-full items-center justify-between rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-background-secondary"
+            >
+                <span>{isLinking ? 'Connecting...' : 'Connect GitHub App'}</span>
+                {isLinking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showSelector ? 'rotate-180' : ''}`} />
+                )}
+            </button>
+            {showSelector && !isLinking && (
+                <div className="mt-1 rounded-lg border border-border bg-background shadow-lg">
+                    {githubApps.map((ghApp) => (
+                        <button
+                            key={ghApp.id}
+                            onClick={() => onSelect(ghApp.id)}
+                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-background-secondary first:rounded-t-lg last:rounded-b-lg"
+                        >
+                            <div className="flex h-7 w-7 items-center justify-center rounded bg-[#24292e]">
+                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="#fff">
+                                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-foreground">{ghApp.name}</p>
+                                {ghApp.organization && (
+                                    <p className="text-xs text-foreground-muted">{ghApp.organization}</p>
+                                )}
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
