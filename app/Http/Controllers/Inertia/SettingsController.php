@@ -569,8 +569,9 @@ class SettingsController extends Controller
             return redirect()->back()->withErrors(['member' => 'Cannot remove the last owner of the team']);
         }
 
-        // Remove the member from the team
-        $team->members()->detach($id);
+        // Archive and remove the member from the team
+        $action = new \App\Actions\Team\ArchiveAndKickMemberAction;
+        $action->execute($team, $member, $currentUser);
 
         return redirect()->back()->with('success', 'Member removed from team successfully');
     }

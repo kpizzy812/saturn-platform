@@ -635,8 +635,9 @@ Route::delete('/settings/team/members/{id}', function (string $id) {
             return redirect()->back()->withErrors(['member' => 'Cannot leave the team as the last owner. Please transfer ownership first.']);
         }
 
-        // Remove the member from the team
-        $team->members()->detach($id);
+        // Archive the member's contributions before leaving
+        $action = new \App\Actions\Team\ArchiveAndKickMemberAction;
+        $action->execute($team, $member, $currentUser, 'Self-removal: member left the team');
 
         return redirect('/dashboard')->with('success', 'You have left the team');
     }

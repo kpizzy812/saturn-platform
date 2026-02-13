@@ -92,21 +92,16 @@ Route::post('/teams/{teamId}/members/{userId}/remove', function (int $teamId, in
     $team = \App\Models\Team::findOrFail($teamId);
     $user = \App\Models\User::findOrFail($userId);
 
-    try {
-        // Use transaction with lock to prevent race condition on role check + detach
-        \Illuminate\Support\Facades\DB::transaction(function () use ($team, $userId) {
-            $member = $team->members()->where('user_id', $userId)->lockForUpdate()->first();
-            if (! $member) {
-                throw new \RuntimeException('User is not a member of this team');
-            }
-            if ($member->pivot?->role === 'owner') {
-                throw new \RuntimeException('Cannot remove team owner');
-            }
-            $team->members()->detach($userId);
-        });
-    } catch (\RuntimeException $e) {
-        return back()->with('error', $e->getMessage());
+    $member = $team->members()->where('user_id', $userId)->first();
+    if (! $member) {
+        return back()->with('error', 'User is not a member of this team');
     }
+    if ($member->pivot?->role === 'owner') {
+        return back()->with('error', 'Cannot remove team owner');
+    }
+
+    $action = new \App\Actions\Team\ArchiveAndKickMemberAction;
+    $action->execute($team, $member, auth()->user(), 'Removed by platform admin');
 
     return back()->with('success', "Removed {$user->name} from team");
 })->name('admin.teams.members.remove');
