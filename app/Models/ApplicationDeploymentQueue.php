@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Events\DeploymentLogEntry as DeploymentLogEntryEvent;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -41,6 +42,8 @@ use OpenApi\Attributes as OA;
 )]
 class ApplicationDeploymentQueue extends Model
 {
+    use HasFactory;
+
     // Deployment stage constants
     public const STAGE_PREPARE = 'prepare';
 
@@ -53,6 +56,8 @@ class ApplicationDeploymentQueue extends Model
     public const STAGE_DEPLOY = 'deploy';
 
     public const STAGE_HEALTHCHECK = 'healthcheck';
+
+    protected $with = ['application'];
 
     /**
      * The attributes that are mass assignable.

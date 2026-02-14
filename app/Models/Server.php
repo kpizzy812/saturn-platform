@@ -213,6 +213,8 @@ class Server extends BaseModel
         'proxy',
     ];
 
+    protected $with = ['settings'];
+
     protected $fillable = [
         'name',
         'ip',

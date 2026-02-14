@@ -121,6 +121,8 @@ class Application extends BaseModel
 
     private static $parserVersion = '5';
 
+    protected $with = ['environment'];
+
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
      * Critical fields (id, uuid) are excluded. Relationship IDs are fillable but validated in Actions.

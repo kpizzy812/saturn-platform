@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\Yaml\Yaml;
 
 class LocalPersistentVolume extends Model
 {
+    use HasFactory;
+
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
      * Excludes: id. Polymorphic relationship IDs are fillable for internal booted() hooks.

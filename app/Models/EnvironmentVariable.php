@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\EnvironmentVariable as ModelsEnvironmentVariable;
 use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -35,7 +36,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 )]
 class EnvironmentVariable extends BaseModel
 {
-    use Auditable, LogsActivity;
+    use Auditable, HasFactory, LogsActivity;
 
     /**
      * The attributes that are mass assignable.

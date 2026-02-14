@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
 class ApplicationPreview extends BaseModel
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
