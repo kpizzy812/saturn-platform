@@ -222,7 +222,7 @@ trait HandlesHealthCheck
 
     /**
      * Verify container is stable and not crash-looping.
-     * This is a lightweight check for when healthcheck is disabled.
+     * Performs 3 checks over 30 seconds to catch delayed crashes.
      */
     private function verify_container_stability(): void
     {
@@ -234,45 +234,52 @@ trait HandlesHealthCheck
 
         $this->application_deployment_queue->addLogEntry('Verifying container stability (healthcheck disabled)...');
 
-        // Wait a few seconds for container to potentially crash
-        Sleep::for(5)->seconds();
+        $checks = 3;
+        $intervalSeconds = 10;
 
-        // Check container state
-        $this->execute_remote_command(
-            [
-                "docker inspect --format='{{.State.Status}} {{.State.Restarting}}' {$this->container_name}",
-                'hidden' => true,
-                'save' => 'container_state',
-                'ignore_errors' => true,
-            ],
-        );
+        for ($i = 1; $i <= $checks; $i++) {
+            Sleep::for($intervalSeconds)->seconds();
 
-        $state = trim($this->saved_outputs->get('container_state', ''));
-        $parts = explode(' ', $state);
-        $status = $parts[0] ?? '';
-        $isRestarting = ($parts[1] ?? '') === 'true';
+            $this->execute_remote_command(
+                [
+                    "docker inspect --format='{{.State.Status}} {{.State.Restarting}}' {$this->container_name}",
+                    'hidden' => true,
+                    'save' => 'container_state',
+                    'ignore_errors' => true,
+                ],
+            );
 
-        if ($isRestarting || $status === 'restarting') {
-            $this->newVersionIsHealthy = false;
-            $this->application_deployment_queue->addLogEntry('⚠️ Container is restarting/crash-looping!', type: 'error');
-            $this->query_logs();
-            $this->analyzeContainerFailure();
+            $state = trim($this->saved_outputs->get('container_state', ''));
+            $parts = explode(' ', $state);
+            $status = $parts[0] ?? '';
+            $isRestarting = ($parts[1] ?? '') === 'true';
 
-            throw new DeploymentException('Container is crash-looping. Check the logs above for details.');
-        }
+            if ($isRestarting || $status === 'restarting') {
+                $this->newVersionIsHealthy = false;
+                $this->application_deployment_queue->addLogEntry('Container is restarting/crash-looping!', type: 'error');
+                $this->query_logs();
+                $this->analyzeContainerFailure();
 
-        if ($status !== 'running') {
-            $this->newVersionIsHealthy = false;
-            $this->application_deployment_queue->addLogEntry("⚠️ Container is not running (status: {$status})!", type: 'error');
-            $this->query_logs();
-            $this->analyzeContainerFailure();
+                throw new DeploymentException('Container is crash-looping. Check the logs above for details.');
+            }
 
-            throw new DeploymentException("Container failed to start (status: {$status}). Check the logs above for details.");
+            if ($status !== 'running') {
+                $this->newVersionIsHealthy = false;
+                $this->application_deployment_queue->addLogEntry("Container is not running (status: {$status})!", type: 'error');
+                $this->query_logs();
+                $this->analyzeContainerFailure();
+
+                throw new DeploymentException("Container failed to start (status: {$status}). Check the logs above for details.");
+            }
+
+            if ($i < $checks) {
+                $this->application_deployment_queue->addLogEntry("Stability check {$i}/{$checks} passed, waiting...");
+            }
         }
 
         $this->newVersionIsHealthy = true;
         $this->application->update(['status' => 'running']);
-        $this->application_deployment_queue->addLogEntry('Container is running stably.');
+        $this->application_deployment_queue->addLogEntry("Container is running stably ({$checks} checks over ".($checks * $intervalSeconds).'s passed).');
     }
 
     /**

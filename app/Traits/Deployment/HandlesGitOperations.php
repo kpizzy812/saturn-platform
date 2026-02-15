@@ -101,7 +101,18 @@ trait HandlesGitOperations
                     $this->commit = $matches[1];
                     $this->application_deployment_queue->commit = $this->commit;
                     $this->application_deployment_queue->save();
+                } else {
+                    $this->application_deployment_queue->addLogEntry(
+                        "WARNING: Could not parse commit SHA from git ls-remote output. Deploying with commit reference: {$this->commit}. Raw output: ".str($output)->limit(200),
+                        type: 'stderr'
+                    );
                 }
+            } else {
+                $rawOutput = $lsRemoteOutput->value();
+                $this->application_deployment_queue->addLogEntry(
+                    "WARNING: git ls-remote returned unexpected format (no tab separator). Deploying with commit reference: {$this->commit}. Raw output: ".str($rawOutput)->limit(200),
+                    type: 'stderr'
+                );
             }
         }
         $this->set_saturn_variables();

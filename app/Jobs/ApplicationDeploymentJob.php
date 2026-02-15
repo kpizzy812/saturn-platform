@@ -44,6 +44,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Visus\Cuid2\Cuid2;
@@ -343,11 +344,42 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
 
-        $this->application_deployment_queue->update([
-            'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
-            'started_at' => Carbon::now(),
-            'horizon_job_worker' => gethostname(),
-        ]);
+        // Prevent race condition: lock application row and check for concurrent deployments
+        $canProceed = DB::transaction(function () {
+            $lockedApp = Application::lockForUpdate()->find($this->application->id);
+            if (! $lockedApp) {
+                return false;
+            }
+
+            // Check if another deployment is already in progress for this application
+            $activeDeployment = ApplicationDeploymentQueue::where('application_id', $this->application->id)
+                ->where('status', ApplicationDeploymentStatus::IN_PROGRESS->value)
+                ->where('id', '!=', $this->application_deployment_queue->id)
+                ->exists();
+
+            if ($activeDeployment) {
+                return false;
+            }
+
+            // Refresh our models inside the lock to get latest data
+            $this->application = $lockedApp;
+            $this->application_deployment_queue->update([
+                'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
+                'started_at' => Carbon::now(),
+                'horizon_job_worker' => gethostname(),
+            ]);
+
+            return true;
+        });
+
+        if (! $canProceed) {
+            // Another deployment is already running — re-queue with backoff
+            $this->application_deployment_queue->addLogEntry('Another deployment is already in progress. Waiting...');
+            $this->release(30);
+
+            return;
+        }
+
         if ($this->server->isFunctional() === false) {
             $this->application_deployment_queue->addLogEntry('Server is not functional.');
             $this->fail('Server is not functional.');
