@@ -547,9 +547,11 @@ class Github extends Controller
             }
 
             $api_url = data_get($github_app, 'api_url');
+            // Use send() instead of post() to avoid sending [] as JSON body.
+            // Laravel's post() defaults to json_encode([]) which GitHub rejects with 422.
             $response = Http::timeout(15)
                 ->accept('application/vnd.github+json')
-                ->post("$api_url/app-manifests/$code/conversions");
+                ->send('POST', "$api_url/app-manifests/$code/conversions");
 
             if ($response->failed()) {
                 \Log::error('GitHub App redirect: manifest conversion failed', [
