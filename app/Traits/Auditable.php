@@ -109,23 +109,12 @@ trait Auditable
      */
     protected function getAuditResourceName(): string
     {
-        if (property_exists($this, 'name') && $this->name) {
-            return $this->name;
-        }
-
-        if (property_exists($this, 'title') && $this->title) {
-            return $this->title;
-        }
-
-        if (method_exists($this, 'getName')) {
-            return $this->getName();
-        }
-
-        if (method_exists($this, 'getTitle')) {
-            return $this->getTitle();
-        }
-
-        return $this->id ?? 'Unknown';
+        return $this->getAttribute('name')
+            ?? $this->getAttribute('title')
+            ?? $this->getAttribute('key')
+            ?? (method_exists($this, 'getName') ? $this->getName() : null)
+            ?? (method_exists($this, 'getTitle') ? $this->getTitle() : null)
+            ?? (string) ($this->id ?? 'Unknown');
     }
 
     /**

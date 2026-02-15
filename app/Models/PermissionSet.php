@@ -219,8 +219,9 @@ class PermissionSet extends Model
         foreach ($permissions as $perm) {
             $permId = $perm['permission_id'] ?? $perm['id'] ?? null;
             if ($permId) {
+                $restrictions = $perm['environment_restrictions'] ?? null;
                 $syncData[$permId] = [
-                    'environment_restrictions' => $perm['environment_restrictions'] ?? null,
+                    'environment_restrictions' => is_array($restrictions) ? json_encode($restrictions) : $restrictions,
                 ];
             }
         }

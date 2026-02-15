@@ -56,11 +56,18 @@ class ArchiveAndKickMemberAction
 
         $topResources = [];
         foreach ($topResourceRows as $row) {
+            $name = $row->resource_name;
+
+            // Resolve name from actual model if audit log has no resource_name
+            if (! $name && $row->resource_type && $row->resource_id) {
+                $name = $this->resolveResourceName($row->resource_type, $row->resource_id);
+            }
+
             $topResources[] = [
                 'type' => class_basename((string) $row->resource_type),
                 'full_type' => $row->resource_type,
                 'id' => $row->resource_id,
-                'name' => $row->resource_name ?? 'Unknown',
+                'name' => $name ?? 'Deleted resource',
                 'action_count' => (int) data_get($row, 'action_count', 0),
             ];
         }
@@ -74,15 +81,24 @@ class ArchiveAndKickMemberAction
             ->orderByDesc('created_at')
             ->limit(20)
             ->get()
-            ->map(fn (AuditLog $log) => [
-                'id' => $log->id,
-                'action' => $log->action,
-                'formatted_action' => $log->formatted_action,
-                'resource_type' => $log->resource_type_name,
-                'resource_name' => $log->resource_name,
-                'description' => $log->description,
-                'created_at' => $log->created_at?->toISOString(),
-            ])
+            ->map(function (AuditLog $log) {
+                $name = $log->resource_name;
+
+                // Resolve name from actual model if audit log has no resource_name
+                if (! $name && $log->resource_type && $log->resource_id) {
+                    $name = $this->resolveResourceName($log->resource_type, $log->resource_id);
+                }
+
+                return [
+                    'id' => $log->id,
+                    'action' => $log->action,
+                    'formatted_action' => $log->formatted_action,
+                    'resource_type' => $log->resource_type_name,
+                    'resource_name' => $name,
+                    'description' => $log->description,
+                    'created_at' => $log->created_at?->toISOString(),
+                ];
+            })
             ->toArray();
 
         // Count created resources
@@ -99,6 +115,31 @@ class ArchiveAndKickMemberAction
             'last_action' => $lastAction?->toISOString(),
             'recent_activities' => $recentActivities,
         ];
+    }
+
+    /**
+     * Resolve a human-readable name from an actual model record.
+     */
+    private function resolveResourceName(string $resourceType, int $resourceId): ?string
+    {
+        try {
+            if (! class_exists($resourceType)) {
+                return null;
+            }
+
+            $model = $resourceType::find($resourceId);
+            if (! $model) {
+                return null;
+            }
+
+            return $model->getAttribute('name')
+                ?? $model->getAttribute('title')
+                ?? $model->getAttribute('key')
+                ?? (method_exists($model, 'getName') ? $model->getName() : null)
+                ?? (method_exists($model, 'getTitle') ? $model->getTitle() : null);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**

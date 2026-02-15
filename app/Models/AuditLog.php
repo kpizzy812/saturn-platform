@@ -138,15 +138,11 @@ class AuditLog extends Model
 
         // Try to get a human-readable name from the resource
         if ($resource) {
-            if (property_exists($resource, 'name')) {
-                $resourceName = $resource->name;
-            } elseif (property_exists($resource, 'title')) {
-                $resourceName = $resource->title;
-            } elseif (method_exists($resource, 'getName')) {
-                $resourceName = $resource->getName();
-            } elseif (method_exists($resource, 'getTitle')) {
-                $resourceName = $resource->getTitle();
-            }
+            $resourceName = $resource->getAttribute('name')
+                ?? $resource->getAttribute('title')
+                ?? $resource->getAttribute('key')
+                ?? (method_exists($resource, 'getName') ? $resource->getName() : null)
+                ?? (method_exists($resource, 'getTitle') ? $resource->getTitle() : null);
         }
 
         // If deleting a Team resource, the team no longer exists in DB
