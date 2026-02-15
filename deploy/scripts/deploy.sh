@@ -81,6 +81,20 @@ validate_prerequisites() {
 }
 
 # =============================================================================
+# Docker Compose Helper
+# =============================================================================
+compose_cmd() {
+    cd "$PROJECT_ROOT"
+    export SATURN_IMAGE
+    docker compose \
+        -f docker-compose.yml \
+        -f docker-compose.prod.yml \
+        -f docker-compose.dev.override.yml \
+        --env-file "${SATURN_DATA}/source/.env" \
+        "$@"
+}
+
+# =============================================================================
 # Deployment Functions
 # =============================================================================
 backup_database() {
@@ -117,13 +131,7 @@ pull_images() {
 stop_services() {
     log_step "Stopping services..."
 
-    cd "$PROJECT_ROOT"
-    docker compose \
-        -f docker-compose.yml \
-        -f docker-compose.prod.yml \
-        -f docker-compose.dev.override.yml \
-        --env-file "${SATURN_DATA}/source/.env" \
-        down --remove-orphans 2>/dev/null || true
+    compose_cmd down --remove-orphans 2>/dev/null || true
 
     # Clean up any orphaned containers with mangled names
     for name in saturn-dev saturn-db saturn-redis saturn-realtime; do
@@ -133,27 +141,32 @@ stop_services() {
     log_success "Services stopped"
 }
 
-start_services() {
-    log_step "Starting services..."
+start_infrastructure() {
+    log_step "Starting infrastructure (postgres, redis, soketi)..."
 
-    cd "$PROJECT_ROOT"
+    compose_cmd up -d --wait postgres redis soketi
 
-    export SATURN_IMAGE
-
-    docker compose \
-        -f docker-compose.yml \
-        -f docker-compose.prod.yml \
-        -f docker-compose.dev.override.yml \
-        --env-file "${SATURN_DATA}/source/.env" \
-        up -d
-
-    log_success "Services started"
+    log_success "Infrastructure healthy"
 }
 
 run_migrations() {
-    log_step "Running migrations..."
+    log_step "Running migrations (before app starts)..."
 
-    # Wait for container
+    # Run migrations via temporary container — app is NOT serving traffic yet
+    compose_cmd run --rm --no-deps saturn php artisan migrate --force || {
+        log_error "Migration failed"
+        exit 1
+    }
+
+    log_success "Migrations done"
+}
+
+start_app() {
+    log_step "Starting Saturn app..."
+
+    compose_cmd up -d
+
+    # Wait for app container to be ready
     local retries=30
     while [[ $retries -gt 0 ]]; do
         if docker ps --format '{{.Names}}' | grep -q "^saturn-dev$"; then
@@ -168,19 +181,14 @@ run_migrations() {
         exit 1
     fi
 
-    # Wait for health
-    log_info "Waiting for container to be healthy..."
-    sleep 10
-
-    docker exec saturn-dev php artisan migrate --force || {
-        log_error "Migration failed"
-        exit 1
-    }
+    # Wait for container health before running post-deploy commands
+    log_info "Waiting for app container to be healthy..."
+    sleep 5
 
     # Create storage symlink for public uploads (avatars, logos)
     docker exec saturn-dev php artisan storage:link --force 2>/dev/null || true
 
-    log_success "Migrations done"
+    log_success "App started"
 }
 
 run_seeders() {
@@ -276,8 +284,9 @@ deploy() {
     backup_database
     pull_images
     stop_services
-    start_services
-    run_migrations  # Runs after start because it needs the DB container healthy
+    start_infrastructure    # 1. Start DB, Redis, Soketi (wait for healthy)
+    run_migrations          # 2. Run migrations BEFORE app starts serving traffic
+    start_app               # 3. Start Saturn app (schema is already up to date)
     run_seeders
     clear_caches
     cleanup_old_backups
