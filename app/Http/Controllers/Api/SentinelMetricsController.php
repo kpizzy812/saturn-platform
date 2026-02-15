@@ -179,11 +179,12 @@ class SentinelMetricsController extends Controller
             $cpuData = $server->getCpuMetrics($minutes);
             $memoryData = $server->getMemoryMetrics($minutes);
             $diskUsage = $server->getDiskUsage();
+            $networkStats = $this->getNetworkStats($server);
 
             // Build response
             $response = [
-                'metrics' => $this->buildCurrentMetrics($cpuData, $memoryData, $diskUsage),
-                'historicalData' => $this->buildHistoricalData($cpuData, $memoryData, $diskUsage, $timeRange),
+                'metrics' => $this->buildCurrentMetrics($cpuData, $memoryData, $diskUsage, $networkStats),
+                'historicalData' => $this->buildHistoricalData($cpuData, $memoryData, $diskUsage, $timeRange, $networkStats),
                 'alerts' => $this->buildAlerts($cpuData, $memoryData, $diskUsage),
             ];
 
@@ -208,7 +209,7 @@ class SentinelMetricsController extends Controller
     /**
      * Build current metrics object for frontend
      */
-    private function buildCurrentMetrics($cpuData, $memoryData, $diskUsage): array
+    private function buildCurrentMetrics($cpuData, $memoryData, $diskUsage, ?array $networkStats = null): array
     {
         // Get latest values from historical data
         $cpuPercent = 0;
@@ -244,9 +245,9 @@ class SentinelMetricsController extends Controller
                 'trend' => array_fill(0, 20, $diskPercent), // Disk doesn't change much
             ],
             'network' => [
-                'current' => 'N/A',
-                'in' => 'N/A',
-                'out' => 'N/A',
+                'current' => $networkStats ? ($networkStats['in'].' / '.$networkStats['out']) : 'N/A',
+                'in' => $networkStats['in'] ?? 'N/A',
+                'out' => $networkStats['out'] ?? 'N/A',
             ],
         ];
     }
@@ -254,7 +255,7 @@ class SentinelMetricsController extends Controller
     /**
      * Build historical data for charts
      */
-    private function buildHistoricalData($cpuData, $memoryData, $diskUsage, string $timeRange): array
+    private function buildHistoricalData($cpuData, $memoryData, $diskUsage, string $timeRange, ?array $networkStats = null): array
     {
         $interval = self::TIME_RANGE_INTERVALS[$timeRange];
 
@@ -275,15 +276,18 @@ class SentinelMetricsController extends Controller
             'peak' => $diskPercent.'%',
         ];
 
+        // Network - show total transferred
+        $networkHistorical = [
+            'data' => [],
+            'average' => $networkStats['in'] ?? 'N/A',
+            'peak' => $networkStats['out'] ?? 'N/A',
+        ];
+
         return [
             'cpu' => $cpuHistorical,
             'memory' => $memoryHistorical,
             'disk' => $diskHistorical,
-            'network' => [
-                'data' => [],
-                'average' => 'N/A',
-                'peak' => 'N/A',
-            ],
+            'network' => $networkHistorical,
         ];
     }
 
@@ -428,6 +432,37 @@ class SentinelMetricsController extends Controller
         }
 
         return $alerts;
+    }
+
+    /**
+     * Get network I/O stats from server via /proc/net/dev
+     * Returns total RX/TX bytes across all physical interfaces
+     */
+    private function getNetworkStats(Server $server): ?array
+    {
+        try {
+            // Read /proc/net/dev - sum RX (col 2) and TX (col 10) for non-loopback interfaces
+            $output = instant_remote_process([
+                "cat /proc/net/dev | awk 'NR>2 && !/lo:/{rx+=$2; tx+=$10} END{print rx, tx}'",
+            ], $server, false);
+
+            $parts = preg_split('/\s+/', trim($output ?? ''));
+            if (count($parts) < 2) {
+                return null;
+            }
+
+            $rxBytes = (float) $parts[0];
+            $txBytes = (float) $parts[1];
+
+            return [
+                'in' => $this->formatBytes($rxBytes),
+                'out' => $this->formatBytes($txBytes),
+                'rx_bytes' => $rxBytes,
+                'tx_bytes' => $txBytes,
+            ];
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**

@@ -190,11 +190,11 @@ export function MetricsTab({ service }: MetricsTabProps) {
                     <div className="flex items-center gap-4 text-xs">
                         <span className="flex items-center gap-1">
                             <span className="h-2 w-2 rounded-full bg-purple-500" />
-                            In: {metrics?.network?.in || '0 MB/s'}
+                            In: {metrics?.network?.in || 'N/A'}
                         </span>
                         <span className="flex items-center gap-1">
                             <span className="h-2 w-2 rounded-full bg-pink-500" />
-                            Out: {metrics?.network?.out || '0 MB/s'}
+                            Out: {metrics?.network?.out || 'N/A'}
                         </span>
                     </div>
                 </div>
@@ -204,8 +204,8 @@ export function MetricsTab({ service }: MetricsTabProps) {
                     </div>
                 )}
                 <div className="mt-2 flex justify-between text-xs text-foreground-muted">
-                    <span>Avg: {historicalData?.network?.average || 'N/A'}</span>
-                    <span>Peak: {historicalData?.network?.peak || 'N/A'}</span>
+                    <span>Total In: {historicalData?.network?.average || 'N/A'}</span>
+                    <span>Total Out: {historicalData?.network?.peak || 'N/A'}</span>
                 </div>
             </div>
 
