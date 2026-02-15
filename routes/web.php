@@ -113,6 +113,13 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Git sources (GitHub, GitLab, Bitbucket)
     require __DIR__.'/web/sources.php';
 
+    // GitHub App browser redirects (manifest flow callback + install callback)
+    // These were in webhooks.php but need web+auth middleware for sessions/flash messages
+    Route::prefix('webhooks/source/github')->group(function () {
+        Route::get('/redirect', [\App\Http\Controllers\Webhook\Github::class, 'redirect']);
+        Route::get('/install', [\App\Http\Controllers\Webhook\Github::class, 'install']);
+    });
+
     // Web API endpoints (session auth)
     require __DIR__.'/web/web-api.php';
 

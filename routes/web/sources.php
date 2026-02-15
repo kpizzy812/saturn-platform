@@ -86,7 +86,6 @@ Route::prefix('sources')->group(function () {
 
             return Inertia::render('Sources/GitHub/Create', [
                 'webhookUrl' => $fqdn.'/webhooks/source/github/events',
-                'callbackUrl' => $fqdn.'/webhooks/source/github/redirect',
             ]);
         })->name('sources.github.create');
 
@@ -94,13 +93,14 @@ Route::prefix('sources')->group(function () {
         Route::post('/', function (Request $request) {
             $validated = $request->validate([
                 'is_public' => 'sometimes|boolean',
+                'name' => 'sometimes|string|max:255',
             ]);
 
             $team = auth()->user()->currentTeam();
 
             $githubApp = new \App\Models\GithubApp;
             $githubApp->uuid = (string) new \Visus\Cuid2\Cuid2;
-            $githubApp->name = 'github-app-pending';
+            $githubApp->name = $validated['name'] ?? 'github-app-pending';
             $githubApp->api_url = 'https://api.github.com';
             $githubApp->html_url = 'https://github.com';
             $githubApp->team_id = $team->id;
@@ -122,7 +122,7 @@ Route::prefix('sources')->group(function () {
 
             // Build installation path for the "Install on GitHub" button
             $installationPath = null;
-            if (! is_null($source->app_id) && $source->name !== 'github-app-pending') {
+            if (! is_null($source->app_id)) {
                 $installationPath = getInstallationPath($source);
             }
 

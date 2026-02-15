@@ -547,17 +547,19 @@ class Github extends Controller
             }
 
             $api_url = data_get($github_app, 'api_url');
-            $response = Http::accept('application/vnd.github+json')
+            $response = Http::timeout(15)
+                ->accept('application/vnd.github+json')
                 ->post("$api_url/app-manifests/$code/conversions");
 
             if ($response->failed()) {
                 \Log::error('GitHub App redirect: manifest conversion failed', [
+                    'github_app_id' => $github_app->id,
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => Str::limit($response->body(), 500),
                 ]);
 
                 return redirect()->route('sources.github.index')
-                    ->with('error', 'Failed to complete GitHub App setup. Please try again.');
+                    ->with('error', 'Failed to complete GitHub App setup (HTTP '.$response->status().'). Please try again.');
             }
 
             $data = $response->json();
@@ -589,7 +591,10 @@ class Github extends Controller
                 'slug' => $slug,
             ]);
 
-            return redirect()->route('sources.github.show', ['id' => $github_app->id]);
+            // Redirect directly to GitHub install page to streamline the flow
+            $installPath = getInstallationPath($github_app);
+
+            return redirect()->away($installPath);
         } catch (Exception $e) {
             \Log::error('GitHub App redirect error', [
                 'message' => $e->getMessage(),

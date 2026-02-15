@@ -9,10 +9,9 @@ import {
 
 interface Props {
     webhookUrl: string;
-    callbackUrl: string;
 }
 
-export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
+export default function GitHubCreate({ webhookUrl }: Props) {
     const [isPublic, setIsPublic] = useState(false);
     const [creating, setCreating] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
@@ -32,7 +31,7 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
                     'X-CSRF-TOKEN': csrfToken || '',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ is_public: isPublic }),
+                body: JSON.stringify({ is_public: isPublic, name: appName }),
             });
 
             if (!response.ok) {
@@ -49,8 +48,8 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
                     url: webhookUrl,
                     active: true,
                 },
-                redirect_url: callbackUrl,
-                callback_urls: [callbackUrl],
+                redirect_url: `${window.location.origin}/webhooks/source/github/redirect`,
+                callback_urls: [`${window.location.origin}/webhooks/source/github/redirect`],
                 setup_url: `${window.location.origin}/webhooks/source/github/install?source=${data.uuid}`,
                 setup_on_update: true,
                 public: isPublic,
@@ -220,7 +219,7 @@ export default function GitHubCreate({ webhookUrl, callbackUrl }: Props) {
                                     </li>
                                     <li className="flex items-center gap-2">
                                         <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
-                                        <span>Callback: <code className="text-xs bg-background px-1.5 py-0.5 rounded">{callbackUrl}</code></span>
+                                        <span>Callback: <code className="text-xs bg-background px-1.5 py-0.5 rounded">{window.location.origin}/webhooks/source/github/redirect</code></span>
                                     </li>
                                 </ul>
                             </div>
