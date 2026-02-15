@@ -41,3 +41,5 @@ CHANGELOG.md
 .claudeignore
 .claude
 .phpstan-cache
+.env.production
+.env.development

@@ -57,7 +57,7 @@ Route::group([
     Route::get('/disable', [OtherController::class, 'disable_api']);
 });
 Route::group([
-    'middleware' => ['auth:sanctum', ApiAllowed::class, 'api.sensitive'],
+    'middleware' => ['auth:sanctum', ApiAllowed::class, 'api.sensitive', 'throttle:120,1'],
     'prefix' => 'v1',
 ], function () {
 
@@ -625,128 +625,19 @@ Route::group([
     Route::get('/services/{uuid}/healthcheck', [ServiceHealthcheckController::class, 'show'])->middleware(['api.ability:read']);
     Route::patch('/services/{uuid}/healthcheck', [ServiceHealthcheckController::class, 'update'])->middleware(['api.ability:write']);
 
-    // Billing Routes
-    Route::get('/billing/info', function () {
-        // TODO: Implement actual billing info fetching
-        return response()->json([
-            'currentPlan' => [
-                'id' => 'pro',
-                'name' => 'Pro',
-                'price' => 20,
-                'billingCycle' => 'monthly',
-                'features' => ['Unlimited projects', '1000 deployments/mo', '2500 build minutes'],
-                'status' => 'active',
-            ],
-            'nextBillingDate' => '2024-04-01',
-            'estimatedCost' => 102.00,
-            'usage' => [
-                ['label' => 'CPU Hours', 'current' => 342, 'limit' => 500, 'unit' => 'hours/mo'],
-                ['label' => 'Memory', 'current' => 45.2, 'limit' => 100, 'unit' => 'GB/mo'],
-                ['label' => 'Network', 'current' => 1240, 'limit' => 2500, 'unit' => 'GB/mo'],
-                ['label' => 'Storage', 'current' => 25.8, 'limit' => 50, 'unit' => 'GB'],
-            ],
-        ]);
-    })->middleware(['api.ability:read']);
-
-    Route::get('/billing/payment-methods', function () {
-        // TODO: Implement actual payment methods fetching from Stripe
-        return response()->json([
-            [
-                'id' => 'pm_123',
-                'type' => 'card',
-                'card' => [
-                    'brand' => 'Visa',
-                    'last4' => '4242',
-                    'exp_month' => 12,
-                    'exp_year' => 2025,
-                ],
-                'billing_details' => [
-                    'name' => 'John Doe',
-                    'email' => 'john@example.com',
-                ],
-                'is_default' => true,
-            ],
-        ]);
-    })->middleware(['api.ability:read']);
-
-    Route::post('/billing/payment-methods', function () {
-        // TODO: Implement actual payment method creation with Stripe
-        return response()->json(['message' => 'Payment method added successfully']);
-    })->middleware(['api.ability:write']);
-
-    Route::delete('/billing/payment-methods/{paymentMethodId}', function ($paymentMethodId) {
-        // TODO: Implement actual payment method deletion
-        return response()->json(['message' => 'Payment method removed successfully']);
-    })->middleware(['api.ability:write']);
-
-    Route::post('/billing/payment-methods/{paymentMethodId}/default', function ($paymentMethodId) {
-        // TODO: Implement setting default payment method
-        return response()->json(['message' => 'Default payment method updated successfully']);
-    })->middleware(['api.ability:write']);
-
-    Route::get('/billing/invoices', function () {
-        // TODO: Implement actual invoice fetching from Stripe
-        return response()->json([
-            [
-                'id' => 'in_123',
-                'invoice_number' => 'INV-2024-03-001',
-                'created' => 1709251200,
-                'due_date' => 1710460800,
-                'amount_due' => 10200,
-                'amount_paid' => 10200,
-                'status' => 'paid',
-                'description' => 'Pro Plan + Usage',
-                'invoice_pdf' => 'https://invoice.pdf',
-                'hosted_invoice_url' => 'https://invoice.url',
-            ],
-        ]);
-    })->middleware(['api.ability:read']);
-
-    Route::get('/billing/invoices/{invoiceId}/download', function ($invoiceId) {
-        // TODO: Implement actual invoice PDF download from Stripe
-        return response()->json(['message' => 'Invoice download endpoint ready']);
-    })->middleware(['api.ability:read']);
-
-    Route::get('/billing/usage', function () {
-        // TODO: Implement actual usage details fetching
-        return response()->json([
-            'period_start' => '2024-03-01',
-            'period_end' => '2024-04-01',
-            'services' => [
-                [
-                    'id' => 1,
-                    'name' => 'Production API',
-                    'cpu_hours' => 142,
-                    'memory_gb' => 18.5,
-                    'network_gb' => 520,
-                    'storage_gb' => 12.4,
-                    'cost' => 45.20,
-                ],
-            ],
-            'totals' => [
-                'cpu_hours' => 342,
-                'memory_gb' => 45.2,
-                'network_gb' => 1240,
-                'storage_gb' => 25.8,
-                'total_cost' => 102.00,
-            ],
-        ]);
-    })->middleware(['api.ability:read']);
-
-    Route::patch('/billing/subscription', function () {
-        // TODO: Implement actual subscription update with Stripe
-        return response()->json(['message' => 'Subscription updated successfully']);
-    })->middleware(['api.ability:write']);
-
-    Route::post('/billing/subscription/cancel', function () {
-        // TODO: Implement actual subscription cancellation
-        return response()->json(['message' => 'Subscription cancelled successfully']);
-    })->middleware(['api.ability:write']);
-
-    Route::post('/billing/subscription/resume', function () {
-        // TODO: Implement actual subscription resumption
-        return response()->json(['message' => 'Subscription resumed successfully']);
-    })->middleware(['api.ability:write']);
+    // Billing Routes — disabled until Stripe integration is implemented
+    // Uncomment when billing feature is ready for production
+    // Route::get('/billing/info', ...)->middleware(['api.ability:read']);
+    // Route::get('/billing/payment-methods', ...)->middleware(['api.ability:read']);
+    // Route::post('/billing/payment-methods', ...)->middleware(['api.ability:write']);
+    // Route::delete('/billing/payment-methods/{paymentMethodId}', ...)->middleware(['api.ability:write']);
+    // Route::post('/billing/payment-methods/{paymentMethodId}/default', ...)->middleware(['api.ability:write']);
+    // Route::get('/billing/invoices', ...)->middleware(['api.ability:read']);
+    // Route::get('/billing/invoices/{invoiceId}/download', ...)->middleware(['api.ability:read']);
+    // Route::get('/billing/usage', ...)->middleware(['api.ability:read']);
+    // Route::patch('/billing/subscription', ...)->middleware(['api.ability:write']);
+    // Route::post('/billing/subscription/cancel', ...)->middleware(['api.ability:write']);
+    // Route::post('/billing/subscription/resume', ...)->middleware(['api.ability:write']);
 });
 
 Route::group([

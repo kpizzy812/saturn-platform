@@ -223,6 +223,20 @@ health_check() {
     return 1
 }
 
+cleanup_old_backups() {
+    log_step "Cleaning up old backups (keeping last 10)..."
+
+    local backup_dir="${SATURN_DATA}/backups"
+    local count=$(ls -1 "${backup_dir}"/pre_deploy_*.sql 2>/dev/null | wc -l)
+
+    if [[ $count -gt 10 ]]; then
+        ls -t "${backup_dir}"/pre_deploy_*.sql | tail -n +11 | xargs rm -f
+        log_success "Removed $((count - 10)) old backup(s)"
+    else
+        log_info "No old backups to clean up ($count total)"
+    fi
+}
+
 rollback() {
     log_step "Rolling back..."
 
@@ -263,9 +277,10 @@ deploy() {
     pull_images
     stop_services
     start_services
-    run_migrations
+    run_migrations  # Runs after start because it needs the DB container healthy
     run_seeders
     clear_caches
+    cleanup_old_backups
 
     if health_check; then
         echo ""
