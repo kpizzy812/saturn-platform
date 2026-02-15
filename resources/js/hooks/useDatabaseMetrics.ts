@@ -112,7 +112,7 @@ export function useDatabaseMetrics({
                 setError(data.error || 'Metrics not available');
             }
         } catch (err) {
-            console.error('Failed to fetch database metrics:', err);
+            console.error('[Saturn] Failed to fetch database metrics:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch metrics');
             setIsAvailable(false);
         } finally {

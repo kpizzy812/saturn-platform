@@ -219,7 +219,7 @@ function saveNodePositions(environmentUuid: string, nodes: Node[]) {
     try {
         localStorage.setItem(getPositionsStorageKey(environmentUuid), JSON.stringify(positions));
     } catch (e) {
-        console.warn('Failed to save node positions:', e);
+        // Silently ignore localStorage errors
     }
 }
 
@@ -271,7 +271,7 @@ function ProjectCanvasInner({
                 setResourceLinks(response.data);
                 linksLoadedForEnvRef.current = environmentUuid;
             } catch (error) {
-                console.error('Failed to load resource links:', error);
+                console.error('[Saturn] Failed to load resource links:', error);
             }
         };
 
@@ -624,7 +624,6 @@ function ProjectCanvasInner({
                 targetId = parseInt(dbTargetMatch[1]);
                 const database = databases.find((db) => db.id === targetId);
                 if (!database) {
-                    console.error('Database not found');
                     return;
                 }
                 targetType = getDatabaseTargetType(database.database_type);
@@ -632,7 +631,6 @@ function ProjectCanvasInner({
                 targetId = parseInt(appTargetMatch![1]);
                 // Prevent self-linking
                 if (sourceId === targetId) {
-                    console.error('Cannot link an application to itself');
                     return;
                 }
                 targetType = 'application';
@@ -665,10 +663,7 @@ function ProjectCanvasInner({
                 const keys = newLinks.map((l) => l.env_key).join(', ');
                 addToast('success', 'Connected!', `${keys} will be injected on next deploy.`);
             } catch (error: any) {
-                console.error('Failed to create link:', error);
-                if (error.response?.data?.message) {
-                    console.error(error.response.data.message);
-                }
+                console.error('[Saturn] Failed to create link:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -748,7 +743,7 @@ function ProjectCanvasInner({
                 setEdgeContextMenu(null);
                 addToast('success', 'Updated', `Now using ${newValue ? 'external domain' : 'internal Docker'} URL.`);
             } catch (error) {
-                console.error('Failed to toggle external URL:', error);
+                console.error('[Saturn] Failed to toggle external URL:', error);
                 addToast('error', 'Error', 'Failed to update link settings.');
             }
         },
@@ -782,7 +777,7 @@ function ProjectCanvasInner({
                     if (reverseLinkId) onLinkDeleted?.(reverseLinkId);
                     onEdgeDelete?.(edgeId);
                 } catch (error) {
-                    console.error('Failed to delete link:', error);
+                    console.error('[Saturn] Failed to delete link:', error);
                 }
             } else {
                 // For non-persisted edges, just remove from UI

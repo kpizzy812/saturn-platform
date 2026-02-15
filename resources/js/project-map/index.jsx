@@ -13,7 +13,7 @@ function initProjectMap() {
             try {
                 initialData = JSON.parse(dataElement.textContent);
             } catch (e) {
-                console.error('Failed to parse project map data:', e);
+                console.error('[Saturn] Failed to parse project map data:', e);
             }
         }
 

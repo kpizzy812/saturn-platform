@@ -116,7 +116,7 @@ interface UseTerminalReturn {
  *     terminal.write(data);
  *   },
  *   onConnect: () => {
- *     console.log('Terminal connected');
+ *     // Handle connection
  *   }
  * });
  * ```
@@ -153,7 +153,6 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     const sendData = React.useCallback(
         (data: string) => {
             if (!isConnected || !channelRef.current) {
-                console.warn('Terminal not connected, cannot send data');
                 return;
             }
 
@@ -164,7 +163,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
                     data,
                 });
             } catch (err) {
-                console.error('Failed to send terminal data:', err);
+                console.error('[Saturn] Failed to send terminal data:', err);
                 const error = err instanceof Error ? err : new Error('Failed to send data');
                 setError(error);
                 onError?.(error);
@@ -190,7 +189,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
                     rows,
                 });
             } catch (err) {
-                console.error('Failed to resize terminal:', err);
+                console.error('[Saturn] Failed to resize terminal:', err);
             }
         },
         [isConnected, serverId]
@@ -245,14 +244,9 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
                 handleDisconnect();
             });
 
-            // Handle subscription success
-            channel.subscribed(() => {
-                console.debug('Terminal channel subscribed');
-            });
-
             // Handle subscription errors
             channel.error((error: any) => {
-                console.error('Terminal channel subscription error:', error);
+                console.error('[Saturn] Terminal channel subscription error:', error);
                 const err = new Error('Failed to subscribe to terminal channel');
                 setError(err);
                 setIsConnecting(false);
@@ -265,7 +259,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
             });
 
         } catch (err) {
-            console.error('Terminal connection failed:', err);
+            console.error('[Saturn] Terminal connection failed:', err);
             const error = err instanceof Error ? err : new Error('Terminal connection failed');
             setError(error);
             setIsConnecting(false);
@@ -338,7 +332,6 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
 
         reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
-                console.debug(`Reconnecting terminal (attempt ${reconnectAttempt + 1}/${maxReconnectAttempts})`);
                 connect();
             }
         }, reconnectDelay);

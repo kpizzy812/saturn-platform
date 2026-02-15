@@ -55,7 +55,7 @@ export function useAiChat(options: UseAiChatOptions = {}): UseAiChatReturn {
             const data = await response.json();
             setStatus(data);
         } catch (err) {
-            console.error('Failed to check AI chat status:', err);
+            console.error('[Saturn] Failed to check AI chat status:', err);
             setError('Failed to check AI chat status');
         }
     }, []);
@@ -131,7 +131,7 @@ export function useAiChat(options: UseAiChatOptions = {}): UseAiChatReturn {
             const data = await response.json();
             setSessions(data.sessions);
         } catch (err) {
-            console.error('Failed to load sessions:', err);
+            console.error('[Saturn] Failed to load sessions:', err);
         }
     }, []);
 
@@ -266,7 +266,7 @@ export function useAiChat(options: UseAiChatOptions = {}): UseAiChatReturn {
                 prev.map((m) => (m.uuid === uuid ? { ...m, rating } : m))
             );
         } catch (err) {
-            console.error('Failed to rate message:', err);
+            console.error('[Saturn] Failed to rate message:', err);
         }
     }, []);
 
@@ -294,7 +294,7 @@ export function useAiChat(options: UseAiChatOptions = {}): UseAiChatReturn {
                 setMessages([]);
             }
         } catch (err) {
-            console.error('Failed to archive session:', err);
+            console.error('[Saturn] Failed to archive session:', err);
         }
     }, [session]);
 

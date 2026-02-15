@@ -78,8 +78,7 @@ interface UseApplicationMetricsReturn {
  * });
  *
  * if (metrics) {
- *   console.log(`CPU: ${metrics.cpu.percent}%`);
- *   console.log(`Memory: ${metrics.memory.used} / ${metrics.memory.limit}`);
+ *   // Use metrics data
  * }
  * ```
  */
@@ -140,7 +139,7 @@ export function useApplicationMetrics({
                 return;
             }
 
-            console.error('Failed to fetch application metrics:', err);
+            console.error('[Saturn] Failed to fetch application metrics:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch metrics');
             setMetrics(null);
         } finally {

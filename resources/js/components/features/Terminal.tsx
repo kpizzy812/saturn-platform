@@ -47,7 +47,7 @@ interface TerminalProps {
  * <Terminal
  *   serverId={server.id}
  *   height="600px"
- *   onConnect={() => console.log('Connected!')}
+ *   onConnect={() => {}}
  * />
  * ```
  */
@@ -179,8 +179,8 @@ export function Terminal({
                 const selection = terminal.getSelection();
                 if (selection) {
                     // Copy to clipboard
-                    navigator.clipboard.writeText(selection).catch(err => {
-                        console.error('Failed to copy to clipboard:', err);
+                    navigator.clipboard.writeText(selection).catch(() => {
+                        // Silent fail
                     });
                 }
             }

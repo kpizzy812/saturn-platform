@@ -44,7 +44,7 @@ export function useAiAnalytics(options: UseAiAnalyticsOptions = {}): UseAiAnalyt
             const data = await response.json();
             setUsage(data);
         } catch (err) {
-            console.error('Failed to load usage:', err);
+            console.error('[Saturn] Failed to load usage:', err);
             throw err;
         }
     }, [period]);
@@ -56,7 +56,7 @@ export function useAiAnalytics(options: UseAiAnalyticsOptions = {}): UseAiAnalyt
             const data = await response.json();
             setCommands(data.commands);
         } catch (err) {
-            console.error('Failed to load commands:', err);
+            console.error('[Saturn] Failed to load commands:', err);
             throw err;
         }
     }, []);
@@ -68,7 +68,7 @@ export function useAiAnalytics(options: UseAiAnalyticsOptions = {}): UseAiAnalyt
             const data = await response.json();
             setRatings(data);
         } catch (err) {
-            console.error('Failed to load ratings:', err);
+            console.error('[Saturn] Failed to load ratings:', err);
             throw err;
         }
     }, []);
@@ -82,7 +82,7 @@ export function useAiAnalytics(options: UseAiAnalyticsOptions = {}): UseAiAnalyt
             const data = await response.json();
             setDaily(data.daily);
         } catch (err) {
-            console.error('Failed to load daily stats:', err);
+            console.error('[Saturn] Failed to load daily stats:', err);
             throw err;
         }
     }, []);

@@ -54,7 +54,7 @@ export default function StorageSnapshots({
                     setSnapshots(Array.isArray(data) ? data : data.snapshots || []);
                 }
             } catch (error) {
-                console.error('Failed to fetch snapshots:', error);
+                console.error('[Saturn] Failed to fetch snapshots:', error);
             } finally {
                 setLoading(false);
             }

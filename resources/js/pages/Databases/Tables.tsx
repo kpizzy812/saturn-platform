@@ -133,7 +133,7 @@ export default function DatabaseTables({ database }: Props) {
                 }));
             }
         } catch (err) {
-            console.error('Failed to fetch columns:', err);
+            console.error('[Saturn] Failed to fetch columns:', err);
         }
     }, [database.uuid]);
 

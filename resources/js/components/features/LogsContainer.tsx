@@ -413,7 +413,7 @@ export function LogsContainer({
                 setTimeout(() => setCopied(false), 2000);
                 return;
             } catch (err) {
-                console.warn('Clipboard API failed, trying fallback:', err);
+                // Fallback to execCommand
             }
         }
 
@@ -433,11 +433,9 @@ export function LogsContainer({
             if (success) {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
-            } else {
-                console.error('execCommand copy failed');
             }
         } catch (err) {
-            console.error('Failed to copy:', err);
+            // Silent fail
         }
     }, [filteredLogs]);
 

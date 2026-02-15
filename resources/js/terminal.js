@@ -241,7 +241,6 @@ export function initializeTerminalComponent() {
 
             initializeWebSocket() {
                 if (this.socket && this.socket.readyState !== WebSocket.CLOSED) {
-                    terminalLog('log', 'WebSocket already connecting/connected, skipping');
                     return; // Already connecting or connected
                 }
 
@@ -250,7 +249,6 @@ export function initializeTerminalComponent() {
 
                 // Ensure terminal config is available
                 if (!window.terminalConfig) {
-                    terminalLog('warn', 'Terminal config not available, using defaults');
                     window.terminalConfig = {};
                 }
 
@@ -276,7 +274,6 @@ export function initializeTerminalComponent() {
                 }
 
                 const url = `${connectionString.protocol}://${connectionString.host}${connectionString.port}${connectionString.path}`
-                terminalLog('log', 'Attempting connection to:', url);
 
                 try {
                     this.socket = new WebSocket(url);
@@ -303,7 +300,6 @@ export function initializeTerminalComponent() {
             },
 
             handleSocketOpen() {
-                terminalLog('log', 'WebSocket connection established.');
                 this.connectionState = 'connected';
                 this.reconnectAttempts = 0;
                 this.heartbeatMissed = 0;
@@ -330,10 +326,6 @@ export function initializeTerminalComponent() {
             },
 
             handleSocketClose(event) {
-                terminalLog('warn', 'WebSocket connection closed. Code:', event.code, 'Reason:', event.reason || 'No reason provided');
-                terminalLog('log', 'Was clean close:', event.code === 1000);
-                terminalLog('log', 'Connection attempt:', this.reconnectAttempts + 1);
-
                 this.connectionState = 'disconnected';
                 this.clearAllTimers();
 
@@ -375,8 +367,6 @@ export function initializeTerminalComponent() {
                     this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts) + Math.random() * 1000,
                     this.maxReconnectDelay
                 );
-
-                console.warn(`[Terminal] Scheduling reconnect attempt ${this.reconnectAttempts + 1} in ${delay}ms`);
 
                 this.reconnectInterval = setTimeout(() => {
                     this.reconnectAttempts++;

@@ -80,7 +80,6 @@ export function isSafeUrl(url: string | null | undefined): boolean {
  */
 export function safeOpenUrl(url: string | null | undefined): boolean {
     if (!isSafeUrl(url)) {
-        console.warn('Blocked attempt to open unsafe URL:', url);
         return false;
     }
     window.open(url!, '_blank', 'noopener,noreferrer');

@@ -123,7 +123,7 @@ export function useDatabaseMetricsHistory({
                 setError(data.error || 'Metrics not available');
             }
         } catch (err) {
-            console.error('Failed to fetch database metrics history:', err);
+            console.error('[Saturn] Failed to fetch database metrics history:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch metrics');
             setHasHistoricalData(false);
         } finally {

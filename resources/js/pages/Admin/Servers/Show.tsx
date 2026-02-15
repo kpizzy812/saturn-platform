@@ -221,7 +221,7 @@ export default function AdminServerShow({ server }: Props) {
                 const data = await response.json();
                 setHealthHistory(data.data ?? []);
             } catch (error) {
-                console.error('Failed to load health history:', error);
+                console.error('[Saturn] Failed to load health history:', error);
                 setHistoryError('Failed to load health history');
                 setHealthHistory([]);
             } finally {

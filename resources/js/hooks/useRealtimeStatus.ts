@@ -125,11 +125,10 @@ interface UseRealtimeStatusReturn {
  * ```tsx
  * const { isConnected, isPolling } = useRealtimeStatus({
  *   onApplicationStatusChange: (data) => {
- *     console.log('App status changed:', data);
  *     // Update your state here
  *   },
  *   onDeploymentCreated: (data) => {
- *     console.log('New deployment:', data);
+ *     // Handle new deployment
  *   }
  * });
  * ```
@@ -181,14 +180,11 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
             if (!echo) {
                 // Echo initialization failed, but don't throw - just return false
                 // This allows graceful fallback to polling or silent failure in tests
-                console.warn('[useRealtimeStatus] Echo is not available, WebSocket connection skipped');
                 setError(new Error('Echo initialization failed'));
                 setIsConnected(false);
                 onConnectionChange?.(false);
                 return false;
             }
-
-            console.debug('[useRealtimeStatus] Echo available, subscribing to team channel', { teamId });
 
             // Subscribe to team channel for team-wide events
             const teamChannel = echo.private(`team.${teamId}`);
@@ -203,7 +199,6 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
             // Service status changes
             if (onServiceStatusChange) {
                 teamChannel.listen('ServiceStatusChanged', (e: ServiceStatusEvent) => {
-                    console.debug('[useRealtimeStatus] ServiceStatusChanged event received', e);
                     onServiceStatusChange(e);
                 });
             }
@@ -235,7 +230,6 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
                 });
             }
 
-            console.debug('[useRealtimeStatus] Successfully subscribed to team channel', { teamId });
             setIsConnected(true);
             setError(null);
             setReconnectAttempts(0);
@@ -364,7 +358,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
                 }
             }
         } catch (err) {
-            console.error('[useRealtimeStatus] Polling fetch error:', err);
+            console.error('[Saturn] Polling fetch error:', err);
         }
     }, [teamId, onApplicationStatusChange, onServerStatusChange, onDatabaseStatusChange, onServiceStatusChange]);
 
@@ -407,7 +401,6 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
         }
 
         if (reconnectAttempts >= maxReconnectAttempts) {
-            console.warn('Max reconnection attempts reached, falling back to polling');
             startPolling();
             return;
         }
@@ -475,7 +468,6 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
                 }
             } catch (err) {
                 // Ignore errors during cleanup (e.g., Echo initialization failed)
-                console.debug('[useRealtimeStatus] Failed to leave channel during cleanup:', err);
             }
 
             // Reset connection state

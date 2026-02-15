@@ -23,7 +23,6 @@ window.Pusher = Pusher;
 export function initializeEcho(): Echo<'pusher'> | null {
     // Skip initialization in test environments or when window is not available
     if (typeof window === 'undefined') {
-        console.debug('Echo initialization skipped: window not available');
         return null;
     }
 
@@ -36,7 +35,6 @@ export function initializeEcho(): Echo<'pusher'> | null {
         // Check if WebSocket is explicitly disabled
         const wsEnabled = import.meta.env.VITE_PUSHER_ENABLED !== 'false';
         if (!wsEnabled) {
-            console.debug('Echo initialization skipped: WebSocket disabled via VITE_PUSHER_ENABLED');
             window.Echo = null;
             return null;
         }
@@ -51,10 +49,6 @@ export function initializeEcho(): Echo<'pusher'> | null {
         // Use current domain if auto-detecting or if configured host is internal Docker name
         const wsHost = (!configuredHost || isInternalDockerHost) ? window.location.hostname : configuredHost;
         const isAutoDetected = !configuredHost || isInternalDockerHost;
-
-        if (isInternalDockerHost) {
-            console.debug('Echo: VITE_PUSHER_HOST is internal Docker hostname, using auto-detection instead:', wsHost);
-        }
 
         // When auto-detected (internal Docker host), use page protocol and port
         // so WebSocket goes through Nginx which proxies /app/{key} to Soketi
@@ -72,7 +66,6 @@ export function initializeEcho(): Echo<'pusher'> | null {
         // Get CSRF token - if not available, we're probably in a test environment
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (!csrfToken) {
-            console.debug('Echo initialization skipped: CSRF token not found (likely test environment)');
             window.Echo = null;
             return null;
         }
@@ -101,10 +94,9 @@ export function initializeEcho(): Echo<'pusher'> | null {
         });
 
         window.Echo = echo as Echo<'pusher'>;
-        console.debug('Laravel Echo initialized successfully');
         return echo as Echo<'pusher'>;
     } catch (error) {
-        console.error('Failed to initialize Laravel Echo:', error);
+        console.error('[Saturn] Failed to initialize Laravel Echo:', error);
         window.Echo = null;
         return null;
     }

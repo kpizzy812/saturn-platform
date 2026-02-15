@@ -153,7 +153,7 @@ interface UseLogStreamReturn {
  *   resourceType: 'deployment',
  *   resourceId: deploymentUuid,
  *   onLogEntry: (entry) => {
- *     console.log('New log:', entry.message);
+ *     // Handle new log entry
  *   }
  * });
  * ```
@@ -391,7 +391,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
 
             isInitialLoadRef.current = false;
         } catch (err) {
-            console.error('Failed to fetch logs:', err);
+            console.error('[Saturn] Failed to fetch logs:', err);
             setError(err instanceof Error ? err : new Error('Failed to fetch logs'));
         } finally {
             setLoading(false);
@@ -412,7 +412,6 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
             if (!echo) {
                 // Echo initialization failed, but don't throw - just return false
                 // This allows graceful fallback to polling or silent failure in tests
-                console.warn('Echo is not available for log streaming, falling back to polling');
                 setIsConnected(false);
                 return false;
             }
@@ -445,7 +444,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
 
             return true;
         } catch (err) {
-            console.error('WebSocket connection failed for logs:', err);
+            console.error('[Saturn] WebSocket connection failed for logs:', err);
             setError(err instanceof Error ? err : new Error('WebSocket connection failed'));
             setIsConnected(false);
             return false;
