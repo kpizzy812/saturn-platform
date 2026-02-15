@@ -13,6 +13,7 @@ use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Database\StopDatabaseProxy;
 use App\Jobs\ServerCheckJob;
 use App\Models\ScheduledDatabaseBackup;
+use App\Models\ScheduledDatabaseBackupExecution;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -325,7 +326,7 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
         return $backup->executions->map(function ($execution) {
             return [
                 'id' => $execution->id,
-                'filename' => $execution->filename ?? 'backup-'.$execution->id,
+                'filename' => $execution->filename ? basename($execution->filename) : 'backup-'.$execution->id,
                 'size' => $execution->size ?? 'Unknown',
                 'status' => match ($execution->status) {
                     'success' => 'completed',
@@ -389,6 +390,41 @@ Route::patch('/databases/{uuid}/backups/schedule', function (string $uuid, \Illu
 
     return back()->with('success', 'Backup schedule updated successfully.');
 })->name('databases.backups.schedule');
+
+// Restore a specific backup execution
+Route::post('/databases/{uuid}/backups/{executionId}/restore', function (string $uuid, int $executionId) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $execution = ScheduledDatabaseBackupExecution::where('id', $executionId)
+        ->whereHas('scheduledDatabaseBackup', function ($q) use ($database) {
+            $q->where('database_id', $database->id);
+        })
+        ->firstOrFail();
+
+    if ($execution->status !== 'success') {
+        return back()->with('error', 'Cannot restore from a non-successful backup.');
+    }
+
+    $backup = $execution->scheduledDatabaseBackup;
+    \App\Jobs\DatabaseRestoreJob::dispatch($backup, $execution);
+
+    return back()->with('success', 'Restore job queued. The database will be restored shortly.');
+})->name('databases.backups.restore');
+
+// Delete a specific backup execution
+Route::delete('/databases/{uuid}/backups/{executionId}', function (string $uuid, int $executionId) {
+    [$database, $type] = findDatabaseByUuid($uuid);
+
+    $execution = ScheduledDatabaseBackupExecution::where('id', $executionId)
+        ->whereHas('scheduledDatabaseBackup', function ($q) use ($database) {
+            $q->where('database_id', $database->id);
+        })
+        ->firstOrFail();
+
+    $execution->delete();
+
+    return back()->with('success', 'Backup deleted successfully.');
+})->name('databases.backups.delete');
 
 Route::get('/databases/{uuid}/logs', function (string $uuid) {
     $database = findDatabaseByUuid($uuid);

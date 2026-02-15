@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Checkbox, useConfirm } from '@/components/ui';
@@ -53,6 +53,16 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
     const [hasChanges, setHasChanges] = useState(false);
     const confirm = useConfirm();
     const { addToast } = useToast();
+    const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Clean up polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+            if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+        };
+    }, []);
 
     // Track changes
     useEffect(() => {
@@ -110,6 +120,15 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
             preserveScroll: true,
             onSuccess: () => {
                 addToast('success', 'Backup job queued. It will appear in the history shortly.');
+                // Poll to refresh the list once the job creates the execution record
+                if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+                pollTimerRef.current = setInterval(() => {
+                    router.reload({ only: ['backups'], preserveScroll: true });
+                }, 3000);
+                // Stop polling after 60s
+                pollTimeoutRef.current = setTimeout(() => {
+                    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+                }, 60000);
             },
             onError: () => {
                 addToast('error', 'Failed to create backup');
@@ -131,7 +150,7 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
     };
 
     const handleDownload = (backupId: number) => {
-        window.location.href = `/databases/${database.uuid}/backups/${backupId}/download`;
+        window.location.href = `/download/backup/${backupId}`;
     };
 
     const handleDelete = async (backupId: number) => {
