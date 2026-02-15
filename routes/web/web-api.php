@@ -95,7 +95,7 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
         'ports_exposes', 'ports_mappings',
         'base_directory', 'publish_directory',
         'install_command', 'build_command', 'start_command',
-        'watch_paths',
+        'watch_paths', 'git_branch',
     ];
 
     $data = $request->only($allowedFields);

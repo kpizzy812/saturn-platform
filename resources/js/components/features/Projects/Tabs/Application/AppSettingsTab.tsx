@@ -95,6 +95,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
     const [buildCommand, setBuildCommand] = useState('');
     const [startCommand, setStartCommand] = useState('');
     const [watchPaths, setWatchPaths] = useState('');
+    const [gitBranch, setGitBranch] = useState('');
 
     // Auto-deploy state
     const [autoDeployEnabled, setAutoDeployEnabled] = useState(false);
@@ -129,6 +130,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 setBuildCommand(data.build_command || '');
                 setStartCommand(data.start_command || '');
                 setWatchPaths(data.watch_paths || '');
+                setGitBranch(data.git_branch || '');
                 setAutoDeployEnabled(data.is_auto_deploy_enabled ?? false);
             } else {
                 addToast('error', 'Failed to load application settings');
@@ -239,6 +241,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     build_command: buildCommand || undefined,
                     start_command: startCommand || undefined,
                     watch_paths: watchPaths || undefined,
+                    git_branch: gitBranch || undefined,
                 }),
             });
 
@@ -366,10 +369,21 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                                 {source.type === 'git' ? 'GitHub Repository' : 'Docker Image'}
                             </p>
                             <p className="truncate text-xs text-foreground-muted">
-                                {source.repo}{source.branch ? ` \u2022 ${source.branch}` : ''}
+                                {source.repo}
                             </p>
                         </div>
                     </div>
+                    {source.type === 'git' && (
+                        <div className="mt-2 border-t border-border pt-2">
+                            <SettingsInput
+                                label="Branch"
+                                value={gitBranch}
+                                onChange={setGitBranch}
+                                placeholder="main"
+                                hint="Branch to deploy from. Auto-deploy triggers only for this branch."
+                            />
+                        </div>
+                    )}
                     {app.git_commit_sha && (
                         <div className="mt-2 border-t border-border pt-2">
                             <p className="text-xs text-foreground-muted">

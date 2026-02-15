@@ -806,6 +806,7 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
     $validated = $request->validate([
         'name' => 'sometimes|string|max:255',
         'description' => 'sometimes|nullable|string',
+        'git_branch' => 'sometimes|nullable|string|max:255',
         'base_directory' => 'sometimes|nullable|string|max:255',
         'build_command' => 'sometimes|nullable|string',
         'install_command' => 'sometimes|nullable|string',

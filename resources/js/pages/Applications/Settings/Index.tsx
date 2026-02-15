@@ -25,6 +25,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
     const [settings, setSettings] = React.useState({
         name: application.name || '',
         description: application.description || '',
+        git_branch: application.git_branch || 'main',
         base_directory: application.base_directory || '/',
         build_command: application.build_command || '',
         install_command: application.install_command || '',
@@ -48,6 +49,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
     const [showWebhookGuide, setShowWebhookGuide] = React.useState(false);
     const [copiedField, setCopiedField] = React.useState<string | null>(null);
+    const [isTogglingRollback, setIsTogglingRollback] = React.useState(false);
 
     // Generate webhook URL based on git source
     const webhookUrl = React.useMemo(() => {
@@ -70,6 +72,24 @@ export default function ApplicationSettingsPage({ application, applicationSettin
             return () => clearTimeout(timer);
         }
     }, [saveStatus]);
+
+    // Auto-save rollback toggle immediately
+    const handleToggleAutoRollback = (enabled: boolean) => {
+        setSettings((prev) => ({ ...prev, auto_rollback_enabled: enabled }));
+        setIsTogglingRollback(true);
+        router.patch(
+            `/applications/${application.uuid}/settings`,
+            { auto_rollback_enabled: enabled },
+            {
+                preserveScroll: true,
+                onFinish: () => setIsTogglingRollback(false),
+                onError: () => {
+                    // Revert on failure
+                    setSettings((prev) => ({ ...prev, auto_rollback_enabled: !enabled }));
+                },
+            }
+        );
+    };
 
     const handleSave = () => {
         setIsSaving(true);
@@ -160,6 +180,19 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         onChange={(e) => setSettings({ ...settings, description: e.target.value })}
                                         placeholder="A brief description of your application"
                                     />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-2 block">
+                                        Git Branch
+                                    </label>
+                                    <Input
+                                        value={settings.git_branch}
+                                        onChange={(e) => setSettings({ ...settings, git_branch: e.target.value })}
+                                        placeholder="main"
+                                    />
+                                    <p className="text-xs text-foreground-muted mt-1">
+                                        Branch to deploy from. Auto-deploy will trigger only for pushes to this branch.
+                                    </p>
                                 </div>
                             </div>
                         </CardContent>
@@ -358,12 +391,13 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                             Automatically rollback to the previous version if deployment fails health checks
                                         </p>
                                     </div>
-                                    <label className="relative inline-flex cursor-pointer items-center">
+                                    <label className={`relative inline-flex items-center ${isTogglingRollback ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}>
                                         <input
                                             type="checkbox"
                                             className="peer sr-only"
                                             checked={settings.auto_rollback_enabled}
-                                            onChange={(e) => setSettings({ ...settings, auto_rollback_enabled: e.target.checked })}
+                                            disabled={isTogglingRollback}
+                                            onChange={(e) => handleToggleAutoRollback(e.target.checked)}
                                         />
                                         <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                                     </label>
