@@ -36,9 +36,11 @@ Route::middleware(['throttle:login'])->group(function () {
     Route::get('/auth/link', [Controller::class, 'link'])->name('auth.link');
 });
 
-// OAuth redirects
-Route::get('/auth/{provider}/redirect', [OauthController::class, 'redirect'])->name('auth.redirect');
-Route::get('/auth/{provider}/callback', [OauthController::class, 'callback'])->name('auth.callback');
+// OAuth redirects (rate limited to prevent abuse)
+Route::middleware(['throttle:login'])->group(function () {
+    Route::get('/auth/{provider}/redirect', [OauthController::class, 'redirect'])->name('auth.redirect');
+    Route::get('/auth/{provider}/callback', [OauthController::class, 'callback'])->name('auth.callback');
+});
 
 // Guest auth routes (login, register, password reset)
 Route::prefix('auth')->middleware(['web'])->group(function () {

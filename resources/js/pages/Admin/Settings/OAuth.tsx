@@ -15,6 +15,8 @@ import {
     ExternalLink,
     CheckCircle2,
     XCircle,
+    Copy,
+    Check,
 } from 'lucide-react';
 import { BrandIcon } from '@/components/ui/BrandIcon';
 
@@ -116,6 +118,38 @@ const fieldLabels: Record<string, { label: string; placeholder: string; hint?: s
     tenant: { label: 'Tenant / Domain', placeholder: 'e.g., your-org.onmicrosoft.com or allowed-domain.com' },
     base_url: { label: 'Base URL', placeholder: 'e.g., https://authentik.your-domain.com' },
 };
+
+function CallbackUrlHint({ provider }: { provider: string }) {
+    const [copied, setCopied] = React.useState(false);
+    const callbackUrl = `${window.location.origin}/auth/${provider}/callback`;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(callbackUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <p className="mb-1.5 text-xs font-medium text-primary">
+                Callback URL — paste this into your OAuth app settings
+            </p>
+            <div className="flex items-center gap-2">
+                <code className="flex-1 truncate rounded bg-background/50 px-2 py-1 text-xs text-foreground">
+                    {callbackUrl}
+                </code>
+                <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-foreground-muted transition-colors hover:bg-white/10 hover:text-foreground"
+                    title="Copy to clipboard"
+                >
+                    {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+            </div>
+        </div>
+    );
+}
 
 function ProviderCard({
     provider,
@@ -265,6 +299,9 @@ function ProviderCard({
                                 hint={`Base URL of your ${meta.label} instance`}
                             />
                         )}
+
+                        {/* Callback URL hint */}
+                        <CallbackUrlHint provider={provider.provider} />
 
                         <Input
                             value={formData.redirect_uri || ''}

@@ -37,12 +37,23 @@ describe('Login Page', () => {
             expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument();
         });
 
-        it('should render social login buttons', () => {
-            render(<Login canResetPassword={false} />);
+        it('should render social login buttons when OAuth providers are enabled', () => {
+            const providers = [
+                { id: 1, provider: 'github', enabled: true },
+                { id: 2, provider: 'google', enabled: true },
+            ];
+            render(<Login canResetPassword={false} enabled_oauth_providers={providers} />);
 
             expect(screen.getByText('GitHub')).toBeInTheDocument();
             expect(screen.getByText('Google')).toBeInTheDocument();
             expect(screen.getByText('Or continue with')).toBeInTheDocument();
+        });
+
+        it('should not render social login section when no OAuth providers are enabled', () => {
+            render(<Login canResetPassword={false} enabled_oauth_providers={[]} />);
+
+            expect(screen.queryByText('Or continue with')).not.toBeInTheDocument();
+            expect(screen.queryByText('GitHub')).not.toBeInTheDocument();
         });
 
         it('should render forgot password link when canResetPassword is true', () => {

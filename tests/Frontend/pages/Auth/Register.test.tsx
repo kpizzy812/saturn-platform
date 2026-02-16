@@ -47,12 +47,23 @@ describe('Register Page', () => {
             expect(screen.getByRole('button', { name: 'Create Account' })).toBeInTheDocument();
         });
 
-        it('should render social login buttons', () => {
-            render(<Register />);
+        it('should render social login buttons when OAuth providers are enabled', () => {
+            const providers = [
+                { id: 1, provider: 'github', enabled: true },
+                { id: 2, provider: 'google', enabled: true },
+            ];
+            render(<Register enabled_oauth_providers={providers} />);
 
             expect(screen.getByText('GitHub')).toBeInTheDocument();
             expect(screen.getByText('Google')).toBeInTheDocument();
             expect(screen.getByText('Or continue with')).toBeInTheDocument();
+        });
+
+        it('should not render social login section when no OAuth providers are enabled', () => {
+            render(<Register enabled_oauth_providers={[]} />);
+
+            expect(screen.queryByText('Or continue with')).not.toBeInTheDocument();
+            expect(screen.queryByText('GitHub')).not.toBeInTheDocument();
         });
 
         it('should render login link', () => {
@@ -258,20 +269,40 @@ describe('Register Page', () => {
     });
 
     describe('social login', () => {
-        it('should render GitHub social login button', () => {
-            render(<Register />);
+        const oauthProviders = [
+            { id: 1, provider: 'github', enabled: true },
+            { id: 2, provider: 'google', enabled: true },
+        ];
+
+        it('should render GitHub social login button when enabled', () => {
+            render(<Register enabled_oauth_providers={oauthProviders} />);
 
             const githubButton = screen.getByText('GitHub').closest('button');
             expect(githubButton).toBeInTheDocument();
             expect(githubButton).toHaveAttribute('type', 'button');
         });
 
-        it('should render Google social login button', () => {
-            render(<Register />);
+        it('should render Google social login button when enabled', () => {
+            render(<Register enabled_oauth_providers={oauthProviders} />);
 
             const googleButton = screen.getByText('Google').closest('button');
             expect(googleButton).toBeInTheDocument();
             expect(googleButton).toHaveAttribute('type', 'button');
+        });
+
+        it('should redirect to OAuth provider on button click', async () => {
+            const { user } = render(<Register enabled_oauth_providers={oauthProviders} />);
+
+            // Mock window.location.href
+            const locationSpy = vi.spyOn(window, 'location', 'get').mockReturnValue({
+                ...window.location,
+                href: '',
+            });
+
+            const githubButton = screen.getByText('GitHub').closest('button')!;
+            await user.click(githubButton);
+
+            locationSpy.mockRestore();
         });
     });
 });

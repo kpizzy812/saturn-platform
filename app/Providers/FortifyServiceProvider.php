@@ -52,14 +52,19 @@ class FortifyServiceProvider extends ServiceProvider
                 return redirect()->route('login');
             }
 
+            $enabled_oauth_providers = OauthSetting::where('enabled', true)
+                ->get(['id', 'provider', 'enabled']);
+
             return Inertia::render('Auth/Register', [
                 'isFirstUser' => $isFirstUser,
+                'enabled_oauth_providers' => $enabled_oauth_providers,
             ]);
         });
 
         Fortify::loginView(function () {
             $settings = instanceSettings();
-            $enabled_oauth_providers = OauthSetting::where('enabled', true)->get();
+            $enabled_oauth_providers = OauthSetting::where('enabled', true)
+                ->get(['id', 'provider', 'enabled']);
             $users = User::count();
             if ($users == 0) {
                 // If there are no users, redirect to registration

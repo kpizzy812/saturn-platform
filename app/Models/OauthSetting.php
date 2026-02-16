@@ -10,6 +10,18 @@ use Illuminate\Support\Facades\Crypt;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string $provider
+ * @property string|null $client_id
+ * @property string|null $client_secret
+ * @property string|null $redirect_uri
+ * @property string|null $tenant
+ * @property string|null $base_url
+ * @property bool $enabled
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class OauthSetting extends Model
 {
     use Auditable, HasFactory, LogsActivity;
@@ -23,6 +35,8 @@ class OauthSetting extends Model
     }
 
     protected $fillable = ['provider', 'client_id', 'client_secret', 'redirect_uri', 'tenant', 'base_url', 'enabled'];
+
+    protected $hidden = ['client_secret', 'client_id', 'redirect_uri', 'tenant', 'base_url'];
 
     protected function clientSecret(): Attribute
     {
