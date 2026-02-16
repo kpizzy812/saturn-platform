@@ -50,6 +50,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     const [selectedService, setSelectedService] = useState<SelectedService | null>(null);
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'import' | 'extensions' | 'settings'>('connect');
+    const [activeServiceTab, setActiveServiceTab] = useState<'overview' | 'variables' | 'logs'>('overview');
     const [activeView, setActiveView] = useState<'architecture' | 'observability' | 'logs'>('architecture');
     const [changedResources, setChangedResources] = useState<Map<string, { uuid: string; type: 'app' | 'db' | 'service'; name: string; kind: 'variables' | 'config'; needsRebuild: boolean }>>(new Map());
     const hasStagedChanges = changedResources.size > 0;
@@ -489,6 +490,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         } else if (type === 'svc') {
             const svc = selectedEnv.services?.find(s => String(s.id) === id);
             if (svc) {
+                const svcFqdn = svc.applications
+                    ?.map((app: { fqdn?: string | null }) => app.fqdn)
+                    .filter(Boolean)[0] || undefined;
                 newService = {
                     id: String(svc.id),
                     uuid: svc.uuid,
@@ -496,6 +500,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     name: svc.name,
                     status: svc.status || 'unknown',
                     description: svc.description,
+                    fqdn: svcFqdn,
                 };
             }
         }
@@ -510,10 +515,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
             setActiveAppTab('deployments');
         } else if (type === 'db') {
             setActiveDbTab('connect');
-        }
-        // For services, we'll navigate to the service page
-        if (type === 'svc' && newService) {
-            router.visit(`/services/${newService.uuid}`);
+        } else if (type === 'svc') {
+            setActiveServiceTab('overview');
         }
     }, [selectedEnv, trackStateChange]);
 
@@ -566,7 +569,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         if (node) {
             setLogsViewerService(node.name);
             setLogsViewerServiceUuid(node.uuid);
-            setLogsViewerServiceType(node.type === 'db' ? 'database' : 'application');
+            setLogsViewerServiceType(node.type === 'db' ? 'database' : node.type === 'service' ? 'service' : 'application');
             setLogsViewerContainerName(undefined);
             setLogsViewerOpen(true);
         }
@@ -1074,7 +1077,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         }
         setLogsViewerService(selectedService.name);
         setLogsViewerServiceUuid(selectedService.uuid);
-        setLogsViewerServiceType(selectedService.type === 'db' ? 'database' : 'application');
+        setLogsViewerServiceType(selectedService.type === 'db' ? 'database' : selectedService.type === 'service' ? 'service' : 'application');
         setLogsViewerContainerName(undefined);
         setLogsViewerOpen(true);
     }, [selectedService, addToast]);
@@ -1778,6 +1781,10 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                             <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${getDbBgColor(selectedService.dbType)}`}>
                                                 {getDbLogo(selectedService.dbType)}
                                             </div>
+                                        ) : selectedService.type === 'service' ? (
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400">
+                                                <Layers className="h-5 w-5" />
+                                            </div>
                                         ) : (
                                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
                                                 <Box className="h-5 w-5" />
@@ -1845,9 +1852,11 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                             if (selectedService.type === 'app') {
                                                 const app = selectedEnv?.applications?.find(a => String(a.id) === selectedService.id);
                                                 return app?.destination?.server?.name || 'Server';
+                                            } else if (selectedService.type === 'db') {
+                                                const db = selectedEnv?.databases?.find(d => String(d.id) === selectedService.id);
+                                                return db?.destination?.server?.name || 'Server';
                                             }
-                                            const db = selectedEnv?.databases?.find(d => String(d.id) === selectedService.id);
-                                            return db?.destination?.server?.name || 'Server';
+                                            return 'Compose Service';
                                         })()}
                                     </span>
                                     <span>·</span>
@@ -1858,7 +1867,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 </div>
                             </div>
 
-                            {/* Panel Tabs - Different for Apps vs Databases */}
+                            {/* Panel Tabs - Different for Apps vs Databases vs Services */}
                             {selectedService.type === 'app' ? (
                                 /* Application Tabs */
                                 <div className="flex overflow-x-auto border-b border-border">
@@ -1889,6 +1898,31 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     >
                                         <Cog className="h-4 w-4" />
                                         Settings
+                                    </button>
+                                </div>
+                            ) : selectedService.type === 'service' ? (
+                                /* Service (Compose) Tabs */
+                                <div className="flex overflow-x-auto border-b border-border">
+                                    <button
+                                        onClick={() => setActiveServiceTab('overview')}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeServiceTab === 'overview' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                    >
+                                        <Layers className="h-4 w-4" />
+                                        Overview
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveServiceTab('variables')}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeServiceTab === 'variables' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                    >
+                                        <Variable className="h-4 w-4" />
+                                        Variables
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveServiceTab('logs')}
+                                        className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors ${activeServiceTab === 'logs' ? 'border-b-2 border-foreground text-foreground' : 'text-foreground-muted hover:text-foreground'}`}
+                                    >
+                                        <Terminal className="h-4 w-4" />
+                                        Logs
                                     </button>
                                 </div>
                             ) : (
@@ -1958,6 +1992,93 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         {activeAppTab === 'variables' && <VariablesTab service={selectedService} onChangeStaged={handleVariableChanged} />}
                                         {activeAppTab === 'metrics' && <MetricsTab service={selectedService} />}
                                         {activeAppTab === 'settings' && <AppSettingsTab service={selectedService} onChangeStaged={handleConfigChanged} />}
+                                    </>
+                                ) : selectedService.type === 'service' ? (
+                                    /* Service (Compose) Content */
+                                    <>
+                                        {activeServiceTab === 'overview' && (
+                                            <div className="space-y-4">
+                                                {selectedService.description && (
+                                                    <p className="text-sm text-foreground-muted">{selectedService.description}</p>
+                                                )}
+                                                {/* Service containers */}
+                                                {(() => {
+                                                    const svc = selectedEnv?.services?.find(s => String(s.id) === selectedService.id);
+                                                    const apps = svc?.applications || [];
+                                                    if (apps.length === 0) return (
+                                                        <p className="text-sm text-foreground-muted">No containers found. Deploy the service first.</p>
+                                                    );
+                                                    return (
+                                                        <div className="space-y-2">
+                                                            <h3 className="text-sm font-medium text-foreground">Containers</h3>
+                                                            {apps.map((app: { id: number; name: string; fqdn?: string | null; status?: string }) => (
+                                                                <div key={app.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className={`h-2 w-2 rounded-full ${getStatusDotClass((app.status || 'stopped').split(':')[0])}`} />
+                                                                        <span className="text-sm font-medium text-foreground">{app.name}</span>
+                                                                    </div>
+                                                                    {app.fqdn && (
+                                                                        <a
+                                                                            href={app.fqdn.startsWith('http') ? app.fqdn : `https://${app.fqdn}`}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground"
+                                                                        >
+                                                                            {app.fqdn.replace(/^https?:\/\//, '').replace(/:\d+$/, '')}
+                                                                            <ExternalLink className="h-3 w-3" />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })()}
+                                                {/* Quick actions */}
+                                                <div className="flex gap-2 pt-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        onClick={() => router.visit(`/services/${selectedService.uuid}`)}
+                                                    >
+                                                        <Cog className="mr-1.5 h-3.5 w-3.5" />
+                                                        Manage Service
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        onClick={() => {
+                                                            setLogsViewerService(selectedService.name);
+                                                            setLogsViewerServiceUuid(selectedService.uuid);
+                                                            setLogsViewerServiceType('service');
+                                                            setLogsViewerContainerName(undefined);
+                                                            setLogsViewerOpen(true);
+                                                        }}
+                                                    >
+                                                        <Terminal className="mr-1.5 h-3.5 w-3.5" />
+                                                        View Logs
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {activeServiceTab === 'variables' && <VariablesTab service={selectedService} onChangeStaged={handleVariableChanged} />}
+                                        {activeServiceTab === 'logs' && (
+                                            <div className="text-sm text-foreground-muted">
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    onClick={() => {
+                                                        setLogsViewerService(selectedService.name);
+                                                        setLogsViewerServiceUuid(selectedService.uuid);
+                                                        setLogsViewerServiceType('service');
+                                                        setLogsViewerContainerName(undefined);
+                                                        setLogsViewerOpen(true);
+                                                    }}
+                                                >
+                                                    <Terminal className="mr-1.5 h-3.5 w-3.5" />
+                                                    Open Logs Viewer
+                                                </Button>
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     /* Database Content */
