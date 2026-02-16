@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Inertia;
 
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
+use App\Models\Project;
 use Spatie\Activitylog\Models\Activity;
 
 class ActivityHelper
@@ -316,6 +317,139 @@ class ActivityHelper
                 'timestamp' => $rel->created_at->toIso8601String(),
             ];
         })->values()->toArray();
+    }
+
+    /**
+     * Get activities scoped to a specific project and its children.
+     * Combines deployment history and audit log entries for the project's resources.
+     */
+    public static function getProjectActivities(Project $project, int $limit = 30, int $offset = 0, ?string $actionFilter = null): array
+    {
+        $activities = collect();
+
+        // Get project application IDs for deployment queries
+        $applicationIds = $project->applications()->pluck('applications.id');
+
+        // Get deployment activities for project's applications
+        if ($applicationIds->isNotEmpty()) {
+            $deploymentsQuery = ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+                ->with('application')
+                ->orderBy('created_at', 'desc')
+                ->limit($limit + $offset);
+
+            $deployments = $deploymentsQuery->get();
+
+            foreach ($deployments as $deployment) {
+                $app = $deployment->application;
+                $appName = $app->name ?? 'Unknown';
+                $status = $deployment->status;
+                $deploymentUser = $deployment->user ?? auth()->user();
+
+                $action = match ($status) {
+                    'finished' => 'deployment_completed',
+                    'failed' => 'deployment_failed',
+                    'in_progress', 'queued' => 'deployment_started',
+                    default => 'deployment_started',
+                };
+
+                if ($actionFilter && $action !== $actionFilter) {
+                    continue;
+                }
+
+                $activities->push([
+                    'id' => 'deploy-'.$deployment->id,
+                    'action' => $action,
+                    'description' => self::buildDescription($action, $appName),
+                    'user' => [
+                        'name' => $deploymentUser->name ?? 'System',
+                        'email' => $deploymentUser->email ?? 'system@saturn.local',
+                    ],
+                    'resource' => [
+                        'type' => 'application',
+                        'name' => $appName,
+                        'id' => (string) ($app->uuid ?? ''),
+                    ],
+                    'timestamp' => $deployment->created_at->toIso8601String(),
+                ]);
+            }
+        }
+
+        // Collect all resource types and IDs belonging to this project
+        $resourceScopes = [
+            Project::class => [$project->id],
+        ];
+
+        // Environments
+        $envIds = $project->environments()->pluck('id')->toArray();
+        if (! empty($envIds)) {
+            $resourceScopes[\App\Models\Environment::class] = $envIds;
+        }
+
+        // Applications
+        if ($applicationIds->isNotEmpty()) {
+            $resourceScopes[\App\Models\Application::class] = $applicationIds->toArray();
+        }
+
+        // Services
+        $serviceIds = $project->services()->pluck('services.id')->toArray();
+        if (! empty($serviceIds)) {
+            $resourceScopes[\App\Models\Service::class] = $serviceIds;
+        }
+
+        // Project settings
+        $settingsId = $project->settings?->id;
+        if ($settingsId) {
+            $resourceScopes[\App\Models\ProjectSetting::class] = [$settingsId];
+        }
+
+        // Query AuditLog for project-scoped resources
+        $auditQuery = \App\Models\AuditLog::query()
+            ->where(function ($query) use ($resourceScopes) {
+                foreach ($resourceScopes as $type => $ids) {
+                    $query->orWhere(function ($q) use ($type, $ids) {
+                        $q->where('resource_type', $type)
+                            ->whereIn('resource_id', $ids);
+                    });
+                }
+            })
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->limit($limit + $offset);
+
+        if ($actionFilter) {
+            $auditQuery->where('action', $actionFilter);
+        }
+
+        $auditLogs = $auditQuery->get();
+
+        foreach ($auditLogs as $log) {
+            $action = $log->action;
+            $resourceTypeName = $log->resource_type_name;
+
+            $activities->push([
+                'id' => 'audit-'.$log->id,
+                'action' => $action,
+                'description' => $log->description ?? "{$log->formatted_action} {$resourceTypeName}",
+                'user' => [
+                    'name' => $log->user?->name ?? 'System',
+                    'email' => $log->user?->email ?? 'system@saturn.local',
+                ],
+                'resource' => [
+                    'type' => strtolower($resourceTypeName ?? 'unknown'),
+                    'name' => $log->resource_name ?? 'Unknown',
+                    'id' => (string) ($log->resource_id ?? ''),
+                ],
+                'timestamp' => $log->created_at->toIso8601String(),
+            ]);
+        }
+
+        // Sort by timestamp descending, apply offset and limit
+        return $activities
+            ->sortByDesc('timestamp')
+            ->skip($offset)
+            ->take($limit)
+            ->values()
+            ->toArray();
     }
 
     /**

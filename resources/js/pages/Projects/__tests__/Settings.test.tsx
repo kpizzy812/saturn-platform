@@ -263,7 +263,8 @@ describe('ProjectSettings', () => {
         expect(screen.getByText('Applications')).toBeInTheDocument();
         expect(screen.getByText('Services')).toBeInTheDocument();
         expect(screen.getByText('Databases')).toBeInTheDocument();
-        expect(screen.getByText('Environments')).toBeInTheDocument();
+        // "Environments" appears in both the Environments section and Resource Limits
+        expect(screen.getAllByText('Environments').length).toBeGreaterThanOrEqual(2);
     });
 
     it('renders deployment defaults section', () => {

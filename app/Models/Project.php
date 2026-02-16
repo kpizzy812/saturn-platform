@@ -44,12 +44,20 @@ class Project extends BaseModel
         'name',
         'description',
         'team_id',
+        'is_archived',
+        'archived_at',
+        'archived_by',
+    ];
+
+    protected $casts = [
+        'is_archived' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'description'])
+            ->logOnly(['name', 'description', 'is_archived'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -152,6 +160,7 @@ class Project extends BaseModel
             );
         });
         static::deleting(function ($project) {
+            $project->tags()->detach();
             $project->environments()->delete();
             $project->settings()->delete();
             $shared_variables = $project->environment_variables();
@@ -174,6 +183,26 @@ class Project extends BaseModel
     public function settings()
     {
         return $this->hasOne(ProjectSetting::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_archived', false);
+    }
+
+    public function archivedByUser()
+    {
+        return $this->belongsTo(User::class, 'archived_by');
+    }
+
+    public function tags()
+    {
+        return $this->morphToMany(Tag::class, 'taggable');
+    }
+
+    public function notificationOverrides()
+    {
+        return $this->hasOne(ProjectNotificationOverride::class);
     }
 
     public function team()

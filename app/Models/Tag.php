@@ -36,4 +36,9 @@ class Tag extends BaseModel
     {
         return $this->morphedByMany(Service::class, 'taggable');
     }
+
+    public function projects()
+    {
+        return $this->morphedByMany(Project::class, 'taggable');
+    }
 }

@@ -192,7 +192,7 @@ Route::get('/projects/{uuid}/environments', function (string $uuid) {
 Route::get('/projects/{uuid}/settings', function (string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
-        ->with(['environments', 'settings.defaultServer'])
+        ->with(['environments', 'settings.defaultServer', 'tags', 'notificationOverrides'])
         ->firstOrFail();
 
     // Count resources for delete warning
@@ -278,6 +278,41 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
         'role' => $m->pivot->role ?? 'member',
     ]);
 
+    // Quotas
+    $quotaService = new \App\Services\ProjectQuotaService;
+    $quotas = $quotaService->getUsage($project);
+
+    // Deployment defaults
+    $deploymentDefaults = [
+        'default_build_pack' => $project->settings?->default_build_pack,
+        'default_git_branch' => $project->settings?->default_git_branch,
+        'default_auto_deploy' => $project->settings?->default_auto_deploy,
+        'default_force_https' => $project->settings?->default_force_https,
+        'default_preview_deployments' => $project->settings?->default_preview_deployments,
+        'default_auto_rollback' => $project->settings?->default_auto_rollback,
+    ];
+
+    // Tags
+    $projectTags = $project->tags->map(fn ($tag) => [
+        'id' => $tag->id,
+        'name' => $tag->name,
+    ]);
+
+    $availableTags = \App\Models\Tag::ownedByCurrentTeam()->get()
+        ->map(fn ($tag) => [
+            'id' => $tag->id,
+            'name' => $tag->name,
+        ]);
+
+    // User's teams for transfer feature
+    $userTeams = $currentUser->teams()
+        ->where('team_id', '!=', $team->id)
+        ->get()
+        ->map(fn ($t) => [
+            'id' => $t->id,
+            'name' => $t->name,
+        ]);
+
     return Inertia::render('Projects/Settings', [
         'project' => [
             'id' => $project->id,
@@ -290,6 +325,8 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
             'resources_count' => $resourcesCount,
             'total_resources' => $totalResources,
             'default_server_id' => $project->settings?->default_server_id,
+            'is_archived' => $project->is_archived,
+            'archived_at' => $project->archived_at,
         ],
         'environments' => $environments,
         'sharedVariables' => $sharedVariables,
@@ -297,6 +334,21 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
         'notificationChannels' => $notificationChannels,
         'teamMembers' => $teamMembers,
         'teamName' => $team->name,
+        'projectTags' => $projectTags,
+        'availableTags' => $availableTags,
+        'userTeams' => $userTeams,
+        'quotas' => $quotas,
+        'deploymentDefaults' => $deploymentDefaults,
+        'notificationOverrides' => [
+            'deployment_success' => $project->notificationOverrides?->deployment_success,
+            'deployment_failure' => $project->notificationOverrides?->deployment_failure,
+            'backup_success' => $project->notificationOverrides?->backup_success,
+            'backup_failure' => $project->notificationOverrides?->backup_failure,
+            'status_change' => $project->notificationOverrides?->status_change,
+            'custom_discord_webhook' => $project->notificationOverrides?->custom_discord_webhook ? '***' : null,
+            'custom_slack_webhook' => $project->notificationOverrides?->custom_slack_webhook ? '***' : null,
+            'custom_webhook_url' => $project->notificationOverrides?->custom_webhook_url ? '***' : null,
+        ],
     ]);
 })->name('projects.settings');
 
@@ -568,6 +620,250 @@ Route::delete('/projects/{uuid}/shared-variables/{variable_id}', function (strin
 
     return response()->json(['message' => 'Variable deleted.']);
 })->name('projects.shared-variables.destroy');
+
+// Export project configuration
+Route::get('/projects/{uuid}/export', function (string $uuid, Request $request) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $includeSecrets = $request->boolean('include_secrets') && auth()->user()->isSuperAdmin();
+
+    $exporter = new \App\Actions\Project\ExportProjectAction;
+    $data = $exporter->execute($project, $includeSecrets);
+
+    $filename = 'project-'.str($project->name)->slug().'-'.now()->format('Y-m-d').'.json';
+
+    return response()->json($data)
+        ->header('Content-Disposition', "attachment; filename=\"{$filename}\"")
+        ->header('Content-Type', 'application/json');
+})->name('projects.export');
+
+// Clone project
+Route::post('/projects/{uuid}/clone', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'clone_shared_vars' => 'boolean',
+        'clone_tags' => 'boolean',
+        'clone_settings' => 'boolean',
+    ]);
+
+    $cloner = new \App\Actions\Project\CloneProjectAction;
+    $newProject = $cloner->execute(
+        $project,
+        $request->name,
+        $request->boolean('clone_shared_vars', false),
+        $request->boolean('clone_tags', false),
+        $request->boolean('clone_settings', false),
+    );
+
+    return redirect()->route('projects.settings', $newProject->uuid)
+        ->with('success', "Project cloned as '{$newProject->name}'");
+})->name('projects.clone');
+
+// Transfer project to another team
+Route::post('/projects/{uuid}/transfer', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'target_team_id' => 'required|integer|exists:teams,id',
+    ]);
+
+    $user = auth()->user();
+    $targetTeamId = $request->target_team_id;
+
+    // Verify user is member of target team
+    if (! $user->teams()->where('team_id', $targetTeamId)->exists()) {
+        return response()->json(['message' => 'You must be a member of the target team'], 403);
+    }
+
+    // Verify user is owner/admin in current project
+    $userRole = $user->roleInProject($project);
+    if (! $userRole) {
+        $teamMembership = $user->teamMembership(currentTeam()->id);
+        $userRole = $teamMembership?->role;
+    }
+    if (! in_array($userRole, ['owner', 'admin'])) {
+        return response()->json(['message' => 'Only project owners or admins can transfer projects'], 403);
+    }
+
+    // Transfer
+    $project->update(['team_id' => $targetTeamId]);
+
+    // Clear project-level members (they may not be in the new team)
+    $project->members()->detach();
+
+    // Audit log
+    $project->audit('transfer', "Project transferred to team #{$targetTeamId}");
+
+    return redirect()->route('projects.index')
+        ->with('success', 'Project transferred successfully');
+})->name('projects.transfer');
+
+// Archive project
+Route::post('/projects/{uuid}/archive', function (string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    if ($project->is_archived) {
+        return response()->json(['message' => 'Project is already archived'], 422);
+    }
+
+    $project->update([
+        'is_archived' => true,
+        'archived_at' => now(),
+        'archived_by' => auth()->id(),
+    ]);
+
+    return redirect()->back()->with('success', 'Project archived successfully');
+})->name('projects.archive');
+
+// Unarchive project
+Route::post('/projects/{uuid}/unarchive', function (string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    if (! $project->is_archived) {
+        return response()->json(['message' => 'Project is not archived'], 422);
+    }
+
+    $project->update([
+        'is_archived' => false,
+        'archived_at' => null,
+        'archived_by' => null,
+    ]);
+
+    return redirect()->back()->with('success', 'Project unarchived successfully');
+})->name('projects.unarchive');
+
+// Attach tag to project
+Route::post('/projects/{uuid}/tags', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'tag_id' => 'nullable|integer|exists:tags,id',
+        'name' => 'nullable|string|max:255',
+    ]);
+
+    $team = currentTeam();
+
+    if ($request->tag_id) {
+        // Attach existing tag (verify it belongs to this team)
+        $tag = \App\Models\Tag::where('id', $request->tag_id)
+            ->where('team_id', $team->id)
+            ->firstOrFail();
+    } elseif ($request->name) {
+        // Create or find tag by name for this team
+        $tag = \App\Models\Tag::firstOrCreate(
+            ['name' => strtolower(trim($request->name)), 'team_id' => $team->id],
+        );
+    } else {
+        return response()->json(['message' => 'Either tag_id or name is required'], 422);
+    }
+
+    // Avoid duplicate attachment
+    if (! $project->tags()->where('tag_id', $tag->id)->exists()) {
+        $project->tags()->attach($tag->id);
+    }
+
+    return response()->json([
+        'id' => $tag->id,
+        'name' => $tag->name,
+    ]);
+})->name('projects.tags.store');
+
+// Detach tag from project
+Route::delete('/projects/{uuid}/tags/{tagId}', function (string $uuid, int $tagId) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $project->tags()->detach($tagId);
+
+    return response()->json(['message' => 'Tag removed']);
+})->name('projects.tags.destroy');
+
+// Update project notification overrides
+Route::patch('/projects/{uuid}/notification-overrides', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'deployment_success' => 'nullable|boolean',
+        'deployment_failure' => 'nullable|boolean',
+        'backup_success' => 'nullable|boolean',
+        'backup_failure' => 'nullable|boolean',
+        'status_change' => 'nullable|boolean',
+        'custom_discord_webhook' => 'nullable|url|max:500',
+        'custom_slack_webhook' => 'nullable|url|max:500',
+        'custom_webhook_url' => 'nullable|url|max:500',
+    ]);
+
+    \App\Models\ProjectNotificationOverride::updateOrCreate(
+        ['project_id' => $project->id],
+        $request->only([
+            'deployment_success', 'deployment_failure',
+            'backup_success', 'backup_failure', 'status_change',
+            'custom_discord_webhook', 'custom_slack_webhook', 'custom_webhook_url',
+        ])
+    );
+
+    return redirect()->back()->with('success', 'Notification overrides updated.');
+})->name('projects.notification-overrides');
+
+// Update project quotas
+Route::patch('/projects/{uuid}/settings/quotas', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'max_applications' => 'nullable|integer|min:0',
+        'max_services' => 'nullable|integer|min:0',
+        'max_databases' => 'nullable|integer|min:0',
+        'max_environments' => 'nullable|integer|min:0',
+    ]);
+
+    $project->settings()->update($request->only([
+        'max_applications', 'max_services', 'max_databases', 'max_environments',
+    ]));
+
+    return redirect()->back()->with('success', 'Resource limits updated.');
+})->name('projects.settings.quotas');
+
+// Update deployment defaults
+Route::patch('/projects/{uuid}/settings/deployment-defaults', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'default_build_pack' => 'nullable|string|in:nixpacks,dockerfile,dockerimage,dockercompose,static',
+        'default_git_branch' => 'nullable|string|max:255',
+        'default_auto_deploy' => 'nullable|boolean',
+        'default_force_https' => 'nullable|boolean',
+        'default_preview_deployments' => 'nullable|boolean',
+        'default_auto_rollback' => 'nullable|boolean',
+    ]);
+
+    $project->settings()->update($request->only([
+        'default_build_pack', 'default_git_branch', 'default_auto_deploy',
+        'default_force_https', 'default_preview_deployments', 'default_auto_rollback',
+    ]));
+
+    return redirect()->back()->with('success', 'Deployment defaults updated.');
+})->name('projects.settings.deployment-defaults');
 
 // Update default server
 Route::patch('/projects/{uuid}/settings/default-server', function (Request $request, string $uuid) {

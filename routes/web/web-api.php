@@ -31,6 +31,34 @@ Route::get('/web-api/team/activities', function (Request $request) {
     ]);
 })->name('web-api.team.activities');
 
+// Project activities JSON endpoint
+Route::get('/web-api/projects/{uuid}/activities', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $limit = min((int) $request->query('limit', 20), 100);
+    $offset = max((int) $request->query('offset', 0), 0);
+    $actionFilter = $request->query('action');
+
+    $activities = \App\Http\Controllers\Inertia\ActivityHelper::getProjectActivities(
+        $project,
+        $limit,
+        $offset,
+        $actionFilter ?: null
+    );
+
+    return response()->json([
+        'data' => $activities,
+        'meta' => [
+            'limit' => $limit,
+            'offset' => $offset,
+            'count' => count($activities),
+            'has_more' => count($activities) === $limit,
+        ],
+    ]);
+})->name('web-api.projects.activities');
+
 // Application settings JSON endpoints
 Route::get('/web-api/applications/{uuid}', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
