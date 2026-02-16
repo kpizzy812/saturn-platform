@@ -33,7 +33,7 @@ export function LogsViewer({
     serviceType = 'application',
     containerName,
 }: LogsViewerProps) {
-    const [_selectedLevel, _setSelectedLevel] = React.useState<string>('all');
+    const [selectedLevel, _setSelectedLevel] = React.useState<string>('all');
 
     // Use the real log stream hook when serviceUuid is provided
     const {
