@@ -45,7 +45,7 @@ Route::get('/services/create', function () {
 
     // Get service templates for quick deploy
     $templateService = app(\App\Services\TemplateService::class);
-    $templates = $templateService->getAllTemplates();
+    $templates = $templateService->getTemplates();
 
     return Inertia::render('Services/Create', [
         'projects' => $projects,
