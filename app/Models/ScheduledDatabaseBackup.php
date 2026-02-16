@@ -38,8 +38,8 @@ class ScheduledDatabaseBackup extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, team_id (security), database_type, database_id (relationships),
-     * last_restore_test_at (system-managed)
+     * Excludes: id (auto-increment), last_restore_test_at (system-managed)
+     * Note: database_id, database_type, team_id are required for create() calls across the codebase.
      */
     protected $fillable = [
         'uuid',
@@ -54,6 +54,9 @@ class ScheduledDatabaseBackup extends BaseModel
         'disable_local_backup',
         'verify_after_backup',
         'restore_test_enabled',
+        'database_id',
+        'database_type',
+        'team_id',
     ];
 
     protected function casts(): array

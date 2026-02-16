@@ -670,16 +670,17 @@ Route::patch('/databases/{uuid}/settings/backups', function (string $uuid, Reque
             ]));
         } else {
             // Create new backup configuration
-            ScheduledDatabaseBackup::create([
-                'database_id' => $database->id,
-                'database_type' => $database->getMorphClass(),
-                'team_id' => currentTeam()->id,
+            // Use relationship make() + direct assignment for morph/team fields (not in $fillable)
+            $newBackup = $database->scheduledBackups()->make([
+                'uuid' => (string) new \Visus\Cuid2\Cuid2,
                 'enabled' => $request->input('enabled', true),
                 'frequency' => $request->input('frequency', 'daily'),
                 'save_s3' => $request->input('save_s3', false),
                 's3_storage_id' => $request->input('s3_storage_id'),
                 'databases_to_backup' => $request->input('databases_to_backup'),
             ]);
+            $newBackup->team_id = currentTeam()->id;
+            $newBackup->save();
         }
 
         return redirect()->back()->with('success', 'Backup settings saved successfully');
@@ -700,14 +701,15 @@ Route::post('/databases/{uuid}/export', function (string $uuid, Request $request
 
         if (! $backup) {
             // Create a temporary backup configuration for one-time export
-            $backup = ScheduledDatabaseBackup::create([
-                'database_id' => $database->id,
-                'database_type' => $database->getMorphClass(),
-                'team_id' => currentTeam()->id,
+            // Use relationship make() + direct assignment for morph/team fields (not in $fillable)
+            $backup = $database->scheduledBackups()->make([
+                'uuid' => (string) new \Visus\Cuid2\Cuid2,
                 'enabled' => false, // Disabled so it won't run on schedule
                 'frequency' => 'manual',
                 'save_s3' => false,
             ]);
+            $backup->team_id = currentTeam()->id;
+            $backup->save();
         }
 
         // Pre-create execution record so frontend can poll for status
