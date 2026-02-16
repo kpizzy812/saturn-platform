@@ -13,7 +13,6 @@ use Laravel\Horizon\Repositories\RedisJobRepository;
 
 use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\select;
-use function Laravel\Prompts\table;
 use function Laravel\Prompts\text;
 
 class HorizonManage extends Command
@@ -72,7 +71,7 @@ class HorizonManage extends Command
                     'reserved_at' => $pendingJob->reserved_at ? now()->parse($pendingJob->reserved_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
-            table($pendingJobsTable);
+            $this->table(['id', 'name', 'status', 'reserved_at'], $pendingJobsTable);
         }
 
         if ($action === 'failed') {
@@ -90,7 +89,7 @@ class HorizonManage extends Command
                     'failed_at' => $failedJob->failed_at ? now()->parse($failedJob->failed_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
-            table($failedJobsTable);
+            $this->table(['id', 'name', 'failed_at'], $failedJobsTable);
         }
 
         if ($action === 'failed-delete') {
@@ -134,7 +133,7 @@ class HorizonManage extends Command
                     'reserved_at' => $runningJob->reserved_at ? now()->parse($runningJob->reserved_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
-            table($runningJobsTable);
+            $this->table(['id', 'name', 'reserved_at'], $runningJobsTable);
         }
 
         if ($action === 'workers') {
@@ -146,7 +145,7 @@ class HorizonManage extends Command
                     'name' => (string) $worker->name,
                 ];
             }
-            table($workersTable);
+            $this->table(['name'], $workersTable);
         }
 
         if ($action === 'purge-queues') {

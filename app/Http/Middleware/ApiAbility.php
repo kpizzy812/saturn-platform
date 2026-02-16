@@ -27,13 +27,17 @@ class ApiAbility extends CheckForAnyAbility
 
             return parent::handle($request, $next, ...$abilities);
         } catch (\Illuminate\Auth\AuthenticationException $e) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            return new \Illuminate\Http\Response(
+                json_encode(['message' => 'Unauthenticated.']),
+                401,
+                ['Content-Type' => 'application/json']
+            );
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Missing required permissions: '.implode(', ', $abilities),
-            ], 403);
+            return new \Illuminate\Http\Response(
+                json_encode(['message' => 'Missing required permissions: '.implode(', ', $abilities)]),
+                403,
+                ['Content-Type' => 'application/json']
+            );
         }
     }
 }

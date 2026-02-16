@@ -16,28 +16,6 @@ use App\Models\User;
  */
 class ProjectAuthorizationService
 {
-    private ?PermissionService $permissionService = null;
-
-    /**
-     * Get the PermissionService instance (lazy loaded).
-     */
-    private function getPermissionService(): PermissionService
-    {
-        if ($this->permissionService === null) {
-            $this->permissionService = app(PermissionService::class);
-        }
-
-        return $this->permissionService;
-    }
-
-    /**
-     * Check permission using the new Permission Sets system with fallback to legacy.
-     */
-    private function checkPermission(User $user, string $permissionKey, ?Project $project = null, ?Environment $environment = null): bool
-    {
-        return $this->getPermissionService()->userHasPermission($user, $permissionKey, $project, $environment);
-    }
-
     /**
      * Check if a user can view a project.
      * User can view if they are:
@@ -65,12 +43,12 @@ class ProjectAuthorizationService
         }
 
         // Owner/Admin always have full access to all projects
-        if (in_array($teamMembership->pivot?->getAttribute('role'), ['owner', 'admin'])) {
+        if (in_array($teamMembership->pivot->getAttribute('role'), ['owner', 'admin'])) {
             return true;
         }
 
         // Check allowed_projects restriction
-        $allowedProjects = $teamMembership->pivot?->getAttribute('allowed_projects');
+        $allowedProjects = $teamMembership->pivot->getAttribute('allowed_projects');
 
         // null means all projects are allowed (default behavior)
         if ($allowedProjects === null) {
@@ -104,7 +82,7 @@ class ProjectAuthorizationService
         // Fallback to team role
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
         if ($teamMembership) {
-            $teamRole = $teamMembership->pivot?->getAttribute('role');
+            $teamRole = $teamMembership->pivot->getAttribute('role');
 
             return in_array($teamRole, ['owner', 'admin']);
         }
@@ -140,7 +118,7 @@ class ProjectAuthorizationService
 
         // Check if user is team owner
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
-        if ($teamMembership && $teamMembership->pivot?->getAttribute('role') === 'owner') {
+        if ($teamMembership && $teamMembership->pivot->getAttribute('role') === 'owner') {
             return true;
         }
 
@@ -198,7 +176,7 @@ class ProjectAuthorizationService
         // Fallback to team role
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
         if ($teamMembership) {
-            $teamRole = $teamMembership->pivot?->getAttribute('role');
+            $teamRole = $teamMembership->pivot->getAttribute('role');
 
             return in_array($teamRole, ['owner', 'admin']);
         }
@@ -293,7 +271,7 @@ class ProjectAuthorizationService
         // Fallback to team role
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
         if ($teamMembership) {
-            return $teamMembership->pivot?->getAttribute('role');
+            return $teamMembership->pivot->getAttribute('role');
         }
 
         return null;

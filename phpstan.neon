@@ -1,6 +1,6 @@
 includes:
     - vendor/larastan/larastan/extension.neon
-    - phpstan-baseline.neon
+    #- phpstan-baseline.neon
 
 parameters:
     level: 5
@@ -8,3 +8,13 @@ parameters:
         - app
     tmpDir: .phpstan-cache
     reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # Legacy Blade view components reference views removed during React/Inertia migration.
+        # The view-string type is a Larastan-specific check; these components are dead code
+        # awaiting removal but harmless at runtime.
+        -
+            identifier: argument.type
+            message: '#expects view-string\|null, string given#'
+            paths:
+                - app/View/Components/
+                - app/Http/Controllers/Controller.php

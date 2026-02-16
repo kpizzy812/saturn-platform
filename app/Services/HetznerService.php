@@ -27,13 +27,13 @@ class HetznerService
                 if ($exception instanceof \Illuminate\Http\Client\RequestException) {
                     $response = $exception->response;
 
-                    if ($response && $response->status() === 429) {
+                    if ($response->status() === 429) {
                         // Get rate limit reset timestamp from headers
                         $resetTime = $response->header('RateLimit-Reset');
 
                         if ($resetTime) {
                             // Calculate wait time until rate limit resets
-                            $waitSeconds = max(0, $resetTime - time());
+                            $waitSeconds = max(0, (int) $resetTime - time());
 
                             // Cap wait time at 60 seconds for safety
                             return min($waitSeconds, 60) * 1000;

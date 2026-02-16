@@ -110,6 +110,7 @@ class DatabaseController extends Controller
             'keydb' => create_standalone_keydb($environment->id, $destination->uuid, $otherData),
             'dragonfly' => create_standalone_dragonfly($environment->id, $destination->uuid, $otherData),
             'clickhouse' => create_standalone_clickhouse($environment->id, $destination->uuid, $otherData),
+            default => throw new \InvalidArgumentException("Unsupported database type: {$request->database_type}"),
         };
 
         return redirect()->route('databases.show', $database->uuid);

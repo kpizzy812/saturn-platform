@@ -324,49 +324,75 @@ function OverviewTab({ service }: { service: Service }) {
         return () => clearInterval(interval);
     }, [service.uuid]);
 
-    // Fetch recent deployments
-    useEffect(() => {
-        const fetchDeployments = async () => {
-            try {
-                const response = await fetch(`/api/v1/services/${service.uuid}/deployments?take=5`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const deployments = (data.deployments || data || []).map((d: {
-                        id: number;
-                        uuid?: string;
-                        commit?: string;
-                        commit_message?: string;
-                        status?: string;
-                        duration?: string;
-                        author?: string;
-                        properties?: {
-                            commit?: string;
-                            commit_message?: string;
-                            duration?: string;
-                            status?: string;
-                        };
-                        description?: string;
-                        created_at: string;
-                    }) => ({
-                        id: d.id,
-                        uuid: d.uuid || String(d.id),
-                        commit: d.commit?.substring(0, 7) || d.properties?.commit?.substring(0, 7) || '',
-                        message: d.commit_message || d.properties?.commit_message || d.description || 'Deployment',
-                        status: mapDeploymentStatus(d.status || d.properties?.status),
-                        time: formatRelativeTime(d.created_at),
-                        duration: d.duration || d.properties?.duration || '-',
-                    }));
-                    setRecentDeployments(deployments);
-                }
-            } catch {
-                // Keep empty array on error
-            } finally {
-                setIsLoadingDeployments(false);
-            }
-        };
+    // Parse deployment data from API response
+    const parseDeployments = (data: unknown): ServiceDeployment[] => {
+        const raw = (Array.isArray(data) ? data : (data as { deployments?: unknown[] })?.deployments || []) as Array<{
+            id: number;
+            uuid?: string;
+            commit?: string;
+            commit_message?: string;
+            status?: string;
+            duration?: string;
+            author?: string;
+            properties?: {
+                commit?: string;
+                commit_message?: string;
+                duration?: string;
+                status?: string;
+            };
+            description?: string;
+            created_at: string;
+        }>;
+        return raw.map((d) => {
+            const rawMessage = d.commit_message || d.properties?.commit_message || d.description || '';
+            // Clean up empty/useless messages (e.g. "[]", empty string)
+            const message = (!rawMessage || rawMessage === '[]' || rawMessage.trim() === '')
+                ? 'Service deployment'
+                : rawMessage;
+            const commit = d.commit?.substring(0, 7) || d.properties?.commit?.substring(0, 7) || '';
+            const duration = d.duration || d.properties?.duration || null;
+            return {
+                id: d.id,
+                uuid: d.uuid || String(d.id),
+                commit,
+                message,
+                status: mapDeploymentStatus(d.status || d.properties?.status),
+                time: formatRelativeTime(d.created_at),
+                duration: duration || '',
+            };
+        });
+    };
 
+    // Fetch recent deployments with optional polling
+    const fetchDeployments = async () => {
+        try {
+            const response = await fetch(`/api/v1/services/${service.uuid}/deployments?take=5`);
+            if (response.ok) {
+                const data = await response.json();
+                setRecentDeployments(parseDeployments(data));
+            }
+        } catch {
+            // Keep existing data on error
+        } finally {
+            setIsLoadingDeployments(false);
+        }
+    };
+
+    // Initial fetch
+    useEffect(() => {
         fetchDeployments();
     }, [service.uuid]);
+
+    // Poll deployments every 5s when there's an active deployment
+    useEffect(() => {
+        const hasActiveDeployment = recentDeployments.some(
+            (d) => d.status === 'in_progress' || d.status === 'queued'
+        );
+        if (!hasActiveDeployment) return;
+
+        const interval = setInterval(fetchDeployments, 5000);
+        return () => clearInterval(interval);
+    }, [recentDeployments, service.uuid]);
 
     return (
         <div className="space-y-6">
@@ -456,48 +482,48 @@ function OverviewTab({ service }: { service: Service }) {
                             </p>
                         </div>
                     ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {recentDeployments.map((deployment) => (
-                                <Link
+                                <div
                                     key={deployment.id}
-                                    href={`/services/${service.uuid}/deployments/${deployment.uuid}`}
-                                    className="block rounded-lg border border-border bg-background-secondary p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-border/80 hover:bg-background-secondary/80 hover:shadow-md"
+                                    className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            {deployment.status === 'finished' ? (
-                                                <CheckCircle className="h-4 w-4 text-primary" />
-                                            ) : deployment.status === 'failed' ? (
-                                                <XCircle className="h-4 w-4 text-danger" />
-                                            ) : (
-                                                <AlertCircle className="h-4 w-4 text-warning" />
-                                            )}
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    {deployment.commit ? (
-                                                        <>
-                                                            <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
-                                                            <code className="text-sm font-medium text-foreground">{deployment.commit}</code>
-                                                            <span className="text-sm text-foreground-muted">·</span>
-                                                        </>
-                                                    ) : (
-                                                        <Activity className="h-3.5 w-3.5 text-foreground-muted" />
-                                                    )}
-                                                    <span className="text-sm text-foreground">{deployment.message}</span>
-                                                </div>
-                                                <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">
-                                                    <Clock className="h-3 w-3" />
-                                                    <span>{deployment.time}</span>
-                                                    <span>·</span>
-                                                    <span>{deployment.duration}</span>
-                                                </div>
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        {deployment.status === 'finished' ? (
+                                            <CheckCircle className="h-4 w-4 shrink-0 text-primary" />
+                                        ) : deployment.status === 'failed' ? (
+                                            <XCircle className="h-4 w-4 shrink-0 text-danger" />
+                                        ) : deployment.status === 'in_progress' ? (
+                                            <Activity className="h-4 w-4 shrink-0 text-warning animate-pulse" />
+                                        ) : (
+                                            <Clock className="h-4 w-4 shrink-0 text-foreground-muted" />
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                {deployment.commit && (
+                                                    <>
+                                                        <GitCommit className="h-3.5 w-3.5 shrink-0 text-foreground-muted" />
+                                                        <code className="text-sm font-medium text-foreground">{deployment.commit}</code>
+                                                        <span className="text-foreground-subtle">·</span>
+                                                    </>
+                                                )}
+                                                <span className="text-sm text-foreground truncate">{deployment.message}</span>
+                                            </div>
+                                            <div className="mt-0.5 flex items-center gap-2 text-xs text-foreground-muted">
+                                                <span>{deployment.time}</span>
+                                                {deployment.duration && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span>{deployment.duration}</span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
-                                        <Badge variant={getStatusVariant(deployment.status)}>
-                                            {getStatusLabel(deployment.status)}
-                                        </Badge>
                                     </div>
-                                </Link>
+                                    <Badge variant={getStatusVariant(deployment.status)} className="shrink-0 ml-2">
+                                        {getStatusLabel(deployment.status)}
+                                    </Badge>
+                                </div>
                             ))}
                         </div>
                     )}

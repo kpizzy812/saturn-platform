@@ -68,7 +68,7 @@ trait HandlesRuntimeEnvGeneration
             return;
         }
 
-        $domains = collect(json_decode($this->application->docker_compose_domains)) ?? collect([]);
+        $domains = collect(json_decode($this->application->docker_compose_domains));
 
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
         foreach ($domains as $forServiceName => $domain) {
@@ -151,7 +151,7 @@ trait HandlesRuntimeEnvGeneration
             return;
         }
 
-        $domains = collect(json_decode(data_get($this->preview, 'docker_compose_domains'))) ?? collect([]);
+        $domains = collect(json_decode(data_get($this->preview, 'docker_compose_domains')));
 
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
         foreach ($domains as $forServiceName => $domain) {

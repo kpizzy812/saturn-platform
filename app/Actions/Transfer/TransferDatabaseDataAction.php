@@ -40,6 +40,7 @@ class TransferDatabaseDataAction
         }
 
         $sourceServer = $this->getServer($sourceDatabase);
+        /** @var \App\Models\Server $targetServer */
         $targetServer = $transfer->targetServer;
         $targetDb = $targetDatabase ?? $sourceDatabase;
 

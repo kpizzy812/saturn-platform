@@ -50,7 +50,6 @@ class ProjectQuotaService
                 'service' => $settings?->max_services,
                 'database' => $settings?->max_databases,
                 'environment' => $settings?->max_environments,
-                default => null,
             };
 
             $usage[$type] = [
@@ -76,6 +75,7 @@ class ProjectQuotaService
                 + $project->dragonflies()->count()
                 + $project->clickhouses()->count(),
             'environment' => $project->environments()->count(),
+            default => 0,
         };
     }
 }

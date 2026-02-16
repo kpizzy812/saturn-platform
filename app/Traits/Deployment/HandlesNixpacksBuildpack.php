@@ -92,14 +92,12 @@ trait HandlesNixpacksBuildpack
         }
 
         // Next, try to get PORT from Nixpacks plan
-        if ($this->nixpacks_plan_json) {
-            $portFromPlan = data_get($this->nixpacks_plan_json, 'variables.PORT');
-            if (is_numeric($portFromPlan)) {
-                $this->application->update(['ports_exposes' => (string) $portFromPlan]);
-                $this->application_deployment_queue->addLogEntry("Auto-detected port from Nixpacks plan: {$portFromPlan}");
+        $portFromPlan = data_get($this->nixpacks_plan_json, 'variables.PORT');
+        if (is_numeric($portFromPlan)) {
+            $this->application->update(['ports_exposes' => (string) $portFromPlan]);
+            $this->application_deployment_queue->addLogEntry("Auto-detected port from Nixpacks plan: {$portFromPlan}");
 
-                return;
-            }
+            return;
         }
     }
 
@@ -218,56 +216,54 @@ trait HandlesNixpacksBuildpack
 
         if ($this->saved_outputs->get('nixpacks_plan')) {
             $this->nixpacks_plan = $this->saved_outputs->get('nixpacks_plan');
-            if ($this->nixpacks_plan) {
-                $this->application_deployment_queue->addLogEntry("Found application type: {$this->nixpacks_type}.");
-                $this->application_deployment_queue->addLogEntry("If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/{$this->nixpacks_type}");
-                $parsed = json_decode($this->nixpacks_plan, true);
+            $this->application_deployment_queue->addLogEntry("Found application type: {$this->nixpacks_type}.");
+            $this->application_deployment_queue->addLogEntry("If you need further customization, please check the documentation of Nixpacks: https://nixpacks.com/docs/providers/{$this->nixpacks_type}");
+            $parsed = json_decode($this->nixpacks_plan, true);
 
-                // Do any modifications here
-                // We need to generate envs here because nixpacks need to know to generate a proper Dockerfile
-                $this->generate_env_variables();
-                $merged_envs = collect(data_get($parsed, 'variables', []))->merge($this->env_args);
-                $aptPkgs = data_get($parsed, 'phases.setup.aptPkgs', []);
-                if (count($aptPkgs) === 0) {
-                    $aptPkgs = ['curl', 'wget'];
-                    data_set($parsed, 'phases.setup.aptPkgs', ['curl', 'wget']);
-                } else {
-                    if (! in_array('curl', $aptPkgs)) {
-                        $aptPkgs[] = 'curl';
-                    }
-                    if (! in_array('wget', $aptPkgs)) {
-                        $aptPkgs[] = 'wget';
-                    }
-                    data_set($parsed, 'phases.setup.aptPkgs', $aptPkgs);
+            // Do any modifications here
+            // We need to generate envs here because nixpacks need to know to generate a proper Dockerfile
+            $this->generate_env_variables();
+            $merged_envs = collect(data_get($parsed, 'variables', []))->merge($this->env_args);
+            $aptPkgs = data_get($parsed, 'phases.setup.aptPkgs', []);
+            if (count($aptPkgs) === 0) {
+                $aptPkgs = ['curl', 'wget'];
+                data_set($parsed, 'phases.setup.aptPkgs', ['curl', 'wget']);
+            } else {
+                if (! in_array('curl', $aptPkgs)) {
+                    $aptPkgs[] = 'curl';
                 }
-                data_set($parsed, 'variables', $merged_envs->toArray());
-                $is_laravel = data_get($parsed, 'variables.IS_LARAVEL', false);
-                if ($is_laravel) {
-                    $variables = $this->laravel_finetunes();
-                    data_set($parsed, 'variables.NIXPACKS_PHP_FALLBACK_PATH', $variables[0]->value);
-                    data_set($parsed, 'variables.NIXPACKS_PHP_ROOT_DIR', $variables[1]->value);
+                if (! in_array('wget', $aptPkgs)) {
+                    $aptPkgs[] = 'wget';
                 }
-                if ($this->nixpacks_type === 'elixir') {
-                    $this->elixir_finetunes();
+                data_set($parsed, 'phases.setup.aptPkgs', $aptPkgs);
+            }
+            data_set($parsed, 'variables', $merged_envs->toArray());
+            $is_laravel = data_get($parsed, 'variables.IS_LARAVEL', false);
+            if ($is_laravel) {
+                $variables = $this->laravel_finetunes();
+                data_set($parsed, 'variables.NIXPACKS_PHP_FALLBACK_PATH', $variables[0]->value);
+                data_set($parsed, 'variables.NIXPACKS_PHP_ROOT_DIR', $variables[1]->value);
+            }
+            if ($this->nixpacks_type === 'elixir') {
+                $this->elixir_finetunes();
+            }
+            if ($this->nixpacks_type === 'node') {
+                // Check if NIXPACKS_NODE_VERSION is set (either explicitly or auto-detected)
+                $variables = data_get($parsed, 'variables', []);
+                if (! isset($variables['NIXPACKS_NODE_VERSION'])) {
+                    $this->application_deployment_queue->addLogEntry('----------------------------------------');
+                    $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set and could not auto-detect from .nvmrc or package.json.');
+                    $this->application_deployment_queue->addLogEntry('Nixpacks will use Node.js 18 by default, which is EOL.');
+                    $this->application_deployment_queue->addLogEntry('You can specify version by: 1) Adding .nvmrc file, 2) Setting engines.node in package.json, or 3) Setting NIXPACKS_NODE_VERSION environment variable.');
                 }
-                if ($this->nixpacks_type === 'node') {
-                    // Check if NIXPACKS_NODE_VERSION is set (either explicitly or auto-detected)
-                    $variables = data_get($parsed, 'variables', []);
-                    if (! isset($variables['NIXPACKS_NODE_VERSION'])) {
-                        $this->application_deployment_queue->addLogEntry('----------------------------------------');
-                        $this->application_deployment_queue->addLogEntry('⚠️ NIXPACKS_NODE_VERSION not set and could not auto-detect from .nvmrc or package.json.');
-                        $this->application_deployment_queue->addLogEntry('Nixpacks will use Node.js 18 by default, which is EOL.');
-                        $this->application_deployment_queue->addLogEntry('You can specify version by: 1) Adding .nvmrc file, 2) Setting engines.node in package.json, or 3) Setting NIXPACKS_NODE_VERSION environment variable.');
-                    }
-                }
-                $this->nixpacks_plan = json_encode($parsed, JSON_PRETTY_PRINT);
-                $this->nixpacks_plan_json = collect($parsed);
-                $this->application_deployment_queue->addLogEntry("Final Nixpacks plan: {$this->nixpacks_plan}", hidden: true);
-                if ($this->nixpacks_type === 'rust') {
-                    // temporary: disable healthcheck for rust because the start phase does not have curl/wget
-                    $this->application->health_check_enabled = false;
-                    $this->application->save();
-                }
+            }
+            $this->nixpacks_plan = json_encode($parsed, JSON_PRETTY_PRINT);
+            $this->nixpacks_plan_json = collect($parsed);
+            $this->application_deployment_queue->addLogEntry("Final Nixpacks plan: {$this->nixpacks_plan}", hidden: true);
+            if ($this->nixpacks_type === 'rust') {
+                // temporary: disable healthcheck for rust because the start phase does not have curl/wget
+                $this->application->health_check_enabled = false;
+                $this->application->save();
             }
         }
     }

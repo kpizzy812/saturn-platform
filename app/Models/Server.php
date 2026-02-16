@@ -40,51 +40,6 @@ use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
-/**
- * @property array{
- *     current: string,
- *     latest: string,
- *     type: 'patch_update'|'minor_upgrade',
- *     checked_at: string,
- *     newer_branch_target?: string,
- *     newer_branch_latest?: string,
- *     upgrade_target?: string
- * }|null $traefik_outdated_info Traefik version tracking information.
- *
- * This JSON column stores information about outdated Traefik proxy versions on this server.
- * The structure varies depending on the type of update available:
- *
- * **For patch updates** (e.g., 3.5.0 → 3.5.2):
- * ```php
- * [
- *     'current' => '3.5.0',              // Current version (without 'v' prefix)
- *     'latest' => '3.5.2',               // Latest patch version available
- *     'type' => 'patch_update',          // Update type identifier
- *     'checked_at' => '2025-11-14T10:00:00Z',  // ISO8601 timestamp
- *     'newer_branch_target' => 'v3.6',   // (Optional) Available major/minor version
- *     'newer_branch_latest' => '3.6.2'   // (Optional) Latest version in that branch
- * ]
- * ```
- *
- * **For minor/major upgrades** (e.g., 3.5.6 → 3.6.2):
- * ```php
- * [
- *     'current' => '3.5.6',              // Current version
- *     'latest' => '3.6.2',               // Latest version in target branch
- *     'type' => 'minor_upgrade',         // Update type identifier
- *     'upgrade_target' => 'v3.6',        // Target branch (with 'v' prefix)
- *     'checked_at' => '2025-11-14T10:00:00Z'  // ISO8601 timestamp
- * ]
- * ```
- *
- * **Null value**: Set to null when:
- * - Server is fully up-to-date with the latest version
- * - Traefik image uses the 'latest' tag (no fixed version tracking)
- * - No Traefik version detected on the server
- *
- * @see \App\Jobs\CheckTraefikVersionForServerJob Where this data is populated
- * @see \App\Livewire\Server\Proxy Where this data is read and displayed
- */
 #[OA\Schema(
     description: 'Server model',
     type: 'object',
@@ -107,8 +62,10 @@ use Visus\Cuid2\Cuid2;
         new OA\Property(property: 'settings', ref: '#/components/schemas/ServerSetting'),
     ]
 )]
-
 /**
+ * Traefik version tracking: $traefik_outdated_info stores outdated proxy version info.
+ * Set to null when up-to-date, using 'latest' tag, or no Traefik detected.
+ *
  * @property int $id
  * @property string $uuid
  * @property string $name
@@ -123,18 +80,20 @@ use Visus\Cuid2\Cuid2;
  * @property bool $force_disabled
  * @property bool $delete_unused_volumes
  * @property bool $delete_unused_networks
- * @property array|null $traefik_outdated_info
+ * @property array{current: string, latest: string, type: 'patch_update'|'minor_upgrade', checked_at: string, newer_branch_target?: string, newer_branch_latest?: string, upgrade_target?: string}|null $traefik_outdated_info
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property \Carbon\Carbon|null $deleted_at
  * @property-read bool $is_reachable
  * @property-read bool $is_usable
- * @property-read string $getIp
+ * @property-read string $get_ip
  * @property-read string $image
- * @property-read array|null $outdatedInfo
  * @property-read ServerSetting|null $settings
  * @property-read Team|null $team
  * @property-read PrivateKey|null $privateKey
+ *
+ * @see \App\Jobs\CheckTraefikVersionForServerJob Where traefik_outdated_info is populated
+ * @see \App\Livewire\Server\Proxy Where traefik_outdated_info is read and displayed
  */
 class Server extends BaseModel
 {
@@ -324,6 +283,7 @@ class Server extends BaseModel
         );
     }
 
+    /** @return Attribute<bool, never> */
     protected function isReachable(): Attribute
     {
         return Attribute::make(
@@ -331,6 +291,7 @@ class Server extends BaseModel
         );
     }
 
+    /** @return Attribute<bool, never> */
     protected function isUsable(): Attribute
     {
         return Attribute::make(
@@ -415,8 +376,8 @@ class Server extends BaseModel
             "# Disable the default redirect to customize (only if you know what are you doing).\n\n";
         $dynamic_conf_path = $this->proxyPath().'/dynamic';
         $proxy_type = $this->proxyType();
-        $redirect_enabled = $this->proxy->redirect_enabled ?? true;
-        $redirect_url = $this->proxy->redirect_url;
+        $redirect_enabled = $this->proxy->get('redirect_enabled', true);
+        $redirect_url = $this->proxy->get('redirect_url');
         if (isDev()) {
             if ($proxy_type === ProxyTypes::CADDY->value) {
                 $dynamic_conf_path = '/data/saturn/proxy/caddy/dynamic';
@@ -1066,20 +1027,28 @@ $schema://$host {
         );
     }
 
-    public function getIp(): Attribute
+    /** @return Attribute<string, never> */
+    protected function getIp(): Attribute
     {
         return Attribute::make(
-            get: function () {
-                if (isDev()) {
-                    return '127.0.0.1';
-                }
-                if ($this->checkIsLocalhost()) {
-                    return base_ip();
-                }
-
-                return $this->ip;
-            }
+            get: fn () => $this->resolveEffectiveIp()
         );
+    }
+
+    /**
+     * Resolve the effective IP address for this server.
+     * In dev mode returns 127.0.0.1, for localhost returns base_ip(), otherwise the stored IP.
+     */
+    public function resolveEffectiveIp(): string
+    {
+        if (isDev()) {
+            return '127.0.0.1';
+        }
+        if ($this->checkIsLocalhost()) {
+            return base_ip();
+        }
+
+        return $this->ip;
     }
 
     public function previews()
@@ -1302,7 +1271,7 @@ $schema://$host {
                 }
             }
 
-            if ($failedChecks === 3 && ! $unreachableNotificationSent) {
+            if ($failedChecks === 3) {
                 $this->sendUnreachableNotification();
             }
         }

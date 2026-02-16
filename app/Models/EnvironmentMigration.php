@@ -140,7 +140,7 @@ class EnvironmentMigration extends Model
     {
         parent::boot();
 
-        static::creating(function (Model $model) {
+        static::creating(function (self $model) {
             if (! $model->uuid) {
                 $model->uuid = (string) new Cuid2;
             }

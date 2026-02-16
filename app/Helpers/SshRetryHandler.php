@@ -31,4 +31,13 @@ class SshRetryHandler
     {
         return self::instance()->executeWithSshRetry($callback, $context, $throwError);
     }
+
+    /**
+     * No-op implementation for SshRetryable trait compatibility.
+     * Deployment log entries are only relevant in ApplicationDeploymentJob context.
+     */
+    protected function addRetryLogEntry(int $attempt, int $maxRetries, int $delay, string $errorMessage): void
+    {
+        // No deployment queue in this context
+    }
 }

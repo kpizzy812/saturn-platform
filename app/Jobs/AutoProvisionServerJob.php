@@ -122,12 +122,6 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
                 default => throw new \Exception("Unsupported provider: {$provider}"),
             };
 
-            if (! $server) {
-                $event->markAsFailed('Failed to create server on cloud provider');
-
-                return;
-            }
-
             // Mark as installing
             $event->markAsInstalling($server->id);
 
@@ -218,7 +212,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
         PrivateKey $privateKey,
         InstanceSettings $settings,
         AutoProvisioningEvent $event
-    ): ?Server {
+    ): Server {
         $hetznerService = new HetznerService($token->token);
 
         // Get public key and MD5 fingerprint

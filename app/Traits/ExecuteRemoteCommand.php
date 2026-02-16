@@ -4,9 +4,7 @@ namespace App\Traits;
 
 use App\Enums\ApplicationDeploymentStatus;
 use App\Helpers\SshMultiplexingHelper;
-use App\Models\Server;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Process;
 
 trait ExecuteRemoteCommand
@@ -60,14 +58,7 @@ trait ExecuteRemoteCommand
     public function execute_remote_command(...$commands)
     {
         static::$batch_counter++;
-        if ($commands instanceof Collection) {
-            $commandsText = $commands;
-        } else {
-            $commandsText = collect($commands);
-        }
-        if ($this->server instanceof Server === false) {
-            throw new \RuntimeException('Server is not set or is not an instance of Server model');
-        }
+        $commandsText = collect($commands);
         $commandsText->each(function ($single_command) {
             $command = data_get($single_command, 'command') ?? $single_command[0] ?? null;
             if ($command === null) {

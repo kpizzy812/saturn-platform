@@ -27,7 +27,6 @@ trait HandlesImageRegistry
     {
         $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_PUSH);
 
-        $forceFail = true;
         if (str($this->application->docker_registry_image_name)->isEmpty()) {
             return;
         }
@@ -36,15 +35,6 @@ trait HandlesImageRegistry
         }
         if ($this->application->build_pack === 'dockerimage') {
             return;
-        }
-        if ($this->use_build_server) {
-            $forceFail = true;
-        }
-        if ($this->server->isSwarm() && $this->build_pack !== 'dockerimage') {
-            $forceFail = true;
-        }
-        if ($this->application->additional_servers->count() > 0) {
-            $forceFail = true;
         }
         if ($this->is_this_additional_server) {
             return;
@@ -77,9 +67,7 @@ trait HandlesImageRegistry
             }
         } catch (Exception $e) {
             $this->application_deployment_queue->addLogEntry('Failed to push image to docker registry. Please check debug logs for more information.');
-            if ($forceFail) {
-                throw new DeploymentException(get_class($e).': '.$e->getMessage(), $e->getCode(), $e);
-            }
+            throw new DeploymentException(get_class($e).': '.$e->getMessage(), $e->getCode(), $e);
         }
     }
 

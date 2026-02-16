@@ -181,7 +181,8 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return data_get($team, 'limits', 0);
     }
 
-    public function limits(): Attribute
+    /** @return Attribute<int, never> */
+    protected function limits(): Attribute
     {
         return Attribute::make(
             get: function () {
@@ -189,7 +190,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
                     return 999999999999;
                 }
 
-                return $this->custom_server_limit ?? 2;
+                return (int) ($this->custom_server_limit ?? 2);
             }
         );
     }

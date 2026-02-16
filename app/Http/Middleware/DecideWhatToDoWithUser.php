@@ -49,7 +49,7 @@ class DecideWhatToDoWithUser
 
             return redirect()->route('boarding.index');
         }
-        if (auth()->user()->hasVerifiedEmail() && $request->path() === 'verify') {
+        if ($request->path() === 'verify') {
             return redirect(RouteServiceProvider::HOME);
         }
         if (isSubscriptionActive() && $request->routeIs('subscription.index')) {

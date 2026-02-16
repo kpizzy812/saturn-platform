@@ -40,12 +40,14 @@ class TeamInvitation extends Model
         $this->attributes['email'] = strtolower($value);
     }
 
-    public function team()
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Team, $this> */
+    public function team(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Team::class);
     }
 
-    public function inviter()
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<User, $this> */
+    public function inviter(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by');
     }

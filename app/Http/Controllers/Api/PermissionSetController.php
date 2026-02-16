@@ -87,7 +87,7 @@ class PermissionSetController extends Controller
         $permissions = Permission::orderBy('sort_order')
             ->get()
             ->groupBy('category')
-            ->map(fn (\Illuminate\Database\Eloquent\Collection $group) => $group->map(fn (\App\Models\Permission $p) => [
+            ->map(fn (\Illuminate\Database\Eloquent\Collection $group, int|string $key) => $group->map(fn (\App\Models\Permission $p) => [
                 'id' => $p->id,
                 'key' => $p->key,
                 'name' => $p->name,
@@ -658,12 +658,17 @@ class PermissionSetController extends Controller
                 'environment_restrictions' => $p->pivot?->getAttribute('environment_restrictions'),
             ]);
 
-            $data['users'] = $set->users->map(fn ($u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'environment_overrides' => $u->pivot?->getAttribute('environment_overrides'),
-            ]);
+            $data['users'] = $set->users->map(function ($u) {
+                /** @var \Illuminate\Database\Eloquent\Relations\Pivot|null $userPivot */
+                $userPivot = data_get($u, 'pivot');
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'environment_overrides' => $userPivot?->getAttribute('environment_overrides'),
+                ];
+            });
         }
 
         return $data;

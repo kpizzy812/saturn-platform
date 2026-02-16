@@ -223,7 +223,7 @@ class ApplicationComposeParser
             $fqdn = generateFqdn(server: $this->server, random: "{$this->uuid}", parserVersion: (int) $this->resource->compose_parsing_version);
         }
 
-        if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
+        if ($value->startsWith('/')) {
             $path = $value->value();
             if ($path !== '/') {
                 $fqdn = "$fqdn$path";
@@ -690,7 +690,7 @@ class ApplicationComposeParser
         // Special cases for docker.sock and /tmp
         if ($source->value() === '/var/run/docker.sock' || $source->value() === '/tmp' || $source->value() === '/tmp/') {
             $volumeStr = $source->value().':'.$target->value();
-            if (isset($parsed['mode']) && $parsed['mode']) {
+            if ($parsed['mode']) {
                 $volumeStr .= ':'.$parsed['mode']->value();
             }
 
@@ -725,7 +725,7 @@ class ApplicationComposeParser
         }
 
         $volumeStr = "$source:$target";
-        if (isset($parsed['mode']) && $parsed['mode']) {
+        if ($parsed['mode']) {
             $volumeStr .= ':'.$parsed['mode']->value();
         }
 
@@ -760,7 +760,7 @@ class ApplicationComposeParser
             $source = $parsed['source'];
             $target = $parsed['target'];
             $volumeStr = "$name:$target";
-            if (isset($parsed['mode']) && $parsed['mode']) {
+            if ($parsed['mode']) {
                 $volumeStr .= ':'.$parsed['mode']->value();
             }
             $volume = $volumeStr;

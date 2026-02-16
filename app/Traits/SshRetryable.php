@@ -99,7 +99,7 @@ trait SshRetryable
                     $this->trackSshRetryEvent($attempt + 1, $maxRetries, $delay, $lastErrorMessage, $context);
 
                     // Add deployment log if available (for ExecuteRemoteCommand trait)
-                    if (isset($this->application_deployment_queue) && method_exists($this, 'addRetryLogEntry')) {
+                    if (isset($this->application_deployment_queue)) {
                         $this->addRetryLogEntry($attempt + 1, $maxRetries, $delay, $lastErrorMessage);
                     }
 

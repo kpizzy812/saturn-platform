@@ -184,7 +184,7 @@ class StandaloneClickhouse extends BaseModel
 
     public function deleteVolumes()
     {
-        $persistentStorages = $this->persistentStorages()->get() ?? collect();
+        $persistentStorages = $this->persistentStorages()->get();
         if ($persistentStorages->count() === 0) {
             return;
         }

@@ -16,10 +16,10 @@ class PushoverMessage
     public function getLevelIcon(): string
     {
         return match ($this->level) {
-            'info' => 'ℹ️',
-            'error' => '❌',
-            'success' => '✅ ',
-            'warning' => '⚠️',
+            'error' => "\xE2\x9D\x8C",
+            'success' => "\xE2\x9C\x85",
+            'warning' => "\xE2\x9A\xA0\xEF\xB8\x8F",
+            default => "\xE2\x84\xB9\xEF\xB8\x8F",
         };
     }
 

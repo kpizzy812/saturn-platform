@@ -587,10 +587,8 @@ class DatabaseCreateController extends Controller
         $extraFields = array_diff(array_keys($request->all()), $allowedFields);
         if (! empty($extraFields)) {
             $errors = collect([]);
-            if (! empty($extraFields)) {
-                foreach ($extraFields as $field) {
-                    $errors->add($field, 'This field is not allowed.');
-                }
+            foreach ($extraFields as $field) {
+                $errors->put($field, 'This field is not allowed.');
             }
 
             return response()->json([

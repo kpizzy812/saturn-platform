@@ -164,7 +164,10 @@ class MigrateResourceAction
     protected function getResourceEnvironment(Model $resource): ?Environment
     {
         if (method_exists($resource, 'environment')) {
-            return $resource->environment;
+            /** @var Environment|null $environment */
+            $environment = $resource->getAttribute('environment');
+
+            return $environment;
         }
 
         return null;
@@ -242,7 +245,9 @@ class MigrateResourceAction
 
         // Add environment variables
         if (method_exists($resource, 'environment_variables')) {
-            $config['environment_variables'] = $resource->environment_variables->map(fn ($var) => [
+            /** @var \Illuminate\Support\Collection $envVars */
+            $envVars = $resource->getAttribute('environment_variables');
+            $config['environment_variables'] = $envVars->map(fn ($var) => [
                 'key' => $var->key,
                 'value' => $var->value,
                 'is_buildtime' => $var->is_buildtime ?? false,
@@ -253,7 +258,9 @@ class MigrateResourceAction
 
         // Add persistent volumes
         if (method_exists($resource, 'persistentStorages')) {
-            $config['persistent_storages'] = $resource->persistentStorages->map(fn ($storage) => [
+            /** @var \Illuminate\Support\Collection $persistentStorages */
+            $persistentStorages = $resource->getAttribute('persistentStorages');
+            $config['persistent_storages'] = $persistentStorages->map(fn ($storage) => [
                 'name' => $storage->name,
                 'mount_path' => $storage->mount_path,
                 'host_path' => $storage->host_path,
@@ -262,7 +269,9 @@ class MigrateResourceAction
 
         // Add file volumes
         if (method_exists($resource, 'fileStorages')) {
-            $config['file_storages'] = $resource->fileStorages->map(fn ($file) => [
+            /** @var \Illuminate\Support\Collection $fileStorages */
+            $fileStorages = $resource->getAttribute('fileStorages');
+            $config['file_storages'] = $fileStorages->map(fn ($file) => [
                 'fs_path' => $file->fs_path,
                 'mount_path' => $file->mount_path,
                 'content' => $file->content,

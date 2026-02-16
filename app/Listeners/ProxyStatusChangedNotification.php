@@ -33,7 +33,7 @@ class ProxyStatusChangedNotification implements ShouldQueueAfterCommit
         if ($status === 'running') {
             $server->setupDefaultRedirect();
             $server->setupDynamicProxyConfiguration();
-            $server->proxy->force_stop = false;
+            $server->proxy->set('force_stop', false);
             $server->save();
 
             // Check Traefik version after proxy is running

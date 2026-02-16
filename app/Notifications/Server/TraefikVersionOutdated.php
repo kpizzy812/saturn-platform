@@ -49,7 +49,7 @@ class TraefikVersionOutdated extends CustomEmailNotification
                 'name' => $server->name,
                 'uuid' => $server->uuid,
                 'url' => base_url().'/server/'.$server->uuid.'/proxy',
-                'outdatedInfo' => $server->outdatedInfo ?? [],
+                'outdatedInfo' => $server->traefik_outdated_info ?? [],
             ];
         });
 
@@ -65,15 +65,15 @@ class TraefikVersionOutdated extends CustomEmailNotification
     public function toDiscord(): DiscordMessage
     {
         $count = $this->servers->count();
-        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->outdatedInfo['type'] ?? 'patch_update') === 'minor_upgrade' ||
-            isset($s->outdatedInfo['newer_branch_target'])
+        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->traefik_outdated_info['type'] ?? 'patch_update') === 'minor_upgrade' ||
+            isset($s->traefik_outdated_info['newer_branch_target'])
         );
 
         $description = "**{$count} server(s)** running outdated Traefik proxy. Update recommended for security and features.\n\n";
         $description .= "**Affected servers:**\n";
 
         foreach ($this->servers as $server) {
-            $info = $server->outdatedInfo ?? [];
+            $info = $server->traefik_outdated_info ?? [];
             $current = $this->formatVersion($info['current'] ?? 'unknown');
             $latest = $this->formatVersion($info['latest'] ?? 'unknown');
             $upgradeTarget = $this->getUpgradeTarget($info);
@@ -108,8 +108,8 @@ class TraefikVersionOutdated extends CustomEmailNotification
     public function toTelegram(): array
     {
         $count = $this->servers->count();
-        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->outdatedInfo['type'] ?? 'patch_update') === 'minor_upgrade' ||
-            isset($s->outdatedInfo['newer_branch_target'])
+        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->traefik_outdated_info['type'] ?? 'patch_update') === 'minor_upgrade' ||
+            isset($s->traefik_outdated_info['newer_branch_target'])
         );
 
         $message = "⚠️ Saturn Platform: Traefik proxy outdated on {$count} server(s)!\n\n";
@@ -117,7 +117,7 @@ class TraefikVersionOutdated extends CustomEmailNotification
         $message .= "📊 Affected servers:\n";
 
         foreach ($this->servers as $server) {
-            $info = $server->outdatedInfo ?? [];
+            $info = $server->traefik_outdated_info ?? [];
             $current = $this->formatVersion($info['current'] ?? 'unknown');
             $latest = $this->formatVersion($info['latest'] ?? 'unknown');
             $upgradeTarget = $this->getUpgradeTarget($info);
@@ -151,15 +151,15 @@ class TraefikVersionOutdated extends CustomEmailNotification
     public function toPushover(): PushoverMessage
     {
         $count = $this->servers->count();
-        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->outdatedInfo['type'] ?? 'patch_update') === 'minor_upgrade' ||
-            isset($s->outdatedInfo['newer_branch_target'])
+        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->traefik_outdated_info['type'] ?? 'patch_update') === 'minor_upgrade' ||
+            isset($s->traefik_outdated_info['newer_branch_target'])
         );
 
         $message = "Traefik proxy outdated on {$count} server(s)!\n";
         $message .= "Affected servers:\n";
 
         foreach ($this->servers as $server) {
-            $info = $server->outdatedInfo ?? [];
+            $info = $server->traefik_outdated_info ?? [];
             $current = $this->formatVersion($info['current'] ?? 'unknown');
             $latest = $this->formatVersion($info['latest'] ?? 'unknown');
             $upgradeTarget = $this->getUpgradeTarget($info);
@@ -194,15 +194,15 @@ class TraefikVersionOutdated extends CustomEmailNotification
     public function toSlack(): SlackMessage
     {
         $count = $this->servers->count();
-        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->outdatedInfo['type'] ?? 'patch_update') === 'minor_upgrade' ||
-            isset($s->outdatedInfo['newer_branch_target'])
+        $hasUpgrades = $this->servers->contains(fn ($s) => ($s->traefik_outdated_info['type'] ?? 'patch_update') === 'minor_upgrade' ||
+            isset($s->traefik_outdated_info['newer_branch_target'])
         );
 
         $description = "Traefik proxy outdated on {$count} server(s)!\n";
         $description .= "*Affected servers:*\n";
 
         foreach ($this->servers as $server) {
-            $info = $server->outdatedInfo ?? [];
+            $info = $server->traefik_outdated_info ?? [];
             $current = $this->formatVersion($info['current'] ?? 'unknown');
             $latest = $this->formatVersion($info['latest'] ?? 'unknown');
             $upgradeTarget = $this->getUpgradeTarget($info);
@@ -237,7 +237,7 @@ class TraefikVersionOutdated extends CustomEmailNotification
     public function toWebhook(): array
     {
         $servers = $this->servers->map(function ($server) {
-            $info = $server->outdatedInfo ?? [];
+            $info = $server->traefik_outdated_info ?? [];
 
             $webhookData = [
                 'name' => $server->name,

@@ -17,7 +17,7 @@ class DiscordChannel
     {
         $message = $notification->toDiscord();
 
-        $discordSettings = $notifiable->discordNotificationSettings;
+        $discordSettings = $notifiable->getDiscordNotificationSettings();
 
         if (! $discordSettings || ! $discordSettings->isEnabled() || ! $discordSettings->discord_webhook_url) {
             return;

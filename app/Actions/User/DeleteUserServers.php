@@ -3,6 +3,7 @@
 namespace App\Actions\User;
 
 use App\Models\Server;
+use App\Models\TeamUser;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -28,7 +29,9 @@ class DeleteUserServers
 
         foreach ($teams as $team) {
             // Only include servers from teams where user is owner or admin
-            $userRole = $team->pivot?->getAttribute('role');
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+            $userRole = $teamPivot?->getAttribute('role');
             if ($userRole === 'owner' || $userRole === 'admin') {
                 $teamServers = $team->servers()->get();
                 $servers = $servers->merge($teamServers);

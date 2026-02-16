@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Traits\Auditable;
 use App\Traits\HasSafeStringAttribute;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
@@ -60,12 +61,14 @@ class ScheduledTask extends BaseModel
             ->dontSubmitEmptyLogs();
     }
 
-    public function service()
+    /** @return BelongsTo<Service, $this> */
+    public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
     }
 
-    public function application()
+    /** @return BelongsTo<Application, $this> */
+    public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
     }

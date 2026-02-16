@@ -23,14 +23,14 @@ class EmailChannel
             $team = data_get($notifiable, 'id');
             $members = Team::find($team)->members;
 
-            $useInstanceEmailSettings = $notifiable->emailNotificationSettings->use_instance_email_settings;
+            $useInstanceEmailSettings = $notifiable->getEmailNotificationSettings()->use_instance_email_settings;
             $isTransactionalEmail = data_get($notification, 'isTransactionalEmail', false);
             $customEmails = data_get($notification, 'emails', null);
 
             if ($useInstanceEmailSettings || $isTransactionalEmail) {
                 $settings = instanceSettings();
             } else {
-                $settings = $notifiable->emailNotificationSettings;
+                $settings = $notifiable->getEmailNotificationSettings();
             }
 
             $isResendEnabled = $settings->resend_enabled;
@@ -54,7 +54,7 @@ class EmailChannel
                 foreach ($recipients as $recipient) {
                     // Check if the recipient is part of the team
                     if (! $members->contains('email', $recipient)) {
-                        $emailSettings = $notifiable->emailNotificationSettings;
+                        $emailSettings = $notifiable->getEmailNotificationSettings();
                         data_set($emailSettings, 'smtp_password', '********');
                         data_set($emailSettings, 'resend_api_key', '********');
                         send_internal_notification(sprintf(
@@ -121,7 +121,7 @@ class EmailChannel
             };
 
             // Log detailed error for admin debugging (redact sensitive data)
-            $emailSettings = $notifiable->emailNotificationSettings ?? instanceSettings();
+            $emailSettings = $notifiable->getEmailNotificationSettings() ?? instanceSettings();
             data_set($emailSettings, 'smtp_password', '********');
             data_set($emailSettings, 'resend_api_key', '********');
 

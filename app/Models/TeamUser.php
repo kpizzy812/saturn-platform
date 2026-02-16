@@ -45,8 +45,7 @@ class TeamUser extends Pivot
      */
     public function hasFullProjectAccess(): bool
     {
-        return $this->allowed_projects === null ||
-               (is_array($this->allowed_projects) && in_array('*', $this->allowed_projects, true));
+        return in_array('*', $this->allowed_projects, true);
     }
 
     /**

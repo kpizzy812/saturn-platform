@@ -29,7 +29,7 @@ class ResourceAuthorizationService
             return null;
         }
 
-        return $teamMembership->pivot?->getAttribute('role');
+        return $teamMembership->pivot->getAttribute('role');
     }
 
     /**
@@ -91,7 +91,8 @@ class ResourceAuthorizationService
 
         // Through environment->project->team chain (for databases)
         if (method_exists($resource, 'environment')) {
-            $environment = $resource->environment;
+            /** @var \App\Models\Environment|null $environment */
+            $environment = $resource->getAttribute('environment');
             if ($environment && $environment->project) {
                 return $environment->project->team_id;
             }

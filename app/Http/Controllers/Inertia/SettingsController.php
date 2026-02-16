@@ -57,7 +57,7 @@ class SettingsController extends Controller
                 // Check for full access: null = all projects, '*' in array, or admin role
                 $hasFullAccess = $pivot->role === 'admin' ||
                     $allowedProjects === null ||
-                    (is_array($allowedProjects) && in_array('*', $allowedProjects, true));
+                    in_array('*', $allowedProjects, true);
 
                 // Count accessible projects
                 $accessibleCount = 0;
@@ -566,7 +566,7 @@ class SettingsController extends Controller
 
         // Check if this is the last owner
         $owners = $team->members()->wherePivot('role', 'owner')->get();
-        if ($member->pivot->role === 'owner' && $owners->count() <= 1) {
+        if ($member->pivot?->role === 'owner' && $owners->count() <= 1) {
             return redirect()->back()->withErrors(['member' => 'Cannot remove the last owner of the team']);
         }
 

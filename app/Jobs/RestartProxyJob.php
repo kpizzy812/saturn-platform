@@ -37,8 +37,8 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
     {
         try {
             // Set status to restarting
-            $this->server->proxy->status = 'restarting';
-            $this->server->proxy->force_stop = false;
+            $this->server->proxy->set('status', 'restarting');
+            $this->server->proxy->set('force_stop', false);
             $this->server->save();
 
             // Build combined stop + start commands for a single activity
@@ -54,12 +54,13 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
             );
 
             // Store activity ID and notify UI immediately with it
+            /** @var \Spatie\Activitylog\Models\Activity $activity */
             $this->activity_id = $activity->id;
             ProxyStatusChangedUI::dispatch($this->server->team_id, $this->activity_id);
 
         } catch (\Throwable $e) {
             // Set error status
-            $this->server->proxy->status = 'error';
+            $this->server->proxy->set('status', 'error');
             $this->server->save();
 
             // Notify UI of error
@@ -90,7 +91,7 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
         }
         SaveProxyConfiguration::run($this->server, $configuration);
         $docker_compose_yml_base64 = base64_encode($configuration);
-        $this->server->proxy->last_applied_settings = str($docker_compose_yml_base64)->pipe('md5')->value();
+        $this->server->proxy->set('last_applied_settings', str($docker_compose_yml_base64)->pipe('md5')->value());
         $this->server->save();
 
         $commands = collect([]);

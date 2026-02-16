@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Project;
 use App\Models\Team;
+use App\Models\TeamUser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -48,7 +49,9 @@ class MigrateProjectRoles extends Command
             }
 
             foreach ($team->members as $member) {
-                $teamRole = $member->pivot->role;
+                /** @var TeamUser|null $memberPivot */
+                $memberPivot = data_get($member, 'pivot');
+                $teamRole = $memberPivot?->role;
 
                 foreach ($team->projects as $project) {
                     // Check if already exists in project_user

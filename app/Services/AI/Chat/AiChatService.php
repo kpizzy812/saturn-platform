@@ -242,8 +242,6 @@ class AiChatService
             'command_status' => $commandStatus,
             'command_result' => $commandResultMessage,
         ]);
-        assert($assistantMessage instanceof AiChatMessage);
-
         // Log usage (include tokens from command parsing)
         $this->logUsage($session, $assistantMessage, $response, $startTime, $parsedIntent);
 
@@ -561,78 +559,6 @@ PROMPT;
     }
 
     /**
-     * Generate AI response.
-     */
-    private function generateResponse(
-        AiChatSession $session,
-        string $userMessage,
-        IntentResult $intent,
-        ?array $context,
-    ): ChatResponse {
-        $provider = $this->getProvider();
-        if (! $provider) {
-            return ChatResponse::failed(
-                'AI service is not available',
-                'none',
-                'none'
-            );
-        }
-
-        try {
-            // If intent requires confirmation, return confirmation message
-            if ($intent->requiresConfirmation) {
-                return ChatResponse::success(
-                    $intent->confirmationMessage ?? "Are you sure you want to {$intent->intent}?",
-                    $provider->getName(),
-                    $provider->getModel()
-                );
-            }
-
-            // If intent has a predefined response, use it
-            if ($intent->responseText) {
-                return ChatResponse::success(
-                    $intent->responseText,
-                    $provider->getName(),
-                    $provider->getModel()
-                );
-            }
-
-            // Generate response via AI
-            $messages = $this->buildMessageHistory($session, $userMessage);
-
-            return $provider->chat($messages);
-        } catch (\Throwable $e) {
-            Log::error('AI Chat response generation failed', ['error' => $e->getMessage()]);
-
-            return ChatResponse::failed($e->getMessage(), $provider->getName(), $provider->getModel());
-        }
-    }
-
-    /**
-     * Format response with command result.
-     */
-    private function formatResponse(ChatResponse $response, IntentResult $intent, ?CommandResult $commandResult): string
-    {
-        $content = $response->content;
-
-        // If command was executed, append result
-        if ($commandResult) {
-            if ($commandResult->success) {
-                $content = $commandResult->message;
-            } else {
-                $content = "**Error:** {$commandResult->message}";
-            }
-        }
-
-        // If intent requires confirmation, show confirmation message
-        if ($intent->requiresConfirmation && $intent->confirmationMessage) {
-            $content = $intent->confirmationMessage."\n\nPlease confirm by saying 'yes' or 'confirm'.";
-        }
-
-        return $content ?: 'I apologize, but I was unable to generate a response.';
-    }
-
-    /**
      * Log AI usage.
      */
     private function logUsage(
@@ -666,19 +592,6 @@ PROMPT;
         } catch (\Throwable $e) {
             Log::warning('Failed to log AI usage', ['error' => $e->getMessage()]);
         }
-    }
-
-    /**
-     * Calculate cost based on provider pricing.
-     */
-    private function calculateCost(ChatResponse $response): float
-    {
-        return $this->calculateCostFromTokens(
-            $response->provider,
-            $response->model,
-            $response->inputTokens,
-            $response->outputTokens
-        );
     }
 
     /**

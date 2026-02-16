@@ -252,7 +252,8 @@ class RollbackMigrationAction
     protected function restoreEnvironmentVariables(Model $target, array $vars): void
     {
         // Get current vars
-        $currentVars = $target->environment_variables;
+        /** @var \Illuminate\Support\Collection $currentVars */
+        $currentVars = $target->getAttribute('environment_variables');
 
         // Delete vars not in snapshot
         $snapshotKeys = collect($vars)->pluck('key')->toArray();
@@ -292,7 +293,8 @@ class RollbackMigrationAction
             return;
         }
 
-        $currentStorages = $target->persistentStorages;
+        /** @var \Illuminate\Support\Collection $currentStorages */
+        $currentStorages = $target->getAttribute('persistentStorages');
 
         // Delete storages not in snapshot
         $snapshotMounts = collect($storages)->pluck('mount_path')->toArray();
@@ -323,7 +325,8 @@ class RollbackMigrationAction
             return;
         }
 
-        $currentFiles = $target->fileStorages;
+        /** @var \Illuminate\Support\Collection $currentFiles */
+        $currentFiles = $target->getAttribute('fileStorages');
 
         // Delete files not in snapshot
         $snapshotMounts = collect($files)->pluck('mount_path')->toArray();

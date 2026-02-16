@@ -15,7 +15,7 @@ class SaveProxyConfiguration
         $docker_compose_yml_base64 = base64_encode($configuration);
 
         // Update the saved settings hash
-        $server->proxy->last_saved_settings = str($docker_compose_yml_base64)->pipe('md5')->toString();
+        $server->proxy->set('last_saved_settings', str($docker_compose_yml_base64)->pipe('md5')->toString());
         $server->save();
 
         // Transfer the configuration file to the server

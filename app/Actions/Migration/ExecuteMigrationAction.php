@@ -498,8 +498,10 @@ class ExecuteMigrationAction
             return;
         }
 
-        $sourceVars = $source->environment_variables;
-        $targetVars = $target->environment_variables;
+        /** @var \Illuminate\Support\Collection $sourceVars */
+        $sourceVars = $source->getAttribute('environment_variables');
+        /** @var \Illuminate\Support\Collection $targetVars */
+        $targetVars = $target->getAttribute('environment_variables');
 
         // Target-only vars are intentionally preserved (not deleted)
 
@@ -543,8 +545,10 @@ class ExecuteMigrationAction
     {
         // Sync persistent storages configuration
         if (method_exists($source, 'persistentStorages') && method_exists($target, 'persistentStorages')) {
-            $sourcePersistent = $source->persistentStorages;
-            $targetPersistent = $target->persistentStorages;
+            /** @var \Illuminate\Support\Collection $sourcePersistent */
+            $sourcePersistent = $source->getAttribute('persistentStorages');
+            /** @var \Illuminate\Support\Collection $targetPersistent */
+            $targetPersistent = $target->getAttribute('persistentStorages');
 
             foreach ($sourcePersistent as $sourceStorage) {
                 $existingStorage = $targetPersistent->firstWhere('mount_path', $sourceStorage->mount_path);
@@ -566,8 +570,10 @@ class ExecuteMigrationAction
 
         // Sync file storages
         if (method_exists($source, 'fileStorages') && method_exists($target, 'fileStorages')) {
-            $sourceFiles = $source->fileStorages;
-            $targetFiles = $target->fileStorages;
+            /** @var \Illuminate\Support\Collection $sourceFiles */
+            $sourceFiles = $source->getAttribute('fileStorages');
+            /** @var \Illuminate\Support\Collection $targetFiles */
+            $targetFiles = $target->getAttribute('fileStorages');
 
             foreach ($sourceFiles as $sourceFile) {
                 $existingFile = $targetFiles->firstWhere('mount_path', $sourceFile->mount_path);

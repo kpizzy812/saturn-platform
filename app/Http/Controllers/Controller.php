@@ -34,6 +34,7 @@ class Controller extends BaseController
         return 'Look at your other tab.';
     }
 
+    /** @return \Illuminate\Contracts\View\View */
     public function verify()
     {
         return view('auth.verify-email');

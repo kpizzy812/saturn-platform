@@ -246,7 +246,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $application->destination()) {
+                if (! data_get($application, 'destination')) {
                     echo 'Application without destination: '.$application->name.'\n';
                     DeleteResourceJob::dispatch($application);
 
@@ -271,7 +271,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $postgresql->destination()) {
+                if (! data_get($postgresql, 'destination')) {
                     echo 'Postgresql without destination: '.$postgresql->name.'\n';
                     DeleteResourceJob::dispatch($postgresql);
 
@@ -296,7 +296,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $redis->destination()) {
+                if (! data_get($redis, 'destination')) {
                     echo 'Redis without destination: '.$redis->name.'\n';
                     DeleteResourceJob::dispatch($redis);
 
@@ -322,7 +322,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $mongodb->destination()) {
+                if (! data_get($mongodb, 'destination')) {
                     echo 'Mongodb without destination: '.$mongodb->name.'\n';
                     DeleteResourceJob::dispatch($mongodb);
 
@@ -348,7 +348,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $mysql->destination()) {
+                if (! data_get($mysql, 'destination')) {
                     echo 'Mysql without destination: '.$mysql->name.'\n';
                     DeleteResourceJob::dispatch($mysql);
 
@@ -374,7 +374,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $mariadb->destination()) {
+                if (! data_get($mariadb, 'destination')) {
                     echo 'Mariadb without destination: '.$mariadb->name.'\n';
                     DeleteResourceJob::dispatch($mariadb);
 
@@ -400,7 +400,7 @@ class CleanupStuckedResources extends Command
 
                     continue;
                 }
-                if (! $service->destination()) {
+                if (! data_get($service, 'destination')) {
                     echo 'Service without destination: '.$service->name.'\n';
                     DeleteResourceJob::dispatch($service);
 

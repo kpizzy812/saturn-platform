@@ -176,11 +176,16 @@ class User extends Authenticatable implements SendsEmail
                     }
 
                     // Load the user's role for this team
-                    $userRole = $team->members->where('id', $user->id)->first()?->pivot?->role;
+                    $firstMember = $team->members->where('id', $user->id)->first();
+                    /** @var TeamUser|null $firstMemberPivot */
+                    $firstMemberPivot = $firstMember ? data_get($firstMember, 'pivot') : null;
+                    $userRole = $firstMemberPivot?->role;
 
                     if ($userRole === 'owner') {
                         $found_other_owner_or_admin = $team->members->filter(function ($member) use ($user) {
-                            $role = $member->pivot?->getAttribute('role');
+                            /** @var TeamUser|null $memberPivot */
+                            $memberPivot = data_get($member, 'pivot');
+                            $role = $memberPivot?->getAttribute('role');
 
                             return ($role === 'owner' || $role === 'admin') && $member->id !== $user->id;
                         })->first();
@@ -191,12 +196,17 @@ class User extends Authenticatable implements SendsEmail
                             continue;
                         } else {
                             $found_other_member_who_is_not_owner = $team->members->filter(function ($member) {
-                                return $member->pivot?->getAttribute('role') === 'member';
+                                /** @var TeamUser|null $memberPivot */
+                                $memberPivot = data_get($member, 'pivot');
+
+                                return $memberPivot?->getAttribute('role') === 'member';
                             })->first();
 
                             if ($found_other_member_who_is_not_owner) {
-                                $found_other_member_who_is_not_owner->pivot->setAttribute('role', 'owner');
-                                $found_other_member_who_is_not_owner->pivot->save();
+                                /** @var TeamUser $promotePivot */
+                                $promotePivot = data_get($found_other_member_who_is_not_owner, 'pivot');
+                                $promotePivot->setAttribute('role', 'owner');
+                                $promotePivot->save();
                                 $team->members()->detach($user->id);
                             } else {
                                 self::finalizeTeamDeletion($user, $team);
@@ -283,10 +293,13 @@ class User extends Authenticatable implements SendsEmail
         return new NewAccessToken($token, $token->getKey().'|'.$plainTextToken);
     }
 
-    /** @return BelongsToMany<Team, $this> */
+    /** @return BelongsToMany<Team, $this, TeamUser, 'pivot'> */
     public function teams(): BelongsToMany
     {
-        return $this->belongsToMany(Team::class)->withPivot('role');
+        return $this->belongsToMany(Team::class)
+            ->using(TeamUser::class)
+            ->withPivot('role', 'allowed_projects', 'permission_set_id')
+            ->withTimestamps();
     }
 
     /**
@@ -344,7 +357,10 @@ class User extends Authenticatable implements SendsEmail
             ->where('project_id', $project->id)
             ->first();
 
-        return $membership?->pivot?->role;
+        /** @var \Illuminate\Database\Eloquent\Relations\Pivot|null $projectPivot */
+        $projectPivot = $membership ? data_get($membership, 'pivot') : null;
+
+        return $projectPivot?->getAttribute('role');
     }
 
     /**
@@ -373,9 +389,12 @@ class User extends Authenticatable implements SendsEmail
 
         // If not a project member, check team membership (fallback to team role)
         if (! $projectRole) {
-            $teamRole = $this->teams()
+            $teamForProject = $this->teams()
                 ->where('team_id', $project->team_id)
-                ->first()?->pivot?->role;
+                ->first();
+            /** @var TeamUser|null $teamForProjectPivot */
+            $teamForProjectPivot = $teamForProject ? data_get($teamForProject, 'pivot') : null;
+            $teamRole = $teamForProjectPivot?->role;
 
             // Map team role to project equivalent
             $projectRole = $teamRole;
@@ -436,9 +455,12 @@ class User extends Authenticatable implements SendsEmail
 
         // Fallback to team role if no project role
         if (! $projectRole) {
-            $teamRole = $this->teams()
+            $teamForFallback = $this->teams()
                 ->where('team_id', $project->team_id)
-                ->first()?->pivot?->role;
+                ->first();
+            /** @var TeamUser|null $teamForFallbackPivot */
+            $teamForFallbackPivot = $teamForFallback ? data_get($teamForFallback, 'pivot') : null;
+            $teamRole = $teamForFallbackPivot?->role;
             $projectRole = $teamRole;
         }
 
@@ -465,6 +487,11 @@ class User extends Authenticatable implements SendsEmail
     public function getRecipients(): array
     {
         return [$this->email];
+    }
+
+    public function getEmailNotificationSettings(): ?EmailNotificationSettings
+    {
+        return $this->currentTeam()?->emailNotificationSettings;
     }
 
     public function sendVerificationEmail()
@@ -523,8 +550,10 @@ class User extends Authenticatable implements SendsEmail
         $teams = $this->teams()->get();
 
         $is_part_of_root_team = $teams->where('id', 0)->first();
+        /** @var TeamUser|null $rootTeamPivot */
+        $rootTeamPivot = $is_part_of_root_team ? data_get($is_part_of_root_team, 'pivot') : null;
         $is_admin_of_root_team = $is_part_of_root_team &&
-            ($is_part_of_root_team->pivot?->getAttribute('role') === 'admin' || $is_part_of_root_team->pivot?->getAttribute('role') === 'owner');
+            ($rootTeamPivot?->getAttribute('role') === 'admin' || $rootTeamPivot?->getAttribute('role') === 'owner');
 
         if ($is_part_of_root_team && $is_admin_of_root_team) {
             return true;
@@ -587,7 +616,10 @@ class User extends Authenticatable implements SendsEmail
     public function role()
     {
         if (data_get($this, 'pivot')) {
-            return $this->pivot?->getAttribute('role');
+            /** @var TeamUser|null $selfPivot */
+            $selfPivot = data_get($this, 'pivot');
+
+            return $selfPivot?->getAttribute('role');
         }
         $user = Auth::user()->teams->where('id', currentTeam()->id)->first();
 
@@ -605,7 +637,9 @@ class User extends Authenticatable implements SendsEmail
             return false;
         }
 
-        $role = $team->pivot?->getAttribute('role');
+        /** @var TeamUser|null $teamPivot */
+        $teamPivot = data_get($team, 'pivot');
+        $role = $teamPivot?->getAttribute('role');
 
         return $role === 'admin' || $role === 'owner';
     }

@@ -158,7 +158,7 @@ class Init extends Command
         CheckHelperImageJob::dispatch();
     }
 
-    private function pullTemplatesFromCDN()
+    private function pullTemplatesFromCDN(): void
     {
         // Saturn uses its own curated service templates from git.
         // Do NOT pull from upstream Coolify CDN — it overwrites our

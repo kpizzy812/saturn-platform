@@ -644,8 +644,8 @@ class CloudFixSubscription extends Command
                             'error: '.$e->getStripeCode(),
                             'error',
                             implode(', ', $memberEmails),
-                            $subscription->stripe_customer_id ? "https://dashboard.stripe.com/customers/{$subscription->stripe_customer_id}" : 'N/A',
-                            $subscription->stripe_subscription_id ? "https://dashboard.stripe.com/subscriptions/{$subscription->stripe_subscription_id}" : 'N/A',
+                            "https://dashboard.stripe.com/customers/{$subscription->stripe_customer_id}",
+                            "https://dashboard.stripe.com/subscriptions/{$subscription->stripe_subscription_id}",
                         ]);
                     }
                 } catch (\Exception $e) {
@@ -661,8 +661,8 @@ class CloudFixSubscription extends Command
                         'error',
                         'error',
                         implode(', ', $memberEmails),
-                        $subscription->stripe_customer_id ? "https://dashboard.stripe.com/customers/{$subscription->stripe_customer_id}" : 'N/A',
-                        $subscription->stripe_subscription_id ? "https://dashboard.stripe.com/subscriptions/{$subscription->stripe_subscription_id}" : 'N/A',
+                        "https://dashboard.stripe.com/customers/{$subscription->stripe_customer_id}",
+                        "https://dashboard.stripe.com/subscriptions/{$subscription->stripe_subscription_id}",
                     ]);
                 }
             }
@@ -692,7 +692,7 @@ class CloudFixSubscription extends Command
         $this->line("  - Canceled/Expired: {$stats['canceled']}");
         $this->line("  - Missing/Not Found: {$stats['missing']}");
         $this->line("  - Unknown status: {$stats['invalid']}");
-        $invalidTotal = $stats['canceled'] + $stats['missing'] + $stats['invalid'];
+        $invalidTotal = (int) $stats['canceled'] + (int) $stats['missing'] + (int) $stats['invalid'];
         $this->warn("  Total invalid: {$invalidTotal}");
 
         if ($stats['errors'] > 0) {

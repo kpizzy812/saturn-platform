@@ -300,7 +300,7 @@ class ServiceComposeParser
 
         $fqdnValueForEnv = str($fqdn)->after('://')->value();
 
-        if ($value && get_class($value) === Stringable::class && $value->startsWith('/')) {
+        if ($value->startsWith('/')) {
             $path = $value->value();
             if ($path !== '/') {
                 if (! str($fqdn)->endsWith($path)) {
@@ -793,7 +793,7 @@ class ServiceComposeParser
         // Special cases for docker.sock and /tmp
         if ($source->value() === '/var/run/docker.sock' || $source->value() === '/tmp' || $source->value() === '/tmp/') {
             $volumeStr = $source->value().':'.$target->value();
-            if (isset($parsed['mode']) && $parsed['mode']) {
+            if ($parsed['mode']) {
                 $volumeStr .= ':'.$parsed['mode']->value();
             }
 
@@ -833,7 +833,7 @@ class ServiceComposeParser
         }
 
         $volumeStr = "$source:$target";
-        if (isset($parsed['mode']) && $parsed['mode']) {
+        if ($parsed['mode']) {
             $volumeStr .= ':'.$parsed['mode']->value();
         }
 
@@ -864,7 +864,7 @@ class ServiceComposeParser
             $parsed = parseDockerVolumeString($volume);
             $target = $parsed['target'];
             $volumeStr = "$name:$target";
-            if (isset($parsed['mode']) && $parsed['mode']) {
+            if ($parsed['mode']) {
                 $volumeStr .= ':'.$parsed['mode']->value();
             }
             $volume = $volumeStr;

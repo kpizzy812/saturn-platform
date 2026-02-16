@@ -388,13 +388,14 @@ PROMPT;
             }
 
             // Database types
-            if (method_exists($resource, 'destination') && $resource->destination) {
-                $server = $resource->destination->server;
+            if (method_exists($resource, 'destination') && $resource->getAttribute('destination')) {
+                $destination = $resource->getAttribute('destination');
+                $server = $destination->server;
                 if (! $server->isFunctional()) {
                     return 'Server is not functional';
                 }
 
-                $containerName = $resource->uuid;
+                $containerName = $resource->getAttribute('uuid');
                 $command = "docker logs --tail {$lines} {$containerName} 2>&1";
 
                 return instant_remote_process([$command], $server, throwError: false) ?: 'No logs available';

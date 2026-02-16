@@ -55,7 +55,10 @@ class TeamWebhooksController extends Controller
             }])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function (TeamWebhook $webhook) {
+            ->map(function (TeamWebhook $webhook, int $key) {
+                /** @var \Illuminate\Database\Eloquent\Collection<int, WebhookDelivery> $deliveries */
+                $deliveries = $webhook->deliveries;
+
                 return [
                     'id' => $webhook->id,
                     'uuid' => $webhook->uuid,
@@ -65,7 +68,7 @@ class TeamWebhooksController extends Controller
                     'enabled' => $webhook->enabled,
                     'created_at' => $webhook->created_at->toIso8601String(),
                     'last_triggered_at' => $webhook->last_triggered_at?->toIso8601String(),
-                    'deliveries' => $webhook->deliveries->map(function (WebhookDelivery $delivery) {
+                    'deliveries' => $deliveries->map(function (WebhookDelivery $delivery) {
                         return [
                             'id' => $delivery->id,
                             'uuid' => $delivery->uuid,
@@ -76,7 +79,7 @@ class TeamWebhooksController extends Controller
                             'attempts' => $delivery->attempts,
                             'created_at' => $delivery->created_at->toIso8601String(),
                         ];
-                    }),
+                    })->all(),
                 ];
             });
 

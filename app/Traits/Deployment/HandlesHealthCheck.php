@@ -186,8 +186,8 @@ trait HandlesHealthCheck
 
         $state = trim($this->saved_outputs->get('container_state_check', ''));
         $parts = explode(' ', $state);
-        $status = $parts[0] ?? '';
-        $isRestarting = ($parts[1] ?? '') === 'true';
+        $status = $parts[0];
+        $isRestarting = (isset($parts[1]) && $parts[1] === 'true');
         $restartCount = (int) ($parts[2] ?? 0);
 
         if ($isRestarting || $restartCount > 0 || $status === 'restarting') {
@@ -251,8 +251,8 @@ trait HandlesHealthCheck
 
             $state = trim($this->saved_outputs->get('container_state', ''));
             $parts = explode(' ', $state);
-            $status = $parts[0] ?? '';
-            $isRestarting = ($parts[1] ?? '') === 'true';
+            $status = $parts[0];
+            $isRestarting = (isset($parts[1]) && $parts[1] === 'true');
 
             if ($isRestarting || $status === 'restarting') {
                 $this->newVersionIsHealthy = false;

@@ -40,6 +40,7 @@ class BackupVerificationJob implements ShouldBeEncrypted, ShouldQueue
                 'verification_status' => 'pending',
             ]);
 
+            /** @var \App\Models\ScheduledDatabaseBackup|null $backup */
             $backup = $this->execution->scheduledDatabaseBackup;
             if (! $backup) {
                 $this->markFailed('Backup configuration not found');
@@ -47,7 +48,7 @@ class BackupVerificationJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
 
-            $database = $backup->database;
+            $database = $backup->database()->first();
             if (! $database) {
                 $this->markFailed('Database not found');
 

@@ -3,6 +3,7 @@
 namespace App\Actions\User;
 
 use App\Models\Team;
+use App\Models\TeamUser;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -33,7 +34,9 @@ class DeleteUserTeams
                 continue;
             }
 
-            $userRole = $team->pivot?->getAttribute('role');
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+            $userRole = $teamPivot?->getAttribute('role');
             $memberCount = $team->members->count();
 
             if ($memberCount === 1) {
@@ -44,7 +47,10 @@ class DeleteUserTeams
                 $otherOwners = $team->members
                     ->where('id', '!=', $this->user->id)
                     ->filter(function ($member) {
-                        return $member->pivot?->getAttribute('role') === 'owner';
+                        /** @var TeamUser|null $memberPivot */
+                        $memberPivot = data_get($member, 'pivot');
+
+                        return $memberPivot?->getAttribute('role') === 'owner';
                     });
 
                 if ($otherOwners->isNotEmpty()) {
@@ -170,7 +176,10 @@ class DeleteUserTeams
         $otherAdmin = $team->members
             ->where('id', '!=', $this->user->id)
             ->filter(function ($member) {
-                return $member->pivot?->getAttribute('role') === 'admin';
+                /** @var TeamUser|null $memberPivot */
+                $memberPivot = data_get($member, 'pivot');
+
+                return $memberPivot?->getAttribute('role') === 'admin';
             })
             ->first();
 

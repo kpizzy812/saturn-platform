@@ -138,6 +138,7 @@ class PermissionService
         string $permissionKey,
         ?string $environmentName = null
     ): bool {
+        /** @var \App\Models\PermissionSet|null $permissionSet */
         $permissionSet = $assignment->permissionSet;
 
         if (! $permissionSet) {
@@ -255,7 +256,7 @@ class PermissionService
     /**
      * Get all effective permissions grouped by category.
      *
-     * @return array<string, array<string, bool>> Map of category to permission key to granted status
+     * @return array<string, array<string, array{id: int, name: string, description: string|null, granted: bool}>> Map of category to permission key to granted status
      */
     public function getUserEffectivePermissionsGrouped(User $user, ?Project $project = null): array
     {

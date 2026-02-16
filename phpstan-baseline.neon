@@ -1,234 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Call to protected method databaseType\(\) of class App\\Models\\StandaloneRedis\.$#'
-			identifier: method.protected
-			count: 1
-			path: app/Actions/Database/StartDatabaseProxy.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/CloneDatabaseAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$persistentStorages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/CloneDatabaseAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tags\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/CloneDatabaseAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Migration/ExecuteMigrationAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$fileStorages\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Migration/ExecuteMigrationAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$persistentStorages\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Migration/ExecuteMigrationAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/MigrateResourceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/MigrateResourceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$fileStorages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/MigrateResourceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$persistentStorages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/MigrateResourceAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Actions/Migration/MigrationDiffAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$fileStorages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/MigrationDiffAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$persistentStorages\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Actions/Migration/MigrationDiffAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/PreMigrationCheckAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Migration/PreMigrationCheckAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/RollbackMigrationAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$fileStorages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/RollbackMigrationAction.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$persistentStorages\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/RollbackMigrationAction.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/CheckProxy.php
-
-		-
-			message: '#^If condition is always true\.$#'
-			identifier: if.alwaysTrue
-			count: 1
-			path: app/Actions/Proxy/CheckProxy.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$last_saved_settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/SaveProxyConfiguration.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/StartProxy.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$last_applied_settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/StartProxy.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/StopProxy.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/StopProxy.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\Pivot\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Actions/Shared/ComplexStatusCheck.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Stripe/CancelSubscription.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Actions/Transfer/TransferDatabaseDataAction.php
-
-		-
-			message: '#^Parameter \#2 \$server of method App\\Actions\\Transfer\\TransferDatabaseDataAction\:\:cleanup\(\) expects App\\Models\\Server, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Actions/Transfer/TransferDatabaseDataAction.php
-
-		-
-			message: '#^Parameter \#2 \$server of method App\\Services\\Transfer\\TransferStrategyInterface\:\:restoreDump\(\) expects App\\Models\\Server, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Transfer/TransferDatabaseDataAction.php
-
-		-
-			message: '#^Parameter \#2 \$targetServer of method App\\Actions\\Transfer\\TransferDatabaseDataAction\:\:transferFile\(\) expects App\\Models\\Server, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Actions/Transfer/TransferDatabaseDataAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/User/DeleteUserResources.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/User/DeleteUserServers.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/User/DeleteUserTeams.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/User/DeleteUserTeams.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Console/Commands/AdminDeleteUser.php
-
-		-
-			message: '#^Negated boolean expression is always false\.$#'
-			identifier: booleanNot.alwaysFalse
-			count: 7
-			path: app/Console/Commands/CleanupStuckedResources.php
-
-		-
 			message: '#^Comparison operation "\>" between \(array\|float\|int\) and 0 results in an error\.$#'
 			identifier: greater.invalid
 			count: 1
@@ -239,12 +11,6 @@ parameters:
 			identifier: ternary.alwaysTrue
 			count: 2
 			path: app/Console/Commands/Cloud/CloudFixSubscription.php
-
-		-
-			message: '#^Method App\\Console\\Commands\\Generate\\Services\:\:generateServiceTemplatesRaw\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Console/Commands/Generate/Services.php
 
 		-
 			message: '#^Parameter \#1 \$headers of function Laravel\\Prompts\\table expects array\<int, array\<int, string\>\|string\>\|Illuminate\\Support\\Collection\<int, array\<int, string\>\|string\>, list\<array\{id\: string, name\: string, failed_at\: string\}\> given\.$#'
@@ -277,12 +43,6 @@ parameters:
 			path: app/Console/Commands/Init.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/MigrateProjectRoles.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$is_reachable\.$#'
 			identifier: property.notFound
 			count: 1
@@ -295,7 +55,13 @@ parameters:
 			path: app/Events/ServerReachabilityChanged.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$getIp\.$#'
+			message: '#^Call to an undefined method \$this\(App\\Helpers\\SshRetryHandler\)\:\:addRetryLogEntry\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Helpers/SshRetryHandler.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Server\:\:\$get_ip\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Helpers/SslHelper.php
@@ -319,19 +85,13 @@ parameters:
 			path: app/Http/Controllers/Api/DeploymentApprovalsController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/PermissionSetController.php
-
-		-
 			message: '#^Anonymous function should return Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>\.$#'
 			identifier: return.type
 			count: 1
 			path: app/Http/Controllers/Api/PermissionSetController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection, string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/PermissionSetController.php
@@ -349,7 +109,7 @@ parameters:
 			path: app/Http/Controllers/Api/TeamWebhooksController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TeamWebhook\>\:\:map\(\) expects callable\(App\\Models\\TeamWebhook, int\)\: array\{id\: int, uuid\: string, name\: string, url\: string, events\: array, enabled\: bool, created_at\: string, last_triggered_at\: string\|null, deliveries\: Illuminate\\Support\\Collection\<int, array\{id\: int, uuid\: string, event\: string, status\: string, status_code\: int\|null, response_time_ms\: int\|null, attempts\: int, created_at\: string\}\>\}, Closure\(App\\Models\\TeamWebhook\)\: array\{id\: int, uuid\: string, name\: string, url\: string, events\: array, enabled\: bool, created_at\: string, last_triggered_at\: string\|null, deliveries\: Illuminate\\Support\\Collection\<int, array\{id\: int, uuid\: string, event\: string, status\: string, status_code\: int\|null, response_time_ms\: int\|null, attempts\: int, created_at\: string\}\>\} given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\TeamWebhook\>\:\:map\(\) expects callable\(App\\Models\\TeamWebhook, int\)\: array\{id\: int, uuid\: string, name\: string, url\: string, events\: array, enabled\: bool, created_at\: string, last_triggered_at\: string\|null, deliveries\: Illuminate\\Support\\Collection\<int, array\{id\: int, uuid\: string, event\: string, status\: string, status_code\: int\|null, response_time_ms\: int\|null, attempts\: int, created_at\: string\}\>\}, Closure\(App\\Models\\TeamWebhook, int\)\: array\{id\: int, uuid\: string, name\: string, url\: string, events\: array, enabled\: bool, created_at\: string, last_triggered_at\: string\|null, deliveries\: Illuminate\\Support\\Collection\<int, array\{id\: int, uuid\: string, event\: string, status\: string, status_code\: int\|null, response_time_ms\: int\|null, attempts\: int, created_at\: string\}\>\} given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/TeamWebhooksController.php
@@ -361,12 +121,6 @@ parameters:
 			path: app/Http/Controllers/Api/TeamWebhooksController.php
 
 		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Controller.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$is_build_server\.$#'
 			identifier: property.notFound
 			count: 1
@@ -374,12 +128,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$is_reachable\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Inertia/AdminController.php
@@ -409,34 +157,16 @@ parameters:
 			path: app/Http/Controllers/Inertia/DatabaseController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Inertia/PermissionSetController.php
-
-		-
 			message: '#^Anonymous function should return Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> but returns Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>\.$#'
 			identifier: return.type
 			count: 3
 			path: app/Http/Controllers/Inertia/PermissionSetController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection, string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
 			identifier: argument.type
 			count: 3
 			path: app/Http/Controllers/Inertia/PermissionSetController.php
-
-		-
-			message: '#^Call to function is_array\(\) with array\<int\|string\> will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Http/Controllers/Inertia/SettingsController.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\TeamInvitation model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/SettingsController.php
 
 		-
 			message: '#^Method App\\Http\\Middleware\\ApiAbility\:\:handle\(\) should return Illuminate\\Http\\Response but returns Illuminate\\Http\\JsonResponse\.$#'
@@ -445,62 +175,8 @@ parameters:
 			path: app/Http/Middleware/ApiAbility.php
 
 		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Http/Middleware/DecideWhatToDoWithUser.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
 			message: '#^Call to function is_null\(\) with string will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 2
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Call to function method_exists\(\) with \$this\(App\\Jobs\\ApplicationDeploymentJob\) and ''addRetryLogEntry'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Call to function property_exists\(\) with \$this\(App\\Jobs\\ApplicationDeploymentJob\) and ''requiredNodeVersion'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 2
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^If condition is always true\.$#'
-			identifier: if.alwaysTrue
-			count: 3
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Instanceof between App\\Models\\Server and App\\Models\\Server will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Instanceof between array\<int\|string, mixed\> and Illuminate\\Support\\Collection will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Negated boolean expression is always false\.$#'
-			identifier: booleanNot.alwaysFalse
 			count: 2
 			path: app/Jobs/ApplicationDeploymentJob.php
 
@@ -517,14 +193,8 @@ parameters:
 			path: app/Jobs/ApplicationDeploymentJob.php
 
 		-
-			message: '#^Strict comparison using \=\=\= between true and false will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Method App\\Jobs\\AutoProvisionServerJob\:\:createHetznerServer\(\) never returns null so it can be removed from the return type\.$#'
-			identifier: return.unusedType
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
 			count: 1
 			path: app/Jobs/AutoProvisionServerJob.php
 
@@ -541,18 +211,6 @@ parameters:
 			path: app/Jobs/BackupRestoreTestJob.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$database\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/BackupVerificationJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$outdatedInfo\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/CheckTraefikVersionForServerJob.php
-
-		-
 			message: '#^Call to protected method databaseType\(\) of class App\\Models\\StandalonePostgresql\.$#'
 			identifier: method.protected
 			count: 1
@@ -565,40 +223,10 @@ parameters:
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 2
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
 			message: '#^If condition is always true\.$#'
 			identifier: if.alwaysTrue
 			count: 1
 			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^Method App\\Jobs\\DatabaseBackupJob\:\:add_to_backup_output\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 2
-			path: app/Jobs/DatabaseRestoreJob.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Jobs/DeleteResourceJob.php
 
 		-
 			message: '#^Binary operation "\-" between string\|null and string\|null results in an error\.$#'
@@ -607,70 +235,10 @@ parameters:
 			path: app/Jobs/DockerCleanupJob.php
 
 		-
-			message: '#^Call to function assert\(\) with true will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Jobs/ProcessAiChatMessageJob.php
-
-		-
-			message: '#^Instanceof between App\\Models\\AiChatMessage and App\\Models\\AiChatMessage will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: app/Jobs/ProcessAiChatMessageJob.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\Activitylog\\Contracts\\Activity\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/RestartProxyJob.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/RestartProxyJob.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$last_applied_settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/RestartProxyJob.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/RestartProxyJob.php
-
-		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1
 			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Relation ''application'' is not found in App\\Models\\ScheduledTask model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Relation ''service'' is not found in App\\Models\\ScheduledTask model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ServerCheckJob.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ServerCheckJob.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$limits\.$#'
@@ -679,124 +247,10 @@ parameters:
 			path: app/Jobs/ServerLimitCheckJob.php
 
 		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Listeners/ProxyStatusChangedNotification.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\Application\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/Application.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/Application.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Application\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Application.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Application\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Application.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Application\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Application.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/ApplicationPreview.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\Environment\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Environment\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Environment\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/EnvironmentMigration.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
+			message: '#^Call to function method_exists\(\) with App\\Models\\ServiceApplication\|App\\Models\\ServiceDatabase and ''service'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Models/LocalFileVolume.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/LocalFileVolume.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\Project\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/Project.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Project\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Project.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Project\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Project.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\Pivot\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Models/Project.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ResourceTransfer.php
-
-		-
-			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$redirect_url\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Server.php
 
 		-
 			message: '#^Negated boolean expression is always true\.$#'
@@ -805,472 +259,10 @@ parameters:
 			path: app/Models/Server.php
 
 		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\Server\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/Server.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Server\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Server.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Server\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Server.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServerSetting\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/ServerSetting.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\Service\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Service\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Service\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\Service\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneClickhouse\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneClickhouse\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneClickhouse\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneClickhouse\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneDragonfly\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneDragonfly\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneDragonfly\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneDragonfly\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneKeydb\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneKeydb\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneKeydb\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneKeydb\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneMariadb\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMariadb\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMariadb\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMariadb\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneMongodb\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMongodb\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMongodb\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMongodb\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneMysql\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMysql\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMysql\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneMysql\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandalonePostgresql\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandalonePostgresql\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandalonePostgresql\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandalonePostgresql\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^PHPDoc tag @var with type object is not subtype of native type \$this\(App\\Models\\StandaloneRedis\)\.$#'
-			identifier: varTag.nativeType
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Result of \|\| is always false\.$#'
-			identifier: booleanOr.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneRedis\)\> and ''App\\\\Models\\\\Environment'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneRedis\)\> and ''App\\\\Models\\\\Project'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Strict comparison using \=\=\= between class\-string\<static\(App\\Models\\StandaloneRedis\)\> and ''App\\\\Models\\\\Server'' will always evaluate to false\.$#'
-			identifier: identical.alwaysFalse
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\TeamUser\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Models/Team.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/TeamResourceTransfer.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Models/TeamUser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Models/User.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Models/User.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Models/User.php
-
-		-
-			message: '#^Access to an undefined property App\\Notifications\\Channels\\SendsDiscord\:\:\$discordNotificationSettings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Notifications/Channels/DiscordChannel.php
-
-		-
-			message: '#^Access to an undefined property App\\Notifications\\Channels\\SendsEmail\:\:\$emailNotificationSettings\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Notifications/Channels/EmailChannel.php
-
-		-
-			message: '#^Access to an undefined property App\\Notifications\\Channels\\SendsPushover\:\:\$pushoverNotificationSettings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Notifications/Channels/PushoverChannel.php
-
-		-
-			message: '#^Access to an undefined property App\\Notifications\\Channels\\SendsSlack\:\:\$slackNotificationSettings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Notifications/Channels/SlackChannel.php
-
-		-
 			message: '#^Match expression does not handle remaining value\: string$#'
 			identifier: match.unhandled
 			count: 1
 			path: app/Notifications/Dto/PushoverMessage.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Parsers/ApplicationComposeParser.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: app/Parsers/ApplicationComposeParser.php
-
-		-
-			message: '#^Left side of && is always true\.$#'
-			identifier: booleanAnd.leftAlwaysTrue
-			count: 1
-			path: app/Parsers/ServiceComposeParser.php
-
-		-
-			message: '#^Right side of && is always true\.$#'
-			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: app/Parsers/ServiceComposeParser.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/ServicePolicy.php
-
-		-
-			message: '#^Call to function assert\(\) with true will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Instanceof between App\\Models\\AiChatMessage and App\\Models\\AiChatMessage will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Method App\\Services\\AI\\Chat\\AiChatService\:\:calculateCost\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Method App\\Services\\AI\\Chat\\AiChatService\:\:formatResponse\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Method App\\Services\\AI\\Chat\\AiChatService\:\:generateResponse\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$success\.$#'
@@ -1297,18 +289,6 @@ parameters:
 			path: app/Services/AI/Chat/Providers/OpenAIChatProvider.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
-
-		-
 			message: '#^Property App\\Services\\AI\\CodeReview\\LLMResponseValidator\:\:\$expectedSchema is never read, only written\.$#'
 			identifier: property.onlyWritten
 			count: 1
@@ -1327,40 +307,10 @@ parameters:
 			path: app/Services/Authorization/PermissionService.php
 
 		-
-			message: '#^Negated boolean expression is always false\.$#'
-			identifier: booleanNot.alwaysFalse
-			count: 1
-			path: app/Services/Authorization/PermissionService.php
-
-		-
-			message: '#^Method App\\Services\\Authorization\\ProjectAuthorizationService\:\:checkPermission\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: app/Services/Authorization/ProjectAuthorizationService.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\Pivot\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 6
-			path: app/Services/Authorization/ProjectAuthorizationService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Authorization/ResourceAuthorizationService.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Relations\\Pivot\. Use \-\> instead\.$#'
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\TeamUser\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/Authorization/ResourceAuthorizationService.php
-
-		-
-			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationPreview model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CloudflareProtectionService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$custom_docker_options\.$#'
@@ -1392,86 +342,3 @@ parameters:
 			count: 1
 			path: app/Services/ProjectQuotaService.php
 
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/Button.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/Checkbox.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/Datalist.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/EnvVarInput.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/Input.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/Select.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Forms/Textarea.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Modal.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/ResourceView.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Services/Advanced.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Services/Explanation.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Services/Links.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Status/Index.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/View/Components/Status/Services.php

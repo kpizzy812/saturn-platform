@@ -36,6 +36,7 @@ class Button extends Component
         }
     }
 
+    /** @return \Illuminate\Contracts\View\View */
     public function render(): View|Closure|string
     {
         return view('components.forms.button');

@@ -100,7 +100,7 @@ class DockerCleanupJob implements ShouldBeEncrypted, ShouldQueue
                     deleteUnusedNetworks: $this->deleteUnusedNetworks
                 );
                 $usageAfter = $this->server->getDiskUsage();
-                $diskSaved = $this->usageBefore - $usageAfter;
+                $diskSaved = (int) $this->usageBefore - (int) $usageAfter;
 
                 if ($diskSaved > 0) {
                     $message = 'Saved '.$diskSaved.'% disk space. Disk usage before: '.$this->usageBefore.'%, Disk usage after: '.$usageAfter.'%.';

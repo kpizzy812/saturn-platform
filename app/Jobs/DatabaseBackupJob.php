@@ -117,13 +117,6 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 $this->server = $this->database->destination->server;
                 $this->s3 = $this->backup->s3;
             }
-            if (is_null($this->server)) {
-                throw new \Exception('Server not found?!');
-            }
-            if (is_null($this->database)) {
-                throw new \Exception('Database not found?!');
-            }
-
             BackupCreated::dispatch($this->team->id);
 
             $status = str(data_get($this->database, 'status'));
@@ -131,7 +124,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
             if (data_get($this->backup, 'database_type') === \App\Models\ServiceDatabase::class) {
-                $databaseType = $this->database->databaseType();
+                $databaseType = $this->database->database_type;
                 $serviceUuid = $this->database->service->uuid;
                 $serviceName = str($this->database->service->name)->slug();
                 if (str($databaseType)->contains('postgres')) {
@@ -407,7 +400,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
                 // Step 2: Upload to S3 if enabled (independent of local backup)
                 $localStorageDeleted = false;
-                if ($this->backup->save_s3 && $localBackupSucceeded) {
+                if ($this->backup->save_s3) {
                     try {
                         $this->upload_to_s3();
 
@@ -423,29 +416,27 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                 }
 
                 // Step 3: Update status and send notifications based on results
-                if ($localBackupSucceeded) {
-                    $message = $this->backup_output;
+                $message = $this->backup_output;
 
-                    if ($s3UploadError) {
-                        $message = $message
-                            ? $message."\n\nWarning: S3 upload failed: ".$s3UploadError
-                            : 'Warning: S3 upload failed: '.$s3UploadError;
-                    }
+                if ($s3UploadError) {
+                    $message = $message
+                        ? $message."\n\nWarning: S3 upload failed: ".$s3UploadError
+                        : 'Warning: S3 upload failed: '.$s3UploadError;
+                }
 
-                    $this->backup_log->update([
-                        'status' => 'success',
-                        'message' => $message,
-                        'size' => $size,
-                        's3_uploaded' => $this->backup->save_s3 ? $this->s3_uploaded : null,
-                        'local_storage_deleted' => $localStorageDeleted,
-                    ]);
+                $this->backup_log->update([
+                    'status' => 'success',
+                    'message' => $message,
+                    'size' => $size,
+                    's3_uploaded' => $this->backup->save_s3 ? $this->s3_uploaded : null,
+                    'local_storage_deleted' => $localStorageDeleted,
+                ]);
 
-                    // Send appropriate notification
-                    if ($s3UploadError) {
-                        $this->team->notify(new BackupSuccessWithS3Warning($this->backup, $this->database, $database, $s3UploadError));
-                    } else {
-                        $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
-                    }
+                // Send appropriate notification
+                if ($s3UploadError) {
+                    $this->team->notify(new BackupSuccessWithS3Warning($this->backup, $this->database, $database, $s3UploadError));
+                } else {
+                    $this->team->notify(new BackupSuccess($this->backup, $this->database, $database));
                 }
             }
             if ($this->backup_log && $this->backup_log->status === 'success') {
@@ -734,15 +725,6 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
-    private function add_to_backup_output($output): void
-    {
-        if ($this->backup_output) {
-            $this->backup_output = $this->backup_output."\n".$output;
-        } else {
-            $this->backup_output = $output;
-        }
-    }
-
     private function add_to_error_output($output): void
     {
         if ($this->error_output) {
@@ -830,7 +812,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             'backup_id' => $this->backup->uuid,
             'database' => $this->database->name ?? 'unknown',
             'database_type' => get_class($this->database),
-            'server' => $this->server?->name ?? 'unknown',
+            'server' => $this->server->name,
             'total_attempts' => $this->attempts(),
             'error' => $exception?->getMessage(),
             'trace' => $exception?->getTraceAsString(),

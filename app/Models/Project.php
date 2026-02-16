@@ -105,12 +105,12 @@ class Project extends BaseModel
         }
 
         // Owner/Admin always see all projects
-        if (in_array($teamMembership->pivot?->getAttribute('role'), ['owner', 'admin'])) {
+        if (in_array($teamMembership->pivot->getAttribute('role'), ['owner', 'admin'])) {
             return $query;
         }
 
         // Check allowed_projects restriction
-        $allowedProjects = $teamMembership->pivot?->getAttribute('allowed_projects');
+        $allowedProjects = $teamMembership->pivot->getAttribute('allowed_projects');
 
         // null means all projects (default behavior)
         if ($allowedProjects === null) {

@@ -2,6 +2,7 @@
 
 namespace App\Actions\User;
 
+use App\Models\TeamUser;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +36,9 @@ class DeleteUserResources
             // - User is just a member (not owner)
             // - Team has other members (ownership will be transferred or user just removed)
 
-            $userRole = $team->pivot?->getAttribute('role');
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+            $userRole = $teamPivot?->getAttribute('role');
             $memberCount = $team->members->count();
 
             // Skip if user is not owner

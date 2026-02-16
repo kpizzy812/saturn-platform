@@ -236,7 +236,7 @@ class SentinelMetricsController extends Controller
                 'current' => $this->formatBytes($memoryPercent * 0.16 * 1024 * 1024 * 1024),
                 'percentage' => round($memoryPercent, 1),
                 'total' => '16 GB', // TODO: Get actual total memory from server
-                'trend' => $memoryData ? collect($memoryData)->pluck(1)->take(-20)->values()->toArray() : [],
+                'trend' => $memoryData ? collect($memoryData)->map(fn ($item) => $item[1] ?? 0)->take(-20)->values()->toArray() : [],
             ],
             'disk' => [
                 'current' => $diskPercent.'%',

@@ -80,11 +80,7 @@ trait HandlesSaturnEnvVariables
         // SOURCE_COMMIT changes with each commit and breaks Docker cache if included in build
         if (! $forBuildTime || $this->application->settings->include_source_commit_in_build) {
             if ($this->application->environment_variables_preview->where('key', 'SOURCE_COMMIT')->isEmpty()) {
-                if (! is_null($this->commit)) {
-                    $saturn_envs->put('SOURCE_COMMIT', $this->commit);
-                } else {
-                    $saturn_envs->put('SOURCE_COMMIT', 'unknown');
-                }
+                $saturn_envs->put('SOURCE_COMMIT', $this->commit);
             }
         }
         if ($this->application->environment_variables_preview->where('key', 'SATURN_FQDN')->isEmpty()) {
@@ -129,11 +125,7 @@ trait HandlesSaturnEnvVariables
         // SOURCE_COMMIT changes with each commit and breaks Docker cache if included in build
         if (! $forBuildTime || $this->application->settings->include_source_commit_in_build) {
             if ($this->application->environment_variables->where('key', 'SOURCE_COMMIT')->isEmpty()) {
-                if (! is_null($this->commit)) {
-                    $saturn_envs->put('SOURCE_COMMIT', $this->commit);
-                } else {
-                    $saturn_envs->put('SOURCE_COMMIT', 'unknown');
-                }
+                $saturn_envs->put('SOURCE_COMMIT', $this->commit);
             }
         }
         if ($this->application->environment_variables->where('key', 'SATURN_FQDN')->isEmpty()) {

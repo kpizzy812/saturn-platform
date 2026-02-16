@@ -274,12 +274,13 @@ class LocalFileVolume extends BaseModel
     {
         try {
             // Only check for services
+            /** @var \App\Models\ServiceApplication|\App\Models\ServiceDatabase|null $service */
             $service = $this->service;
-            if (! $service || ! method_exists($service, 'service')) {
+            if (! $service) {
                 return false;
             }
 
-            $actualService = $service->service;
+            $actualService = $service->getAttribute('service');
             if (! $actualService || ! $actualService->docker_compose_raw) {
                 return false;
             }
@@ -291,7 +292,7 @@ class LocalFileVolume extends BaseModel
             }
 
             // Find the service that this volume belongs to
-            $serviceName = $service->name;
+            $serviceName = $service->getAttribute('name');
             if (! isset($compose['services'][$serviceName]['volumes'])) {
                 return false;
             }

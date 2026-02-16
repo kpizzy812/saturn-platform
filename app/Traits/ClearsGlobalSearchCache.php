@@ -3,11 +3,16 @@
 namespace App\Traits;
 
 use App\Livewire\GlobalSearch;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\Application;
+use App\Models\Environment;
+use App\Models\Project;
+use App\Models\Server;
+use App\Models\Service;
+use App\Models\Team;
 
 trait ClearsGlobalSearchCache
 {
-    protected static function bootClearsGlobalSearchCache()
+    protected static function bootClearsGlobalSearchCache(): void
     {
         static::saving(function ($model) {
             try {
@@ -54,21 +59,14 @@ trait ClearsGlobalSearchCache
     private function hasSearchableChanges(): bool
     {
         try {
-            // Define searchable fields based on model type
-            $searchableFields = ['name', 'description'];
-
-            // Add model-specific searchable fields
-            if ($this instanceof \App\Models\Application) {
-                $searchableFields[] = 'fqdn';
-                $searchableFields[] = 'docker_compose_domains';
-            } elseif ($this instanceof \App\Models\Server) {
-                $searchableFields[] = 'ip';
-            } elseif ($this instanceof \App\Models\Service) {
-                // Services don't have direct fqdn, but name and description are covered
-            } elseif ($this instanceof \App\Models\Project || $this instanceof \App\Models\Environment) {
-                // Projects and environments only have name and description as searchable
-            }
-            // Database models only have name and description as searchable
+            // Define searchable fields based on model type.
+            // Use get_class() + match to avoid PHPStan type narrowing through
+            // if/elseif chain which causes *NEVER* type errors.
+            $searchableFields = match (get_class($this)) {
+                Application::class => ['name', 'description', 'fqdn', 'docker_compose_domains'],
+                Server::class => ['name', 'description', 'ip'],
+                default => ['name', 'description'],
+            };
 
             // Check if any searchable field is dirty
             foreach ($searchableFields as $field) {
@@ -87,34 +85,22 @@ trait ClearsGlobalSearchCache
         }
     }
 
-    private function getTeamIdForCache()
+    private function getTeamIdForCache(): ?int
     {
         try {
-            // For Project models (has direct team_id)
-            if ($this instanceof \App\Models\Project) {
-                return $this->team_id ?? null;
-            }
+            // Resolve team using get_class() + match to avoid PHPStan type
+            // narrowing issues with if/elseif instanceof chains.
+            $team = match (get_class($this)) {
+                Project::class => $this->team,
+                Environment::class => $this->project?->team,
+                Server::class => $this->team,
+                // Application, Service, and all Standalone* models have a
+                // team() accessor returning Team|null via data_get().
+                default => call_user_func([$this, 'team']),
+            };
 
-            // For Environment models (get team_id through project)
-            if ($this instanceof \App\Models\Environment) {
-                return $this->project?->team_id;
-            }
-
-            // For database models, team is accessed through environment.project.team
-            if (method_exists($this, 'team')) {
-                if ($this instanceof \App\Models\Server) {
-                    $team = $this->team;
-                } else {
-                    $team = $this->team();
-                }
-                if (filled($team)) {
-                    return is_object($team) ? $team->id : null;
-                }
-            }
-
-            // For models with direct team_id property
-            if (property_exists($this, 'team_id') || isset($this->team_id)) {
-                return $this->team_id ?? null;
+            if ($team instanceof Team) {
+                return $team->id;
             }
 
             return null;

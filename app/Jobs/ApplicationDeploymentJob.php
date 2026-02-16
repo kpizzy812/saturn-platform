@@ -71,9 +71,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private bool $newVersionIsHealthy = false;
 
-    private ApplicationDeploymentQueue $application_deployment_queue;
+    private ?ApplicationDeploymentQueue $application_deployment_queue = null;
 
-    private Application $application;
+    private ?Application $application = null;
 
     private string $deployment_uuid;
 
@@ -252,7 +252,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         $source = data_get($this->application, 'source');
         if ($source) {
-            $this->source = $source->getMorphClass()::where('id', $this->application->source->id)->first();
+            $this->source = $source->getMorphClass()::where('id', $source->getKey())->first();
         }
         $this->server = Server::find($this->application_deployment_queue->server_id);
         $this->timeout = $this->server->settings->dynamic_timeout;

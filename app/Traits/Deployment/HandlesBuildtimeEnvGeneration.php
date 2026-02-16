@@ -115,7 +115,7 @@ trait HandlesBuildtimeEnvGeneration
             }
 
             // Generate SERVICE_FQDN & SERVICE_URL for non-PR deployments
-            $domains = collect(json_decode($this->application->docker_compose_domains)) ?? collect([]);
+            $domains = collect(json_decode($this->application->docker_compose_domains));
             foreach ($domains as $forServiceName => $domain) {
                 $parsedDomain = data_get($domain, 'domain');
                 if (filled($parsedDomain)) {
@@ -137,7 +137,7 @@ trait HandlesBuildtimeEnvGeneration
             }
 
             // Generate SERVICE_FQDN & SERVICE_URL for preview deployments with PR-specific domains
-            $domains = collect(json_decode(data_get($this->preview, 'docker_compose_domains'))) ?? collect([]);
+            $domains = collect(json_decode(data_get($this->preview, 'docker_compose_domains')));
             foreach ($domains as $forServiceName => $domain) {
                 $parsedDomain = data_get($domain, 'domain');
                 if (filled($parsedDomain)) {

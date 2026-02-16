@@ -40,7 +40,9 @@ class ScheduledJobManager implements ShouldQueue
         $preferredQueue = 'crons';
         $fallbackQueue = 'high';
 
-        $configuredQueues = explode(',', env('HORIZON_QUEUES', 'high,default'));
+        /** @var string $queueString */
+        $queueString = config('horizon.defaults.s6.queue', 'high,default');
+        $configuredQueues = explode(',', $queueString);
 
         return in_array($preferredQueue, $configuredQueues) ? $preferredQueue : $fallbackQueue;
     }

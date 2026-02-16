@@ -174,8 +174,9 @@ class CheckTraefikVersionForServerJob implements ShouldQueue
      */
     private function sendNotification(array $outdatedInfo): void
     {
-        // Attach the outdated info as a dynamic property for the notification
-        $this->server->outdatedInfo = $outdatedInfo;
+        // The outdated info is already saved to traefik_outdated_info column above
+        // Refresh so the notification can read it from the model attribute
+        $this->server->refresh();
 
         // Get the team and send notification
         $team = $this->server->team()->first();

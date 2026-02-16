@@ -216,7 +216,8 @@ final class OpenAIChatProvider implements ChatProviderInterface
             $lines = explode("\n", $buffer);
             foreach ($lines as $line) {
                 if (str_starts_with($line, 'data: ')) {
-                    $json = (string) substr($line, 6);
+                    /** @var string $json */
+                    $json = trim(substr($line, 6));
                     if ($json === '[DONE]') {
                         break;
                     }

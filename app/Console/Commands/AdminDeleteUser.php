@@ -6,6 +6,7 @@ use App\Actions\Stripe\CancelSubscription;
 use App\Actions\User\DeleteUserResources;
 use App\Actions\User\DeleteUserServers;
 use App\Actions\User\DeleteUserTeams;
+use App\Models\TeamUser;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -379,8 +380,18 @@ class AdminDeleteUser extends Command
         $this->newLine();
 
         $teams = $this->user->teams()->get();
-        $ownedTeams = $teams->filter(fn ($team) => $team->pivot->role === 'owner');
-        $memberTeams = $teams->filter(fn ($team) => $team->pivot->role !== 'owner');
+        $ownedTeams = $teams->filter(function ($team) {
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+
+            return $teamPivot?->role === 'owner';
+        });
+        $memberTeams = $teams->filter(function ($team) {
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+
+            return $teamPivot?->role !== 'owner';
+        });
 
         // Collect servers and resources ONLY from teams that will be FULLY DELETED
         // This means: user is owner AND is the ONLY member
@@ -395,7 +406,9 @@ class AdminDeleteUser extends Command
         $activeSubscriptions = collect();
 
         foreach ($teams as $team) {
-            $userRole = $team->pivot->role;
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+            $userRole = $teamPivot?->role;
             $memberCount = $team->members->count();
 
             // Only show resources from teams where user is the ONLY member
@@ -648,7 +661,9 @@ class AdminDeleteUser extends Command
                 // Show team members for context
                 $this->info('Current members:');
                 foreach ($team->members as $member) {
-                    $role = $member->pivot->role;
+                    /** @var TeamUser|null $memberPivot */
+                    $memberPivot = data_get($member, 'pivot');
+                    $role = $memberPivot?->role;
                     $this->line("  - {$member->name} ({$member->email}) - Role: {$role}");
                 }
 
@@ -673,7 +688,10 @@ class AdminDeleteUser extends Command
                     $otherOwners = $team->members
                         ->where('id', '!=', $this->user->id)
                         ->filter(function ($member) {
-                            return $member->pivot->role === 'owner';
+                            /** @var TeamUser|null $memberPivot */
+                            $memberPivot = data_get($member, 'pivot');
+
+                            return $memberPivot?->role === 'owner';
                         });
 
                     if ($otherOwners->isNotEmpty()) {
@@ -775,7 +793,10 @@ class AdminDeleteUser extends Command
             $this->table(
                 ['ID', 'Name', 'User Role', 'Other Members'],
                 $preview['to_leave']->map(function ($team) use ($userId) {
-                    $userRole = $team->members->where('id', $userId)->first()->pivot->role;
+                    $foundMember = $team->members->where('id', $userId)->first();
+                    /** @var TeamUser|null $foundMemberPivot */
+                    $foundMemberPivot = $foundMember ? data_get($foundMember, 'pivot') : null;
+                    $userRole = $foundMemberPivot?->role;
                     $otherMembers = $team->members->count() - 1;
 
                     return [

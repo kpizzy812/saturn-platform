@@ -96,7 +96,8 @@ class ApplicationPreview extends BaseModel
         return (bool) str($this->status)->startsWith('running');
     }
 
-    public function application()
+    /** @return \Illuminate\Database\Eloquent\Relations\BelongsTo<Application, $this> */
+    public function application(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Application::class);
     }
@@ -135,7 +136,7 @@ class ApplicationPreview extends BaseModel
 
     public function generate_preview_fqdn_compose()
     {
-        $services = collect(json_decode($this->application->docker_compose_domains)) ?? collect();
+        $services = collect(json_decode($this->application->docker_compose_domains));
         $docker_compose_domains = data_get($this, 'docker_compose_domains');
         $docker_compose_domains = json_decode($docker_compose_domains, true) ?? [];
 

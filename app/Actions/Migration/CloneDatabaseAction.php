@@ -164,7 +164,9 @@ class CloneDatabaseAction
             return;
         }
 
-        foreach ($source->environment_variables as $envVar) {
+        /** @var \Illuminate\Support\Collection $envVars */
+        $envVars = $source->getAttribute('environment_variables');
+        foreach ($envVars as $envVar) {
             EnvironmentVariable::create([
                 'key' => $envVar->key,
                 'value' => $envVar->value,
@@ -189,7 +191,9 @@ class CloneDatabaseAction
             return;
         }
 
-        foreach ($source->persistentStorages as $storage) {
+        /** @var \Illuminate\Support\Collection $storages */
+        $storages = $source->getAttribute('persistentStorages');
+        foreach ($storages as $storage) {
             // Generate new volume name with target UUID
             $newName = str_replace($source->getAttribute('uuid'), $target->getAttribute('uuid'), $storage->name);
 
@@ -227,9 +231,13 @@ class CloneDatabaseAction
             return;
         }
 
-        $tagIds = $source->tags->pluck('id')->toArray();
+        /** @var \Illuminate\Support\Collection $sourceTags */
+        $sourceTags = $source->getAttribute('tags');
+        $tagIds = $sourceTags->pluck('id')->toArray();
         if (! empty($tagIds)) {
-            $target->tags()->attach($tagIds);
+            /** @var \Illuminate\Database\Eloquent\Relations\MorphToMany $tagsRelation */
+            $tagsRelation = call_user_func([$target, 'tags']);
+            $tagsRelation->attach($tagIds);
         }
     }
 

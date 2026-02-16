@@ -3,6 +3,7 @@
 namespace App\Actions\Stripe;
 
 use App\Models\Subscription;
+use App\Models\TeamUser;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +36,9 @@ class CancelSubscription
 
         foreach ($teams as $team) {
             // Only include subscriptions from teams where user is owner
-            $userRole = $team->pivot?->getAttribute('role');
+            /** @var TeamUser|null $teamPivot */
+            $teamPivot = data_get($team, 'pivot');
+            $userRole = $teamPivot?->getAttribute('role');
             if ($userRole === 'owner' && $team->subscription) {
                 $subscription = $team->subscription;
 

@@ -16,7 +16,7 @@ class StartProxy
     public function handle(Server $server, bool $async = true, bool $force = false, bool $restarting = false): string|Activity
     {
         $proxyType = $server->proxyType();
-        if ((is_null($proxyType) || $proxyType === 'NONE' || $server->proxy->force_stop || $server->isBuildServer()) && $force === false) {
+        if ((is_null($proxyType) || $proxyType === 'NONE' || $server->proxy->get('force_stop') || $server->isBuildServer()) && $force === false) {
             return 'OK';
         }
         $server->proxy->set('status', 'starting');
@@ -35,7 +35,7 @@ class StartProxy
         }
         SaveProxyConfiguration::run($server, $configuration);
         $docker_compose_yml_base64 = base64_encode($configuration);
-        $server->proxy->last_applied_settings = str($docker_compose_yml_base64)->pipe('md5')->value();
+        $server->proxy->set('last_applied_settings', str($docker_compose_yml_base64)->pipe('md5')->value());
         $server->save();
 
         if ($server->isSwarmManager()) {

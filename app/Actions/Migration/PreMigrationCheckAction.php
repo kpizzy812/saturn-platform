@@ -131,7 +131,7 @@ class PreMigrationCheckAction
     protected function checkNoActiveMigration(Model $resource): bool
     {
         return ! EnvironmentMigration::where('source_type', get_class($resource))
-            ->where('source_id', $resource->id)
+            ->where('source_id', $resource->getKey())
             ->whereIn('status', [
                 EnvironmentMigration::STATUS_PENDING,
                 EnvironmentMigration::STATUS_APPROVED,
@@ -192,7 +192,9 @@ class PreMigrationCheckAction
             return $warnings;
         }
 
-        $emptyVars = $resource->environment_variables
+        /** @var \Illuminate\Support\Collection $envVars */
+        $envVars = $resource->getAttribute('environment_variables');
+        $emptyVars = $envVars
             ->filter(fn ($var) => empty($var->value))
             ->pluck('key')
             ->toArray();
@@ -211,7 +213,7 @@ class PreMigrationCheckAction
     {
         $currentConfig = [
             'type' => get_class($resource),
-            'id' => $resource->id,
+            'id' => $resource->getKey(),
             'attributes' => $resource->toArray(),
         ];
 

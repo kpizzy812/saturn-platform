@@ -52,10 +52,12 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
         try {
             // If no specific execution, get latest successful one
             if (! $this->execution) {
-                $this->execution = $this->backup->executions()
+                /** @var ScheduledDatabaseBackupExecution|null $latestExecution */
+                $latestExecution = $this->backup->executions()
                     ->where('status', 'success')
                     ->latest()
                     ->first();
+                $this->execution = $latestExecution;
             }
 
             if (! $this->execution) {
@@ -517,7 +519,7 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
     {
         try {
             $team = $this->backup->team;
-            if ($team && $team->backup_notifications_enabled) {
+            if ($team) {
                 $team->notify(new BackupRestoreTestSuccess(
                     $this->backup->database,
                     $duration
@@ -532,7 +534,7 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
     {
         try {
             $team = $this->backup->team;
-            if ($team && $team->backup_notifications_enabled) {
+            if ($team) {
                 $team->notify(new BackupRestoreTestFailed(
                     $this->backup->database,
                     $message

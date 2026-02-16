@@ -79,14 +79,6 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 $this->s3 = $this->backup->s3;
             }
 
-            if (is_null($this->server)) {
-                throw new \Exception('Server not found');
-            }
-
-            if (is_null($this->database)) {
-                throw new \Exception('Database not found');
-            }
-
             // Update execution status
             $this->execution->update([
                 'restore_status' => 'in_progress',

@@ -56,17 +56,23 @@ class MigrationDiffAction
     {
         $envVarCount = 0;
         if (method_exists($resource, 'environment_variables') && ($options[EnvironmentMigration::OPTION_COPY_ENV_VARS] ?? true)) {
-            $envVarCount = $resource->environment_variables->count();
+            /** @var \Illuminate\Support\Collection $envVars */
+            $envVars = $resource->getAttribute('environment_variables');
+            $envVarCount = $envVars->count();
         }
 
         $volumeCount = 0;
         if (method_exists($resource, 'persistentStorages') && ($options[EnvironmentMigration::OPTION_COPY_VOLUMES] ?? true)) {
-            $volumeCount = $resource->persistentStorages->count();
+            /** @var \Illuminate\Support\Collection $volumes */
+            $volumes = $resource->getAttribute('persistentStorages');
+            $volumeCount = $volumes->count();
         }
 
         $fileCount = 0;
         if (method_exists($resource, 'fileStorages') && ($options[EnvironmentMigration::OPTION_COPY_VOLUMES] ?? true)) {
-            $fileCount = $resource->fileStorages->count();
+            /** @var \Illuminate\Support\Collection $files */
+            $files = $resource->getAttribute('fileStorages');
+            $fileCount = $files->count();
         }
 
         return [
@@ -183,8 +189,12 @@ class MigrationDiffAction
             return ['added' => [], 'removed' => [], 'changed' => []];
         }
 
-        $sourceVars = $source->environment_variables->keyBy('key');
-        $targetVars = $target->environment_variables->keyBy('key');
+        /** @var \Illuminate\Support\Collection $sourceEnvVars */
+        $sourceEnvVars = $source->getAttribute('environment_variables');
+        $sourceVars = $sourceEnvVars->keyBy('key');
+        /** @var \Illuminate\Support\Collection $targetEnvVars */
+        $targetEnvVars = $target->getAttribute('environment_variables');
+        $targetVars = $targetEnvVars->keyBy('key');
 
         $added = [];
         $removed = [];
@@ -222,8 +232,12 @@ class MigrationDiffAction
         $removed = [];
 
         if (method_exists($source, 'persistentStorages') && method_exists($target, 'persistentStorages')) {
-            $sourceMounts = $source->persistentStorages->pluck('mount_path')->toArray();
-            $targetMounts = $target->persistentStorages->pluck('mount_path')->toArray();
+            /** @var \Illuminate\Support\Collection $sourceStorages */
+            $sourceStorages = $source->getAttribute('persistentStorages');
+            $sourceMounts = $sourceStorages->pluck('mount_path')->toArray();
+            /** @var \Illuminate\Support\Collection $targetStorages */
+            $targetStorages = $target->getAttribute('persistentStorages');
+            $targetMounts = $targetStorages->pluck('mount_path')->toArray();
 
             $added = array_values(array_diff($sourceMounts, $targetMounts));
             $removed = array_values(array_diff($targetMounts, $sourceMounts));
@@ -251,7 +265,9 @@ class MigrationDiffAction
         ];
 
         $preview = [];
-        foreach ($target->environment_variables as $envVar) {
+        /** @var \Illuminate\Support\Collection $targetEnvVars */
+        $targetEnvVars = $target->getAttribute('environment_variables');
+        foreach ($targetEnvVars as $envVar) {
             $key = strtoupper($envVar->key);
             foreach ($connectionPatterns as $pattern) {
                 if ($key === $pattern || str_ends_with($key, '_'.$pattern)) {

@@ -45,6 +45,7 @@ class Input extends Component
         }
     }
 
+    /** @return \Illuminate\Contracts\View\View */
     public function render(): View|Closure|string
     {
         // Store original ID for wire:model binding (property name)

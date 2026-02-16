@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Request;
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read User|null $user
+ * @property-read Team|null $team
  */
 class AuditLog extends Model
 {

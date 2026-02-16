@@ -53,7 +53,7 @@ function getServerPublicHost(\App\Models\Server $server): string
         }
     }
 
-    return $server->getIp;
+    return $server->get_ip;
 }
 
 /**

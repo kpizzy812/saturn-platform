@@ -11,21 +11,6 @@ namespace App\Services\AI\CodeReview;
 class LLMResponseValidator
 {
     /**
-     * Expected schema for enrichment response.
-     */
-    private array $expectedSchema = [
-        'violations' => 'array',
-    ];
-
-    /**
-     * Expected schema for each violation enrichment.
-     */
-    private array $violationSchema = [
-        'rule_id' => 'string',
-        'suggestion' => 'string',
-    ];
-
-    /**
      * Validate the LLM response.
      *
      * @return array{valid: bool, data: ?array, error: ?string}

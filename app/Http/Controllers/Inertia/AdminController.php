@@ -19,6 +19,7 @@ use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use App\Models\Team;
+use App\Models\TeamUser;
 use App\Models\User;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -120,11 +121,14 @@ class AdminController extends Controller
                 'is_superadmin' => $user->is_superadmin,
                 'force_password_reset' => $user->force_password_reset,
                 'teams' => $user->teams->map(function ($team) {
+                    /** @var TeamUser|null $teamPivot */
+                    $teamPivot = data_get($team, 'pivot');
+
                     return [
                         'id' => $team->id,
                         'name' => $team->name,
                         'personal_team' => $team->personal_team,
-                        'role' => $team->pivot?->getAttribute('role'),
+                        'role' => $teamPivot?->getAttribute('role'),
                     ];
                 }),
             ],
@@ -229,7 +233,7 @@ class AdminController extends Controller
         $servers = Server::with('team')
             ->orderBy('updated_at', 'desc')
             ->paginate(50)
-            ->through(function ($server) {
+            ->through(function (Server $server) {
                 return [
                     'id' => $server->id,
                     'uuid' => $server->uuid,
@@ -258,7 +262,7 @@ class AdminController extends Controller
         $deployments = ApplicationDeploymentQueue::with(['application.environment.project.team'])
             ->orderBy('created_at', 'desc')
             ->paginate(50)
-            ->through(function ($deployment) {
+            ->through(function (ApplicationDeploymentQueue $deployment) {
                 return [
                     'id' => $deployment->id,
                     'deployment_uuid' => $deployment->deployment_uuid,
@@ -289,7 +293,7 @@ class AdminController extends Controller
         $teams = Team::withCount(['members', 'servers'])
             ->orderBy('created_at', 'desc')
             ->paginate(50)
-            ->through(function ($team) {
+            ->through(function (Team $team) {
                 return [
                     'id' => $team->id,
                     'name' => $team->name,
@@ -343,7 +347,7 @@ class AdminController extends Controller
         $logs = AuditLog::with(['user', 'team'])
             ->orderBy('created_at', 'desc')
             ->paginate(100)
-            ->through(function ($log) {
+            ->through(function (AuditLog $log) {
                 return [
                     'id' => $log->id,
                     'user_id' => $log->user_id,

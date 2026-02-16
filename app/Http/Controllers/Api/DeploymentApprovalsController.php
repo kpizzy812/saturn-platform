@@ -79,15 +79,7 @@ class DeploymentApprovalsController extends Controller
         }
 
         // Dispatch deployment job to process the approved deployment
-        ApplicationDeploymentJob::dispatch(
-            $deployment->application_id,
-            $deployment->deployment_uuid,
-            $deployment->pull_request_id ?? 0,
-            $deployment->commit ?? '',
-            $deployment->rollback ?? false,
-            $deployment->restart_only ?? false,
-            $deployment->git_type ?? null
-        );
+        ApplicationDeploymentJob::dispatch($deployment->id);
 
         return response()->json([
             'message' => 'Deployment approved successfully and queued for processing.',

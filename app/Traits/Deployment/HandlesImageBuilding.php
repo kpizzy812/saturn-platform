@@ -111,7 +111,7 @@ trait HandlesImageBuilding
         }
 
         // Patch Dockerfile for specific Node.js version if needed
-        if (property_exists($this, 'requiredNodeVersion') && $this->requiredNodeVersion) {
+        if ($this->requiredNodeVersion) {
             $this->patchDockerfileForNodeVersion("{$this->workdir}/.nixpacks/Dockerfile", $this->requiredNodeVersion);
         }
 
@@ -238,7 +238,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
         }
 
         // Patch Dockerfile for specific Node.js version if needed
-        if (property_exists($this, 'requiredNodeVersion') && $this->requiredNodeVersion) {
+        if ($this->requiredNodeVersion) {
             $this->patchDockerfileForNodeVersion("{$this->workdir}/.nixpacks/Dockerfile", $this->requiredNodeVersion);
         }
 
@@ -268,7 +268,7 @@ COPY ./nginx.conf /etc/nginx/conf.d/default.conf");
 
         // Extract all FROM instructions (handles multi-stage builds)
         preg_match_all('/^FROM\s+([^\s]+)/m', $dockerfile, $matches);
-        $images = array_unique($matches[1] ?? []);
+        $images = array_unique($matches[1]);
 
         // Filter out stage references (like "0" or named stages) and local images
         $imagesToPull = [];

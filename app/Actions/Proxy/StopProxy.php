@@ -16,7 +16,7 @@ class StopProxy
     {
         try {
             $containerName = $server->isSwarm() ? 'saturn-proxy_traefik' : 'saturn-proxy';
-            $server->proxy->status = 'stopping';
+            $server->proxy->set('status', 'stopping');
             $server->save();
 
             if (! $restarting) {
@@ -36,8 +36,8 @@ class StopProxy
                 'done',
             ], server: $server, throwError: false);
 
-            $server->proxy->force_stop = $forceStop;
-            $server->proxy->status = 'exited';
+            $server->proxy->set('force_stop', $forceStop);
+            $server->proxy->set('status', 'exited');
             $server->save();
         } catch (\Throwable $e) {
             return handleError($e);

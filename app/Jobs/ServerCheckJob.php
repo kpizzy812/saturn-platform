@@ -55,7 +55,7 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
                     $this->checkLogDrainContainer();
                 }
 
-                if ($this->server->proxySet() && ! $this->server->proxy->force_stop) {
+                if ($this->server->proxySet() && ! $this->server->proxy->get('force_stop')) {
                     $this->server->proxyType();
                     $foundProxyContainer = $this->containers->filter(function ($value, $key) {
                         if ($this->server->isSwarm()) {
@@ -74,7 +74,7 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
                         } catch (\Throwable $e) {
                         }
                     } else {
-                        $this->server->proxy->status = data_get($foundProxyContainer, 'State.Status');
+                        $this->server->proxy->set('status', data_get($foundProxyContainer, 'State.Status'));
                         $this->server->save();
                         ConnectProxyToNetworksJob::dispatchSync($this->server);
                     }

@@ -233,7 +233,7 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
             // Try to kill helper container (requires SSH, may fail)
             try {
                 $server = $this->resource->destination->server;
-                if ($server && $server->privateKey) {
+                if ($server->privateKey) {
                     $deployment_uuid = $activeDeployment->deployment_uuid;
                     $escapedDeploymentUuid = escapeshellarg($deployment_uuid);
                     $checkCommand = "docker ps -a --filter name={$escapedDeploymentUuid} --format '{{.Names}}'";
