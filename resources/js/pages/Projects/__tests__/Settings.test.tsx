@@ -37,19 +37,6 @@ vi.mock('@/hooks/useProjectActivity', () => ({
     }),
 }));
 
-// Mock useGitBranches hook
-vi.mock('@/hooks/useGitBranches', () => ({
-    useGitBranches: () => ({
-        branches: ['main', 'dev', 'staging'],
-        defaultBranch: 'main',
-        platform: null,
-        isLoading: false,
-        error: null,
-        fetchBranches: vi.fn(),
-        clearBranches: vi.fn(),
-    }),
-}));
-
 // Mock BranchSelector component
 vi.mock('@/components/ui/BranchSelector', () => ({
     BranchSelector: ({ value, onChange, placeholder }: any) => (

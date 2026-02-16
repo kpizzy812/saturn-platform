@@ -9,7 +9,6 @@ import {
     Gauge, GitBranch, Loader2,
 } from 'lucide-react';
 import { useProjectActivity } from '@/hooks/useProjectActivity';
-import { useGitBranches } from '@/hooks/useGitBranches';
 import { BranchSelector } from '@/components/ui/BranchSelector';
 
 // --- Types ---
@@ -1248,18 +1247,51 @@ function DeploymentDefaultsSection({ projectUuid, defaults, environments, reposi
     );
     const [savingBranches, setSavingBranches] = useState(false);
 
-    // Fetch branches from first project repository (if any)
-    const { branches: gitBranches, isLoading: branchesLoading, error: branchesError, fetchBranches } = useGitBranches();
-    const [branchesFetched, setBranchesFetched] = useState(false);
+    // Fetch branches from ALL project repositories and merge unique names
+    const [gitBranches, setGitBranches] = useState<{ name: string; is_default: boolean }[]>([]);
+    const [branchesLoading, setBranchesLoading] = useState(false);
+    const [branchesError, setBranchesError] = useState<string | null>(null);
 
-    // Auto-fetch branches from the first repository on mount
-    const primaryRepo = (repositories || [])[0];
     React.useEffect(() => {
-        if (primaryRepo && !branchesFetched) {
-            fetchBranches(primaryRepo);
-            setBranchesFetched(true);
-        }
-    }, [primaryRepo, branchesFetched, fetchBranches]);
+        const repos = (repositories || []).filter(Boolean);
+        if (repos.length === 0) return;
+
+        let cancelled = false;
+        setBranchesLoading(true);
+        setBranchesError(null);
+
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
+        Promise.allSettled(
+            repos.map(repoUrl =>
+                fetch(`/web-api/git/branches?repository_url=${encodeURIComponent(repoUrl)}`, {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    credentials: 'include',
+                }).then(r => r.ok ? r.json() : Promise.reject(new Error(`Failed for ${repoUrl}`)))
+            )
+        ).then(results => {
+            if (cancelled) return;
+            const seen = new Set<string>();
+            const merged: { name: string; is_default: boolean }[] = [];
+            for (const result of results) {
+                if (result.status === 'fulfilled' && result.value?.branches) {
+                    for (const b of result.value.branches) {
+                        if (!seen.has(b.name)) {
+                            seen.add(b.name);
+                            merged.push(b);
+                        }
+                    }
+                }
+            }
+            setGitBranches(merged);
+            const allFailed = results.every(r => r.status === 'rejected');
+            if (allFailed && repos.length > 0) setBranchesError('Failed to fetch branches from repositories');
+        }).finally(() => {
+            if (!cancelled) setBranchesLoading(false);
+        });
+
+        return () => { cancelled = true; };
+    }, [repositories]);
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
@@ -1339,8 +1371,8 @@ function DeploymentDefaultsSection({ projectUuid, defaults, environments, reposi
                     <p className="mb-1 text-sm font-medium text-foreground">Git Branch per Environment</p>
                     <p className="mb-3 text-xs text-foreground-muted">
                         Default branch for new applications in each environment.
-                        {primaryRepo && (
-                            <> Branches loaded from <span className="font-mono">{primaryRepo.replace(/^https?:\/\//, '').replace(/\.git$/, '')}</span></>
+                        {repositories.length > 0 && (
+                            <> Branches loaded from {repositories.length} {repositories.length === 1 ? 'repository' : 'repositories'}.</>
                         )}
                     </p>
                     <div className="space-y-3">
