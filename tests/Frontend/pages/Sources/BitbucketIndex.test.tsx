@@ -36,7 +36,8 @@ describe('Bitbucket Index Page', () => {
         it('should render page title and description', () => {
             render(<BitbucketIndex connections={[]} />);
 
-            expect(screen.getByText('Bitbucket Connections')).toBeInTheDocument();
+            // "Bitbucket Connections" appears in h1, h3, and Head - use level 1
+            expect(screen.getByRole('heading', { level: 1, name: /bitbucket connections/i })).toBeInTheDocument();
             expect(screen.getByText('Manage your Bitbucket workspace connections')).toBeInTheDocument();
         });
 
@@ -174,10 +175,11 @@ describe('Bitbucket Index Page', () => {
         it('should have correct external link URLs for cloud', () => {
             render(<BitbucketIndex connections={mockConnections} />);
 
-            const bitbucketButton = screen.getAllByRole('button', { name: /bitbucket/i })[0];
-            const link = bitbucketButton.closest('a');
-            expect(link).toHaveAttribute('href', 'https://bitbucket.org/myworkspace');
-            expect(link).toHaveAttribute('target', '_blank');
+            // Find external link buttons (those with target="_blank")
+            const links = Array.from(document.querySelectorAll('a[target="_blank"]'));
+            const cloudLink = links.find(link => link.getAttribute('href')?.includes('bitbucket.org/myworkspace'));
+            expect(cloudLink).toBeTruthy();
+            expect(cloudLink).toHaveAttribute('href', 'https://bitbucket.org/myworkspace');
         });
 
         it('should render delete buttons', () => {
@@ -249,7 +251,8 @@ describe('Bitbucket Index Page', () => {
         it('should handle missing connections prop', () => {
             render(<BitbucketIndex connections={undefined as any} />);
 
-            expect(screen.getByText('Bitbucket Connections')).toBeInTheDocument();
+            // Use heading level 1 to avoid multiple matches
+            expect(screen.getByRole('heading', { level: 1, name: /bitbucket connections/i })).toBeInTheDocument();
         });
 
         it('should handle connections without last_synced_at', () => {

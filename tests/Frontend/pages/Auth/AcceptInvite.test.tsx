@@ -106,8 +106,9 @@ describe('AcceptInvite Page', () => {
         it('should render error state when invitation is null', () => {
             render(<AcceptInvite invitation={null} isAuthenticated={false} />);
 
-            expect(screen.getByText('Invalid Invitation')).toBeInTheDocument();
+            // AuthLayout does not render title in DOM, only subtitle
             expect(screen.getByText('This invitation is no longer valid.')).toBeInTheDocument();
+            expect(screen.getByText('This invitation has expired or is no longer valid.')).toBeInTheDocument();
         });
 
         it('should render error message when error prop is provided', () => {

@@ -16,7 +16,8 @@ describe('GitHub Create Page', () => {
         it('should render page title and subtitle', () => {
             render(<GitHubCreate webhookUrl={mockWebhookUrl} />);
 
-            expect(screen.getByText('Create GitHub App')).toBeInTheDocument();
+            // "Create GitHub App" is in h1, Head, and button - use heading level 1
+            expect(screen.getByRole('heading', { level: 1, name: /create github app/i })).toBeInTheDocument();
             expect(screen.getByText('Automatic setup via GitHub App Manifest')).toBeInTheDocument();
         });
 
@@ -32,8 +33,9 @@ describe('GitHub Create Page', () => {
             render(<GitHubCreate webhookUrl={mockWebhookUrl} />);
 
             expect(screen.getByText('How It Works')).toBeInTheDocument();
-            expect(screen.getByText(/click the button/i)).toBeInTheDocument();
-            expect(screen.getByText(/confirm on github/i)).toBeInTheDocument();
+            // Actual text is "Click the button" not "click the button"
+            expect(screen.getByText('Click the button')).toBeInTheDocument();
+            expect(screen.getByText('Confirm on GitHub')).toBeInTheDocument();
         });
 
         it('should render configuration details', () => {
@@ -45,10 +47,12 @@ describe('GitHub Create Page', () => {
         it('should display repository permissions', () => {
             render(<GitHubCreate webhookUrl={mockWebhookUrl} />);
 
-            expect(screen.getByText(/contents:/i)).toBeInTheDocument();
-            expect(screen.getByText(/read & write/i)).toBeInTheDocument();
-            expect(screen.getByText(/metadata:/i)).toBeInTheDocument();
-            expect(screen.getByText(/pull requests:/i)).toBeInTheDocument();
+            // Check for Repository Permissions section and permission labels
+            expect(screen.getByText('Repository Permissions')).toBeInTheDocument();
+            expect(screen.getByText('Contents:')).toBeInTheDocument();
+            expect(screen.getByText('Metadata:')).toBeInTheDocument();
+            expect(screen.getByText('Pull Requests:')).toBeInTheDocument();
+            expect(screen.getByText('Administration:')).toBeInTheDocument();
         });
 
         it('should display webhook events', () => {

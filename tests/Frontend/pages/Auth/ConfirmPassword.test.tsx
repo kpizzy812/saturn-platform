@@ -12,16 +12,17 @@ describe('ConfirmPassword Page', () => {
         it('should render page title and subtitle', () => {
             render(<ConfirmPassword />);
 
-            expect(screen.getByText('Confirm Password')).toBeInTheDocument();
+            // "Confirm Password" appears in both h1 and button, use getByRole for h1
+            expect(screen.getByRole('heading', { name: /confirm password/i })).toBeInTheDocument();
             expect(screen.getByText('Please confirm your password before continuing.')).toBeInTheDocument();
         });
 
         it('should render lock icon', () => {
             render(<ConfirmPassword />);
 
-            // Icon is rendered, check for its container
-            const container = screen.getByText('Confirm Password').parentElement;
-            expect(container).toBeInTheDocument();
+            // Icon is rendered, check for its container via heading
+            const heading = screen.getByRole('heading', { name: /confirm password/i });
+            expect(heading).toBeInTheDocument();
         });
 
         it('should render password input field', () => {

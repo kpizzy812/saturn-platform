@@ -37,7 +37,8 @@ describe('GitHub Index Page', () => {
         it('should render page title and description', () => {
             render(<GitHubIndex apps={[]} />);
 
-            expect(screen.getByText('GitHub Apps')).toBeInTheDocument();
+            // "GitHub Apps" appears in both Head and h1, use heading level 1
+            expect(screen.getByRole('heading', { level: 1, name: /github apps/i })).toBeInTheDocument();
             expect(screen.getByText('Manage your GitHub App installations')).toBeInTheDocument();
         });
 
@@ -120,8 +121,11 @@ describe('GitHub Index Page', () => {
         it('should display organization names', () => {
             render(<GitHubIndex apps={mockApps} />);
 
+            // Check for organization (@myorg) and personal account text
             expect(screen.getByText(/@myorg/i)).toBeInTheDocument();
-            expect(screen.getByText(/personal/i)).toBeInTheDocument();
+            // "Personal" appears in both the app name and as account type text, use getAllByText
+            const personalTexts = screen.getAllByText(/personal/i);
+            expect(personalTexts.length).toBeGreaterThan(0);
         });
 
         it('should display last synced information', () => {
@@ -215,7 +219,8 @@ describe('GitHub Index Page', () => {
         it('should handle missing apps prop', () => {
             render(<GitHubIndex apps={undefined as any} />);
 
-            expect(screen.getByText('GitHub Apps')).toBeInTheDocument();
+            // "GitHub Apps" appears in both Head and h1, use heading level 1
+            expect(screen.getByRole('heading', { level: 1, name: /github apps/i })).toBeInTheDocument();
         });
 
         it('should handle apps without last_synced_at', () => {

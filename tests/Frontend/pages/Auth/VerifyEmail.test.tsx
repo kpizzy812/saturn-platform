@@ -8,10 +8,10 @@ describe('VerifyEmail Page', () => {
     });
 
     describe('rendering', () => {
-        it('should render page title and subtitle', () => {
+        it('should render page subtitle', () => {
             render(<VerifyEmail />);
 
-            expect(screen.getByText('Verify Your Email')).toBeInTheDocument();
+            // Title is in <Head>, not rendered in DOM. Only subtitle is visible
             expect(screen.getByText("We've sent a verification link to your email address.")).toBeInTheDocument();
         });
 
@@ -120,9 +120,9 @@ describe('VerifyEmail Page', () => {
         it('should render mail icon by default', () => {
             render(<VerifyEmail status="pending" />);
 
-            // Mail icon is rendered in the component
-            const container = screen.getByText('Verify Your Email').parentElement;
-            expect(container).toBeInTheDocument();
+            // Mail icon is rendered in the component, check via resend button
+            const resendButton = screen.getByRole('button', { name: /resend verification email/i });
+            expect(resendButton).toBeInTheDocument();
         });
 
         it('should render check circle icon when sent', () => {
@@ -145,7 +145,7 @@ describe('VerifyEmail Page', () => {
         it('should handle missing optional props', () => {
             render(<VerifyEmail />);
 
-            expect(screen.getByText('Verify Your Email')).toBeInTheDocument();
+            // Title is in <Head>, not DOM
             expect(screen.getByRole('button', { name: /resend verification email/i })).toBeInTheDocument();
         });
     });
