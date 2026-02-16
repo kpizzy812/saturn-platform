@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Badge, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown, Plus } from 'lucide-react';
+import { useGitBranches } from '@/hooks/useGitBranches';
+import { BranchSelector } from '@/components/ui/BranchSelector';
 import type { SelectedService } from '../../types';
 
 interface SourceInfo {
@@ -97,6 +99,9 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
     const [watchPaths, setWatchPaths] = useState('');
     const [gitBranch, setGitBranch] = useState('');
 
+    // Git branches for BranchSelector
+    const { branches: gitBranches, isLoading: branchesLoading, error: branchesError, fetchBranches } = useGitBranches();
+
     // Auto-deploy state
     const [autoDeployEnabled, setAutoDeployEnabled] = useState(false);
     const [showWebhookSecret, setShowWebhookSecret] = useState(false);
@@ -131,6 +136,9 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 setStartCommand(data.start_command || '');
                 setWatchPaths(data.watch_paths || '');
                 setGitBranch(data.git_branch || '');
+                if (data.git_repository) {
+                    fetchBranches(data.git_repository);
+                }
                 setAutoDeployEnabled(data.is_auto_deploy_enabled ?? false);
             } else {
                 addToast('error', 'Failed to load application settings');
@@ -375,13 +383,16 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     </div>
                     {source.type === 'git' && (
                         <div className="mt-2 border-t border-border pt-2">
-                            <SettingsInput
-                                label="Branch"
+                            <label className="mb-1 block text-xs font-medium text-foreground-muted">Branch</label>
+                            <BranchSelector
                                 value={gitBranch}
                                 onChange={setGitBranch}
+                                branches={gitBranches}
+                                isLoading={branchesLoading}
+                                error={branchesError}
                                 placeholder="main"
-                                hint="Branch to deploy from. Auto-deploy triggers only for this branch."
                             />
+                            <p className="mt-1 text-xs text-foreground-muted">Branch to deploy from. Auto-deploy triggers only for this branch.</p>
                         </div>
                     )}
                     {app.git_commit_sha && (
