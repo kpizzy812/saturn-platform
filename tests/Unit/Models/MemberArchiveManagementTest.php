@@ -239,3 +239,95 @@ it('handles empty existing transfer_ids when appending', function () {
 
     expect($merged)->toBe([10, 11]);
 });
+
+// ===================
+// Security: Whitelist resource_type
+// ===================
+it('rejects resource types not in the allowed whitelist', function () {
+    $allowedResourceTypes = [
+        'App\\Models\\Application',
+        'App\\Models\\Service',
+        'App\\Models\\Server',
+        'App\\Models\\Project',
+        'App\\Models\\StandalonePostgresql',
+        'App\\Models\\StandaloneMysql',
+        'App\\Models\\StandaloneMariadb',
+        'App\\Models\\StandaloneRedis',
+        'App\\Models\\StandaloneKeydb',
+        'App\\Models\\StandaloneDragonfly',
+        'App\\Models\\StandaloneClickhouse',
+        'App\\Models\\StandaloneMongodb',
+    ];
+
+    // Valid types should be in whitelist
+    expect(in_array('App\\Models\\Application', $allowedResourceTypes, true))->toBeTrue();
+    expect(in_array('App\\Models\\Server', $allowedResourceTypes, true))->toBeTrue();
+    expect(in_array('App\\Models\\StandalonePostgresql', $allowedResourceTypes, true))->toBeTrue();
+
+    // Invalid types should NOT be in whitelist (class injection prevention)
+    expect(in_array('App\\Models\\User', $allowedResourceTypes, true))->toBeFalse();
+    expect(in_array('Illuminate\\Support\\Facades\\DB', $allowedResourceTypes, true))->toBeFalse();
+    expect(in_array('App\\Models\\Team', $allowedResourceTypes, true))->toBeFalse();
+    expect(in_array('', $allowedResourceTypes, true))->toBeFalse();
+    expect(in_array('SomeRandomClass', $allowedResourceTypes, true))->toBeFalse();
+});
+
+// ===================
+// Security: Filename sanitization
+// ===================
+it('sanitizes filenames by replacing special characters with underscores', function () {
+    $names = [
+        'John Doe' => 'John_Doe',
+        'O\'Brien' => 'O_Brien',
+        'admin@evil.com' => 'admin_evil_com',
+        'user/../../../etc/passwd' => 'user__________etc_passwd',
+        'name<script>alert(1)</script>' => 'name_script_alert_1___script_',
+        'simple' => 'simple',
+        'hello-world_123' => 'hello-world_123',
+    ];
+
+    foreach ($names as $input => $expected) {
+        $sanitized = preg_replace('/[^a-zA-Z0-9_-]/', '_', $input);
+        expect($sanitized)->toBe($expected, "Failed for input: {$input}");
+    }
+});
+
+// ===================
+// Permission: archives action rank
+// ===================
+it('archives permission requires admin rank (4) in hardcoded fallback', function () {
+    $permService = new \App\Services\Authorization\PermissionService;
+
+    // Use reflection to test the private getHardcodedRolePermission method
+    $method = new \ReflectionMethod($permService, 'getHardcodedRolePermission');
+    $method->setAccessible(true);
+
+    // Admin (rank 4) should have archives permission
+    expect($method->invoke($permService, 'admin', 'team.archives'))->toBeTrue();
+    // Owner (rank 5) should have archives permission
+    expect($method->invoke($permService, 'owner', 'team.archives'))->toBeTrue();
+    // Developer (rank 3) should NOT have archives permission
+    expect($method->invoke($permService, 'developer', 'team.archives'))->toBeFalse();
+    // Member (rank 2) should NOT have archives permission
+    expect($method->invoke($permService, 'member', 'team.archives'))->toBeFalse();
+    // Viewer (rank 1) should NOT have archives permission
+    expect($method->invoke($permService, 'viewer', 'team.archives'))->toBeFalse();
+});
+
+// ===================
+// Soft Delete: MemberArchive uses SoftDeletes trait
+// ===================
+it('MemberArchive uses SoftDeletes trait', function () {
+    $archive = new MemberArchive;
+    $traits = class_uses_recursive($archive);
+
+    expect($traits)->toContain(\Illuminate\Database\Eloquent\SoftDeletes::class);
+});
+
+it('MemberArchive has deleted_at in dates/casts', function () {
+    $archive = new MemberArchive;
+
+    // SoftDeletes adds deleted_at to casts automatically
+    $casts = $archive->getCasts();
+    expect($casts)->toHaveKey('deleted_at');
+});

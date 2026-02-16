@@ -939,35 +939,149 @@ Route::post('/settings/team/members/{id}/kick', function (Request $request, stri
 })->name('settings.team.members.kick');
 
 // Member Archives list page
-Route::get('/settings/team/archives', function () {
+Route::get('/settings/team/archives', function (Request $request) {
     $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
 
-    $archives = \App\Models\MemberArchive::forTeam($team->id)
-        ->orderByDesc('created_at')
-        ->get()
-        ->map(fn ($a) => [
-            'id' => $a->id,
-            'uuid' => $a->uuid,
-            'member_name' => $a->member_name,
-            'member_email' => $a->member_email,
-            'member_role' => $a->member_role,
-            'member_joined_at' => $a->member_joined_at?->toISOString(),
-            'kicked_by_name' => $a->kicked_by_name,
-            'kick_reason' => $a->kick_reason,
-            'total_actions' => $a->contribution_summary['total_actions'] ?? 0,
-            'deploy_count' => $a->contribution_summary['deploy_count'] ?? 0,
-            'status' => $a->status,
-            'created_at' => $a->created_at->toISOString(),
-        ]);
+    $showDeleted = $request->boolean('show_deleted');
+
+    $query = \App\Models\MemberArchive::forTeam($team->id)->orderByDesc('created_at');
+    if ($showDeleted) {
+        $query->withTrashed();
+    }
+
+    $archives = $query->get()->map(fn ($a) => [
+        'id' => $a->id,
+        'uuid' => $a->uuid,
+        'member_name' => $a->member_name,
+        'member_email' => $a->member_email,
+        'member_role' => $a->member_role,
+        'member_joined_at' => $a->member_joined_at?->toISOString(),
+        'kicked_by_name' => $a->kicked_by_name,
+        'kick_reason' => $a->kick_reason,
+        'total_actions' => $a->contribution_summary['total_actions'] ?? 0,
+        'deploy_count' => $a->contribution_summary['deploy_count'] ?? 0,
+        'status' => $a->status,
+        'created_at' => $a->created_at->toISOString(),
+        'deleted_at' => $a->deleted_at?->toISOString(),
+    ]);
 
     return Inertia::render('Settings/Team/Archives', [
         'archives' => $archives,
+        'showDeleted' => $showDeleted,
     ]);
 })->name('settings.team.archives');
+
+// Bulk export archives
+Route::get('/settings/team/archives/export-all', function (Request $request) {
+    $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
+
+    $format = $request->query('format', 'json');
+    $ids = $request->query('ids', []);
+
+    $query = \App\Models\MemberArchive::forTeam($team->id)->orderByDesc('created_at');
+    if (! empty($ids)) {
+        $query->whereIn('id', $ids);
+    }
+    $archives = $query->get();
+
+    if ($format === 'csv') {
+        $filename = 'archives-bulk-'.now()->format('Y-m-d').'.csv';
+
+        return response()->stream(function () use ($archives) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Archive', 'Section', 'Key', 'Value']);
+
+            foreach ($archives as $archive) {
+                $label = preg_replace('/[^a-zA-Z0-9_-]/', '_', $archive->member_name);
+                $archiveData = [
+                    'member_name' => $archive->member_name,
+                    'member_email' => $archive->member_email,
+                    'member_role' => $archive->member_role,
+                    'member_joined_at' => $archive->member_joined_at?->toISOString(),
+                    'removed_at' => $archive->created_at->toISOString(),
+                    'kicked_by' => $archive->kicked_by_name,
+                    'kick_reason' => $archive->kick_reason,
+                    'notes' => $archive->notes,
+                ];
+                foreach ($archiveData as $key => $value) {
+                    fputcsv($handle, [$label, 'Archive', $key, $value ?? '']);
+                }
+
+                if (! empty($archive->contribution_summary)) {
+                    foreach ($archive->contribution_summary as $key => $value) {
+                        fputcsv($handle, [$label, 'Contributions', $key, is_array($value) ? json_encode($value) : ($value ?? '')]);
+                    }
+                }
+            }
+
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    // Default: JSON
+    $filename = 'archives-bulk-'.now()->format('Y-m-d').'.json';
+    $exportData = $archives->map(function ($archive) {
+        $transfers = $archive->getTransfers()->map(fn ($t) => [
+            'id' => $t->id,
+            'resource_type' => class_basename($t->transferable_type),
+            'resource_name' => $t->resource_snapshot['name'] ?? 'Unknown',
+            'to_user' => $t->toUser?->name ?? 'Unknown',
+            'status' => $t->status,
+            'completed_at' => $t->completed_at?->toISOString(),
+        ]);
+
+        return [
+            'archive' => [
+                'member_name' => $archive->member_name,
+                'member_email' => $archive->member_email,
+                'member_role' => $archive->member_role,
+                'member_joined_at' => $archive->member_joined_at?->toISOString(),
+                'removed_at' => $archive->created_at->toISOString(),
+                'kicked_by' => $archive->kicked_by_name,
+                'kick_reason' => $archive->kick_reason,
+                'notes' => $archive->notes,
+            ],
+            'contributions' => $archive->contribution_summary,
+            'access_snapshot' => $archive->access_snapshot,
+            'transfers' => $transfers->toArray(),
+        ];
+    });
+
+    return response()->json($exportData)->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+})->name('settings.team.archives.export-all');
+
+// Restore soft-deleted archive
+Route::post('/settings/team/archives/{id}/restore', function (string $id) {
+    $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
+
+    $archive = \App\Models\MemberArchive::withTrashed()->forTeam($team->id)->findOrFail($id);
+    $archive->restore();
+
+    return redirect('/settings/team/archives')->with('success', 'Archive restored successfully.');
+})->name('settings.team.archive.restore');
 
 // Member Archive detail page
 Route::get('/settings/team/archives/{id}', function (string $id) {
     $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
 
     $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
 
@@ -1026,10 +1140,9 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
 // Archive export (JSON/CSV download)
 Route::get('/settings/team/archives/{id}/export', function (string $id, Request $request) {
     $team = currentTeam();
-    $user = auth()->user();
-
-    if (! $user->isAdmin()) {
-        abort(403, 'Only admins and owners can export archives.');
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
     }
 
     $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
@@ -1061,7 +1174,7 @@ Route::get('/settings/team/archives/{id}/export', function (string $id, Request 
     ];
 
     if ($format === 'csv') {
-        $filename = 'archive-'.str_replace(' ', '_', $archive->member_name).'-'.now()->format('Y-m-d').'.csv';
+        $filename = 'archive-'.preg_replace('/[^a-zA-Z0-9_-]/', '_', $archive->member_name).'-'.now()->format('Y-m-d').'.csv';
 
         return response()->stream(function () use ($exportData) {
             $handle = fopen('php://output', 'w');
@@ -1109,7 +1222,7 @@ Route::get('/settings/team/archives/{id}/export', function (string $id, Request 
     }
 
     // Default: JSON
-    $filename = 'archive-'.str_replace(' ', '_', $archive->member_name).'-'.now()->format('Y-m-d').'.json';
+    $filename = 'archive-'.preg_replace('/[^a-zA-Z0-9_-]/', '_', $archive->member_name).'-'.now()->format('Y-m-d').'.json';
 
     return response()->json($exportData)->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
 })->name('settings.team.archive.export');
@@ -1117,10 +1230,9 @@ Route::get('/settings/team/archives/{id}/export', function (string $id, Request 
 // Archive notes update
 Route::patch('/settings/team/archives/{id}/notes', function (string $id, Request $request) {
     $team = currentTeam();
-    $user = auth()->user();
-
-    if (! $user->isAdmin()) {
-        abort(403, 'Only admins and owners can edit archive notes.');
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
     }
 
     $request->validate([
@@ -1143,10 +1255,9 @@ Route::patch('/settings/team/archives/{id}/notes', function (string $id, Request
 // Archive resource transfer (post-kick)
 Route::post('/settings/team/archives/{id}/transfer', function (string $id, Request $request) {
     $team = currentTeam();
-    $user = auth()->user();
-
-    if (! $user->isAdmin()) {
-        abort(403, 'Only admins and owners can transfer resources.');
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
     }
 
     $request->validate([
@@ -1157,10 +1268,31 @@ Route::post('/settings/team/archives/{id}/transfer', function (string $id, Reque
         'transfers.*.to_user_id' => 'required|integer',
     ]);
 
+    // Whitelist allowed resource types to prevent class injection
+    $allowedResourceTypes = [
+        'App\\Models\\Application',
+        'App\\Models\\Service',
+        'App\\Models\\Server',
+        'App\\Models\\Project',
+        'App\\Models\\StandalonePostgresql',
+        'App\\Models\\StandaloneMysql',
+        'App\\Models\\StandaloneMariadb',
+        'App\\Models\\StandaloneRedis',
+        'App\\Models\\StandaloneKeydb',
+        'App\\Models\\StandaloneDragonfly',
+        'App\\Models\\StandaloneClickhouse',
+        'App\\Models\\StandaloneMongodb',
+    ];
+
     $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
 
     $newTransferIds = [];
     foreach ($request->input('transfers') as $transfer) {
+        // Skip invalid resource types (security: prevent class injection)
+        if (! in_array($transfer['resource_type'], $allowedResourceTypes, true)) {
+            continue;
+        }
+
         // Verify the target user is in the team
         $targetMember = $team->members()->where('user_id', $transfer['to_user_id'])->first();
         if (! $targetMember) {
@@ -1206,27 +1338,20 @@ Route::post('/settings/team/archives/{id}/transfer', function (string $id, Reque
     ]);
 })->name('settings.team.archive.transfer');
 
-// Archive delete
+// Archive delete (soft delete — data preserved for audit)
 Route::delete('/settings/team/archives/{id}', function (string $id) {
     $team = currentTeam();
-    $user = auth()->user();
-
-    if (! $user->isAdmin()) {
-        abort(403, 'Only admins and owners can delete archives.');
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
     }
 
     $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
 
-    // Delete related transfers
-    $transferIds = $archive->transfer_ids ?? [];
-    if (! empty($transferIds)) {
-        \App\Models\TeamResourceTransfer::whereIn('id', $transferIds)->delete();
-    }
-
     \App\Models\AuditLog::log(
         'archive_deleted',
         $archive,
-        "Deleted archive for member {$archive->member_name} ({$archive->member_email})",
+        "Soft-deleted archive for member {$archive->member_name} ({$archive->member_email})",
         [
             'archive_id' => $archive->id,
             'member_name' => $archive->member_name,

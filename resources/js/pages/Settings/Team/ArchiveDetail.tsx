@@ -99,6 +99,14 @@ interface Props {
     memberResources: MemberResource[];
 }
 
+const getInitials = (name: string) =>
+    name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
 export default function ArchiveDetail({ archive, transfers, teamMembers, memberResources }: Props) {
     const contributions = archive.contribution_summary;
     const access = archive.access_snapshot;
@@ -113,12 +121,11 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
     const [transferAssignments, setTransferAssignments] = useState<Record<string, number>>({});
     const [isTransferring, setIsTransferring] = useState(false);
 
-    // Delete state
-    const [_isDeleting, _setIsDeleting] = useState(false);
+    const [_isDeleting, setIsDeleting] = useState(false);
 
     const { open: openDeleteConfirm, ConfirmationDialog: DeleteDialog } = useConfirmation({
         title: 'Delete Archive',
-        description: `Are you sure you want to permanently delete the archive for ${archive.member_name}? This will also remove all related transfer records. This action cannot be undone.`,
+        description: `Are you sure you want to delete the archive for ${archive.member_name}? The archive can be restored later from the archives list.`,
         confirmText: 'Delete Archive',
         cancelText: 'Cancel',
         variant: 'danger',
@@ -180,26 +187,39 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
         );
     };
 
-    const handleTransfer = async () => {
-        const selectedTransfers = Object.entries(transferAssignments)
+    const getSelectedTransfers = () =>
+        Object.entries(transferAssignments)
             .filter(([, userId]) => userId > 0)
             .map(([resourceKey, toUserId]) => {
                 const resource = memberResources.find((r) => `${r.full_type}:${r.id}` === resourceKey);
                 if (!resource) return null;
+                const targetMember = teamMembers.find((m) => m.id === toUserId);
                 return {
                     resource_type: resource.full_type,
                     resource_id: resource.id,
                     resource_name: resource.name,
+                    resource_type_short: resource.type,
                     to_user_id: toUserId,
+                    to_user_name: targetMember?.name ?? 'Unknown',
                 };
             })
-            .filter(Boolean);
+            .filter(Boolean) as Array<{
+            resource_type: string;
+            resource_id: number;
+            resource_name: string;
+            resource_type_short: string;
+            to_user_id: number;
+            to_user_name: string;
+        }>;
 
-        if (selectedTransfers.length === 0) {
-            addToast('warning', 'No resources selected for transfer');
-            return;
-        }
-
+    const executeTransfer = async (
+        selectedTransfers: Array<{
+            resource_type: string;
+            resource_id: number;
+            resource_name: string;
+            to_user_id: number;
+        }>,
+    ) => {
         setIsTransferring(true);
         try {
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
@@ -227,6 +247,38 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
         } finally {
             setIsTransferring(false);
         }
+    };
+
+    const { open: openTransferConfirm, ConfirmationDialog: TransferDialog } = useConfirmation({
+        title: 'Confirm Resource Transfer',
+        description: (() => {
+            const selected = getSelectedTransfers();
+            if (selected.length === 0) return 'No resources selected for transfer.';
+            const lines = selected.map(
+                (t) => `${t.resource_type_short} "${t.resource_name}" → ${t.to_user_name}`,
+            );
+            return `Transfer ${selected.length} resource(s)?\n\n${lines.join('\n')}`;
+        })(),
+        confirmText: 'Transfer',
+        cancelText: 'Cancel',
+        variant: 'default',
+        onConfirm: async () => {
+            const selected = getSelectedTransfers();
+            if (selected.length === 0) {
+                addToast('warning', 'No resources selected for transfer');
+                return;
+            }
+            await executeTransfer(selected);
+        },
+    });
+
+    const handleTransfer = () => {
+        const selected = getSelectedTransfers();
+        if (selected.length === 0) {
+            addToast('warning', 'No resources selected for transfer');
+            return;
+        }
+        openTransferConfirm();
     };
 
     const hasTransferSelections = Object.values(transferAssignments).some((v) => v > 0);
@@ -272,8 +324,15 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
                 {/* Member Profile (Frozen) */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Member Profile</CardTitle>
-                        <CardDescription>Information captured at time of removal</CardDescription>
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-base font-semibold text-white">
+                                {getInitials(archive.member_name)}
+                            </div>
+                            <div>
+                                <CardTitle>Member Profile</CardTitle>
+                                <CardDescription>Information captured at time of removal</CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 sm:grid-cols-2">
@@ -331,13 +390,16 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
                 </Card>
 
                 {/* Contribution Summary */}
-                {contributions && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Contributions</CardTitle>
-                            <CardDescription>Summary of all team activity</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Contributions</CardTitle>
+                        <CardDescription>Summary of all team activity</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {!contributions ? (
+                            <p className="text-sm italic text-foreground-muted">No activity recorded</p>
+                        ) : (
+                            <>
                             {/* Stat cards */}
                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 <StatCard
@@ -423,9 +485,10 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
                                     </div>
                                 </div>
                             )}
-                        </CardContent>
-                    </Card>
-                )}
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Notes */}
                 <Card>
@@ -485,13 +548,15 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
                 </Card>
 
                 {/* Existing Transfers */}
-                {transfers.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Resource Transfers</CardTitle>
-                            <CardDescription>Resources attributed to other team members</CardDescription>
-                        </CardHeader>
-                        <CardContent>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Resource Transfers</CardTitle>
+                        <CardDescription>Resources attributed to other team members</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {transfers.length === 0 ? (
+                            <p className="text-sm italic text-foreground-muted">No resource transfers</p>
+                        ) : (
                             <div className="space-y-2">
                                 {transfers.map((t) => (
                                     <div
@@ -518,9 +583,9 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
                                     </div>
                                 ))}
                             </div>
-                        </CardContent>
-                    </Card>
-                )}
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Post-kick Resource Transfer */}
                 {memberResources.length > 0 && teamMembers.length > 0 && (
@@ -623,6 +688,7 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
             </div>
 
             <DeleteDialog />
+            <TransferDialog />
         </SettingsLayout>
     );
 }

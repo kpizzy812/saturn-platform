@@ -355,6 +355,14 @@ class PermissionsSeeder extends Seeder
                 'action' => 'activity',
                 'category' => 'team',
             ],
+            [
+                'key' => 'team.archives',
+                'name' => 'Manage Archives',
+                'description' => 'View and manage member archives including exports and transfers',
+                'resource' => 'team',
+                'action' => 'archives',
+                'category' => 'team',
+            ],
 
             // ===================
             // SETTINGS

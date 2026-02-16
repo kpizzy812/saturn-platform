@@ -215,6 +215,7 @@ class PermissionService
             'security' => 4,       // Admin and above
             'tokens' => 4,         // Admin and above
             'billing' => 5,        // Owner only
+            'archives' => 4,       // Admin and above
             'env_vars' => 3,       // Developer and above
             'env_vars_sensitive' => 4, // Admin and above
         ];
