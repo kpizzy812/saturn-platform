@@ -31,7 +31,8 @@ class AddCspHeadersTest extends TestCase
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString("default-src 'self'", $csp);
         $this->assertStringContainsString('nonce-', $csp);
-        $this->assertStringNotContainsString('unsafe-inline', $csp);
+        $this->assertStringContainsString("style-src 'self' 'unsafe-inline'", $csp);
+        $this->assertStringContainsString("'strict-dynamic'", $csp);
         $this->assertStringNotContainsString('unsafe-eval', $csp);
     }
 

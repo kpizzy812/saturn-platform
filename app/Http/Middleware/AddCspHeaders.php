@@ -35,8 +35,8 @@ class AddCspHeaders
     {
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'nonce-{$nonce}'",
-            "style-src 'self' 'nonce-{$nonce}' https://fonts.bunny.net",
+            "script-src 'self' 'nonce-{$nonce}' 'strict-dynamic'",
+            "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
             "img-src 'self' data: https:",
             "connect-src 'self' wss: ws:",
             "font-src 'self' data: https://fonts.bunny.net",

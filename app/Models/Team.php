@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use OpenApi\Attributes as OA;
@@ -293,7 +292,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
             return [];
         }
 
-        return $membership->pivot?->getAttribute('allowed_projects');
+        return $membership->pivot->getAttribute('allowed_projects');
     }
 
     /**
@@ -324,10 +323,14 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return $this->hasOne(Subscription::class);
     }
 
-    /** @return HasManyThrough<Application, Project, $this> */
-    public function applications(): HasManyThrough
+    /**
+     * Get all applications belonging to this team (through projects and environments).
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<Application>
+     */
+    public function applications(): \Illuminate\Database\Eloquent\Builder
     {
-        return $this->hasManyThrough(Application::class, Project::class);
+        return Application::whereHas('environment.project', fn ($q) => $q->where('team_id', $this->id));
     }
 
     /** @return HasMany<TeamInvitation, $this> */
@@ -429,6 +432,26 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
     public function webhookNotificationSettings(): HasOne
     {
         return $this->hasOne(WebhookNotificationSettings::class);
+    }
+
+    public function getEmailNotificationSettings(): ?EmailNotificationSettings
+    {
+        return $this->emailNotificationSettings;
+    }
+
+    public function getDiscordNotificationSettings(): ?DiscordNotificationSettings
+    {
+        return $this->discordNotificationSettings;
+    }
+
+    public function getSlackNotificationSettings(): ?SlackNotificationSettings
+    {
+        return $this->slackNotificationSettings;
+    }
+
+    public function getPushoverNotificationSettings(): ?PushoverNotificationSettings
+    {
+        return $this->pushoverNotificationSettings;
     }
 
     /** @return HasMany<UserNotification, $this> */

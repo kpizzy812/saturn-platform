@@ -22,7 +22,6 @@ use App\Models\UserNotification;
 use App\Models\WebhookNotificationSettings;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // Fillable Attributes Security Tests
@@ -36,8 +35,8 @@ test('fillable attributes are defined and not empty', function () {
         ->and($fillable)->toContain('description')
         ->and($fillable)->toContain('show_boarding')
         ->and($fillable)->toContain('custom_server_limit')
-        ->and($fillable)->toContain('logo_path')
-        ->and($fillable)->toContain('workspace_timezone')
+        ->and($fillable)->toContain('logo')
+        ->and($fillable)->toContain('timezone')
         ->and($fillable)->toContain('workspace_locale')
         ->and($fillable)->toContain('workspace_date_format')
         ->and($fillable)->toContain('default_project_id');
@@ -89,13 +88,14 @@ test('subscription relationship returns HasOne', function () {
         ->and($relation->getRelated())->toBeInstanceOf(Subscription::class);
 });
 
-test('applications relationship returns HasManyThrough', function () {
+test('applications method returns Builder for Application', function () {
     $team = new Team;
+    $team->id = 1;
 
-    $relation = $team->applications();
+    $builder = $team->applications();
 
-    expect($relation)->toBeInstanceOf(HasManyThrough::class)
-        ->and($relation->getRelated())->toBeInstanceOf(Application::class);
+    expect($builder)->toBeInstanceOf(\Illuminate\Database\Eloquent\Builder::class)
+        ->and($builder->getModel())->toBeInstanceOf(Application::class);
 });
 
 test('invitations relationship returns HasMany', function () {
