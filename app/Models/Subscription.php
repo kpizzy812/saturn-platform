@@ -7,9 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * @property-read Team|null $team
  */
-/**
- * @property-read Team|null $team
- */
 class Subscription extends Model
 {
     /**

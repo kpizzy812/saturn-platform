@@ -10,9 +10,6 @@ use Spatie\Activitylog\Traits\LogsActivity;
 /**
  * @property-read Team|null $team
  */
-/**
- * @property-read Team|null $team
- */
 class TeamInvitation extends Model
 {
     use Auditable, LogsActivity;

@@ -13,10 +13,6 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property-read Application|null $application
  * @property-read Service|null $service
  */
-/**
- * @property-read Application|null $application
- * @property-read Service|null $service
- */
 class ScheduledTask extends BaseModel
 {
     use Auditable, HasSafeStringAttribute, LogsActivity;

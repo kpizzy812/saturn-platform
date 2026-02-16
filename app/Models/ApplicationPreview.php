@@ -10,9 +10,6 @@ use Visus\Cuid2\Cuid2;
 /**
  * @property-read Application|null $application
  */
-/**
- * @property-read Application|null $application
- */
 class ApplicationPreview extends BaseModel
 {
     use HasFactory, SoftDeletes;
