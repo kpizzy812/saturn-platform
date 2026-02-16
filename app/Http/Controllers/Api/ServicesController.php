@@ -103,10 +103,10 @@ class ServicesController extends Controller
                     type: 'object',
                     required: ['server_uuid', 'project_uuid', 'environment_name', 'environment_uuid'],
                     properties: [
-                        'type' => [
-                            'description' => 'The one-click service type',
-                            'type' => 'string',
-                            'enum' => [
+                        new OA\Property(
+                            property: 'type',
+                            type: 'string',
+                            enum: [
                                 'activepieces',
                                 'appsmith',
                                 'appwrite',
@@ -194,16 +194,29 @@ class ServicesController extends Controller
                                 'wordpress-with-mysql',
                                 'wordpress-without-database',
                             ],
-                        ],
-                        'name' => ['type' => 'string', 'maxLength' => 255, 'description' => 'Name of the service.'],
-                        'description' => ['type' => 'string', 'nullable' => true, 'description' => 'Description of the service.'],
-                        'project_uuid' => ['type' => 'string', 'description' => 'Project UUID.'],
-                        'environment_name' => ['type' => 'string', 'description' => 'Environment name. You need to provide at least one of environment_name or environment_uuid.'],
-                        'environment_uuid' => ['type' => 'string', 'description' => 'Environment UUID. You need to provide at least one of environment_name or environment_uuid.'],
-                        'server_uuid' => ['type' => 'string', 'description' => 'Server UUID.'],
-                        'destination_uuid' => ['type' => 'string', 'description' => 'Destination UUID. Required if server has multiple destinations.'],
-                        'instant_deploy' => ['type' => 'boolean', 'default' => false, 'description' => 'Start the service immediately after creation.'],
-                        'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
+                            description: 'The one-click service type',
+                        ),
+                        new OA\Property(property: 'name', type: 'string', description: 'Name of the service.'),
+                        new OA\Property(property: 'description', type: 'string', nullable: true, description: 'Description of the service.'),
+                        new OA\Property(property: 'project_uuid', type: 'string', description: 'Project UUID.'),
+                        new OA\Property(
+                            property: 'environment_name',
+                            type: 'string',
+                            description: 'Environment name. You need to provide at least one of environment_name or environment_uuid.',
+                        ),
+                        new OA\Property(
+                            property: 'environment_uuid',
+                            type: 'string',
+                            description: 'Environment UUID. You need to provide at least one of environment_name or environment_uuid.',
+                        ),
+                        new OA\Property(property: 'server_uuid', type: 'string', description: 'Server UUID.'),
+                        new OA\Property(
+                            property: 'destination_uuid',
+                            type: 'string',
+                            description: 'Destination UUID. Required if server has multiple destinations.',
+                        ),
+                        new OA\Property(property: 'instant_deploy', type: 'boolean', description: 'Start the service immediately after creation.'),
+                        new OA\Property(property: 'docker_compose_raw', type: 'string', description: 'The Docker Compose raw content.'),
                     ],
                 ),
             ),
@@ -218,8 +231,8 @@ class ServicesController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'description' => 'Service UUID.'],
-                                'domains' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Service domains.'],
+                                new OA\Property(property: 'uuid', type: 'string', description: 'Service UUID.'),
+                                new OA\Property(property: 'domains', type: 'array', items: new OA\Items(type: 'string'), description: 'Service domains.'),
                             ]
                         )
                     ),
@@ -497,7 +510,7 @@ class ServicesController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Service deletion request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Service deletion request queued.'),
                             ],
                         )
                     ),
@@ -576,23 +589,35 @@ class ServicesController extends Controller
                     schema: new OA\Schema(
                         type: 'object',
                         properties: [
-                            'name' => ['type' => 'string', 'description' => 'The service name.'],
-                            'description' => ['type' => 'string', 'description' => 'The service description.'],
-                            'project_uuid' => ['type' => 'string', 'description' => 'The project UUID.'],
-                            'environment_name' => ['type' => 'string', 'description' => 'The environment name.'],
-                            'environment_uuid' => ['type' => 'string', 'description' => 'The environment UUID.'],
-                            'server_uuid' => ['type' => 'string', 'description' => 'The server UUID.'],
-                            'destination_uuid' => ['type' => 'string', 'description' => 'The destination UUID.'],
-                            'instant_deploy' => ['type' => 'boolean', 'description' => 'The flag to indicate if the service should be deployed instantly.'],
-                            'connect_to_docker_network' => ['type' => 'boolean', 'default' => false, 'description' => 'Connect the service to the predefined docker network.'],
-                            'docker_compose_raw' => ['type' => 'string', 'description' => 'The Docker Compose raw content.'],
-                            'limits_memory' => ['type' => 'string', 'description' => 'Memory limit for all containers (e.g., "512m", "1g", "0" for no limit).'],
-                            'limits_memory_swap' => ['type' => 'string', 'description' => 'Memory swap limit (e.g., "1g", "0" for no limit).'],
-                            'limits_memory_swappiness' => ['type' => 'integer', 'description' => 'Memory swappiness (0-100).'],
-                            'limits_memory_reservation' => ['type' => 'string', 'description' => 'Memory reservation (soft limit).'],
-                            'limits_cpus' => ['type' => 'string', 'description' => 'CPU limit (e.g., "0.5", "2", "0" for no limit).'],
-                            'limits_cpuset' => ['type' => 'string', 'nullable' => true, 'description' => 'CPU set (e.g., "0,1" or "0-3").'],
-                            'limits_cpu_shares' => ['type' => 'integer', 'description' => 'CPU shares (relative weight, default 1024).'],
+                            new OA\Property(property: 'name', type: 'string', description: 'The service name.'),
+                            new OA\Property(property: 'description', type: 'string', description: 'The service description.'),
+                            new OA\Property(property: 'project_uuid', type: 'string', description: 'The project UUID.'),
+                            new OA\Property(property: 'environment_name', type: 'string', description: 'The environment name.'),
+                            new OA\Property(property: 'environment_uuid', type: 'string', description: 'The environment UUID.'),
+                            new OA\Property(property: 'server_uuid', type: 'string', description: 'The server UUID.'),
+                            new OA\Property(property: 'destination_uuid', type: 'string', description: 'The destination UUID.'),
+                            new OA\Property(
+                                property: 'instant_deploy',
+                                type: 'boolean',
+                                description: 'The flag to indicate if the service should be deployed instantly.',
+                            ),
+                            new OA\Property(
+                                property: 'connect_to_docker_network',
+                                type: 'boolean',
+                                description: 'Connect the service to the predefined docker network.',
+                            ),
+                            new OA\Property(property: 'docker_compose_raw', type: 'string', description: 'The Docker Compose raw content.'),
+                            new OA\Property(
+                                property: 'limits_memory',
+                                type: 'string',
+                                description: 'Memory limit for all containers (e.g., "512m", "1g", "0" for no limit).',
+                            ),
+                            new OA\Property(property: 'limits_memory_swap', type: 'string', description: 'Memory swap limit (e.g., "1g", "0" for no limit).'),
+                            new OA\Property(property: 'limits_memory_swappiness', type: 'integer', description: 'Memory swappiness (0-100).'),
+                            new OA\Property(property: 'limits_memory_reservation', type: 'string', description: 'Memory reservation (soft limit).'),
+                            new OA\Property(property: 'limits_cpus', type: 'string', description: 'CPU limit (e.g., "0.5", "2", "0" for no limit).'),
+                            new OA\Property(property: 'limits_cpuset', type: 'string', nullable: true, description: 'CPU set (e.g., "0,1" or "0-3").'),
+                            new OA\Property(property: 'limits_cpu_shares', type: 'integer', description: 'CPU shares (relative weight, default 1024).'),
                         ],
                     )
                 ),
@@ -608,8 +633,8 @@ class ServicesController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'description' => 'Service UUID.'],
-                                'domains' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Service domains.'],
+                                new OA\Property(property: 'uuid', type: 'string', description: 'Service UUID.'),
+                                new OA\Property(property: 'domains', type: 'array', items: new OA\Items(type: 'string'), description: 'Service domains.'),
                             ]
                         )
                     ),

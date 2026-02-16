@@ -11,6 +11,9 @@ use Spatie\Activitylog\Traits\LogsActivity;
 /**
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
  */
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
+ */
 class GithubApp extends BaseModel
 {
     use Auditable, HasFactory, LogsActivity;

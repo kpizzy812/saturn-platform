@@ -79,13 +79,13 @@ class CloudProviderTokensController extends Controller
                             items: new OA\Items(
                                 type: 'object',
                                 properties: [
-                                    'uuid' => ['type' => 'string'],
-                                    'name' => ['type' => 'string'],
-                                    'provider' => ['type' => 'string', 'enum' => ['hetzner', 'digitalocean']],
-                                    'team_id' => ['type' => 'integer'],
-                                    'servers_count' => ['type' => 'integer'],
-                                    'created_at' => ['type' => 'string'],
-                                    'updated_at' => ['type' => 'string'],
+                                    new OA\Property(property: 'uuid', type: 'string'),
+                                    new OA\Property(property: 'name', type: 'string'),
+                                    new OA\Property(property: 'provider', type: 'string', enum: ['hetzner', 'digitalocean']),
+                                    new OA\Property(property: 'team_id', type: 'integer'),
+                                    new OA\Property(property: 'servers_count', type: 'integer'),
+                                    new OA\Property(property: 'created_at', type: 'string'),
+                                    new OA\Property(property: 'updated_at', type: 'string'),
                                 ]
                             )
                         )
@@ -140,13 +140,13 @@ class CloudProviderTokensController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string'],
-                                'name' => ['type' => 'string'],
-                                'provider' => ['type' => 'string'],
-                                'team_id' => ['type' => 'integer'],
-                                'servers_count' => ['type' => 'integer'],
-                                'created_at' => ['type' => 'string'],
-                                'updated_at' => ['type' => 'string'],
+                                new OA\Property(property: 'uuid', type: 'string'),
+                                new OA\Property(property: 'name', type: 'string'),
+                                new OA\Property(property: 'provider', type: 'string'),
+                                new OA\Property(property: 'team_id', type: 'integer'),
+                                new OA\Property(property: 'servers_count', type: 'integer'),
+                                new OA\Property(property: 'created_at', type: 'string'),
+                                new OA\Property(property: 'updated_at', type: 'string'),
                             ]
                         )
                     ),
@@ -198,9 +198,20 @@ class CloudProviderTokensController extends Controller
                     type: 'object',
                     required: ['provider', 'token', 'name'],
                     properties: [
-                        'provider' => ['type' => 'string', 'enum' => ['hetzner', 'digitalocean'], 'example' => 'hetzner', 'description' => 'The cloud provider.'],
-                        'token' => ['type' => 'string', 'example' => 'your-api-token-here', 'description' => 'The API token for the cloud provider.'],
-                        'name' => ['type' => 'string', 'example' => 'My Hetzner Token', 'description' => 'A friendly name for the token.'],
+                        new OA\Property(
+                            property: 'provider',
+                            type: 'string',
+                            enum: ['hetzner', 'digitalocean'],
+                            description: 'The cloud provider.',
+                            example: 'hetzner',
+                        ),
+                        new OA\Property(
+                            property: 'token',
+                            type: 'string',
+                            description: 'The API token for the cloud provider.',
+                            example: 'your-api-token-here',
+                        ),
+                        new OA\Property(property: 'name', type: 'string', description: 'A friendly name for the token.', example: 'My Hetzner Token'),
                     ],
                 ),
             ),
@@ -215,7 +226,7 @@ class CloudProviderTokensController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'example' => 'og888os', 'description' => 'The UUID of the token.'],
+                                new OA\Property(property: 'uuid', type: 'string', description: 'The UUID of the token.', example: 'og888os'),
                             ]
                         )
                     ),
@@ -311,7 +322,7 @@ class CloudProviderTokensController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'name' => ['type' => 'string', 'description' => 'The friendly name for the token.'],
+                        new OA\Property(property: 'name', type: 'string', description: 'The friendly name for the token.'),
                     ],
                 ),
             ),
@@ -326,7 +337,7 @@ class CloudProviderTokensController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string'],
+                                new OA\Property(property: 'uuid', type: 'string'),
                             ]
                         )
                     ),
@@ -425,7 +436,7 @@ class CloudProviderTokensController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Cloud provider token deleted.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Cloud provider token deleted.'),
                             ]
                         )
                     ),
@@ -492,8 +503,8 @@ class CloudProviderTokensController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'valid' => ['type' => 'boolean', 'example' => true],
-                                'message' => ['type' => 'string', 'example' => 'Token is valid.'],
+                                new OA\Property(property: 'valid', type: 'boolean', example: true),
+                                new OA\Property(property: 'message', type: 'string', example: 'Token is valid.'),
                             ]
                         )
                     ),

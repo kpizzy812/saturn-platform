@@ -10,6 +10,9 @@ use Symfony\Component\Yaml\Yaml;
 /**
  * @property-read \Illuminate\Database\Eloquent\Model|null $service
  */
+/**
+ * @property-read \Illuminate\Database\Eloquent\Model|null $service
+ */
 class LocalFileVolume extends BaseModel
 {
     protected $casts = [

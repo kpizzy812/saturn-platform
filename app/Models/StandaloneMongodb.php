@@ -8,12 +8,15 @@ use App\Traits\HasSafeStringAttribute;
 use App\Traits\ValidatesPublicPort;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property-read string|null $internal_db_url
+ * @property-read StandaloneDocker|SwarmDocker|null $destination
+ * @property-read Environment|null $environment
  */
 class StandaloneMongodb extends BaseModel
 {
@@ -342,7 +345,8 @@ class StandaloneMongodb extends BaseModel
         );
     }
 
-    public function environment()
+    /** @return BelongsTo<Environment, $this> */
+    public function environment(): BelongsTo
     {
         return $this->belongsTo(Environment::class);
     }

@@ -6421,7 +6421,7 @@ paths:
               properties:
                 data:
                   type: array
-                  items: { properties: { key: { type: string, description: 'The key of the environment variable.' }, value: { type: string, description: 'The value of the environment variable.' }, is_preview: { type: boolean, description: 'The flag to indicate if the environment variable is used in preview deployments.' }, is_literal: { type: boolean, description: 'The flag to indicate if the environment variable is a literal, nothing espaced.' }, is_multiline: { type: boolean, description: 'The flag to indicate if the environment variable is multiline.' }, is_shown_once: { type: boolean, description: "The flag to indicate if the environment variable's value is shown on the UI." } }, type: object }
+                  items: { properties: { key: { description: 'The key of the environment variable.', type: string }, value: { description: 'The value of the environment variable.', type: string }, is_preview: { description: 'The flag to indicate if the environment variable is used in preview deployments.', type: boolean }, is_literal: { description: 'The flag to indicate if the environment variable is a literal, nothing espaced.', type: boolean }, is_multiline: { description: 'The flag to indicate if the environment variable is multiline.', type: boolean }, is_shown_once: { description: "The flag to indicate if the environment variable's value is shown on the UI.", type: boolean } }, type: object }
               type: object
       responses:
         '201':

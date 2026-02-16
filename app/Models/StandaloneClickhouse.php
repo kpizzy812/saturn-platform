@@ -17,6 +17,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property-read StandaloneDocker|SwarmDocker|null $destination
  * @property-read Environment|null $environment
  */
+/**
+ * @property-read StandaloneDocker|SwarmDocker|null $destination
+ * @property-read Environment|null $environment
+ */
 class StandaloneClickhouse extends BaseModel
 {
     use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;

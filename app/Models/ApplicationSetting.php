@@ -11,6 +11,9 @@ use Spatie\Activitylog\Traits\LogsActivity;
 /**
  * @property-read Application|null $application
  */
+/**
+ * @property-read Application|null $application
+ */
 class ApplicationSetting extends Model
 {
     use Auditable, LogsActivity;

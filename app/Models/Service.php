@@ -9,6 +9,7 @@ use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -1430,7 +1431,8 @@ class Service extends BaseModel
         return $this->morphTo();
     }
 
-    public function environment()
+    /** @return BelongsTo<Environment, $this> */
+    public function environment(): BelongsTo
     {
         return $this->belongsTo(Environment::class);
     }

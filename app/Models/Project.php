@@ -6,6 +6,7 @@ use App\Traits\Auditable;
 use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -211,7 +212,8 @@ class Project extends BaseModel
         return $this->hasOne(ProjectNotificationOverride::class);
     }
 
-    public function team()
+    /** @return BelongsTo<Team, $this> */
+    public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
     }

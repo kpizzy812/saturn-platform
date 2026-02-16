@@ -113,19 +113,35 @@ class DatabaseBackupsController extends Controller
                     type: 'object',
                     required: ['frequency'],
                     properties: [
-                        'frequency' => ['type' => 'string', 'description' => 'Backup frequency (cron expression or: every_minute, hourly, daily, weekly, monthly, yearly)'],
-                        'enabled' => ['type' => 'boolean', 'description' => 'Whether the backup is enabled', 'default' => true],
-                        'save_s3' => ['type' => 'boolean', 'description' => 'Whether to save backups to S3', 'default' => false],
-                        's3_storage_uuid' => ['type' => 'string', 'description' => 'S3 storage UUID (required if save_s3 is true)'],
-                        'databases_to_backup' => ['type' => 'string', 'description' => 'Comma separated list of databases to backup'],
-                        'dump_all' => ['type' => 'boolean', 'description' => 'Whether to dump all databases', 'default' => false],
-                        'backup_now' => ['type' => 'boolean', 'description' => 'Whether to trigger backup immediately after creation'],
-                        'database_backup_retention_amount_locally' => ['type' => 'integer', 'description' => 'Number of backups to retain locally'],
-                        'database_backup_retention_days_locally' => ['type' => 'integer', 'description' => 'Number of days to retain backups locally'],
-                        'database_backup_retention_max_storage_locally' => ['type' => 'integer', 'description' => 'Max storage (MB) for local backups'],
-                        'database_backup_retention_amount_s3' => ['type' => 'integer', 'description' => 'Number of backups to retain in S3'],
-                        'database_backup_retention_days_s3' => ['type' => 'integer', 'description' => 'Number of days to retain backups in S3'],
-                        'database_backup_retention_max_storage_s3' => ['type' => 'integer', 'description' => 'Max storage (MB) for S3 backups'],
+                        new OA\Property(
+                            property: 'frequency',
+                            type: 'string',
+                            description: 'Backup frequency (cron expression or: every_minute, hourly, daily, weekly, monthly, yearly)',
+                        ),
+                        new OA\Property(property: 'enabled', type: 'boolean', description: 'Whether the backup is enabled'),
+                        new OA\Property(property: 'save_s3', type: 'boolean', description: 'Whether to save backups to S3'),
+                        new OA\Property(property: 's3_storage_uuid', type: 'string', description: 'S3 storage UUID (required if save_s3 is true)'),
+                        new OA\Property(property: 'databases_to_backup', type: 'string', description: 'Comma separated list of databases to backup'),
+                        new OA\Property(property: 'dump_all', type: 'boolean', description: 'Whether to dump all databases'),
+                        new OA\Property(property: 'backup_now', type: 'boolean', description: 'Whether to trigger backup immediately after creation'),
+                        new OA\Property(
+                            property: 'database_backup_retention_amount_locally',
+                            type: 'integer',
+                            description: 'Number of backups to retain locally',
+                        ),
+                        new OA\Property(
+                            property: 'database_backup_retention_days_locally',
+                            type: 'integer',
+                            description: 'Number of days to retain backups locally',
+                        ),
+                        new OA\Property(
+                            property: 'database_backup_retention_max_storage_locally',
+                            type: 'integer',
+                            description: 'Max storage (MB) for local backups',
+                        ),
+                        new OA\Property(property: 'database_backup_retention_amount_s3', type: 'integer', description: 'Number of backups to retain in S3'),
+                        new OA\Property(property: 'database_backup_retention_days_s3', type: 'integer', description: 'Number of days to retain backups in S3'),
+                        new OA\Property(property: 'database_backup_retention_max_storage_s3', type: 'integer', description: 'Max storage (MB) for S3 backups'),
                     ],
                 ),
             )
@@ -137,8 +153,8 @@ class DatabaseBackupsController extends Controller
                 content: new OA\JsonContent(
                     type: 'object',
                     properties: [
-                        'uuid' => ['type' => 'string', 'format' => 'uuid', 'example' => '550e8400-e29b-41d4-a716-446655440000'],
-                        'message' => ['type' => 'string', 'example' => 'Backup configuration created successfully.'],
+                        new OA\Property(property: 'uuid', type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000'),
+                        new OA\Property(property: 'message', type: 'string', example: 'Backup configuration created successfully.'),
                     ]
                 )
             ),
@@ -340,19 +356,31 @@ class DatabaseBackupsController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'save_s3' => ['type' => 'boolean', 'description' => 'Whether data is saved in s3 or not'],
-                        's3_storage_uuid' => ['type' => 'string', 'description' => 'S3 storage UUID'],
-                        'backup_now' => ['type' => 'boolean', 'description' => 'Whether to take a backup now or not'],
-                        'enabled' => ['type' => 'boolean', 'description' => 'Whether the backup is enabled or not'],
-                        'databases_to_backup' => ['type' => 'string', 'description' => 'Comma separated list of databases to backup'],
-                        'dump_all' => ['type' => 'boolean', 'description' => 'Whether all databases are dumped or not'],
-                        'frequency' => ['type' => 'string', 'description' => 'Frequency of the backup'],
-                        'database_backup_retention_amount_locally' => ['type' => 'integer', 'description' => 'Retention amount of the backup locally'],
-                        'database_backup_retention_days_locally' => ['type' => 'integer', 'description' => 'Retention days of the backup locally'],
-                        'database_backup_retention_max_storage_locally' => ['type' => 'integer', 'description' => 'Max storage of the backup locally'],
-                        'database_backup_retention_amount_s3' => ['type' => 'integer', 'description' => 'Retention amount of the backup in s3'],
-                        'database_backup_retention_days_s3' => ['type' => 'integer', 'description' => 'Retention days of the backup in s3'],
-                        'database_backup_retention_max_storage_s3' => ['type' => 'integer', 'description' => 'Max storage of the backup in S3'],
+                        new OA\Property(property: 'save_s3', type: 'boolean', description: 'Whether data is saved in s3 or not'),
+                        new OA\Property(property: 's3_storage_uuid', type: 'string', description: 'S3 storage UUID'),
+                        new OA\Property(property: 'backup_now', type: 'boolean', description: 'Whether to take a backup now or not'),
+                        new OA\Property(property: 'enabled', type: 'boolean', description: 'Whether the backup is enabled or not'),
+                        new OA\Property(property: 'databases_to_backup', type: 'string', description: 'Comma separated list of databases to backup'),
+                        new OA\Property(property: 'dump_all', type: 'boolean', description: 'Whether all databases are dumped or not'),
+                        new OA\Property(property: 'frequency', type: 'string', description: 'Frequency of the backup'),
+                        new OA\Property(
+                            property: 'database_backup_retention_amount_locally',
+                            type: 'integer',
+                            description: 'Retention amount of the backup locally',
+                        ),
+                        new OA\Property(
+                            property: 'database_backup_retention_days_locally',
+                            type: 'integer',
+                            description: 'Retention days of the backup locally',
+                        ),
+                        new OA\Property(
+                            property: 'database_backup_retention_max_storage_locally',
+                            type: 'integer',
+                            description: 'Max storage of the backup locally',
+                        ),
+                        new OA\Property(property: 'database_backup_retention_amount_s3', type: 'integer', description: 'Retention amount of the backup in s3'),
+                        new OA\Property(property: 'database_backup_retention_days_s3', type: 'integer', description: 'Retention days of the backup in s3'),
+                        new OA\Property(property: 'database_backup_retention_max_storage_s3', type: 'integer', description: 'Max storage of the backup in S3'),
                     ],
                 ),
             )
@@ -856,7 +884,7 @@ class DatabaseBackupsController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'execution_uuid' => ['type' => 'string', 'description' => 'Specific backup execution UUID to restore from'],
+                        new OA\Property(property: 'execution_uuid', type: 'string', description: 'Specific backup execution UUID to restore from'),
                     ],
                 ),
             ),
@@ -871,7 +899,7 @@ class DatabaseBackupsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Database restore initiated.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Database restore initiated.'),
                             ]
                         )
                     ),

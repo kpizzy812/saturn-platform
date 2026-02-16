@@ -140,12 +140,28 @@ class ServiceEnvsController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'key' => ['type' => 'string', 'description' => 'The key of the environment variable.'],
-                        'value' => ['type' => 'string', 'description' => 'The value of the environment variable.'],
-                        'is_preview' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is used in preview deployments.'],
-                        'is_literal' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is a literal, nothing espaced.'],
-                        'is_multiline' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is multiline.'],
-                        'is_shown_once' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable\'s value is shown on the UI.'],
+                        new OA\Property(property: 'key', type: 'string', description: 'The key of the environment variable.'),
+                        new OA\Property(property: 'value', type: 'string', description: 'The value of the environment variable.'),
+                        new OA\Property(
+                            property: 'is_preview',
+                            type: 'boolean',
+                            description: 'The flag to indicate if the environment variable is used in preview deployments.',
+                        ),
+                        new OA\Property(
+                            property: 'is_literal',
+                            type: 'boolean',
+                            description: 'The flag to indicate if the environment variable is a literal, nothing espaced.',
+                        ),
+                        new OA\Property(
+                            property: 'is_multiline',
+                            type: 'boolean',
+                            description: 'The flag to indicate if the environment variable is multiline.',
+                        ),
+                        new OA\Property(
+                            property: 'is_shown_once',
+                            type: 'boolean',
+                            description: 'The flag to indicate if the environment variable\'s value is shown on the UI.',
+                        ),
                     ],
                 ),
             ),
@@ -160,7 +176,7 @@ class ServiceEnvsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'example' => 'nc0k04gk8g0cgsk440g0koko'],
+                                new OA\Property(property: 'uuid', type: 'string', example: 'nc0k04gk8g0cgsk440g0koko'),
                             ]
                         )
                     ),
@@ -257,12 +273,28 @@ class ServiceEnvsController extends Controller
                         type: 'object',
                         required: ['key', 'value'],
                         properties: [
-                            'key' => ['type' => 'string', 'description' => 'The key of the environment variable.'],
-                            'value' => ['type' => 'string', 'description' => 'The value of the environment variable.'],
-                            'is_preview' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is used in preview deployments.'],
-                            'is_literal' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is a literal, nothing espaced.'],
-                            'is_multiline' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is multiline.'],
-                            'is_shown_once' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable\'s value is shown on the UI.'],
+                            new OA\Property(property: 'key', type: 'string', description: 'The key of the environment variable.'),
+                            new OA\Property(property: 'value', type: 'string', description: 'The value of the environment variable.'),
+                            new OA\Property(
+                                property: 'is_preview',
+                                type: 'boolean',
+                                description: 'The flag to indicate if the environment variable is used in preview deployments.',
+                            ),
+                            new OA\Property(
+                                property: 'is_literal',
+                                type: 'boolean',
+                                description: 'The flag to indicate if the environment variable is a literal, nothing espaced.',
+                            ),
+                            new OA\Property(
+                                property: 'is_multiline',
+                                type: 'boolean',
+                                description: 'The flag to indicate if the environment variable is multiline.',
+                            ),
+                            new OA\Property(
+                                property: 'is_shown_once',
+                                type: 'boolean',
+                                description: 'The flag to indicate if the environment variable\'s value is shown on the UI.',
+                            ),
                         ],
                     ),
                 ),
@@ -278,7 +310,7 @@ class ServiceEnvsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Environment variable updated.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Environment variable updated.'),
                             ]
                         )
                     ),
@@ -374,20 +406,37 @@ class ServiceEnvsController extends Controller
                         type: 'object',
                         required: ['data'],
                         properties: [
-                            'data' => [
-                                'type' => 'array',
-                                'items' => new OA\Schema(
+                            new OA\Property(
+                                property: 'data',
+                                type: 'array',
+                                items: new OA\Items(
                                     type: 'object',
                                     properties: [
-                                        'key' => ['type' => 'string', 'description' => 'The key of the environment variable.'],
-                                        'value' => ['type' => 'string', 'description' => 'The value of the environment variable.'],
-                                        'is_preview' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is used in preview deployments.'],
-                                        'is_literal' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is a literal, nothing espaced.'],
-                                        'is_multiline' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable is multiline.'],
-                                        'is_shown_once' => ['type' => 'boolean', 'description' => 'The flag to indicate if the environment variable\'s value is shown on the UI.'],
+                                        new OA\Property(property: 'key', type: 'string', description: 'The key of the environment variable.'),
+                                        new OA\Property(property: 'value', type: 'string', description: 'The value of the environment variable.'),
+                                        new OA\Property(
+                                            property: 'is_preview',
+                                            type: 'boolean',
+                                            description: 'The flag to indicate if the environment variable is used in preview deployments.',
+                                        ),
+                                        new OA\Property(
+                                            property: 'is_literal',
+                                            type: 'boolean',
+                                            description: 'The flag to indicate if the environment variable is a literal, nothing espaced.',
+                                        ),
+                                        new OA\Property(
+                                            property: 'is_multiline',
+                                            type: 'boolean',
+                                            description: 'The flag to indicate if the environment variable is multiline.',
+                                        ),
+                                        new OA\Property(
+                                            property: 'is_shown_once',
+                                            type: 'boolean',
+                                            description: 'The flag to indicate if the environment variable\'s value is shown on the UI.',
+                                        ),
                                     ],
                                 ),
-                            ],
+                            ),
                         ],
                     ),
                 ),
@@ -403,7 +452,7 @@ class ServiceEnvsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Environment variables updated.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Environment variables updated.'),
                             ]
                         )
                     ),
@@ -515,7 +564,7 @@ class ServiceEnvsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Environment variable deleted.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Environment variable deleted.'),
                             ]
                         )
                     ),

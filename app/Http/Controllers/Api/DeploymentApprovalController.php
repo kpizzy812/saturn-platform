@@ -41,9 +41,9 @@ class DeploymentApprovalController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string'],
-                                'approval_uuid' => ['type' => 'string'],
-                                'status' => ['type' => 'string'],
+                                new OA\Property(property: 'message', type: 'string'),
+                                new OA\Property(property: 'approval_uuid', type: 'string'),
+                                new OA\Property(property: 'status', type: 'string'),
                             ]
                         )
                     ),
@@ -129,9 +129,9 @@ class DeploymentApprovalController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string'],
-                                'deployment_uuid' => ['type' => 'string'],
-                                'status' => ['type' => 'string'],
+                                new OA\Property(property: 'message', type: 'string'),
+                                new OA\Property(property: 'deployment_uuid', type: 'string'),
+                                new OA\Property(property: 'status', type: 'string'),
                             ]
                         )
                     ),
@@ -223,9 +223,9 @@ class DeploymentApprovalController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string'],
-                                'deployment_uuid' => ['type' => 'string'],
-                                'status' => ['type' => 'string'],
+                                new OA\Property(property: 'message', type: 'string'),
+                                new OA\Property(property: 'deployment_uuid', type: 'string'),
+                                new OA\Property(property: 'status', type: 'string'),
                             ]
                         )
                     ),
@@ -308,13 +308,13 @@ class DeploymentApprovalController extends Controller
                             items: new OA\Items(
                                 type: 'object',
                                 properties: [
-                                    'uuid' => ['type' => 'string'],
-                                    'status' => ['type' => 'string'],
-                                    'deployment_uuid' => ['type' => 'string'],
-                                    'application_name' => ['type' => 'string'],
-                                    'environment_name' => ['type' => 'string'],
-                                    'requested_by' => ['type' => 'string'],
-                                    'requested_at' => ['type' => 'string'],
+                                    new OA\Property(property: 'uuid', type: 'string'),
+                                    new OA\Property(property: 'status', type: 'string'),
+                                    new OA\Property(property: 'deployment_uuid', type: 'string'),
+                                    new OA\Property(property: 'application_name', type: 'string'),
+                                    new OA\Property(property: 'environment_name', type: 'string'),
+                                    new OA\Property(property: 'requested_by', type: 'string'),
+                                    new OA\Property(property: 'requested_at', type: 'string'),
                                 ]
                             )
                         )
@@ -382,14 +382,14 @@ class DeploymentApprovalController extends Controller
                             items: new OA\Items(
                                 type: 'object',
                                 properties: [
-                                    'uuid' => ['type' => 'string'],
-                                    'status' => ['type' => 'string'],
-                                    'deployment_uuid' => ['type' => 'string'],
-                                    'application_name' => ['type' => 'string'],
-                                    'environment_name' => ['type' => 'string'],
-                                    'project_name' => ['type' => 'string'],
-                                    'requested_by' => ['type' => 'string'],
-                                    'requested_at' => ['type' => 'string'],
+                                    new OA\Property(property: 'uuid', type: 'string'),
+                                    new OA\Property(property: 'status', type: 'string'),
+                                    new OA\Property(property: 'deployment_uuid', type: 'string'),
+                                    new OA\Property(property: 'application_name', type: 'string'),
+                                    new OA\Property(property: 'environment_name', type: 'string'),
+                                    new OA\Property(property: 'project_name', type: 'string'),
+                                    new OA\Property(property: 'requested_by', type: 'string'),
+                                    new OA\Property(property: 'requested_at', type: 'string'),
                                 ]
                             )
                         )
@@ -448,16 +448,16 @@ class DeploymentApprovalController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string'],
-                                'status' => ['type' => 'string'],
-                                'deployment_uuid' => ['type' => 'string'],
-                                'application_name' => ['type' => 'string'],
-                                'environment_name' => ['type' => 'string'],
-                                'requested_by' => ['type' => 'string'],
-                                'approved_by' => ['type' => 'string', 'nullable' => true],
-                                'comment' => ['type' => 'string', 'nullable' => true],
-                                'requested_at' => ['type' => 'string'],
-                                'decided_at' => ['type' => 'string', 'nullable' => true],
+                                new OA\Property(property: 'uuid', type: 'string'),
+                                new OA\Property(property: 'status', type: 'string'),
+                                new OA\Property(property: 'deployment_uuid', type: 'string'),
+                                new OA\Property(property: 'application_name', type: 'string'),
+                                new OA\Property(property: 'environment_name', type: 'string'),
+                                new OA\Property(property: 'requested_by', type: 'string'),
+                                new OA\Property(property: 'approved_by', type: 'string', nullable: true),
+                                new OA\Property(property: 'comment', type: 'string', nullable: true),
+                                new OA\Property(property: 'requested_at', type: 'string'),
+                                new OA\Property(property: 'decided_at', type: 'string', nullable: true),
                             ]
                         )
                     ),

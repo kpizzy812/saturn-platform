@@ -40,16 +40,16 @@ class ServiceHealthcheckController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'enabled' => ['type' => 'boolean', 'description' => 'Whether healthcheck is enabled.'],
-                                'type' => ['type' => 'string', 'description' => 'Healthcheck type (http or tcp).'],
-                                'test' => ['type' => 'string', 'description' => 'Healthcheck test command.'],
-                                'interval' => ['type' => 'integer', 'description' => 'Healthcheck interval in seconds.'],
-                                'timeout' => ['type' => 'integer', 'description' => 'Healthcheck timeout in seconds.'],
-                                'retries' => ['type' => 'integer', 'description' => 'Number of retries before unhealthy.'],
-                                'start_period' => ['type' => 'integer', 'description' => 'Start period in seconds.'],
-                                'service_name' => ['type' => 'string', 'nullable' => true, 'description' => 'Name of the docker service.'],
-                                'status' => ['type' => 'string', 'description' => 'Current service status.'],
-                                'services_status' => ['type' => 'object', 'description' => 'Healthcheck status per service.'],
+                                new OA\Property(property: 'enabled', type: 'boolean', description: 'Whether healthcheck is enabled.'),
+                                new OA\Property(property: 'type', type: 'string', description: 'Healthcheck type (http or tcp).'),
+                                new OA\Property(property: 'test', type: 'string', description: 'Healthcheck test command.'),
+                                new OA\Property(property: 'interval', type: 'integer', description: 'Healthcheck interval in seconds.'),
+                                new OA\Property(property: 'timeout', type: 'integer', description: 'Healthcheck timeout in seconds.'),
+                                new OA\Property(property: 'retries', type: 'integer', description: 'Number of retries before unhealthy.'),
+                                new OA\Property(property: 'start_period', type: 'integer', description: 'Start period in seconds.'),
+                                new OA\Property(property: 'service_name', type: 'string', nullable: true, description: 'Name of the docker service.'),
+                                new OA\Property(property: 'status', type: 'string', description: 'Current service status.'),
+                                new OA\Property(property: 'services_status', type: 'object', description: 'Healthcheck status per service.'),
                             ]
                         )
                     ),
@@ -116,14 +116,14 @@ class ServiceHealthcheckController extends Controller
                     schema: new OA\Schema(
                         type: 'object',
                         properties: [
-                            'enabled' => ['type' => 'boolean', 'description' => 'Whether healthcheck is enabled.'],
-                            'type' => ['type' => 'string', 'enum' => ['http', 'tcp'], 'description' => 'Healthcheck type.'],
-                            'test' => ['type' => 'string', 'description' => 'Healthcheck test command.'],
-                            'interval' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Healthcheck interval in seconds.'],
-                            'timeout' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Healthcheck timeout in seconds.'],
-                            'retries' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Number of retries before unhealthy.'],
-                            'start_period' => ['type' => 'integer', 'minimum' => 0, 'description' => 'Start period in seconds.'],
-                            'service_name' => ['type' => 'string', 'nullable' => true, 'description' => 'Target docker service name.'],
+                            new OA\Property(property: 'enabled', type: 'boolean', description: 'Whether healthcheck is enabled.'),
+                            new OA\Property(property: 'type', type: 'string', enum: ['http', 'tcp'], description: 'Healthcheck type.'),
+                            new OA\Property(property: 'test', type: 'string', description: 'Healthcheck test command.'),
+                            new OA\Property(property: 'interval', type: 'integer', description: 'Healthcheck interval in seconds.'),
+                            new OA\Property(property: 'timeout', type: 'integer', description: 'Healthcheck timeout in seconds.'),
+                            new OA\Property(property: 'retries', type: 'integer', description: 'Number of retries before unhealthy.'),
+                            new OA\Property(property: 'start_period', type: 'integer', description: 'Start period in seconds.'),
+                            new OA\Property(property: 'service_name', type: 'string', nullable: true, description: 'Target docker service name.'),
                         ],
                     ),
                 ),
@@ -139,7 +139,7 @@ class ServiceHealthcheckController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Healthcheck configuration updated.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Healthcheck configuration updated.'),
                             ]
                         )
                     ),
