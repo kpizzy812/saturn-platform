@@ -1,12 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Application/CleanupPreviewDeployment.php
-
-		-
 			message: '#^Property App\\Models\\Application\:\:\$ports_exposes \(string\) does not accept int\<min, \-1\>\|int\<1, max\>\.$#'
 			identifier: assign.propertyType
 			count: 1
@@ -19,58 +13,10 @@ parameters:
 			path: app/Actions/Application/IsHorizonQueueEmpty.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
 			count: 1
 			path: app/Actions/Application/ScanEnvExample.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$additional_servers\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Application/StopApplication.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Application/StopApplication.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Application/StopApplication.php
-
-		-
-			message: '#^Using nullsafe property access on non\-nullable type App\\Models\\Application\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Actions/Application/StopApplication.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Application/StopApplicationOneServer.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/RestartDatabase.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneClickhouse\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Actions/Database/StartClickhouse.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneClickhouse\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartClickhouse.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneClickhouse\:\:\$persistentStorages\.$#'
@@ -91,18 +37,6 @@ parameters:
 			path: app/Actions/Database/StartClickhouse.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartDatabase.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartDatabase.php
-
-		-
 			message: '#^Variable \$activity might not be defined\.$#'
 			identifier: variable.undefined
 			count: 1
@@ -113,18 +47,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Database/StartDatabaseProxy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDragonfly\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 7
-			path: app/Actions/Database/StartDragonfly.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDragonfly\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartDragonfly.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneDragonfly\:\:\$persistentStorages\.$#'
@@ -145,18 +67,6 @@ parameters:
 			path: app/Actions/Database/StartDragonfly.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneKeydb\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 8
-			path: app/Actions/Database/StartKeydb.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneKeydb\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartKeydb.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneKeydb\:\:\$persistentStorages\.$#'
 			identifier: property.notFound
 			count: 2
@@ -175,12 +85,6 @@ parameters:
 			path: app/Actions/Database/StartKeydb.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMariadb\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartMariadb.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneMariadb\:\:\$persistentStorages\.$#'
 			identifier: property.notFound
 			count: 2
@@ -197,30 +101,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Database/StartMariadb.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$network\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Actions/Database/StartMariadb.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Actions/Database/StartMariadb.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 7
-			path: app/Actions/Database/StartMongodb.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartMongodb.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$persistentStorages\.$#'
@@ -247,18 +127,6 @@ parameters:
 			path: app/Actions/Database/StartMongodb.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMysql\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 7
-			path: app/Actions/Database/StartMysql.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMysql\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartMysql.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneMysql\:\:\$persistentStorages\.$#'
 			identifier: property.notFound
 			count: 2
@@ -277,18 +145,6 @@ parameters:
 			path: app/Actions/Database/StartMysql.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandalonePostgresql\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 7
-			path: app/Actions/Database/StartPostgresql.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandalonePostgresql\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartPostgresql.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandalonePostgresql\:\:\$persistentStorages\.$#'
 			identifier: property.notFound
 			count: 2
@@ -305,18 +161,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Database/StartPostgresql.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 8
-			path: app/Actions/Database/StartRedis.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StartRedis.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$persistentStorages\.$#'
@@ -349,18 +193,6 @@ parameters:
 			path: app/Actions/Database/StartRedis.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StopDatabase.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Database/StopDatabase.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -377,18 +209,6 @@ parameters:
 			identifier: property.notFound
 			count: 2
 			path: app/Actions/Deployment/ApproveDeploymentAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Deployment/RequestDeploymentApprovalAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Docker/GetContainersStatus.php
 
 		-
 			message: '#^Method App\\Actions\\Docker\\GetContainersStatus\:\:aggregateApplicationStatus\(\) never returns null so it can be removed from the return type\.$#'
@@ -655,12 +475,6 @@ parameters:
 			path: app/Actions/Migration/RollbackMigrationAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Migration/ValidateMigrationChainAction.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Project\:\:\$environments\.$#'
 			identifier: property.notFound
 			count: 1
@@ -703,12 +517,6 @@ parameters:
 			path: app/Actions/Project/ExportProjectAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/CheckProxy.php
-
-		-
 			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
 			identifier: property.notFound
 			count: 1
@@ -729,12 +537,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$last_saved_settings\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Actions/Proxy/SaveProxyConfiguration.php
-
-		-
-			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
-			identifier: property.protected
 			count: 1
 			path: app/Actions/Proxy/SaveProxyConfiguration.php
 
@@ -781,18 +583,6 @@ parameters:
 			path: app/Actions/Server/ConfigureCloudflared.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 15
-			path: app/Actions/Server/StartLogDrain.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Server/StartSentinel.php
-
-		-
 			message: '#^Variable \$customImage in empty\(\) always exists and is not falsy\.$#'
 			identifier: empty.variable
 			count: 1
@@ -811,46 +601,34 @@ parameters:
 			path: app/Actions/Service/DeleteService.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Actions/Service/StartService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Actions/Service/StopService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$additional_servers\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Shared/ComplexStatusCheck.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Shared/ComplexStatusCheck.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 2
 			path: app/Actions/Stripe/CancelSubscription.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$allowed_projects\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Actions/Transfer/CloneApplicationAction.php
+			path: app/Actions/Team/ArchiveAndKickMemberAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables_preview\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$created_at\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Actions/Transfer/CloneApplicationAction.php
+			path: app/Actions/Team/ArchiveAndKickMemberAction.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$permission_set_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Team/ArchiveAndKickMemberAction.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Actions/Team/ArchiveAndKickMemberAction.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$fileStorages\.$#'
@@ -913,9 +691,15 @@ parameters:
 			path: app/Actions/Transfer/CloneApplicationAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$applications\.$#'
+			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$key\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
+			path: app/Actions/Transfer/CloneServiceAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$value\.$#'
+			identifier: property.notFound
+			count: 2
 			path: app/Actions/Transfer/CloneServiceAction.php
 
 		-
@@ -925,19 +709,7 @@ parameters:
 			path: app/Actions/Transfer/CloneServiceAction.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Transfer/CloneServiceAction.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Service\:\:\$tags\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Actions/Transfer/CloneServiceAction.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServiceApplication\:\:\$environment_variables\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/Transfer/CloneServiceAction.php
@@ -1021,34 +793,40 @@ parameters:
 			path: app/Actions/Transfer/TransferProject.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Actions/Transfer/TransferProject.php
-
-		-
 			message: '#^Call to an undefined method App\\Models\\Project\:\:users\(\)\.$#'
 			identifier: method.notFound
 			count: 2
 			path: app/Actions/Transfer/TransferProject.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/User/DeleteUserResources.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/User/DeleteUserServers.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Actions/User/DeleteUserTeams.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$subscription\.$#'
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Actions/User/DeleteUserTeams.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Actions/User/DeleteUserTeams.php
+			count: 3
+			path: app/Console/Commands/AdminDeleteUser.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$server\.$#'
@@ -1069,31 +847,7 @@ parameters:
 			path: app/Console/Commands/CleanupRedis.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/CleanupStuckedResources.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ScheduledDatabaseBackup\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/CleanupStuckedResources.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/CleanupStuckedResources.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/CleanupStuckedResources.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Console/Commands/CleanupStuckedResources.php
@@ -1111,27 +865,15 @@ parameters:
 			path: app/Console/Commands/CleanupStuckedResources.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Console/Commands/Cloud/CloudFixSubscription.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$subscription\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Console/Commands/Cloud/CloudFixSubscription.php
-
-		-
 			message: '#^Comparison operation "\>" between \(array\|float\|int\) and 0 results in an error\.$#'
 			identifier: greater.invalid
 			count: 1
 			path: app/Console/Commands/Cloud/CloudFixSubscription.php
 
 		-
-			message: '#^Relation ''subscription'' is not found in App\\Models\\Team model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
+			message: '#^Parameter \#1 \$string of function str expects string\|null, bool given\.$#'
+			identifier: argument.type
+			count: 1
 			path: app/Console/Commands/Cloud/CloudFixSubscription.php
 
 		-
@@ -1139,18 +881,6 @@ parameters:
 			identifier: ternary.alwaysTrue
 			count: 2
 			path: app/Console/Commands/Cloud/CloudFixSubscription.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/Emails.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Console/Commands/Emails.php
 
 		-
 			message: '#^Called ''first'' on Laravel collection, but could have been retrieved as a query\.$#'
@@ -1195,12 +925,6 @@ parameters:
 			path: app/Console/Commands/Emails.php
 
 		-
-			message: '#^Relation ''subscription'' is not found in App\\Models\\Team model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Console/Commands/Emails.php
-
-		-
 			message: '#^Method App\\Console\\Commands\\Generate\\Services\:\:generateServiceTemplatesRaw\(\) is unused\.$#'
 			identifier: method.unused
 			count: 1
@@ -1231,20 +955,14 @@ parameters:
 			path: app/Console/Commands/HorizonManage.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/MigrateProjectRoles.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$projects\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Console/Commands/MigrateProjectRoles.php
 
 		-
-			message: '#^Relation ''members'' is not found in App\\Models\\Team model\.$#'
-			identifier: larastan.relationExistence
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Console/Commands/MigrateProjectRoles.php
 
@@ -1253,18 +971,6 @@ parameters:
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Console/Commands/MigrateProjectRoles.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/RunScheduledJobsManually.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Console/Commands/RunScheduledJobsManually.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Http\\Client\\Pool\:\:purge\(\)\.$#'
@@ -1285,33 +991,9 @@ parameters:
 			path: app/Events/DeploymentApprovalRequested.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Events/DeploymentApprovalRequested.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 3
-			path: app/Events/DeploymentApprovalRequested.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$application\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Events/DeploymentApprovalResolved.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Events/DeploymentApprovalResolved.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 3
 			path: app/Events/DeploymentApprovalResolved.php
 
 		-
@@ -1339,19 +1021,7 @@ parameters:
 			path: app/Events/ServerReachabilityChanged.php
 
 		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Auth\\AuthManager\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Exceptions/Handler.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$privateKey\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Helpers/SshMultiplexingHelper.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Helpers/SshMultiplexingHelper.php
@@ -1379,18 +1049,6 @@ parameters:
 			identifier: argument.type
 			count: 3
 			path: app/Http/Controllers/Api/ApplicationActionsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/ApplicationCreateController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/ApplicationCreateController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
@@ -1423,76 +1081,10 @@ parameters:
 			path: app/Http/Controllers/Api/ApplicationDeploymentsController.php
 
 		-
-			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
-			identifier: property.protected
-			count: 3
-			path: app/Http/Controllers/Api/ApplicationEnvsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, OpenApi\\Attributes\\Schema\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ApplicationEnvsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 7
-			path: app/Http/Controllers/Api/ApplicationEnvsController.php
-
-		-
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
 			count: 1
 			path: app/Http/Controllers/Api/ApplicationEnvsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, OpenApi\\Attributes\\Schema\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ApplicationsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/ApplicationsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/ApplicationsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/CloudProviderTokensController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/CloudProviderTokensController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/CloudProviderTokensController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 5
-			path: app/Http/Controllers/Api/CloudProviderTokensController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/Api/CodeReviewController.php
 
 		-
 			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
@@ -1540,24 +1132,6 @@ parameters:
 			message: '#^Parameter \#2 \$execution of job class App\\Jobs\\DatabaseRestoreJob constructor expects App\\Models\\ScheduledDatabaseBackupExecution in App\\Jobs\\DatabaseRestoreJob\:\:dispatch\(\), Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/Api/DatabaseBackupsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\JsonContent constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/DatabaseBackupsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/DatabaseBackupsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
 			path: app/Http/Controllers/Api/DatabaseBackupsController.php
 
 		-
@@ -1687,28 +1261,10 @@ parameters:
 			path: app/Http/Controllers/Api/DeployController.php
 
 		-
-			message: '#^Using nullsafe method call on non\-nullable type object\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/Api/DeployController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/DeploymentAnalysisController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$logAnalysis\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Http/Controllers/Api/DeploymentAnalysisController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/Api/DeploymentApprovalController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\DeploymentApproval\:\:\$approved_at\.$#'
@@ -1735,39 +1291,9 @@ parameters:
 			path: app/Http/Controllers/Api/DeploymentApprovalController.php
 
 		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/DeploymentApprovalController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/DeploymentApprovalController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\|true\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/DeploymentApprovalController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/DeploymentApprovalsController.php
-
-		-
 			message: '#^Job class App\\Jobs\\ApplicationDeploymentJob constructor invoked with 7 parameters in App\\Jobs\\ApplicationDeploymentJob\:\:dispatch\(\), 1 required\.$#'
 			identifier: arguments.count
 			count: 1
-			path: app/Http/Controllers/Api/DeploymentApprovalsController.php
-
-		-
-			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationDeploymentQueue model\.$#'
-			identifier: larastan.relationExistence
-			count: 6
 			path: app/Http/Controllers/Api/DeploymentApprovalsController.php
 
 		-
@@ -1777,79 +1303,7 @@ parameters:
 			path: app/Http/Controllers/Api/EnvironmentMigrationController.php
 
 		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Application model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Api/EnvironmentMigrationController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Api/EnvironmentMigrationController.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
-			identifier: larastan.relationExistence
-			count: 6
-			path: app/Http/Controllers/Api/EnvironmentMigrationController.php
-
-		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 6
-			path: app/Http/Controllers/Api/EnvironmentMigrationController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\GithubApp\:\:\$applications\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/GithubController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/GithubController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/GithubController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/GithubController.php
-
-		-
 			message: '#^Parameter \#2 \$values of method Illuminate\\Http\\JsonResponse\:\:header\(\) expects array\|string, int given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/HetznerController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, array\<string, array\<string, array\<string, array\<string, array\<string, string\>\>\|string\>\>\|string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/HetznerController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: app/Http/Controllers/Api/HetznerController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, array\<string, string\>\|bool\|int\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/HetznerController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/HetznerController.php
@@ -1951,12 +1405,6 @@ parameters:
 			path: app/Http/Controllers/Api/PermissionSetController.php
 
 		-
-			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/Api/PermissionSetController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Project\:\:\$environments\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1969,32 +1417,14 @@ parameters:
 			path: app/Http/Controllers/Api/ProjectController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/ResourceLinkController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Http/Controllers/Api/ResourceLinkController.php
 
 		-
-			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Http/Controllers/Api/ResourceLinkController.php
-
-		-
 			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, list\<string\>\|string\>\> given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ResourceTransferController.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Http/Controllers/Api/ResourceTransferController.php
 
@@ -2011,42 +1441,6 @@ parameters:
 			path: app/Http/Controllers/Api/SentinelMetricsController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/Api/ServersController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, array\<string, string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServersController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Items constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServersController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|int\|list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServersController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServersController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 4
-			path: app/Http/Controllers/Api/ServersController.php
-
-		-
 			message: '#^Variable \$ip might not be defined\.$#'
 			identifier: variable.undefined
 			count: 1
@@ -2057,102 +1451,6 @@ parameters:
 			identifier: argument.type
 			count: 3
 			path: app/Http/Controllers/Api/ServiceActionsController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Http/Controllers/Api/ServiceActionsController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/ServiceEnvsController.php
-
-		-
-			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
-			identifier: property.protected
-			count: 3
-			path: app/Http/Controllers/Api/ServiceEnvsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, OpenApi\\Attributes\\Schema\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServiceEnvsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 7
-			path: app/Http/Controllers/Api/ServiceEnvsController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 5
-			path: app/Http/Controllers/Api/ServiceEnvsController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|int\|list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServiceHealthcheckController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServiceHealthcheckController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServiceHealthcheckController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Api/ServiceHealthcheckController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, array\<string, string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/ServicesController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|int\|list\<string\>\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServicesController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServicesController.php
-
-		-
-			message: '#^Parameter \$properties of class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/ServicesController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Http/Controllers/Api/ServicesController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/Api/TeamController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$avatar\.$#'
@@ -2233,22 +1531,10 @@ parameters:
 			path: app/Http/Controllers/Api/TeamWebhooksController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\TeamInvitation\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/Controller.php
-
-		-
 			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Controller.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
@@ -2263,48 +1549,6 @@ parameters:
 			path: app/Http/Controllers/Inertia/ActivityHelper.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Spatie\\Activitylog\\Models\\Activity\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationDeploymentQueue model\.$#'
-			identifier: larastan.relationExistence
-			count: 4
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>uuid" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$is_build_server\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2317,25 +1561,13 @@ parameters:
 			path: app/Http/Controllers/Inertia/AdminController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members_count\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Inertia/AdminController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$servers_count\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams_count\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Http/Controllers/Inertia/AdminController.php
@@ -2371,98 +1603,8 @@ parameters:
 			path: app/Http/Controllers/Inertia/AdminController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Pagination\\AbstractPaginator\<int,App\\Models\\User\>\:\:through\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationDeploymentQueue model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Application model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneClickhouse model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneDragonfly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneKeydb model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneMariadb model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneMongodb model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneMysql model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandalonePostgresql model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneRedis model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
-			message: '#^Relation ''teams'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Inertia/AdminController.php
-
-		-
 			message: '#^Match expression does not handle remaining value\: mixed$#'
 			identifier: match.unhandled
-			count: 1
-			path: app/Http/Controllers/Inertia/DatabaseController.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Http/Controllers/Inertia/DatabaseController.php
 
@@ -2491,18 +1633,6 @@ parameters:
 			path: app/Http/Controllers/Inertia/PermissionSetController.php
 
 		-
-			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Inertia/PermissionSetController.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/Inertia/PermissionSetController.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Server\>\:\:ownedByCurrentTeam\(\)\.$#'
 			identifier: method.notFound
 			count: 2
@@ -2512,12 +1642,6 @@ parameters:
 			message: '#^Parameter \#2 \$syntax of method Carbon\\Carbon\:\:diffForHumans\(\) expects array\|int\|null, true given\.$#'
 			identifier: argument.type
 			count: 1
-			path: app/Http/Controllers/Inertia/ServerController.php
-
-		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
 			path: app/Http/Controllers/Inertia/ServerController.php
 
 		-
@@ -2543,12 +1667,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/UploadController.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Webhook/Bitbucket.php
 
 		-
 			message: '#^Parameter \#2 \$values of method Illuminate\\Http\\Response\:\:header\(\) expects array\|string, int given\.$#'
@@ -2585,12 +1703,6 @@ parameters:
 			identifier: variable.undefined
 			count: 6
 			path: app/Http/Controllers/Webhook/Bitbucket.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Webhook/Gitea.php
 
 		-
 			message: '#^Call to an undefined method App\\Models\\Application\:\:isEmpty\(\)\.$#'
@@ -2651,12 +1763,6 @@ parameters:
 			identifier: variable.undefined
 			count: 6
 			path: app/Http/Controllers/Webhook/Gitea.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Webhook/Github.php
 
 		-
 			message: '#^Argument of an invalid type App\\Models\\Application supplied for foreach, only iterables are supported\.$#'
@@ -2737,12 +1843,6 @@ parameters:
 			path: app/Http/Controllers/Webhook/Github.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Webhook/Gitlab.php
-
-		-
 			message: '#^Call to an undefined method App\\Models\\Application\:\:isEmpty\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2803,34 +1903,10 @@ parameters:
 			path: app/Http/Middleware/ApiSensitiveData.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Middleware/DecideWhatToDoWithUser.php
-
-		-
 			message: '#^Left side of && is always true\.$#'
 			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
 			path: app/Http/Middleware/DecideWhatToDoWithUser.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Http/Middleware/DecideWhatToDoWithUser.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Auth\\AuthManager\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Middleware/DecideWhatToDoWithUser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Middleware/HandleInertiaRequests.php
 
 		-
 			message: '#^Method App\\Http\\Middleware\\HandleInertiaRequests\:\:getNotificationsData\(\) should return array\{unreadCount\: int, recent\: array\} but returns array\{unreadCount\: int\<0, max\>, recent\: Illuminate\\Support\\Collection\<int, array\>\}\.$#'
@@ -2839,45 +1915,9 @@ parameters:
 			path: app/Http/Middleware/HandleInertiaRequests.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/AnalyzeCodeReviewJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$additional_networks\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$additional_servers\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 16
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables_preview\.$#'
-			identifier: property.notFound
-			count: 16
 			path: app/Jobs/ApplicationDeploymentJob.php
 
 		-
@@ -2925,7 +1965,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$key\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 8
 			path: app/Jobs/ApplicationDeploymentJob.php
 
 		-
@@ -2936,12 +1976,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$privateKey\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ApplicationDeploymentJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/ApplicationDeploymentJob.php
@@ -3067,18 +2101,6 @@ parameters:
 			path: app/Jobs/ApplicationPullRequestUpdateJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/AutoProvisionServerJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/AutoProvisionServerJob.php
-
-		-
 			message: '#^Method App\\Jobs\\AutoProvisionServerJob\:\:createHetznerServer\(\) never returns null so it can be removed from the return type\.$#'
 			identifier: return.unusedType
 			count: 1
@@ -3091,7 +2113,7 @@ parameters:
 			path: app/Jobs/BackupRestoreTestJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledDatabaseBackup\:\:\$team\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$backup_notifications_enabled\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Jobs/BackupRestoreTestJob.php
@@ -3163,40 +2185,10 @@ parameters:
 			path: app/Jobs/CheckAndStartSentinelJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Jobs/CheckServerResourcesJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$outdatedInfo\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/CheckTraefikVersionForServerJob.php
-
-		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Jobs/CheckTraefikVersionJob.php
-
-		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Jobs/CleanupOrphanedPreviewContainersJob.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/CleanupOrphanedPreviewContainersJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationPreview\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/CleanupSleepingPreviewsJob.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\S3Storage\:\:\$bucket\.$#'
@@ -3214,18 +2206,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\ScheduledDatabaseBackup\:\:\$s3\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$network\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
@@ -3265,12 +2245,6 @@ parameters:
 			path: app/Jobs/DatabaseMetricsManagerJob.php
 
 		-
-			message: '#^Relation ''team'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/DatabaseMetricsManagerJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\S3Storage\:\:\$bucket\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3289,46 +2263,22 @@ parameters:
 			path: app/Jobs/DatabaseRestoreJob.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$network\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/DatabaseRestoreJob.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/DatabaseRestoreJob.php
-
-		-
 			message: '#^If condition is always false\.$#'
 			identifier: if.alwaysFalse
 			count: 2
 			path: app/Jobs/DatabaseRestoreJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
+			message: '#^Access to an undefined property App\\Models\\Server\:\:\$privateKey\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/DeleteResourceJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\|App\\Models\\ApplicationPreview\|App\\Models\\Service\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\:\:\$application\.$#'
-			identifier: property.notFound
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
 			path: app/Jobs/DeleteResourceJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/DockerCleanupJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Jobs/DockerCleanupJob.php
 
 		-
 			message: '#^Binary operation "\-" between string\|null and string\|null results in an error\.$#'
@@ -3361,28 +2311,10 @@ parameters:
 			path: app/Jobs/ExecuteMigrationJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/MonitorDeploymentHealthJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/MonitorDeploymentHealthJob.php
-
-		-
 			message: '#^Parameter \#2 \$message of class App\\Events\\AiChatMessageReceived constructor expects App\\Models\\AiChatMessage, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Jobs/ProcessAiChatMessageJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/PushServerUpdateJob.php
 
 		-
 			message: '#^Method App\\Jobs\\PushServerUpdateJob\:\:updateApplicationStatus\(\) is unused\.$#'
@@ -3405,12 +2337,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$servers\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ResourceMonitoringManagerJob.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Jobs/ResourceMonitoringManagerJob.php
 
@@ -3439,24 +2365,6 @@ parameters:
 			path: app/Jobs/RestartProxyJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
 			count: 1
@@ -3475,30 +2383,6 @@ parameters:
 			path: app/Jobs/ScheduledJobManager.php
 
 		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ScheduledJobManager.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ScheduledTaskJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ScheduledTaskJob.php
-
-		-
 			message: '#^Call to an undefined method Carbon\\Carbon\:\:floatDiffInSeconds\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -3508,12 +2392,6 @@ parameters:
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
 			count: 1
-			path: app/Jobs/ScheduledTaskJob.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\Team\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
 			path: app/Jobs/ScheduledTaskJob.php
 
 		-
@@ -3527,12 +2405,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Jobs/SendTeamWebhookJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/ServerCheckJob.php
 
 		-
 			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$force_stop\.$#'
@@ -3550,12 +2422,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$cloudProviderToken\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Jobs/ServerConnectionCheckJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 5
 			path: app/Jobs/ServerConnectionCheckJob.php
 
 		-
@@ -3577,46 +2443,10 @@ parameters:
 			path: app/Jobs/ServerLimitCheckJob.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Jobs/ServerManagerJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$servers\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Jobs/ServerManagerJob.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Jobs/ServerManagerJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$members\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/StripeProcessJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Team\>\:\:\$members\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/StripeProcessJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$subscription\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/SubscriptionInvoiceFailedJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/SyncStripeSubscriptionsJob.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
@@ -3629,24 +2459,6 @@ parameters:
 			identifier: booleanNot.alwaysFalse
 			count: 1
 			path: app/Jobs/UpdateSaturnJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$subscription\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/UpdateStripeCustomerEmailJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Subscription\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Jobs/VerifyStripeSubscriptionStatusJob.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Listeners/CloudflareTunnelChangedNotification.php
 
 		-
 			message: '#^Parameter \#4 \$no_sudo of function instant_remote_process_with_timeout expects bool, int given\.$#'
@@ -3677,54 +2489,6 @@ parameters:
 			identifier: return.type
 			count: 1
 			path: app/Models/AiChatSession.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Alert.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Alert.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Alert.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Alert.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$additional_servers\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Models/Application.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 10
-			path: app/Models/Application.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Application.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables_preview\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/Application.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$fqdns\.$#'
@@ -3763,27 +2527,15 @@ parameters:
 			path: app/Models/Application.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Application.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Application.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
+			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$real_value\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Models/Application.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
+			message: '#^Call to an undefined method App\\Models\\EnvironmentVariable\:\:sort\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 1
 			path: app/Models/Application.php
 
 		-
@@ -3841,15 +2593,15 @@ parameters:
 			path: app/Models/Application.php
 
 		-
-			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|list\<string\>\|string\>\> given\.$#'
+			message: '#^Parameter \#1 \$key of method Illuminate\\Support\\Collection\<int,App\\Models\\EnvironmentVariable\>\:\:get\(\) expects int, array\<int, string\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Models/Application.php
 
 		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Application model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
+			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|list\<string\>\|string\>\> given\.$#'
+			identifier: argument.type
+			count: 1
 			path: app/Models/Application.php
 
 		-
@@ -3871,8 +2623,8 @@ parameters:
 			path: app/Models/Application.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
 			count: 1
 			path: app/Models/ApplicationDeploymentQueue.php
 
@@ -3889,16 +2641,16 @@ parameters:
 			path: app/Models/ApplicationDeploymentQueue.php
 
 		-
-			message: '#^Right side of \|\| is always false\.$#'
-			identifier: booleanOr.rightAlwaysFalse
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
 			count: 1
 			path: app/Models/ApplicationDeploymentQueue.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationPreview\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 8
-			path: app/Models/ApplicationPreview.php
+			message: '#^Right side of \|\| is always false\.$#'
+			identifier: booleanOr.rightAlwaysFalse
+			count: 1
+			path: app/Models/ApplicationDeploymentQueue.php
 
 		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
@@ -3911,36 +2663,6 @@ parameters:
 			identifier: argument.type
 			count: 2
 			path: app/Models/ApplicationPreview.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationSetting\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/ApplicationSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ApplicationSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ApplicationSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/ApplicationSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ApplicationSetting.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$team\.$#'
@@ -3959,36 +2681,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Models/BaseModel.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/CloudProviderToken.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/CloudProviderToken.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/CloudProviderToken.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/CloudProviderToken.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Models/DeploymentLogEntry.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$clickhouses\.$#'
@@ -4033,39 +2725,9 @@ parameters:
 			path: app/Models/Environment.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Environment.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$redis\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
 			path: app/Models/Environment.php
 
 		-
@@ -4083,12 +2745,6 @@ parameters:
 		-
 			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Models/Environment.php
-
-		-
-			message: '#^Relation ''project'' is not found in App\\Models\\Environment model\.$#'
-			identifier: larastan.relationExistence
 			count: 1
 			path: app/Models/Environment.php
 
@@ -4126,36 +2782,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$value\.$#'
 			identifier: property.notFound
 			count: 8
-			path: app/Models/EnvironmentVariable.php
-
-		-
-			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
-			identifier: property.protected
-			count: 4
-			path: app/Models/EnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/EnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/EnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/EnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
 			path: app/Models/EnvironmentVariable.php
 
 		-
@@ -4201,82 +2827,10 @@ parameters:
 			path: app/Models/GithubApp.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/GithubApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/GithubApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/GithubApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/GithubApp.php
-
-		-
 			message: '#^Property ''type'' does not exist in model\.$#'
 			identifier: rules.modelAppends
 			count: 1
 			path: app/Models/GithubApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/GitlabApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/GitlabApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/GitlabApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/GitlabApp.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/InstanceSettings.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/InstanceSettings.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/InstanceSettings.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/InstanceSettings.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\LocalFileVolume\:\:\$resource\.$#'
@@ -4285,7 +2839,13 @@ parameters:
 			path: app/Models/LocalFileVolume.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\LocalFileVolume\:\:\$service\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/LocalFileVolume.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$service\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/LocalFileVolume.php
@@ -4293,18 +2853,6 @@ parameters:
 		-
 			message: '#^Call to function is_null\(\) with Illuminate\\Support\\Stringable\|non\-empty\-string will always evaluate to false\.$#'
 			identifier: function.impossibleType
-			count: 1
-			path: app/Models/LocalFileVolume.php
-
-		-
-			message: '#^Cannot access property \$name on class\-string\|object\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Models/LocalFileVolume.php
-
-		-
-			message: '#^Cannot access property \$service on class\-string\|object\.$#'
-			identifier: property.nonObject
 			count: 1
 			path: app/Models/LocalFileVolume.php
 
@@ -4318,12 +2866,6 @@ parameters:
 			message: '#^Access to an undefined property App\\Models\\LocalPersistentVolume\:\:\$resource\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Models/LocalPersistentVolume.php
-
-		-
-			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
-			identifier: property.protected
-			count: 3
 			path: app/Models/LocalPersistentVolume.php
 
 		-
@@ -4357,54 +2899,6 @@ parameters:
 			path: app/Models/OauthSetting.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/OauthSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/OauthSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/OauthSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/OauthSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/PrivateKey.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/PrivateKey.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/PrivateKey.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/PrivateKey.php
-
-		-
 			message: '#^Call to an undefined method phpseclib3\\Crypt\\Common\\AsymmetricKey\:\:getPublicKey\(\)\.$#'
 			identifier: method.notFound
 			count: 3
@@ -4423,33 +2917,15 @@ parameters:
 			path: app/Models/Project.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$team\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$allowed_projects\.$#'
 			identifier: property.notFound
-			count: 2
-			path: app/Models/Project.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Project.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Project.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
 			count: 1
 			path: app/Models/Project.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
 			path: app/Models/Project.php
 
 		-
@@ -4475,78 +2951,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Models/Project.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ProjectNotificationOverride.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ProjectNotificationOverride.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/ProjectNotificationOverride.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ProjectNotificationOverride.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ProjectSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ProjectSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/ProjectSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ProjectSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/RedirectRule.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/RedirectRule.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/RedirectRule.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/RedirectRule.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
@@ -4579,141 +2983,27 @@ parameters:
 			path: app/Models/S3Storage.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/S3Storage.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/S3Storage.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/S3Storage.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/S3Storage.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ScheduledDatabaseBackup.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ScheduledDatabaseBackup.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/ScheduledDatabaseBackup.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ScheduledDatabaseBackup.php
-
-		-
-			message: '#^Relation ''team'' is not found in App\\Models\\ScheduledDatabaseBackup model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Models/ScheduledDatabaseBackup.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/ScheduledTask.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$database\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/ScheduledTask.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$service\.$#'
-			identifier: property.notFound
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
 			path: app/Models/ScheduledTask.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 2
 			path: app/Models/ScheduledTask.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ScheduledTask.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/ScheduledTask.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ScheduledTask.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 50
-			path: app/Models/Server.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Models/Server.php
 
 		-
 			message: '#^Access to an undefined property Spatie\\SchemalessAttributes\\SchemalessAttributes\:\:\$redirect_url\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Models/Server.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Server.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Server.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/Server.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
 			path: app/Models/Server.php
 
 		-
@@ -4765,12 +3055,6 @@ parameters:
 			path: app/Models/Server.php
 
 		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 3
-			path: app/Models/Server.php
-
-		-
 			message: '#^Result of \|\| is always false\.$#'
 			identifier: booleanOr.alwaysFalse
 			count: 1
@@ -4807,40 +3091,10 @@ parameters:
 			path: app/Models/ServerSetting.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ServerSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ServerSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/ServerSetting.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/ServerSetting.php
-
-		-
 			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Models/ServerSetting.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$applications\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/Service.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Service\:\:\$databases\.$#'
@@ -4863,31 +3117,7 @@ parameters:
 		-
 			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
 			identifier: property.protected
-			count: 2
-			path: app/Models/Service.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Service.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Service.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
 			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
 			path: app/Models/Service.php
 
 		-
@@ -4921,124 +3151,10 @@ parameters:
 			path: app/Models/Service.php
 
 		-
-			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Models/Service.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/Service.php
-
-		-
 			message: '#^Result of \|\| is always false\.$#'
 			identifier: booleanOr.alwaysFalse
 			count: 1
 			path: app/Models/Service.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServiceApplication\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Models/ServiceApplication.php
-
-		-
-			message: '#^Relation ''service'' is not found in App\\Models\\ServiceApplication model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Models/ServiceApplication.php
-
-		-
-			message: '#^Relation ''service'' is not found in App\\Models\\ServiceDatabase model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Models/ServiceDatabase.php
-
-		-
-			message: '#^Access to protected property Illuminate\\Support\\Stringable\:\:\$value\.$#'
-			identifier: property.protected
-			count: 1
-			path: app/Models/SharedEnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/SharedEnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/SharedEnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/SharedEnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/SharedEnvironmentVariable.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/SslCertificate.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/SslCertificate.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/SslCertificate.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/SslCertificate.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneClickhouse\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneClickhouse.php
 
 		-
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneClickhouse\) and ''team'' will always evaluate to true\.$#'
@@ -5051,18 +3167,6 @@ parameters:
 			identifier: rules.modelAppends
 			count: 1
 			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneClickhouse model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneClickhouse.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDocker\:\:\$applications\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/StandaloneDocker.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneDocker\:\:\$mariadbs\.$#'
@@ -5095,39 +3199,15 @@ parameters:
 			path: app/Models/StandaloneDocker.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneDragonfly\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneDragonfly.php
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Application\>\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/StandaloneDocker.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneDragonfly\:\:\$ssl_mode\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
 			path: app/Models/StandaloneDragonfly.php
 
 		-
@@ -5143,45 +3223,9 @@ parameters:
 			path: app/Models/StandaloneDragonfly.php
 
 		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneDragonfly model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneDragonfly.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneKeydb\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneKeydb.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneKeydb\:\:\$ssl_mode\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
 			path: app/Models/StandaloneKeydb.php
 
 		-
@@ -5189,42 +3233,6 @@ parameters:
 			identifier: function.alreadyNarrowedType
 			count: 1
 			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneKeydb model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneKeydb.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMariadb.php
 
 		-
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneMariadb\) and ''team'' will always evaluate to true\.$#'
@@ -5239,42 +3247,6 @@ parameters:
 			path: app/Models/StandaloneMariadb.php
 
 		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneMariadb model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMongodb\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMongodb.php
-
-		-
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneMongodb\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -5285,42 +3257,6 @@ parameters:
 			identifier: rules.modelAppends
 			count: 1
 			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneMongodb model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneMongodb.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneMysql\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneMysql.php
 
 		-
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneMysql\) and ''team'' will always evaluate to true\.$#'
@@ -5335,42 +3271,6 @@ parameters:
 			path: app/Models/StandaloneMysql.php
 
 		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneMysql model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneMysql.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandalonePostgresql\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandalonePostgresql.php
-
-		-
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandalonePostgresql\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -5381,18 +3281,6 @@ parameters:
 			identifier: rules.modelAppends
 			count: 1
 			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandalonePostgresql model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Models/StandaloneRedis.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$redis_password\.$#'
@@ -5413,30 +3301,6 @@ parameters:
 			path: app/Models/StandaloneRedis.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/StandaloneRedis.php
-
-		-
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneRedis\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -5447,18 +3311,6 @@ parameters:
 			identifier: rules.modelAppends
 			count: 1
 			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneRedis model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\SwarmDocker\:\:\$applications\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/SwarmDocker.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\SwarmDocker\:\:\$clickhouses\.$#'
@@ -5509,6 +3361,12 @@ parameters:
 			path: app/Models/SwarmDocker.php
 
 		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Application\>\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/SwarmDocker.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$discordNotificationSettings\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5539,12 +3397,6 @@ parameters:
 			path: app/Models/Team.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Team\:\:\$subscription\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Models/Team.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Team\:\:\$telegramNotificationSettings\.$#'
 			identifier: property.notFound
 			count: 1
@@ -5557,20 +3409,8 @@ parameters:
 			path: app/Models/Team.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Team.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Team.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$allowed_projects\.$#'
+			identifier: property.notFound
 			count: 1
 			path: app/Models/Team.php
 
@@ -5581,46 +3421,16 @@ parameters:
 			path: app/Models/Team.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/Team.php
-
-		-
-			message: '#^Call to function is_null\(\) with array will always evaluate to false\.$#'
+			message: '#^Call to function is_null\(\) with array\<mixed\> will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
 			path: app/Models/Team.php
 
 		-
-			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\|OpenApi\\Attributes\\Property\> given\.$#'
-			identifier: argument.type
+			message: '#^Method App\\Models\\Team\:\:members\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\User, \$this\(App\\Models\\Team\), Illuminate\\Database\\Eloquent\\Relations\\Pivot, ''pivot''\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\<App\\Models\\User, \$this\(App\\Models\\Team\), App\\Models\\TeamUser, ''pivot''\>\.$#'
+			identifier: return.type
 			count: 1
 			path: app/Models/Team.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/TeamInvitation.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/TeamInvitation.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/TeamInvitation.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/TeamInvitation.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
@@ -5641,31 +3451,7 @@ parameters:
 			path: app/Models/TeamUser.php
 
 		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/TeamWebhook.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/TeamWebhook.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/TeamWebhook.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: app/Models/TeamWebhook.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Models/User.php
@@ -5685,31 +3471,19 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\User\:\:\$pivot\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 7
 			path: app/Models/User.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
 			identifier: property.notFound
-			count: 8
-			path: app/Models/User.php
-
-		-
-			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, string\>\> given\.$#'
-			identifier: argument.type
-			count: 1
+			count: 2
 			path: app/Models/User.php
 
 		-
 			message: '#^Unsafe call to private method App\\Models\\User\:\:finalizeTeamDeletion\(\) through static\:\:\.$#'
 			identifier: staticClassAccess.privateMethod
 			count: 2
-			path: app/Models/User.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type \$this\(App\\Models\\User\)\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
 			path: app/Models/User.php
 
 		-
@@ -5723,12 +3497,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: app/Notifications/Channels/DiscordChannel.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Team\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Team\>\:\:\$members\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Notifications/Channels/EmailChannel.php
 
 		-
 			message: '#^Access to an undefined property App\\Notifications\\Channels\\SendsEmail\:\:\$emailNotificationSettings\.$#'
@@ -5797,54 +3565,6 @@ parameters:
 			path: app/Notifications/Dto/PushoverMessage.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Notifications/ScheduledTask/TaskFailed.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Notifications/ScheduledTask/TaskFailed.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Notifications/ScheduledTask/TaskSuccess.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Notifications/ScheduledTask/TaskSuccess.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TeamInvitation\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Notifications/TransactionalEmails/InvitationLink.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Parsers/ApplicationComposeParser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Parsers/ApplicationComposeParser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Parsers/ApplicationComposeParser.php
-
-		-
 			message: '#^Call to an undefined method Illuminate\\Support\\Collection\:\:whereMountPath\(\)\.$#'
 			identifier: method.notFound
 			count: 2
@@ -5893,24 +3613,6 @@ parameters:
 			path: app/Parsers/DockerVolumeParser.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Parsers/ServiceComposeParser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Parsers/ServiceComposeParser.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment_variables\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Parsers/ServiceComposeParser.php
-
-		-
 			message: '#^Call to function is_null\(\) with bool will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
@@ -5947,37 +3649,13 @@ parameters:
 			path: app/Parsers/ServiceComposeParser.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/AiChatPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 9
-			path: app/Policies/ApplicationPolicy.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$application\.$#'
 			identifier: property.notFound
 			count: 3
 			path: app/Policies/DeploymentApprovalPolicy.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/EnvironmentPolicy.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$resourceable\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Policies/EnvironmentVariablePolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
 			identifier: property.notFound
 			count: 2
 			path: app/Policies/EnvironmentVariablePolicy.php
@@ -5989,70 +3667,10 @@ parameters:
 			path: app/Policies/NotificationPolicy.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Policies/PrivateKeyPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Policies/S3StoragePolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ServiceApplication\:\:\$service\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Policies/ServiceApplicationPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 6
 			path: app/Policies/ServicePolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Policies/SharedEnvironmentVariablePolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/StandaloneDockerPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Policies/SwarmDockerPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 6
-			path: app/Policies/TeamPolicy.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\TeamInvitation\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Providers/FortifyServiceProvider.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Providers/FortifyServiceProvider.php
-
-		-
-			message: '#^Relation ''teams'' is not found in App\\Models\\User model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Providers/FortifyServiceProvider.php
 
 		-
 			message: '#^If condition is always false\.$#'
@@ -6115,24 +3733,6 @@ parameters:
 			path: app/Services/AI/Chat/AiChatService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$success\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6140,18 +3740,6 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$total\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Service\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\StandalonePostgresql\:\:\$environment\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/AI/Chat/CommandExecutor.php
@@ -6229,30 +3817,6 @@ parameters:
 			path: app/Services/AI/Chat/CommandExecutor.php
 
 		-
-			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationDeploymentQueue model\.$#'
-			identifier: larastan.relationExistence
-			count: 8
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Application model\.$#'
-			identifier: larastan.relationExistence
-			count: 20
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Relation ''environment'' is not found in App\\Models\\Service model\.$#'
-			identifier: larastan.relationExistence
-			count: 19
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 12
-			path: app/Services/AI/Chat/CommandExecutor.php
-
-		-
 			message: '#^Strict comparison using \=\=\= between lowercase\-string&uppercase\-string and ''\[DONE\]'' will always evaluate to false\.$#'
 			identifier: identical.alwaysFalse
 			count: 1
@@ -6263,12 +3827,6 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 1
 			path: app/Services/AI/Chat/Providers/OpenAIChatProvider.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$destination\.$#'
@@ -6301,24 +3859,6 @@ parameters:
 			path: app/Services/AI/CodeReview/LLMResponseValidator.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/AI/DeploymentLogAnalyzer.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/Authorization/MigrationAuthorizationService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Project\:\:\$team\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Authorization/MigrationAuthorizationService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$project\.$#'
 			identifier: property.notFound
 			count: 4
@@ -6337,15 +3877,15 @@ parameters:
 			path: app/Services/Authorization/PermissionService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$allowed_projects\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/Authorization/ProjectAuthorizationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
 			identifier: property.notFound
-			count: 4
+			count: 5
 			path: app/Services/Authorization/ProjectAuthorizationService.php
 
 		-
@@ -6355,32 +3895,20 @@ parameters:
 			path: app/Services/Authorization/ProjectAuthorizationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$teams\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/Authorization/ResourceAuthorizationService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$environment\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/Authorization/ResourceAuthorizationService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\ApplicationPreview\:\:\$application\.$#'
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Relations\\Pivot\:\:\$role\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/CloudflareProtectionService.php
+			path: app/Services/Authorization/ResourceAuthorizationService.php
 
 		-
 			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationPreview model\.$#'
 			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/CloudflareProtectionService.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/CloudflareProtectionService.php
 
@@ -6391,21 +3919,15 @@ parameters:
 			path: app/Services/ConfigurationGenerator.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
+			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$key\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Services/ConfigurationGenerator.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables\.$#'
+			message: '#^Access to an undefined property App\\Models\\EnvironmentVariable\:\:\$value\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Services/ConfigurationGenerator.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment_variables_preview\.$#'
-			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Services/ConfigurationGenerator.php
 
 		-
@@ -6431,12 +3953,6 @@ parameters:
 			identifier: booleanAnd.leftAlwaysTrue
 			count: 1
 			path: app/Services/HetznerService.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/IncidentTimelineService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationRollbackEvent\:\:\$from_deployment_id\.$#'
@@ -6517,12 +4033,6 @@ parameters:
 			path: app/Services/IncidentTimelineService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Application\:\:\$destination\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/MasterProxyConfigService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 2
@@ -6577,21 +4087,15 @@ parameters:
 			path: app/Services/RepositoryAnalyzer/Detectors/HealthCheckDetector.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/RepositoryAnalyzer/InfrastructureProvisioner.php
-
-		-
 			message: '#^Parameter \$previous of class App\\Services\\RepositoryAnalyzer\\Exceptions\\ProvisioningException constructor expects Exception\|null, Throwable given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/RepositoryAnalyzer/InfrastructureProvisioner.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Services/ServerSelectionService.php
 
 		-
@@ -6607,19 +4111,19 @@ parameters:
 			path: app/Services/ServerSelectionService.php
 
 		-
-			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
-			identifier: larastan.relationExistence
-			count: 6
-			path: app/Services/ServerSelectionService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\StandaloneRedis\:\:\$redis_password\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Services/Transfer/Strategies/RedisTransferStrategy.php
 
 		-
-			message: '#^Relation ''members'' is not found in App\\Models\\Team model\.$#'
+			message: '#^Access to an undefined property App\\Models\\Team\:\:\$projects\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Transfer/UserResourceTransferService.php
+
+		-
+			message: '#^Relation ''projects'' is not found in App\\Models\\Team model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/Transfer/UserResourceTransferService.php
