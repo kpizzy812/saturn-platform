@@ -116,7 +116,7 @@ Route::get('/projects/{uuid}', function (string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->with([
             'environments.applications',
-            'environments.services',
+            'environments.services.applications',
             // Load all database types (databases() is not a relationship)
             'environments.postgresqls',
             'environments.redis',

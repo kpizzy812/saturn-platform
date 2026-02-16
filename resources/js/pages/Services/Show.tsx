@@ -40,14 +40,19 @@ function extractDomains(service: Service) {
     return service.applications
         .filter((app) => app.fqdn)
         .flatMap((app, _appIdx) =>
-            (app.fqdn ?? '').split(',').map((fqdn, idx) => ({
-                id: app.id * 100 + idx,
-                domain: fqdn.trim().replace(/^https?:\/\//, ''),
-                isPrimary: idx === 0,
-                sslStatus: (fqdn.trim().startsWith('https://') ? 'active' : 'none') as 'active' | 'pending' | 'failed' | 'none',
-                sslProvider: (fqdn.trim().startsWith('https://') ? 'letsencrypt' : null) as 'letsencrypt' | 'custom' | null,
-                createdAt: app.created_at,
-            }))
+            (app.fqdn ?? '').split(',').map((fqdn, idx) => {
+                const trimmed = fqdn.trim();
+                // Strip protocol and port for display
+                const domain = trimmed.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+                return {
+                    id: app.id * 100 + idx,
+                    domain,
+                    isPrimary: idx === 0,
+                    sslStatus: (trimmed.startsWith('https://') ? 'active' : 'none') as 'active' | 'pending' | 'failed' | 'none',
+                    sslProvider: (trimmed.startsWith('https://') ? 'letsencrypt' : null) as 'letsencrypt' | 'custom' | null,
+                    createdAt: app.created_at,
+                };
+            })
         );
 }
 

@@ -13,6 +13,8 @@ use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
@@ -22,15 +24,15 @@ use Spatie\Activitylog\Traits\LogsActivity;
     description: 'Team model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer', 'description' => 'The unique identifier of the team.'],
-        'name' => ['type' => 'string', 'description' => 'The name of the team.'],
-        'description' => ['type' => 'string', 'description' => 'The description of the team.'],
-        'personal_team' => ['type' => 'boolean', 'description' => 'Whether the team is personal or not.'],
-        'created_at' => ['type' => 'string', 'description' => 'The date and time the team was created.'],
-        'updated_at' => ['type' => 'string', 'description' => 'The date and time the team was last updated.'],
-        'show_boarding' => ['type' => 'boolean', 'description' => 'Whether to show the boarding screen or not.'],
-        'custom_server_limit' => ['type' => 'string', 'description' => 'The custom server limit.'],
-        'members' => new OA\Property(
+        new OA\Property(property: 'id', type: 'integer', description: 'The unique identifier of the team.'),
+        new OA\Property(property: 'name', type: 'string', description: 'The name of the team.'),
+        new OA\Property(property: 'description', type: 'string', description: 'The description of the team.'),
+        new OA\Property(property: 'personal_team', type: 'boolean', description: 'Whether the team is personal or not.'),
+        new OA\Property(property: 'created_at', type: 'string', description: 'The date and time the team was created.'),
+        new OA\Property(property: 'updated_at', type: 'string', description: 'The date and time the team was last updated.'),
+        new OA\Property(property: 'show_boarding', type: 'boolean', description: 'Whether to show the boarding screen or not.'),
+        new OA\Property(property: 'custom_server_limit', type: 'string', description: 'The custom server limit.'),
+        new OA\Property(
             property: 'members',
             type: 'array',
             items: new OA\Items(ref: '#/components/schemas/User'),
@@ -38,7 +40,11 @@ use Spatie\Activitylog\Traits\LogsActivity;
         ),
     ]
 )]
-
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Server> $servers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Project> $projects
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $members
+ */
 class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, SendsSlack
 {
     use Auditable, HasFactory, HasNotificationSettings, HasSafeStringAttribute, LogsActivity, Notifiable;
@@ -242,7 +248,8 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return $this->hasMany(SharedEnvironmentVariable::class)->whereNull('project_id')->whereNull('environment_id');
     }
 
-    public function members()
+    /** @return BelongsToMany<User, $this> */
+    public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'team_user', 'team_id', 'user_id')
             ->using(TeamUser::class)
@@ -291,7 +298,8 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return $allowedProjects !== null;
     }
 
-    public function subscription()
+    /** @return HasOne<Subscription, $this> */
+    public function subscription(): HasOne
     {
         return $this->hasOne(Subscription::class);
     }

@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
+/**
+ * @property-read Application|null $application
+ */
 class ApplicationPreview extends BaseModel
 {
     use HasFactory, SoftDeletes;

@@ -21,6 +21,8 @@ use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -106,7 +108,8 @@ use Visus\Cuid2\Cuid2;
 )]
 
 /**
- * @property ServerSetting|null $settings
+ * @property-read ServerSetting|null $settings
+ * @property-read Team|null $team
  */
 class Server extends BaseModel
 {
@@ -351,7 +354,8 @@ class Server extends BaseModel
         return $standaloneDocker->concat($swarmDocker);
     }
 
-    public function settings()
+    /** @return HasOne<ServerSetting, $this> */
+    public function settings(): HasOne
     {
         return $this->hasOne(ServerSetting::class);
     }
@@ -1094,7 +1098,8 @@ $schema://$host {
         return 'mux_'.$this->uuid;
     }
 
-    public function team()
+    /** @return BelongsTo<Team, $this> */
+    public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
     }

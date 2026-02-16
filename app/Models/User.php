@@ -7,6 +7,7 @@ use App\Notifications\TransactionalEmails\ResetPassword as TransactionalEmailsRe
 use App\Traits\DeletesUserSessions;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notifiable;
@@ -28,17 +29,20 @@ use Spatie\Activitylog\Traits\LogsActivity;
     description: 'User model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer', 'description' => 'The user identifier in the database.'],
-        'name' => ['type' => 'string', 'description' => 'The user name.'],
-        'email' => ['type' => 'string', 'description' => 'The user email.'],
-        'email_verified_at' => ['type' => 'string', 'description' => 'The date when the user email was verified.'],
-        'created_at' => ['type' => 'string', 'description' => 'The date when the user was created.'],
-        'updated_at' => ['type' => 'string', 'description' => 'The date when the user was updated.'],
-        'two_factor_confirmed_at' => ['type' => 'string', 'description' => 'The date when the user two factor was confirmed.'],
-        'force_password_reset' => ['type' => 'boolean', 'description' => 'The flag to force the user to reset the password.'],
-        'marketing_emails' => ['type' => 'boolean', 'description' => 'The flag to receive marketing emails.'],
+        new OA\Property(property: 'id', type: 'integer', description: 'The user identifier in the database.'),
+        new OA\Property(property: 'name', type: 'string', description: 'The user name.'),
+        new OA\Property(property: 'email', type: 'string', description: 'The user email.'),
+        new OA\Property(property: 'email_verified_at', type: 'string', description: 'The date when the user email was verified.'),
+        new OA\Property(property: 'created_at', type: 'string', description: 'The date when the user was created.'),
+        new OA\Property(property: 'updated_at', type: 'string', description: 'The date when the user was updated.'),
+        new OA\Property(property: 'two_factor_confirmed_at', type: 'string', description: 'The date when the user two factor was confirmed.'),
+        new OA\Property(property: 'force_password_reset', type: 'boolean', description: 'The flag to force the user to reset the password.'),
+        new OA\Property(property: 'marketing_emails', type: 'boolean', description: 'The flag to receive marketing emails.'),
     ],
 )]
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Team> $teams
+ */
 class User extends Authenticatable implements SendsEmail
 {
     use DeletesUserSessions, HasApiTokens, HasFactory, LogsActivity, Notifiable, TwoFactorAuthenticatable;
@@ -255,7 +259,8 @@ class User extends Authenticatable implements SendsEmail
         return new NewAccessToken($token, $token->getKey().'|'.$plainTextToken);
     }
 
-    public function teams()
+    /** @return BelongsToMany<Team, $this> */
+    public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class)->withPivot('role');
     }
@@ -456,7 +461,7 @@ class User extends Authenticatable implements SendsEmail
 
     public function sendPasswordResetNotification($token): void
     {
-        $this?->notify(new TransactionalEmailsResetPassword($token));
+        $this->notify(new TransactionalEmailsResetPassword($token));
     }
 
     public function isAdmin()

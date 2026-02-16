@@ -27,6 +27,12 @@ use Visus\Cuid2\Cuid2;
         ),
     ]
 )]
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Environment> $environments
+ * @property-read ProjectSetting|null $settings
+ * @property-read Team|null $team
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, SharedEnvironmentVariable> $environment_variables
+ */
 class Project extends BaseModel
 {
     use Auditable;

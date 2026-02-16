@@ -6,11 +6,15 @@ use App\Events\DeploymentLogEntry as DeploymentLogEntryEvent;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
+/**
+ * @property-read Application|null $application
+ */
 #[OA\Schema(
     description: 'Project model',
     type: 'object',
@@ -114,7 +118,8 @@ class ApplicationDeploymentQueue extends Model
         return $this;
     }
 
-    public function application()
+    /** @return BelongsTo<Application, $this> */
+    public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
     }

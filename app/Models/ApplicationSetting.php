@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property-read Application|null $application
+ */
 class ApplicationSetting extends Model
 {
     use Auditable, LogsActivity;

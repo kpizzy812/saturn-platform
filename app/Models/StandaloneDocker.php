@@ -8,6 +8,7 @@ use App\Traits\HasSafeStringAttribute;
 /**
  * @property Server $server
  * @property string $network
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
  */
 class StandaloneDocker extends BaseModel
 {

@@ -360,6 +360,15 @@ function ProjectCanvasInner({
             const defaultPosition = { x: startX + index * horizontalSpacing, y: startY + verticalSpacing * 2 };
             const position = savedPositions[nodeId] || defaultPosition;
 
+            // Extract primary FQDN from service applications
+            const svcFqdn = svc.applications
+                ?.map((app: { fqdn?: string | null }) => app.fqdn)
+                .filter(Boolean)[0] || null;
+            // Clean FQDN: remove protocol and port for display
+            const svcFqdnClean = svcFqdn
+                ? svcFqdn.replace(/^https?:\/\//, '').replace(/:\d+$/, '')
+                : null;
+
             nodes.push({
                 id: nodeId,
                 type: 'compose',
@@ -369,9 +378,11 @@ function ProjectCanvasInner({
                     status: svc.status || 'unknown',
                     type: 'service',
                     description: svc.description,
+                    fqdn: svcFqdnClean,
                     uuid: svc.uuid,
                     onQuickRestart: onQuickRestartService ? () => onQuickRestartService(svc.uuid) : undefined,
                     onQuickStop: onQuickStopService ? () => onQuickStopService(svc.uuid) : undefined,
+                    onQuickOpenUrl: svcFqdn ? () => window.open(svcFqdn.startsWith('http') ? svcFqdn.replace(/:\d+$/, '') : `https://${svcFqdnClean}`, '_blank') : undefined,
                     onQuickViewLogs: onQuickViewLogs ? () => onQuickViewLogs(svc.uuid, svc.name, 'service') : undefined,
                 },
             });

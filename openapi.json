@@ -228,46 +228,46 @@
                                 ],
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "git_repository": {
-                                        "type": "string",
-                                        "description": "The git repository URL."
+                                        "description": "The git repository URL.",
+                                        "type": "string"
                                     },
                                     "git_branch": {
-                                        "type": "string",
-                                        "description": "The git branch."
+                                        "description": "The git branch.",
+                                        "type": "string"
                                     },
                                     "build_pack": {
+                                        "description": "The build pack type.",
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
-                                        ],
-                                        "description": "The build pack type."
+                                        ]
                                     },
                                     "ports_exposes": {
-                                        "type": "string",
-                                        "description": "The ports to expose."
+                                        "description": "The ports to expose.",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "Deploy instantly after creation."
+                                        "description": "Deploy instantly after creation.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -323,50 +323,50 @@
                                 ],
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "github_app_uuid": {
-                                        "type": "string",
-                                        "description": "The Github App UUID."
+                                        "description": "The Github App UUID.",
+                                        "type": "string"
                                     },
                                     "git_repository": {
-                                        "type": "string",
-                                        "description": "The git repository URL."
+                                        "description": "The git repository URL.",
+                                        "type": "string"
                                     },
                                     "git_branch": {
-                                        "type": "string",
-                                        "description": "The git branch."
+                                        "description": "The git branch.",
+                                        "type": "string"
                                     },
                                     "build_pack": {
+                                        "description": "The build pack type.",
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
-                                        ],
-                                        "description": "The build pack type."
+                                        ]
                                     },
                                     "ports_exposes": {
-                                        "type": "string",
-                                        "description": "The ports to expose."
+                                        "description": "The ports to expose.",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "Deploy instantly after creation."
+                                        "description": "Deploy instantly after creation.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -422,50 +422,50 @@
                                 ],
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "private_key_uuid": {
-                                        "type": "string",
-                                        "description": "The private key UUID."
+                                        "description": "The private key UUID.",
+                                        "type": "string"
                                     },
                                     "git_repository": {
-                                        "type": "string",
-                                        "description": "The git repository URL."
+                                        "description": "The git repository URL.",
+                                        "type": "string"
                                     },
                                     "git_branch": {
-                                        "type": "string",
-                                        "description": "The git branch."
+                                        "description": "The git branch.",
+                                        "type": "string"
                                     },
                                     "build_pack": {
+                                        "description": "The build pack type.",
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
-                                        ],
-                                        "description": "The build pack type."
+                                        ]
                                     },
                                     "ports_exposes": {
-                                        "type": "string",
-                                        "description": "The ports to expose."
+                                        "description": "The ports to expose.",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "Deploy instantly after creation."
+                                        "description": "Deploy instantly after creation.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -517,28 +517,28 @@
                                 ],
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "dockerfile": {
-                                        "type": "string",
-                                        "description": "The Dockerfile content (base64 encoded)."
+                                        "description": "The Dockerfile content (base64 encoded).",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "Deploy instantly after creation."
+                                        "description": "Deploy instantly after creation.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -591,36 +591,36 @@
                                 ],
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "docker_registry_image_name": {
-                                        "type": "string",
-                                        "description": "The docker registry image name."
+                                        "description": "The docker registry image name.",
+                                        "type": "string"
                                     },
                                     "docker_registry_image_tag": {
-                                        "type": "string",
-                                        "description": "The docker registry image tag."
+                                        "description": "The docker registry image tag.",
+                                        "type": "string"
                                     },
                                     "ports_exposes": {
-                                        "type": "string",
-                                        "description": "The ports to expose."
+                                        "description": "The ports to expose.",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "Deploy instantly after creation."
+                                        "description": "Deploy instantly after creation.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -672,28 +672,28 @@
                                 ],
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content (base64 encoded)."
+                                        "description": "The Docker Compose raw content (base64 encoded).",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "Deploy instantly after creation."
+                                        "description": "Deploy instantly after creation.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -799,28 +799,28 @@
                             "schema": {
                                 "properties": {
                                     "key": {
-                                        "type": "string",
-                                        "description": "The key of the environment variable."
+                                        "description": "The key of the environment variable.",
+                                        "type": "string"
                                     },
                                     "value": {
-                                        "type": "string",
-                                        "description": "The value of the environment variable."
+                                        "description": "The value of the environment variable.",
+                                        "type": "string"
                                     },
                                     "is_preview": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                        "description": "The flag to indicate if the environment variable is used in preview deployments.",
+                                        "type": "boolean"
                                     },
                                     "is_literal": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced.",
+                                        "type": "boolean"
                                     },
                                     "is_multiline": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is multiline."
+                                        "description": "The flag to indicate if the environment variable is multiline.",
+                                        "type": "boolean"
                                     },
                                     "is_shown_once": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -892,28 +892,28 @@
                                 ],
                                 "properties": {
                                     "key": {
-                                        "type": "string",
-                                        "description": "The key of the environment variable."
+                                        "description": "The key of the environment variable.",
+                                        "type": "string"
                                     },
                                     "value": {
-                                        "type": "string",
-                                        "description": "The value of the environment variable."
+                                        "description": "The value of the environment variable.",
+                                        "type": "string"
                                     },
                                     "is_preview": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                        "description": "The flag to indicate if the environment variable is used in preview deployments.",
+                                        "type": "boolean"
                                     },
                                     "is_literal": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced.",
+                                        "type": "boolean"
                                     },
                                     "is_multiline": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is multiline."
+                                        "description": "The flag to indicate if the environment variable is multiline.",
+                                        "type": "boolean"
                                     },
                                     "is_shown_once": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -990,28 +990,28 @@
                                         "items": {
                                             "properties": {
                                                 "key": {
-                                                    "type": "string",
-                                                    "description": "The key of the environment variable."
+                                                    "description": "The key of the environment variable.",
+                                                    "type": "string"
                                                 },
                                                 "value": {
-                                                    "type": "string",
-                                                    "description": "The value of the environment variable."
+                                                    "description": "The value of the environment variable.",
+                                                    "type": "string"
                                                 },
                                                 "is_preview": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                                    "description": "The flag to indicate if the environment variable is used in preview deployments.",
+                                                    "type": "boolean"
                                                 },
                                                 "is_literal": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                                    "description": "The flag to indicate if the environment variable is a literal, nothing espaced.",
+                                                    "type": "boolean"
                                                 },
                                                 "is_multiline": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable is multiline."
+                                                    "description": "The flag to indicate if the environment variable is multiline.",
+                                                    "type": "boolean"
                                                 },
                                                 "is_shown_once": {
-                                                    "type": "boolean",
-                                                    "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                                    "description": "The flag to indicate if the environment variable's value is shown on the UI.",
+                                                    "type": "boolean"
                                                 }
                                             },
                                             "type": "object"
@@ -1323,223 +1323,233 @@
                             "schema": {
                                 "properties": {
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "github_app_uuid": {
-                                        "type": "string",
-                                        "description": "The Github App UUID."
+                                        "description": "The Github App UUID.",
+                                        "type": "string"
                                     },
                                     "git_repository": {
-                                        "type": "string",
-                                        "description": "The git repository URL."
+                                        "description": "The git repository URL.",
+                                        "type": "string"
                                     },
                                     "git_branch": {
-                                        "type": "string",
-                                        "description": "The git branch."
+                                        "description": "The git branch.",
+                                        "type": "string"
                                     },
                                     "ports_exposes": {
-                                        "type": "string",
-                                        "description": "The ports to expose."
+                                        "description": "The ports to expose.",
+                                        "type": "string"
                                     },
                                     "destination_uuid": {
-                                        "type": "string",
-                                        "description": "The destination UUID."
+                                        "description": "The destination UUID.",
+                                        "type": "string"
                                     },
                                     "build_pack": {
+                                        "description": "The build pack type.",
                                         "type": "string",
                                         "enum": [
                                             "nixpacks",
                                             "static",
                                             "dockerfile",
                                             "dockercompose"
-                                        ],
-                                        "description": "The build pack type."
+                                        ]
                                     },
                                     "name": {
-                                        "type": "string",
-                                        "description": "The application name."
+                                        "description": "The application name.",
+                                        "type": "string"
                                     },
                                     "description": {
-                                        "type": "string",
-                                        "description": "The application description."
+                                        "description": "The application description.",
+                                        "type": "string"
                                     },
                                     "domains": {
-                                        "type": "string",
-                                        "description": "The application domains."
+                                        "description": "The application domains.",
+                                        "type": "string"
                                     },
                                     "git_commit_sha": {
-                                        "type": "string",
-                                        "description": "The git commit SHA."
+                                        "description": "The git commit SHA.",
+                                        "type": "string"
                                     },
                                     "docker_registry_image_name": {
-                                        "type": "string",
-                                        "description": "The docker registry image name."
+                                        "description": "The docker registry image name.",
+                                        "type": "string"
                                     },
                                     "docker_registry_image_tag": {
-                                        "type": "string",
-                                        "description": "The docker registry image tag."
+                                        "description": "The docker registry image tag.",
+                                        "type": "string"
                                     },
                                     "is_static": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the application is static."
+                                        "description": "The flag to indicate if the application is static.",
+                                        "type": "boolean"
                                     },
                                     "install_command": {
-                                        "type": "string",
-                                        "description": "The install command."
+                                        "description": "The install command.",
+                                        "type": "string"
                                     },
                                     "build_command": {
-                                        "type": "string",
-                                        "description": "The build command."
+                                        "description": "The build command.",
+                                        "type": "string"
                                     },
                                     "start_command": {
-                                        "type": "string",
-                                        "description": "The start command."
+                                        "description": "The start command.",
+                                        "type": "string"
                                     },
                                     "ports_mappings": {
-                                        "type": "string",
-                                        "description": "The ports mappings."
+                                        "description": "The ports mappings.",
+                                        "type": "string"
                                     },
                                     "base_directory": {
-                                        "type": "string",
-                                        "description": "The base directory for all commands."
+                                        "description": "The base directory for all commands.",
+                                        "type": "string"
                                     },
                                     "publish_directory": {
-                                        "type": "string",
-                                        "description": "The publish directory."
+                                        "description": "The publish directory.",
+                                        "type": "string"
                                     },
                                     "health_check_enabled": {
-                                        "type": "boolean",
-                                        "description": "Health check enabled."
+                                        "description": "Health check enabled.",
+                                        "type": "boolean"
                                     },
                                     "health_check_path": {
-                                        "type": "string",
-                                        "description": "Health check path."
+                                        "description": "Health check path.",
+                                        "type": "string"
                                     },
                                     "health_check_port": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Health check port."
+                                        "description": "Health check port.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "health_check_host": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Health check host."
+                                        "description": "Health check host.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "health_check_method": {
-                                        "type": "string",
-                                        "description": "Health check method."
+                                        "description": "Health check method.",
+                                        "type": "string"
                                     },
                                     "health_check_return_code": {
-                                        "type": "integer",
-                                        "description": "Health check return code."
+                                        "description": "Health check return code.",
+                                        "type": "integer"
                                     },
                                     "health_check_scheme": {
-                                        "type": "string",
-                                        "description": "Health check scheme."
+                                        "description": "Health check scheme.",
+                                        "type": "string"
                                     },
                                     "health_check_response_text": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Health check response text."
+                                        "description": "Health check response text.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "health_check_interval": {
-                                        "type": "integer",
-                                        "description": "Health check interval in seconds."
+                                        "description": "Health check interval in seconds.",
+                                        "type": "integer"
                                     },
                                     "health_check_timeout": {
-                                        "type": "integer",
-                                        "description": "Health check timeout in seconds."
+                                        "description": "Health check timeout in seconds.",
+                                        "type": "integer"
                                     },
                                     "health_check_retries": {
-                                        "type": "integer",
-                                        "description": "Health check retries count."
+                                        "description": "Health check retries count.",
+                                        "type": "integer"
                                     },
                                     "health_check_start_period": {
-                                        "type": "integer",
-                                        "description": "Health check start period in seconds."
+                                        "description": "Health check start period in seconds.",
+                                        "type": "integer"
                                     },
                                     "limits_memory": {
-                                        "type": "string",
-                                        "description": "Memory limit."
+                                        "description": "Memory limit.",
+                                        "type": "string"
                                     },
                                     "limits_memory_swap": {
-                                        "type": "string",
-                                        "description": "Memory swap limit."
+                                        "description": "Memory swap limit.",
+                                        "type": "string"
                                     },
                                     "limits_memory_swappiness": {
-                                        "type": "integer",
-                                        "description": "Memory swappiness."
+                                        "description": "Memory swappiness.",
+                                        "type": "integer"
                                     },
                                     "limits_memory_reservation": {
-                                        "type": "string",
-                                        "description": "Memory reservation."
+                                        "description": "Memory reservation.",
+                                        "type": "string"
                                     },
                                     "limits_cpus": {
-                                        "type": "string",
-                                        "description": "CPU limit."
+                                        "description": "CPU limit.",
+                                        "type": "string"
                                     },
                                     "limits_cpuset": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "CPU set."
+                                        "description": "CPU set.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "limits_cpu_shares": {
-                                        "type": "integer",
-                                        "description": "CPU shares."
+                                        "description": "CPU shares.",
+                                        "type": "integer"
                                     },
                                     "custom_labels": {
-                                        "type": "string",
-                                        "description": "Custom labels."
+                                        "description": "Custom labels.",
+                                        "type": "string"
                                     },
                                     "custom_docker_run_options": {
-                                        "type": "string",
-                                        "description": "Custom docker run options."
+                                        "description": "Custom docker run options.",
+                                        "type": "string"
                                     },
                                     "post_deployment_command": {
-                                        "type": "string",
-                                        "description": "Post deployment command."
+                                        "description": "Post deployment command.",
+                                        "type": "string"
                                     },
                                     "post_deployment_command_container": {
-                                        "type": "string",
-                                        "description": "Post deployment command container."
+                                        "description": "Post deployment command container.",
+                                        "type": "string"
                                     },
                                     "pre_deployment_command": {
-                                        "type": "string",
-                                        "description": "Pre deployment command."
+                                        "description": "Pre deployment command.",
+                                        "type": "string"
                                     },
                                     "pre_deployment_command_container": {
-                                        "type": "string",
-                                        "description": "Pre deployment command container."
+                                        "description": "Pre deployment command container.",
+                                        "type": "string"
                                     },
                                     "manual_webhook_secret_github": {
-                                        "type": "string",
-                                        "description": "Manual webhook secret for Github."
+                                        "description": "Manual webhook secret for Github.",
+                                        "type": "string"
                                     },
                                     "manual_webhook_secret_gitlab": {
-                                        "type": "string",
-                                        "description": "Manual webhook secret for Gitlab."
+                                        "description": "Manual webhook secret for Gitlab.",
+                                        "type": "string"
                                     },
                                     "manual_webhook_secret_bitbucket": {
-                                        "type": "string",
-                                        "description": "Manual webhook secret for Bitbucket."
+                                        "description": "Manual webhook secret for Bitbucket.",
+                                        "type": "string"
                                     },
                                     "manual_webhook_secret_gitea": {
-                                        "type": "string",
-                                        "description": "Manual webhook secret for Gitea."
+                                        "description": "Manual webhook secret for Gitea.",
+                                        "type": "string"
                                     },
                                     "redirect": {
-                                        "type": "string",
-                                        "nullable": true,
                                         "description": "How to set redirect with Traefik \/ Caddy. www<->non-www.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
                                         "enum": [
                                             "www",
                                             "non-www",
@@ -1547,49 +1557,51 @@
                                         ]
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the application should be deployed instantly."
+                                        "description": "The flag to indicate if the application should be deployed instantly.",
+                                        "type": "boolean"
                                     },
                                     "dockerfile": {
-                                        "type": "string",
-                                        "description": "The Dockerfile content."
+                                        "description": "The Dockerfile content.",
+                                        "type": "string"
                                     },
                                     "docker_compose_location": {
-                                        "type": "string",
-                                        "description": "The Docker Compose location."
+                                        "description": "The Docker Compose location.",
+                                        "type": "string"
                                     },
                                     "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
+                                        "description": "The Docker Compose raw content.",
+                                        "type": "string"
                                     },
                                     "docker_compose_custom_start_command": {
-                                        "type": "string",
-                                        "description": "The Docker Compose custom start command."
+                                        "description": "The Docker Compose custom start command.",
+                                        "type": "string"
                                     },
                                     "docker_compose_custom_build_command": {
-                                        "type": "string",
-                                        "description": "The Docker Compose custom build command."
+                                        "description": "The Docker Compose custom build command.",
+                                        "type": "string"
                                     },
                                     "docker_compose_domains": {
-                                        "type": "array",
-                                        "description": "The Docker Compose domains."
+                                        "description": "The Docker Compose domains.",
+                                        "type": "array"
                                     },
                                     "watch_paths": {
-                                        "type": "string",
-                                        "description": "The watch paths."
+                                        "description": "The watch paths.",
+                                        "type": "string"
                                     },
                                     "use_build_server": {
-                                        "type": "boolean",
-                                        "nullable": true,
-                                        "description": "Use build server."
+                                        "description": "Use build server.",
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
                                     },
                                     "connect_to_docker_network": {
-                                        "type": "boolean",
-                                        "description": "The flag to connect the service to the predefined Docker network."
+                                        "description": "The flag to connect the service to the predefined Docker network.",
+                                        "type": "boolean"
                                     },
                                     "force_domain_override": {
-                                        "type": "boolean",
-                                        "description": "Force domain usage even if conflicts are detected. Default is false."
+                                        "description": "Force domain usage even if conflicts are detected. Default is false.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -1649,8 +1661,10 @@
                                                         "example": "My Application"
                                                     },
                                                     "resource_uuid": {
-                                                        "type": "string",
-                                                        "nullable": true,
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ],
                                                         "example": "abc123-def456"
                                                     },
                                                     "resource_type": {
@@ -1830,23 +1844,23 @@
                                 ],
                                 "properties": {
                                     "provider": {
+                                        "description": "The cloud provider.",
                                         "type": "string",
                                         "enum": [
                                             "hetzner",
                                             "digitalocean"
                                         ],
-                                        "example": "hetzner",
-                                        "description": "The cloud provider."
+                                        "example": "hetzner"
                                     },
                                     "token": {
+                                        "description": "The API token for the cloud provider.",
                                         "type": "string",
-                                        "example": "your-api-token-here",
-                                        "description": "The API token for the cloud provider."
+                                        "example": "your-api-token-here"
                                     },
                                     "name": {
+                                        "description": "A friendly name for the token.",
                                         "type": "string",
-                                        "example": "My Hetzner Token",
-                                        "description": "A friendly name for the token."
+                                        "example": "My Hetzner Token"
                                     }
                                 },
                                 "type": "object"
@@ -1862,9 +1876,9 @@
                                 "schema": {
                                     "properties": {
                                         "uuid": {
+                                            "description": "The UUID of the token.",
                                             "type": "string",
-                                            "example": "og888os",
-                                            "description": "The UUID of the token."
+                                            "example": "og888os"
                                         }
                                     },
                                     "type": "object"
@@ -2033,8 +2047,8 @@
                             "schema": {
                                 "properties": {
                                     "name": {
-                                        "type": "string",
-                                        "description": "The friendly name for the token."
+                                        "description": "The friendly name for the token.",
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -2369,59 +2383,56 @@
                                 ],
                                 "properties": {
                                     "frequency": {
-                                        "type": "string",
-                                        "description": "Backup frequency (cron expression or: every_minute, hourly, daily, weekly, monthly, yearly)"
+                                        "description": "Backup frequency (cron expression or: every_minute, hourly, daily, weekly, monthly, yearly)",
+                                        "type": "string"
                                     },
                                     "enabled": {
-                                        "type": "boolean",
                                         "description": "Whether the backup is enabled",
-                                        "default": true
+                                        "type": "boolean"
                                     },
                                     "save_s3": {
-                                        "type": "boolean",
                                         "description": "Whether to save backups to S3",
-                                        "default": false
+                                        "type": "boolean"
                                     },
                                     "s3_storage_uuid": {
-                                        "type": "string",
-                                        "description": "S3 storage UUID (required if save_s3 is true)"
+                                        "description": "S3 storage UUID (required if save_s3 is true)",
+                                        "type": "string"
                                     },
                                     "databases_to_backup": {
-                                        "type": "string",
-                                        "description": "Comma separated list of databases to backup"
+                                        "description": "Comma separated list of databases to backup",
+                                        "type": "string"
                                     },
                                     "dump_all": {
-                                        "type": "boolean",
                                         "description": "Whether to dump all databases",
-                                        "default": false
+                                        "type": "boolean"
                                     },
                                     "backup_now": {
-                                        "type": "boolean",
-                                        "description": "Whether to trigger backup immediately after creation"
+                                        "description": "Whether to trigger backup immediately after creation",
+                                        "type": "boolean"
                                     },
                                     "database_backup_retention_amount_locally": {
-                                        "type": "integer",
-                                        "description": "Number of backups to retain locally"
+                                        "description": "Number of backups to retain locally",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_days_locally": {
-                                        "type": "integer",
-                                        "description": "Number of days to retain backups locally"
+                                        "description": "Number of days to retain backups locally",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_max_storage_locally": {
-                                        "type": "integer",
-                                        "description": "Max storage (MB) for local backups"
+                                        "description": "Max storage (MB) for local backups",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_amount_s3": {
-                                        "type": "integer",
-                                        "description": "Number of backups to retain in S3"
+                                        "description": "Number of backups to retain in S3",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_days_s3": {
-                                        "type": "integer",
-                                        "description": "Number of days to retain backups in S3"
+                                        "description": "Number of days to retain backups in S3",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_max_storage_s3": {
-                                        "type": "integer",
-                                        "description": "Max storage (MB) for S3 backups"
+                                        "description": "Max storage (MB) for S3 backups",
+                                        "type": "integer"
                                     }
                                 },
                                 "type": "object"
@@ -2587,56 +2598,56 @@
                             "schema": {
                                 "properties": {
                                     "save_s3": {
-                                        "type": "boolean",
-                                        "description": "Whether data is saved in s3 or not"
+                                        "description": "Whether data is saved in s3 or not",
+                                        "type": "boolean"
                                     },
                                     "s3_storage_uuid": {
-                                        "type": "string",
-                                        "description": "S3 storage UUID"
+                                        "description": "S3 storage UUID",
+                                        "type": "string"
                                     },
                                     "backup_now": {
-                                        "type": "boolean",
-                                        "description": "Whether to take a backup now or not"
+                                        "description": "Whether to take a backup now or not",
+                                        "type": "boolean"
                                     },
                                     "enabled": {
-                                        "type": "boolean",
-                                        "description": "Whether the backup is enabled or not"
+                                        "description": "Whether the backup is enabled or not",
+                                        "type": "boolean"
                                     },
                                     "databases_to_backup": {
-                                        "type": "string",
-                                        "description": "Comma separated list of databases to backup"
+                                        "description": "Comma separated list of databases to backup",
+                                        "type": "string"
                                     },
                                     "dump_all": {
-                                        "type": "boolean",
-                                        "description": "Whether all databases are dumped or not"
+                                        "description": "Whether all databases are dumped or not",
+                                        "type": "boolean"
                                     },
                                     "frequency": {
-                                        "type": "string",
-                                        "description": "Frequency of the backup"
+                                        "description": "Frequency of the backup",
+                                        "type": "string"
                                     },
                                     "database_backup_retention_amount_locally": {
-                                        "type": "integer",
-                                        "description": "Retention amount of the backup locally"
+                                        "description": "Retention amount of the backup locally",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_days_locally": {
-                                        "type": "integer",
-                                        "description": "Retention days of the backup locally"
+                                        "description": "Retention days of the backup locally",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_max_storage_locally": {
-                                        "type": "integer",
-                                        "description": "Max storage of the backup locally"
+                                        "description": "Max storage of the backup locally",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_amount_s3": {
-                                        "type": "integer",
-                                        "description": "Retention amount of the backup in s3"
+                                        "description": "Retention amount of the backup in s3",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_days_s3": {
-                                        "type": "integer",
-                                        "description": "Retention days of the backup in s3"
+                                        "description": "Retention days of the backup in s3",
+                                        "type": "integer"
                                     },
                                     "database_backup_retention_max_storage_s3": {
-                                        "type": "integer",
-                                        "description": "Max storage of the backup in S3"
+                                        "description": "Max storage of the backup in S3",
+                                        "type": "integer"
                                     }
                                 },
                                 "type": "object"
@@ -2873,8 +2884,8 @@
                             "schema": {
                                 "properties": {
                                     "execution_uuid": {
-                                        "type": "string",
-                                        "description": "Specific backup execution UUID to restore from"
+                                        "description": "Specific backup execution UUID to restore from",
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -5072,19 +5083,25 @@
                                             "type": "string"
                                         },
                                         "approved_by": {
-                                            "type": "string",
-                                            "nullable": true
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "comment": {
-                                            "type": "string",
-                                            "nullable": true
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "requested_at": {
                                             "type": "string"
                                         },
                                         "decided_at": {
-                                            "type": "string",
-                                            "nullable": true
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "type": "object"
@@ -5613,8 +5630,10 @@
                                                 "type": "string"
                                             },
                                             "organization": {
-                                                "type": "string",
-                                                "nullable": true
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
                                             },
                                             "api_url": {
                                                 "type": "string"
@@ -5697,57 +5716,59 @@
                                 ],
                                 "properties": {
                                     "name": {
-                                        "type": "string",
-                                        "description": "Name of the GitHub app."
+                                        "description": "Name of the GitHub app.",
+                                        "type": "string"
                                     },
                                     "organization": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Organization to associate the app with."
+                                        "description": "Organization to associate the app with.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "api_url": {
-                                        "type": "string",
-                                        "description": "API URL for the GitHub app (e.g., https:\/\/api.github.com)."
+                                        "description": "API URL for the GitHub app (e.g., https:\/\/api.github.com).",
+                                        "type": "string"
                                     },
                                     "html_url": {
-                                        "type": "string",
-                                        "description": "HTML URL for the GitHub app (e.g., https:\/\/github.com)."
+                                        "description": "HTML URL for the GitHub app (e.g., https:\/\/github.com).",
+                                        "type": "string"
                                     },
                                     "custom_user": {
-                                        "type": "string",
-                                        "description": "Custom user for SSH access (default: git)."
+                                        "description": "Custom user for SSH access (default: git).",
+                                        "type": "string"
                                     },
                                     "custom_port": {
-                                        "type": "integer",
-                                        "description": "Custom port for SSH access (default: 22)."
+                                        "description": "Custom port for SSH access (default: 22).",
+                                        "type": "integer"
                                     },
                                     "app_id": {
-                                        "type": "integer",
-                                        "description": "GitHub App ID from GitHub."
+                                        "description": "GitHub App ID from GitHub.",
+                                        "type": "integer"
                                     },
                                     "installation_id": {
-                                        "type": "integer",
-                                        "description": "GitHub Installation ID."
+                                        "description": "GitHub Installation ID.",
+                                        "type": "integer"
                                     },
                                     "client_id": {
-                                        "type": "string",
-                                        "description": "GitHub OAuth App Client ID."
+                                        "description": "GitHub OAuth App Client ID.",
+                                        "type": "string"
                                     },
                                     "client_secret": {
-                                        "type": "string",
-                                        "description": "GitHub OAuth App Client Secret."
+                                        "description": "GitHub OAuth App Client Secret.",
+                                        "type": "string"
                                     },
                                     "webhook_secret": {
-                                        "type": "string",
-                                        "description": "Webhook secret for GitHub webhooks."
+                                        "description": "Webhook secret for GitHub webhooks.",
+                                        "type": "string"
                                     },
                                     "private_key_uuid": {
-                                        "type": "string",
-                                        "description": "UUID of an existing private key for GitHub App authentication."
+                                        "description": "UUID of an existing private key for GitHub App authentication.",
+                                        "type": "string"
                                     },
                                     "is_system_wide": {
-                                        "type": "boolean",
-                                        "description": "Is this app system-wide (cloud only)."
+                                        "description": "Is this app system-wide (cloud only).",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -5772,8 +5793,10 @@
                                             "type": "string"
                                         },
                                         "organization": {
-                                            "type": "string",
-                                            "nullable": true
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "api_url": {
                                             "type": "string"
@@ -6046,57 +6069,59 @@
                             "schema": {
                                 "properties": {
                                     "name": {
-                                        "type": "string",
-                                        "description": "GitHub App name"
+                                        "description": "GitHub App name",
+                                        "type": "string"
                                     },
                                     "organization": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "GitHub organization"
+                                        "description": "GitHub organization",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "api_url": {
-                                        "type": "string",
-                                        "description": "GitHub API URL"
+                                        "description": "GitHub API URL",
+                                        "type": "string"
                                     },
                                     "html_url": {
-                                        "type": "string",
-                                        "description": "GitHub HTML URL"
+                                        "description": "GitHub HTML URL",
+                                        "type": "string"
                                     },
                                     "custom_user": {
-                                        "type": "string",
-                                        "description": "Custom user for SSH"
+                                        "description": "Custom user for SSH",
+                                        "type": "string"
                                     },
                                     "custom_port": {
-                                        "type": "integer",
-                                        "description": "Custom port for SSH"
+                                        "description": "Custom port for SSH",
+                                        "type": "integer"
                                     },
                                     "app_id": {
-                                        "type": "integer",
-                                        "description": "GitHub App ID"
+                                        "description": "GitHub App ID",
+                                        "type": "integer"
                                     },
                                     "installation_id": {
-                                        "type": "integer",
-                                        "description": "GitHub Installation ID"
+                                        "description": "GitHub Installation ID",
+                                        "type": "integer"
                                     },
                                     "client_id": {
-                                        "type": "string",
-                                        "description": "GitHub Client ID"
+                                        "description": "GitHub Client ID",
+                                        "type": "string"
                                     },
                                     "client_secret": {
-                                        "type": "string",
-                                        "description": "GitHub Client Secret"
+                                        "description": "GitHub Client Secret",
+                                        "type": "string"
                                     },
                                     "webhook_secret": {
-                                        "type": "string",
-                                        "description": "GitHub Webhook Secret"
+                                        "description": "GitHub Webhook Secret",
+                                        "type": "string"
                                     },
                                     "private_key_uuid": {
-                                        "type": "string",
-                                        "description": "Private key UUID"
+                                        "description": "Private key UUID",
+                                        "type": "string"
                                     },
                                     "is_system_wide": {
-                                        "type": "boolean",
-                                        "description": "Is system wide (non-cloud instances only)"
+                                        "description": "Is system wide (non-cloud instances only)",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -6116,8 +6141,8 @@
                                             "example": "GitHub app updated successfully"
                                         },
                                         "data": {
-                                            "type": "object",
-                                            "description": "Updated GitHub app data"
+                                            "description": "Updated GitHub app data",
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -6281,35 +6306,7 @@
                                             "prices": {
                                                 "type": "array",
                                                 "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "location": {
-                                                            "type": "string",
-                                                            "description": "Datacenter location name"
-                                                        },
-                                                        "price_hourly": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "net": {
-                                                                    "type": "string"
-                                                                },
-                                                                "gross": {
-                                                                    "type": "string"
-                                                                }
-                                                            }
-                                                        },
-                                                        "price_monthly": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "net": {
-                                                                    "type": "string"
-                                                                },
-                                                                "gross": {
-                                                                    "type": "string"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
+                                                    "type": "object"
                                                 }
                                             }
                                         },
@@ -6506,66 +6503,66 @@
                                 ],
                                 "properties": {
                                     "cloud_provider_token_uuid": {
+                                        "description": "Cloud provider token UUID. Required if cloud_provider_token_id is not provided.",
                                         "type": "string",
-                                        "example": "abc123",
-                                        "description": "Cloud provider token UUID. Required if cloud_provider_token_id is not provided."
+                                        "example": "abc123"
                                     },
                                     "cloud_provider_token_id": {
+                                        "description": "Deprecated: Use cloud_provider_token_uuid instead. Cloud provider token UUID.",
                                         "type": "string",
                                         "example": "abc123",
-                                        "description": "Deprecated: Use cloud_provider_token_uuid instead. Cloud provider token UUID.",
                                         "deprecated": true
                                     },
                                     "location": {
+                                        "description": "Hetzner location name",
                                         "type": "string",
-                                        "example": "nbg1",
-                                        "description": "Hetzner location name"
+                                        "example": "nbg1"
                                     },
                                     "server_type": {
+                                        "description": "Hetzner server type name",
                                         "type": "string",
-                                        "example": "cx11",
-                                        "description": "Hetzner server type name"
+                                        "example": "cx11"
                                     },
                                     "image": {
+                                        "description": "Hetzner image ID",
                                         "type": "integer",
-                                        "example": 15512617,
-                                        "description": "Hetzner image ID"
+                                        "example": 15512617
                                     },
                                     "name": {
+                                        "description": "Server name (auto-generated if not provided)",
                                         "type": "string",
-                                        "example": "my-server",
-                                        "description": "Server name (auto-generated if not provided)"
+                                        "example": "my-server"
                                     },
                                     "private_key_uuid": {
+                                        "description": "Private key UUID",
                                         "type": "string",
-                                        "example": "xyz789",
-                                        "description": "Private key UUID"
+                                        "example": "xyz789"
                                     },
                                     "enable_ipv4": {
+                                        "description": "Enable IPv4 (default: true)",
                                         "type": "boolean",
-                                        "example": true,
-                                        "description": "Enable IPv4 (default: true)"
+                                        "example": true
                                     },
                                     "enable_ipv6": {
+                                        "description": "Enable IPv6 (default: true)",
                                         "type": "boolean",
-                                        "example": true,
-                                        "description": "Enable IPv6 (default: true)"
+                                        "example": true
                                     },
                                     "hetzner_ssh_key_ids": {
+                                        "description": "Additional Hetzner SSH key IDs",
                                         "type": "array",
                                         "items": {
                                             "type": "integer"
-                                        },
-                                        "description": "Additional Hetzner SSH key IDs"
+                                        }
                                     },
                                     "cloud_init_script": {
-                                        "type": "string",
-                                        "description": "Cloud-init YAML script (optional)"
+                                        "description": "Cloud-init YAML script (optional)",
+                                        "type": "string"
                                     },
                                     "instant_validate": {
+                                        "description": "Validate server immediately after creation",
                                         "type": "boolean",
-                                        "example": false,
-                                        "description": "Validate server immediately after creation"
+                                        "example": false
                                     }
                                 },
                                 "type": "object"
@@ -6581,17 +6578,17 @@
                                 "schema": {
                                     "properties": {
                                         "uuid": {
+                                            "description": "The UUID of the server.",
                                             "type": "string",
-                                            "example": "og888os",
-                                            "description": "The UUID of the server."
+                                            "example": "og888os"
                                         },
                                         "hetzner_server_id": {
-                                            "type": "integer",
-                                            "description": "The Hetzner server ID."
+                                            "description": "The Hetzner server ID.",
+                                            "type": "integer"
                                         },
                                         "ip": {
-                                            "type": "string",
-                                            "description": "The server IP address."
+                                            "description": "The server IP address.",
+                                            "type": "string"
                                         }
                                     },
                                     "type": "object"
@@ -9243,54 +9240,54 @@
                             "schema": {
                                 "properties": {
                                     "name": {
+                                        "description": "The name of the server.",
                                         "type": "string",
-                                        "example": "My Server",
-                                        "description": "The name of the server."
+                                        "example": "My Server"
                                     },
                                     "description": {
+                                        "description": "The description of the server.",
                                         "type": "string",
-                                        "example": "My Server Description",
-                                        "description": "The description of the server."
+                                        "example": "My Server Description"
                                     },
                                     "ip": {
+                                        "description": "The IP of the server.",
                                         "type": "string",
-                                        "example": "127.0.0.1",
-                                        "description": "The IP of the server."
+                                        "example": "127.0.0.1"
                                     },
                                     "port": {
+                                        "description": "The port of the server.",
                                         "type": "integer",
-                                        "example": 22,
-                                        "description": "The port of the server."
+                                        "example": 22
                                     },
                                     "user": {
+                                        "description": "The user of the server.",
                                         "type": "string",
-                                        "example": "root",
-                                        "description": "The user of the server."
+                                        "example": "root"
                                     },
                                     "private_key_uuid": {
+                                        "description": "The UUID of the private key.",
                                         "type": "string",
-                                        "example": "og888os",
-                                        "description": "The UUID of the private key."
+                                        "example": "og888os"
                                     },
                                     "is_build_server": {
+                                        "description": "Is build server.",
                                         "type": "boolean",
-                                        "example": false,
-                                        "description": "Is build server."
+                                        "example": false
                                     },
                                     "instant_validate": {
+                                        "description": "Instant validate.",
                                         "type": "boolean",
-                                        "example": false,
-                                        "description": "Instant validate."
+                                        "example": false
                                     },
                                     "proxy_type": {
+                                        "description": "The proxy type.",
                                         "type": "string",
                                         "enum": [
                                             "traefik",
                                             "caddy",
                                             "none"
                                         ],
-                                        "example": "traefik",
-                                        "description": "The proxy type."
+                                        "example": "traefik"
                                     }
                                 },
                                 "type": "object"
@@ -9306,9 +9303,9 @@
                                 "schema": {
                                     "properties": {
                                         "uuid": {
+                                            "description": "The UUID of the server.",
                                             "type": "string",
-                                            "example": "og888os",
-                                            "description": "The UUID of the server."
+                                            "example": "og888os"
                                         }
                                     },
                                     "type": "object"
@@ -9463,45 +9460,45 @@
                             "schema": {
                                 "properties": {
                                     "name": {
-                                        "type": "string",
-                                        "description": "The name of the server."
+                                        "description": "The name of the server.",
+                                        "type": "string"
                                     },
                                     "description": {
-                                        "type": "string",
-                                        "description": "The description of the server."
+                                        "description": "The description of the server.",
+                                        "type": "string"
                                     },
                                     "ip": {
-                                        "type": "string",
-                                        "description": "The IP of the server."
+                                        "description": "The IP of the server.",
+                                        "type": "string"
                                     },
                                     "port": {
-                                        "type": "integer",
-                                        "description": "The port of the server."
+                                        "description": "The port of the server.",
+                                        "type": "integer"
                                     },
                                     "user": {
-                                        "type": "string",
-                                        "description": "The user of the server."
+                                        "description": "The user of the server.",
+                                        "type": "string"
                                     },
                                     "private_key_uuid": {
-                                        "type": "string",
-                                        "description": "The UUID of the private key."
+                                        "description": "The UUID of the private key.",
+                                        "type": "string"
                                     },
                                     "is_build_server": {
-                                        "type": "boolean",
-                                        "description": "Is build server."
+                                        "description": "Is build server.",
+                                        "type": "boolean"
                                     },
                                     "instant_validate": {
-                                        "type": "boolean",
-                                        "description": "Instant validate."
+                                        "description": "Instant validate.",
+                                        "type": "boolean"
                                     },
                                     "proxy_type": {
+                                        "description": "The proxy type.",
                                         "type": "string",
                                         "enum": [
                                             "traefik",
                                             "caddy",
                                             "none"
-                                        ],
-                                        "description": "The proxy type."
+                                        ]
                                     }
                                 },
                                 "type": "object"
@@ -10022,28 +10019,28 @@
                             "schema": {
                                 "properties": {
                                     "key": {
-                                        "type": "string",
-                                        "description": "The key of the environment variable."
+                                        "description": "The key of the environment variable.",
+                                        "type": "string"
                                     },
                                     "value": {
-                                        "type": "string",
-                                        "description": "The value of the environment variable."
+                                        "description": "The value of the environment variable.",
+                                        "type": "string"
                                     },
                                     "is_preview": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                        "description": "The flag to indicate if the environment variable is used in preview deployments.",
+                                        "type": "boolean"
                                     },
                                     "is_literal": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced.",
+                                        "type": "boolean"
                                     },
                                     "is_multiline": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is multiline."
+                                        "description": "The flag to indicate if the environment variable is multiline.",
+                                        "type": "boolean"
                                     },
                                     "is_shown_once": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -10118,28 +10115,28 @@
                                 ],
                                 "properties": {
                                     "key": {
-                                        "type": "string",
-                                        "description": "The key of the environment variable."
+                                        "description": "The key of the environment variable.",
+                                        "type": "string"
                                     },
                                     "value": {
-                                        "type": "string",
-                                        "description": "The value of the environment variable."
+                                        "description": "The value of the environment variable.",
+                                        "type": "string"
                                     },
                                     "is_preview": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is used in preview deployments."
+                                        "description": "The flag to indicate if the environment variable is used in preview deployments.",
+                                        "type": "boolean"
                                     },
                                     "is_literal": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced."
+                                        "description": "The flag to indicate if the environment variable is a literal, nothing espaced.",
+                                        "type": "boolean"
                                     },
                                     "is_multiline": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable is multiline."
+                                        "description": "The flag to indicate if the environment variable is multiline.",
+                                        "type": "boolean"
                                     },
                                     "is_shown_once": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the environment variable's value is shown on the UI."
+                                        "description": "The flag to indicate if the environment variable's value is shown on the UI.",
+                                        "type": "boolean"
                                     }
                                 },
                                 "type": "object"
@@ -10381,45 +10378,47 @@
                                 "schema": {
                                     "properties": {
                                         "enabled": {
-                                            "type": "boolean",
-                                            "description": "Whether healthcheck is enabled."
+                                            "description": "Whether healthcheck is enabled.",
+                                            "type": "boolean"
                                         },
                                         "type": {
-                                            "type": "string",
-                                            "description": "Healthcheck type (http or tcp)."
+                                            "description": "Healthcheck type (http or tcp).",
+                                            "type": "string"
                                         },
                                         "test": {
-                                            "type": "string",
-                                            "description": "Healthcheck test command."
+                                            "description": "Healthcheck test command.",
+                                            "type": "string"
                                         },
                                         "interval": {
-                                            "type": "integer",
-                                            "description": "Healthcheck interval in seconds."
+                                            "description": "Healthcheck interval in seconds.",
+                                            "type": "integer"
                                         },
                                         "timeout": {
-                                            "type": "integer",
-                                            "description": "Healthcheck timeout in seconds."
+                                            "description": "Healthcheck timeout in seconds.",
+                                            "type": "integer"
                                         },
                                         "retries": {
-                                            "type": "integer",
-                                            "description": "Number of retries before unhealthy."
+                                            "description": "Number of retries before unhealthy.",
+                                            "type": "integer"
                                         },
                                         "start_period": {
-                                            "type": "integer",
-                                            "description": "Start period in seconds."
+                                            "description": "Start period in seconds.",
+                                            "type": "integer"
                                         },
                                         "service_name": {
-                                            "type": "string",
-                                            "nullable": true,
-                                            "description": "Name of the docker service."
+                                            "description": "Name of the docker service.",
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         },
                                         "status": {
-                                            "type": "string",
-                                            "description": "Current service status."
+                                            "description": "Current service status.",
+                                            "type": "string"
                                         },
                                         "services_status": {
-                                            "type": "object",
-                                            "description": "Healthcheck status per service."
+                                            "description": "Healthcheck status per service.",
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -10467,45 +10466,43 @@
                             "schema": {
                                 "properties": {
                                     "enabled": {
-                                        "type": "boolean",
-                                        "description": "Whether healthcheck is enabled."
+                                        "description": "Whether healthcheck is enabled.",
+                                        "type": "boolean"
                                     },
                                     "type": {
+                                        "description": "Healthcheck type.",
                                         "type": "string",
                                         "enum": [
                                             "http",
                                             "tcp"
-                                        ],
-                                        "description": "Healthcheck type."
+                                        ]
                                     },
                                     "test": {
-                                        "type": "string",
-                                        "description": "Healthcheck test command."
+                                        "description": "Healthcheck test command.",
+                                        "type": "string"
                                     },
                                     "interval": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "description": "Healthcheck interval in seconds."
+                                        "description": "Healthcheck interval in seconds.",
+                                        "type": "integer"
                                     },
                                     "timeout": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "description": "Healthcheck timeout in seconds."
+                                        "description": "Healthcheck timeout in seconds.",
+                                        "type": "integer"
                                     },
                                     "retries": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "description": "Number of retries before unhealthy."
+                                        "description": "Number of retries before unhealthy.",
+                                        "type": "integer"
                                     },
                                     "start_period": {
-                                        "type": "integer",
-                                        "minimum": 0,
-                                        "description": "Start period in seconds."
+                                        "description": "Start period in seconds.",
+                                        "type": "integer"
                                     },
                                     "service_name": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Target docker service name."
+                                        "description": "Target docker service name.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     }
                                 },
                                 "type": "object"
@@ -10697,43 +10694,43 @@
                                         ]
                                     },
                                     "name": {
-                                        "type": "string",
-                                        "maxLength": 255,
-                                        "description": "Name of the service."
+                                        "description": "Name of the service.",
+                                        "type": "string"
                                     },
                                     "description": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "Description of the service."
+                                        "description": "Description of the service.",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "Project UUID."
+                                        "description": "Project UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "Environment name. You need to provide at least one of environment_name or environment_uuid."
+                                        "description": "Environment name. You need to provide at least one of environment_name or environment_uuid.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "Environment UUID. You need to provide at least one of environment_name or environment_uuid."
+                                        "description": "Environment UUID. You need to provide at least one of environment_name or environment_uuid.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "Server UUID."
+                                        "description": "Server UUID.",
+                                        "type": "string"
                                     },
                                     "destination_uuid": {
-                                        "type": "string",
-                                        "description": "Destination UUID. Required if server has multiple destinations."
+                                        "description": "Destination UUID. Required if server has multiple destinations.",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "default": false,
-                                        "description": "Start the service immediately after creation."
+                                        "description": "Start the service immediately after creation.",
+                                        "type": "boolean"
                                     },
                                     "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
+                                        "description": "The Docker Compose raw content.",
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -10749,15 +10746,15 @@
                                 "schema": {
                                     "properties": {
                                         "uuid": {
-                                            "type": "string",
-                                            "description": "Service UUID."
+                                            "description": "Service UUID.",
+                                            "type": "string"
                                         },
                                         "domains": {
+                                            "description": "Service domains.",
                                             "type": "array",
                                             "items": {
                                                 "type": "string"
-                                            },
-                                            "description": "Service domains."
+                                            }
                                         }
                                     },
                                     "type": "object"
@@ -10946,74 +10943,75 @@
                             "schema": {
                                 "properties": {
                                     "name": {
-                                        "type": "string",
-                                        "description": "The service name."
+                                        "description": "The service name.",
+                                        "type": "string"
                                     },
                                     "description": {
-                                        "type": "string",
-                                        "description": "The service description."
+                                        "description": "The service description.",
+                                        "type": "string"
                                     },
                                     "project_uuid": {
-                                        "type": "string",
-                                        "description": "The project UUID."
+                                        "description": "The project UUID.",
+                                        "type": "string"
                                     },
                                     "environment_name": {
-                                        "type": "string",
-                                        "description": "The environment name."
+                                        "description": "The environment name.",
+                                        "type": "string"
                                     },
                                     "environment_uuid": {
-                                        "type": "string",
-                                        "description": "The environment UUID."
+                                        "description": "The environment UUID.",
+                                        "type": "string"
                                     },
                                     "server_uuid": {
-                                        "type": "string",
-                                        "description": "The server UUID."
+                                        "description": "The server UUID.",
+                                        "type": "string"
                                     },
                                     "destination_uuid": {
-                                        "type": "string",
-                                        "description": "The destination UUID."
+                                        "description": "The destination UUID.",
+                                        "type": "string"
                                     },
                                     "instant_deploy": {
-                                        "type": "boolean",
-                                        "description": "The flag to indicate if the service should be deployed instantly."
+                                        "description": "The flag to indicate if the service should be deployed instantly.",
+                                        "type": "boolean"
                                     },
                                     "connect_to_docker_network": {
-                                        "type": "boolean",
-                                        "default": false,
-                                        "description": "Connect the service to the predefined docker network."
+                                        "description": "Connect the service to the predefined docker network.",
+                                        "type": "boolean"
                                     },
                                     "docker_compose_raw": {
-                                        "type": "string",
-                                        "description": "The Docker Compose raw content."
+                                        "description": "The Docker Compose raw content.",
+                                        "type": "string"
                                     },
                                     "limits_memory": {
-                                        "type": "string",
-                                        "description": "Memory limit for all containers (e.g., \"512m\", \"1g\", \"0\" for no limit)."
+                                        "description": "Memory limit for all containers (e.g., \"512m\", \"1g\", \"0\" for no limit).",
+                                        "type": "string"
                                     },
                                     "limits_memory_swap": {
-                                        "type": "string",
-                                        "description": "Memory swap limit (e.g., \"1g\", \"0\" for no limit)."
+                                        "description": "Memory swap limit (e.g., \"1g\", \"0\" for no limit).",
+                                        "type": "string"
                                     },
                                     "limits_memory_swappiness": {
-                                        "type": "integer",
-                                        "description": "Memory swappiness (0-100)."
+                                        "description": "Memory swappiness (0-100).",
+                                        "type": "integer"
                                     },
                                     "limits_memory_reservation": {
-                                        "type": "string",
-                                        "description": "Memory reservation (soft limit)."
+                                        "description": "Memory reservation (soft limit).",
+                                        "type": "string"
                                     },
                                     "limits_cpus": {
-                                        "type": "string",
-                                        "description": "CPU limit (e.g., \"0.5\", \"2\", \"0\" for no limit)."
+                                        "description": "CPU limit (e.g., \"0.5\", \"2\", \"0\" for no limit).",
+                                        "type": "string"
                                     },
                                     "limits_cpuset": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "description": "CPU set (e.g., \"0,1\" or \"0-3\")."
+                                        "description": "CPU set (e.g., \"0,1\" or \"0-3\").",
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
                                     },
                                     "limits_cpu_shares": {
-                                        "type": "integer",
-                                        "description": "CPU shares (relative weight, default 1024)."
+                                        "description": "CPU shares (relative weight, default 1024).",
+                                        "type": "integer"
                                     }
                                 },
                                 "type": "object"
@@ -11029,15 +11027,15 @@
                                 "schema": {
                                     "properties": {
                                         "uuid": {
-                                            "type": "string",
-                                            "description": "Service UUID."
+                                            "description": "Service UUID.",
+                                            "type": "string"
                                         },
                                         "domains": {
+                                            "description": "Service domains.",
                                             "type": "array",
                                             "items": {
                                                 "type": "string"
-                                            },
-                                            "description": "Service domains."
+                                            }
                                         }
                                     },
                                     "type": "object"
@@ -12705,105 +12703,107 @@
                 "description": "Service model",
                 "properties": {
                     "id": {
-                        "type": "integer",
-                        "description": "The unique identifier of the service. Only used for database identification."
+                        "description": "The unique identifier of the service. Only used for database identification.",
+                        "type": "integer"
                     },
                     "uuid": {
-                        "type": "string",
-                        "description": "The unique identifier of the service."
+                        "description": "The unique identifier of the service.",
+                        "type": "string"
                     },
                     "name": {
-                        "type": "string",
-                        "description": "The name of the service."
+                        "description": "The name of the service.",
+                        "type": "string"
                     },
                     "environment_id": {
-                        "type": "integer",
-                        "description": "The unique identifier of the environment where the service is attached to."
+                        "description": "The unique identifier of the environment where the service is attached to.",
+                        "type": "integer"
                     },
                     "server_id": {
-                        "type": "integer",
-                        "description": "The unique identifier of the server where the service is running."
+                        "description": "The unique identifier of the server where the service is running.",
+                        "type": "integer"
                     },
                     "description": {
-                        "type": "string",
-                        "description": "The description of the service."
+                        "description": "The description of the service.",
+                        "type": "string"
                     },
                     "docker_compose_raw": {
-                        "type": "string",
-                        "description": "The raw docker-compose.yml file of the service."
+                        "description": "The raw docker-compose.yml file of the service.",
+                        "type": "string"
                     },
                     "docker_compose": {
-                        "type": "string",
-                        "description": "The docker-compose.yml file that is parsed and modified by Saturn Platform."
+                        "description": "The docker-compose.yml file that is parsed and modified by Saturn Platform.",
+                        "type": "string"
                     },
                     "destination_type": {
-                        "type": "string",
-                        "description": "Destination type."
+                        "description": "Destination type.",
+                        "type": "string"
                     },
                     "destination_id": {
-                        "type": "integer",
-                        "description": "The unique identifier of the destination where the service is running."
+                        "description": "The unique identifier of the destination where the service is running.",
+                        "type": "integer"
                     },
                     "connect_to_docker_network": {
-                        "type": "boolean",
-                        "description": "The flag to connect the service to the predefined Docker network."
+                        "description": "The flag to connect the service to the predefined Docker network.",
+                        "type": "boolean"
                     },
                     "is_container_label_escape_enabled": {
-                        "type": "boolean",
-                        "description": "The flag to enable the container label escape."
+                        "description": "The flag to enable the container label escape.",
+                        "type": "boolean"
                     },
                     "is_container_label_readonly_enabled": {
-                        "type": "boolean",
-                        "description": "The flag to enable the container label readonly."
+                        "description": "The flag to enable the container label readonly.",
+                        "type": "boolean"
                     },
                     "config_hash": {
-                        "type": "string",
-                        "description": "The hash of the service configuration."
+                        "description": "The hash of the service configuration.",
+                        "type": "string"
                     },
                     "service_type": {
-                        "type": "string",
-                        "description": "The type of the service."
+                        "description": "The type of the service.",
+                        "type": "string"
                     },
                     "limits_memory": {
-                        "type": "string",
-                        "description": "Memory limit for all containers (e.g., \"512m\", \"1g\")."
+                        "description": "Memory limit for all containers (e.g., \"512m\", \"1g\").",
+                        "type": "string"
                     },
                     "limits_memory_swap": {
-                        "type": "string",
-                        "description": "Memory swap limit."
+                        "description": "Memory swap limit.",
+                        "type": "string"
                     },
                     "limits_memory_swappiness": {
-                        "type": "integer",
-                        "description": "Memory swappiness (0-100)."
+                        "description": "Memory swappiness (0-100).",
+                        "type": "integer"
                     },
                     "limits_memory_reservation": {
-                        "type": "string",
-                        "description": "Memory reservation."
+                        "description": "Memory reservation.",
+                        "type": "string"
                     },
                     "limits_cpus": {
-                        "type": "string",
-                        "description": "CPU limit (e.g., \"0.5\", \"2\")."
+                        "description": "CPU limit (e.g., \"0.5\", \"2\").",
+                        "type": "string"
                     },
                     "limits_cpuset": {
-                        "type": "string",
-                        "nullable": true,
-                        "description": "CPU set (e.g., \"0,1\" or \"0-3\")."
+                        "description": "CPU set (e.g., \"0,1\" or \"0-3\").",
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "limits_cpu_shares": {
-                        "type": "integer",
-                        "description": "CPU shares (relative weight)."
+                        "description": "CPU shares (relative weight).",
+                        "type": "integer"
                     },
                     "created_at": {
-                        "type": "string",
-                        "description": "The date and time when the service was created."
+                        "description": "The date and time when the service was created.",
+                        "type": "string"
                     },
                     "updated_at": {
-                        "type": "string",
-                        "description": "The date and time when the service was last updated."
+                        "description": "The date and time when the service was last updated.",
+                        "type": "string"
                     },
                     "deleted_at": {
-                        "type": "string",
-                        "description": "The date and time when the service was deleted."
+                        "description": "The date and time when the service was deleted.",
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -12812,36 +12812,36 @@
                 "description": "Team model",
                 "properties": {
                     "id": {
-                        "type": "integer",
-                        "description": "The unique identifier of the team."
+                        "description": "The unique identifier of the team.",
+                        "type": "integer"
                     },
                     "name": {
-                        "type": "string",
-                        "description": "The name of the team."
+                        "description": "The name of the team.",
+                        "type": "string"
                     },
                     "description": {
-                        "type": "string",
-                        "description": "The description of the team."
+                        "description": "The description of the team.",
+                        "type": "string"
                     },
                     "personal_team": {
-                        "type": "boolean",
-                        "description": "Whether the team is personal or not."
+                        "description": "Whether the team is personal or not.",
+                        "type": "boolean"
                     },
                     "created_at": {
-                        "type": "string",
-                        "description": "The date and time the team was created."
+                        "description": "The date and time the team was created.",
+                        "type": "string"
                     },
                     "updated_at": {
-                        "type": "string",
-                        "description": "The date and time the team was last updated."
+                        "description": "The date and time the team was last updated.",
+                        "type": "string"
                     },
                     "show_boarding": {
-                        "type": "boolean",
-                        "description": "Whether to show the boarding screen or not."
+                        "description": "Whether to show the boarding screen or not.",
+                        "type": "boolean"
                     },
                     "custom_server_limit": {
-                        "type": "string",
-                        "description": "The custom server limit."
+                        "description": "The custom server limit.",
+                        "type": "string"
                     },
                     "members": {
                         "description": "The members of the team.",
@@ -12857,40 +12857,40 @@
                 "description": "User model",
                 "properties": {
                     "id": {
-                        "type": "integer",
-                        "description": "The user identifier in the database."
+                        "description": "The user identifier in the database.",
+                        "type": "integer"
                     },
                     "name": {
-                        "type": "string",
-                        "description": "The user name."
+                        "description": "The user name.",
+                        "type": "string"
                     },
                     "email": {
-                        "type": "string",
-                        "description": "The user email."
+                        "description": "The user email.",
+                        "type": "string"
                     },
                     "email_verified_at": {
-                        "type": "string",
-                        "description": "The date when the user email was verified."
+                        "description": "The date when the user email was verified.",
+                        "type": "string"
                     },
                     "created_at": {
-                        "type": "string",
-                        "description": "The date when the user was created."
+                        "description": "The date when the user was created.",
+                        "type": "string"
                     },
                     "updated_at": {
-                        "type": "string",
-                        "description": "The date when the user was updated."
+                        "description": "The date when the user was updated.",
+                        "type": "string"
                     },
                     "two_factor_confirmed_at": {
-                        "type": "string",
-                        "description": "The date when the user two factor was confirmed."
+                        "description": "The date when the user two factor was confirmed.",
+                        "type": "string"
                     },
                     "force_password_reset": {
-                        "type": "boolean",
-                        "description": "The flag to force the user to reset the password."
+                        "description": "The flag to force the user to reset the password.",
+                        "type": "boolean"
                     },
                     "marketing_emails": {
-                        "type": "boolean",
-                        "description": "The flag to receive marketing emails."
+                        "description": "The flag to receive marketing emails.",
+                        "type": "boolean"
                     }
                 },
                 "type": "object"

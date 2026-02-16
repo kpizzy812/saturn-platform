@@ -63,6 +63,15 @@ class ServiceComposeParser
         $this->allMagicEnvironments = collect([]);
     }
 
+    /**
+     * Short identifier for subdomain generation (first 8 chars of UUID).
+     * Full UUID is still used for Docker networks, project names, etc.
+     */
+    private function subdomainSlug(): string
+    {
+        return substr($this->uuid, 0, 8);
+    }
+
     private function doParse(): Collection
     {
         $compose = data_get($this->resource, 'docker_compose_raw');
@@ -279,14 +288,14 @@ class ServiceComposeParser
         $isServiceApplication = $savedService instanceof ServiceApplication;
 
         if ($isServiceApplication && blank($savedService->fqdn)) {
-            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->uuid}", parserVersion: $this->resource->compose_parsing_version);
-            $url = generateUrl($this->server, "$fqdnFor-{$this->uuid}");
+            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->subdomainSlug()}", parserVersion: $this->resource->compose_parsing_version);
+            $url = generateUrl($this->server, "$fqdnFor-{$this->subdomainSlug()}");
         } elseif ($isServiceApplication) {
             $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
             $url = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
         } else {
-            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->uuid}", parserVersion: $this->resource->compose_parsing_version);
-            $url = generateUrl($this->server, "$fqdnFor-{$this->uuid}");
+            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->subdomainSlug()}", parserVersion: $this->resource->compose_parsing_version);
+            $url = generateUrl($this->server, "$fqdnFor-{$this->subdomainSlug()}");
         }
 
         $fqdnValueForEnv = str($fqdn)->after('://')->value();
@@ -315,9 +324,9 @@ class ServiceComposeParser
             $urlWithPort = "$url:$port";
         }
 
-        // Only save fqdn to ServiceApplication
+        // Only save fqdn to ServiceApplication (without port - Traefik handles internal routing)
         if ($isServiceApplication && is_null($savedService->fqdn)) {
-            $savedService->fqdn = $urlWithPort;
+            $savedService->fqdn = $url;
             $savedService->save();
         }
 
@@ -389,8 +398,8 @@ class ServiceComposeParser
     private function generateFqdnVariable(Stringable $key, ServiceApplication|ServiceDatabase $savedService): void
     {
         $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
-        $fqdn = generateFqdn(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->uuid}", parserVersion: $this->resource->compose_parsing_version);
-        $url = generateUrl(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->uuid}");
+        $fqdn = generateFqdn(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->subdomainSlug()}", parserVersion: $this->resource->compose_parsing_version);
+        $url = generateUrl(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->subdomainSlug()}");
 
         $envExists = $this->resource->environment_variables()->where('key', $key->value())->first();
         $portSuffixedExists = $this->resource->environment_variables()
@@ -422,7 +431,7 @@ class ServiceComposeParser
     private function generateUrlVariable(Stringable $key, ServiceApplication|ServiceDatabase $savedService): void
     {
         $urlFor = $key->after('SERVICE_URL_')->lower()->value();
-        $url = generateUrl(server: $this->server, random: str($urlFor)->replace('_', '-')->value()."-{$this->uuid}");
+        $url = generateUrl(server: $this->server, random: str($urlFor)->replace('_', '-')->value()."-{$this->subdomainSlug()}");
 
         $envExists = $this->resource->environment_variables()->where('key', $key->value())->first();
         $portSuffixedExists = $this->resource->environment_variables()

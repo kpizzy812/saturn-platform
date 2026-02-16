@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use App\Traits\Auditable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property-read Team|null $team
+ */
 class ScheduledDatabaseBackup extends BaseModel
 {
     use Auditable, LogsActivity;
@@ -64,7 +68,8 @@ class ScheduledDatabaseBackup extends BaseModel
         return ScheduledDatabaseBackup::whereRelation('team', 'id', $teamId)->orderBy('created_at', 'desc');
     }
 
-    public function team()
+    /** @return BelongsTo<Team, $this> */
+    public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
     }

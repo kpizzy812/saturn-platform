@@ -5,6 +5,7 @@ namespace App\Models;
 /**
  * @property Server $server
  * @property string $network
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
  */
 class SwarmDocker extends BaseModel
 {

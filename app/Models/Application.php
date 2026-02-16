@@ -10,6 +10,7 @@ use App\Traits\HasConfiguration;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -25,7 +26,12 @@ use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
 /**
- * @property ApplicationSetting|null $settings
+ * @property-read ApplicationSetting|null $settings
+ * @property-read StandaloneDocker|SwarmDocker|null $destination
+ * @property-read Environment|null $environment
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Server> $additional_servers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, EnvironmentVariable> $environment_variables
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, EnvironmentVariable> $environment_variables_preview
  */
 #[OA\Schema(
     description: 'Application model',
@@ -1087,7 +1093,8 @@ class Application extends BaseModel
         return $this->belongsTo(PrivateKey::class);
     }
 
-    public function environment()
+    /** @return BelongsTo<Environment, $this> */
+    public function environment(): BelongsTo
     {
         return $this->belongsTo(Environment::class);
     }

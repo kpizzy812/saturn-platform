@@ -4,8 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property-read Service|null $service
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, EnvironmentVariable> $environment_variables
+ */
 class ServiceApplication extends BaseModel
 {
     use HasFactory, SoftDeletes;
@@ -142,7 +147,8 @@ class ServiceApplication extends BaseModel
         return null;
     }
 
-    public function service()
+    /** @return BelongsTo<Service, $this> */
+    public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
     }
