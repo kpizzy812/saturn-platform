@@ -228,19 +228,46 @@ Route::get('/settings/security', function () {
 
 Route::get('/settings/workspace', function () {
     $team = currentTeam();
+    $user = auth()->user();
 
-    // Generate slug from team name
     $slug = \Illuminate\Support\Str::slug($team->name);
 
-    // Get list of all timezones
     $timezones = \DateTimeZone::listIdentifiers(\DateTimeZone::ALL);
 
-    // Default environment options
     $environmentOptions = [
         ['value' => 'production', 'label' => 'Production'],
         ['value' => 'staging', 'label' => 'Staging'],
         ['value' => 'development', 'label' => 'Development'],
     ];
+
+    $localeOptions = [
+        ['value' => 'en', 'label' => 'English'],
+        ['value' => 'ru', 'label' => 'Russian'],
+        ['value' => 'de', 'label' => 'German'],
+        ['value' => 'fr', 'label' => 'French'],
+        ['value' => 'es', 'label' => 'Spanish'],
+        ['value' => 'pt', 'label' => 'Portuguese'],
+        ['value' => 'ja', 'label' => 'Japanese'],
+        ['value' => 'zh', 'label' => 'Chinese'],
+        ['value' => 'ko', 'label' => 'Korean'],
+    ];
+
+    $dateFormatOptions = [
+        ['value' => 'YYYY-MM-DD', 'label' => '2026-02-16 (ISO)'],
+        ['value' => 'DD/MM/YYYY', 'label' => '16/02/2026'],
+        ['value' => 'MM/DD/YYYY', 'label' => '02/16/2026'],
+        ['value' => 'DD.MM.YYYY', 'label' => '16.02.2026'],
+        ['value' => 'MMM DD, YYYY', 'label' => 'Feb 16, 2026'],
+    ];
+
+    // Workspace statistics
+    $projectsCount = $team->projects()->count();
+    $serversCount = $team->servers()->count();
+    $applicationsCount = $team->applications()->count();
+    $membersCount = $team->members()->count();
+
+    // Owner info
+    $owner = $team->members()->wherePivot('role', 'owner')->first();
 
     return Inertia::render('Settings/Workspace', [
         'workspace' => [
@@ -248,13 +275,29 @@ Route::get('/settings/workspace', function () {
             'name' => $team->name,
             'slug' => $slug,
             'logo' => $team->logo,
-            'description' => $team->description,
+            'description' => $team->description ?? '',
             'timezone' => $team->timezone ?? 'UTC',
             'defaultEnvironment' => $team->default_environment ?? 'production',
+            'locale' => $team->workspace_locale ?? 'en',
+            'dateFormat' => $team->workspace_date_format ?? 'YYYY-MM-DD',
             'personalTeam' => $team->personal_team,
+            'createdAt' => $team->created_at->toISOString(),
+            'owner' => $owner ? [
+                'name' => $owner->name,
+                'email' => $owner->email,
+            ] : null,
+        ],
+        'stats' => [
+            'projects' => $projectsCount,
+            'servers' => $serversCount,
+            'applications' => $applicationsCount,
+            'members' => $membersCount,
         ],
         'timezones' => $timezones,
         'environmentOptions' => $environmentOptions,
+        'localeOptions' => $localeOptions,
+        'dateFormatOptions' => $dateFormatOptions,
+        'canEdit' => $user->isAdmin(),
     ]);
 })->name('settings.workspace');
 
@@ -1497,28 +1540,32 @@ Route::delete('/settings/tokens/{id}', function (string $id) {
 Route::post('/settings/workspace', function (Request $request) {
     $validTimezones = \DateTimeZone::listIdentifiers(\DateTimeZone::ALL);
     $validEnvironments = ['production', 'staging', 'development'];
+    $validLocales = ['en', 'ru', 'de', 'fr', 'es', 'pt', 'ja', 'zh', 'ko'];
+    $validDateFormats = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD.MM.YYYY', 'MMM DD, YYYY'];
 
     $request->validate([
         'name' => 'required|string|max:255',
-        'description' => 'nullable|string',
+        'description' => 'nullable|string|max:1000',
         'timezone' => ['nullable', 'string', \Illuminate\Validation\Rule::in($validTimezones)],
         'defaultEnvironment' => ['nullable', 'string', \Illuminate\Validation\Rule::in($validEnvironments)],
+        'locale' => ['nullable', 'string', \Illuminate\Validation\Rule::in($validLocales)],
+        'dateFormat' => ['nullable', 'string', \Illuminate\Validation\Rule::in($validDateFormats)],
     ]);
 
     $team = currentTeam();
     $user = auth()->user();
 
-    // Check if the user is an admin or owner
     if (! $user->isAdmin()) {
         return redirect()->back()->withErrors(['workspace' => 'You do not have permission to update workspace settings']);
     }
 
-    // Update the team
     $team->update([
         'name' => $request->name,
         'description' => $request->description,
         'timezone' => $request->timezone ?? 'UTC',
         'default_environment' => $request->defaultEnvironment ?? 'production',
+        'workspace_locale' => $request->locale ?? 'en',
+        'workspace_date_format' => $request->dateFormat ?? 'YYYY-MM-DD',
     ]);
 
     return redirect()->back()->with('success', 'Workspace updated successfully');

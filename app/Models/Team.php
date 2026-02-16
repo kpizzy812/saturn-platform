@@ -43,9 +43,28 @@ use Spatie\Activitylog\Traits\LogsActivity;
     ]
 )]
 /**
+ * @property int $id
+ * @property string $name
+ * @property string|null $description
+ * @property bool $personal_team
+ * @property bool $show_boarding
+ * @property string|null $custom_server_limit
+ * @property string|null $logo
+ * @property string|null $timezone
+ * @property string $default_environment
+ * @property string|null $workspace_locale
+ * @property string|null $workspace_date_format
+ * @property int|null $default_project_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read int $limits
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Server> $servers
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Project> $projects
  * @property-read \Illuminate\Database\Eloquent\Collection<int, User> $members
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, S3Storage> $s3s
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, PrivateKey> $privateKeys
+ * @property-read Subscription|null $subscription
+ * @property-read \App\Models\TeamUser|null $pivot
  */
 class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, SendsSlack
 {
@@ -60,8 +79,9 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         'description',
         'show_boarding',
         'custom_server_limit',
-        'logo_path',
-        'workspace_timezone',
+        'logo',
+        'timezone',
+        'default_environment',
         'workspace_locale',
         'workspace_date_format',
         'default_project_id',

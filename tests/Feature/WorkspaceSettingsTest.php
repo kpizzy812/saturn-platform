@@ -7,7 +7,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    // Create a team with owner, admin, and member
     $this->team = Team::factory()->create([
         'name' => 'Test Workspace',
         'timezone' => 'UTC',
@@ -36,6 +35,10 @@ describe('GET /settings/workspace', function () {
             ->has('workspace')
             ->has('timezones')
             ->has('environmentOptions')
+            ->has('localeOptions')
+            ->has('dateFormatOptions')
+            ->has('stats')
+            ->has('canEdit')
         );
     });
 
@@ -49,9 +52,63 @@ describe('GET /settings/workspace', function () {
             ->where('workspace.name', $this->team->name)
             ->where('workspace.timezone', 'UTC')
             ->where('workspace.defaultEnvironment', 'production')
+            ->where('workspace.locale', 'en')
+            ->where('workspace.dateFormat', 'YYYY-MM-DD')
             ->has('workspace.id')
             ->has('workspace.slug')
+            ->has('workspace.createdAt')
+            ->has('workspace.description')
         );
+    });
+
+    test('workspace stats are returned', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->get('/settings/workspace');
+
+        $response->assertInertia(fn ($page) => $page
+            ->has('stats.projects')
+            ->has('stats.servers')
+            ->has('stats.applications')
+            ->has('stats.members')
+        );
+    });
+
+    test('owner info is returned', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->get('/settings/workspace');
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('workspace.owner.name', $this->owner->name)
+            ->where('workspace.owner.email', $this->owner->email)
+        );
+    });
+
+    test('canEdit is true for owner and admin', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->get('/settings/workspace');
+        $response->assertInertia(fn ($page) => $page->where('canEdit', true));
+    });
+
+    test('canEdit is true for admin', function () {
+        $this->actingAs($this->admin);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->get('/settings/workspace');
+        $response->assertInertia(fn ($page) => $page->where('canEdit', true));
+    });
+
+    test('canEdit is false for member', function () {
+        $this->actingAs($this->member);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->get('/settings/workspace');
+        $response->assertInertia(fn ($page) => $page->where('canEdit', false));
     });
 
     test('timezones list contains valid timezones', function () {
@@ -62,10 +119,8 @@ describe('GET /settings/workspace', function () {
 
         $response->assertInertia(fn ($page) => $page
             ->where('timezones', function ($timezones) {
-                // Convert to array if Collection
                 $tzArray = is_array($timezones) ? $timezones : $timezones->toArray();
 
-                // Check that common timezones are present
                 return in_array('UTC', $tzArray)
                     && in_array('America/New_York', $tzArray)
                     && in_array('Europe/London', $tzArray)
@@ -91,6 +146,8 @@ describe('POST /settings/workspace', function () {
             'description' => 'New description',
             'timezone' => 'America/New_York',
             'defaultEnvironment' => 'staging',
+            'locale' => 'ru',
+            'dateFormat' => 'DD.MM.YYYY',
         ]);
 
         $response->assertRedirect();
@@ -101,6 +158,8 @@ describe('POST /settings/workspace', function () {
         expect($this->team->description)->toBe('New description');
         expect($this->team->timezone)->toBe('America/New_York');
         expect($this->team->default_environment)->toBe('staging');
+        expect($this->team->workspace_locale)->toBe('ru');
+        expect($this->team->workspace_date_format)->toBe('DD.MM.YYYY');
     });
 
     test('admin can update workspace settings', function () {
@@ -151,6 +210,20 @@ describe('POST /settings/workspace', function () {
         $response->assertSessionHasErrors('name');
     });
 
+    test('description has max length', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->post('/settings/workspace', [
+            'name' => 'Test',
+            'description' => str_repeat('a', 1001),
+            'timezone' => 'UTC',
+            'defaultEnvironment' => 'production',
+        ]);
+
+        $response->assertSessionHasErrors('description');
+    });
+
     test('invalid timezone is rejected', function () {
         $this->actingAs($this->owner);
         session(['currentTeam' => $this->team]);
@@ -176,6 +249,34 @@ describe('POST /settings/workspace', function () {
 
         $response->assertSessionHasErrors('defaultEnvironment');
     });
+
+    test('invalid locale is rejected', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->post('/settings/workspace', [
+            'name' => 'Test',
+            'timezone' => 'UTC',
+            'defaultEnvironment' => 'production',
+            'locale' => 'invalid_locale',
+        ]);
+
+        $response->assertSessionHasErrors('locale');
+    });
+
+    test('invalid date format is rejected', function () {
+        $this->actingAs($this->owner);
+        session(['currentTeam' => $this->team]);
+
+        $response = $this->post('/settings/workspace', [
+            'name' => 'Test',
+            'timezone' => 'UTC',
+            'defaultEnvironment' => 'production',
+            'dateFormat' => 'INVALID_FORMAT',
+        ]);
+
+        $response->assertSessionHasErrors('dateFormat');
+    });
 });
 
 describe('DELETE /settings/workspace', function () {
@@ -185,7 +286,6 @@ describe('DELETE /settings/workspace', function () {
         ]);
         $nonPersonalTeam->members()->attach($this->owner->id, ['role' => 'owner']);
 
-        // Create a personal team for the owner to switch to
         $personalTeam = Team::factory()->create([
             'personal_team' => true,
         ]);
