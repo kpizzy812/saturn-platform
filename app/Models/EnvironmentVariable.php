@@ -6,6 +6,8 @@ use App\Models\EnvironmentVariable as ModelsEnvironmentVariable;
 use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -14,24 +16,24 @@ use Spatie\Activitylog\Traits\LogsActivity;
     description: 'Environment Variable model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer'],
-        'uuid' => ['type' => 'string'],
-        'resourceable_type' => ['type' => 'string'],
-        'resourceable_id' => ['type' => 'integer'],
-        'is_literal' => ['type' => 'boolean'],
-        'is_multiline' => ['type' => 'boolean'],
-        'is_preview' => ['type' => 'boolean'],
-        'is_runtime' => ['type' => 'boolean'],
-        'is_buildtime' => ['type' => 'boolean'],
-        'is_shared' => ['type' => 'boolean'],
-        'is_shown_once' => ['type' => 'boolean'],
-        'key' => ['type' => 'string'],
-        'value' => ['type' => 'string'],
-        'real_value' => ['type' => 'string'],
-        'source_template' => ['type' => 'string', 'nullable' => true, 'description' => 'Source template file (env_example, env_sample, env_template)'],
-        'version' => ['type' => 'string'],
-        'created_at' => ['type' => 'string'],
-        'updated_at' => ['type' => 'string'],
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'uuid', type: 'string'),
+        new OA\Property(property: 'resourceable_type', type: 'string'),
+        new OA\Property(property: 'resourceable_id', type: 'integer'),
+        new OA\Property(property: 'is_literal', type: 'boolean'),
+        new OA\Property(property: 'is_multiline', type: 'boolean'),
+        new OA\Property(property: 'is_preview', type: 'boolean'),
+        new OA\Property(property: 'is_runtime', type: 'boolean'),
+        new OA\Property(property: 'is_buildtime', type: 'boolean'),
+        new OA\Property(property: 'is_shared', type: 'boolean'),
+        new OA\Property(property: 'is_shown_once', type: 'boolean'),
+        new OA\Property(property: 'key', type: 'string'),
+        new OA\Property(property: 'value', type: 'string'),
+        new OA\Property(property: 'real_value', type: 'string'),
+        new OA\Property(property: 'source_template', type: 'string', nullable: true, description: 'Source template file (env_example, env_sample, env_template)'),
+        new OA\Property(property: 'version', type: 'string'),
+        new OA\Property(property: 'created_at', type: 'string'),
+        new OA\Property(property: 'updated_at', type: 'string'),
     ]
 )]
 class EnvironmentVariable extends BaseModel
@@ -119,7 +121,8 @@ class EnvironmentVariable extends BaseModel
         });
     }
 
-    public function service()
+    /** @return BelongsTo<Service, $this> */
+    public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
     }
@@ -135,7 +138,7 @@ class EnvironmentVariable extends BaseModel
     /**
      * Get the parent resourceable model.
      */
-    public function resourceable()
+    public function resourceable(): MorphTo
     {
         return $this->morphTo();
     }

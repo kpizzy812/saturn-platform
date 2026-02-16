@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
@@ -16,32 +17,32 @@ use OpenApi\Attributes as OA;
  * @property-read Application|null $application
  */
 #[OA\Schema(
-    description: 'Project model',
+    description: 'Application Deployment Queue model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer'],
-        'application_id' => ['type' => 'string'],
-        'deployment_uuid' => ['type' => 'string'],
-        'pull_request_id' => ['type' => 'integer'],
-        'force_rebuild' => ['type' => 'boolean'],
-        'commit' => ['type' => 'string'],
-        'status' => ['type' => 'string'],
-        'is_webhook' => ['type' => 'boolean'],
-        'is_api' => ['type' => 'boolean'],
-        'created_at' => ['type' => 'string'],
-        'updated_at' => ['type' => 'string'],
-        'logs' => ['type' => 'string'],
-        'current_process_id' => ['type' => 'string'],
-        'restart_only' => ['type' => 'boolean'],
-        'git_type' => ['type' => 'string'],
-        'server_id' => ['type' => 'integer'],
-        'application_name' => ['type' => 'string'],
-        'server_name' => ['type' => 'string'],
-        'deployment_url' => ['type' => 'string'],
-        'destination_id' => ['type' => 'string'],
-        'only_this_server' => ['type' => 'boolean'],
-        'rollback' => ['type' => 'boolean'],
-        'commit_message' => ['type' => 'string'],
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'application_id', type: 'string'),
+        new OA\Property(property: 'deployment_uuid', type: 'string'),
+        new OA\Property(property: 'pull_request_id', type: 'integer'),
+        new OA\Property(property: 'force_rebuild', type: 'boolean'),
+        new OA\Property(property: 'commit', type: 'string'),
+        new OA\Property(property: 'status', type: 'string'),
+        new OA\Property(property: 'is_webhook', type: 'boolean'),
+        new OA\Property(property: 'is_api', type: 'boolean'),
+        new OA\Property(property: 'created_at', type: 'string'),
+        new OA\Property(property: 'updated_at', type: 'string'),
+        new OA\Property(property: 'logs', type: 'string'),
+        new OA\Property(property: 'current_process_id', type: 'string'),
+        new OA\Property(property: 'restart_only', type: 'boolean'),
+        new OA\Property(property: 'git_type', type: 'string'),
+        new OA\Property(property: 'server_id', type: 'integer'),
+        new OA\Property(property: 'application_name', type: 'string'),
+        new OA\Property(property: 'server_name', type: 'string'),
+        new OA\Property(property: 'deployment_url', type: 'string'),
+        new OA\Property(property: 'destination_id', type: 'string'),
+        new OA\Property(property: 'only_this_server', type: 'boolean'),
+        new OA\Property(property: 'rollback', type: 'boolean'),
+        new OA\Property(property: 'commit_message', type: 'string'),
     ],
 )]
 class ApplicationDeploymentQueue extends Model
@@ -124,17 +125,20 @@ class ApplicationDeploymentQueue extends Model
         return $this->belongsTo(Application::class);
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function logAnalysis()
+    /** @return HasOne<DeploymentLogAnalysis, $this> */
+    public function logAnalysis(): HasOne
     {
         return $this->hasOne(DeploymentLogAnalysis::class, 'deployment_id');
     }
 
-    public function codeReview()
+    /** @return HasOne<CodeReview, $this> */
+    public function codeReview(): HasOne
     {
         return $this->hasOne(CodeReview::class, 'deployment_id');
     }

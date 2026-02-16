@@ -43,7 +43,7 @@ class ServiceActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Service starting request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Service starting request queued.'),
                             ]
                         )
                     ),
@@ -124,7 +124,7 @@ class ServiceActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Service stopping request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Service stopping request queued.'),
                             ]
                         )
                     ),
@@ -214,7 +214,7 @@ class ServiceActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Service restaring request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Service restaring request queued.'),
                             ]
                         )
                     ),

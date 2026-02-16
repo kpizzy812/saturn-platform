@@ -9,6 +9,9 @@ use App\Traits\ValidatesPublicPort;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -216,7 +219,8 @@ class StandaloneMongodb extends BaseModel
         );
     }
 
-    public function tags()
+    /** @return MorphToMany<Tag, $this> */
+    public function tags(): MorphToMany
     {
         return $this->morphToMany(Tag::class, 'taggable');
     }
@@ -236,7 +240,8 @@ class StandaloneMongodb extends BaseModel
         return data_get($this, 'is_log_drain_enabled', false);
     }
 
-    public function sslCertificates()
+    /** @return MorphMany<SslCertificate, $this> */
+    public function sslCertificates(): MorphMany
     {
         return $this->morphMany(SslCertificate::class, 'resource');
     }
@@ -351,27 +356,31 @@ class StandaloneMongodb extends BaseModel
         return $this->belongsTo(Environment::class);
     }
 
-    public function fileStorages()
+    /** @return MorphMany<LocalFileVolume, $this> */
+    public function fileStorages(): MorphMany
     {
         return $this->morphMany(LocalFileVolume::class, 'resource');
     }
 
-    public function destination()
+    public function destination(): MorphTo
     {
         return $this->morphTo();
     }
 
-    public function runtime_environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function runtime_environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable');
     }
 
-    public function persistentStorages()
+    /** @return MorphMany<LocalPersistentVolume, $this> */
+    public function persistentStorages(): MorphMany
     {
         return $this->morphMany(LocalPersistentVolume::class, 'resource');
     }
 
-    public function scheduledBackups()
+    /** @return MorphMany<ScheduledDatabaseBackup, $this> */
+    public function scheduledBackups(): MorphMany
     {
         return $this->morphMany(ScheduledDatabaseBackup::class, 'database');
     }
@@ -425,11 +434,12 @@ class StandaloneMongodb extends BaseModel
         return true;
     }
 
-    public function environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->orderByRaw("
-                CASE 
+                CASE
                     WHEN LOWER(key) LIKE 'service_%' THEN 1
                     WHEN is_required = true AND (value IS NULL OR value = '') THEN 2
                     ELSE 3

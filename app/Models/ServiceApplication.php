@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -153,17 +154,20 @@ class ServiceApplication extends BaseModel
         return $this->belongsTo(Service::class);
     }
 
-    public function persistentStorages()
+    /** @return MorphMany<LocalPersistentVolume, $this> */
+    public function persistentStorages(): MorphMany
     {
         return $this->morphMany(LocalPersistentVolume::class, 'resource');
     }
 
-    public function fileStorages()
+    /** @return MorphMany<LocalFileVolume, $this> */
+    public function fileStorages(): MorphMany
     {
         return $this->morphMany(LocalFileVolume::class, 'resource');
     }
 
-    public function environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable');
     }

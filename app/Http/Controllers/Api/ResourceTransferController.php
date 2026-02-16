@@ -85,13 +85,13 @@ class ResourceTransferController extends Controller
                     type: 'object',
                     required: ['source_uuid', 'source_type', 'target_environment_uuid', 'target_server_uuid'],
                     properties: [
-                        'source_uuid' => ['type' => 'string', 'description' => 'UUID of the source database'],
-                        'source_type' => ['type' => 'string', 'description' => 'Type of source (standalone-postgresql, standalone-mysql, etc.)'],
-                        'target_environment_uuid' => ['type' => 'string', 'description' => 'UUID of the target environment'],
-                        'target_server_uuid' => ['type' => 'string', 'description' => 'UUID of the target server'],
-                        'transfer_mode' => ['type' => 'string', 'enum' => ['clone', 'data_only', 'partial'], 'default' => 'clone'],
-                        'transfer_options' => ['type' => 'object', 'description' => 'Options for partial transfer'],
-                        'existing_target_uuid' => ['type' => 'string', 'description' => 'UUID of existing target database (for data_only mode)'],
+                        new OA\Property(property: 'source_uuid', type: 'string', description: 'UUID of the source database'),
+                        new OA\Property(property: 'source_type', type: 'string', description: 'Type of source (standalone-postgresql, standalone-mysql, etc.)'),
+                        new OA\Property(property: 'target_environment_uuid', type: 'string', description: 'UUID of the target environment'),
+                        new OA\Property(property: 'target_server_uuid', type: 'string', description: 'UUID of the target server'),
+                        new OA\Property(property: 'transfer_mode', type: 'string', enum: ['clone', 'data_only', 'partial'], default: 'clone'),
+                        new OA\Property(property: 'transfer_options', type: 'object', description: 'Options for partial transfer'),
+                        new OA\Property(property: 'existing_target_uuid', type: 'string', description: 'UUID of existing target database (for data_only mode)'),
                     ]
                 )
             )

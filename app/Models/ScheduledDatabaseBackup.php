@@ -90,7 +90,8 @@ class ScheduledDatabaseBackup extends BaseModel
         return $this->hasMany(ScheduledDatabaseBackupExecution::class)->orderBy('created_at', 'desc');
     }
 
-    public function s3()
+    /** @return BelongsTo<S3Storage, $this> */
+    public function s3(): BelongsTo
     {
         return $this->belongsTo(S3Storage::class, 's3_storage_id');
     }

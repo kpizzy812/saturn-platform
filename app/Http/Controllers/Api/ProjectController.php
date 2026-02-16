@@ -207,8 +207,8 @@ class ProjectController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'name' => ['type' => 'string', 'description' => 'The name of the project.'],
-                        'description' => ['type' => 'string', 'description' => 'The description of the project.'],
+                        new OA\Property(property: 'name', type: 'string', description: 'The name of the project.'),
+                        new OA\Property(property: 'description', type: 'string', description: 'The description of the project.'),
                     ],
                 ),
             ),
@@ -223,7 +223,7 @@ class ProjectController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'example' => 'og888os', 'description' => 'The UUID of the project.'],
+                                new OA\Property(property: 'uuid', type: 'string', example: 'og888os', description: 'The UUID of the project.'),
                             ]
                         )
                     ),
@@ -319,8 +319,8 @@ class ProjectController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'name' => ['type' => 'string', 'description' => 'The name of the project.'],
-                        'description' => ['type' => 'string', 'description' => 'The description of the project.'],
+                        new OA\Property(property: 'name', type: 'string', description: 'The name of the project.'),
+                        new OA\Property(property: 'description', type: 'string', description: 'The description of the project.'),
                     ],
                 ),
             ),
@@ -335,9 +335,9 @@ class ProjectController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'example' => 'og888os'],
-                                'name' => ['type' => 'string', 'example' => 'Project Name'],
-                                'description' => ['type' => 'string', 'example' => 'Project Description'],
+                                new OA\Property(property: 'uuid', type: 'string', example: 'og888os'),
+                                new OA\Property(property: 'name', type: 'string', example: 'Project Name'),
+                                new OA\Property(property: 'description', type: 'string', example: 'Project Description'),
                             ]
                         )
                     ),
@@ -442,7 +442,7 @@ class ProjectController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Project deleted.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Project deleted.'),
                             ]
                         )
                     ),
@@ -576,7 +576,7 @@ class ProjectController extends Controller
                 schema: new OA\Schema(
                     type: 'object',
                     properties: [
-                        'name' => ['type' => 'string', 'description' => 'The name of the environment.'],
+                        new OA\Property(property: 'name', type: 'string', description: 'The name of the environment.'),
                     ],
                 ),
             ),
@@ -591,7 +591,7 @@ class ProjectController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string', 'example' => 'env123', 'description' => 'The UUID of the environment.'],
+                                new OA\Property(property: 'uuid', type: 'string', example: 'env123', description: 'The UUID of the environment.'),
                             ]
                         )
                     ),
@@ -702,7 +702,7 @@ class ProjectController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Environment deleted.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Environment deleted.'),
                             ]
                         )
                     ),

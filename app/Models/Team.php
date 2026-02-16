@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use OpenApi\Attributes as OA;
@@ -243,7 +245,8 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         }
     }
 
-    public function environment_variables()
+    /** @return HasMany<SharedEnvironmentVariable, $this> */
+    public function environment_variables(): HasMany
     {
         return $this->hasMany(SharedEnvironmentVariable::class)->whereNull('project_id')->whereNull('environment_id');
     }
@@ -304,12 +307,14 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return $this->hasOne(Subscription::class);
     }
 
-    public function applications()
+    /** @return HasManyThrough<Application, Project, $this> */
+    public function applications(): HasManyThrough
     {
         return $this->hasManyThrough(Application::class, Project::class);
     }
 
-    public function invitations()
+    /** @return HasMany<TeamInvitation, $this> */
+    public function invitations(): HasMany
     {
         return $this->hasMany(TeamInvitation::class);
     }
@@ -323,22 +328,26 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return false;
     }
 
-    public function projects()
+    /** @return HasMany<Project, $this> */
+    public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
     }
 
-    public function servers()
+    /** @return HasMany<Server, $this> */
+    public function servers(): HasMany
     {
         return $this->hasMany(Server::class);
     }
 
-    public function privateKeys()
+    /** @return HasMany<PrivateKey, $this> */
+    public function privateKeys(): HasMany
     {
         return $this->hasMany(PrivateKey::class);
     }
 
-    public function cloudProviderTokens()
+    /** @return HasMany<CloudProviderToken, $this> */
+    public function cloudProviderTokens(): HasMany
     {
         return $this->hasMany(CloudProviderToken::class);
     }
@@ -363,47 +372,56 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return $sources->merge($github_apps)->merge($gitlab_apps);
     }
 
-    public function s3s()
+    /** @return HasMany<S3Storage, $this> */
+    public function s3s(): HasMany
     {
         return $this->hasMany(S3Storage::class)->where('is_usable', true);
     }
 
-    public function emailNotificationSettings()
+    /** @return HasOne<EmailNotificationSettings, $this> */
+    public function emailNotificationSettings(): HasOne
     {
         return $this->hasOne(EmailNotificationSettings::class);
     }
 
-    public function discordNotificationSettings()
+    /** @return HasOne<DiscordNotificationSettings, $this> */
+    public function discordNotificationSettings(): HasOne
     {
         return $this->hasOne(DiscordNotificationSettings::class);
     }
 
-    public function telegramNotificationSettings()
+    /** @return HasOne<TelegramNotificationSettings, $this> */
+    public function telegramNotificationSettings(): HasOne
     {
         return $this->hasOne(TelegramNotificationSettings::class);
     }
 
-    public function slackNotificationSettings()
+    /** @return HasOne<SlackNotificationSettings, $this> */
+    public function slackNotificationSettings(): HasOne
     {
         return $this->hasOne(SlackNotificationSettings::class);
     }
 
-    public function pushoverNotificationSettings()
+    /** @return HasOne<PushoverNotificationSettings, $this> */
+    public function pushoverNotificationSettings(): HasOne
     {
         return $this->hasOne(PushoverNotificationSettings::class);
     }
 
-    public function webhookNotificationSettings()
+    /** @return HasOne<WebhookNotificationSettings, $this> */
+    public function webhookNotificationSettings(): HasOne
     {
         return $this->hasOne(WebhookNotificationSettings::class);
     }
 
-    public function userNotifications()
+    /** @return HasMany<UserNotification, $this> */
+    public function userNotifications(): HasMany
     {
         return $this->hasMany(UserNotification::class);
     }
 
-    public function webhooks()
+    /** @return HasMany<TeamWebhook, $this> */
+    public function webhooks(): HasMany
     {
         return $this->hasMany(TeamWebhook::class);
     }

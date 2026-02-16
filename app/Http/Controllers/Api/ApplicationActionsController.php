@@ -60,8 +60,8 @@ class ApplicationActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Deployment request queued.', 'description' => 'Message.'],
-                                'deployment_uuid' => ['type' => 'string', 'example' => 'doogksw', 'description' => 'UUID of the deployment.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Deployment request queued.', description: 'Message.'),
+                                new OA\Property(property: 'deployment_uuid', type: 'string', example: 'doogksw', description: 'UUID of the deployment.'),
                             ]
                         )
                     ),
@@ -158,7 +158,7 @@ class ApplicationActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Application stopping request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Application stopping request queued.'),
                             ]
                         )
                     ),
@@ -235,8 +235,8 @@ class ApplicationActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Restart request queued.'],
-                                'deployment_uuid' => ['type' => 'string', 'example' => 'doogksw', 'description' => 'UUID of the deployment.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Restart request queued.'),
+                                new OA\Property(property: 'deployment_uuid', type: 'string', example: 'doogksw', description: 'UUID of the deployment.'),
                             ]
                         )
                     ),

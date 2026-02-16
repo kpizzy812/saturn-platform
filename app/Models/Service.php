@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -213,7 +216,8 @@ class Service extends BaseModel
         return data_get($this, 'environment.project.team');
     }
 
-    public function tags()
+    /** @return MorphToMany<Tag, $this> */
+    public function tags(): MorphToMany
     {
         return $this->morphToMany(Tag::class, 'taggable');
     }
@@ -1416,17 +1420,19 @@ class Service extends BaseModel
         return $this->getRequiredPort() !== null;
     }
 
-    public function applications()
+    /** @return HasMany<ServiceApplication, $this> */
+    public function applications(): HasMany
     {
         return $this->hasMany(ServiceApplication::class);
     }
 
-    public function databases()
+    /** @return HasMany<ServiceDatabase, $this> */
+    public function databases(): HasMany
     {
         return $this->hasMany(ServiceDatabase::class);
     }
 
-    public function destination()
+    public function destination(): MorphTo
     {
         return $this->morphTo();
     }
@@ -1437,7 +1443,8 @@ class Service extends BaseModel
         return $this->belongsTo(Environment::class);
     }
 
-    public function server()
+    /** @return BelongsTo<Server, $this> */
+    public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
     }
@@ -1475,7 +1482,8 @@ class Service extends BaseModel
         return $this->hasMany(ScheduledTask::class)->orderBy('name', 'asc');
     }
 
-    public function environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->orderByRaw("

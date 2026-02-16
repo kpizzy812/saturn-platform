@@ -8,6 +8,7 @@ use App\Traits\DeletesUserSessions;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notifiable;
@@ -279,7 +280,8 @@ class User extends Authenticatable implements SendsEmail
     /**
      * Get projects the user is a member of (via project_user pivot).
      */
-    public function projectMemberships()
+    /** @return BelongsToMany<Project, $this> */
+    public function projectMemberships(): BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_user')
             ->withPivot(['role', 'environment_permissions'])
@@ -426,7 +428,8 @@ class User extends Authenticatable implements SendsEmail
         return $projectRole === 'developer' && $environment->type === 'production';
     }
 
-    public function changelogReads()
+    /** @return HasMany<UserChangelogRead, $this> */
+    public function changelogReads(): HasMany
     {
         return $this->hasMany(UserChangelogRead::class);
     }

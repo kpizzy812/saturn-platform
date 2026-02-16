@@ -47,7 +47,7 @@ class DatabaseActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Database starting request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Database starting request queued.'),
                             ]
                         )
                     ),
@@ -128,7 +128,7 @@ class DatabaseActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Database stopping request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Database stopping request queued.'),
                             ]
                         )
                     ),
@@ -209,7 +209,7 @@ class DatabaseActionsController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Database restaring request queued.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Database restaring request queued.'),
                             ]
                         )
                     ),

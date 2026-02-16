@@ -11,7 +11,12 @@ use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
@@ -37,87 +42,87 @@ use Visus\Cuid2\Cuid2;
     description: 'Application model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer', 'description' => 'The application identifier in the database.'],
-        'description' => ['type' => 'string', 'nullable' => true, 'description' => 'The application description.'],
-        'repository_project_id' => ['type' => 'integer', 'nullable' => true, 'description' => 'The repository project identifier.'],
-        'uuid' => ['type' => 'string', 'description' => 'The application UUID.'],
-        'name' => ['type' => 'string', 'description' => 'The application name.'],
-        'fqdn' => ['type' => 'string', 'nullable' => true, 'description' => 'The application domains.'],
-        'config_hash' => ['type' => 'string', 'description' => 'Configuration hash.'],
-        'git_repository' => ['type' => 'string', 'description' => 'Git repository URL.'],
-        'git_branch' => ['type' => 'string', 'description' => 'Git branch.'],
-        'git_commit_sha' => ['type' => 'string', 'description' => 'Git commit SHA.'],
-        'git_full_url' => ['type' => 'string', 'nullable' => true, 'description' => 'Git full URL.'],
-        'docker_registry_image_name' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker registry image name.'],
-        'docker_registry_image_tag' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker registry image tag.'],
-        'build_pack' => ['type' => 'string', 'description' => 'Build pack.', 'enum' => ['nixpacks', 'static', 'dockerfile', 'dockercompose']],
-        'static_image' => ['type' => 'string', 'description' => 'Static image used when static site is deployed.'],
-        'install_command' => ['type' => 'string', 'description' => 'Install command.'],
-        'build_command' => ['type' => 'string', 'description' => 'Build command.'],
-        'start_command' => ['type' => 'string', 'description' => 'Start command.'],
-        'ports_exposes' => ['type' => 'string', 'description' => 'Ports exposes.'],
-        'ports_mappings' => ['type' => 'string', 'nullable' => true, 'description' => 'Ports mappings.'],
-        'custom_network_aliases' => ['type' => 'string', 'nullable' => true, 'description' => 'Network aliases for Docker container.'],
-        'base_directory' => ['type' => 'string', 'description' => 'Base directory for all commands.'],
-        'publish_directory' => ['type' => 'string', 'description' => 'Publish directory.'],
-        'health_check_enabled' => ['type' => 'boolean', 'description' => 'Health check enabled.'],
-        'health_check_path' => ['type' => 'string', 'description' => 'Health check path.'],
-        'health_check_port' => ['type' => 'string', 'nullable' => true, 'description' => 'Health check port.'],
-        'health_check_host' => ['type' => 'string', 'nullable' => true, 'description' => 'Health check host.'],
-        'health_check_method' => ['type' => 'string', 'description' => 'Health check method.'],
-        'health_check_return_code' => ['type' => 'integer', 'description' => 'Health check return code.'],
-        'health_check_scheme' => ['type' => 'string', 'description' => 'Health check scheme.'],
-        'health_check_response_text' => ['type' => 'string', 'nullable' => true, 'description' => 'Health check response text.'],
-        'health_check_interval' => ['type' => 'integer', 'description' => 'Health check interval in seconds.'],
-        'health_check_timeout' => ['type' => 'integer', 'description' => 'Health check timeout in seconds.'],
-        'health_check_retries' => ['type' => 'integer', 'description' => 'Health check retries count.'],
-        'health_check_start_period' => ['type' => 'integer', 'description' => 'Health check start period in seconds.'],
-        'limits_memory' => ['type' => 'string', 'description' => 'Memory limit.'],
-        'limits_memory_swap' => ['type' => 'string', 'description' => 'Memory swap limit.'],
-        'limits_memory_swappiness' => ['type' => 'integer', 'description' => 'Memory swappiness.'],
-        'limits_memory_reservation' => ['type' => 'string', 'description' => 'Memory reservation.'],
-        'limits_cpus' => ['type' => 'string', 'description' => 'CPU limit.'],
-        'limits_cpuset' => ['type' => 'string', 'nullable' => true, 'description' => 'CPU set.'],
-        'limits_cpu_shares' => ['type' => 'integer', 'description' => 'CPU shares.'],
-        'status' => ['type' => 'string', 'description' => 'Application status.'],
-        'preview_url_template' => ['type' => 'string',  'description' => 'Preview URL template.'],
-        'destination_type' => ['type' => 'string', 'description' => 'Destination type.'],
-        'destination_id' => ['type' => 'integer', 'description' => 'Destination identifier.'],
-        'source_id' => ['type' => 'integer', 'nullable' => true, 'description' => 'Source identifier.'],
-        'private_key_id' => ['type' => 'integer', 'nullable' => true, 'description' => 'Private key identifier.'],
-        'environment_id' => ['type' => 'integer', 'description' => 'Environment identifier.'],
-        'dockerfile' => ['type' => 'string', 'nullable' => true, 'description' => 'Dockerfile content. Used for dockerfile build pack.'],
-        'dockerfile_location' => ['type' => 'string', 'description' => 'Dockerfile location.'],
-        'custom_labels' => ['type' => 'string', 'nullable' => true, 'description' => 'Custom labels.'],
-        'dockerfile_target_build' => ['type' => 'string', 'nullable' => true, 'description' => 'Dockerfile target build.'],
-        'manual_webhook_secret_github' => ['type' => 'string', 'nullable' => true, 'description' => 'Manual webhook secret for GitHub.'],
-        'manual_webhook_secret_gitlab' => ['type' => 'string', 'nullable' => true, 'description' => 'Manual webhook secret for GitLab.'],
-        'manual_webhook_secret_bitbucket' => ['type' => 'string', 'nullable' => true, 'description' => 'Manual webhook secret for Bitbucket.'],
-        'manual_webhook_secret_gitea' => ['type' => 'string', 'nullable' => true, 'description' => 'Manual webhook secret for Gitea.'],
-        'docker_compose_location' => ['type' => 'string', 'description' => 'Docker compose location.'],
-        'docker_compose' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker compose content. Used for docker compose build pack.'],
-        'docker_compose_raw' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker compose raw content.'],
-        'docker_compose_domains' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker compose domains.'],
-        'docker_compose_custom_start_command' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker compose custom start command.'],
-        'docker_compose_custom_build_command' => ['type' => 'string', 'nullable' => true, 'description' => 'Docker compose custom build command.'],
-        'swarm_replicas' => ['type' => 'integer', 'nullable' => true, 'description' => 'Swarm replicas. Only used for swarm deployments.'],
-        'swarm_placement_constraints' => ['type' => 'string', 'nullable' => true, 'description' => 'Swarm placement constraints. Only used for swarm deployments.'],
-        'custom_docker_run_options' => ['type' => 'string', 'nullable' => true, 'description' => 'Custom docker run options.'],
-        'post_deployment_command' => ['type' => 'string', 'nullable' => true, 'description' => 'Post deployment command.'],
-        'post_deployment_command_container' => ['type' => 'string', 'nullable' => true, 'description' => 'Post deployment command container.'],
-        'pre_deployment_command' => ['type' => 'string', 'nullable' => true, 'description' => 'Pre deployment command.'],
-        'pre_deployment_command_container' => ['type' => 'string', 'nullable' => true, 'description' => 'Pre deployment command container.'],
-        'watch_paths' => ['type' => 'string', 'nullable' => true, 'description' => 'Watch paths.'],
-        'custom_healthcheck_found' => ['type' => 'boolean', 'description' => 'Custom healthcheck found.'],
-        'redirect' => ['type' => 'string', 'nullable' => true, 'description' => 'How to set redirect with Traefik / Caddy. www<->non-www.', 'enum' => ['www', 'non-www', 'both']],
-        'created_at' => ['type' => 'string', 'format' => 'date-time', 'description' => 'The date and time when the application was created.'],
-        'updated_at' => ['type' => 'string', 'format' => 'date-time', 'description' => 'The date and time when the application was last updated.'],
-        'deleted_at' => ['type' => 'string', 'format' => 'date-time', 'nullable' => true, 'description' => 'The date and time when the application was deleted.'],
-        'compose_parsing_version' => ['type' => 'string', 'description' => 'How Saturn Platform parse the compose file.'],
-        'custom_nginx_configuration' => ['type' => 'string', 'nullable' => true, 'description' => 'Custom Nginx configuration base64 encoded.'],
-        'is_http_basic_auth_enabled' => ['type' => 'boolean', 'description' => 'HTTP Basic Authentication enabled.'],
-        'http_basic_auth_username' => ['type' => 'string', 'nullable' => true, 'description' => 'Username for HTTP Basic Authentication'],
-        'http_basic_auth_password' => ['type' => 'string', 'nullable' => true, 'description' => 'Password for HTTP Basic Authentication'],
+        new OA\Property(property: 'id', type: 'integer', description: 'The application identifier in the database.'),
+        new OA\Property(property: 'description', type: 'string', nullable: true, description: 'The application description.'),
+        new OA\Property(property: 'repository_project_id', type: 'integer', nullable: true, description: 'The repository project identifier.'),
+        new OA\Property(property: 'uuid', type: 'string', description: 'The application UUID.'),
+        new OA\Property(property: 'name', type: 'string', description: 'The application name.'),
+        new OA\Property(property: 'fqdn', type: 'string', nullable: true, description: 'The application domains.'),
+        new OA\Property(property: 'config_hash', type: 'string', description: 'Configuration hash.'),
+        new OA\Property(property: 'git_repository', type: 'string', description: 'Git repository URL.'),
+        new OA\Property(property: 'git_branch', type: 'string', description: 'Git branch.'),
+        new OA\Property(property: 'git_commit_sha', type: 'string', description: 'Git commit SHA.'),
+        new OA\Property(property: 'git_full_url', type: 'string', nullable: true, description: 'Git full URL.'),
+        new OA\Property(property: 'docker_registry_image_name', type: 'string', nullable: true, description: 'Docker registry image name.'),
+        new OA\Property(property: 'docker_registry_image_tag', type: 'string', nullable: true, description: 'Docker registry image tag.'),
+        new OA\Property(property: 'build_pack', type: 'string', description: 'Build pack.', enum: ['nixpacks', 'static', 'dockerfile', 'dockercompose']),
+        new OA\Property(property: 'static_image', type: 'string', description: 'Static image used when static site is deployed.'),
+        new OA\Property(property: 'install_command', type: 'string', description: 'Install command.'),
+        new OA\Property(property: 'build_command', type: 'string', description: 'Build command.'),
+        new OA\Property(property: 'start_command', type: 'string', description: 'Start command.'),
+        new OA\Property(property: 'ports_exposes', type: 'string', description: 'Ports exposes.'),
+        new OA\Property(property: 'ports_mappings', type: 'string', nullable: true, description: 'Ports mappings.'),
+        new OA\Property(property: 'custom_network_aliases', type: 'string', nullable: true, description: 'Network aliases for Docker container.'),
+        new OA\Property(property: 'base_directory', type: 'string', description: 'Base directory for all commands.'),
+        new OA\Property(property: 'publish_directory', type: 'string', description: 'Publish directory.'),
+        new OA\Property(property: 'health_check_enabled', type: 'boolean', description: 'Health check enabled.'),
+        new OA\Property(property: 'health_check_path', type: 'string', description: 'Health check path.'),
+        new OA\Property(property: 'health_check_port', type: 'string', nullable: true, description: 'Health check port.'),
+        new OA\Property(property: 'health_check_host', type: 'string', nullable: true, description: 'Health check host.'),
+        new OA\Property(property: 'health_check_method', type: 'string', description: 'Health check method.'),
+        new OA\Property(property: 'health_check_return_code', type: 'integer', description: 'Health check return code.'),
+        new OA\Property(property: 'health_check_scheme', type: 'string', description: 'Health check scheme.'),
+        new OA\Property(property: 'health_check_response_text', type: 'string', nullable: true, description: 'Health check response text.'),
+        new OA\Property(property: 'health_check_interval', type: 'integer', description: 'Health check interval in seconds.'),
+        new OA\Property(property: 'health_check_timeout', type: 'integer', description: 'Health check timeout in seconds.'),
+        new OA\Property(property: 'health_check_retries', type: 'integer', description: 'Health check retries count.'),
+        new OA\Property(property: 'health_check_start_period', type: 'integer', description: 'Health check start period in seconds.'),
+        new OA\Property(property: 'limits_memory', type: 'string', description: 'Memory limit.'),
+        new OA\Property(property: 'limits_memory_swap', type: 'string', description: 'Memory swap limit.'),
+        new OA\Property(property: 'limits_memory_swappiness', type: 'integer', description: 'Memory swappiness.'),
+        new OA\Property(property: 'limits_memory_reservation', type: 'string', description: 'Memory reservation.'),
+        new OA\Property(property: 'limits_cpus', type: 'string', description: 'CPU limit.'),
+        new OA\Property(property: 'limits_cpuset', type: 'string', nullable: true, description: 'CPU set.'),
+        new OA\Property(property: 'limits_cpu_shares', type: 'integer', description: 'CPU shares.'),
+        new OA\Property(property: 'status', type: 'string', description: 'Application status.'),
+        new OA\Property(property: 'preview_url_template', type: 'string', description: 'Preview URL template.'),
+        new OA\Property(property: 'destination_type', type: 'string', description: 'Destination type.'),
+        new OA\Property(property: 'destination_id', type: 'integer', description: 'Destination identifier.'),
+        new OA\Property(property: 'source_id', type: 'integer', nullable: true, description: 'Source identifier.'),
+        new OA\Property(property: 'private_key_id', type: 'integer', nullable: true, description: 'Private key identifier.'),
+        new OA\Property(property: 'environment_id', type: 'integer', description: 'Environment identifier.'),
+        new OA\Property(property: 'dockerfile', type: 'string', nullable: true, description: 'Dockerfile content. Used for dockerfile build pack.'),
+        new OA\Property(property: 'dockerfile_location', type: 'string', description: 'Dockerfile location.'),
+        new OA\Property(property: 'custom_labels', type: 'string', nullable: true, description: 'Custom labels.'),
+        new OA\Property(property: 'dockerfile_target_build', type: 'string', nullable: true, description: 'Dockerfile target build.'),
+        new OA\Property(property: 'manual_webhook_secret_github', type: 'string', nullable: true, description: 'Manual webhook secret for GitHub.'),
+        new OA\Property(property: 'manual_webhook_secret_gitlab', type: 'string', nullable: true, description: 'Manual webhook secret for GitLab.'),
+        new OA\Property(property: 'manual_webhook_secret_bitbucket', type: 'string', nullable: true, description: 'Manual webhook secret for Bitbucket.'),
+        new OA\Property(property: 'manual_webhook_secret_gitea', type: 'string', nullable: true, description: 'Manual webhook secret for Gitea.'),
+        new OA\Property(property: 'docker_compose_location', type: 'string', description: 'Docker compose location.'),
+        new OA\Property(property: 'docker_compose', type: 'string', nullable: true, description: 'Docker compose content. Used for docker compose build pack.'),
+        new OA\Property(property: 'docker_compose_raw', type: 'string', nullable: true, description: 'Docker compose raw content.'),
+        new OA\Property(property: 'docker_compose_domains', type: 'string', nullable: true, description: 'Docker compose domains.'),
+        new OA\Property(property: 'docker_compose_custom_start_command', type: 'string', nullable: true, description: 'Docker compose custom start command.'),
+        new OA\Property(property: 'docker_compose_custom_build_command', type: 'string', nullable: true, description: 'Docker compose custom build command.'),
+        new OA\Property(property: 'swarm_replicas', type: 'integer', nullable: true, description: 'Swarm replicas. Only used for swarm deployments.'),
+        new OA\Property(property: 'swarm_placement_constraints', type: 'string', nullable: true, description: 'Swarm placement constraints. Only used for swarm deployments.'),
+        new OA\Property(property: 'custom_docker_run_options', type: 'string', nullable: true, description: 'Custom docker run options.'),
+        new OA\Property(property: 'post_deployment_command', type: 'string', nullable: true, description: 'Post deployment command.'),
+        new OA\Property(property: 'post_deployment_command_container', type: 'string', nullable: true, description: 'Post deployment command container.'),
+        new OA\Property(property: 'pre_deployment_command', type: 'string', nullable: true, description: 'Pre deployment command.'),
+        new OA\Property(property: 'pre_deployment_command_container', type: 'string', nullable: true, description: 'Pre deployment command container.'),
+        new OA\Property(property: 'watch_paths', type: 'string', nullable: true, description: 'Watch paths.'),
+        new OA\Property(property: 'custom_healthcheck_found', type: 'boolean', description: 'Custom healthcheck found.'),
+        new OA\Property(property: 'redirect', type: 'string', nullable: true, description: 'How to set redirect with Traefik / Caddy. www<->non-www.', enum: ['www', 'non-www', 'both']),
+        new OA\Property(property: 'created_at', type: 'string', format: 'date-time', description: 'The date and time when the application was created.'),
+        new OA\Property(property: 'updated_at', type: 'string', format: 'date-time', description: 'The date and time when the application was last updated.'),
+        new OA\Property(property: 'deleted_at', type: 'string', format: 'date-time', nullable: true, description: 'The date and time when the application was deleted.'),
+        new OA\Property(property: 'compose_parsing_version', type: 'string', description: 'How Saturn Platform parse the compose file.'),
+        new OA\Property(property: 'custom_nginx_configuration', type: 'string', nullable: true, description: 'Custom Nginx configuration base64 encoded.'),
+        new OA\Property(property: 'is_http_basic_auth_enabled', type: 'boolean', description: 'HTTP Basic Authentication enabled.'),
+        new OA\Property(property: 'http_basic_auth_username', type: 'string', nullable: true, description: 'Username for HTTP Basic Authentication'),
+        new OA\Property(property: 'http_basic_auth_password', type: 'string', nullable: true, description: 'Password for HTTP Basic Authentication'),
     ]
 )]
 
@@ -565,13 +570,15 @@ class Application extends BaseModel
         instant_remote_process(['docker network rm '.escapeshellarg($this->uuid)], $server, false);
     }
 
-    public function additional_servers()
+    /** @return BelongsToMany<Server, $this> */
+    public function additional_servers(): BelongsToMany
     {
         return $this->belongsToMany(Server::class, 'additional_destinations')
             ->withPivot('standalone_docker_id', 'status');
     }
 
-    public function additional_networks()
+    /** @return BelongsToMany<StandaloneDocker, $this> */
+    public function additional_networks(): BelongsToMany
     {
         return $this->belongsToMany(StandaloneDocker::class, 'additional_destinations')
             ->withPivot('server_id', 'status');
@@ -645,12 +652,14 @@ class Application extends BaseModel
         return null;
     }
 
-    public function settings()
+    /** @return HasOne<ApplicationSetting, $this> */
+    public function settings(): HasOne
     {
         return $this->hasOne(ApplicationSetting::class);
     }
 
-    public function lastSuccessfulDeployment()
+    /** @return BelongsTo<ApplicationDeploymentQueue, $this> */
+    public function lastSuccessfulDeployment(): BelongsTo
     {
         return $this->belongsTo(ApplicationDeploymentQueue::class, 'last_successful_deployment_id');
     }
@@ -660,12 +669,14 @@ class Application extends BaseModel
         return $this->hasMany(ApplicationRollbackEvent::class);
     }
 
-    public function persistentStorages()
+    /** @return MorphMany<LocalPersistentVolume, $this> */
+    public function persistentStorages(): MorphMany
     {
         return $this->morphMany(LocalPersistentVolume::class, 'resource');
     }
 
-    public function fileStorages()
+    /** @return MorphMany<LocalFileVolume, $this> */
+    public function fileStorages(): MorphMany
     {
         return $this->morphMany(LocalFileVolume::class, 'resource');
     }
@@ -977,7 +988,8 @@ class Application extends BaseModel
         );
     }
 
-    public function tags()
+    /** @return MorphToMany<Tag, $this> */
+    public function tags(): MorphToMany
     {
         return $this->morphToMany(Tag::class, 'taggable');
     }
@@ -1027,7 +1039,8 @@ class Application extends BaseModel
         return null;
     }
 
-    public function environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', false)
@@ -1041,21 +1054,24 @@ class Application extends BaseModel
             ");
     }
 
-    public function runtime_environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function runtime_environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', false)
             ->where('key', 'not like', 'NIXPACKS_%');
     }
 
-    public function nixpacks_environment_variables()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function nixpacks_environment_variables(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', false)
             ->where('key', 'like', 'NIXPACKS_%');
     }
 
-    public function environment_variables_preview()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function environment_variables_preview(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
@@ -1069,14 +1085,16 @@ class Application extends BaseModel
             ");
     }
 
-    public function runtime_environment_variables_preview()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function runtime_environment_variables_preview(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
             ->where('key', 'not like', 'NIXPACKS_%');
     }
 
-    public function nixpacks_environment_variables_preview()
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function nixpacks_environment_variables_preview(): MorphMany
     {
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
@@ -1088,7 +1106,8 @@ class Application extends BaseModel
         return $this->hasMany(ScheduledTask::class)->orderBy('name', 'asc');
     }
 
-    public function private_key()
+    /** @return BelongsTo<PrivateKey, $this> */
+    public function private_key(): BelongsTo
     {
         return $this->belongsTo(PrivateKey::class);
     }
@@ -1099,22 +1118,24 @@ class Application extends BaseModel
         return $this->belongsTo(Environment::class);
     }
 
-    public function previews()
+    /** @return HasMany<ApplicationPreview, $this> */
+    public function previews(): HasMany
     {
         return $this->hasMany(ApplicationPreview::class)->orderBy('pull_request_id', 'desc');
     }
 
-    public function deployment_queue()
+    /** @return HasMany<ApplicationDeploymentQueue, $this> */
+    public function deployment_queue(): HasMany
     {
         return $this->hasMany(ApplicationDeploymentQueue::class);
     }
 
-    public function destination()
+    public function destination(): MorphTo
     {
         return $this->morphTo();
     }
 
-    public function source()
+    public function source(): MorphTo
     {
         return $this->morphTo();
     }
@@ -2270,8 +2291,10 @@ class Application extends BaseModel
 
     /**
      * Get resource links where this application is the source.
+     *
+     * @return MorphMany<ResourceLink, $this>
      */
-    public function resourceLinks()
+    public function resourceLinks(): MorphMany
     {
         return $this->morphMany(ResourceLink::class, 'source');
     }

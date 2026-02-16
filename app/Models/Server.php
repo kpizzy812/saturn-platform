@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -88,22 +89,22 @@ use Visus\Cuid2\Cuid2;
     description: 'Server model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer', 'description' => 'The server ID.'],
-        'uuid' => ['type' => 'string', 'description' => 'The server UUID.'],
-        'name' => ['type' => 'string', 'description' => 'The server name.'],
-        'description' => ['type' => 'string', 'description' => 'The server description.'],
-        'ip' => ['type' => 'string', 'description' => 'The IP address.'],
-        'user' => ['type' => 'string', 'description' => 'The user.'],
-        'port' => ['type' => 'integer', 'description' => 'The port number.'],
-        'proxy' => ['type' => 'object', 'description' => 'The proxy configuration.'],
-        'proxy_type' => ['type' => 'string', 'enum' => ['traefik', 'caddy', 'none'], 'description' => 'The proxy type.'],
-        'high_disk_usage_notification_sent' => ['type' => 'boolean', 'description' => 'The flag to indicate if the high disk usage notification has been sent.'],
-        'unreachable_notification_sent' => ['type' => 'boolean', 'description' => 'The flag to indicate if the unreachable notification has been sent.'],
-        'unreachable_count' => ['type' => 'integer', 'description' => 'The unreachable count for your server.'],
-        'validation_logs' => ['type' => 'string', 'description' => 'The validation logs.'],
-        'log_drain_notification_sent' => ['type' => 'boolean', 'description' => 'The flag to indicate if the log drain notification has been sent.'],
-        'swarm_cluster' => ['type' => 'string', 'description' => 'The swarm cluster configuration.'],
-        'settings' => ['$ref' => '#/components/schemas/ServerSetting'],
+        new OA\Property(property: 'id', type: 'integer', description: 'The server ID.'),
+        new OA\Property(property: 'uuid', type: 'string', description: 'The server UUID.'),
+        new OA\Property(property: 'name', type: 'string', description: 'The server name.'),
+        new OA\Property(property: 'description', type: 'string', description: 'The server description.'),
+        new OA\Property(property: 'ip', type: 'string', description: 'The IP address.'),
+        new OA\Property(property: 'user', type: 'string', description: 'The user.'),
+        new OA\Property(property: 'port', type: 'integer', description: 'The port number.'),
+        new OA\Property(property: 'proxy', type: 'object', description: 'The proxy configuration.'),
+        new OA\Property(property: 'proxy_type', type: 'string', enum: ['traefik', 'caddy', 'none'], description: 'The proxy type.'),
+        new OA\Property(property: 'high_disk_usage_notification_sent', type: 'boolean', description: 'The flag to indicate if the high disk usage notification has been sent.'),
+        new OA\Property(property: 'unreachable_notification_sent', type: 'boolean', description: 'The flag to indicate if the unreachable notification has been sent.'),
+        new OA\Property(property: 'unreachable_count', type: 'integer', description: 'The unreachable count for your server.'),
+        new OA\Property(property: 'validation_logs', type: 'string', description: 'The validation logs.'),
+        new OA\Property(property: 'log_drain_notification_sent', type: 'boolean', description: 'The flag to indicate if the log drain notification has been sent.'),
+        new OA\Property(property: 'swarm_cluster', type: 'string', description: 'The swarm cluster configuration.'),
+        new OA\Property(property: 'settings', ref: '#/components/schemas/ServerSetting'),
     ]
 )]
 
@@ -360,17 +361,20 @@ class Server extends BaseModel
         return $this->hasOne(ServerSetting::class);
     }
 
-    public function dockerCleanupExecutions()
+    /** @return HasMany<DockerCleanupExecution, $this> */
+    public function dockerCleanupExecutions(): HasMany
     {
         return $this->hasMany(DockerCleanupExecution::class);
     }
 
-    public function healthChecks()
+    /** @return HasMany<ServerHealthCheck, $this> */
+    public function healthChecks(): HasMany
     {
         return $this->hasMany(ServerHealthCheck::class);
     }
 
-    public function latestHealthCheck()
+    /** @return HasOne<ServerHealthCheck, $this> */
+    public function latestHealthCheck(): HasOne
     {
         return $this->hasOne(ServerHealthCheck::class)->latestOfMany('checked_at');
     }
@@ -1003,7 +1007,8 @@ $schema://$host {
         });
     }
 
-    public function services()
+    /** @return HasMany<Service, $this> */
+    public function services(): HasMany
     {
         return $this->hasMany(Service::class);
     }
@@ -1068,27 +1073,32 @@ $schema://$host {
         return $standalone_docker->concat($swarm_docker);
     }
 
-    public function standaloneDockers()
+    /** @return HasMany<StandaloneDocker, $this> */
+    public function standaloneDockers(): HasMany
     {
         return $this->hasMany(StandaloneDocker::class);
     }
 
-    public function swarmDockers()
+    /** @return HasMany<SwarmDocker, $this> */
+    public function swarmDockers(): HasMany
     {
         return $this->hasMany(SwarmDocker::class);
     }
 
-    public function privateKey()
+    /** @return BelongsTo<PrivateKey, $this> */
+    public function privateKey(): BelongsTo
     {
         return $this->belongsTo(PrivateKey::class);
     }
 
-    public function cloudProviderToken()
+    /** @return BelongsTo<CloudProviderToken, $this> */
+    public function cloudProviderToken(): BelongsTo
     {
         return $this->belongsTo(CloudProviderToken::class);
     }
 
-    public function sslCertificates()
+    /** @return HasMany<SslCertificate, $this> */
+    public function sslCertificates(): HasMany
     {
         return $this->hasMany(SslCertificate::class);
     }

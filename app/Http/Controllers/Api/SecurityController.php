@@ -131,9 +131,9 @@ class SecurityController extends Controller
                         type: 'object',
                         required: ['private_key'],
                         properties: [
-                            'name' => ['type' => 'string'],
-                            'description' => ['type' => 'string'],
-                            'private_key' => ['type' => 'string'],
+                            new OA\Property(property: 'name', type: 'string'),
+                            new OA\Property(property: 'description', type: 'string'),
+                            new OA\Property(property: 'private_key', type: 'string'),
                         ],
                         additionalProperties: false,
                     )
@@ -150,7 +150,7 @@ class SecurityController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string'],
+                                new OA\Property(property: 'uuid', type: 'string'),
                             ]
                         )
                     ),
@@ -254,9 +254,9 @@ class SecurityController extends Controller
                         type: 'object',
                         required: ['private_key'],
                         properties: [
-                            'name' => ['type' => 'string'],
-                            'description' => ['type' => 'string'],
-                            'private_key' => ['type' => 'string'],
+                            new OA\Property(property: 'name', type: 'string'),
+                            new OA\Property(property: 'description', type: 'string'),
+                            new OA\Property(property: 'private_key', type: 'string'),
                         ],
                         additionalProperties: false,
                     )
@@ -273,7 +273,7 @@ class SecurityController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'uuid' => ['type' => 'string'],
+                                new OA\Property(property: 'uuid', type: 'string'),
                             ]
                         )
                     ),
@@ -359,7 +359,7 @@ class SecurityController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Private Key deleted.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Private Key deleted.'),
                             ]
                         )
                     ),
@@ -385,7 +385,7 @@ class SecurityController extends Controller
                         schema: new OA\Schema(
                             type: 'object',
                             properties: [
-                                'message' => ['type' => 'string', 'example' => 'Private Key is in use and cannot be deleted.'],
+                                new OA\Property(property: 'message', type: 'string', example: 'Private Key is in use and cannot be deleted.'),
                             ]
                         )
                     ),

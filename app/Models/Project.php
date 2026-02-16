@@ -7,6 +7,11 @@ use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -16,11 +21,11 @@ use Visus\Cuid2\Cuid2;
     description: 'Project model',
     type: 'object',
     properties: [
-        'id' => ['type' => 'integer'],
-        'uuid' => ['type' => 'string'],
-        'name' => ['type' => 'string'],
-        'description' => ['type' => 'string'],
-        'environments' => new OA\Property(
+        new OA\Property(property: 'id', type: 'integer'),
+        new OA\Property(property: 'uuid', type: 'string'),
+        new OA\Property(property: 'name', type: 'string'),
+        new OA\Property(property: 'description', type: 'string'),
+        new OA\Property(
             property: 'environments',
             type: 'array',
             items: new OA\Items(ref: '#/components/schemas/Environment'),
@@ -177,17 +182,20 @@ class Project extends BaseModel
         });
     }
 
-    public function environment_variables()
+    /** @return HasMany<SharedEnvironmentVariable, $this> */
+    public function environment_variables(): HasMany
     {
         return $this->hasMany(SharedEnvironmentVariable::class);
     }
 
-    public function environments()
+    /** @return HasMany<Environment, $this> */
+    public function environments(): HasMany
     {
         return $this->hasMany(Environment::class);
     }
 
-    public function settings()
+    /** @return HasOne<ProjectSetting, $this> */
+    public function settings(): HasOne
     {
         return $this->hasOne(ProjectSetting::class);
     }
@@ -197,17 +205,20 @@ class Project extends BaseModel
         return $query->where('is_archived', false);
     }
 
-    public function archivedByUser()
+    /** @return BelongsTo<User, $this> */
+    public function archivedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'archived_by');
     }
 
-    public function tags()
+    /** @return MorphToMany<Tag, $this> */
+    public function tags(): MorphToMany
     {
         return $this->morphToMany(Tag::class, 'taggable');
     }
 
-    public function notificationOverrides()
+    /** @return HasOne<ProjectNotificationOverride, $this> */
+    public function notificationOverrides(): HasOne
     {
         return $this->hasOne(ProjectNotificationOverride::class);
     }
@@ -221,7 +232,8 @@ class Project extends BaseModel
     /**
      * Get users who are members of this project (via project_user pivot).
      */
-    public function members()
+    /** @return BelongsToMany<User, $this> */
+    public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_user')
             ->withPivot(['role', 'environment_permissions'])
@@ -305,52 +317,62 @@ class Project extends BaseModel
         return $this->team->members()->where('user_id', $user->id)->exists();
     }
 
-    public function services()
+    /** @return HasManyThrough<Service, Environment, $this> */
+    public function services(): HasManyThrough
     {
         return $this->hasManyThrough(Service::class, Environment::class);
     }
 
-    public function applications()
+    /** @return HasManyThrough<Application, Environment, $this> */
+    public function applications(): HasManyThrough
     {
         return $this->hasManyThrough(Application::class, Environment::class);
     }
 
-    public function postgresqls()
+    /** @return HasManyThrough<StandalonePostgresql, Environment, $this> */
+    public function postgresqls(): HasManyThrough
     {
         return $this->hasManyThrough(StandalonePostgresql::class, Environment::class);
     }
 
-    public function redis()
+    /** @return HasManyThrough<StandaloneRedis, Environment, $this> */
+    public function redis(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneRedis::class, Environment::class);
     }
 
-    public function keydbs()
+    /** @return HasManyThrough<StandaloneKeydb, Environment, $this> */
+    public function keydbs(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneKeydb::class, Environment::class);
     }
 
-    public function dragonflies()
+    /** @return HasManyThrough<StandaloneDragonfly, Environment, $this> */
+    public function dragonflies(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneDragonfly::class, Environment::class);
     }
 
-    public function clickhouses()
+    /** @return HasManyThrough<StandaloneClickhouse, Environment, $this> */
+    public function clickhouses(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneClickhouse::class, Environment::class);
     }
 
-    public function mongodbs()
+    /** @return HasManyThrough<StandaloneMongodb, Environment, $this> */
+    public function mongodbs(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneMongodb::class, Environment::class);
     }
 
-    public function mysqls()
+    /** @return HasManyThrough<StandaloneMysql, Environment, $this> */
+    public function mysqls(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneMysql::class, Environment::class);
     }
 
-    public function mariadbs()
+    /** @return HasManyThrough<StandaloneMariadb, Environment, $this> */
+    public function mariadbs(): HasManyThrough
     {
         return $this->hasManyThrough(StandaloneMariadb::class, Environment::class);
     }

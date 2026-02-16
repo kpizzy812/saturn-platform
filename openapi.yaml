@@ -44,8 +44,8 @@ paths:
             application/json:
               schema:
                 properties:
-                  message: { type: string, example: 'Deployment request queued.', description: Message. }
-                  deployment_uuid: { type: string, example: doogksw, description: 'UUID of the deployment.' }
+                  message: { description: Message., type: string, example: 'Deployment request queued.' }
+                  deployment_uuid: { description: 'UUID of the deployment.', type: string, example: doogksw }
                 type: object
         '401':
           $ref: '#/components/responses/401'
@@ -114,7 +114,7 @@ paths:
               schema:
                 properties:
                   message: { type: string, example: 'Restart request queued.' }
-                  deployment_uuid: { type: string, example: doogksw, description: 'UUID of the deployment.' }
+                  deployment_uuid: { description: 'UUID of the deployment.', type: string, example: doogksw }
                 type: object
         '401':
           $ref: '#/components/responses/401'
@@ -1872,77 +1872,77 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 postgres_user:
-                  type: string
                   description: 'PostgreSQL user'
+                  type: string
                 postgres_password:
-                  type: string
                   description: 'PostgreSQL password'
+                  type: string
                 postgres_db:
-                  type: string
                   description: 'PostgreSQL database'
+                  type: string
                 postgres_initdb_args:
-                  type: string
                   description: 'PostgreSQL initdb args'
+                  type: string
                 postgres_host_auth_method:
-                  type: string
                   description: 'PostgreSQL host auth method'
+                  type: string
                 postgres_conf:
-                  type: string
                   description: 'PostgreSQL conf'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -1976,65 +1976,65 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 clickhouse_admin_user:
-                  type: string
                   description: 'Clickhouse admin user'
+                  type: string
                 clickhouse_admin_password:
-                  type: string
                   description: 'Clickhouse admin password'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2068,62 +2068,62 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 dragonfly_password:
-                  type: string
                   description: 'DragonFly password'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2157,65 +2157,65 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 redis_password:
-                  type: string
                   description: 'Redis password'
+                  type: string
                 redis_conf:
-                  type: string
                   description: 'Redis conf'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2249,65 +2249,65 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 keydb_password:
-                  type: string
                   description: 'KeyDB password'
+                  type: string
                 keydb_conf:
-                  type: string
                   description: 'KeyDB conf'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2341,74 +2341,74 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 mariadb_conf:
-                  type: string
                   description: 'MariaDB conf'
+                  type: string
                 mariadb_root_password:
-                  type: string
                   description: 'MariaDB root password'
+                  type: string
                 mariadb_user:
-                  type: string
                   description: 'MariaDB user'
+                  type: string
                 mariadb_password:
-                  type: string
                   description: 'MariaDB password'
+                  type: string
                 mariadb_database:
-                  type: string
                   description: 'MariaDB database'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2442,74 +2442,74 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 mysql_root_password:
-                  type: string
                   description: 'MySQL root password'
+                  type: string
                 mysql_password:
-                  type: string
                   description: 'MySQL password'
+                  type: string
                 mysql_user:
-                  type: string
                   description: 'MySQL user'
+                  type: string
                 mysql_database:
-                  type: string
                   description: 'MySQL database'
+                  type: string
                 mysql_conf:
-                  type: string
                   description: 'MySQL conf'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2543,65 +2543,65 @@ paths:
                 - environment_uuid
               properties:
                 server_uuid:
-                  type: string
                   description: 'UUID of the server'
+                  type: string
                 project_uuid:
-                  type: string
                   description: 'UUID of the project'
+                  type: string
                 environment_name:
-                  type: string
                   description: 'Name of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 environment_uuid:
-                  type: string
                   description: 'UUID of the environment. You need to provide at least one of environment_name or environment_uuid.'
+                  type: string
                 destination_uuid:
-                  type: string
                   description: 'UUID of the destination if the server has multiple destinations'
+                  type: string
                 mongo_conf:
-                  type: string
                   description: 'MongoDB conf'
+                  type: string
                 mongo_initdb_root_username:
-                  type: string
                   description: 'MongoDB initdb root username'
+                  type: string
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
-                public_port:
-                  type: integer
-                  description: 'Public port of the database'
-                limits_memory:
-                  type: string
-                  description: 'Memory limit of the database'
-                limits_memory_swap:
-                  type: string
-                  description: 'Memory swap limit of the database'
-                limits_memory_swappiness:
-                  type: integer
-                  description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
-                  type: integer
-                  description: 'CPU shares of the database'
-                instant_deploy:
                   type: boolean
+                public_port:
+                  description: 'Public port of the database'
+                  type: integer
+                limits_memory:
+                  description: 'Memory limit of the database'
+                  type: string
+                limits_memory_swap:
+                  description: 'Memory swap limit of the database'
+                  type: string
+                limits_memory_swappiness:
+                  description: 'Memory swappiness of the database'
+                  type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
+                  description: 'CPU shares of the database'
+                  type: integer
+                instant_deploy:
                   description: 'Instant deploy the database'
+                  type: boolean
               type: object
       responses:
         '200':
@@ -2758,122 +2758,122 @@ paths:
             schema:
               properties:
                 name:
-                  type: string
                   description: 'Name of the database'
+                  type: string
                 description:
-                  type: string
                   description: 'Description of the database'
+                  type: string
                 image:
-                  type: string
                   description: 'Docker Image of the database'
+                  type: string
                 is_public:
-                  type: boolean
                   description: 'Is the database public?'
+                  type: boolean
                 public_port:
-                  type: integer
                   description: 'Public port of the database'
+                  type: integer
                 limits_memory:
-                  type: string
                   description: 'Memory limit of the database'
+                  type: string
                 limits_memory_swap:
-                  type: string
                   description: 'Memory swap limit of the database'
+                  type: string
                 limits_memory_swappiness:
-                  type: integer
                   description: 'Memory swappiness of the database'
-                limits_memory_reservation:
-                  type: string
-                  description: 'Memory reservation of the database'
-                limits_cpus:
-                  type: string
-                  description: 'CPU limit of the database'
-                limits_cpuset:
-                  type: string
-                  description: 'CPU set of the database'
-                limits_cpu_shares:
                   type: integer
+                limits_memory_reservation:
+                  description: 'Memory reservation of the database'
+                  type: string
+                limits_cpus:
+                  description: 'CPU limit of the database'
+                  type: string
+                limits_cpuset:
+                  description: 'CPU set of the database'
+                  type: string
+                limits_cpu_shares:
                   description: 'CPU shares of the database'
+                  type: integer
                 postgres_user:
-                  type: string
                   description: 'PostgreSQL user'
+                  type: string
                 postgres_password:
-                  type: string
                   description: 'PostgreSQL password'
+                  type: string
                 postgres_db:
-                  type: string
                   description: 'PostgreSQL database'
+                  type: string
                 postgres_initdb_args:
-                  type: string
                   description: 'PostgreSQL initdb args'
+                  type: string
                 postgres_host_auth_method:
-                  type: string
                   description: 'PostgreSQL host auth method'
+                  type: string
                 postgres_conf:
-                  type: string
                   description: 'PostgreSQL conf'
+                  type: string
                 clickhouse_admin_user:
-                  type: string
                   description: 'Clickhouse admin user'
+                  type: string
                 clickhouse_admin_password:
-                  type: string
                   description: 'Clickhouse admin password'
+                  type: string
                 dragonfly_password:
-                  type: string
                   description: 'DragonFly password'
+                  type: string
                 redis_password:
-                  type: string
                   description: 'Redis password'
+                  type: string
                 redis_conf:
-                  type: string
                   description: 'Redis conf'
+                  type: string
                 keydb_password:
-                  type: string
                   description: 'KeyDB password'
+                  type: string
                 keydb_conf:
-                  type: string
                   description: 'KeyDB conf'
+                  type: string
                 mariadb_conf:
-                  type: string
                   description: 'MariaDB conf'
+                  type: string
                 mariadb_root_password:
-                  type: string
                   description: 'MariaDB root password'
+                  type: string
                 mariadb_user:
-                  type: string
                   description: 'MariaDB user'
+                  type: string
                 mariadb_password:
-                  type: string
                   description: 'MariaDB password'
+                  type: string
                 mariadb_database:
-                  type: string
                   description: 'MariaDB database'
+                  type: string
                 mongo_conf:
-                  type: string
                   description: 'Mongo conf'
+                  type: string
                 mongo_initdb_root_username:
-                  type: string
                   description: 'Mongo initdb root username'
+                  type: string
                 mongo_initdb_root_password:
-                  type: string
                   description: 'Mongo initdb root password'
+                  type: string
                 mongo_initdb_database:
-                  type: string
                   description: 'Mongo initdb init database'
+                  type: string
                 mysql_root_password:
-                  type: string
                   description: 'MySQL root password'
+                  type: string
                 mysql_password:
-                  type: string
                   description: 'MySQL password'
+                  type: string
                 mysql_user:
-                  type: string
                   description: 'MySQL user'
+                  type: string
                 mysql_database:
-                  type: string
                   description: 'MySQL database'
-                mysql_conf:
                   type: string
+                mysql_conf:
                   description: 'MySQL conf'
+                  type: string
               type: object
       responses:
         '200':
@@ -4876,11 +4876,11 @@ paths:
             schema:
               properties:
                 name:
-                  type: string
                   description: 'The name of the project.'
-                description:
                   type: string
+                description:
                   description: 'The description of the project.'
+                  type: string
               type: object
       responses:
         '201':
@@ -4889,7 +4889,7 @@ paths:
             application/json:
               schema:
                 properties:
-                  uuid: { type: string, example: og888os, description: 'The UUID of the project.' }
+                  uuid: { description: 'The UUID of the project.', type: string, example: og888os }
                 type: object
         '401':
           $ref: '#/components/responses/401'
@@ -4991,11 +4991,11 @@ paths:
             schema:
               properties:
                 name:
-                  type: string
                   description: 'The name of the project.'
-                description:
                   type: string
+                description:
                   description: 'The description of the project.'
+                  type: string
               type: object
       responses:
         '201':
@@ -5116,8 +5116,8 @@ paths:
             schema:
               properties:
                 name:
-                  type: string
                   description: 'The name of the environment.'
+                  type: string
               type: object
       responses:
         '201':
@@ -5126,7 +5126,7 @@ paths:
             application/json:
               schema:
                 properties:
-                  uuid: { type: string, example: env123, description: 'The UUID of the environment.' }
+                  uuid: { description: 'The UUID of the environment.', type: string, example: env123 }
                 type: object
         '401':
           $ref: '#/components/responses/401'
@@ -5398,27 +5398,27 @@ paths:
                 - target_server_uuid
               properties:
                 source_uuid:
-                  type: string
                   description: 'UUID of the source database'
+                  type: string
                 source_type:
-                  type: string
                   description: 'Type of source (standalone-postgresql, standalone-mysql, etc.)'
+                  type: string
                 target_environment_uuid:
-                  type: string
                   description: 'UUID of the target environment'
-                target_server_uuid:
                   type: string
+                target_server_uuid:
                   description: 'UUID of the target server'
+                  type: string
                 transfer_mode:
                   type: string
-                  enum: [clone, data_only, partial]
                   default: clone
+                  enum: [clone, data_only, partial]
                 transfer_options:
-                  type: object
                   description: 'Options for partial transfer'
+                  type: object
                 existing_target_uuid:
-                  type: string
                   description: 'UUID of existing target database (for data_only mode)'
+                  type: string
               type: object
       responses:
         '201':
@@ -7398,302 +7398,341 @@ components:
       description: 'Application model'
       properties:
         id:
-          type: integer
           description: 'The application identifier in the database.'
-        description:
-          type: string
-          nullable: true
-          description: 'The application description.'
-        repository_project_id:
           type: integer
-          nullable: true
+        description:
+          description: 'The application description.'
+          type:
+            - string
+            - 'null'
+        repository_project_id:
           description: 'The repository project identifier.'
+          type:
+            - integer
+            - 'null'
         uuid:
-          type: string
           description: 'The application UUID.'
+          type: string
         name:
-          type: string
           description: 'The application name.'
+          type: string
         fqdn:
-          type: string
-          nullable: true
           description: 'The application domains.'
+          type:
+            - string
+            - 'null'
         config_hash:
-          type: string
           description: 'Configuration hash.'
+          type: string
         git_repository:
-          type: string
           description: 'Git repository URL.'
+          type: string
         git_branch:
-          type: string
           description: 'Git branch.'
+          type: string
         git_commit_sha:
-          type: string
           description: 'Git commit SHA.'
+          type: string
         git_full_url:
-          type: string
-          nullable: true
           description: 'Git full URL.'
+          type:
+            - string
+            - 'null'
         docker_registry_image_name:
-          type: string
-          nullable: true
           description: 'Docker registry image name.'
+          type:
+            - string
+            - 'null'
         docker_registry_image_tag:
-          type: string
-          nullable: true
           description: 'Docker registry image tag.'
+          type:
+            - string
+            - 'null'
         build_pack:
-          type: string
           description: 'Build pack.'
+          type: string
           enum:
             - nixpacks
             - static
             - dockerfile
             - dockercompose
         static_image:
-          type: string
           description: 'Static image used when static site is deployed.'
+          type: string
         install_command:
-          type: string
           description: 'Install command.'
+          type: string
         build_command:
-          type: string
           description: 'Build command.'
+          type: string
         start_command:
-          type: string
           description: 'Start command.'
+          type: string
         ports_exposes:
-          type: string
           description: 'Ports exposes.'
+          type: string
         ports_mappings:
-          type: string
-          nullable: true
           description: 'Ports mappings.'
+          type:
+            - string
+            - 'null'
         custom_network_aliases:
-          type: string
-          nullable: true
           description: 'Network aliases for Docker container.'
+          type:
+            - string
+            - 'null'
         base_directory:
-          type: string
           description: 'Base directory for all commands.'
+          type: string
         publish_directory:
-          type: string
           description: 'Publish directory.'
+          type: string
         health_check_enabled:
-          type: boolean
           description: 'Health check enabled.'
-        health_check_path:
-          type: string
-          description: 'Health check path.'
-        health_check_port:
-          type: string
-          nullable: true
-          description: 'Health check port.'
-        health_check_host:
-          type: string
-          nullable: true
-          description: 'Health check host.'
-        health_check_method:
-          type: string
-          description: 'Health check method.'
-        health_check_return_code:
-          type: integer
-          description: 'Health check return code.'
-        health_check_scheme:
-          type: string
-          description: 'Health check scheme.'
-        health_check_response_text:
-          type: string
-          nullable: true
-          description: 'Health check response text.'
-        health_check_interval:
-          type: integer
-          description: 'Health check interval in seconds.'
-        health_check_timeout:
-          type: integer
-          description: 'Health check timeout in seconds.'
-        health_check_retries:
-          type: integer
-          description: 'Health check retries count.'
-        health_check_start_period:
-          type: integer
-          description: 'Health check start period in seconds.'
-        limits_memory:
-          type: string
-          description: 'Memory limit.'
-        limits_memory_swap:
-          type: string
-          description: 'Memory swap limit.'
-        limits_memory_swappiness:
-          type: integer
-          description: 'Memory swappiness.'
-        limits_memory_reservation:
-          type: string
-          description: 'Memory reservation.'
-        limits_cpus:
-          type: string
-          description: 'CPU limit.'
-        limits_cpuset:
-          type: string
-          nullable: true
-          description: 'CPU set.'
-        limits_cpu_shares:
-          type: integer
-          description: 'CPU shares.'
-        status:
-          type: string
-          description: 'Application status.'
-        preview_url_template:
-          type: string
-          description: 'Preview URL template.'
-        destination_type:
-          type: string
-          description: 'Destination type.'
-        destination_id:
-          type: integer
-          description: 'Destination identifier.'
-        source_id:
-          type: integer
-          nullable: true
-          description: 'Source identifier.'
-        private_key_id:
-          type: integer
-          nullable: true
-          description: 'Private key identifier.'
-        environment_id:
-          type: integer
-          description: 'Environment identifier.'
-        dockerfile:
-          type: string
-          nullable: true
-          description: 'Dockerfile content. Used for dockerfile build pack.'
-        dockerfile_location:
-          type: string
-          description: 'Dockerfile location.'
-        custom_labels:
-          type: string
-          nullable: true
-          description: 'Custom labels.'
-        dockerfile_target_build:
-          type: string
-          nullable: true
-          description: 'Dockerfile target build.'
-        manual_webhook_secret_github:
-          type: string
-          nullable: true
-          description: 'Manual webhook secret for GitHub.'
-        manual_webhook_secret_gitlab:
-          type: string
-          nullable: true
-          description: 'Manual webhook secret for GitLab.'
-        manual_webhook_secret_bitbucket:
-          type: string
-          nullable: true
-          description: 'Manual webhook secret for Bitbucket.'
-        manual_webhook_secret_gitea:
-          type: string
-          nullable: true
-          description: 'Manual webhook secret for Gitea.'
-        docker_compose_location:
-          type: string
-          description: 'Docker compose location.'
-        docker_compose:
-          type: string
-          nullable: true
-          description: 'Docker compose content. Used for docker compose build pack.'
-        docker_compose_raw:
-          type: string
-          nullable: true
-          description: 'Docker compose raw content.'
-        docker_compose_domains:
-          type: string
-          nullable: true
-          description: 'Docker compose domains.'
-        docker_compose_custom_start_command:
-          type: string
-          nullable: true
-          description: 'Docker compose custom start command.'
-        docker_compose_custom_build_command:
-          type: string
-          nullable: true
-          description: 'Docker compose custom build command.'
-        swarm_replicas:
-          type: integer
-          nullable: true
-          description: 'Swarm replicas. Only used for swarm deployments.'
-        swarm_placement_constraints:
-          type: string
-          nullable: true
-          description: 'Swarm placement constraints. Only used for swarm deployments.'
-        custom_docker_run_options:
-          type: string
-          nullable: true
-          description: 'Custom docker run options.'
-        post_deployment_command:
-          type: string
-          nullable: true
-          description: 'Post deployment command.'
-        post_deployment_command_container:
-          type: string
-          nullable: true
-          description: 'Post deployment command container.'
-        pre_deployment_command:
-          type: string
-          nullable: true
-          description: 'Pre deployment command.'
-        pre_deployment_command_container:
-          type: string
-          nullable: true
-          description: 'Pre deployment command container.'
-        watch_paths:
-          type: string
-          nullable: true
-          description: 'Watch paths.'
-        custom_healthcheck_found:
           type: boolean
-          description: 'Custom healthcheck found.'
-        redirect:
+        health_check_path:
+          description: 'Health check path.'
           type: string
-          nullable: true
+        health_check_port:
+          description: 'Health check port.'
+          type:
+            - string
+            - 'null'
+        health_check_host:
+          description: 'Health check host.'
+          type:
+            - string
+            - 'null'
+        health_check_method:
+          description: 'Health check method.'
+          type: string
+        health_check_return_code:
+          description: 'Health check return code.'
+          type: integer
+        health_check_scheme:
+          description: 'Health check scheme.'
+          type: string
+        health_check_response_text:
+          description: 'Health check response text.'
+          type:
+            - string
+            - 'null'
+        health_check_interval:
+          description: 'Health check interval in seconds.'
+          type: integer
+        health_check_timeout:
+          description: 'Health check timeout in seconds.'
+          type: integer
+        health_check_retries:
+          description: 'Health check retries count.'
+          type: integer
+        health_check_start_period:
+          description: 'Health check start period in seconds.'
+          type: integer
+        limits_memory:
+          description: 'Memory limit.'
+          type: string
+        limits_memory_swap:
+          description: 'Memory swap limit.'
+          type: string
+        limits_memory_swappiness:
+          description: 'Memory swappiness.'
+          type: integer
+        limits_memory_reservation:
+          description: 'Memory reservation.'
+          type: string
+        limits_cpus:
+          description: 'CPU limit.'
+          type: string
+        limits_cpuset:
+          description: 'CPU set.'
+          type:
+            - string
+            - 'null'
+        limits_cpu_shares:
+          description: 'CPU shares.'
+          type: integer
+        status:
+          description: 'Application status.'
+          type: string
+        preview_url_template:
+          description: 'Preview URL template.'
+          type: string
+        destination_type:
+          description: 'Destination type.'
+          type: string
+        destination_id:
+          description: 'Destination identifier.'
+          type: integer
+        source_id:
+          description: 'Source identifier.'
+          type:
+            - integer
+            - 'null'
+        private_key_id:
+          description: 'Private key identifier.'
+          type:
+            - integer
+            - 'null'
+        environment_id:
+          description: 'Environment identifier.'
+          type: integer
+        dockerfile:
+          description: 'Dockerfile content. Used for dockerfile build pack.'
+          type:
+            - string
+            - 'null'
+        dockerfile_location:
+          description: 'Dockerfile location.'
+          type: string
+        custom_labels:
+          description: 'Custom labels.'
+          type:
+            - string
+            - 'null'
+        dockerfile_target_build:
+          description: 'Dockerfile target build.'
+          type:
+            - string
+            - 'null'
+        manual_webhook_secret_github:
+          description: 'Manual webhook secret for GitHub.'
+          type:
+            - string
+            - 'null'
+        manual_webhook_secret_gitlab:
+          description: 'Manual webhook secret for GitLab.'
+          type:
+            - string
+            - 'null'
+        manual_webhook_secret_bitbucket:
+          description: 'Manual webhook secret for Bitbucket.'
+          type:
+            - string
+            - 'null'
+        manual_webhook_secret_gitea:
+          description: 'Manual webhook secret for Gitea.'
+          type:
+            - string
+            - 'null'
+        docker_compose_location:
+          description: 'Docker compose location.'
+          type: string
+        docker_compose:
+          description: 'Docker compose content. Used for docker compose build pack.'
+          type:
+            - string
+            - 'null'
+        docker_compose_raw:
+          description: 'Docker compose raw content.'
+          type:
+            - string
+            - 'null'
+        docker_compose_domains:
+          description: 'Docker compose domains.'
+          type:
+            - string
+            - 'null'
+        docker_compose_custom_start_command:
+          description: 'Docker compose custom start command.'
+          type:
+            - string
+            - 'null'
+        docker_compose_custom_build_command:
+          description: 'Docker compose custom build command.'
+          type:
+            - string
+            - 'null'
+        swarm_replicas:
+          description: 'Swarm replicas. Only used for swarm deployments.'
+          type:
+            - integer
+            - 'null'
+        swarm_placement_constraints:
+          description: 'Swarm placement constraints. Only used for swarm deployments.'
+          type:
+            - string
+            - 'null'
+        custom_docker_run_options:
+          description: 'Custom docker run options.'
+          type:
+            - string
+            - 'null'
+        post_deployment_command:
+          description: 'Post deployment command.'
+          type:
+            - string
+            - 'null'
+        post_deployment_command_container:
+          description: 'Post deployment command container.'
+          type:
+            - string
+            - 'null'
+        pre_deployment_command:
+          description: 'Pre deployment command.'
+          type:
+            - string
+            - 'null'
+        pre_deployment_command_container:
+          description: 'Pre deployment command container.'
+          type:
+            - string
+            - 'null'
+        watch_paths:
+          description: 'Watch paths.'
+          type:
+            - string
+            - 'null'
+        custom_healthcheck_found:
+          description: 'Custom healthcheck found.'
+          type: boolean
+        redirect:
           description: 'How to set redirect with Traefik / Caddy. www<->non-www.'
+          type:
+            - string
+            - 'null'
           enum:
             - www
             - non-www
             - both
         created_at:
-          type: string
-          format: date-time
           description: 'The date and time when the application was created.'
+          type: string
+          format: date-time
         updated_at:
-          type: string
-          format: date-time
           description: 'The date and time when the application was last updated.'
-        deleted_at:
           type: string
           format: date-time
-          nullable: true
+        deleted_at:
           description: 'The date and time when the application was deleted.'
+          type:
+            - string
+            - 'null'
+          format: date-time
         compose_parsing_version:
-          type: string
           description: 'How Saturn Platform parse the compose file.'
+          type: string
         custom_nginx_configuration:
-          type: string
-          nullable: true
           description: 'Custom Nginx configuration base64 encoded.'
+          type:
+            - string
+            - 'null'
         is_http_basic_auth_enabled:
-          type: boolean
           description: 'HTTP Basic Authentication enabled.'
+          type: boolean
         http_basic_auth_username:
-          type: string
-          nullable: true
           description: 'Username for HTTP Basic Authentication'
+          type:
+            - string
+            - 'null'
         http_basic_auth_password:
-          type: string
-          nullable: true
           description: 'Password for HTTP Basic Authentication'
+          type:
+            - string
+            - 'null'
       type: object
     ApplicationDeploymentQueue:
-      description: 'Project model'
+      description: 'Application Deployment Queue model'
       properties:
         id:
           type: integer
@@ -7790,9 +7829,10 @@ components:
         real_value:
           type: string
         source_template:
-          type: string
-          nullable: true
           description: 'Source template file (env_example, env_sample, env_template)'
+          type:
+            - string
+            - 'null'
         version:
           type: string
         created_at:
@@ -7815,11 +7855,11 @@ components:
           type: string
           format: private-key
         public_key:
-          type: string
           description: 'The public key of the private key.'
-        fingerprint:
           type: string
+        fingerprint:
           description: 'The fingerprint of the private key.'
+          type: string
         is_git_related:
           type: boolean
         team_id:
@@ -7850,54 +7890,54 @@ components:
       description: 'Server model'
       properties:
         id:
-          type: integer
           description: 'The server ID.'
-        uuid:
-          type: string
-          description: 'The server UUID.'
-        name:
-          type: string
-          description: 'The server name.'
-        description:
-          type: string
-          description: 'The server description.'
-        ip:
-          type: string
-          description: 'The IP address.'
-        user:
-          type: string
-          description: 'The user.'
-        port:
           type: integer
+        uuid:
+          description: 'The server UUID.'
+          type: string
+        name:
+          description: 'The server name.'
+          type: string
+        description:
+          description: 'The server description.'
+          type: string
+        ip:
+          description: 'The IP address.'
+          type: string
+        user:
+          description: 'The user.'
+          type: string
+        port:
           description: 'The port number.'
+          type: integer
         proxy:
-          type: object
           description: 'The proxy configuration.'
+          type: object
         proxy_type:
+          description: 'The proxy type.'
           type: string
           enum:
             - traefik
             - caddy
             - none
-          description: 'The proxy type.'
         high_disk_usage_notification_sent:
-          type: boolean
           description: 'The flag to indicate if the high disk usage notification has been sent.'
+          type: boolean
         unreachable_notification_sent:
-          type: boolean
           description: 'The flag to indicate if the unreachable notification has been sent.'
-        unreachable_count:
-          type: integer
-          description: 'The unreachable count for your server.'
-        validation_logs:
-          type: string
-          description: 'The validation logs.'
-        log_drain_notification_sent:
           type: boolean
-          description: 'The flag to indicate if the log drain notification has been sent.'
-        swarm_cluster:
+        unreachable_count:
+          description: 'The unreachable count for your server.'
+          type: integer
+        validation_logs:
+          description: 'The validation logs.'
           type: string
+        log_drain_notification_sent:
+          description: 'The flag to indicate if the log drain notification has been sent.'
+          type: boolean
+        swarm_cluster:
           description: 'The swarm cluster configuration.'
+          type: string
         settings:
           $ref: '#/components/schemas/ServerSetting'
       type: object
@@ -7977,11 +8017,11 @@ components:
         updated_at:
           type: string
         delete_unused_volumes:
-          type: boolean
           description: 'The flag to indicate if the unused volumes should be deleted.'
-        delete_unused_networks:
           type: boolean
+        delete_unused_networks:
           description: 'The flag to indicate if the unused networks should be deleted.'
+          type: boolean
       type: object
     Service:
       description: 'Service model'
