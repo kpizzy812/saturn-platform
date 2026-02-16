@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Channels;
 
+use App\Contracts\HasMailNotification;
 use App\Models\User;
 use Exception;
 use Illuminate\Mail\Message;
@@ -10,6 +11,9 @@ use Illuminate\Support\Facades\Mail;
 
 class TransactionalEmailChannel
 {
+    /**
+     * @param  Notification&HasMailNotification  $notification
+     */
     public function send(User $notifiable, Notification $notification): void
     {
         $settings = instanceSettings();

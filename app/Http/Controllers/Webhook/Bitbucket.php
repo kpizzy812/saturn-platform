@@ -27,6 +27,11 @@ class Bitbucket extends Controller
                     'message' => 'Nothing to do. Event not handled.',
                 ]);
             }
+            $branch = null;
+            $commit = null;
+            $full_name = null;
+            $pull_request_id = null;
+            $pull_request_html_url = null;
             if ($x_bitbucket_event === 'repo:push') {
                 $branch = data_get($payload, 'push.changes.0.new.name');
                 $full_name = data_get($payload, 'repository.full_name');
@@ -92,7 +97,7 @@ class Bitbucket extends Controller
                             is_webhook: true
                         );
                         if ($result['status'] === 'queue_full') {
-                            return response($result['message'], 429)->header('Retry-After', 60);
+                            return response($result['message'], 429)->header('Retry-After', '60');
                         } elseif ($result['status'] === 'skipped') {
                             $return_payloads->push([
                                 'application' => $application->name,
@@ -160,7 +165,7 @@ class Bitbucket extends Controller
                             git_type: 'bitbucket'
                         );
                         if ($result['status'] === 'queue_full') {
-                            return response($result['message'], 429)->header('Retry-After', 60);
+                            return response($result['message'], 429)->header('Retry-After', '60');
                         } elseif ($result['status'] === 'skipped') {
                             $return_payloads->push([
                                 'application' => $application->name,

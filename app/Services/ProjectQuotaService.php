@@ -76,7 +76,6 @@ class ProjectQuotaService
                 + $project->dragonflies()->count()
                 + $project->clickhouses()->count(),
             'environment' => $project->environments()->count(),
-            default => 0,
         };
     }
 }

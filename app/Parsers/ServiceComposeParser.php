@@ -150,8 +150,8 @@ class ServiceComposeParser
             $image = data_get_str($service, 'image');
             $savedService = $this->findOrCreateSavedService($serviceName, $image, $service);
 
-            if ($savedService->image !== $image) {
-                $savedService->image = $image;
+            if ($savedService->image !== $image->value()) {
+                $savedService->image = $image->value();
                 $savedService->save();
             }
         }
@@ -288,13 +288,13 @@ class ServiceComposeParser
         $isServiceApplication = $savedService instanceof ServiceApplication;
 
         if ($isServiceApplication && blank($savedService->fqdn)) {
-            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->subdomainSlug()}", parserVersion: $this->resource->compose_parsing_version);
+            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->subdomainSlug()}", parserVersion: (int) $this->resource->compose_parsing_version);
             $url = generateUrl($this->server, "$fqdnFor-{$this->subdomainSlug()}");
         } elseif ($isServiceApplication) {
             $fqdn = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
             $url = str($savedService->fqdn)->after('://')->before(':')->prepend(str($savedService->fqdn)->before('://')->append('://'))->value();
         } else {
-            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->subdomainSlug()}", parserVersion: $this->resource->compose_parsing_version);
+            $fqdn = generateFqdn(server: $this->server, random: "$fqdnFor-{$this->subdomainSlug()}", parserVersion: (int) $this->resource->compose_parsing_version);
             $url = generateUrl($this->server, "$fqdnFor-{$this->subdomainSlug()}");
         }
 
@@ -398,7 +398,7 @@ class ServiceComposeParser
     private function generateFqdnVariable(Stringable $key, ServiceApplication|ServiceDatabase $savedService): void
     {
         $fqdnFor = $key->after('SERVICE_FQDN_')->lower()->value();
-        $fqdn = generateFqdn(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->subdomainSlug()}", parserVersion: $this->resource->compose_parsing_version);
+        $fqdn = generateFqdn(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->subdomainSlug()}", parserVersion: (int) $this->resource->compose_parsing_version);
         $url = generateUrl(server: $this->server, random: str($fqdnFor)->replace('_', '-')->value()."-{$this->subdomainSlug()}");
 
         $envExists = $this->resource->environment_variables()->where('key', $key->value())->first();
@@ -497,8 +497,8 @@ class ServiceComposeParser
         $fileStorages = $savedService->fileStorages();
 
         // Update image if changed and handle pocketbase
-        if ($savedService->image !== $image) {
-            $savedService->image = $image;
+        if ($savedService->image !== $image->value()) {
+            $savedService->image = $image->value();
             $savedService->save();
         }
         if (str($savedService->image)->contains('pocketbase') && $savedService->is_gzip_enabled) {
@@ -542,7 +542,7 @@ class ServiceComposeParser
         );
 
         // Add SATURN_FQDN & SATURN_URL
-        if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
+        if (! $isDatabase && $fqdns->count() > 0) {
             $this->addFqdnEnvironmentVariables($saturnEnvironments, $fqdns);
         }
 
@@ -715,7 +715,7 @@ class ServiceComposeParser
             $content = data_get($foundConfig, 'content') ?: $content;
             $isDirectory = data_get($foundConfig, 'is_directory');
         } else {
-            if ((is_null($isDirectory) || ! $isDirectory) && is_null($content)) {
+            if (! $isDirectory && is_null($content)) {
                 $isDirectory = true;
             }
         }
@@ -1134,7 +1134,7 @@ class ServiceComposeParser
             }
         }
 
-        if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
+        if (! $isDatabase && $fqdns->count() > 0) {
             $serviceLabels = $this->generateProxyLabels($serviceLabels, $fqdns, $serviceName, $image, $predefinedPort);
         }
 

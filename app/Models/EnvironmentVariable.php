@@ -12,6 +12,32 @@ use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property string $key
+ * @property string|null $value
+ * @property string $resourceable_type
+ * @property int $resourceable_id
+ * @property bool $is_literal
+ * @property bool $is_multiline
+ * @property bool $is_preview
+ * @property bool $is_runtime
+ * @property bool $is_buildtime
+ * @property bool $is_shared
+ * @property bool $is_shown_once
+ * @property bool $is_required
+ * @property string|null $description
+ * @property string|null $source_template
+ * @property string $version
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read string|null $real_value
+ * @property-read bool $is_really_required
+ * @property-read bool $is_nixpacks
+ * @property-read bool $is_saturn
+ * @property-read \Illuminate\Database\Eloquent\Model|null $resourceable
+ */
 #[OA\Schema(
     description: 'Environment Variable model',
     type: 'object',
@@ -148,7 +174,7 @@ class EnvironmentVariable extends BaseModel
         return $this->resourceable;
     }
 
-    public function realValue(): Attribute
+    protected function realValue(): Attribute
     {
         return Attribute::make(
             get: function () {
@@ -221,7 +247,7 @@ class EnvironmentVariable extends BaseModel
 
     private function get_real_environment_variables(?string $environment_variable = null, $resource = null)
     {
-        if ((is_null($environment_variable) && $environment_variable === '') || is_null($resource)) {
+        if ((is_null($environment_variable) || $environment_variable === '') || is_null($resource)) {
             return null;
         }
         $environment_variable = trim($environment_variable);
@@ -235,6 +261,7 @@ class EnvironmentVariable extends BaseModel
                 continue;
             }
             $variable = str($sharedEnv)->trim()->match('/\.(.*)/');
+            $id = null;
             if ($type->value() === 'environment') {
                 $id = $resource->environment->id;
             } elseif ($type->value() === 'project') {
@@ -265,7 +292,7 @@ class EnvironmentVariable extends BaseModel
 
     private function set_environment_variables(?string $environment_variable = null): ?string
     {
-        if (is_null($environment_variable) && $environment_variable === '') {
+        if (is_null($environment_variable) || $environment_variable === '') {
             return null;
         }
         $environment_variable = trim($environment_variable);

@@ -363,18 +363,6 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
         }
     }
 
-    private function updateApplicationStatus(string $applicationId, string $containerStatus)
-    {
-        $application = $this->applications->where('id', $applicationId)->first();
-        if (! $application) {
-            return;
-        }
-        if ($application->status !== $containerStatus) {
-            $application->status = $containerStatus;
-            $application->save();
-        }
-    }
-
     private function updateApplicationPreviewStatus(string $applicationId, string $pullRequestId, string $containerStatus)
     {
         $application = $this->previews->where('application_id', $applicationId)
@@ -518,31 +506,6 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
                 }
             }
         });
-    }
-
-    private function updateServiceSubStatus(string $serviceId, string $subType, string $subId, string $containerStatus)
-    {
-        $service = $this->services->where('id', $serviceId)->first();
-        if (! $service) {
-            return;
-        }
-        if ($subType === 'application') {
-            $application = $service->applications()->where('id', $subId)->first();
-            if ($application) {
-                if ($application->status !== $containerStatus) {
-                    $application->status = $containerStatus;
-                    $application->save();
-                }
-            }
-        } elseif ($subType === 'database') {
-            $database = $service->databases()->where('id', $subId)->first();
-            if ($database) {
-                if ($database->status !== $containerStatus) {
-                    $database->status = $containerStatus;
-                    $database->save();
-                }
-            }
-        }
     }
 
     private function updateNotFoundServiceStatus()

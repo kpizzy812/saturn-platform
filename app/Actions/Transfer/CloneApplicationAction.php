@@ -305,12 +305,12 @@ class CloneApplicationAction
         foreach ($source->scheduled_tasks as $task) {
             ScheduledTask::create([
                 'uuid' => (string) new Cuid2,
-                'name' => $task->name,
-                'command' => $task->command,
-                'frequency' => $task->frequency,
-                'container' => $task->container,
+                'name' => $task->getAttribute('name'),
+                'command' => $task->getAttribute('command'),
+                'frequency' => $task->getAttribute('frequency'),
+                'container' => $task->getAttribute('container'),
                 'application_id' => $target->id,
-                'enabled' => $task->enabled,
+                'enabled' => $task->getAttribute('enabled'),
             ]);
         }
     }

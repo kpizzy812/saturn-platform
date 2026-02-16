@@ -418,16 +418,16 @@ class ResourceLinkController extends Controller
             'environment_id' => $link->environment_id,
             'source_type' => 'application',
             'source_id' => $link->source_id,
-            'source_name' => $link->source?->name,
+            'source_name' => $link->source?->getAttribute('name'),
             'target_type' => $targetType,
             'target_id' => $link->target_id,
-            'target_name' => $link->target?->name,
+            'target_name' => $link->target?->getAttribute('name'),
             'inject_as' => $link->inject_as,
             'env_key' => $envKey,
             'auto_inject' => $link->auto_inject,
             'use_external_url' => $link->use_external_url,
-            'created_at' => $link->created_at?->toIso8601String(),
-            'updated_at' => $link->updated_at?->toIso8601String(),
+            'created_at' => $link->created_at->toIso8601String(),
+            'updated_at' => $link->updated_at->toIso8601String(),
         ];
     }
 }

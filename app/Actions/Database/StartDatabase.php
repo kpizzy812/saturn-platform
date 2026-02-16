@@ -26,6 +26,7 @@ class StartDatabase
         if (! $server->isFunctional()) {
             return 'Server is not functional';
         }
+        $activity = null;
         switch ($database->getMorphClass()) {
             case \App\Models\StandalonePostgresql::class:
                 $activity = StartPostgresql::run($database);

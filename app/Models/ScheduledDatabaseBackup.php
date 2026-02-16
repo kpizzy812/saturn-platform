@@ -11,7 +11,26 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property bool $enabled
+ * @property string|null $name
+ * @property string $frequency
+ * @property bool $save_s3
+ * @property int|null $s3_storage_id
+ * @property int|null $backup_retention_period
+ * @property string|null $databases_to_backup
+ * @property bool $dump_all
+ * @property bool $disable_local_backup
+ * @property string $database_type
+ * @property int $database_id
+ * @property int $team_id
+ * @property bool $restore_test_enabled
+ * @property \Carbon\Carbon|null $last_restore_test_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
  * @property-read Team|null $team
+ * @property-read \Illuminate\Database\Eloquent\Model|null $database
  */
 class ScheduledDatabaseBackup extends BaseModel
 {

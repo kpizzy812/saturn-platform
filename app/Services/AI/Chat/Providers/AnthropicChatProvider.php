@@ -196,7 +196,7 @@ final class AnthropicChatProvider implements ChatProviderInterface
             $lines = explode("\n", $buffer);
             foreach ($lines as $line) {
                 if (str_starts_with($line, 'data: ')) {
-                    $json = substr($line, 6);
+                    $json = (string) substr($line, 6);
                     if ($json === '[DONE]') {
                         break;
                     }

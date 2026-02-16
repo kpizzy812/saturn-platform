@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Models\LoginHistory;
+use App\Models\User;
 use Illuminate\Auth\Events\Login;
 
 class RecordSuccessfulLogin
@@ -12,6 +13,7 @@ class RecordSuccessfulLogin
      */
     public function handle(Login $event): void
     {
-        LoginHistory::record($event->user, 'success');
+        $user = $event->user instanceof User ? $event->user : null;
+        LoginHistory::record($user, 'success');
     }
 }

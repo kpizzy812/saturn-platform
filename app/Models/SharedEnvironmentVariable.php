@@ -8,6 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string $key
+ * @property string|null $value
+ * @property string|null $type
+ * @property string|null $description
+ * @property int $team_id
+ * @property int|null $project_id
+ * @property int|null $environment_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Team|null $team
+ * @property-read Project|null $project
+ * @property-read Environment|null $environment
+ */
 class SharedEnvironmentVariable extends Model
 {
     use Auditable, LogsActivity;

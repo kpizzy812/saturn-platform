@@ -78,7 +78,8 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
 
-            $this->server = $database->destination->server ?? $database->server ?? null;
+            $destination = $database->getAttribute('destination');
+            $this->server = $destination->server ?? $database->getAttribute('server') ?? null;
             if (! $this->server) {
                 $this->markFailed('Server not found');
 
@@ -166,12 +167,12 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
 
         try {
             $database = $this->backup->database;
-            $team = $database->team;
+            $team = $database->getAttribute('team');
             $teamSlug = Str::slug($team->name);
-            $dbSlug = Str::slug($database->name);
+            $dbSlug = Str::slug($database->getAttribute('name'));
             $filename = basename($this->execution->filename);
             $s3Path = trim($s3->path, '/')
-                ."/databases/{$teamSlug}-{$team->id}/{$dbSlug}-{$database->uuid}/{$filename}";
+                ."/databases/{$teamSlug}-{$team->id}/{$dbSlug}-{$database->getAttribute('uuid')}/{$filename}";
 
             // Download using mc (MinIO client)
             $commands = [

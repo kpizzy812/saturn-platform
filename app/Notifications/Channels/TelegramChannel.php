@@ -2,13 +2,18 @@
 
 namespace App\Notifications\Channels;
 
+use App\Contracts\HasTelegramNotification;
 use App\Jobs\SendMessageToTelegramJob;
+use Illuminate\Notifications\Notification;
 
 class TelegramChannel
 {
-    public function send($notifiable, $notification): void
+    /**
+     * @param  Notification&HasTelegramNotification  $notification
+     */
+    public function send($notifiable, Notification $notification): void
     {
-        $data = $notification->toTelegram($notifiable);
+        $data = $notification->toTelegram();
         $settings = $notifiable->telegramNotificationSettings;
 
         $message = data_get($data, 'message');

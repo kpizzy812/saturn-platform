@@ -104,7 +104,7 @@ class MigrateResourceAction
             ) {
                 return EnvironmentMigration::create([
                     'source_type' => get_class($resource),
-                    'source_id' => $resource->id,
+                    'source_id' => $resource->getAttribute('id'),
                     'source_environment_id' => $sourceEnvironment->id,
                     'target_environment_id' => $targetEnvironment->id,
                     'target_server_id' => $targetServer->id,
@@ -215,10 +215,10 @@ class MigrateResourceAction
         if ($existingTarget) {
             $snapshot['existing_target_config'] = $this->getResourceConfig($existingTarget);
             $snapshot['existing_target_type'] = get_class($existingTarget);
-            $snapshot['existing_target_id'] = $existingTarget->id;
+            $snapshot['existing_target_id'] = $existingTarget->getAttribute('id');
 
             // Include application settings in snapshot for proper rollback
-            if ($existingTarget instanceof \App\Models\Application && method_exists($existingTarget, 'settings')) {
+            if ($existingTarget instanceof \App\Models\Application) {
                 $settings = $existingTarget->settings;
                 if ($settings) {
                     $snapshot['existing_target_config']['application_settings'] = $settings->toArray();
@@ -236,7 +236,7 @@ class MigrateResourceAction
     {
         $config = [
             'type' => get_class($resource),
-            'id' => $resource->id,
+            'id' => $resource->getAttribute('id'),
             'attributes' => $resource->toArray(),
         ];
 
@@ -278,7 +278,7 @@ class MigrateResourceAction
      */
     protected function findExistingTarget(Model $resource, Environment $targetEnv): ?Model
     {
-        $name = $resource->name ?? null;
+        $name = $resource->getAttribute('name');
         if (! $name) {
             return null;
         }

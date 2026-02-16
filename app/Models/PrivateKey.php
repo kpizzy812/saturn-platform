@@ -180,6 +180,9 @@ class PrivateKey extends BaseModel
     {
         try {
             $key = PublicKeyLoader::load($privateKey);
+            if (! $key instanceof \phpseclib3\Crypt\Common\PrivateKey) {
+                return null;
+            }
 
             return $key->getPublicKey()->toString('OpenSSH', ['comment' => '']);
         } catch (\Throwable $e) {
@@ -337,6 +340,9 @@ class PrivateKey extends BaseModel
     {
         try {
             $key = PublicKeyLoader::load($privateKey);
+            if (! $key instanceof \phpseclib3\Crypt\Common\PrivateKey) {
+                return null;
+            }
 
             return $key->getPublicKey()->getFingerprint('sha256');
         } catch (\Throwable $e) {
@@ -348,6 +354,9 @@ class PrivateKey extends BaseModel
     {
         try {
             $key = PublicKeyLoader::load($privateKey);
+            if (! $key instanceof \phpseclib3\Crypt\Common\PrivateKey) {
+                return null;
+            }
 
             return $key->getPublicKey()->getFingerprint('md5');
         } catch (\Throwable $e) {

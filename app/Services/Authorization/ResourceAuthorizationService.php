@@ -29,7 +29,7 @@ class ResourceAuthorizationService
             return null;
         }
 
-        return $teamMembership->pivot->role;
+        return $teamMembership->pivot?->getAttribute('role');
     }
 
     /**

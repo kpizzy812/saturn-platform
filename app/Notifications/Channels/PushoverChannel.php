@@ -2,11 +2,15 @@
 
 namespace App\Notifications\Channels;
 
+use App\Contracts\HasPushoverNotification;
 use App\Jobs\SendMessageToPushoverJob;
 use Illuminate\Notifications\Notification;
 
 class PushoverChannel
 {
+    /**
+     * @param  Notification&HasPushoverNotification  $notification
+     */
     public function send(SendsPushover $notifiable, Notification $notification): void
     {
         $message = $notification->toPushover();

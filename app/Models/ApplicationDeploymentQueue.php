@@ -14,7 +14,32 @@ use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 
 /**
+ * @property int $id
+ * @property int $application_id
+ * @property string $deployment_uuid
+ * @property int $pull_request_id
+ * @property bool $force_rebuild
+ * @property string|null $commit
+ * @property string $status
+ * @property bool $is_webhook
+ * @property bool $is_api
+ * @property string|null $logs
+ * @property string|null $current_process_id
+ * @property bool $restart_only
+ * @property string|null $git_type
+ * @property int|null $server_id
+ * @property string|null $application_name
+ * @property string|null $server_name
+ * @property string|null $deployment_url
+ * @property string|null $destination_id
+ * @property bool $only_this_server
+ * @property bool $rollback
+ * @property string|null $commit_message
+ * @property string|null $horizon_job_id
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
  * @property-read Application|null $application
+ * @property-read Server|null $server
  */
 #[OA\Schema(
     description: 'Application Deployment Queue model',
@@ -146,6 +171,7 @@ class ApplicationDeploymentQueue extends Model
     /**
      * Get log entries for this deployment (new optimized storage).
      */
+    /** @return HasMany<DeploymentLogEntry, $this> */
     public function logEntries(): HasMany
     {
         return $this->hasMany(DeploymentLogEntry::class, 'deployment_id')->orderBy('order');
@@ -181,7 +207,7 @@ class ApplicationDeploymentQueue extends Model
 
     public function commitMessage()
     {
-        if (empty($this->commit_message) || is_null($this->commit_message)) {
+        if (empty($this->commit_message)) {
             return null;
         }
 
@@ -199,16 +225,14 @@ class ApplicationDeploymentQueue extends Model
 
         $lockedVars = collect([]);
 
-        if ($app->environment_variables) {
-            $lockedVars = $lockedVars->merge(
-                $app->environment_variables
-                    ->where('is_shown_once', true)
-                    ->pluck('real_value', 'key')
-                    ->filter()
-            );
-        }
+        $lockedVars = $lockedVars->merge(
+            $app->environment_variables
+                ->where('is_shown_once', true)
+                ->pluck('real_value', 'key')
+                ->filter()
+        );
 
-        if ($this->pull_request_id !== 0 && $app->environment_variables_preview) {
+        if ($this->pull_request_id !== 0) {
             $lockedVars = $lockedVars->merge(
                 $app->environment_variables_preview
                     ->where('is_shown_once', true)

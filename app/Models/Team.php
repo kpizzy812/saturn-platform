@@ -227,9 +227,6 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         $validatedEmails = array_filter($recipients, function ($email) {
             return filter_var($email, FILTER_VALIDATE_EMAIL);
         });
-        if (is_null($validatedEmails)) {
-            return [];
-        }
 
         return array_values($validatedEmails);
     }
@@ -271,7 +268,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         return $this->hasMany(SharedEnvironmentVariable::class)->whereNull('project_id')->whereNull('environment_id');
     }
 
-    /** @return BelongsToMany<User, $this> */
+    /** @return BelongsToMany<User, $this, TeamUser, 'pivot'> */
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'team_user', 'team_id', 'user_id')
@@ -296,7 +293,7 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
             return [];
         }
 
-        return $membership->pivot->allowed_projects;
+        return $membership->pivot?->getAttribute('allowed_projects');
     }
 
     /**

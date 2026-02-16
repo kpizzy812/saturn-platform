@@ -59,8 +59,8 @@ class ActivityHelper
                     'action' => $action,
                     'description' => $description,
                     'user' => [
-                        'name' => $deploymentUser->name ?? 'System',
-                        'email' => $deploymentUser->email ?? 'system@saturn.local',
+                        'name' => $deploymentUser->getAttribute('name') ?? 'System',
+                        'email' => $deploymentUser->getAttribute('email') ?? 'system@saturn.local',
                         'avatar' => $deploymentUser->avatar ? '/storage/'.$deploymentUser->avatar : null,
                     ],
                     'resource' => [
@@ -102,8 +102,8 @@ class ActivityHelper
                     str_contains($className, 'Team') => 'team',
                     default => strtolower($className),
                 };
-                $resourceName = $subject->name ?? $subject->uuid ?? class_basename($subject);
-                $resourceId = (string) ($subject->uuid ?? $subject->id ?? '');
+                $resourceName = $subject->getAttribute('name') ?? $subject->getAttribute('uuid') ?? class_basename($subject);
+                $resourceId = (string) ($subject->getAttribute('uuid') ?? $subject->getAttribute('id') ?? '');
             }
 
             $event = $activity->event ?? $activity->log_name ?? 'unknown';
@@ -114,9 +114,9 @@ class ActivityHelper
                 'action' => $action,
                 'description' => $activity->description ?? self::buildDescription($action, $resourceName),
                 'user' => [
-                    'name' => $causer->name ?? 'System',
-                    'email' => $causer->email ?? 'system@saturn.local',
-                    'avatar' => $causer->avatar ? '/storage/'.$causer->avatar : null,
+                    'name' => $causer?->getAttribute('name') ?? 'System',
+                    'email' => $causer?->getAttribute('email') ?? 'system@saturn.local',
+                    'avatar' => $causer?->getAttribute('avatar') ? '/storage/'.$causer->getAttribute('avatar') : null,
                 ],
                 'resource' => [
                     'type' => $resourceType ?? 'application',
@@ -166,8 +166,8 @@ class ActivityHelper
                 'action' => $action,
                 'description' => self::buildDescription($action, $appName),
                 'user' => [
-                    'name' => $deploymentUser->name ?? 'System',
-                    'email' => $deploymentUser->email ?? 'system@saturn.local',
+                    'name' => $deploymentUser->getAttribute('name') ?? 'System',
+                    'email' => $deploymentUser->getAttribute('email') ?? 'system@saturn.local',
                     'avatar' => $deploymentUser->avatar ? '/storage/'.$deploymentUser->avatar : null,
                 ],
                 'resource' => [
@@ -205,8 +205,8 @@ class ActivityHelper
                 str_contains($className, 'Team') => 'team',
                 default => strtolower($className),
             };
-            $resourceName = $subject->name ?? $subject->uuid ?? class_basename($subject);
-            $resourceId = (string) ($subject->uuid ?? $subject->id ?? '');
+            $resourceName = $subject->getAttribute('name') ?? $subject->getAttribute('uuid') ?? class_basename($subject);
+            $resourceId = (string) ($subject->getAttribute('uuid') ?? $subject->getAttribute('id') ?? '');
         }
 
         $event = $activity->event ?? $activity->log_name ?? 'unknown';
@@ -217,9 +217,9 @@ class ActivityHelper
             'action' => $action,
             'description' => $activity->description ?? self::buildDescription($action, $resourceName),
             'user' => [
-                'name' => $causer->name ?? 'System',
-                'email' => $causer->email ?? 'system@saturn.local',
-                'avatar' => $causer->avatar ? '/storage/'.$causer->avatar : null,
+                'name' => $causer?->getAttribute('name') ?? 'System',
+                'email' => $causer?->getAttribute('email') ?? 'system@saturn.local',
+                'avatar' => $causer?->getAttribute('avatar') ? '/storage/'.$causer->getAttribute('avatar') : null,
             ],
             'resource' => [
                 'type' => $resourceType ?? 'application',
@@ -306,13 +306,13 @@ class ActivityHelper
                 'action' => self::mapAction($event, $rel->subject),
                 'description' => $rel->description ?? 'Activity',
                 'user' => [
-                    'name' => $causer->name ?? 'System',
-                    'email' => $causer->email ?? 'system@saturn.local',
+                    'name' => $causer?->getAttribute('name') ?? 'System',
+                    'email' => $causer?->getAttribute('email') ?? 'system@saturn.local',
                 ],
                 'resource' => [
                     'type' => 'application',
-                    'name' => $rel->subject->name ?? 'Unknown',
-                    'id' => (string) ($rel->subject->uuid ?? $rel->subject->id ?? ''),
+                    'name' => $rel->subject?->getAttribute('name') ?? 'Unknown',
+                    'id' => (string) ($rel->subject?->getAttribute('uuid') ?? $rel->subject?->getAttribute('id') ?? ''),
                 ],
                 'timestamp' => $rel->created_at->toIso8601String(),
             ];
@@ -361,8 +361,8 @@ class ActivityHelper
                     'action' => $action,
                     'description' => self::buildDescription($action, $appName),
                     'user' => [
-                        'name' => $deploymentUser->name ?? 'System',
-                        'email' => $deploymentUser->email ?? 'system@saturn.local',
+                        'name' => $deploymentUser->getAttribute('name') ?? 'System',
+                        'email' => $deploymentUser->getAttribute('email') ?? 'system@saturn.local',
                     ],
                     'resource' => [
                         'type' => 'application',

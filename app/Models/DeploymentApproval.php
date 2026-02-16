@@ -10,6 +10,21 @@ use Visus\Cuid2\Cuid2;
 /**
  * Model for deployment approval workflow.
  * Tracks approval requests for production deployments.
+ *
+ * @property int $id
+ * @property string $uuid
+ * @property int $application_deployment_queue_id
+ * @property int $requested_by
+ * @property string|null $comment
+ * @property string $status
+ * @property int|null $approved_by
+ * @property \Carbon\Carbon|null $decided_at
+ * @property \Carbon\Carbon|null $approved_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read ApplicationDeploymentQueue|null $deployment
+ * @property-read User|null $requestedBy
+ * @property-read User|null $approvedBy
  */
 class DeploymentApproval extends BaseModel
 {

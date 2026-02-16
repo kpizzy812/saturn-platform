@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Symfony\Component\Yaml\Yaml;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $mount_path
+ * @property string|null $host_path
+ * @property int $resource_id
+ * @property string $resource_type
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Model|null $resource
+ */
 class LocalPersistentVolume extends Model
 {
     use HasFactory;
@@ -131,7 +142,7 @@ class LocalPersistentVolume extends Model
                 return false;
             }
 
-            $actualService = $resource->service;
+            $actualService = $resource->getAttribute('service');
             if (! $actualService || ! $actualService->docker_compose_raw) {
                 return false;
             }
@@ -143,7 +154,7 @@ class LocalPersistentVolume extends Model
             }
 
             // Find the service that this volume belongs to
-            $serviceName = $resource->name;
+            $serviceName = $resource->getAttribute('name');
             if (! isset($compose['services'][$serviceName]['volumes'])) {
                 return false;
             }

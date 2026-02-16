@@ -145,23 +145,20 @@ trait SshRetryable
         }
 
         try {
+            $hint = \Sentry\EventHint::fromArray([
+                'extra' => [
+                    'attempt' => $attempt,
+                    'max_retries' => $maxRetries,
+                    'delay_seconds' => $delay,
+                    'error_message' => $errorMessage,
+                    'context' => $context,
+                    'retryable_error' => true,
+                ],
+            ]);
             app('sentry')->captureMessage(
                 'SSH connection retry triggered',
                 \Sentry\Severity::warning(),
-                [
-                    'extra' => [
-                        'attempt' => $attempt,
-                        'max_retries' => $maxRetries,
-                        'delay_seconds' => $delay,
-                        'error_message' => $errorMessage,
-                        'context' => $context,
-                        'retryable_error' => true,
-                    ],
-                    'tags' => [
-                        'component' => 'ssh_retry',
-                        'error_type' => 'connection_retry',
-                    ],
-                ]
+                $hint
             );
         } catch (\Throwable $e) {
             // Don't let Sentry tracking errors break the SSH retry flow

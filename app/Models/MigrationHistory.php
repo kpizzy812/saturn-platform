@@ -8,6 +8,18 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * Model for tracking resource configuration versions during migrations.
+ *
+ * @property int $id
+ * @property string $resource_type
+ * @property int $resource_id
+ * @property int|null $environment_migration_id
+ * @property string|null $version_hash
+ * @property array|null $config_snapshot
+ * @property string|null $source_environment_type
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Model|null $resource
+ * @property-read EnvironmentMigration|null $environmentMigration
  */
 class MigrationHistory extends Model
 {
@@ -69,7 +81,7 @@ class MigrationHistory extends Model
     ): self {
         return self::create([
             'resource_type' => get_class($resource),
-            'resource_id' => $resource->id,
+            'resource_id' => $resource->getAttribute('id'),
             'environment_migration_id' => $migration->id,
             'version_hash' => self::createVersionHash($configSnapshot),
             'config_snapshot' => $configSnapshot,
@@ -83,7 +95,7 @@ class MigrationHistory extends Model
     public static function latestForResource(Model $resource): ?self
     {
         return self::where('resource_type', get_class($resource))
-            ->where('resource_id', $resource->id)
+            ->where('resource_id', $resource->getAttribute('id'))
             ->orderByDesc('created_at')
             ->first();
     }
@@ -110,7 +122,7 @@ class MigrationHistory extends Model
     public static function forResource(Model $resource)
     {
         return self::where('resource_type', get_class($resource))
-            ->where('resource_id', $resource->id)
+            ->where('resource_id', $resource->getAttribute('id'))
             ->with('environmentMigration')
             ->orderByDesc('created_at');
     }

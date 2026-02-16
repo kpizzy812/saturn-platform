@@ -13,6 +13,7 @@ class DeleteService
 
     public function handle(Service $service, bool $deleteVolumes, bool $deleteConnectedNetworks, bool $deleteConfigurations, bool $dockerCleanup)
     {
+        $server = null;
         try {
             $server = data_get($service, 'server');
             if ($deleteVolumes && $server->isFunctional()) {
@@ -40,7 +41,7 @@ class DeleteService
                 if (! empty($commands)) {
                     foreach ($commands as $command) {
                         $result = instant_remote_process([$command], $server, false);
-                        if ($result !== null && $result !== 0) {
+                        if ($result !== '' && $result !== '0') {
                             Log::error('Error deleting volumes: '.$result);
                         }
                     }

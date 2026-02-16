@@ -9,6 +9,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 
+/**
+ * @property int $id
+ * @property int|null $user_id
+ * @property int|null $team_id
+ * @property string $action
+ * @property string|null $resource_type
+ * @property int|null $resource_id
+ * @property string|null $resource_name
+ * @property string|null $description
+ * @property array|null $metadata
+ * @property string|null $ip_address
+ * @property string|null $user_agent
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read User|null $user
+ */
 class AuditLog extends Model
 {
     use HasFactory;
@@ -115,7 +131,7 @@ class AuditLog extends Model
         ?Model $resource = null,
         ?string $description = null,
         array $metadata = []
-    ): static {
+    ): self {
         $user = Auth::user();
         $currentTeam = null;
 
@@ -126,14 +142,14 @@ class AuditLog extends Model
             } catch (\Exception $e) {
                 // Fallback: try to get team from resource if it has one
                 if ($resource && method_exists($resource, 'team')) {
-                    $currentTeam = $resource->team;
+                    $currentTeam = $resource->getAttribute('team');
                 }
             }
         }
 
         // Extract resource information
         $resourceType = $resource ? get_class($resource) : null;
-        $resourceId = $resource->id ?? null;
+        $resourceId = $resource?->getAttribute('id');
         $resourceName = null;
 
         // Try to get a human-readable name from the resource

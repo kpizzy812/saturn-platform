@@ -238,7 +238,7 @@ class UploadController extends BaseController
         $extension = $file->getClientOriginalExtension();
         $filename = str_replace('.'.$extension, '', $file->getClientOriginalName()); // Filename without extension
 
-        $filename .= '_'.md5(time()).'.'.$extension;
+        $filename .= '_'.md5((string) time()).'.'.$extension;
 
         return $filename;
     }

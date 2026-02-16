@@ -298,7 +298,7 @@ class CommandExecutor
             if ($this->isDatabase($resource)) {
                 RestartDatabase::dispatch($resource);
 
-                return CommandResult::success("🔄 Перезапуск базы данных **{$resource->name}**.");
+                return CommandResult::success("🔄 Перезапуск базы данных **{$resource->getAttribute('name')}**.");
             }
 
             return CommandResult::failed('Этот тип ресурса не поддерживает перезапуск');
@@ -348,7 +348,7 @@ class CommandExecutor
             if ($this->isDatabase($resource)) {
                 StopDatabase::dispatch($resource);
 
-                return CommandResult::success("⏹️ Остановка базы данных **{$resource->name}**.");
+                return CommandResult::success("⏹️ Остановка базы данных **{$resource->getAttribute('name')}**.");
             }
 
             return CommandResult::failed('Этот тип ресурса не поддерживает остановку');
@@ -401,7 +401,7 @@ class CommandExecutor
             if ($this->isDatabase($resource)) {
                 StartDatabase::dispatch($resource);
 
-                return CommandResult::success("▶️ Запуск базы данных **{$resource->name}**.");
+                return CommandResult::success("▶️ Запуск базы данных **{$resource->getAttribute('name')}**.");
             }
 
             return CommandResult::failed('Этот тип ресурса не поддерживает запуск');
@@ -434,7 +434,7 @@ class CommandExecutor
             $logs = $this->fetchLogs($resource);
 
             return CommandResult::success(
-                "📋 Логи **{$resource->name}**:\n```\n{$logs}\n```",
+                "📋 Логи **{$resource->getAttribute('name')}**:\n```\n{$logs}\n```",
                 ['logs' => $logs]
             );
         } catch (\Throwable $e) {
@@ -463,7 +463,7 @@ class CommandExecutor
             $status = $this->getResourceStatus($resource);
 
             return CommandResult::success(
-                "📊 Статус **{$resource->name}**: {$status['status']}",
+                "📊 Статус **{$resource->getAttribute('name')}**: {$status['status']}",
                 $status
             );
         } catch (\Throwable $e) {
@@ -502,7 +502,7 @@ class CommandExecutor
         }
 
         try {
-            $resourceName = $resource->name ?? 'Unknown';
+            $resourceName = $resource->getAttribute('name') ?? 'Unknown';
             $resourceClass = class_basename($resource);
 
             $resource->delete();
@@ -1082,17 +1082,19 @@ class CommandExecutor
             $output .= "\n### Нарушения\n\n";
 
             foreach ($violations as $violation) {
-                $severityEmoji = match ($violation->severity) {
+                $violationSeverity = $violation->getAttribute('severity');
+                $severityEmoji = match ($violationSeverity) {
                     'critical' => '🔴',
                     'high' => '🟠',
                     'medium' => '🟡',
                     'low' => '🟢',
                     default => '⚪',
                 };
-                $output .= "{$severityEmoji} **{$violation->severity}** [{$violation->rule_id}]\n";
-                $output .= "   {$violation->message}\n";
-                if ($violation->file_path) {
-                    $output .= "   📄 `{$violation->file_path}:{$violation->line_number}`\n";
+                $output .= "{$severityEmoji} **{$violationSeverity}** [{$violation->getAttribute('rule_id')}]\n";
+                $output .= "   {$violation->getAttribute('message')}\n";
+                $violationFilePath = $violation->getAttribute('file_path');
+                if ($violationFilePath) {
+                    $output .= "   📄 `{$violationFilePath}:{$violation->getAttribute('line_number')}`\n";
                 }
                 $output .= "\n";
             }
@@ -1579,7 +1581,7 @@ class CommandExecutor
             if ($this->isDatabase($resource)) {
                 RestartDatabase::dispatch($resource);
 
-                return CommandResult::success("Restarting database **{$resource->name}**.");
+                return CommandResult::success("Restarting database **{$resource->getAttribute('name')}**.");
             }
 
             return CommandResult::failed('Resource type does not support restart');
@@ -1624,7 +1626,7 @@ class CommandExecutor
             if ($this->isDatabase($resource)) {
                 StopDatabase::dispatch($resource);
 
-                return CommandResult::success("Stopping database **{$resource->name}**.");
+                return CommandResult::success("Stopping database **{$resource->getAttribute('name')}**.");
             }
 
             return CommandResult::failed('Resource type does not support stop');
@@ -1677,7 +1679,7 @@ class CommandExecutor
             if ($this->isDatabase($resource)) {
                 StartDatabase::dispatch($resource);
 
-                return CommandResult::success("Starting database **{$resource->name}**.");
+                return CommandResult::success("Starting database **{$resource->getAttribute('name')}**.");
             }
 
             return CommandResult::failed('Resource type does not support start');
@@ -1710,7 +1712,7 @@ class CommandExecutor
             $logs = $this->fetchLogs($resource);
 
             return CommandResult::success(
-                "Logs for **{$resource->name}**:\n```\n{$logs}\n```",
+                "Logs for **{$resource->getAttribute('name')}**:\n```\n{$logs}\n```",
                 ['logs' => $logs]
             );
         } catch (\Throwable $e) {
@@ -1740,7 +1742,7 @@ class CommandExecutor
             $status = $this->getResourceStatus($resource);
 
             return CommandResult::success(
-                "Status of **{$resource->name}**: {$status['status']}",
+                "Status of **{$resource->getAttribute('name')}**: {$status['status']}",
                 $status
             );
         } catch (\Throwable $e) {
@@ -1843,7 +1845,7 @@ class CommandExecutor
         }
 
         try {
-            $resourceName = $resource->name ?? 'Unknown';
+            $resourceName = $resource->getAttribute('name') ?? 'Unknown';
             $resourceClass = class_basename($resource);
 
             $resource->delete();
@@ -2376,6 +2378,11 @@ HELP;
      * Returns the single match if unambiguous, or null if zero/multiple matches.
      * When multiple matches exist, tries exact name match to disambiguate
      * (e.g., "frontend" wins over "frontend (Clone)").
+     *
+     * @template T of Model
+     *
+     * @param  Collection<int, T>  $matches
+     * @return T|null
      */
     private function resolveUniqueMatch(Collection $matches, string $cleanName): ?Model
     {
@@ -2389,7 +2396,7 @@ HELP;
 
         // Multiple matches — try exact name match to disambiguate
         $exactMatches = $matches->filter(
-            fn (Model $m) => mb_strtolower($m->name) === mb_strtolower($cleanName)
+            fn (Model $m) => mb_strtolower($m->getAttribute('name') ?? '') === mb_strtolower($cleanName)
         );
 
         if ($exactMatches->count() === 1) {
@@ -2550,12 +2557,12 @@ HELP;
             }
 
             if ($this->isDatabase($resource)) {
-                $server = $resource->destination->server;
+                $server = $resource->getAttribute('destination')->server;
                 if (! $server->isFunctional()) {
                     return 'Server is not functional';
                 }
 
-                $containerName = $resource->uuid;
+                $containerName = $resource->getAttribute('uuid');
                 $command = "docker logs --tail {$lines} {$containerName} 2>&1";
                 $output = instant_remote_process([$command], $server, throwError: false);
 
@@ -2574,7 +2581,7 @@ HELP;
     private function getResourceStatus(Model $resource): array
     {
         $status = [
-            'name' => $resource->name ?? 'Unknown',
+            'name' => $resource->getAttribute('name') ?? 'Unknown',
             'type' => class_basename($resource),
             'status' => 'unknown',
         ];
@@ -2584,15 +2591,15 @@ HELP;
             $status['uuid'] = $resource->uuid;
             $status['fqdn'] = $resource->fqdn;
         } elseif ($resource instanceof Service) {
-            $status['status'] = $resource->status() ?? 'unknown';
+            $status['status'] = $resource->status ?? 'unknown';
             $status['uuid'] = $resource->uuid;
         } elseif ($resource instanceof Server) {
             $status['status'] = $resource->isFunctional() ? 'running' : 'not_functional';
             $status['uuid'] = $resource->uuid;
             $status['ip'] = $resource->ip;
         } elseif ($this->isDatabase($resource)) {
-            $status['status'] = $resource->status ?? 'unknown';
-            $status['uuid'] = $resource->uuid;
+            $status['status'] = $resource->getAttribute('status') ?? 'unknown';
+            $status['uuid'] = $resource->getAttribute('uuid');
         }
 
         return $status;

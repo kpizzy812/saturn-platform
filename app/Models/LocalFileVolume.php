@@ -8,6 +8,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Symfony\Component\Yaml\Yaml;
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property string|null $name
+ * @property string|null $fs_path
+ * @property string|null $mount_path
+ * @property string|null $content
+ * @property bool $is_directory
+ * @property string|null $chmod
+ * @property string|null $chown
+ * @property string|null $resource_type
+ * @property int|null $resource_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read bool $is_binary
+ * @property-read \Illuminate\Database\Eloquent\Model|null $resource
  * @property-read \Illuminate\Database\Eloquent\Model|null $service
  */
 class LocalFileVolume extends BaseModel
@@ -63,13 +78,17 @@ class LocalFileVolume extends BaseModel
     public function loadStorageOnServer()
     {
         $this->load(['service']);
-        $isService = data_get($this->resource, 'service');
+        /** @var \App\Models\Application|\App\Models\ServiceApplication|\App\Models\ServiceDatabase $resourceModel */
+        $resourceModel = $this->resource;
+        $isService = data_get($resourceModel, 'service');
         if ($isService) {
-            $workdir = $this->resource->service->workdir();
-            $server = $this->resource->service->server;
+            /** @var \App\Models\ServiceApplication|\App\Models\ServiceDatabase $resourceModel */
+            $serviceRelation = $resourceModel->getAttribute('service');
+            $workdir = $serviceRelation->workdir();
+            $server = $serviceRelation->server;
         } else {
-            $workdir = $this->resource->workdir();
-            $server = $this->resource->destination->server;
+            $workdir = $resourceModel->workdir();
+            $server = $resourceModel->getAttribute('destination')->server;
         }
         $commands = collect([]);
         $path = data_get_str($this, 'fs_path');
@@ -98,13 +117,17 @@ class LocalFileVolume extends BaseModel
     public function deleteStorageOnServer()
     {
         $this->load(['service']);
-        $isService = data_get($this->resource, 'service');
+        /** @var \App\Models\Application|\App\Models\ServiceApplication|\App\Models\ServiceDatabase $resourceModel */
+        $resourceModel = $this->resource;
+        $isService = data_get($resourceModel, 'service');
         if ($isService) {
-            $workdir = $this->resource->service->workdir();
-            $server = $this->resource->service->server;
+            /** @var \App\Models\ServiceApplication|\App\Models\ServiceDatabase $resourceModel */
+            $serviceRelation = $resourceModel->getAttribute('service');
+            $workdir = $serviceRelation->workdir();
+            $server = $serviceRelation->server;
         } else {
-            $workdir = $this->resource->workdir();
-            $server = $this->resource->destination->server;
+            $workdir = $resourceModel->workdir();
+            $server = $resourceModel->getAttribute('destination')->server;
         }
         $commands = collect([]);
         $path = data_get_str($this, 'fs_path');
@@ -135,13 +158,17 @@ class LocalFileVolume extends BaseModel
     public function saveStorageOnServer()
     {
         $this->load(['service']);
-        $isService = data_get($this->resource, 'service');
+        /** @var \App\Models\Application|\App\Models\ServiceApplication|\App\Models\ServiceDatabase $resourceModel */
+        $resourceModel = $this->resource;
+        $isService = data_get($resourceModel, 'service');
         if ($isService) {
-            $workdir = $this->resource->service->workdir();
-            $server = $this->resource->service->server;
+            /** @var \App\Models\ServiceApplication|\App\Models\ServiceDatabase $resourceModel */
+            $serviceRelation = $resourceModel->getAttribute('service');
+            $workdir = $serviceRelation->workdir();
+            $server = $serviceRelation->server;
         } else {
-            $workdir = $this->resource->workdir();
-            $server = $this->resource->destination->server;
+            $workdir = $resourceModel->workdir();
+            $server = $resourceModel->getAttribute('destination')->server;
         }
         $commands = collect([]);
         if ($this->is_directory) {
@@ -176,7 +203,7 @@ class LocalFileVolume extends BaseModel
             FileStorageChanged::dispatch(data_get($server, 'team_id'));
             throw new \Exception('The following file is a file on the server, but you are trying to mark it as a directory. Please delete the file on the server or mark it as directory.');
         } elseif ($isDir === 'OK' && ! $this->is_directory) {
-            if ($path === '/' || $path === '.' || $path === '..' || $path === '' || str($path)->isEmpty() || is_null($path)) {
+            if ($path === '/' || $path === '.' || $path === '..' || $path === '' || str($path)->isEmpty()) {
                 $this->is_directory = true;
                 $this->save();
                 throw new \Exception('The following file is a directory on the server, but you are trying to mark it as a file. <br><br>Please delete the directory on the server or mark it as directory.');

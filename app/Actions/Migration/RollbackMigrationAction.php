@@ -208,7 +208,7 @@ class RollbackMigrationAction
             return ['success' => true];
         }
 
-        $migration->appendLog('Deleting created resource: '.get_class($target).' #'.$target->id);
+        $migration->appendLog('Deleting created resource: '.get_class($target).' #'.$target->getAttribute('id'));
 
         try {
             // For applications and services, use their delete methods
@@ -277,7 +277,7 @@ class RollbackMigrationAction
                     'is_literal' => $varData['is_literal'] ?? false,
                     'is_preview' => $varData['is_preview'] ?? false,
                     'resourceable_type' => get_class($target),
-                    'resourceable_id' => $target->id,
+                    'resourceable_id' => $target->getAttribute('id'),
                 ]);
             }
         }
@@ -308,7 +308,7 @@ class RollbackMigrationAction
                     'mount_path' => $storageData['mount_path'],
                     'host_path' => $storageData['host_path'],
                     'resource_type' => get_class($target),
-                    'resource_id' => $target->id,
+                    'resource_id' => $target->getAttribute('id'),
                 ]);
             }
         }
@@ -344,7 +344,7 @@ class RollbackMigrationAction
                     'content' => $fileData['content'],
                     'is_directory' => $fileData['is_directory'] ?? false,
                     'resource_type' => get_class($target),
-                    'resource_id' => $target->id,
+                    'resource_id' => $target->getAttribute('id'),
                 ]);
             }
         }

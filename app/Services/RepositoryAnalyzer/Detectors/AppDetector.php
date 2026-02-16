@@ -506,7 +506,7 @@ class AppDetector
         }
     }
 
-    private function extractPythonRequirementsDeps(string $filePath): ?array
+    private function extractPythonRequirementsDeps(string $filePath): array
     {
         $content = file_get_contents($filePath);
         $lines = explode("\n", $content);
@@ -554,7 +554,7 @@ class AppDetector
         }
     }
 
-    private function extractGoDeps(string $filePath): ?array
+    private function extractGoDeps(string $filePath): array
     {
         $content = file_get_contents($filePath);
         $deps = [];
@@ -574,7 +574,7 @@ class AppDetector
         return array_unique($deps);
     }
 
-    private function extractRubyDeps(string $filePath): ?array
+    private function extractRubyDeps(string $filePath): array
     {
         $content = file_get_contents($filePath);
         $deps = [];
@@ -621,7 +621,7 @@ class AppDetector
         }
     }
 
-    private function extractElixirDeps(string $filePath): ?array
+    private function extractElixirDeps(string $filePath): array
     {
         $content = file_get_contents($filePath);
         $deps = [];
@@ -634,7 +634,7 @@ class AppDetector
         return $deps;
     }
 
-    private function extractMavenDeps(string $filePath): ?array
+    private function extractMavenDeps(string $filePath): array
     {
         $content = file_get_contents($filePath);
         $deps = [];
@@ -647,7 +647,7 @@ class AppDetector
         return $deps;
     }
 
-    private function extractGradleDeps(string $filePath): ?array
+    private function extractGradleDeps(string $filePath): array
     {
         $content = file_get_contents($filePath);
         $deps = [];

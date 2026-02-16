@@ -54,6 +54,18 @@ use Spatie\Activitylog\Traits\LogsActivity;
         new OA\Property(property: 'delete_unused_networks', type: 'boolean', description: 'The flag to indicate if the unused networks should be deleted.'),
     ]
 )]
+/**
+ * @property int $id
+ * @property int $server_id
+ * @property bool $is_reachable
+ * @property bool $is_usable
+ * @property bool $is_build_server
+ * @property bool $is_master_server
+ * @property bool $force_disabled
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Server $server
+ */
 class ServerSetting extends Model
 {
     use Auditable, LogsActivity;

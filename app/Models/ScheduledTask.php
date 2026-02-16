@@ -10,8 +10,21 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string $command
+ * @property string $frequency
+ * @property string|null $container
+ * @property bool $enabled
+ * @property int|null $timeout
+ * @property int|null $application_id
+ * @property int|null $service_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
  * @property-read Application|null $application
  * @property-read Service|null $service
+ * @property-read \Illuminate\Database\Eloquent\Model|null $database
  */
 class ScheduledTask extends BaseModel
 {
@@ -71,16 +84,13 @@ class ScheduledTask extends BaseModel
     public function server()
     {
         if ($this->application) {
-            if ($this->application->destination && $this->application->destination->server) {
-                return $this->application->destination->server;
-            }
+            return $this->application->destination->server;
         } elseif ($this->service) {
-            if ($this->service->destination && $this->service->destination->server) {
-                return $this->service->destination->server;
-            }
+            return $this->service->destination->server;
         } elseif ($this->database) {
-            if ($this->database->destination && $this->database->destination->server) {
-                return $this->database->destination->server;
+            $destination = $this->database->getAttribute('destination');
+            if ($destination && $destination->server) {
+                return $destination->server;
             }
         }
 

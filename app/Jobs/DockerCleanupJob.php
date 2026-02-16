@@ -75,7 +75,7 @@ class DockerCleanupJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
 
-            if (str($this->usageBefore)->isEmpty() || $this->usageBefore === null || $this->usageBefore === 0) {
+            if (str($this->usageBefore)->isEmpty()) {
                 $cleanup_log = CleanupDocker::run(
                     server: $this->server,
                     deleteUnusedVolumes: $this->deleteUnusedVolumes,

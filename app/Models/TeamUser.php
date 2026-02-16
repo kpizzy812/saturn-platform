@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property int $team_id
  * @property int $user_id
  * @property string $role
- * @property array<int>|null $allowed_projects
+ * @property array<int|string>|null $allowed_projects
  * @property int|null $permission_set_id
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at

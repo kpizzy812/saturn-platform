@@ -17,6 +17,7 @@ class ApiAllowed
         // Session auth (web frontend) - always allow, API restrictions don't apply
         // Note: Sanctum creates TransientToken for cookie-based SPA auth, not null
         $user = $request->user();
+        /** @var \Laravel\Sanctum\Contracts\HasAbilities|null $token */
         $token = $user?->currentAccessToken();
         if ($user && (! $token || $token instanceof \Laravel\Sanctum\TransientToken)) {
             return $next($request);

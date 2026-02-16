@@ -30,6 +30,13 @@ class Gitea extends Controller
             if ($content_type !== 'application/json') {
                 $payload = json_decode(data_get($payload, 'payload'), true);
             }
+            $branch = null;
+            $full_name = null;
+            $action = null;
+            $base_branch = null;
+            $pull_request_id = null;
+            $pull_request_html_url = null;
+            $changed_files = collect();
             if ($x_gitea_event === 'push') {
                 $branch = data_get($payload, 'ref');
                 $full_name = data_get($payload, 'repository.full_name');
@@ -52,18 +59,19 @@ class Gitea extends Controller
             if (! $branch) {
                 return response('Nothing to do. No branch found in the request.');
             }
-            $applications = Application::where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::where('git_repository', 'like', "%$full_name%");
             if ($x_gitea_event === 'push') {
-                $applications = $applications->where('git_branch', $branch)->get();
+                $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {
                     return response("Nothing to do. No applications found with deploy key set, branch is '$branch' and Git Repository name has $full_name.");
                 }
-            }
-            if ($x_gitea_event === 'pull_request') {
-                $applications = $applications->where('git_branch', $base_branch)->get();
+            } elseif ($x_gitea_event === 'pull_request') {
+                $applications = $applicationsQuery->where('git_branch', $base_branch)->get();
                 if ($applications->isEmpty()) {
                     return response("Nothing to do. No applications found with branch '$base_branch'.");
                 }
+            } else {
+                return response('Nothing to do. Unsupported event type.');
             }
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_gitea');
@@ -101,7 +109,7 @@ class Gitea extends Controller
                                 is_webhook: true,
                             );
                             if ($result['status'] === 'queue_full') {
-                                return response($result['message'], 429)->header('Retry-After', 60);
+                                return response($result['message'], 429)->header('Retry-After', '60');
                             } elseif ($result['status'] === 'skipped') {
                                 $return_payloads->push([
                                     'application' => $application->name,
@@ -185,7 +193,7 @@ class Gitea extends Controller
                                 git_type: 'gitea'
                             );
                             if ($result['status'] === 'queue_full') {
-                                return response($result['message'], 429)->header('Retry-After', 60);
+                                return response($result['message'], 429)->header('Retry-After', '60');
                             } elseif ($result['status'] === 'skipped') {
                                 $return_payloads->push([
                                     'application' => $application->name,

@@ -71,11 +71,11 @@ class PromoteResourceAction
         if (! $target) {
             return [
                 'success' => false,
-                'error' => "Resource '{$source->name}' not found in target environment '{$targetEnv->name}'. For promote mode, the resource must already exist in target environment.",
+                'error' => "Resource '{$source->getAttribute('name')}' not found in target environment '{$targetEnv->name}'. For promote mode, the resource must already exist in target environment.",
             ];
         }
 
-        $migration->appendLog("Found target resource: {$target->name} (ID: {$target->id})");
+        $migration->appendLog("Found target resource: {$target->getAttribute('name')} (ID: {$target->getAttribute('id')})");
 
         try {
             // Update configuration (code, build settings, etc.)
@@ -112,8 +112,8 @@ class PromoteResourceAction
         } catch (\Throwable $e) {
             Log::error('Promote resource failed', [
                 'migration_id' => $migration->id,
-                'source_id' => $source->id,
-                'target_id' => $target->id ?? null,
+                'source_id' => $source->getAttribute('id'),
+                'target_id' => $target->getAttribute('id'),
                 'error' => $e->getMessage(),
             ]);
 
@@ -129,7 +129,7 @@ class PromoteResourceAction
      */
     protected function findTargetResource(Model $source, Environment $targetEnv): ?Model
     {
-        $name = $source->name ?? null;
+        $name = $source->getAttribute('name');
         if (! $name) {
             return null;
         }
@@ -185,7 +185,7 @@ class PromoteResourceAction
         $target->update($attributes);
 
         // Update settings if applicable
-        if ($source instanceof Application && method_exists($source, 'settings')) {
+        if ($source instanceof Application && $target instanceof Application) {
             $this->updateApplicationSettings($source, $target);
         }
     }

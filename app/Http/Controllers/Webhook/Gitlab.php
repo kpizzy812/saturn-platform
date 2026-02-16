@@ -40,6 +40,9 @@ class Gitlab extends Controller
                 return response($return_payloads);
             }
 
+            $branch = null;
+            $full_name = null;
+            $changed_files = collect();
             if ($x_gitlab_event === 'push') {
                 $branch = data_get($payload, 'ref');
                 $full_name = data_get($payload, 'project.path_with_namespace');
@@ -75,9 +78,9 @@ class Gitlab extends Controller
                     return response($return_payloads);
                 }
             }
-            $applications = Application::where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::where('git_repository', 'like', "%$full_name%");
             if ($x_gitlab_event === 'push') {
-                $applications = $applications->where('git_branch', $branch)->get();
+                $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {
                     $return_payloads->push([
                         'status' => 'failed',
@@ -86,9 +89,8 @@ class Gitlab extends Controller
 
                     return response($return_payloads);
                 }
-            }
-            if ($x_gitlab_event === 'merge_request') {
-                $applications = $applications->where('git_branch', $base_branch)->get();
+            } elseif ($x_gitlab_event === 'merge_request') {
+                $applications = $applicationsQuery->where('git_branch', $base_branch)->get();
                 if ($applications->isEmpty()) {
                     $return_payloads->push([
                         'status' => 'failed',
@@ -97,6 +99,8 @@ class Gitlab extends Controller
 
                     return response($return_payloads);
                 }
+            } else {
+                return response($return_payloads);
             }
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_gitlab');
@@ -133,7 +137,7 @@ class Gitlab extends Controller
                                 is_webhook: true,
                             );
                             if ($result['status'] === 'queue_full') {
-                                return response($result['message'], 429)->header('Retry-After', 60);
+                                return response($result['message'], 429)->header('Retry-After', '60');
                             } elseif ($result['status'] === 'skipped') {
                                 $return_payloads->push([
                                     'status' => $result['status'],
@@ -219,7 +223,7 @@ class Gitlab extends Controller
                                 git_type: 'gitlab'
                             );
                             if ($result['status'] === 'queue_full') {
-                                return response($result['message'], 429)->header('Retry-After', 60);
+                                return response($result['message'], 429)->header('Retry-After', '60');
                             } elseif ($result['status'] === 'skipped') {
                                 $return_payloads->push([
                                     'application' => $application->name,

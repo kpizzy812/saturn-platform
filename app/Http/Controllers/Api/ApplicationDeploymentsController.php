@@ -162,7 +162,7 @@ class ApplicationDeploymentsController extends Controller
         if ($result['status'] === 'queue_full') {
             return response()->json([
                 'message' => $result['message'],
-            ], 429)->header('Retry-After', 60);
+            ], 429)->header('Retry-After', '60');
         }
 
         $rollbackDeployment = ApplicationDeploymentQueue::where('deployment_uuid', $rollback_deployment_uuid)->first();

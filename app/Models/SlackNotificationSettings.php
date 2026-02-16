@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Contracts\NotificationSettingsContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 
-class SlackNotificationSettings extends Model
+class SlackNotificationSettings extends Model implements NotificationSettingsContract
 {
     use Notifiable;
 
@@ -58,7 +59,7 @@ class SlackNotificationSettings extends Model
         return $this->belongsTo(Team::class);
     }
 
-    public function isEnabled()
+    public function isEnabled(): bool
     {
         return $this->slack_enabled;
     }

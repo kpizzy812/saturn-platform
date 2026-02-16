@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Channels;
 
+use App\Contracts\HasMailNotification;
 use App\Exceptions\NonReportableException;
 use App\Models\Team;
 use Exception;
@@ -12,6 +13,9 @@ class EmailChannel
 {
     public function __construct() {}
 
+    /**
+     * @param  Notification&HasMailNotification  $notification
+     */
     public function send(SendsEmail $notifiable, Notification $notification): void
     {
         try {
@@ -80,8 +84,8 @@ class EmailChannel
             } elseif ($isSmtpEnabled) {
                 $encryption = match (strtolower($settings->smtp_encryption)) {
                     'starttls' => null,
-                    'tls' => 'tls',
-                    'none' => null,
+                    'tls' => true,
+                    'none' => false,
                     default => null,
                 };
 

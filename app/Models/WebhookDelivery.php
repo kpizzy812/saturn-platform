@@ -7,6 +7,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property int $id
+ * @property array $payload
+ * @property string $uuid
+ * @property string $event
+ * @property string $status
+ * @property int|null $status_code
+ * @property string|null $response
+ * @property int|null $response_time_ms
+ * @property int $attempts
+ * @property int $team_webhook_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class WebhookDelivery extends Model
 {
     use HasFactory;

@@ -6,6 +6,30 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $application_id
+ * @property int|null $failed_deployment_id
+ * @property int|null $rollback_deployment_id
+ * @property int|null $triggered_by_user_id
+ * @property string|null $trigger_reason
+ * @property string|null $trigger_type
+ * @property array|null $metrics_snapshot
+ * @property string $status
+ * @property string|null $error_message
+ * @property string|null $from_commit
+ * @property string|null $to_commit
+ * @property int|null $from_deployment_id
+ * @property int|null $to_deployment_id
+ * @property \Carbon\Carbon|null $triggered_at
+ * @property \Carbon\Carbon|null $completed_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Application|null $application
+ * @property-read ApplicationDeploymentQueue|null $failedDeployment
+ * @property-read ApplicationDeploymentQueue|null $rollbackDeployment
+ * @property-read User|null $triggeredByUser
+ */
 class ApplicationRollbackEvent extends Model
 {
     use HasFactory;

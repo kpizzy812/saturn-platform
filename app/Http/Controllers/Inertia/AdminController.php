@@ -124,7 +124,7 @@ class AdminController extends Controller
                         'id' => $team->id,
                         'name' => $team->name,
                         'personal_team' => $team->personal_team,
-                        'role' => $team->pivot->role,
+                        'role' => $team->pivot?->getAttribute('role'),
                     ];
                 }),
             ],

@@ -77,6 +77,8 @@ class AiChatSession extends Model
 
     /**
      * Messages in this session.
+     *
+     * @return HasMany<AiChatMessage, $this>
      */
     public function messages(): HasMany
     {
@@ -168,7 +170,7 @@ class AiChatSession extends Model
         $firstMessage = $this->messages()->where('role', 'user')->first();
         if ($firstMessage) {
             $this->update([
-                'title' => Str::limit($firstMessage->content, 50),
+                'title' => Str::limit($firstMessage->getAttribute('content'), 50),
             ]);
         }
     }

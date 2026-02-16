@@ -2,6 +2,7 @@
 
 namespace App\Traits;
 
+use App\Contracts\NotificationSettingsContract;
 use App\Notifications\Channels\DiscordChannel;
 use App\Notifications\Channels\EmailChannel;
 use App\Notifications\Channels\InAppChannel;
@@ -43,7 +44,7 @@ trait HasNotificationSettings
     /**
      * Get settings model for specific channel
      */
-    public function getNotificationSettings(string $channel): ?Model
+    public function getNotificationSettings(string $channel): ?NotificationSettingsContract
     {
         return match ($channel) {
             'email' => $this->emailNotificationSettings,

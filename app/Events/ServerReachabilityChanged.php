@@ -30,14 +30,8 @@ class ServerReachabilityChanged implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        $teamId = $this->server->team_id;
-
-        if (is_null($teamId)) {
-            return [];
-        }
-
         return [
-            new PrivateChannel("team.{$teamId}"),
+            new PrivateChannel("team.{$this->server->team_id}"),
         ];
     }
 }

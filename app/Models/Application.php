@@ -31,12 +31,38 @@ use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string|null $fqdn
+ * @property string $ports_exposes
+ * @property string|null $ports_mappings
+ * @property string|null $git_repository
+ * @property string|null $git_branch
+ * @property string|null $custom_docker_run_options
+ * @property string $status
+ * @property int $pull_request_id
+ * @property string|null $custom_labels
+ * @property string|null $docker_compose_raw
+ * @property string $build_pack
+ * @property int $environment_id
+ * @property string $destination_type
+ * @property int $destination_id
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
  * @property-read ApplicationSetting|null $settings
  * @property-read StandaloneDocker|SwarmDocker|null $destination
  * @property-read Environment|null $environment
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Server> $additional_servers
  * @property-read \Illuminate\Database\Eloquent\Collection<int, EnvironmentVariable> $environment_variables
  * @property-read \Illuminate\Database\Eloquent\Collection<int, EnvironmentVariable> $environment_variables_preview
+ * @property-read array $ports_mappings_array
+ * @property-read array $ports_exposes_array
+ * @property-read \Illuminate\Support\Collection $fqdns
+ * @property-read string $image
+ * @property-read string|null $internal_app_url
+ * @property-read string $server_status
  */
 #[OA\Schema(
     description: 'Application model',
@@ -431,7 +457,7 @@ class Application extends BaseModel
                 }
 
                 // If it's a string but not JSON, treat it as a comma-separated list
-                if (is_string($value) && ! is_array($value)) {
+                if (! is_array($value)) {
                     $value = explode(',', $value);
                 }
 
@@ -548,7 +574,7 @@ class Application extends BaseModel
 
     public function deleteVolumes()
     {
-        $persistentStorages = $this->persistentStorages()->get() ?? collect();
+        $persistentStorages = $this->persistentStorages()->get();
         if ($this->build_pack === 'dockercompose') {
             $server = data_get($this, 'destination.server');
             instant_remote_process(["cd {$this->dirOnServer()} && docker compose down -v"], $server, false);
@@ -698,12 +724,12 @@ class Application extends BaseModel
         return Attribute::make(
             get: function () {
                 $base_dir = $this->base_directory ?? '/';
-                if (! is_null($this->source?->html_url) && ! is_null($this->git_repository) && ! is_null($this->git_branch)) {
+                if (! is_null($this->source?->getAttribute('html_url')) && $this->git_repository !== '' && $this->git_branch !== '') {
                     if (str($this->git_repository)->contains('bitbucket')) {
-                        return "{$this->source->html_url}/{$this->git_repository}/src/{$this->git_branch}{$base_dir}";
+                        return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/src/{$this->git_branch}{$base_dir}";
                     }
 
-                    return "{$this->source->html_url}/{$this->git_repository}/tree/{$this->git_branch}{$base_dir}";
+                    return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/tree/{$this->git_branch}{$base_dir}";
                 }
                 // Convert the SSH URL to HTTPS URL
                 if (strpos($this->git_repository, 'git@') === 0) {
@@ -725,8 +751,8 @@ class Application extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (! is_null($this->source?->html_url) && ! is_null($this->git_repository) && ! is_null($this->git_branch)) {
-                    return "{$this->source->html_url}/{$this->git_repository}/settings/hooks";
+                if (! is_null($this->source?->getAttribute('html_url')) && $this->git_repository !== '' && $this->git_branch !== '') {
+                    return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/settings/hooks";
                 }
                 // Convert the SSH URL to HTTPS URL
                 if (strpos($this->git_repository, 'git@') === 0) {
@@ -744,8 +770,8 @@ class Application extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                if (! is_null($this->source?->html_url) && ! is_null($this->git_repository) && ! is_null($this->git_branch)) {
-                    return "{$this->source->html_url}/{$this->git_repository}/commits/{$this->git_branch}";
+                if (! is_null($this->source?->getAttribute('html_url')) && $this->git_repository !== '' && $this->git_branch !== '') {
+                    return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/commits/{$this->git_branch}";
                 }
                 // Convert the SSH URL to HTTPS URL
                 if (strpos($this->git_repository, 'git@') === 0) {
@@ -762,11 +788,11 @@ class Application extends BaseModel
     public function gitCommitLink($link): string
     {
         if (! is_null(data_get($this, 'source.html_url')) && ! is_null(data_get($this, 'git_repository')) && ! is_null(data_get($this, 'git_branch'))) {
-            if (str($this->source->html_url)->contains('bitbucket')) {
-                return "{$this->source->html_url}/{$this->git_repository}/commits/{$link}";
+            if (str($this->source->getAttribute('html_url'))->contains('bitbucket')) {
+                return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/commits/{$link}";
             }
 
-            return "{$this->source->html_url}/{$this->git_repository}/commit/{$link}";
+            return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/commit/{$link}";
         }
         if (str($this->git_repository)->contains('bitbucket')) {
             $git_repository = str_replace('.git', '', $this->git_repository);
@@ -779,7 +805,7 @@ class Application extends BaseModel
         if (strpos($this->git_repository, 'git@') === 0) {
             $git_repository = str_replace(['git@', ':', '.git'], ['', '/', ''], $this->git_repository);
             if (data_get($this, 'source.html_url')) {
-                return "{$this->source->html_url}/{$git_repository}/commit/{$link}";
+                return "{$this->source->getAttribute('html_url')}/{$git_repository}/commit/{$link}";
             }
 
             return "{$git_repository}/commit/{$link}";
@@ -967,7 +993,7 @@ class Application extends BaseModel
     public function portsExposesArray(): Attribute
     {
         return Attribute::make(
-            get: fn () => is_null($this->ports_exposes)
+            get: fn () => $this->ports_exposes === ''
                 ? []
                 : explode(',', $this->ports_exposes)
         );
@@ -1204,7 +1230,6 @@ class Application extends BaseModel
         } else {
             return 'other';
         }
-        throw new \Exception('No deployment type found');
     }
 
     public function could_set_build_commands(): bool
@@ -1253,7 +1278,7 @@ class Application extends BaseModel
         if ($this->pull_request_id === 0 || $this->pull_request_id === null) {
             $newConfigHash .= json_encode($this->environment_variables()->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());
         } else {
-            $newConfigHash .= json_encode($this->environment_variables_preview->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());
+            $newConfigHash .= json_encode($this->environment_variables_preview()->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());
         }
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
@@ -1279,7 +1304,9 @@ class Application extends BaseModel
 
     public function customRepository()
     {
-        return convertGitUrl($this->git_repository, $this->deploymentType(), $this->source);
+        $source = $this->source instanceof \App\Models\GithubApp ? $this->source : null;
+
+        return convertGitUrl($this->git_repository, $this->deploymentType(), $source);
     }
 
     public function generateBaseDir(string $uuid)
@@ -1357,11 +1384,11 @@ class Application extends BaseModel
             $source_html_url_host = $url['host'];
             $source_html_url_scheme = $url['scheme'];
 
-            if ($this->source->getMorphClass() == 'App\Models\GithubApp') {
+            if ($this->source instanceof \App\Models\GithubApp) {
                 $escapedCustomRepository = escapeshellarg($customRepository);
-                if ($this->source->is_public) {
-                    $escapedRepoUrl = escapeshellarg("{$this->source->html_url}/{$customRepository}");
-                    $fullRepoUrl = "{$this->source->html_url}/{$customRepository}";
+                if ($this->source->getAttribute('is_public')) {
+                    $escapedRepoUrl = escapeshellarg("{$this->source->getAttribute('html_url')}/{$customRepository}");
+                    $fullRepoUrl = "{$this->source->getAttribute('html_url')}/{$customRepository}";
                     $base_command = "{$base_command} {$escapedRepoUrl}";
                 } else {
                     $github_access_token = generateGithubInstallationToken($this->source);
@@ -1495,10 +1522,10 @@ class Application extends BaseModel
             $source_html_url_host = $url['host'];
             $source_html_url_scheme = $url['scheme'];
 
-            if ($this->source->getMorphClass() === \App\Models\GithubApp::class) {
-                if ($this->source->is_public) {
-                    $fullRepoUrl = "{$this->source->html_url}/{$customRepository}";
-                    $escapedRepoUrl = escapeshellarg("{$this->source->html_url}/{$customRepository}");
+            if ($this->source instanceof \App\Models\GithubApp) {
+                if ($this->source->getAttribute('is_public')) {
+                    $fullRepoUrl = "{$this->source->getAttribute('html_url')}/{$customRepository}";
+                    $escapedRepoUrl = escapeshellarg("{$this->source->getAttribute('html_url')}/{$customRepository}");
                     $git_clone_command = "{$git_clone_command} {$escapedRepoUrl} {$escapedBaseDir}";
                     if (! $only_checkout) {
                         $git_clone_command = $this->setGitImportSettings($deployment_uuid, $git_clone_command, public: true);
@@ -1846,7 +1873,7 @@ class Application extends BaseModel
                 $json = $json->filter(function ($value, $key) use ($diff) {
                     return ! in_array($key, $diff);
                 });
-                if ($json) {
+                if ($json->isNotEmpty()) {
                     $this->docker_compose_domains = json_encode($json);
                 } else {
                     $this->docker_compose_domains = null;
@@ -2166,7 +2193,7 @@ class Application extends BaseModel
                 if ($retries->isNotEmpty()) {
                     $this->health_check_retries = $retries->toInteger();
                 }
-                if ($interval || $timeout || $start_period || $retries) {
+                if ($interval->isNotEmpty() || $timeout->isNotEmpty() || $start_period->isNotEmpty() || $retries->isNotEmpty()) {
                     $this->custom_healthcheck_found = true;
                     $this->save();
                 }
@@ -2179,7 +2206,7 @@ class Application extends BaseModel
         $application = self::where('uuid', $uuid)->first();
 
         if ($application) {
-            return $application->fqdns;
+            return $application->fqdns->all();
         }
 
         return [];

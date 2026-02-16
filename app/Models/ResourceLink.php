@@ -9,6 +9,20 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 /**
  * Represents a link between two resources (e.g., Application -> Database or Application -> Application).
  * Used for automatic URL injection and visual canvas connections.
+ *
+ * @property int $id
+ * @property string $source_type
+ * @property int $source_id
+ * @property string $target_type
+ * @property int $target_id
+ * @property int|null $environment_id
+ * @property string|null $inject_as
+ * @property bool $auto_inject
+ * @property bool $use_external_url
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Model|null $source
+ * @property-read \Illuminate\Database\Eloquent\Model|null $target
  */
 class ResourceLink extends Model
 {
@@ -90,7 +104,7 @@ class ResourceLink extends Model
         }
 
         if ($this->target_type === Application::class && $this->target) {
-            $name = str($this->target->name)
+            $name = str($this->target->getAttribute('name'))
                 ->upper()
                 ->replace(['-', ' ', '.'], '_')
                 ->replaceMatches('/[^A-Z0-9_]/', '')
@@ -171,7 +185,7 @@ class ResourceLink extends Model
     private function getResourceTeamId($resource): ?int
     {
         // For Applications and Databases, team is via environment.project.team
-        if (method_exists($resource, 'team') && is_callable([$resource, 'team'])) {
+        if (method_exists($resource, 'team')) {
             $team = $resource->team();
 
             return $team->id ?? data_get($resource, 'environment.project.team.id');

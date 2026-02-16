@@ -4,7 +4,7 @@ namespace App\Actions\Server;
 
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
-use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Contracts\Activity;
 use Symfony\Component\Yaml\Yaml;
 
 class ConfigureCloudflared

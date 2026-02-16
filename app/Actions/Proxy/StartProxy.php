@@ -7,7 +7,7 @@ use App\Events\ProxyStatusChanged;
 use App\Events\ProxyStatusChangedUI;
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
-use Spatie\Activitylog\Models\Activity;
+use Spatie\Activitylog\Contracts\Activity;
 
 class StartProxy
 {

@@ -44,7 +44,7 @@ class StartSentinel
         ];
         if (isDev()) {
             // data_set($environments, 'DEBUG', 'true');
-            if ($customImage && ! empty($customImage)) {
+            if ($customImage) {
                 $image = $customImage;
             }
             $mountDir = '/var/lib/docker/volumes/saturn_dev_saturn_data/_data/sentinel';

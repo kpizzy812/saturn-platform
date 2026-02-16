@@ -12,26 +12,6 @@ class HealthCheckDetector
     private const MAX_FILE_SIZE = 512 * 1024; // 512KB
 
     /**
-     * Common health check paths to look for
-     */
-    private const HEALTH_PATHS = [
-        '/health',
-        '/healthz',
-        '/health-check',
-        '/healthcheck',
-        '/api/health',
-        '/api/v1/health',
-        '/api/healthz',
-        '/_health',
-        '/ready',
-        '/readiness',
-        '/live',
-        '/liveness',
-        '/ping',
-        '/status',
-    ];
-
-    /**
      * Route patterns by framework
      */
     private const ROUTE_PATTERNS = [

@@ -105,12 +105,12 @@ class Project extends BaseModel
         }
 
         // Owner/Admin always see all projects
-        if (in_array($teamMembership->pivot->role, ['owner', 'admin'])) {
+        if (in_array($teamMembership->pivot?->getAttribute('role'), ['owner', 'admin'])) {
             return $query;
         }
 
         // Check allowed_projects restriction
-        $allowedProjects = $teamMembership->pivot->allowed_projects;
+        $allowedProjects = $teamMembership->pivot?->getAttribute('allowed_projects');
 
         // null means all projects (default behavior)
         if ($allowedProjects === null) {
@@ -397,7 +397,15 @@ class Project extends BaseModel
 
     public function databases()
     {
-        return $this->postgresqls()->get()->merge($this->redis()->get())->merge($this->mongodbs()->get())->merge($this->mysqls()->get())->merge($this->mariadbs()->get())->merge($this->keydbs()->get())->merge($this->dragonflies()->get())->merge($this->clickhouses()->get());
+        return collect()
+            ->merge($this->postgresqls()->get())
+            ->merge($this->redis()->get())
+            ->merge($this->mongodbs()->get())
+            ->merge($this->mysqls()->get())
+            ->merge($this->mariadbs()->get())
+            ->merge($this->keydbs()->get())
+            ->merge($this->dragonflies()->get())
+            ->merge($this->clickhouses()->get());
     }
 
     public function navigateTo()

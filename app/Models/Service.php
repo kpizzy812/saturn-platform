@@ -147,7 +147,7 @@ class Service extends BaseModel
         $storages = $applicationStorages->merge($databaseStorages)->implode('updated_at');
 
         $newConfigHash = $images.$domains.$images.$storages;
-        $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
+        $newConfigHash .= json_encode($this->environment_variables()->get(['value'])->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
         if ($oldConfigHash === null) {
@@ -340,7 +340,7 @@ class Service extends BaseModel
         $resources = $applications->concat($databases);
 
         foreach ($resources as $resource) {
-            $isExcluded = $resource->exclude_from_status || str($resource->status)->contains(':excluded');
+            $isExcluded = $resource->getAttribute('exclude_from_status') || str($resource->getAttribute('status'))->contains(':excluded');
 
             // Filter based on excludedOnly flag
             if ($excludedOnly && ! $isExcluded) {
@@ -355,7 +355,7 @@ class Service extends BaseModel
             }
 
             // Strip :excluded suffix before aggregation (it's in the 3rd part of "status:health:excluded")
-            $status = str($resource->status)->before(':excluded')->toString();
+            $status = str($resource->getAttribute('status'))->before(':excluded')->toString();
             $statusStrings->push($status);
         }
 
@@ -1390,7 +1390,7 @@ class Service extends BaseModel
     public function documentation()
     {
         $services = get_service_templates();
-        $service = data_get($services, str($this->name)->beforeLast('-')->value, []);
+        $service = data_get($services, str($this->name)->beforeLast('-')->value(), []);
 
         return data_get($service, 'documentation', config('constants.urls.docs'));
     }
@@ -1527,16 +1527,14 @@ class Service extends BaseModel
         $envs = collect([]);
 
         // Generate SERVICE_NAME_* environment variables from docker-compose services
-        if ($this->docker_compose) {
-            try {
-                $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($this->docker_compose);
-                $services = data_get($dockerCompose, 'services', []);
-                foreach ($services as $serviceName => $_) {
-                    $envs->push('SERVICE_NAME_'.str($serviceName)->replace('-', '_')->replace('.', '_')->upper().'='.$serviceName);
-                }
-            } catch (\Exception $e) {
-                ray($e->getMessage());
+        try {
+            $dockerCompose = \Symfony\Component\Yaml\Yaml::parse($this->docker_compose);
+            $services = data_get($dockerCompose, 'services', []);
+            foreach ($services as $serviceName => $_) {
+                $envs->push('SERVICE_NAME_'.str($serviceName)->replace('-', '_')->replace('.', '_')->upper().'='.$serviceName);
             }
+        } catch (\Exception $e) {
+            ray($e->getMessage());
         }
 
         $envs_from_saturn = $this->environment_variables()->get();
@@ -1803,8 +1801,7 @@ class Service extends BaseModel
                 'm' => $value * 60,
                 's' => $value,
                 'ms' => max(1, (int) ($value / 1000)),
-                'us', 'ns' => 1, // Minimum 1 second
-                default => $value,
+                'us', 'ns' => 1,
             };
         }
 

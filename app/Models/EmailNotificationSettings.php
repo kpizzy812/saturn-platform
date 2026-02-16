@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Contracts\NotificationSettingsContract;
 use Illuminate\Database\Eloquent\Model;
 
-class EmailNotificationSettings extends Model
+class EmailNotificationSettings extends Model implements NotificationSettingsContract
 {
     public $timestamps = false;
 
@@ -74,7 +75,7 @@ class EmailNotificationSettings extends Model
         return $this->belongsTo(Team::class);
     }
 
-    public function isEnabled()
+    public function isEnabled(): bool
     {
         return $this->smtp_enabled || $this->resend_enabled || $this->use_instance_email_settings;
     }

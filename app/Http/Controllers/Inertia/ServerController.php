@@ -21,8 +21,8 @@ class ServerController extends Controller
      */
     public function index(): Response
     {
-        $servers = Server::with('settings')
-            ->ownedByCurrentTeam()
+        $servers = Server::ownedByCurrentTeam()
+            ->with('settings')
             ->get();
 
         return Inertia::render('Servers/Index', [
@@ -79,9 +79,9 @@ class ServerController extends Controller
      */
     public function show(string $uuid): Response
     {
-        $server = Server::with('settings')
+        $server = Server::ownedByCurrentTeam()
+            ->with('settings')
             ->where('uuid', $uuid)
-            ->ownedByCurrentTeam()
             ->firstOrFail();
 
         return Inertia::render('Servers/Show', [
@@ -374,7 +374,7 @@ class ServerController extends Controller
                 if ($inspectOutput && $inspectOutput !== 'not_found') {
                     [$status, $startedAt] = explode('|', trim($inspectOutput));
                     if ($status === 'running' && $startedAt) {
-                        $proxyUptime = \Carbon\Carbon::parse($startedAt)->diffForHumans(null, true);
+                        $proxyUptime = \Carbon\Carbon::parse($startedAt)->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE);
                     }
                 }
 

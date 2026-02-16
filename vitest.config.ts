@@ -24,6 +24,7 @@ export default defineConfig({
             exclude: [
                 'resources/js/**/*.d.ts',
                 'resources/js/types/**',
+                'resources/js/**/EXAMPLES.tsx',
             ],
         },
     },

@@ -6,10 +6,11 @@ use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
 
 class ApiAbility extends CheckForAnyAbility
 {
-    public function handle($request, $next, ...$abilities)
+    public function handle($request, $next, ...$abilities): \Symfony\Component\HttpFoundation\Response
     {
         try {
             $user = $request->user();
+            /** @var \Laravel\Sanctum\Contracts\HasAbilities|null $token */
             $token = $user?->currentAccessToken();
 
             // If user is authenticated via session (TransientToken or no token), allow access

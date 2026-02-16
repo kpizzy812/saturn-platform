@@ -20,7 +20,7 @@ class DecideWhatToDoWithUser
             refreshSession(auth()->user()->currentTeam());
         }
         if (! auth()->user() || ! isCloud() || isInstanceAdmin()) {
-            if (! isCloud() && showBoarding() && ! $this->isAllowedForBoarding($request->path())) {
+            if (showBoarding() && ! $this->isAllowedForBoarding($request->path())) {
                 return redirect()->route('boarding.index');
             }
 

@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Contracts\NotificationSettingsContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 
-class DiscordNotificationSettings extends Model
+class DiscordNotificationSettings extends Model implements NotificationSettingsContract
 {
     use Notifiable;
 
@@ -60,7 +61,7 @@ class DiscordNotificationSettings extends Model
         return $this->belongsTo(Team::class);
     }
 
-    public function isEnabled()
+    public function isEnabled(): bool
     {
         return $this->discord_enabled;
     }

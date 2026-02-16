@@ -35,7 +35,7 @@ class DeleteUserResources
             // - User is just a member (not owner)
             // - Team has other members (ownership will be transferred or user just removed)
 
-            $userRole = $team->pivot->role;
+            $userRole = $team->pivot?->getAttribute('role');
             $memberCount = $team->members->count();
 
             // Skip if user is not owner

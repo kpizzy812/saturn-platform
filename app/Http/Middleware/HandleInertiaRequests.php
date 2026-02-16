@@ -119,7 +119,7 @@ class HandleInertiaRequests extends Middleware
 
         return [
             'unreadCount' => $unreadCount,
-            'recent' => $recent,
+            'recent' => $recent->toArray(),
         ];
     }
 

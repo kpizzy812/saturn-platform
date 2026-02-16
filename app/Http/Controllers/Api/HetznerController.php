@@ -726,7 +726,7 @@ class HetznerController extends Controller
         } catch (RateLimitException $e) {
             $response = response()->json(['message' => $e->getMessage()], 429);
             if ($e->retryAfter !== null) {
-                $response->header('Retry-After', $e->retryAfter);
+                $response->header('Retry-After', (string) $e->retryAfter);
             }
 
             return $response;

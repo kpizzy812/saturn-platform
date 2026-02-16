@@ -77,8 +77,11 @@ class GetDatabaseStructureAction
      */
     private function getServer(mixed $database): ?Server
     {
-        if (method_exists($database, 'destination') && $database->destination) {
-            return $database->destination->server;
+        if (is_object($database) && method_exists($database, 'destination') && $database->destination) {
+            $destination = $database->destination;
+            if (is_object($destination) && property_exists($destination, 'server')) {
+                return $destination->server;
+            }
         }
 
         return null;

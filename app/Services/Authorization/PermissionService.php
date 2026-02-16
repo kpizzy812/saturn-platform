@@ -57,10 +57,6 @@ class PermissionService
         // Get the team context
         $team = $project->team ?? currentTeam();
 
-        if (! $team) {
-            return false;
-        }
-
         // Get environment name for restriction checks
         $environmentName = $environment?->name;
 

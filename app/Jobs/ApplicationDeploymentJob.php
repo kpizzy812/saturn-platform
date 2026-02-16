@@ -118,8 +118,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private string $container_name;
 
-    private ?string $currently_running_container_name = null;
-
     private string $basedir;
 
     private string $workdir;
@@ -170,8 +168,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private ?string $full_healthcheck_url = null;
 
-    private string $serverUser = 'root';
-
     private string $serverUserHomeDir = '/root';
 
     private string $dockerConfigFileExists = 'NOK';
@@ -190,9 +186,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private bool $dockerBuildkitSupported = false;
 
-    private bool $skip_build = false;
-
-    private Collection|string $build_secrets;
+    private string $build_secrets;
 
     public function tags()
     {
@@ -264,7 +258,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->timeout = $this->server->settings->dynamic_timeout;
         $this->destination = $this->server->destinations()->where('id', $this->application_deployment_queue->destination_id)->first();
         $this->server = $this->mainServer = $this->destination->server;
-        $this->serverUser = $this->server->user;
         $this->is_this_additional_server = $this->application->additional_servers()->wherePivot('server_id', $this->server->id)->count() > 0;
         $this->preserveRepository = $this->application->settings->is_preserve_repository_enabled;
 
@@ -392,25 +385,23 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             // Generate custom host<->ip mapping
             $allContainers = instant_remote_process(["docker network inspect {$this->destination->network} -f '{{json .Containers}}' "], $this->server);
 
-            if (! is_null($allContainers)) {
-                $allContainers = format_docker_command_output_to_json($allContainers);
-                $ips = collect([]);
-                if (count($allContainers) > 0) {
-                    $allContainers = $allContainers[0];
-                    $allContainers = collect($allContainers)->sort()->values();
-                    foreach ($allContainers as $container) {
-                        $containerName = data_get($container, 'Name');
-                        if ($containerName === 'saturn-proxy') {
-                            continue;
-                        }
-                        if (preg_match('/-(\d{12})/', $containerName)) {
-                            continue;
-                        }
-                        $containerIp = data_get($container, 'IPv4Address');
-                        if ($containerName && $containerIp) {
-                            $containerIp = str($containerIp)->before('/');
-                            $ips->put($containerName, $containerIp->value());
-                        }
+            $allContainers = format_docker_command_output_to_json($allContainers);
+            $ips = collect([]);
+            if (count($allContainers) > 0) {
+                $allContainers = $allContainers[0];
+                $allContainers = collect($allContainers)->sort()->values();
+                foreach ($allContainers as $container) {
+                    $containerName = data_get($container, 'Name');
+                    if ($containerName === 'saturn-proxy') {
+                        continue;
+                    }
+                    if (preg_match('/-(\d{12})/', $containerName)) {
+                        continue;
+                    }
+                    $containerIp = data_get($container, 'IPv4Address');
+                    if ($containerName && $containerIp) {
+                        $containerIp = str($containerIp)->before('/');
+                        $ips->put($containerName, $containerIp->value());
                     }
                 }
                 $this->addHosts = $ips->map(function ($ip, $name) {
@@ -703,7 +694,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     {
         if (str($this->saved_outputs->get('local_image_found'))->isNotEmpty()) {
             if ($this->is_this_additional_server) {
-                $this->skip_build = true;
                 $this->application_deployment_queue->addLogEntry("Image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
                 $this->generate_compose_file();
 
@@ -717,7 +707,6 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
             if (! $this->application->isConfigurationChanged()) {
                 $this->application_deployment_queue->addLogEntry("No configuration changed & image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
-                $this->skip_build = true;
                 $this->generate_compose_file();
 
                 // Save runtime environment variables even when skipping build
@@ -1021,9 +1010,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                if (! is_null($env->real_value)) {
-                    $this->env_args->put($env->key, $env->real_value);
-                }
+                $this->env_args->put($env->key, $env->real_value);
             }
         } else {
             $envs = $this->application->environment_variables_preview()
@@ -1032,9 +1019,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 ->get();
 
             foreach ($envs as $env) {
-                if (! is_null($env->real_value)) {
-                    $this->env_args->put($env->key, $env->real_value);
-                }
+                $this->env_args->put($env->key, $env->real_value);
             }
         }
     }

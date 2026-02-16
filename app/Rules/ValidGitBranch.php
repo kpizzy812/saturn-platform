@@ -79,13 +79,6 @@ class ValidGitBranch implements ValidationRule
             return;
         }
 
-        // Check for consecutive dots (not allowed in Git)
-        if (str_contains($branch, '..')) {
-            $fail('The :attribute cannot contain consecutive dots.');
-
-            return;
-        }
-
         // Check for .lock suffix (reserved by Git)
         if (str_ends_with($branch, '.lock')) {
             $fail('The :attribute cannot end with .lock.');

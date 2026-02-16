@@ -51,7 +51,7 @@ class ResourceErrorAnalyzer
      */
     public function analyze(Model $resource, int $logLines = 200): array
     {
-        $resourceName = $resource->name ?? 'Unknown';
+        $resourceName = $resource->getAttribute('name') ?? 'Unknown';
         $resourceType = class_basename($resource);
 
         try {
@@ -105,7 +105,7 @@ class ResourceErrorAnalyzer
         $results = [];
 
         foreach ($resources as $resource) {
-            $name = $resource->name ?? $resource->uuid ?? 'unknown';
+            $name = $resource->getAttribute('name') ?? $resource->getAttribute('uuid') ?? 'unknown';
             $results[$name] = $this->analyze($resource);
         }
 

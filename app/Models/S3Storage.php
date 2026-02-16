@@ -11,6 +11,24 @@ use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string|null $description
+ * @property string|null $key
+ * @property string|null $secret
+ * @property string|null $bucket
+ * @property string|null $region
+ * @property string|null $endpoint
+ * @property string|null $path
+ * @property bool $is_usable
+ * @property bool $unusable_email_sent
+ * @property int $team_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Team|null $team
+ */
 class S3Storage extends BaseModel
 {
     use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity;

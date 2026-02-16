@@ -96,7 +96,7 @@ class ArchiveAndKickMemberAction
                     'resource_type' => $log->resource_type_name,
                     'resource_name' => $name,
                     'description' => $log->description,
-                    'created_at' => $log->created_at?->toISOString(),
+                    'created_at' => $log->created_at->toISOString(),
                 ];
             })
             ->toArray();
@@ -167,9 +167,9 @@ class ArchiveAndKickMemberAction
 
             // Build access snapshot
             $accessSnapshot = [
-                'role' => $pivot ? $pivot->role : 'unknown',
-                'allowed_projects' => $pivot?->allowed_projects,
-                'permission_set_id' => $pivot?->permission_set_id,
+                'role' => $pivot ? $pivot->getAttribute('role') : 'unknown',
+                'allowed_projects' => $pivot?->getAttribute('allowed_projects'),
+                'permission_set_id' => $pivot?->getAttribute('permission_set_id'),
             ];
 
             // Create transfer records
@@ -206,8 +206,8 @@ class ArchiveAndKickMemberAction
                 'user_id' => $member->id,
                 'member_name' => $member->name,
                 'member_email' => $member->email,
-                'member_role' => $pivot ? $pivot->role : 'unknown',
-                'member_joined_at' => $pivot?->created_at,
+                'member_role' => $pivot ? $pivot->getAttribute('role') : 'unknown',
+                'member_joined_at' => $pivot?->getAttribute('created_at'),
                 'kicked_by' => $kickedBy->id,
                 'kicked_by_name' => $kickedBy->name,
                 'kick_reason' => $reason,

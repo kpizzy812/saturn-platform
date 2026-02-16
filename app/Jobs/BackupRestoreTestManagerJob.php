@@ -71,10 +71,10 @@ class BackupRestoreTestManagerJob implements ShouldBeEncrypted, ShouldQueue
             ->latest()
             ->first();
 
-        if (! $execution) {
+        if (! $execution instanceof \App\Models\ScheduledDatabaseBackupExecution) {
             Log::info('No successful backup found for restore test', [
                 'backup_id' => $backup->id,
-                'database' => $backup->database?->name,
+                'database' => $backup->database?->getAttribute('name'),
             ]);
 
             return;
@@ -82,8 +82,8 @@ class BackupRestoreTestManagerJob implements ShouldBeEncrypted, ShouldQueue
 
         Log::info('Dispatching backup restore test', [
             'backup_id' => $backup->id,
-            'execution_id' => $execution->id,
-            'database' => $backup->database?->name,
+            'execution_id' => $execution->getAttribute('id'),
+            'database' => $backup->database?->getAttribute('name'),
         ]);
 
         BackupRestoreTestJob::dispatch($backup, $execution);

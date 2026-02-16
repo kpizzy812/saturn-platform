@@ -25,16 +25,20 @@ class PrepareSaturnTask
             $properties = $remoteProcessArgs->toArray();
             unset($properties['model']);
 
-            $this->activity = activity()
+            /** @var Activity $activity */
+            $activity = activity()
                 ->withProperties($properties)
                 ->performedOn($remoteProcessArgs->model)
                 ->event($remoteProcessArgs->type)
                 ->log('[]');
+            $this->activity = $activity;
         } else {
-            $this->activity = activity()
+            /** @var Activity $activity */
+            $activity = activity()
                 ->withProperties($remoteProcessArgs->toArray())
                 ->event($remoteProcessArgs->type)
                 ->log('[]');
+            $this->activity = $activity;
         }
     }
 

@@ -28,7 +28,7 @@ class DeleteUserServers
 
         foreach ($teams as $team) {
             // Only include servers from teams where user is owner or admin
-            $userRole = $team->pivot->role;
+            $userRole = $team->pivot?->getAttribute('role');
             if ($userRole === 'owner' || $userRole === 'admin') {
                 $teamServers = $team->servers()->get();
                 $servers = $servers->merge($teamServers);

@@ -17,6 +17,30 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string|null $description
+ * @property string|null $keydb_password
+ * @property string|null $keydb_conf
+ * @property string $image
+ * @property string $status
+ * @property bool $is_public
+ * @property int|null $public_port
+ * @property string|null $ports_mappings
+ * @property string|null $ssl_mode
+ * @property bool $enable_ssl
+ * @property int $environment_id
+ * @property string $destination_type
+ * @property int $destination_id
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read array $ports_mappings_array
+ * @property-read string $database_type
+ * @property-read string|null $internal_db_url
+ * @property-read string|null $external_db_url
+ * @property-read string $server_status
  * @property-read StandaloneDocker|SwarmDocker|null $destination
  * @property-read Environment|null $environment
  */
@@ -110,7 +134,7 @@ class StandaloneKeydb extends BaseModel
     public function isConfigurationChanged(bool $save = false)
     {
         $newConfigHash = $this->image.$this->ports_mappings.$this->keydb_conf;
-        $newConfigHash .= json_encode($this->environment_variables()->get('value')->sort());
+        $newConfigHash .= json_encode($this->environment_variables()->get(['value'])->sort());
         $newConfigHash = md5($newConfigHash);
         $oldConfigHash = data_get($this, 'config_hash');
         if ($oldConfigHash === null) {
@@ -269,7 +293,7 @@ class StandaloneKeydb extends BaseModel
         );
     }
 
-    public function databaseType(): Attribute
+    protected function databaseType(): Attribute
     {
         return new Attribute(
             get: fn () => $this->type(),

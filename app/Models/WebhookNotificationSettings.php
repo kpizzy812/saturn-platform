@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Contracts\NotificationSettingsContract;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 
-class WebhookNotificationSettings extends Model
+class WebhookNotificationSettings extends Model implements NotificationSettingsContract
 {
     use Notifiable;
 
@@ -63,7 +64,7 @@ class WebhookNotificationSettings extends Model
         return $this->belongsTo(Team::class);
     }
 
-    public function isEnabled()
+    public function isEnabled(): bool
     {
         return $this->webhook_enabled;
     }

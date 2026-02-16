@@ -55,7 +55,7 @@ class TeamWebhooksController extends Controller
             }])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($webhook) {
+            ->map(function (TeamWebhook $webhook) {
                 return [
                     'id' => $webhook->id,
                     'uuid' => $webhook->uuid,
@@ -65,7 +65,7 @@ class TeamWebhooksController extends Controller
                     'enabled' => $webhook->enabled,
                     'created_at' => $webhook->created_at->toIso8601String(),
                     'last_triggered_at' => $webhook->last_triggered_at?->toIso8601String(),
-                    'deliveries' => $webhook->deliveries->map(function ($delivery) {
+                    'deliveries' => $webhook->deliveries->map(function (WebhookDelivery $delivery) {
                         return [
                             'id' => $delivery->id,
                             'uuid' => $delivery->uuid,

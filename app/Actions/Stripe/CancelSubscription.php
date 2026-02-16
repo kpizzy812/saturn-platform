@@ -35,7 +35,7 @@ class CancelSubscription
 
         foreach ($teams as $team) {
             // Only include subscriptions from teams where user is owner
-            $userRole = $team->pivot->role;
+            $userRole = $team->pivot?->getAttribute('role');
             if ($userRole === 'owner' && $team->subscription) {
                 $subscription = $team->subscription;
 

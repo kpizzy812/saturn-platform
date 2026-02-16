@@ -90,7 +90,7 @@ class CreateDockerfileApplication
         $application = new Application;
         $application->fill($request->all());
         $application->fqdn = $request->domains;
-        $application->ports_exposes = $port;
+        $application->ports_exposes = (string) $port;
         $application->build_pack = 'dockerfile';
         $application->dockerfile = $dockerFile;
         $application->destination_id = $destination->id;

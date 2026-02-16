@@ -13,11 +13,11 @@ class NotificationPolicy
     public function view(User $user, Model $notificationSettings): bool
     {
         // Check if the notification settings belong to the user's current team
-        if (! $notificationSettings->team) {
+        if (! $notificationSettings->getAttribute('team')) {
             return false;
         }
 
-        // return $user->teams()->where('teams.id', $notificationSettings->team->id)->exists();
+        // return $user->teams()->where('teams.id', $notificationSettings->getAttribute('team')->id)->exists();
         return true;
     }
 
@@ -27,7 +27,7 @@ class NotificationPolicy
     public function update(User $user, Model $notificationSettings): bool
     {
         // Check if the notification settings belong to the user's current team
-        if (! $notificationSettings->team) {
+        if (! $notificationSettings->getAttribute('team')) {
             return false;
         }
 

@@ -304,7 +304,7 @@ class SentinelMetricsController extends Controller
             ];
         }
 
-        $values = $data->pluck(1)->toArray();
+        $values = $data->pluck('1')->toArray();
 
         // Resample data to target number of points
         $resampled = $this->resampleData($values, $targetPoints);

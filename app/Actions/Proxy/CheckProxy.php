@@ -21,7 +21,7 @@ class CheckProxy
         }
         if ($server->isBuildServer()) {
             if ($server->proxy) {
-                $server->proxy = null;
+                $server->forceFill(['proxy' => null]);
                 $server->save();
             }
 
@@ -71,22 +71,20 @@ class CheckProxy
             try {
                 if ($server->proxyType() !== ProxyTypes::NONE->value) {
                     $proxyCompose = GetProxyConfiguration::run($server);
-                    if (isset($proxyCompose)) {
-                        $yaml = Yaml::parse($proxyCompose);
-                        $configPorts = [];
-                        if ($server->proxyType() === ProxyTypes::TRAEFIK->value) {
-                            $ports = data_get($yaml, 'services.traefik.ports');
-                        } elseif ($server->proxyType() === ProxyTypes::CADDY->value) {
-                            $ports = data_get($yaml, 'services.caddy.ports');
-                        }
-                        if (isset($ports)) {
-                            foreach ($ports as $port) {
-                                $configPorts[] = str($port)->before(':')->value();
-                            }
-                        }
-                        // Combine default ports with config ports
-                        $portsToCheck = array_merge($portsToCheck, $configPorts);
+                    $yaml = Yaml::parse($proxyCompose);
+                    $configPorts = [];
+                    if ($server->proxyType() === ProxyTypes::TRAEFIK->value) {
+                        $ports = data_get($yaml, 'services.traefik.ports');
+                    } elseif ($server->proxyType() === ProxyTypes::CADDY->value) {
+                        $ports = data_get($yaml, 'services.caddy.ports');
                     }
+                    if (isset($ports)) {
+                        foreach ($ports as $port) {
+                            $configPorts[] = str($port)->before(':')->value();
+                        }
+                    }
+                    // Combine default ports with config ports
+                    $portsToCheck = array_merge($portsToCheck, $configPorts);
                 } else {
                     $portsToCheck = [];
                 }

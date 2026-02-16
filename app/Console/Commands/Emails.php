@@ -81,7 +81,7 @@ class Emails extends Command
         switch ($type) {
             case 'updates':
                 $teams = Team::all();
-                if (! $teams || $teams->isEmpty()) {
+                if ($teams->isEmpty()) {
                     echo 'No teams found.'.PHP_EOL;
 
                     return;
@@ -113,7 +113,7 @@ class Emails extends Command
                 }
                 break;
             case 'emails-test':
-                $this->mail = (new Test)->toMail();
+                $this->mail = (new Test)->toMail(new \stdClass);
                 $this->sendEmail();
                 break;
             case 'application-deployment-success-daily':
@@ -123,18 +123,18 @@ class Emails extends Command
                     if ($deployments->isEmpty()) {
                         continue;
                     }
-                    $this->mail = (new DeploymentSuccess($application, 'test'))->toMail();
+                    $this->mail = (new DeploymentSuccess($application, 'test'))->toMail(new \stdClass);
                     $this->sendEmail();
                 }
                 break;
             case 'application-deployment-success':
-                $application = Application::all()->first();
-                $this->mail = (new DeploymentSuccess($application, 'test'))->toMail();
+                $application = Application::query()->first();
+                $this->mail = (new DeploymentSuccess($application, 'test'))->toMail(new \stdClass);
                 $this->sendEmail();
                 break;
             case 'application-deployment-failed':
-                $application = Application::all()->first();
-                $preview = ApplicationPreview::all()->first();
+                $application = Application::query()->first();
+                $preview = ApplicationPreview::query()->first();
                 if (! $preview) {
                     $preview = ApplicationPreview::create([
                         'application_id' => $application->id,
@@ -143,19 +143,19 @@ class Emails extends Command
                         'fqdn' => $application->fqdn,
                     ]);
                 }
-                $this->mail = (new DeploymentFailed($application, 'test'))->toMail();
+                $this->mail = (new DeploymentFailed($application, 'test'))->toMail(new \stdClass);
                 $this->sendEmail();
-                $this->mail = (new DeploymentFailed($application, 'test', $preview))->toMail();
+                $this->mail = (new DeploymentFailed($application, 'test', $preview))->toMail(new \stdClass);
                 $this->sendEmail();
                 break;
             case 'application-status-changed':
-                $application = Application::all()->first();
-                $this->mail = (new StatusChanged($application))->toMail();
+                $application = Application::query()->first();
+                $this->mail = (new StatusChanged($application))->toMail(new \stdClass);
                 $this->sendEmail();
                 break;
             case 'backup-failed':
-                $backup = ScheduledDatabaseBackup::all()->first();
-                $db = StandalonePostgresql::all()->first();
+                $backup = ScheduledDatabaseBackup::query()->first();
+                $db = StandalonePostgresql::query()->first();
                 if (! $backup) {
                     $backup = ScheduledDatabaseBackup::create([
                         'enabled' => true,
@@ -167,12 +167,12 @@ class Emails extends Command
                     ]);
                 }
                 $output = 'Because of an error, the backup of the database '.$db->name.' failed.';
-                $this->mail = (new BackupFailed($backup, $db, $output, $backup->database_name ?? 'unknown'))->toMail();
+                $this->mail = (new BackupFailed($backup, $db, $output, $backup->database_name ?? 'unknown'))->toMail(new \stdClass);
                 $this->sendEmail();
                 break;
             case 'backup-success':
-                $backup = ScheduledDatabaseBackup::all()->first();
-                $db = StandalonePostgresql::all()->first();
+                $backup = ScheduledDatabaseBackup::query()->first();
+                $db = StandalonePostgresql::query()->first();
                 if (! $backup) {
                     $backup = ScheduledDatabaseBackup::create([
                         'enabled' => true,
@@ -205,7 +205,7 @@ class Emails extends Command
                 $this->mail->view('emails.before-trial-conversion');
                 $this->mail->subject('Trial period has been added for all subscription plans.');
                 $teams = Team::doesntHave('subscription')->where('id', '!=', 0)->get();
-                if (! $teams || $teams->isEmpty()) {
+                if ($teams->isEmpty()) {
                     echo 'No teams found.'.PHP_EOL;
 
                     return;

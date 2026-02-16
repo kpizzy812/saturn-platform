@@ -109,8 +109,32 @@ use Visus\Cuid2\Cuid2;
 )]
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string|null $description
+ * @property string $ip
+ * @property string $user
+ * @property int $port
+ * @property int|null $private_key_id
+ * @property int $team_id
+ * @property \Spatie\SchemalessAttributes\SchemalessAttributes $proxy
+ * @property bool $is_build_server
+ * @property bool $force_disabled
+ * @property bool $delete_unused_volumes
+ * @property bool $delete_unused_networks
+ * @property array|null $traefik_outdated_info
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read bool $is_reachable
+ * @property-read bool $is_usable
+ * @property-read string $getIp
+ * @property-read string $image
+ * @property-read array|null $outdatedInfo
  * @property-read ServerSetting|null $settings
  * @property-read Team|null $team
+ * @property-read PrivateKey|null $privateKey
  */
 class Server extends BaseModel
 {
@@ -398,6 +422,8 @@ class Server extends BaseModel
                 $dynamic_conf_path = '/data/saturn/proxy/caddy/dynamic';
             }
         }
+        $default_redirect_file = '';
+        $conf = '';
         if ($proxy_type === ProxyTypes::TRAEFIK->value) {
             $default_redirect_file = "$dynamic_conf_path/default_redirect_503.yaml";
         } elseif ($proxy_type === ProxyTypes::CADDY->value) {
@@ -1169,9 +1195,7 @@ $schema://$host {
         // $ID_LIKE = data_get($collectedData, 'ID_LIKE');
         // $VERSION_ID = data_get($collectedData, 'VERSION_ID');
         $supported = collect(SUPPORTED_OS)->filter(function ($supportedOs) use ($ID) {
-            if (str($supportedOs)->contains($ID)) {
-                return str($ID);
-            }
+            return str($supportedOs)->contains($ID);
         });
         if ($supported->count() === 1) {
             return str($supported->first());
@@ -1224,7 +1248,7 @@ $schema://$host {
                 $database->status = 'exited';
                 $database->save();
             }
-            foreach ($this->services() as $service) {
+            foreach ($this->services()->get() as $service) {
                 $apps = $service->applications()->get();
                 $dbs = $service->databases()->get();
                 foreach ($apps as $app) {
@@ -1401,11 +1425,9 @@ $schema://$host {
     public function validateDockerSwarm()
     {
         $swarmStatus = instant_remote_process(['docker info|grep -i swarm'], $this, false);
-        $swarmStatus = str($swarmStatus)->trim()->after(':')->trim();
+        $swarmStatus = str($swarmStatus)->trim()->after(':')->trim()->value();
         if ($swarmStatus === 'inactive') {
             throw new \Exception('Docker Swarm is not initiated. Please join the server to a swarm before continuing.');
-
-            return false;
         }
         $this->settings->is_usable = true;
         $this->settings->save();
@@ -1448,10 +1470,6 @@ $schema://$host {
 
     public function isNonRoot()
     {
-        if ($this->user instanceof Stringable) {
-            return $this->user->value() !== 'root';
-        }
-
         return $this->user !== 'root';
     }
 

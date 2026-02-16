@@ -246,8 +246,11 @@ class TransferDatabaseDataAction
     private function getServer(mixed $database): Server
     {
         // Try to get server from destination relationship
-        if (method_exists($database, 'destination') && $database->destination) {
-            return $database->destination->server;
+        if (is_object($database) && method_exists($database, 'destination') && $database->destination) {
+            $destination = $database->destination;
+            if (is_object($destination) && property_exists($destination, 'server')) {
+                return $destination->server;
+            }
         }
 
         throw new \RuntimeException('Could not determine source server');

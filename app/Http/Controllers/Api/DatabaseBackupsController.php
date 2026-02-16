@@ -78,7 +78,7 @@ class DatabaseBackupsController extends Controller
 
         $this->authorize('view', $database);
 
-        $backupConfig = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->with('executions')->where('database_id', $database->id)->get();
+        $backupConfig = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->with('executions')->where('database_id', $database->getAttribute('id'))->get();
 
         return response()->json($backupConfig);
     }
@@ -285,18 +285,19 @@ class DatabaseBackupsController extends Controller
 
         // Set default databases_to_backup based on database type if not provided
         if (! isset($backupData['databases_to_backup']) || empty($backupData['databases_to_backup'])) {
-            if ($database->type() === 'standalone-postgresql') {
-                $backupData['databases_to_backup'] = $database->postgres_db;
-            } elseif ($database->type() === 'standalone-mysql') {
-                $backupData['databases_to_backup'] = $database->mysql_database;
-            } elseif ($database->type() === 'standalone-mariadb') {
-                $backupData['databases_to_backup'] = $database->mariadb_database;
+            $dbType = method_exists($database, 'type') ? $database->type() : null;
+            if ($dbType === 'standalone-postgresql') {
+                $backupData['databases_to_backup'] = $database->getAttribute('postgres_db');
+            } elseif ($dbType === 'standalone-mysql') {
+                $backupData['databases_to_backup'] = $database->getAttribute('mysql_database');
+            } elseif ($dbType === 'standalone-mariadb') {
+                $backupData['databases_to_backup'] = $database->getAttribute('mariadb_database');
             }
         }
 
         // Add required fields
-        $backupData['database_id'] = $database->id;
-        $backupData['database_type'] = $database->getMorphClass();
+        $backupData['database_id'] = $database->getAttribute('id');
+        $backupData['database_type'] = get_class($database);
         $backupData['team_id'] = $teamId;
 
         // Set defaults
@@ -477,7 +478,7 @@ class DatabaseBackupsController extends Controller
             }
         }
 
-        $backupConfig = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->id)
+        $backupConfig = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->getAttribute('id'))
             ->where('uuid', $request->scheduled_backup_uuid)
             ->first();
         if (! $backupConfig) {
@@ -599,7 +600,7 @@ class DatabaseBackupsController extends Controller
         $this->authorize('update', $database);
 
         // Find the backup configuration by its UUID
-        $backup = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->id)
+        $backup = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->getAttribute('id'))
             ->where('uuid', $request->scheduled_backup_uuid)
             ->first();
 
@@ -617,7 +618,7 @@ class DatabaseBackupsController extends Controller
             // Delete all execution files (locally and optionally from S3)
             foreach ($executions as $execution) {
                 if ($execution->filename) {
-                    deleteBackupsLocally($execution->filename, $database->destination->server);
+                    deleteBackupsLocally($execution->filename, $database->getAttribute('destination')->server);
 
                     if ($deleteS3 && $backup->s3) {
                         deleteBackupsS3($execution->filename, $backup->s3);
@@ -715,7 +716,7 @@ class DatabaseBackupsController extends Controller
         }
 
         // Find the backup configuration by its UUID
-        $backup = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->id)
+        $backup = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->getAttribute('id'))
             ->where('uuid', $request->scheduled_backup_uuid)
             ->first();
 
@@ -828,7 +829,7 @@ class DatabaseBackupsController extends Controller
         $this->authorize('update', $database);
 
         // Find the backup configuration by its UUID
-        $backup = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->id)
+        $backup = ScheduledDatabaseBackup::ownedByCurrentTeamAPI($teamId)->where('database_id', $database->getAttribute('id'))
             ->where('uuid', $request->scheduled_backup_uuid)
             ->first();
 
@@ -846,7 +847,7 @@ class DatabaseBackupsController extends Controller
 
         try {
             if ($execution->filename) {
-                deleteBackupsLocally($execution->filename, $database->destination->server);
+                deleteBackupsLocally($execution->filename, $database->getAttribute('destination')->server);
 
                 if ($deleteS3 && $backup->s3) {
                     deleteBackupsS3($execution->filename, $backup->s3);
@@ -934,7 +935,7 @@ class DatabaseBackupsController extends Controller
         }
 
         $backup = ScheduledDatabaseBackup::where('uuid', $backup_uuid)
-            ->where('database_id', $database->id)
+            ->where('database_id', $database->getAttribute('id'))
             ->first();
 
         if (! $backup) {
@@ -953,7 +954,7 @@ class DatabaseBackupsController extends Controller
                 ->first();
         }
 
-        if (! $execution) {
+        if (! $execution instanceof \App\Models\ScheduledDatabaseBackupExecution) {
             return response()->json(['message' => 'No backup execution found to restore from.'], 404);
         }
 

@@ -106,7 +106,7 @@ class HetznerService
 
         // Filter out entries where "deprecated" is explicitly true
         $filtered = array_filter($types, function ($type) {
-            return ! (isset($type['deprecated']) && $type['deprecated'] === true);
+            return ($type['deprecated'] ?? false) !== true;
         });
 
         return array_values($filtered);

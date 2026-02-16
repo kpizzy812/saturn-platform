@@ -33,7 +33,7 @@ class DeleteUserTeams
                 continue;
             }
 
-            $userRole = $team->pivot->role;
+            $userRole = $team->pivot?->getAttribute('role');
             $memberCount = $team->members->count();
 
             if ($memberCount === 1) {
@@ -44,7 +44,7 @@ class DeleteUserTeams
                 $otherOwners = $team->members
                     ->where('id', '!=', $this->user->id)
                     ->filter(function ($member) {
-                        return $member->pivot->role === 'owner';
+                        return $member->pivot?->getAttribute('role') === 'owner';
                     });
 
                 if ($otherOwners->isNotEmpty()) {
@@ -170,7 +170,7 @@ class DeleteUserTeams
         $otherAdmin = $team->members
             ->where('id', '!=', $this->user->id)
             ->filter(function ($member) {
-                return $member->pivot->role === 'admin';
+                return $member->pivot?->getAttribute('role') === 'admin';
             })
             ->first();
 

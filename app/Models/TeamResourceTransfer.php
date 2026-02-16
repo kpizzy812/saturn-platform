@@ -12,6 +12,26 @@ use Visus\Cuid2\Cuid2;
  *
  * Tracks resource transfers between teams, primarily used when deleting users
  * to preserve their resources by transferring them to another team.
+ *
+ * @property int $id
+ * @property string $uuid
+ * @property string $transfer_type
+ * @property string $transferable_type
+ * @property int $transferable_id
+ * @property int $from_team_id
+ * @property int $to_team_id
+ * @property int|null $from_user_id
+ * @property int|null $to_user_id
+ * @property int|null $initiated_by
+ * @property array|null $resource_snapshot
+ * @property array|null $related_transfers
+ * @property string|null $reason
+ * @property string $status
+ * @property string|null $error_message
+ * @property string|null $notes
+ * @property \Carbon\Carbon|null $completed_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
  */
 class TeamResourceTransfer extends Model
 {
@@ -289,7 +309,7 @@ class TeamResourceTransfer extends Model
      */
     public function getResourceNameAttribute(): string
     {
-        return $this->transferable->name ?? 'Unknown Resource';
+        return $this->transferable?->getAttribute('name') ?? 'Unknown Resource';
     }
 
     /**

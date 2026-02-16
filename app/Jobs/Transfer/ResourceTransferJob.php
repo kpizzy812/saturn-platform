@@ -90,9 +90,9 @@ class ResourceTransferJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             $transfer->appendLog("Starting {$transfer->mode_label} transfer");
-            $transfer->appendLog("Source: {$sourceDatabase->name}");
+            $transfer->appendLog("Source: {$sourceDatabase->getAttribute('name')}");
             if ($targetDatabase) {
-                $transfer->appendLog("Target: {$targetDatabase->name}");
+                $transfer->appendLog("Target: {$targetDatabase->getAttribute('name')}");
             }
 
             // Execute the transfer

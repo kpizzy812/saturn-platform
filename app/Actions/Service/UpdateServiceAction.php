@@ -86,7 +86,7 @@ class UpdateServiceAction
      */
     private function extractDomains(Service $service): \Illuminate\Support\Collection
     {
-        $domains = $service->applications()->get()->pluck('fqdn')->sort();
+        $domains = $service->applications()->pluck('fqdn')->sort();
 
         return $domains->map(function ($domain) {
             if (count(explode(':', $domain)) > 2) {

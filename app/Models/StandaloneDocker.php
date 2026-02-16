@@ -6,9 +6,24 @@ use App\Jobs\ConnectProxyToNetworksJob;
 use App\Traits\HasSafeStringAttribute;
 
 /**
- * @property Server $server
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
  * @property string $network
+ * @property int $server_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Server $server
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandalonePostgresql> $postgresqls
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneRedis> $redis
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneMongodb> $mongodbs
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneMysql> $mysqls
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneMariadb> $mariadbs
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneKeydb> $keydbs
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneDragonfly> $dragonflies
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, StandaloneClickhouse> $clickhouses
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Service> $services
  */
 class StandaloneDocker extends BaseModel
 {
@@ -105,6 +120,6 @@ class StandaloneDocker extends BaseModel
 
     public function attachedTo()
     {
-        return $this->applications?->count() > 0 || $this->databases()->count() > 0;
+        return $this->applications->count() > 0 || $this->databases()->count() > 0;
     }
 }

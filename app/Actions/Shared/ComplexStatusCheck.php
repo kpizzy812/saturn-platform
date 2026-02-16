@@ -42,7 +42,7 @@ class ComplexStatusCheck
                     }
                 } else {
                     $additional_server = $application->additional_servers()->wherePivot('server_id', $server->id);
-                    $statusFromDb = $additional_server->first()->pivot->status;
+                    $statusFromDb = $additional_server->first()->pivot->getAttribute('status');
                     if ($statusFromDb !== $statusToSet) {
                         $additional_server->updateExistingPivot($server->id, ['status' => $statusToSet]);
                     }

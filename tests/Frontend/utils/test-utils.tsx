@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider';
 // Create router mock first so it can be referenced
 const mockRouter = {
     visit: vi.fn(),
+    get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
     patch: vi.fn(),

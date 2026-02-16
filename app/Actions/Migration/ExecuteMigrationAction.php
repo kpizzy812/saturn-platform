@@ -80,7 +80,7 @@ class ExecuteMigrationAction
                     $this->getResourceConfig($target)
                 );
 
-                $migration->markAsCompleted(get_class($target), $target->id);
+                $migration->markAsCompleted(get_class($target), $target->getAttribute('id'));
 
                 return [
                     'success' => true,
@@ -207,7 +207,7 @@ class ExecuteMigrationAction
             }
 
             // Mark as completed
-            $migration->markAsCompleted(get_class($target), $target->id);
+            $migration->markAsCompleted(get_class($target), $target->getAttribute('id'));
 
             return [
                 'success' => true,
@@ -530,7 +530,7 @@ class ExecuteMigrationAction
                     'is_preview' => $sourceVar->is_preview ?? false,
                     'is_required' => $sourceVar->is_required ?? false,
                     'resourceable_type' => get_class($target),
-                    'resourceable_id' => $target->id,
+                    'resourceable_id' => $target->getAttribute('id'),
                 ]);
             }
         }
@@ -551,14 +551,14 @@ class ExecuteMigrationAction
 
                 if (! $existingStorage) {
                     // Create new storage config (not copying actual data!)
-                    $newName = str_replace($source->uuid, $target->uuid, $sourceStorage->name);
+                    $newName = str_replace($source->getAttribute('uuid'), $target->getAttribute('uuid'), $sourceStorage->name);
 
                     LocalPersistentVolume::create([
                         'name' => $newName,
                         'mount_path' => $sourceStorage->mount_path,
                         'host_path' => $sourceStorage->host_path,
                         'resource_type' => get_class($target),
-                        'resource_id' => $target->id,
+                        'resource_id' => $target->getAttribute('id'),
                     ]);
                 }
             }
@@ -579,7 +579,7 @@ class ExecuteMigrationAction
                         'content' => $sourceFile->content,
                         'is_directory' => $sourceFile->is_directory,
                         'resource_type' => get_class($target),
-                        'resource_id' => $target->id,
+                        'resource_id' => $target->getAttribute('id'),
                     ]);
                 } else {
                     // Update content
@@ -596,7 +596,7 @@ class ExecuteMigrationAction
      */
     protected function findExistingTarget(Model $source, Environment $targetEnv): ?Model
     {
-        $name = $source->name ?? null;
+        $name = $source->getAttribute('name');
         if (! $name) {
             return null;
         }
@@ -703,7 +703,7 @@ class ExecuteMigrationAction
     {
         return [
             'type' => get_class($resource),
-            'id' => $resource->id,
+            'id' => $resource->getAttribute('id'),
             'attributes' => $resource->toArray(),
         ];
     }

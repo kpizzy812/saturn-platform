@@ -51,6 +51,7 @@ class SettingsController extends Controller
             $projectAccess = null;
             if ($pivot->role !== 'owner') {
                 $totalProjects = $team->projects()->count();
+                /** @var array<int|string>|null $allowedProjects */
                 $allowedProjects = $pivot->allowed_projects;
 
                 // Check for full access: null = all projects, '*' in array, or admin role

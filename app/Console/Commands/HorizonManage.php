@@ -66,10 +66,10 @@ class HorizonManage extends Command
             }
             foreach ($pendingJobs as $pendingJob) {
                 $pendingJobsTable[] = [
-                    'id' => $pendingJob->id,
-                    'name' => $pendingJob->name,
-                    'status' => $pendingJob->status,
-                    'reserved_at' => $pendingJob->reserved_at ? now()->parse($pendingJob->reserved_at)->format('Y-m-d H:i:s') : null,
+                    'id' => (string) $pendingJob->id,
+                    'name' => (string) $pendingJob->name,
+                    'status' => (string) $pendingJob->status,
+                    'reserved_at' => $pendingJob->reserved_at ? now()->parse($pendingJob->reserved_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
             table($pendingJobsTable);
@@ -85,9 +85,9 @@ class HorizonManage extends Command
             }
             foreach ($failedJobs as $failedJob) {
                 $failedJobsTable[] = [
-                    'id' => $failedJob->id,
-                    'name' => $failedJob->name,
-                    'failed_at' => $failedJob->failed_at ? now()->parse($failedJob->failed_at)->format('Y-m-d H:i:s') : null,
+                    'id' => (string) $failedJob->id,
+                    'name' => (string) $failedJob->name,
+                    'failed_at' => $failedJob->failed_at ? now()->parse($failedJob->failed_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
             table($failedJobsTable);
@@ -98,9 +98,9 @@ class HorizonManage extends Command
             $failedJobsTable = [];
             foreach ($failedJobs as $failedJob) {
                 $failedJobsTable[] = [
-                    'id' => $failedJob->id,
-                    'name' => $failedJob->name,
-                    'failed_at' => $failedJob->failed_at ? now()->parse($failedJob->failed_at)->format('Y-m-d H:i:s') : null,
+                    'id' => (string) $failedJob->id,
+                    'name' => (string) $failedJob->name,
+                    'failed_at' => $failedJob->failed_at ? now()->parse($failedJob->failed_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
             app(MetricsRepository::class)->clear();
@@ -129,9 +129,9 @@ class HorizonManage extends Command
             }
             foreach ($runningJobs as $runningJob) {
                 $runningJobsTable[] = [
-                    'id' => $runningJob->id,
-                    'name' => $runningJob->name,
-                    'reserved_at' => $runningJob->reserved_at ? now()->parse($runningJob->reserved_at)->format('Y-m-d H:i:s') : null,
+                    'id' => (string) $runningJob->id,
+                    'name' => (string) $runningJob->name,
+                    'reserved_at' => $runningJob->reserved_at ? now()->parse($runningJob->reserved_at)->format('Y-m-d H:i:s') : '',
                 ];
             }
             table($runningJobsTable);
@@ -143,7 +143,7 @@ class HorizonManage extends Command
             $workersTable = [];
             foreach ($workers as $worker) {
                 $workersTable[] = [
-                    'name' => $worker->name,
+                    'name' => (string) $worker->name,
                 ];
             }
             table($workersTable);

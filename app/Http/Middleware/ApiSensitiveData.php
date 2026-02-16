@@ -15,6 +15,7 @@ class ApiSensitiveData
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
+        /** @var \Laravel\Sanctum\Contracts\HasAbilities|null $token */
         $token = $user?->currentAccessToken();
 
         // Default: no sensitive data access

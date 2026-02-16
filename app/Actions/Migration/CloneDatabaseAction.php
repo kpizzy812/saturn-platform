@@ -137,7 +137,7 @@ class CloneDatabaseAction
         $attributes['status'] = 'exited'; // Start as stopped
 
         // Keep original name — environment label distinguishes (same as applications)
-        $attributes['name'] = $source->name;
+        $attributes['name'] = $source->getAttribute('name');
 
         // Reassign public_port to avoid conflicts on the same server
         if (! empty($attributes['public_port']) && ! empty($attributes['is_public'])) {
@@ -174,7 +174,7 @@ class CloneDatabaseAction
                 'is_preview' => false,
                 'is_required' => $envVar->is_required ?? false,
                 'resourceable_type' => get_class($target),
-                'resourceable_id' => $target->id,
+                'resourceable_id' => $target->getAttribute('id'),
             ]);
         }
     }
@@ -191,11 +191,11 @@ class CloneDatabaseAction
 
         foreach ($source->persistentStorages as $storage) {
             // Generate new volume name with target UUID
-            $newName = str_replace($source->uuid, $target->uuid, $storage->name);
+            $newName = str_replace($source->getAttribute('uuid'), $target->getAttribute('uuid'), $storage->name);
 
             // Check if volume was already created by model boot event
             $existingVolume = LocalPersistentVolume::where('resource_type', get_class($target))
-                ->where('resource_id', $target->id)
+                ->where('resource_id', $target->getAttribute('id'))
                 ->where('mount_path', $storage->mount_path)
                 ->first();
 
@@ -212,7 +212,7 @@ class CloneDatabaseAction
                     'mount_path' => $storage->mount_path,
                     'host_path' => $storage->host_path,
                     'resource_type' => get_class($target),
-                    'resource_id' => $target->id,
+                    'resource_id' => $target->getAttribute('id'),
                 ]);
             }
         }

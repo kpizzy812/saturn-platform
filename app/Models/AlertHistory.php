@@ -5,6 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $alert_id
+ * @property \Carbon\Carbon $triggered_at
+ * @property \Carbon\Carbon|null $resolved_at
+ * @property float|null $value
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class AlertHistory extends Model
 {
     /**

@@ -242,6 +242,7 @@ class AiChatService
             'command_status' => $commandStatus,
             'command_result' => $commandResultMessage,
         ]);
+        assert($assistantMessage instanceof AiChatMessage);
 
         // Log usage (include tokens from command parsing)
         $this->logUsage($session, $assistantMessage, $response, $startTime, $parsedIntent);
@@ -476,7 +477,7 @@ class AiChatService
             'type' => $session->context_type,
             'id' => $session->context_id,
             'name' => $session->context_name,
-            'uuid' => $session->loadContext()?->uuid,
+            'uuid' => $session->loadContext()?->getAttribute('uuid'),
         ];
     }
 
@@ -521,7 +522,7 @@ class AiChatService
             $contextInfo = sprintf(
                 "\n\nCurrent context:\n- Resource type: %s\n- Resource name: %s\n- Resource ID: %d",
                 $session->context_type,
-                $session->context_name ?? ($resource->name ?? 'Unknown'),
+                $session->context_name ?? ($resource->getAttribute('name') ?? 'Unknown'),
                 $session->context_id
             );
         }

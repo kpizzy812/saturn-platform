@@ -38,7 +38,7 @@ class PreMigrationCheckAction
         $sourceHealthy = $this->checkSourceHealth($resource);
         $checks['source_health'] = $sourceHealthy;
         if (! $sourceHealthy) {
-            $errors[] = "Source resource '{$resource->name}' is in a degraded or exited state. Fix it before migrating.";
+            $errors[] = "Source resource '{$resource->getAttribute('name')}' is in a degraded or exited state. Fix it before migrating.";
         }
 
         // 2. Active migration guard
@@ -61,7 +61,7 @@ class PreMigrationCheckAction
             $targetExists = $this->checkTargetExists($resource, $targetEnvironment);
             $checks['target_exists'] = $targetExists;
             if (! $targetExists) {
-                $errors[] = "Resource '{$resource->name}' not found in target environment '{$targetEnvironment->name}'. Cannot use update_existing mode.";
+                $errors[] = "Resource '{$resource->getAttribute('name')}' not found in target environment '{$targetEnvironment->name}'. Cannot use update_existing mode.";
             }
         }
 
@@ -153,7 +153,7 @@ class PreMigrationCheckAction
      */
     protected function checkTargetExists(Model $resource, Environment $targetEnvironment): bool
     {
-        $name = $resource->name ?? null;
+        $name = $resource->getAttribute('name');
         if (! $name) {
             return false;
         }
@@ -193,7 +193,7 @@ class PreMigrationCheckAction
         }
 
         $emptyVars = $resource->environment_variables
-            ->filter(fn ($var) => empty($var->value) || $var->value === '')
+            ->filter(fn ($var) => empty($var->value))
             ->pluck('key')
             ->toArray();
 

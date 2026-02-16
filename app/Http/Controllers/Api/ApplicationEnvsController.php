@@ -324,10 +324,6 @@ class ApplicationEnvsController extends Controller
                 ], 404);
             }
         }
-
-        return response()->json([
-            'message' => 'Something is not okay. Are you okay?',
-        ], 500);
     }
 
     #[OA\Patch(

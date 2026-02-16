@@ -35,7 +35,7 @@ class StartDatabaseProxy
         $proxyContainerName = "{$database->uuid}-proxy";
         $isSSLEnabled = $database->enable_ssl ?? false;
 
-        if ($database->getMorphClass() === \App\Models\ServiceDatabase::class) {
+        if ($database instanceof \App\Models\ServiceDatabase) {
             $databaseType = $database->databaseType();
             $network = $database->service->uuid;
             $server = data_get($database, 'service.destination.server');

@@ -295,6 +295,7 @@ class GetContainersStatus
             }
         }
         $exitedServices = collect([]);
+        $service = null;
         foreach ($services as $service) {
             $apps = $service->applications()->get();
             $dbs = $service->databases()->get();
@@ -502,7 +503,7 @@ class GetContainersStatus
         ServiceChecked::dispatch($this->server->team->id);
     }
 
-    private function aggregateApplicationStatus($application, Collection $containerStatuses, int $maxRestartCount = 0): ?string
+    private function aggregateApplicationStatus($application, Collection $containerStatuses, int $maxRestartCount = 0): string
     {
         // Parse docker compose to check for excluded containers
         $dockerComposeRaw = data_get($application, 'docker_compose_raw');

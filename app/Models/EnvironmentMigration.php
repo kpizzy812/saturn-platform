@@ -13,6 +13,31 @@ use Visus\Cuid2\Cuid2;
 /**
  * Model for environment migration workflow.
  * Handles resource migration between environments (dev -> uat -> prod).
+ *
+ * @property int $id
+ * @property string $uuid
+ * @property int $team_id
+ * @property string $source_type
+ * @property int $source_id
+ * @property string|null $target_type
+ * @property int|null $target_id
+ * @property int $source_environment_id
+ * @property int $target_environment_id
+ * @property int|null $target_server_id
+ * @property int $requested_by
+ * @property string $status
+ * @property int $progress
+ * @property string|null $current_step
+ * @property string|null $error_message
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Environment|null $sourceEnvironment
+ * @property-read Environment|null $targetEnvironment
+ * @property-read Server|null $targetServer
+ * @property-read \Illuminate\Database\Eloquent\Model|null $source
+ * @property-read \Illuminate\Database\Eloquent\Model|null $target
+ * @property-read User|null $requestedBy
+ * @property-read User|null $approvedBy
  */
 class EnvironmentMigration extends Model
 {

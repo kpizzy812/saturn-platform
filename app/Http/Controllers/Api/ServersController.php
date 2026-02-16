@@ -301,6 +301,7 @@ class ServersController extends Controller
         $domains = collect();
         $applications = $projects->pluck('applications')->flatten();
         $settings = instanceSettings();
+        $ip = null;
         if ($applications->count() > 0) {
             foreach ($applications as $application) {
                 $ip = $application->destination->server->ip;

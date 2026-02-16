@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Channels;
 
+use App\Contracts\HasWebhookNotification;
 use App\Jobs\SendWebhookJob;
 use Illuminate\Notifications\Notification;
 
@@ -9,6 +10,8 @@ class WebhookChannel
 {
     /**
      * Send the given notification.
+     *
+     * @param  Notification&HasWebhookNotification  $notification
      */
     public function send($notifiable, Notification $notification): void
     {

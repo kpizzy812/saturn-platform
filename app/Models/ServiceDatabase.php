@@ -7,7 +7,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * @property Service $service
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string|null $description
+ * @property string|null $image
+ * @property string|null $custom_type
+ * @property int $service_id
+ * @property string $status
+ * @property bool $is_public
+ * @property int|null $public_port
+ * @property bool $is_log_drain_enabled
+ * @property string|null $exclude_from_status
+ * @property \Carbon\Carbon|null $created_at
+ * @property \Carbon\Carbon|null $updated_at
+ * @property \Carbon\Carbon|null $deleted_at
+ * @property-read string $database_type
+ * @property-read Service $service
  */
 class ServiceDatabase extends BaseModel
 {

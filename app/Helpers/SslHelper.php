@@ -32,6 +32,7 @@ class SslHelper
         $countryName = self::DEFAULT_COUNTRY_NAME;
         $stateName = self::DEFAULT_STATE_NAME;
 
+        $tempConfig = null;
         try {
             $privateKey = openssl_pkey_new([
                 'private_key_type' => OPENSSL_KEYTYPE_EC,
@@ -227,7 +228,9 @@ class SslHelper
         } catch (\Throwable $e) {
             throw new \RuntimeException('SSL Certificate generation failed: '.$e->getMessage(), 0, $e);
         } finally {
-            fclose($tempConfig);
+            if ($tempConfig !== null) {
+                fclose($tempConfig);
+            }
         }
     }
 }

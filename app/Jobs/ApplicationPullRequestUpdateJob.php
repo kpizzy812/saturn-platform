@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\ProcessStatus;
 use App\Models\Application;
 use App\Models\ApplicationPreview;
+use App\Models\GithubApp;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,7 +52,6 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
                 ProcessStatus::ERROR => $this->body = "The preview deployment for **{$serviceName}** failed. 🔴\n\n",
                 ProcessStatus::KILLED => $this->body = "The preview deployment for **{$serviceName}** was killed. ⚫\n\n",
                 ProcessStatus::CANCELLED => $this->body = "The preview deployment for **{$serviceName}** was cancelled. 🚫\n\n",
-                ProcessStatus::CLOSED => '', // Already handled above, but included for completeness
             };
             $this->build_logs_url = base_url()."/deployments/{$this->deployment_uuid}";
 
@@ -67,9 +67,16 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    private function getGithubSource(): ?GithubApp
+    {
+        $source = $this->application->source;
+
+        return $source instanceof GithubApp ? $source : null;
+    }
+
     private function update_comment()
     {
-        ['data' => $data] = githubApi(source: $this->application->source, endpoint: "/repos/{$this->application->git_repository}/issues/comments/{$this->preview->pull_request_issue_comment_id}", method: 'patch', data: [
+        ['data' => $data] = githubApi(source: $this->getGithubSource(), endpoint: "/repos/{$this->application->git_repository}/issues/comments/{$this->preview->pull_request_issue_comment_id}", method: 'patch', data: [
             'body' => $this->body,
         ], throwError: false);
         if (data_get($data, 'message') === 'Not Found') {
@@ -79,7 +86,7 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
 
     private function create_comment()
     {
-        ['data' => $data] = githubApi(source: $this->application->source, endpoint: "/repos/{$this->application->git_repository}/issues/{$this->preview->pull_request_id}/comments", method: 'post', data: [
+        ['data' => $data] = githubApi(source: $this->getGithubSource(), endpoint: "/repos/{$this->application->git_repository}/issues/{$this->preview->pull_request_id}/comments", method: 'post', data: [
             'body' => $this->body,
         ]);
         $this->preview->pull_request_issue_comment_id = $data['id'];
@@ -88,6 +95,6 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
 
     private function delete_comment()
     {
-        githubApi(source: $this->application->source, endpoint: "/repos/{$this->application->git_repository}/issues/comments/{$this->preview->pull_request_issue_comment_id}", method: 'delete');
+        githubApi(source: $this->getGithubSource(), endpoint: "/repos/{$this->application->git_repository}/issues/comments/{$this->preview->pull_request_issue_comment_id}", method: 'delete');
     }
 }

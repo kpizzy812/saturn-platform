@@ -439,7 +439,7 @@ class DockerVolumeParser
 
         // Allow environment variables like ${VAR_NAME} or ${VAR}
         // Also allow env vars followed by safe path concatenation (e.g., ${VAR}/path)
-        $sourceStr = is_string($source) ? $source : $source;
+        $sourceStr = $source;
 
         // Skip validation for simple environment variable references
         // Pattern 1: ${WORD_CHARS} with no special characters inside
@@ -471,7 +471,7 @@ class DockerVolumeParser
             return;
         }
 
-        $targetStr = is_string($target) ? $target : $target;
+        $targetStr = $target;
         // Target paths in containers are typically absolute paths, so we validate them too
         // but they're less likely to be dangerous since they're not used in host commands
         // Still, defense in depth is important

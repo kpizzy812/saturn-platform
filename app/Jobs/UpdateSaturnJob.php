@@ -35,11 +35,6 @@ class UpdateSaturnJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             $server = Server::findOrFail(0);
-            if (! $server) {
-                Log::error('Server not found. Cannot proceed with update.');
-
-                return;
-            }
 
             Log::info('Starting Saturn Platform update process...');
             UpdateSaturn::run(false); // false means it's not a manual update

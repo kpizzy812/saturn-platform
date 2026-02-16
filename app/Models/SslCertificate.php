@@ -7,6 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string|null $ssl_certificate
+ * @property string|null $ssl_private_key
+ * @property string|null $configuration_dir
+ * @property string|null $mount_path
+ * @property string|null $resource_type
+ * @property int|null $resource_id
+ * @property int $server_id
+ * @property string|null $common_name
+ * @property array|null $subject_alternative_names
+ * @property \Carbon\Carbon|null $valid_until
+ * @property bool $is_ca_certificate
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read Server $server
+ */
 class SslCertificate extends Model
 {
     use Auditable, LogsActivity;

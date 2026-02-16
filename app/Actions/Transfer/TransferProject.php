@@ -112,8 +112,8 @@ class TransferProject
 
         foreach ($teamAdmins as $admin) {
             // Add as project admin if not already exists
-            if (! $project->users()->where('user_id', $admin->id)->exists()) {
-                $project->users()->attach($admin->id, ['role' => 'admin']);
+            if (! $project->members()->where('user_id', $admin->id)->exists()) {
+                $project->members()->attach($admin->id, ['role' => 'admin']);
             }
         }
     }

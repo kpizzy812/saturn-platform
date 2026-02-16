@@ -11,6 +11,30 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Visus\Cuid2\Cuid2;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property int $team_id
+ * @property int $user_id
+ * @property string $source_type
+ * @property int $source_id
+ * @property string|null $target_type
+ * @property int|null $target_id
+ * @property int $target_environment_id
+ * @property int|null $target_server_id
+ * @property string $transfer_mode
+ * @property array|null $transfer_options
+ * @property string $status
+ * @property int $progress
+ * @property string|null $current_step
+ * @property \Carbon\Carbon|null $started_at
+ * @property \Carbon\Carbon|null $completed_at
+ * @property string|null $error_message
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Model|null $source
+ * @property-read \Illuminate\Database\Eloquent\Model|null $target
+ */
 class ResourceTransfer extends Model
 {
     /**

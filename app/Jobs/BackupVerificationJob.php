@@ -54,7 +54,8 @@ class BackupVerificationJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
 
-            $server = $database->destination->server ?? $database->server ?? null;
+            $destination = $database->getAttribute('destination');
+            $server = $destination->server ?? $database->getAttribute('server') ?? null;
             if (! $server) {
                 $this->markFailed('Server not found');
 
@@ -246,15 +247,15 @@ class BackupVerificationJob implements ShouldBeEncrypted, ShouldQueue
     private function getS3Path($backup): string
     {
         $database = $backup->database;
-        $team = $database->team;
+        $team = $database->getAttribute('team');
 
         $teamSlug = \Illuminate\Support\Str::slug($team->name);
-        $dbSlug = \Illuminate\Support\Str::slug($database->name);
+        $dbSlug = \Illuminate\Support\Str::slug($database->getAttribute('name'));
         $basePath = $backup->s3->path ?? '';
         $filename = basename($this->execution->filename);
 
         return trim($basePath, '/')
-            ."/databases/{$teamSlug}-{$team->id}/{$dbSlug}-{$database->uuid}/{$filename}";
+            ."/databases/{$teamSlug}-{$team->id}/{$dbSlug}-{$database->getAttribute('uuid')}/{$filename}";
     }
 
     private function markFailed(string $message): void

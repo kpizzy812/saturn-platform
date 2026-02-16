@@ -694,7 +694,6 @@ class DatabaseCreateController extends Controller
             NewDatabaseTypes::KEYDB => $this->createKeydb($request, $environment, $destination, $instantDeploy),
             NewDatabaseTypes::CLICKHOUSE => $this->createClickhouse($request, $environment, $destination, $instantDeploy),
             NewDatabaseTypes::MONGODB => $this->createMongodb($request, $environment, $destination, $instantDeploy),
-            default => response()->json(['message' => 'Invalid database type requested.'], 400),
         };
     }
 

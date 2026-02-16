@@ -155,21 +155,26 @@ class IncidentTimelineService
             ->orderBy('triggered_at', 'desc')
             ->get();
 
-        return $alertHistories->map(function ($history) {
+        return $alertHistories->map(function (AlertHistory $history) {
             $alert = $history->alert;
+            $alertName = $alert->getAttribute('name');
+            $alertMetric = $alert->getAttribute('metric');
+            $alertCondition = $alert->getAttribute('condition');
+            $alertThreshold = $alert->getAttribute('threshold');
+            $alertId = $alert->getAttribute('id');
 
             return [
                 'id' => 'alert_'.$history->id,
                 'type' => self::TYPE_ALERT,
                 'severity' => self::SEVERITY_WARNING,
                 'timestamp' => $history->triggered_at->toIso8601String(),
-                'title' => "Alert: {$alert->name}",
-                'description' => "{$alert->metric} {$alert->condition} {$alert->threshold} (actual: {$history->value})",
+                'title' => "Alert: {$alertName}",
+                'description' => "{$alertMetric} {$alertCondition} {$alertThreshold} (actual: {$history->value})",
                 'metadata' => [
-                    'alert_id' => $alert->id,
-                    'metric' => $alert->metric,
-                    'condition' => $alert->condition,
-                    'threshold' => $alert->threshold,
+                    'alert_id' => $alertId,
+                    'metric' => $alertMetric,
+                    'condition' => $alertCondition,
+                    'threshold' => $alertThreshold,
                     'actual_value' => $history->value,
                     'resolved_at' => $history->resolved_at?->toIso8601String(),
                     'duration' => $history->resolved_at
@@ -177,7 +182,7 @@ class IncidentTimelineService
                         : null,
                 ],
                 'actions' => [
-                    ['label' => 'View Alert', 'action' => 'view_alert', 'params' => ['id' => $alert->id]],
+                    ['label' => 'View Alert', 'action' => 'view_alert', 'params' => ['id' => $alertId]],
                 ],
             ];
         });

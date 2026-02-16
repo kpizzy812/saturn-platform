@@ -11,6 +11,19 @@ use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property int $team_id
+ * @property string $name
+ * @property string $url
+ * @property string $secret
+ * @property array $events
+ * @property bool $enabled
+ * @property \Carbon\Carbon|null $last_triggered_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class TeamWebhook extends Model
 {
     use Auditable, HasFactory, LogsActivity;

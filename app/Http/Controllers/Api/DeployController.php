@@ -392,7 +392,7 @@ class DeployController extends Controller
                 }
                 $result = $this->deploy_resource($resource, $force, $pr);
                 if (isset($result['status']) && $result['status'] === 429) {
-                    return response()->json(['message' => $result['message']], 429)->header('Retry-After', 60);
+                    return response()->json(['message' => $result['message']], 429)->header('Retry-After', '60');
                 }
                 ['message' => $return_message, 'deployment_uuid' => $deployment_uuid] = $result;
                 if ($deployment_uuid) {
@@ -438,7 +438,7 @@ class DeployController extends Controller
             foreach ($applications as $resource) {
                 $result = $this->deploy_resource($resource, $force);
                 if (isset($result['status']) && $result['status'] === 429) {
-                    return response()->json(['message' => $result['message']], 429)->header('Retry-After', 60);
+                    return response()->json(['message' => $result['message']], 429)->header('Retry-After', '60');
                 }
                 ['message' => $return_message, 'deployment_uuid' => $deployment_uuid] = $result;
                 if ($deployment_uuid) {

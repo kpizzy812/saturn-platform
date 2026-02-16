@@ -85,11 +85,9 @@ class ScheduledTaskJob implements ShouldQueue
     {
         if ($this->resource instanceof Application) {
             return $this->resource->destination->server->settings->server_timezone;
-        } elseif ($this->resource instanceof Service) {
-            return $this->resource->server->settings->server_timezone;
         }
 
-        return 'UTC';
+        return $this->resource->server->settings->server_timezone;
     }
 
     public function handle(): void
@@ -181,7 +179,7 @@ class ScheduledTaskJob implements ShouldQueue
             ScheduledTaskDone::dispatch($this->team->id);
             if ($this->task_log) {
                 $finishedAt = Carbon::now();
-                $duration = round($startTime->floatDiffInSeconds($finishedAt), 2);
+                $duration = round($startTime->diffInSeconds($finishedAt), 2);
 
                 $this->task_log->update([
                     'finished_at' => $finishedAt->toImmutable(),

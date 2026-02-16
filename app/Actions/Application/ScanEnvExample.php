@@ -28,9 +28,6 @@ class ScanEnvExample
         ];
 
         $server = $application->destination->server;
-        if (! $server) {
-            return $result;
-        }
 
         $envFiles = ['.env.example', '.env.sample', '.env.template'];
         $content = null;

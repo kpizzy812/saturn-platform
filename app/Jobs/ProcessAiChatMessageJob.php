@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Events\AiChatMessageReceived;
+use App\Models\AiChatMessage;
 use App\Models\AiChatSession;
 use App\Services\AI\Chat\AiChatService;
 use Illuminate\Bus\Queueable;
@@ -61,6 +62,7 @@ class ProcessAiChatMessageJob implements ShouldQueue
                 'role' => 'assistant',
                 'content' => 'Sorry, I encountered an error while processing your message. Please try again.',
             ]);
+            assert($errorMessage instanceof AiChatMessage);
 
             broadcast(new AiChatMessageReceived($this->session, $errorMessage));
 

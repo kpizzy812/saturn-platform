@@ -73,7 +73,7 @@ class MigrationDiffAction
             'mode' => 'clone',
             'summary' => [
                 'action' => 'create_new',
-                'resource_name' => $resource->name ?? 'unnamed',
+                'resource_name' => $resource->getAttribute('name') ?? 'unnamed',
                 'resource_type' => class_basename($resource),
                 'env_vars_count' => $envVarCount,
                 'persistent_volumes_count' => $volumeCount,
@@ -95,9 +95,9 @@ class MigrationDiffAction
             'mode' => 'promote',
             'summary' => [
                 'action' => 'update_existing',
-                'resource_name' => $target->name ?? 'unnamed',
+                'resource_name' => $target->getAttribute('name') ?? 'unnamed',
                 'resource_type' => class_basename($target),
-                'target_id' => $target->id,
+                'target_id' => $target->getAttribute('id'),
             ],
             'attribute_diff' => $this->diffAttributes($source, $target),
         ];
@@ -121,9 +121,9 @@ class MigrationDiffAction
             'mode' => $configOnly ? 'config_only' : 'update_existing',
             'summary' => [
                 'action' => 'update_existing',
-                'resource_name' => $target->name ?? 'unnamed',
+                'resource_name' => $target->getAttribute('name') ?? 'unnamed',
                 'resource_type' => class_basename($target),
-                'target_id' => $target->id,
+                'target_id' => $target->getAttribute('id'),
             ],
             'attribute_diff' => $configOnly
                 ? $this->diffSafeAttributes($source, $target)
@@ -273,7 +273,7 @@ class MigrationDiffAction
      */
     protected function findExistingTarget(Model $resource, Environment $targetEnv): ?Model
     {
-        $name = $resource->name ?? null;
+        $name = $resource->getAttribute('name');
         if (! $name) {
             return null;
         }

@@ -354,7 +354,7 @@ class DeploymentApprovalController extends Controller
                 'application_name' => $approval->deployment?->application?->name,
                 'environment_name' => $approval->deployment?->application?->environment?->name,
                 'requested_by' => $approval->requestedBy?->email,
-                'requested_at' => $approval->created_at?->toIso8601String(),
+                'requested_at' => $approval->created_at->toIso8601String(),
             ];
         });
 
@@ -419,7 +419,7 @@ class DeploymentApprovalController extends Controller
                 'environment_name' => $approval->deployment?->application?->environment?->name,
                 'project_name' => $approval->deployment?->application?->environment?->project?->name,
                 'requested_by' => $approval->requestedBy?->email,
-                'requested_at' => $approval->created_at?->toIso8601String(),
+                'requested_at' => $approval->created_at->toIso8601String(),
             ];
         });
 
@@ -501,7 +501,7 @@ class DeploymentApprovalController extends Controller
             'requested_by' => $approval->requestedBy?->email,
             'approved_by' => $approval->approvedBy?->email,
             'comment' => $approval->comment,
-            'requested_at' => $approval->created_at?->toIso8601String(),
+            'requested_at' => $approval->created_at->toIso8601String(),
             'decided_at' => $approval->approved_at?->toIso8601String(),
         ]);
     }

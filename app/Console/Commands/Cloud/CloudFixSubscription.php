@@ -60,7 +60,7 @@ class CloudFixSubscription extends Command
             $stripeInvoicePaid = $team->subscription->stripe_invoice_paid;
             $stripeCustomerId = $team->subscription->stripe_customer_id;
 
-            if (! $stripeSubscriptionId && str($stripeInvoicePaid)->lower() != 'past_due') {
+            if (! $stripeSubscriptionId && str((string) $stripeInvoicePaid)->lower() != 'past_due') {
                 fputcsv($out, [
                     $team->id,
                     $stripeInvoicePaid,

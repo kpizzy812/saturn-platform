@@ -42,7 +42,28 @@ use Spatie\Activitylog\Traits\LogsActivity;
     ],
 )]
 /**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string|null $password
+ * @property string|null $pending_email
+ * @property string|null $email_change_code
+ * @property \Carbon\Carbon|null $email_change_code_expires_at
+ * @property \Carbon\Carbon|null $email_verified_at
+ * @property bool $force_password_reset
+ * @property bool $show_boarding
+ * @property bool $marketing_emails
+ * @property bool $is_superadmin
+ * @property string|null $platform_role
+ * @property string $status
+ * @property \Carbon\Carbon|null $suspended_at
+ * @property int|null $suspended_by
+ * @property string|null $suspension_reason
+ * @property \Carbon\Carbon|null $last_login_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Team> $teams
+ * @property-read \App\Models\TeamUser|null $pivot
  */
 class User extends Authenticatable implements SendsEmail
 {
@@ -147,7 +168,7 @@ class User extends Authenticatable implements SendsEmail
                     }
 
                     if ($user_alone_in_team) {
-                        static::finalizeTeamDeletion($user, $team);
+                        self::finalizeTeamDeletion($user, $team);
                         // Delete any pending team invitations for this user
                         TeamInvitation::whereEmail($user->email)->delete();
 
@@ -159,7 +180,9 @@ class User extends Authenticatable implements SendsEmail
 
                     if ($userRole === 'owner') {
                         $found_other_owner_or_admin = $team->members->filter(function ($member) use ($user) {
-                            return ($member->pivot->role === 'owner' || $member->pivot->role === 'admin') && $member->id !== $user->id;
+                            $role = $member->pivot?->getAttribute('role');
+
+                            return ($role === 'owner' || $role === 'admin') && $member->id !== $user->id;
                         })->first();
 
                         if ($found_other_owner_or_admin) {
@@ -168,15 +191,15 @@ class User extends Authenticatable implements SendsEmail
                             continue;
                         } else {
                             $found_other_member_who_is_not_owner = $team->members->filter(function ($member) {
-                                return $member->pivot->role === 'member';
+                                return $member->pivot?->getAttribute('role') === 'member';
                             })->first();
 
                             if ($found_other_member_who_is_not_owner) {
-                                $found_other_member_who_is_not_owner->pivot->role = 'owner';
+                                $found_other_member_who_is_not_owner->pivot->setAttribute('role', 'owner');
                                 $found_other_member_who_is_not_owner->pivot->save();
                                 $team->members()->detach($user->id);
                             } else {
-                                static::finalizeTeamDeletion($user, $team);
+                                self::finalizeTeamDeletion($user, $team);
                             }
 
                             continue;
@@ -501,7 +524,7 @@ class User extends Authenticatable implements SendsEmail
 
         $is_part_of_root_team = $teams->where('id', 0)->first();
         $is_admin_of_root_team = $is_part_of_root_team &&
-            ($is_part_of_root_team->pivot->role === 'admin' || $is_part_of_root_team->pivot->role === 'owner');
+            ($is_part_of_root_team->pivot?->getAttribute('role') === 'admin' || $is_part_of_root_team->pivot?->getAttribute('role') === 'owner');
 
         if ($is_part_of_root_team && $is_admin_of_root_team) {
             return true;
@@ -564,7 +587,7 @@ class User extends Authenticatable implements SendsEmail
     public function role()
     {
         if (data_get($this, 'pivot')) {
-            return $this->pivot->role;
+            return $this->pivot?->getAttribute('role');
         }
         $user = Auth::user()->teams->where('id', currentTeam()->id)->first();
 
@@ -582,7 +605,7 @@ class User extends Authenticatable implements SendsEmail
             return false;
         }
 
-        $role = $team->pivot->role ?? null;
+        $role = $team->pivot?->getAttribute('role');
 
         return $role === 'admin' || $role === 'owner';
     }

@@ -465,8 +465,8 @@ class TeamController extends Controller
                     'Environment' => 'environment',
                     default => strtolower(class_basename($subject)),
                 };
-                $resourceName = $subject->name ?? $subject->uuid ?? 'Unknown';
-                $resourceId = (string) $subject->id;
+                $resourceName = $subject->getAttribute('name') ?? $subject->getAttribute('uuid') ?? 'Unknown';
+                $resourceId = (string) $subject->getAttribute('id');
             }
 
             // Map event to action type
@@ -489,9 +489,9 @@ class TeamController extends Controller
                 'action' => $mappedAction,
                 'description' => $activity->description,
                 'user' => [
-                    'name' => $causer->name ?? 'System',
-                    'email' => $causer->email ?? 'system@saturn.local',
-                    'avatar' => $causer->avatar ? '/storage/'.$causer->avatar : null,
+                    'name' => $causer?->getAttribute('name') ?? 'System',
+                    'email' => $causer?->getAttribute('email') ?? 'system@saturn.local',
+                    'avatar' => $causer?->getAttribute('avatar') ? '/storage/'.$causer->getAttribute('avatar') : null,
                 ],
                 'resource' => $resourceType ? [
                     'type' => $resourceType,

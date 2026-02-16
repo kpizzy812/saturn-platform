@@ -82,7 +82,7 @@ class ApplicationComposeParser
         $this->commit = $commit;
         $this->uuid = data_get($resource, 'uuid');
         $this->server = data_get($resource, 'destination.server');
-        $this->fileStorages = $resource->fileStorages();
+        $this->fileStorages = $resource->fileStorages()->get();
         $this->allMagicEnvironments = collect([]);
     }
 
@@ -220,7 +220,7 @@ class ApplicationComposeParser
         $fqdn = $this->resource->fqdn;
 
         if (blank($this->resource->fqdn)) {
-            $fqdn = generateFqdn(server: $this->server, random: "{$this->uuid}", parserVersion: $this->resource->compose_parsing_version);
+            $fqdn = generateFqdn(server: $this->server, random: "{$this->uuid}", parserVersion: (int) $this->resource->compose_parsing_version);
         }
 
         if ($value && get_class($value) === \Illuminate\Support\Stringable::class && $value->startsWith('/')) {
@@ -311,7 +311,7 @@ class ApplicationComposeParser
         $serviceName = str($serviceName)->replace('-', '_')->replace('.', '_')->value();
 
         // Generate BOTH FQDN & URL
-        $fqdn = generateFqdn(server: $this->server, random: "$originalServiceName-{$this->uuid}", parserVersion: $this->resource->compose_parsing_version);
+        $fqdn = generateFqdn(server: $this->server, random: "$originalServiceName-{$this->uuid}", parserVersion: (int) $this->resource->compose_parsing_version);
         $url = generateUrl(server: $this->server, random: "$originalServiceName-{$this->uuid}");
 
         // Strip scheme for environment variable values
@@ -468,7 +468,7 @@ class ApplicationComposeParser
         );
 
         // Add SATURN_FQDN & SATURN_URL
-        if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
+        if (! $isDatabase && $fqdns->count() > 0) {
             $this->addFqdnEnvironmentVariables($saturnEnvironments, $fqdns);
         }
 
@@ -573,7 +573,7 @@ class ApplicationComposeParser
             $parsed = parseDockerVolumeString($volume);
             $source = $parsed['source'];
             $target = $parsed['target'];
-            $foundConfig = $this->fileStorages->whereMountPath($target)->first();
+            $foundConfig = $this->fileStorages->where('mount_path', $target)->first();
 
             if (sourceIsLocal($source)) {
                 $type = str('bind');
@@ -609,12 +609,12 @@ class ApplicationComposeParser
         $this->validateVolumeSource($source);
         $this->validateVolumeTarget($target);
 
-        $foundConfig = $this->fileStorages->whereMountPath($target)->first();
+        $foundConfig = $this->fileStorages->where('mount_path', $target)->first();
         if ($foundConfig) {
             $content = data_get($foundConfig, 'content') ?: $content;
             $isDirectory = data_get($foundConfig, 'is_directory');
         } else {
-            if ((is_null($isDirectory) || ! $isDirectory) && is_null($content)) {
+            if (! $isDirectory && is_null($content)) {
                 $isDirectory = true;
             }
         }
@@ -1001,7 +1001,7 @@ class ApplicationComposeParser
             $this->generateDockerComposeServiceUrls($domains, $serviceName);
         }
 
-        return $fqdns instanceof Collection ? $fqdns : collect([]);
+        return $fqdns;
     }
 
     private function processPreviewFqdns(Collection $fqdns, string $changedServiceName): Collection
@@ -1029,7 +1029,7 @@ class ApplicationComposeParser
             $random = new Cuid2;
             $previewFqdn = str_replace('{{random}}', $random, $template);
             $previewFqdn = str_replace('{{domain}}', $host, $previewFqdn);
-            $previewFqdn = str_replace('{{pr_id}}', $this->pullRequestId, $previewFqdn);
+            $previewFqdn = str_replace('{{pr_id}}', (string) $this->pullRequestId, $previewFqdn);
             $previewFqdn = "$schema://$previewFqdn{$port}";
             $preview->fqdn = $previewFqdn;
             $preview->save();
@@ -1138,7 +1138,7 @@ class ApplicationComposeParser
             }
         }
 
-        if (! $isDatabase && $fqdns instanceof Collection && $fqdns->count() > 0) {
+        if (! $isDatabase && $fqdns->count() > 0) {
             $serviceLabels = $this->generateProxyLabels($serviceLabels, $fqdns, $serviceName, $image);
         }
 

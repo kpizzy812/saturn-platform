@@ -332,19 +332,17 @@ class RedisMetricsService
                 return ['success' => false, 'error' => 'Unsupported key type'];
         }
 
-        if ($command) {
-            $result = trim(instant_remote_process([$command], $server, false) ?? '');
+        $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
-            // Check for errors
-            if (stripos($result, 'ERR') !== false || stripos($result, 'error') !== false) {
-                return ['success' => false, 'error' => $result];
-            }
+        // Check for errors
+        if (stripos($result, 'ERR') !== false || stripos($result, 'error') !== false) {
+            return ['success' => false, 'error' => $result];
+        }
 
-            // Set TTL if specified
-            if ($ttl > 0) {
-                $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning EXPIRE {$escapedKey} {$ttl} 2>/dev/null";
-                instant_remote_process([$ttlCmd], $server, false);
-            }
+        // Set TTL if specified
+        if ($ttl > 0) {
+            $ttlCmd = "docker exec {$containerName} redis-cli {$authFlag} --no-auth-warning EXPIRE {$escapedKey} {$ttl} 2>/dev/null";
+            instant_remote_process([$ttlCmd], $server, false);
         }
 
         return ['success' => true, 'message' => "Key '{$keyName}' updated successfully"];

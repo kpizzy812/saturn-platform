@@ -9,6 +9,27 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
+ * @property int $id
+ * @property string $uuid
+ * @property string $name
+ * @property string|null $organization
+ * @property string|null $api_url
+ * @property string|null $html_url
+ * @property string|null $custom_user
+ * @property int|null $custom_port
+ * @property int|null $app_id
+ * @property int|null $installation_id
+ * @property string|null $client_id
+ * @property string|null $client_secret
+ * @property string|null $webhook_secret
+ * @property bool $is_public
+ * @property bool $is_system_wide
+ * @property int $team_id
+ * @property int|null $private_key_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ * @property-read string|null $type
+ * @property-read PrivateKey|null $privateKey
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
  */
 class GithubApp extends BaseModel
@@ -40,7 +61,6 @@ class GithubApp extends BaseModel
     protected $casts = [
         'is_public' => 'boolean',
         'is_system_wide' => 'boolean',
-        'type' => 'string',
         // Security: Encrypt secrets at rest
         'client_secret' => 'encrypted',
         'webhook_secret' => 'encrypted',
@@ -126,7 +146,7 @@ class GithubApp extends BaseModel
         return $this->belongsTo(PrivateKey::class);
     }
 
-    public function type(): Attribute
+    protected function type(): Attribute
     {
         return Attribute::make(
             get: function () {

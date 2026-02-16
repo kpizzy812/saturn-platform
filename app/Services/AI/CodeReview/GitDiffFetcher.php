@@ -54,7 +54,8 @@ class GitDiffFetcher
      */
     public function fetch(Application $application, string $commitSha, ?string $baseCommit = null): DiffResult
     {
-        $source = $application->source;
+        $sourceModel = $application->source;
+        $source = $sourceModel instanceof GithubApp ? $sourceModel : null;
 
         // Get repository path (owner/repo format)
         $repository = $this->resolveRepository($application);
