@@ -74,8 +74,8 @@ const defaultProps = {
         archived_at: null,
     },
     environments: [
-        { id: 1, uuid: 'env-uuid-1', name: 'production', created_at: '2025-01-01T00:00:00Z', is_empty: false },
-        { id: 2, uuid: 'env-uuid-2', name: 'staging', created_at: '2025-01-02T00:00:00Z', is_empty: true },
+        { id: 1, uuid: 'env-uuid-1', name: 'production', created_at: '2025-01-01T00:00:00Z', is_empty: false, default_git_branch: 'main' },
+        { id: 2, uuid: 'env-uuid-2', name: 'staging', created_at: '2025-01-02T00:00:00Z', is_empty: true, default_git_branch: null },
     ],
     sharedVariables: [
         { id: 1, key: 'API_KEY', value: 'secret123', is_shown_once: false },
@@ -107,7 +107,6 @@ const defaultProps = {
     },
     deploymentDefaults: {
         default_build_pack: null,
-        default_git_branch: null,
         default_auto_deploy: null,
         default_force_https: null,
         default_preview_deployments: null,
@@ -148,8 +147,9 @@ describe('ProjectSettings', () => {
     it('renders environments list', () => {
         render(<ProjectSettings {...defaultProps} />);
 
-        expect(screen.getByText('production')).toBeInTheDocument();
-        expect(screen.getByText('staging')).toBeInTheDocument();
+        // "production" and "staging" appear in both Environments section and per-env branches
+        expect(screen.getAllByText('production').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('staging').length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText('has resources')).toBeInTheDocument();
     });
 
@@ -271,11 +271,13 @@ describe('ProjectSettings', () => {
         render(<ProjectSettings {...defaultProps} />);
 
         expect(screen.getByText('Build Pack')).toBeInTheDocument();
-        expect(screen.getByText('Git Branch')).toBeInTheDocument();
         expect(screen.getByText('Auto Deploy')).toBeInTheDocument();
         expect(screen.getByText('Force HTTPS')).toBeInTheDocument();
         expect(screen.getByText('Preview Deployments')).toBeInTheDocument();
         expect(screen.getByText('Auto Rollback on Failure')).toBeInTheDocument();
+        // Per-environment branches
+        expect(screen.getByText('Git Branch per Environment')).toBeInTheDocument();
+        expect(screen.getByText('Save Branches')).toBeInTheDocument();
     });
 
     it('renders export and clone buttons', () => {

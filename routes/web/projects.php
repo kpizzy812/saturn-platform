@@ -222,6 +222,7 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
         'name' => $env->name,
         'created_at' => $env->created_at,
         'is_empty' => $env->isEmpty(),
+        'default_git_branch' => $env->default_git_branch,
     ]);
 
     // Project-scoped shared variables
@@ -282,10 +283,9 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
     $quotaService = new \App\Services\ProjectQuotaService;
     $quotas = $quotaService->getUsage($project);
 
-    // Deployment defaults
+    // Deployment defaults (git branch is per-environment, not project-level)
     $deploymentDefaults = [
         'default_build_pack' => $project->settings?->default_build_pack,
-        'default_git_branch' => $project->settings?->default_git_branch,
         'default_auto_deploy' => $project->settings?->default_auto_deploy,
         'default_force_https' => $project->settings?->default_force_https,
         'default_preview_deployments' => $project->settings?->default_preview_deployments,
@@ -850,7 +850,6 @@ Route::patch('/projects/{uuid}/settings/deployment-defaults', function (Request 
 
     $request->validate([
         'default_build_pack' => 'nullable|string|in:nixpacks,dockerfile,dockerimage,dockercompose,static',
-        'default_git_branch' => 'nullable|string|max:255',
         'default_auto_deploy' => 'nullable|boolean',
         'default_force_https' => 'nullable|boolean',
         'default_preview_deployments' => 'nullable|boolean',
@@ -858,12 +857,34 @@ Route::patch('/projects/{uuid}/settings/deployment-defaults', function (Request 
     ]);
 
     $project->settings()->update($request->only([
-        'default_build_pack', 'default_git_branch', 'default_auto_deploy',
+        'default_build_pack', 'default_auto_deploy',
         'default_force_https', 'default_preview_deployments', 'default_auto_rollback',
     ]));
 
     return redirect()->back()->with('success', 'Deployment defaults updated.');
 })->name('projects.settings.deployment-defaults');
+
+// Update per-environment git branches
+Route::patch('/projects/{uuid}/settings/environment-branches', function (Request $request, string $uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $request->validate([
+        'branches' => 'required|array',
+        'branches.*.environment_id' => 'required|integer',
+        'branches.*.branch' => 'nullable|string|max:255',
+    ]);
+
+    foreach ($request->input('branches', []) as $item) {
+        $env = $project->environments()->where('id', $item['environment_id'])->first();
+        if ($env) {
+            $env->update(['default_git_branch' => $item['branch'] ?: null]);
+        }
+    }
+
+    return redirect()->back()->with('success', 'Environment branches updated.');
+})->name('projects.settings.environment-branches');
 
 // Update default server
 Route::patch('/projects/{uuid}/settings/default-server', function (Request $request, string $uuid) {

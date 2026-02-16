@@ -39,6 +39,7 @@ interface Environment {
     name: string;
     created_at: string;
     is_empty: boolean;
+    default_git_branch: string | null;
 }
 
 interface SharedVariable {
@@ -83,7 +84,6 @@ interface QuotaItem {
 
 interface DeploymentDefaults {
     default_build_pack: string | null;
-    default_git_branch: string | null;
     default_auto_deploy: boolean | null;
     default_force_https: boolean | null;
     default_preview_deployments: boolean | null;
@@ -876,7 +876,7 @@ export default function ProjectSettings({
                 <ResourceLimitsSection projectUuid={project.uuid} quotas={quotas} />
 
                 {/* 8. Default Deployment Settings */}
-                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} />
+                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} environments={environments} />
 
                 {/* 9. Project Info */}
                 <Card className="mb-6">
@@ -1229,19 +1229,44 @@ const BUILD_PACK_OPTIONS = [
     { value: 'static', label: 'Static' },
 ];
 
-function DeploymentDefaultsSection({ projectUuid, defaults }: { projectUuid: string; defaults: DeploymentDefaults }) {
+function DeploymentDefaultsSection({ projectUuid, defaults, environments }: { projectUuid: string; defaults: DeploymentDefaults; environments: Environment[] }) {
     const { data, setData, patch, processing } = useForm({
         default_build_pack: defaults.default_build_pack ?? '',
-        default_git_branch: defaults.default_git_branch ?? '',
         default_auto_deploy: defaults.default_auto_deploy ?? false,
         default_force_https: defaults.default_force_https ?? false,
         default_preview_deployments: defaults.default_preview_deployments ?? false,
         default_auto_rollback: defaults.default_auto_rollback ?? false,
     });
 
+    // Per-environment branch state
+    const [branches, setBranches] = useState<Record<number, string>>(
+        Object.fromEntries(environments.map(env => [env.id, env.default_git_branch ?? '']))
+    );
+    const [savingBranches, setSavingBranches] = useState(false);
+
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         patch(`/projects/${projectUuid}/settings/deployment-defaults`, { preserveScroll: true });
+    };
+
+    const handleSaveBranches = async () => {
+        setSavingBranches(true);
+        try {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const token = csrfMeta?.getAttribute('content') || '';
+            await fetch(`/projects/${projectUuid}/settings/environment-branches`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({
+                    branches: Object.entries(branches).map(([envId, branch]) => ({
+                        environment_id: Number(envId),
+                        branch: branch || null,
+                    })),
+                }),
+            });
+        } finally {
+            setSavingBranches(false);
+        }
     };
 
     return (
@@ -1255,25 +1280,14 @@ function DeploymentDefaultsSection({ projectUuid, defaults }: { projectUuid: str
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSave} className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label className="block text-sm font-medium text-foreground">Build Pack</label>
-                            <Select
-                                value={data.default_build_pack}
-                                onChange={(e) => setData('default_build_pack', e.target.value)}
-                                options={BUILD_PACK_OPTIONS}
-                                className="mt-1"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground">Git Branch</label>
-                            <Input
-                                value={data.default_git_branch}
-                                onChange={(e) => setData('default_git_branch', e.target.value)}
-                                placeholder="main"
-                                className="mt-1"
-                            />
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground">Build Pack</label>
+                        <Select
+                            value={data.default_build_pack}
+                            onChange={(e) => setData('default_build_pack', e.target.value)}
+                            options={BUILD_PACK_OPTIONS}
+                            className="mt-1 max-w-xs"
+                        />
                     </div>
 
                     <div className="space-y-3">
@@ -1302,6 +1316,33 @@ function DeploymentDefaultsSection({ projectUuid, defaults }: { projectUuid: str
                         </Button>
                     </div>
                 </form>
+
+                {/* Per-environment Git Branches */}
+                <div className="mt-6 border-t border-border pt-4">
+                    <p className="mb-1 text-sm font-medium text-foreground">Git Branch per Environment</p>
+                    <p className="mb-3 text-xs text-foreground-muted">
+                        Default branch used when creating new applications in each environment
+                    </p>
+                    <div className="space-y-3">
+                        {environments.map((env) => (
+                            <div key={env.id} className="flex items-center gap-3">
+                                <span className="w-32 shrink-0 text-sm font-medium text-foreground">{env.name}</span>
+                                <Input
+                                    value={branches[env.id] ?? ''}
+                                    onChange={(e) => setBranches({ ...branches, [env.id]: e.target.value })}
+                                    placeholder={env.name === 'production' ? 'main' : env.name === 'uat' ? 'staging' : 'dev'}
+                                    className="max-w-xs"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                        <Button type="button" onClick={handleSaveBranches} disabled={savingBranches}>
+                            <Save className="mr-2 h-4 w-4" />
+                            {savingBranches ? 'Saving...' : 'Save Branches'}
+                        </Button>
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );

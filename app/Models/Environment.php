@@ -44,6 +44,7 @@ class Environment extends BaseModel
         'requires_approval',
         'project_id',
         'default_server_id',
+        'default_git_branch',
     ];
 
     protected $casts = [
