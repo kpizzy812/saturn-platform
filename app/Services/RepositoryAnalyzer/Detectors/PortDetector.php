@@ -111,7 +111,7 @@ class PortDetector
      */
     private function detectForLanguage(string $appPath, string $language): ?int
     {
-        if (! isset(self::PORT_FILES[$language]) || ! isset(self::PORT_PATTERNS[$language])) {
+        if (! isset(self::PORT_FILES[$language])) {
             return null;
         }
 

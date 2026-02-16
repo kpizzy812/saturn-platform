@@ -117,10 +117,10 @@ class ServerSelectionService
         $health = $server->latestHealthCheck;
 
         // Default values when no health data is available
-        $cpuUsage = $health?->cpu_usage_percent ?? 0;
-        $memoryUsage = $health?->memory_usage_percent ?? 0;
-        $diskUsage = $health?->disk_usage_percent ?? 0;
-        $containerCounts = $health?->container_counts ?? [];
+        $cpuUsage = $health->cpu_usage_percent ?? 0;
+        $memoryUsage = $health->memory_usage_percent ?? 0;
+        $diskUsage = $health->disk_usage_percent ?? 0;
+        $containerCounts = $health->container_counts ?? [];
         $runningContainers = $containerCounts['running'] ?? 0;
         $queuedDeployments = $this->getQueuedDeployments($server);
 

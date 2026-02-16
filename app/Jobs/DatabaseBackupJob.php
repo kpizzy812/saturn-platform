@@ -828,8 +828,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         Log::channel('scheduled-errors')->error('DatabaseBackup permanently failed', [
             'job' => 'DatabaseBackupJob',
             'backup_id' => $this->backup->uuid,
-            'database' => $this->database?->name ?? 'unknown',
-            'database_type' => get_class($this->database ?? new \stdClass),
+            'database' => $this->database->name ?? 'unknown',
+            'database_type' => get_class($this->database),
             'server' => $this->server?->name ?? 'unknown',
             'total_attempts' => $this->attempts(),
             'error' => $exception?->getMessage(),
@@ -850,7 +850,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
         // Notify team about permanent failure
         if ($this->team) {
-            $databaseName = $log?->database_name ?? 'unknown';
+            $databaseName = $log->database_name ?? 'unknown';
             $output = $this->backup_output ?? $exception?->getMessage() ?? 'Unknown error';
             $this->team->notify(new BackupFailed($this->backup, $this->database, $output, $databaseName));
         }

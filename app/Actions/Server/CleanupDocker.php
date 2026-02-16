@@ -164,11 +164,11 @@ class CleanupDocker
                 ->filter()
                 ->map(function ($line) {
                     $parts = explode('#', $line);
-                    $imageRef = $parts[0] ?? '';
+                    $imageRef = $parts[0];
                     $tagParts = explode(':', $imageRef);
 
                     return [
-                        'repository' => $tagParts[0] ?? '',
+                        'repository' => $tagParts[0],
                         'tag' => $tagParts[1] ?? '',
                         'created_at' => $parts[1] ?? '',
                         'image_ref' => $imageRef,

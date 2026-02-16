@@ -162,7 +162,7 @@ class ApplicationDeploymentQueue extends Model
             return null;
         }
 
-        return collect(json_decode($this->logs))->where('name', $name)->first()?->output ?? null;
+        return collect(json_decode($this->logs))->where('name', $name)->first()?->output;
     }
 
     public function getHorizonJobStatus()
@@ -252,7 +252,7 @@ class ApplicationDeploymentQueue extends Model
                 ->lockForUpdate()
                 ->first(['order']);
 
-            $order = ($lastEntry?->order ?? 0) + 1;
+            $order = ($lastEntry->order ?? 0) + 1;
 
             // Insert new log entry - O(1) operation
             DeploymentLogEntry::create([

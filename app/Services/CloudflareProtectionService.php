@@ -37,7 +37,7 @@ class CloudflareProtectionService
             return $callback($this->client());
         } catch (\Illuminate\Http\Client\RequestException $e) {
             $response = $e->response;
-            $status = $response?->status() ?? 'unknown';
+            $status = $response->status();
             $cfError = $response?->json('errors.0.message') ?? $e->getMessage();
 
             throw new \RuntimeException("Cloudflare API error (HTTP {$status}): {$cfError}");

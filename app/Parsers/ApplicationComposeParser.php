@@ -385,7 +385,7 @@ class ApplicationComposeParser
         }
 
         if ($serviceExists) {
-            $domains = collect(json_decode(data_get($this->resource, 'docker_compose_domains'))) ?? collect([]);
+            $domains = collect(json_decode(data_get($this->resource, 'docker_compose_domains')));
             $domainExists = data_get($domains->get($serviceName), 'domain');
 
             $domainValue = $port ? $urlWithPort : $url;
@@ -977,9 +977,9 @@ class ApplicationComposeParser
     {
         if ($this->isPullRequest) {
             $preview = $this->resource->previews()->find($this->previewId);
-            $domains = collect(json_decode(data_get($preview, 'docker_compose_domains'))) ?? collect([]);
+            $domains = collect(json_decode(data_get($preview, 'docker_compose_domains')));
         } else {
-            $domains = collect(json_decode(data_get($this->resource, 'docker_compose_domains'))) ?? collect([]);
+            $domains = collect(json_decode(data_get($this->resource, 'docker_compose_domains')));
         }
 
         if ($this->resource->build_pack !== 'dockercompose') {

@@ -133,7 +133,7 @@ class AuditLog extends Model
 
         // Extract resource information
         $resourceType = $resource ? get_class($resource) : null;
-        $resourceId = $resource?->id ?? null;
+        $resourceId = $resource->id ?? null;
         $resourceName = null;
 
         // Try to get a human-readable name from the resource

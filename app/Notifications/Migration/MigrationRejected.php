@@ -43,11 +43,11 @@ class MigrationRejected extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $rejector = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $rejector = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
         $reason = $this->migration->rejection_reason ?? 'No reason provided';
 
         return (new MailMessage)
@@ -66,11 +66,11 @@ class MigrationRejected extends Notification implements ShouldQueue
     public function toDiscord(): DiscordMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $rejector = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $rejector = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
         $reason = $this->migration->rejection_reason ?? 'No reason provided';
 
         $message = new DiscordMessage(
@@ -85,11 +85,11 @@ class MigrationRejected extends Notification implements ShouldQueue
     public function toTelegram(): array
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $rejector = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $rejector = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
         $reason = $this->migration->rejection_reason ?? 'No reason provided';
 
         return [
@@ -106,11 +106,11 @@ class MigrationRejected extends Notification implements ShouldQueue
     public function toSlack(): SlackMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $rejector = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $rejector = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
         $reason = $this->migration->rejection_reason ?? 'No reason provided';
 
         return new SlackMessage(

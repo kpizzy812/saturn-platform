@@ -54,7 +54,7 @@ class BackupVerificationJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
 
-            $server = $database->destination?->server ?? $database->server ?? null;
+            $server = $database->destination->server ?? $database->server ?? null;
             if (! $server) {
                 $this->markFailed('Server not found');
 

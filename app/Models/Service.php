@@ -362,7 +362,7 @@ class Service extends BaseModel
 
         // Parse the aggregated "status:health" string
         $parts = explode(':', $aggregatedStatus);
-        $status = $parts[0] ?? null;
+        $status = $parts[0];
         $health = $parts[1] ?? null;
 
         if ($excludedOnly) {

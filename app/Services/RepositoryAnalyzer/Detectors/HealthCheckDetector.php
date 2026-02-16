@@ -218,7 +218,7 @@ class HealthCheckDetector
         $languages = $language ? [$language] : array_keys(self::ROUTE_PATTERNS);
 
         foreach ($languages as $lang) {
-            if (! isset(self::ROUTE_PATTERNS[$lang]) || ! isset(self::ROUTE_FILES[$lang])) {
+            if (! isset(self::ROUTE_PATTERNS[$lang])) {
                 continue;
             }
 

@@ -1347,7 +1347,7 @@ class CommandExecutor
             if ($byApp->isNotEmpty()) {
                 $output .= "### Топ приложений по деплоям\n\n";
                 foreach ($byApp as $stat) {
-                    $appName = $stat->application?->name ?? 'Unknown';
+                    $appName = $stat->application->name ?? 'Unknown';
                     $appSuccess = $stat->total > 0 ? round(($stat->success / $stat->total) * 100) : 0;
                     $output .= "- **{$appName}**: {$stat->total} деплоев ({$appSuccess}% успешных)\n";
                 }

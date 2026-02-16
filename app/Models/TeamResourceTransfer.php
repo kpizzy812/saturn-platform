@@ -289,7 +289,7 @@ class TeamResourceTransfer extends Model
      */
     public function getResourceNameAttribute(): string
     {
-        return $this->transferable?->name ?? 'Unknown Resource';
+        return $this->transferable->name ?? 'Unknown Resource';
     }
 
     /**

@@ -614,8 +614,8 @@ class EnvironmentMigration extends Model
      */
     public function getMigrationDirectionAttribute(): string
     {
-        $source = $this->sourceEnvironment?->name ?? 'Unknown';
-        $target = $this->targetEnvironment?->name ?? 'Unknown';
+        $source = $this->sourceEnvironment->name ?? 'Unknown';
+        $target = $this->targetEnvironment->name ?? 'Unknown';
 
         return "{$source} → {$target}";
     }

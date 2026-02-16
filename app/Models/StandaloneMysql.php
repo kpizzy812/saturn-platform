@@ -177,10 +177,10 @@ class StandaloneMysql extends BaseModel
             set: function ($value) {
                 if (str($value)->contains('(')) {
                     $status = str($value)->before('(')->trim()->value();
-                    $health = str($value)->after('(')->before(')')->trim()->value() ?? 'unhealthy';
+                    $health = str($value)->after('(')->before(')')->trim()->value();
                 } elseif (str($value)->contains(':')) {
                     $status = str($value)->before(':')->trim()->value();
-                    $health = str($value)->after(':')->trim()->value() ?? 'unhealthy';
+                    $health = str($value)->after(':')->trim()->value();
                 } else {
                     $status = $value;
                     $health = 'unhealthy';
@@ -191,10 +191,10 @@ class StandaloneMysql extends BaseModel
             get: function ($value) {
                 if (str($value)->contains('(')) {
                     $status = str($value)->before('(')->trim()->value();
-                    $health = str($value)->after('(')->before(')')->trim()->value() ?? 'unhealthy';
+                    $health = str($value)->after('(')->before(')')->trim()->value();
                 } elseif (str($value)->contains(':')) {
                     $status = str($value)->before(':')->trim()->value();
-                    $health = str($value)->after(':')->trim()->value() ?? 'unhealthy';
+                    $health = str($value)->after(':')->trim()->value();
                 } else {
                     $status = $value;
                     $health = 'unhealthy';

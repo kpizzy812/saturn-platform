@@ -367,7 +367,7 @@ class DatabaseController extends Controller
         // Parse status into state and health
         $statusString = $database->status();
         $statusParts = explode(':', $statusString);
-        $state = $statusParts[0] ?? 'unknown';
+        $state = $statusParts[0];
         $health = $statusParts[1] ?? 'unknown';
 
         // Load environment relationship

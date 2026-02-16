@@ -132,7 +132,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
     {
         // Format: "1.2GiB / 4GiB" - get the first part
         $parts = explode('/', $value);
-        $used = trim($parts[0] ?? '0B');
+        $used = trim($parts[0]);
 
         return $this->convertToBytes($used);
     }
@@ -152,7 +152,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
         $parts = explode('/', $value);
 
         $bytes = match ($direction) {
-            'rx' => trim($parts[0] ?? '0B'),
+            'rx' => trim($parts[0]),
             'tx' => trim($parts[1] ?? '0B'),
             default => '0B',
         };

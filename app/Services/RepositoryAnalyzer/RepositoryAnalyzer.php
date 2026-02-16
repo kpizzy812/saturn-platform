@@ -59,7 +59,7 @@ class RepositoryAnalyzer
 
             // Step 3: Analyze docker-compose if present
             $dockerComposeResult = $this->dockerComposeAnalyzer->analyze($repoPath);
-            $dockerComposeServices = $dockerComposeResult['services'] ?? [];
+            $dockerComposeServices = $dockerComposeResult['services'];
 
             // Step 4: Detect CI/CD configuration (repo-level)
             $ciConfig = $this->ciConfigDetector->detect($repoPath);
@@ -121,11 +121,11 @@ class RepositoryAnalyzer
             }
 
             // Merge databases from docker-compose
-            $dockerComposeDatabases = $dockerComposeResult['databases'] ?? [];
+            $dockerComposeDatabases = $dockerComposeResult['databases'];
             $databases = array_merge($databases, $dockerComposeDatabases);
 
             // Merge external services from docker-compose
-            $dockerComposeExternalServices = $dockerComposeResult['externalServices'] ?? [];
+            $dockerComposeExternalServices = $dockerComposeResult['externalServices'];
             $services = array_merge($services, $dockerComposeExternalServices);
 
             // Deduplicate databases (e.g., if both apps need PostgreSQL)

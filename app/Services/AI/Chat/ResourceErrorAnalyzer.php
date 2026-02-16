@@ -167,7 +167,7 @@ class ResourceErrorAnalyzer
 
         // Sort by severity
         $severityOrder = ['critical' => 0, 'high' => 1, 'medium' => 2, 'low' => 3];
-        usort($issues, fn ($a, $b) => ($severityOrder[$a['severity']] ?? 99) <=> ($severityOrder[$b['severity']] ?? 99));
+        usort($issues, fn ($a, $b) => $severityOrder[$a['severity']] <=> $severityOrder[$b['severity']]);
 
         // Limit to top 20 issues
         $issues = array_slice($issues, 0, 20);

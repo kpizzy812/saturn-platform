@@ -151,7 +151,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             ]);
 
             Log::error('Database restore failed', [
-                'database' => $this->database?->name ?? 'unknown',
+                'database' => $this->database->name ?? 'unknown',
                 'execution_uuid' => $this->execution->uuid,
                 'error' => $e->getMessage(),
             ]);
@@ -444,7 +444,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             'job' => 'DatabaseRestoreJob',
             'backup_id' => $this->backup->uuid,
             'execution_uuid' => $this->execution->uuid,
-            'database' => $this->database?->name ?? 'unknown',
+            'database' => $this->database->name ?? 'unknown',
             'error' => $exception?->getMessage(),
         ]);
 

@@ -106,19 +106,7 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
 
     public function handle()
     {
-        // Defensive initialization for Collection properties to handle queue deserialization edge cases
-        $this->serviceContainerStatuses ??= collect();
-        $this->applicationContainerStatuses ??= collect();
-        $this->foundApplicationIds ??= collect();
-        $this->foundDatabaseUuids ??= collect();
-        $this->foundServiceApplicationIds ??= collect();
-        $this->foundApplicationPreviewsIds ??= collect();
-        $this->foundServiceDatabaseIds ??= collect();
-        $this->allApplicationIds ??= collect();
-        $this->allDatabaseUuids ??= collect();
-        $this->allTcpProxyUuids ??= collect();
-        $this->allServiceApplicationIds ??= collect();
-        $this->allServiceDatabaseIds ??= collect();
+        // Properties are initialized in the constructor; no need for ??= fallback
 
         // TODO: Swarm is not supported yet
         if (! $this->data) {

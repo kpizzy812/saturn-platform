@@ -43,10 +43,10 @@ class MigrationRolledBack extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         return (new MailMessage)
             ->subject("Saturn Platform: Migration Rolled Back - {$resourceName}")
@@ -62,10 +62,10 @@ class MigrationRolledBack extends Notification implements ShouldQueue
     public function toDiscord(): DiscordMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         $message = new DiscordMessage(
             title: ':rewind: Migration Rolled Back',
@@ -81,10 +81,10 @@ class MigrationRolledBack extends Notification implements ShouldQueue
     public function toTelegram(): array
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         return [
             'message' => "Saturn Platform: Migration Rolled Back\n\nResource: {$resourceName} ({$resourceType})\nProject: {$project}\nMigration: {$direction}\n\nThe original configuration has been restored.",
@@ -100,10 +100,10 @@ class MigrationRolledBack extends Notification implements ShouldQueue
     public function toSlack(): SlackMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         return new SlackMessage(
             title: 'Migration Rolled Back',

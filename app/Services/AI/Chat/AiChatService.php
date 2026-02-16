@@ -227,7 +227,7 @@ class AiChatService
         if ($firstCommand && in_array($firstCommand->action, $analysisIntents) && ! empty($commandResults)) {
             foreach ($commandResults as $result) {
                 if ($result->success && $result->data) {
-                    $intentParams = array_merge($intentParams ?? [], $result->data);
+                    $intentParams = array_merge($intentParams, $result->data);
                     break;
                 }
             }
@@ -354,7 +354,7 @@ class AiChatService
         } catch (\Throwable $e) {
             Log::error('AI Chat response generation failed', ['error' => $e->getMessage()]);
 
-            return ChatResponse::failed($e->getMessage(), $provider?->getName() ?? 'none', $provider?->getModel() ?? 'none');
+            return ChatResponse::failed($e->getMessage(), $provider->getName(), $provider->getModel());
         }
     }
 
@@ -521,7 +521,7 @@ class AiChatService
             $contextInfo = sprintf(
                 "\n\nCurrent context:\n- Resource type: %s\n- Resource name: %s\n- Resource ID: %d",
                 $session->context_type,
-                $session->context_name ?? ($resource?->name ?? 'Unknown'),
+                $session->context_name ?? ($resource->name ?? 'Unknown'),
                 $session->context_id
             );
         }
@@ -603,7 +603,7 @@ PROMPT;
         } catch (\Throwable $e) {
             Log::error('AI Chat response generation failed', ['error' => $e->getMessage()]);
 
-            return ChatResponse::failed($e->getMessage(), $provider?->getName() ?? 'none', $provider?->getModel() ?? 'none');
+            return ChatResponse::failed($e->getMessage(), $provider->getName(), $provider->getModel());
         }
     }
 
@@ -644,8 +644,8 @@ PROMPT;
         $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
         // Combine tokens from command parsing and response generation
-        $inputTokens = $response->inputTokens + ($parsedIntent?->inputTokens ?? 0);
-        $outputTokens = $response->outputTokens + ($parsedIntent?->outputTokens ?? 0);
+        $inputTokens = $response->inputTokens + ($parsedIntent->inputTokens ?? 0);
+        $outputTokens = $response->outputTokens + ($parsedIntent->outputTokens ?? 0);
 
         try {
             AiUsageLog::create([

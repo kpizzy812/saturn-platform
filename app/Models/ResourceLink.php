@@ -174,7 +174,7 @@ class ResourceLink extends Model
         if (method_exists($resource, 'team') && is_callable([$resource, 'team'])) {
             $team = $resource->team();
 
-            return $team?->id ?? data_get($resource, 'environment.project.team.id');
+            return $team->id ?? data_get($resource, 'environment.project.team.id');
         }
 
         return data_get($resource, 'environment.project.team.id');

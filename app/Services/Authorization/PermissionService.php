@@ -55,7 +55,7 @@ class PermissionService
         }
 
         // Get the team context
-        $team = $project?->team ?? currentTeam();
+        $team = $project->team ?? currentTeam();
 
         if (! $team) {
             return false;
@@ -231,7 +231,7 @@ class PermissionService
      */
     public function getUserEffectivePermissions(User $user, ?Project $project = null): array
     {
-        $team = $project?->team ?? currentTeam();
+        $team = $project->team ?? currentTeam();
 
         if (! $team) {
             return [];
@@ -262,7 +262,7 @@ class PermissionService
      */
     public function getUserEffectivePermissionsGrouped(User $user, ?Project $project = null): array
     {
-        $team = $project?->team ?? currentTeam();
+        $team = $project->team ?? currentTeam();
 
         if (! $team) {
             return [];
@@ -308,7 +308,7 @@ class PermissionService
         }
 
         // Check team-level assignment
-        $team = $project?->team ?? currentTeam();
+        $team = $project->team ?? currentTeam();
 
         if (! $team) {
             return null;

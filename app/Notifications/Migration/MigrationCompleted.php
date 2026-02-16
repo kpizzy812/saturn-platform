@@ -44,11 +44,11 @@ class MigrationCompleted extends Notification implements ShouldQueue
     {
         $source = $this->migration->source;
         $target = $this->migration->target;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
-        $targetEnv = $this->migration->targetEnvironment?->name ?? 'Unknown';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
+        $targetEnv = $this->migration->targetEnvironment->name ?? 'Unknown';
 
         return (new MailMessage)
             ->subject("Saturn Platform: Migration Completed - {$resourceName}")
@@ -65,11 +65,11 @@ class MigrationCompleted extends Notification implements ShouldQueue
     public function toDiscord(): DiscordMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
-        $targetEnv = $this->migration->targetEnvironment?->name ?? 'Unknown';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
+        $targetEnv = $this->migration->targetEnvironment->name ?? 'Unknown';
 
         $message = new DiscordMessage(
             title: ':rocket: Migration Completed',
@@ -85,11 +85,11 @@ class MigrationCompleted extends Notification implements ShouldQueue
     public function toTelegram(): array
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
-        $targetEnv = $this->migration->targetEnvironment?->name ?? 'Unknown';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
+        $targetEnv = $this->migration->targetEnvironment->name ?? 'Unknown';
 
         return [
             'message' => "Saturn Platform: Migration Completed\n\nResource: {$resourceName} ({$resourceType})\nProject: {$project}\nMigration: {$direction}\nTarget Environment: {$targetEnv}",
@@ -105,11 +105,11 @@ class MigrationCompleted extends Notification implements ShouldQueue
     public function toSlack(): SlackMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
-        $targetEnv = $this->migration->targetEnvironment?->name ?? 'Unknown';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
+        $targetEnv = $this->migration->targetEnvironment->name ?? 'Unknown';
 
         return new SlackMessage(
             title: 'Migration Completed',

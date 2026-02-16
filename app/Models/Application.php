@@ -876,10 +876,10 @@ class Application extends BaseModel
                 if ($this->additional_servers->count() === 0) {
                     if (str($value)->contains('(')) {
                         $status = str($value)->before('(')->trim()->value();
-                        $health = str($value)->after('(')->before(')')->trim()->value() ?? 'unhealthy';
+                        $health = str($value)->after('(')->before(')')->trim()->value();
                     } elseif (str($value)->contains(':')) {
                         $status = str($value)->before(':')->trim()->value();
-                        $health = str($value)->after(':')->trim()->value() ?? 'unhealthy';
+                        $health = str($value)->after(':')->trim()->value();
                     } else {
                         $status = $value;
                         $health = 'unhealthy';
@@ -889,10 +889,10 @@ class Application extends BaseModel
                 } else {
                     if (str($value)->contains('(')) {
                         $status = str($value)->before('(')->trim()->value();
-                        $health = str($value)->after('(')->before(')')->trim()->value() ?? 'unhealthy';
+                        $health = str($value)->after('(')->before(')')->trim()->value();
                     } elseif (str($value)->contains(':')) {
                         $status = str($value)->before(':')->trim()->value();
-                        $health = str($value)->after(':')->trim()->value() ?? 'unhealthy';
+                        $health = str($value)->after(':')->trim()->value();
                     } else {
                         $status = $value;
                         $health = 'unhealthy';
@@ -906,10 +906,10 @@ class Application extends BaseModel
                     // running (healthy)
                     if (str($value)->contains('(')) {
                         $status = str($value)->before('(')->trim()->value();
-                        $health = str($value)->after('(')->before(')')->trim()->value() ?? 'unhealthy';
+                        $health = str($value)->after('(')->before(')')->trim()->value();
                     } elseif (str($value)->contains(':')) {
                         $status = str($value)->before(':')->trim()->value();
-                        $health = str($value)->after(':')->trim()->value() ?? 'unhealthy';
+                        $health = str($value)->after(':')->trim()->value();
                     } else {
                         $status = $value;
                         $health = 'unhealthy';
@@ -920,11 +920,11 @@ class Application extends BaseModel
                     $complex_status = null;
                     $complex_health = null;
                     $complex_status = $main_server_status = str($value)->before(':')->value();
-                    $complex_health = $main_server_health = str($value)->after(':')->value() ?? 'unhealthy';
+                    $complex_health = $main_server_health = str($value)->after(':')->value();
                     $additional_servers_status = $this->additional_servers->pluck('pivot.status');
                     foreach ($additional_servers_status as $status) {
                         $server_status = str($status)->before(':')->value();
-                        $server_health = str($status)->after(':')->value() ?? 'unhealthy';
+                        $server_health = str($status)->after(':')->value();
                         if ($main_server_status !== $server_status) {
                             $complex_status = 'degraded';
                         }
@@ -1268,7 +1268,7 @@ class Application extends BaseModel
     {
         $baseDir = $this->generateBaseDir($deployment_uuid);
         $escapedBaseDir = escapeshellarg($baseDir);
-        $isShallowCloneEnabled = $this->settings?->is_git_shallow_clone_enabled ?? false;
+        $isShallowCloneEnabled = $this->settings->is_git_shallow_clone_enabled ?? false;
 
         if ($this->git_commit_sha !== 'HEAD') {
             // Escape commit SHA for shell safety (defense in depth - API also validates format)
@@ -1443,7 +1443,7 @@ class Application extends BaseModel
         $commands = collect([]);
 
         // Check if shallow clone is enabled
-        $isShallowCloneEnabled = $this->settings?->is_git_shallow_clone_enabled ?? false;
+        $isShallowCloneEnabled = $this->settings->is_git_shallow_clone_enabled ?? false;
         $depthFlag = $isShallowCloneEnabled ? ' --depth=1' : '';
 
         $submoduleFlags = '';

@@ -242,7 +242,7 @@ class MysqlMetricsService
                         'state' => strtolower($parts[3] ?? 'idle') === 'query' ? 'active' : 'idle',
                         'query' => $parts[5] ?? '<IDLE>',
                         'duration' => $time < 60 ? $time.'s' : round($time / 60, 1).'m',
-                        'clientAddr' => explode(':', $parts[6] ?? '')[0] ?? 'local',
+                        'clientAddr' => explode(':', $parts[6] ?? '')[0],
                     ];
                 }
             }

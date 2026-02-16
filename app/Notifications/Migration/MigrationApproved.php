@@ -43,11 +43,11 @@ class MigrationApproved extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $approver = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $approver = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         return (new MailMessage)
             ->subject("Saturn Platform: Migration Approved - {$resourceName}")
@@ -64,11 +64,11 @@ class MigrationApproved extends Notification implements ShouldQueue
     public function toDiscord(): DiscordMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $approver = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $approver = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         $message = new DiscordMessage(
             title: ':white_check_mark: Migration Approved',
@@ -84,11 +84,11 @@ class MigrationApproved extends Notification implements ShouldQueue
     public function toTelegram(): array
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $approver = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $approver = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         return [
             'message' => "Saturn Platform: Migration Approved\n\nResource: {$resourceName} ({$resourceType})\nProject: {$project}\nMigration: {$direction}\nApproved by: {$approver}",
@@ -104,11 +104,11 @@ class MigrationApproved extends Notification implements ShouldQueue
     public function toSlack(): SlackMessage
     {
         $source = $this->migration->source;
-        $resourceName = $source?->name ?? 'Unknown Resource';
+        $resourceName = $source->name ?? 'Unknown Resource';
         $resourceType = $this->migration->sourceTypeName;
-        $approver = $this->migration->approvedBy?->name ?? 'Unknown User';
+        $approver = $this->migration->approvedBy->name ?? 'Unknown User';
         $direction = $this->migration->migrationDirection;
-        $project = $this->migration->sourceEnvironment->project?->name ?? 'Unknown Project';
+        $project = $this->migration->sourceEnvironment->project->name ?? 'Unknown Project';
 
         return new SlackMessage(
             title: 'Migration Approved',

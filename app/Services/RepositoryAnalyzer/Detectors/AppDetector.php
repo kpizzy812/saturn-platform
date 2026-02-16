@@ -313,7 +313,7 @@ class AppDetector
             foreach (self::FRAMEWORK_RULES as $framework => $rules) {
                 if ($this->checkFramework($appPath, $rules)) {
                     $detectedFramework = $framework;
-                    $detectedType = $rules['type'] ?? 'backend';
+                    $detectedType = $rules['type'];
                     break;
                 }
             }
@@ -341,7 +341,7 @@ class AppDetector
                     defaultPort: $rules['defaultPort'],
                     buildCommand: $rules['buildCommand'] ?? null,
                     publishDirectory: $rules['publishDirectory'] ?? null,
-                    type: $rules['type'] ?? 'backend',
+                    type: $rules['type'],
                 );
             }
         }

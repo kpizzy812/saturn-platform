@@ -78,7 +78,7 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
 
-            $this->server = $database->destination?->server ?? $database->server ?? null;
+            $this->server = $database->destination->server ?? $database->server ?? null;
             if (! $this->server) {
                 $this->markFailed('Server not found');
 

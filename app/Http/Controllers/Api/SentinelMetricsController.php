@@ -543,7 +543,7 @@ class SentinelMetricsController extends Controller
     {
         $parts = explode(' / ', $netIO);
 
-        if ($direction === 'in' && isset($parts[0])) {
+        if ($direction === 'in') {
             return trim($parts[0]);
         }
 

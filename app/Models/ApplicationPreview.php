@@ -45,7 +45,7 @@ class ApplicationPreview extends BaseModel
                 });
             } else {
                 // Regular application volume cleanup
-                $persistentStorages = $preview->persistentStorages()->get() ?? collect();
+                $persistentStorages = $preview->persistentStorages()->get();
                 if ($persistentStorages->count() > 0) {
                     foreach ($persistentStorages as $storage) {
                         instant_remote_process(['docker volume rm -f '.escapeshellarg($storage->name)], $server, false);
