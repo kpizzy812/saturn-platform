@@ -12,11 +12,11 @@ class DecideWhatToDoWithUser
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()?->user()?->teams?->count() === 0) {
-            $currentTeam = auth()->user()?->recreate_personal_team();
+        if (auth()->user()?->teams?->count() === 0) {
+            $currentTeam = auth()->user()->recreate_personal_team();
             refreshSession($currentTeam);
         }
-        if (auth()?->user()?->currentTeam()) {
+        if (auth()->user()?->currentTeam()) {
             refreshSession(auth()->user()->currentTeam());
         }
         if (! auth()->user() || ! isCloud() || isInstanceAdmin()) {

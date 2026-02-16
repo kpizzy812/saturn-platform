@@ -229,7 +229,7 @@ class ServiceEnvsController extends Controller
             ], 422);
         }
 
-        $key = str($request->key)->trim()->replace(' ', '_')->value;
+        $key = str($request->key)->trim()->replace(' ', '_')->toString();
         $existingEnv = $service->environment_variables()->where('key', $key)->first();
         if ($existingEnv) {
             return response()->json([
@@ -363,7 +363,7 @@ class ServiceEnvsController extends Controller
             ], 422);
         }
 
-        $key = str($request->key)->trim()->replace(' ', '_')->value;
+        $key = str($request->key)->trim()->replace(' ', '_')->toString();
         $env = $service->environment_variables()->where('key', $key)->first();
         if (! $env) {
             return response()->json(['message' => 'Environment variable not found.'], 404);
@@ -511,7 +511,7 @@ class ServiceEnvsController extends Controller
                     'errors' => $validator->errors(),
                 ], 422);
             }
-            $key = str($item['key'])->trim()->replace(' ', '_')->value;
+            $key = str($item['key'])->trim()->replace(' ', '_')->toString();
             $env = $service->environment_variables()->updateOrCreate(
                 ['key' => $key],
                 $item

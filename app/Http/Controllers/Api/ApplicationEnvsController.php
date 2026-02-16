@@ -262,7 +262,7 @@ class ApplicationEnvsController extends Controller
         }
         $is_preview = $request->is_preview ?? false;
         $is_literal = $request->is_literal ?? false;
-        $key = str($request->key)->trim()->replace(' ', '_')->value;
+        $key = str($request->key)->trim()->replace(' ', '_')->toString();
         if ($is_preview) {
             $env = $application->environment_variables_preview->where('key', $key)->first();
             if ($env) {
@@ -480,7 +480,7 @@ class ApplicationEnvsController extends Controller
             $is_literal = $item->get('is_literal') ?? false;
             $is_multi_line = $item->get('is_multiline') ?? false;
             $is_shown_once = $item->get('is_shown_once') ?? false;
-            $key = str($item->get('key'))->trim()->replace(' ', '_')->value;
+            $key = str($item->get('key'))->trim()->replace(' ', '_')->toString();
             if ($is_preview) {
                 $env = $application->environment_variables_preview->where('key', $key)->first();
                 if ($env) {
@@ -686,7 +686,7 @@ class ApplicationEnvsController extends Controller
             ], 422);
         }
         $is_preview = $request->is_preview ?? false;
-        $key = str($request->key)->trim()->replace(' ', '_')->value;
+        $key = str($request->key)->trim()->replace(' ', '_')->toString();
 
         if ($is_preview) {
             $env = $application->environment_variables_preview->where('key', $key)->first();

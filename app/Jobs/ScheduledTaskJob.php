@@ -147,7 +147,7 @@ class ScheduledTaskJob implements ShouldQueue
                         'message' => $this->task_output,
                     ]);
 
-                    $this->team?->notify(new TaskSuccess($this->task, $this->task_output));
+                    $this->team->notify(new TaskSuccess($this->task, $this->task_output));
 
                     return;
                 }
@@ -257,6 +257,6 @@ class ScheduledTaskJob implements ShouldQueue
         }
 
         // Notify team about permanent failure
-        $this->team?->notify(new TaskFailed($this->task, $exception?->getMessage() ?? 'Unknown error'));
+        $this->team->notify(new TaskFailed($this->task, $exception?->getMessage() ?? 'Unknown error'));
     }
 }

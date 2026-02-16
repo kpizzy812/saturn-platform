@@ -13,18 +13,18 @@ trait Auditable
     public static function bootAuditable(): void
     {
         static::created(function (Model $model) {
-            if ($model->shouldAudit('create')) {
+            if ($model->shouldAudit('create')) { // @phpstan-ignore method.notFound
                 AuditLog::log(
                     action: 'create',
                     resource: $model,
-                    description: $model->getAuditDescription('create'),
-                    metadata: $model->getAuditMetadata('create')
+                    description: $model->getAuditDescription('create'), // @phpstan-ignore method.notFound
+                    metadata: $model->getAuditMetadata('create') // @phpstan-ignore method.notFound
                 );
             }
         });
 
         static::updated(function (Model $model) {
-            if ($model->shouldAudit('update')) {
+            if ($model->shouldAudit('update')) { // @phpstan-ignore method.notFound
                 $changes = $model->getChanges();
                 // Don't log if only timestamps were updated
                 $significantChanges = array_diff_key($changes, array_flip(['updated_at', 'created_at']));
@@ -33,10 +33,10 @@ trait Auditable
                     AuditLog::log(
                         action: 'update',
                         resource: $model,
-                        description: $model->getAuditDescription('update'),
+                        description: $model->getAuditDescription('update'), // @phpstan-ignore method.notFound
                         metadata: array_merge(
-                            $model->getAuditMetadata('update'),
-                            ['changes' => $model->getAuditableChanges()]
+                            $model->getAuditMetadata('update'), // @phpstan-ignore method.notFound
+                            ['changes' => $model->getAuditableChanges()] // @phpstan-ignore method.notFound
                         )
                     );
                 }
@@ -44,13 +44,13 @@ trait Auditable
         });
 
         static::deleted(function (Model $model) {
-            if ($model->shouldAudit('delete')) {
+            if ($model->shouldAudit('delete')) { // @phpstan-ignore method.notFound
                 AuditLog::log(
                     action: 'delete',
                     resource: $model,
-                    description: $model->getAuditDescription('delete'),
+                    description: $model->getAuditDescription('delete'), // @phpstan-ignore method.notFound
                     metadata: array_merge(
-                        $model->getAuditMetadata('delete'),
+                        $model->getAuditMetadata('delete'), // @phpstan-ignore method.notFound
                         ['deleted_attributes' => $model->getOriginal()]
                     )
                 );

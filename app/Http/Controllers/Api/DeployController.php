@@ -470,7 +470,7 @@ class DeployController extends Controller
         if (gettype($resource) !== 'object') {
             return ['message' => "Resource ($resource) not found.", 'deployment_uuid' => $deployment_uuid];
         }
-        switch ($resource?->getMorphClass()) {
+        switch ($resource->getMorphClass()) {
             case Application::class:
                 // Check authorization for application deployment
                 try {

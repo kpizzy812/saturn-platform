@@ -364,8 +364,8 @@ class PermissionSetController extends Controller
             'color' => $set->color,
             'icon' => $set->icon,
             'users_count' => $set->users->count(),
-            'created_at' => $set->created_at?->toIso8601String(),
-            'updated_at' => $set->updated_at?->toIso8601String(),
+            'created_at' => $set->created_at->toIso8601String(),
+            'updated_at' => $set->updated_at->toIso8601String(),
         ];
 
         if ($detailed) {

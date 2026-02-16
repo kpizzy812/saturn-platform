@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -151,7 +152,8 @@ class ServiceDatabase extends BaseModel
         return service_configuration_dir()."/{$this->service->uuid}";
     }
 
-    public function service()
+    /** @return BelongsTo<Service, $this> */
+    public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
     }

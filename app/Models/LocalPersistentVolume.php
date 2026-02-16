@@ -45,13 +45,13 @@ class LocalPersistentVolume extends Model
 
     protected function customizeName($value)
     {
-        return str($value)->trim()->value;
+        return str($value)->trim()->toString();
     }
 
     protected function mountPath(): Attribute
     {
         return Attribute::make(
-            set: fn (string $value) => str($value)->trim()->start('/')->value
+            set: fn (string $value) => str($value)->trim()->start('/')->toString()
         );
     }
 
@@ -60,7 +60,7 @@ class LocalPersistentVolume extends Model
         return Attribute::make(
             set: function (?string $value) {
                 if ($value) {
-                    return str($value)->trim()->start('/')->value;
+                    return str($value)->trim()->start('/')->toString();
                 } else {
                     return $value;
                 }

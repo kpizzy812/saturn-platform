@@ -46,10 +46,10 @@ class DeploymentApprovalRequested implements ShouldBroadcast
             approvalUuid: $approval->uuid,
             deploymentId: $deployment->id ?? 0,
             deploymentUuid: $deployment->deployment_uuid ?? '',
-            applicationId: $application?->id ?? 0,
-            applicationName: $application?->name ?? 'Unknown',
-            environmentName: $environment?->name ?? 'Unknown',
-            projectName: $project?->name ?? 'Unknown',
+            applicationId: $application->id ?? 0,
+            applicationName: $application->name ?? 'Unknown',
+            environmentName: $environment->name ?? 'Unknown',
+            projectName: $project->name ?? 'Unknown',
             requestedByEmail: $approval->requestedBy->email ?? 'Unknown',
             teamId: $team?->id
         );

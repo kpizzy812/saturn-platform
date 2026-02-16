@@ -16,7 +16,7 @@ class StopApplication
     public function handle(Application $application, bool $previewDeployments = false, bool $dockerCleanup = true)
     {
         $servers = collect([$application->destination->server]);
-        if ($application?->additional_servers?->count() > 0) {
+        if ($application->additional_servers->count() > 0) {
             $servers = $servers->merge($application->additional_servers);
         }
         foreach ($servers as $server) {

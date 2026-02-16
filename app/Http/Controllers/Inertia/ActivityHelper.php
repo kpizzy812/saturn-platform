@@ -311,8 +311,8 @@ class ActivityHelper
                 ],
                 'resource' => [
                     'type' => 'application',
-                    'name' => $rel->subject?->name ?? 'Unknown',
-                    'id' => (string) ($rel->subject?->uuid ?? $rel->subject?->id ?? ''),
+                    'name' => $rel->subject->name ?? 'Unknown',
+                    'id' => (string) ($rel->subject->uuid ?? $rel->subject->id ?? ''),
                 ],
                 'timestamp' => $rel->created_at->toIso8601String(),
             ];
@@ -431,8 +431,8 @@ class ActivityHelper
                 'action' => $action,
                 'description' => $log->description ?? "{$log->formatted_action} {$resourceTypeName}",
                 'user' => [
-                    'name' => $log->user?->name ?? 'System',
-                    'email' => $log->user?->email ?? 'system@saturn.local',
+                    'name' => $log->user->name ?? 'System',
+                    'email' => $log->user->email ?? 'system@saturn.local',
                 ],
                 'resource' => [
                     'type' => strtolower($resourceTypeName ?? 'unknown'),

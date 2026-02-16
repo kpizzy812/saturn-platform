@@ -45,7 +45,7 @@ class SharedEnvironmentVariable extends Model
         return Attribute::make(
             set: function (string $value) {
                 // Sanitize: trim whitespace and replace spaces with underscores
-                $sanitized = str($value)->trim()->replace(' ', '_')->value;
+                $sanitized = str($value)->trim()->replace(' ', '_')->toString();
 
                 // Security: Validate key format (POSIX standard for environment variable names)
                 if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $sanitized)) {

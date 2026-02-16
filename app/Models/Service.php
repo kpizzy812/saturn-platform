@@ -1306,7 +1306,7 @@ class Service extends BaseModel
             if (is_array($extraFields)) {
                 $extraFields = collect($extraFields)->map(function ($field) {
                     if (filled($field['value']) && str($field['value'])->startsWith('$SERVICE_')) {
-                        $searchValue = str($field['value'])->after('$')->value;
+                        $searchValue = str($field['value'])->after('$')->toString();
                         $newValue = $this->environment_variables()->where('key', $searchValue)->first();
                         if ($newValue) {
                             $field['value'] = $newValue->value;

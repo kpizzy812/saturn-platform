@@ -47,6 +47,6 @@ class StartService
             }
         }
 
-        return remote_process($commands, $service->server, type_uuid: $service->uuid, callEventOnFinish: 'ServiceStatusChanged', callEventData: $service->environment?->project?->team?->id ?? 0);
+        return remote_process($commands, $service->server, type_uuid: $service->uuid, callEventOnFinish: 'ServiceStatusChanged', callEventData: $service->environment?->project?->team->id ?? 0);
     }
 }

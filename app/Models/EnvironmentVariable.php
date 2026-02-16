@@ -206,7 +206,7 @@ class EnvironmentVariable extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                $type = str($this->value)->after('{{')->before('.')->value;
+                $type = str($this->value)->after('{{')->before('.')->toString();
                 if (str($this->value)->startsWith('{{'.$type) && str($this->value)->endsWith('}}')) {
                     return true;
                 }
@@ -266,7 +266,7 @@ class EnvironmentVariable extends BaseModel
             return null;
         }
         $environment_variable = trim($environment_variable);
-        $type = str($environment_variable)->after('{{')->before('.')->value;
+        $type = str($environment_variable)->after('{{')->before('.')->toString();
         if (str($environment_variable)->startsWith('{{'.$type) && str($environment_variable)->endsWith('}}')) {
             return encrypt($environment_variable);
         }
@@ -302,7 +302,7 @@ class EnvironmentVariable extends BaseModel
         return Attribute::make(
             set: function (string $value) {
                 // Sanitize: trim whitespace and replace spaces with underscores
-                $sanitized = str($value)->trim()->replace(' ', '_')->value;
+                $sanitized = str($value)->trim()->replace(' ', '_')->toString();
 
                 // Security: Validate key format (POSIX standard for environment variable names)
                 // Must start with letter or underscore, followed by letters, digits, or underscores
@@ -326,7 +326,7 @@ class EnvironmentVariable extends BaseModel
 
     protected function updateIsShared(): void
     {
-        $type = str($this->value)->after('{{')->before('.')->value;
+        $type = str($this->value)->after('{{')->before('.')->toString();
         $isShared = str($this->value)->startsWith('{{'.$type) && str($this->value)->endsWith('}}');
         $this->is_shared = $isShared;
     }

@@ -102,7 +102,7 @@ class Handler extends ExceptionHandler
             }
             app('sentry')->configureScope(
                 function (Scope $scope) {
-                    $email = auth()?->user() ? auth()->user()->email : 'guest';
+                    $email = auth()->user() ? auth()->user()->email : 'guest';
                     $instanceAdmin = User::find(0)->email ?? 'admin@localhost';
                     $scope->setUser(
                         [

@@ -2443,8 +2443,8 @@ HELP;
             $results[] = [
                 'name' => $app->name,
                 'type' => 'application',
-                'environment' => $app->environment?->name ?? '?',
-                'project' => $app->environment?->project?->name ?? '?',
+                'environment' => $app->environment->name ?? '?',
+                'project' => $app->environment?->project->name ?? '?',
                 'status' => $app->status ?? 'unknown',
             ];
         }
@@ -2460,8 +2460,8 @@ HELP;
             $results[] = [
                 'name' => $service->name,
                 'type' => 'service',
-                'environment' => $service->environment?->name ?? '?',
-                'project' => $service->environment?->project?->name ?? '?',
+                'environment' => $service->environment->name ?? '?',
+                'project' => $service->environment?->project->name ?? '?',
                 'status' => $service->status ?? 'unknown',
             ];
         }
@@ -2478,8 +2478,8 @@ HELP;
                 $results[] = [
                     'name' => $db->name,
                     'type' => 'database',
-                    'environment' => $db->environment?->name ?? '?',
-                    'project' => $db->environment?->project?->name ?? '?',
+                    'environment' => $db->environment->name ?? '?',
+                    'project' => $db->environment?->project->name ?? '?',
                     'status' => $db->status ?? 'unknown',
                 ];
             }
@@ -2628,8 +2628,8 @@ HELP;
                     'name' => $app->name,
                     'status' => $app->status,
                     'type' => 'application',
-                    'project' => $app->environment?->project?->name ?? 'Unknown',
-                    'environment' => $app->environment?->name ?? 'default',
+                    'project' => $app->environment?->project->name ?? 'Unknown',
+                    'environment' => $app->environment->name ?? 'default',
                     'uuid' => $app->uuid,
                 ];
             }
@@ -2647,8 +2647,8 @@ HELP;
                 $resources[] = [
                     'name' => $service->name,
                     'type' => 'service',
-                    'project' => $service->environment?->project?->name ?? 'Unknown',
-                    'environment' => $service->environment?->name ?? 'default',
+                    'project' => $service->environment?->project->name ?? 'Unknown',
+                    'environment' => $service->environment->name ?? 'default',
                     'uuid' => $service->uuid,
                 ];
             }
@@ -2668,8 +2668,8 @@ HELP;
                         'name' => $db->name,
                         'status' => $db->status ?? 'unknown',
                         'type' => 'database',
-                        'project' => $db->environment?->project?->name ?? 'Unknown',
-                        'environment' => $db->environment?->name ?? 'default',
+                        'project' => $db->environment?->project->name ?? 'Unknown',
+                        'environment' => $db->environment->name ?? 'default',
                         'uuid' => $db->uuid,
                     ];
                 }
