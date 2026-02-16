@@ -661,6 +661,48 @@ parameters:
 			path: app/Actions/Migration/ValidateMigrationChainAction.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$environments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/CloneProjectAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/CloneProjectAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$tags\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/CloneProjectAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$environment_variables\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/ExportProjectAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$environments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/ExportProjectAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/ExportProjectAction.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$tags\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Actions/Project/ExportProjectAction.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\Server\:\:\$settings\.$#'
 			identifier: property.notFound
 			count: 1
@@ -731,12 +773,6 @@ parameters:
 			identifier: assign.propertyType
 			count: 2
 			path: app/Actions/SaturnTask/PrepareSaturnTask.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Actions/Server/CleanupDocker.php
 
 		-
 			message: '#^Method App\\Actions\\Server\\ConfigureCloudflared\:\:handle\(\) should return Spatie\\Activitylog\\Models\\Activity but returns Spatie\\Activitylog\\Contracts\\Activity\.$#'
@@ -1249,21 +1285,9 @@ parameters:
 			path: app/Events/DeploymentApprovalRequested.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>deployment_uuid" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Events/DeploymentApprovalRequested.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Events/DeploymentApprovalRequested.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 2
+			count: 1
 			path: app/Events/DeploymentApprovalRequested.php
 
 		-
@@ -1279,21 +1303,9 @@ parameters:
 			path: app/Events/DeploymentApprovalResolved.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>deployment_uuid" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Events/DeploymentApprovalResolved.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Events/DeploymentApprovalResolved.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 2
+			count: 1
 			path: app/Events/DeploymentApprovalResolved.php
 
 		-
@@ -1993,12 +2005,6 @@ parameters:
 			path: app/Http/Controllers/Api/SecurityController.php
 
 		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/Api/SentinelMetricsController.php
-
-		-
 			message: '#^Parameter \#1 \$value of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:pluck\(\) expects array\<string\>\|\(Closure\(mixed\)\: mixed\)\|string\|null, 1 given\.$#'
 			identifier: argument.type
 			count: 1
@@ -2161,30 +2167,6 @@ parameters:
 			path: app/Http/Controllers/Api/TeamController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Spatie\\Activitylog\\Models\\Activity\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Api/TeamController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Spatie\\Activitylog\\Models\\Activity\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Api/TeamController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/Api/TeamController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Http/Controllers/Api/TeamController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$attempts\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2265,7 +2247,13 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 4
+			path: app/Http/Controllers/Inertia/ActivityHelper.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 1
 			path: app/Http/Controllers/Inertia/ActivityHelper.php
 
 		-
@@ -2283,13 +2271,13 @@ parameters:
 		-
 			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationDeploymentQueue model\.$#'
 			identifier: larastan.relationExistence
-			count: 3
+			count: 4
 			path: app/Http/Controllers/Inertia/ActivityHelper.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 6
+			count: 1
 			path: app/Http/Controllers/Inertia/ActivityHelper.php
 
 		-
@@ -2301,17 +2289,11 @@ parameters:
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 10
+			count: 2
 			path: app/Http/Controllers/Inertia/ActivityHelper.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>uuid" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 4
-			path: app/Http/Controllers/Inertia/ActivityHelper.php
-
-		-
-			message: '#^Using nullsafe property access on non\-nullable type mixed\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/Inertia/ActivityHelper.php
@@ -2475,12 +2457,6 @@ parameters:
 		-
 			message: '#^Match expression does not handle remaining value\: mixed$#'
 			identifier: match.unhandled
-			count: 1
-			path: app/Http/Controllers/Inertia/DatabaseController.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Http/Controllers/Inertia/DatabaseController.php
 
@@ -2800,12 +2776,6 @@ parameters:
 			message: '#^Variable \$full_name might not be defined\.$#'
 			identifier: variable.undefined
 			count: 2
-			path: app/Http/Controllers/Webhook/Gitlab.php
-
-		-
-			message: '#^Variable \$x_gitlab_token on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
-			count: 1
 			path: app/Http/Controllers/Webhook/Gitlab.php
 
 		-
@@ -3151,12 +3121,6 @@ parameters:
 			path: app/Jobs/BackupRestoreTestJob.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>server" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Jobs/BackupRestoreTestJob.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3189,12 +3153,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$database\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Jobs/BackupVerificationJob.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>server" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Jobs/BackupVerificationJob.php
 
@@ -3241,12 +3199,6 @@ parameters:
 			path: app/Jobs/CleanupSleepingPreviewsJob.php
 
 		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Jobs/CollectDatabaseMetricsJob.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\S3Storage\:\:\$bucket\.$#'
 			identifier: property.notFound
 			count: 1
@@ -3279,7 +3231,7 @@ parameters:
 		-
 			message: '#^Expression on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.expr
-			count: 2
+			count: 1
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
@@ -3301,20 +3253,8 @@ parameters:
 			path: app/Jobs/DatabaseBackupJob.php
 
 		-
-			message: '#^Property App\\Jobs\\DatabaseBackupJob\:\:\$database \(App\\Models\\ServiceDatabase\|App\\Models\\StandaloneClickhouse\|App\\Models\\StandaloneDragonfly\|App\\Models\\StandaloneKeydb\|App\\Models\\StandaloneMariadb\|App\\Models\\StandaloneMongodb\|App\\Models\\StandaloneMysql\|App\\Models\\StandalonePostgresql\|App\\Models\\StandaloneRedis\) on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.property
-			count: 1
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
 			message: '#^Right side of && is always true\.$#'
 			identifier: booleanAnd.rightAlwaysTrue
-			count: 1
-			path: app/Jobs/DatabaseBackupJob.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>database_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Jobs/DatabaseBackupJob.php
 
@@ -3358,12 +3298,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$server\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Jobs/DatabaseRestoreJob.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 2
 			path: app/Jobs/DatabaseRestoreJob.php
 
 		-
@@ -3459,78 +3393,6 @@ parameters:
 		-
 			message: '#^Method App\\Jobs\\PushServerUpdateJob\:\:updateServiceSubStatus\(\) is unused\.$#'
 			identifier: method.unused
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$allApplicationIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$allDatabaseUuids on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$allServiceApplicationIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$allServiceDatabaseIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$allTcpProxyUuids on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$applicationContainerStatuses on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$foundApplicationIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$foundApplicationPreviewsIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$foundDatabaseUuids on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$foundServiceApplicationIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$foundServiceDatabaseIds on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
-			count: 1
-			path: app/Jobs/PushServerUpdateJob.php
-
-		-
-			message: '#^Property App\\Jobs\\PushServerUpdateJob\:\:\$serviceContainerStatuses on left side of \?\?\= is not nullable nor uninitialized\.$#'
-			identifier: nullCoalesce.initializedProperty
 			count: 1
 			path: app/Jobs/PushServerUpdateJob.php
 
@@ -3650,12 +3512,6 @@ parameters:
 
 		-
 			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\Team\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Jobs/ScheduledTaskJob.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 2
 			path: app/Jobs/ScheduledTaskJob.php
@@ -3949,12 +3805,6 @@ parameters:
 			path: app/Models/Application.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 8
-			path: app/Models/Application.php
-
-		-
 			message: '#^If condition is always true\.$#'
 			identifier: if.alwaysTrue
 			count: 1
@@ -4021,12 +3871,6 @@ parameters:
 			path: app/Models/Application.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>is_git_shallow_clone_enabled" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
-			path: app/Models/Application.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ApplicationDeploymentQueue\:\:\$application\.$#'
 			identifier: property.notFound
 			count: 1
@@ -4047,18 +3891,6 @@ parameters:
 		-
 			message: '#^Right side of \|\| is always false\.$#'
 			identifier: booleanOr.rightAlwaysFalse
-			count: 1
-			path: app/Models/ApplicationDeploymentQueue.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>order" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Models/ApplicationDeploymentQueue.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>output" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/ApplicationDeploymentQueue.php
 
@@ -4119,12 +3951,6 @@ parameters:
 		-
 			message: '#^Method App\\Models\\AuditLog\:\:log\(\) should return static\(App\\Models\\AuditLog\) but returns App\\Models\\AuditLog\.$#'
 			identifier: return.type
-			count: 1
-			path: app/Models/AuditLog.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/AuditLog.php
 
@@ -4270,12 +4096,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Models/EnvironmentMigration.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 2
 			path: app/Models/EnvironmentMigration.php
 
 		-
@@ -4660,6 +4480,30 @@ parameters:
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
 			identifier: method.notFound
 			count: 3
+			path: app/Models/ProjectNotificationOverride.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditMetadata\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Models/ProjectNotificationOverride.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditableChanges\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/ProjectNotificationOverride.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:shouldAudit\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Models/ProjectNotificationOverride.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getAuditDescription\(\)\.$#'
+			identifier: method.notFound
+			count: 3
 			path: app/Models/ProjectSetting.php
 
 		-
@@ -4713,12 +4557,6 @@ parameters:
 		-
 			message: '#^Call to function is_callable\(\) with array\{class\-string\|object, ''team''\} will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Models/ResourceLink.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/ResourceLink.php
 
@@ -4882,12 +4720,6 @@ parameters:
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\Server\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Models/Server.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 2
 			path: app/Models/Server.php
 
 		-
@@ -5089,12 +4921,6 @@ parameters:
 			path: app/Models/Service.php
 
 		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Models/Service.php
-
-		-
 			message: '#^Parameter \$properties of attribute class OpenApi\\Attributes\\Schema constructor expects array\<OpenApi\\Attributes\\Property\>\|null, array\<string, array\<string, bool\|string\>\> given\.$#'
 			identifier: argument.type
 			count: 1
@@ -5221,12 +5047,6 @@ parameters:
 			path: app/Models/StandaloneClickhouse.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Models/StandaloneClickhouse.php
-
-		-
 			message: '#^Property ''database_type'' does not exist in model\.$#'
 			identifier: rules.modelAppends
 			count: 1
@@ -5317,12 +5137,6 @@ parameters:
 			path: app/Models/StandaloneDragonfly.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Models/StandaloneDragonfly.php
-
-		-
 			message: '#^Property ''database_type'' does not exist in model\.$#'
 			identifier: rules.modelAppends
 			count: 1
@@ -5377,12 +5191,6 @@ parameters:
 			path: app/Models/StandaloneKeydb.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Models/StandaloneKeydb.php
-
-		-
 			message: '#^Relation ''environment'' is not found in App\\Models\\StandaloneKeydb model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
@@ -5422,12 +5230,6 @@ parameters:
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneMariadb\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Models/StandaloneMariadb.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
 			path: app/Models/StandaloneMariadb.php
 
 		-
@@ -5479,12 +5281,6 @@ parameters:
 			path: app/Models/StandaloneMongodb.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Models/StandaloneMongodb.php
-
-		-
 			message: '#^Property ''database_type'' does not exist in model\.$#'
 			identifier: rules.modelAppends
 			count: 1
@@ -5533,12 +5329,6 @@ parameters:
 			path: app/Models/StandaloneMysql.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Models/StandaloneMysql.php
-
-		-
 			message: '#^Property ''database_type'' does not exist in model\.$#'
 			identifier: rules.modelAppends
 			count: 1
@@ -5584,12 +5374,6 @@ parameters:
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandalonePostgresql\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Models/StandalonePostgresql.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
 			path: app/Models/StandalonePostgresql.php
 
 		-
@@ -5656,12 +5440,6 @@ parameters:
 			message: '#^Call to function method_exists\(\) with \$this\(App\\Models\\StandaloneRedis\) and ''team'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
-			path: app/Models/StandaloneRedis.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
 			path: app/Models/StandaloneRedis.php
 
 		-
@@ -5851,12 +5629,6 @@ parameters:
 			path: app/Models/TeamResourceTransfer.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Models/TeamResourceTransfer.php
-
-		-
 			message: '#^Call to function in_array\(\) with arguments ''\*'', array\<int\> and true will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
@@ -6025,42 +5797,6 @@ parameters:
 			path: app/Notifications/Dto/PushoverMessage.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 12
-			path: app/Notifications/Migration/MigrationApprovalRequired.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 12
-			path: app/Notifications/Migration/MigrationApproved.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 12
-			path: app/Notifications/Migration/MigrationCompleted.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 8
-			path: app/Notifications/Migration/MigrationFailed.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 12
-			path: app/Notifications/Migration/MigrationRejected.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 8
-			path: app/Notifications/Migration/MigrationRolledBack.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\ScheduledTask\:\:\$application\.$#'
 			identifier: property.notFound
 			count: 2
@@ -6118,12 +5854,6 @@ parameters:
 			message: '#^Call to function is_null\(\) with bool will always evaluate to false\.$#'
 			identifier: function.impossibleType
 			count: 1
-			path: app/Parsers/ApplicationComposeParser.php
-
-		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 3
 			path: app/Parsers/ApplicationComposeParser.php
 
 		-
@@ -6349,12 +6079,6 @@ parameters:
 			path: app/Services/AI/Chat/AiChatService.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 4
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
 			message: '#^Method App\\Services\\AI\\Chat\\AiChatService\:\:calculateCost\(\) is unused\.$#'
 			identifier: method.unused
 			count: 1
@@ -6387,36 +6111,6 @@ parameters:
 		-
 			message: '#^Parameter \#2 \$message of method App\\Services\\AI\\Chat\\AiChatService\:\:logUsage\(\) expects App\\Models\\AiChatMessage, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Services\\AI\\Chat\\Contracts\\ChatProviderInterface\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 4
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>inputTokens" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>outputTokens" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/AI/Chat/AiChatService.php
-
-		-
-			message: '#^Variable \$intentParams on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
 			count: 1
 			path: app/Services/AI/Chat/AiChatService.php
 
@@ -6555,7 +6249,7 @@ parameters:
 		-
 			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 13
+			count: 12
 			path: app/Services/AI/Chat/CommandExecutor.php
 
 		-
@@ -6586,12 +6280,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$uuid\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
-
-		-
-			message: '#^Offset ''critical''\|''high''\|''low''\|''medium'' on array\{critical\: 0, high\: 1, medium\: 2, low\: 3\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
 			path: app/Services/AI/Chat/ResourceErrorAnalyzer.php
 
 		-
@@ -6649,12 +6337,6 @@ parameters:
 			path: app/Services/Authorization/PermissionService.php
 
 		-
-			message: '#^Using nullsafe property access "\?\-\>team" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 4
-			path: app/Services/Authorization/PermissionService.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Application\:\:\$environment\.$#'
 			identifier: property.notFound
 			count: 1
@@ -6691,12 +6373,6 @@ parameters:
 			path: app/Services/CloudflareProtectionService.php
 
 		-
-			message: '#^Expression on left side of \?\? is not nullable\.$#'
-			identifier: nullCoalesce.expr
-			count: 1
-			path: app/Services/CloudflareProtectionService.php
-
-		-
 			message: '#^Relation ''application'' is not found in App\\Models\\ApplicationPreview model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
@@ -6705,7 +6381,7 @@ parameters:
 		-
 			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Http\\Client\\Response\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 2
+			count: 1
 			path: app/Services/CloudflareProtectionService.php
 
 		-
@@ -6737,18 +6413,6 @@ parameters:
 			identifier: instanceof.alwaysTrue
 			count: 1
 			path: app/Services/ConfigurationGenerator.php
-
-		-
-			message: '#^Variable \$result on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.variable
-			count: 3
-			path: app/Services/DatabaseMetrics/MongoMetricsService.php
-
-		-
-			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/DatabaseMetrics/MysqlMetricsService.php
 
 		-
 			message: '#^If condition is always true\.$#'
@@ -6859,6 +6523,18 @@ parameters:
 			path: app/Services/MasterProxyConfigService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Project\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ProjectQuotaService.php
+
+		-
+			message: '#^Match arm comparison between ''environment'' and ''environment'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Services/ProjectQuotaService.php
+
+		-
 			message: '#^Method App\\Services\\RepositoryAnalyzer\\Detectors\\AppDetector\:\:extractElixirDeps\(\) never returns null so it can be removed from the return type\.$#'
 			identifier: return.unusedType
 			count: 1
@@ -6895,28 +6571,10 @@ parameters:
 			path: app/Services/RepositoryAnalyzer/Detectors/AppDetector.php
 
 		-
-			message: '#^Offset ''type'' on array\{file\: ''Cargo\.toml'', deps\: array\{''actix\-web''\}, cargoPattern\: ''/\^actix\-web\\\\s\*\=/m'', buildPack\: ''nixpacks'', defaultPort\: 8080, type\: ''backend''\}\|array\{file\: ''Cargo\.toml'', deps\: array\{''axum''\}, cargoPattern\: ''/\^axum\\\\s\*\=/m'', buildPack\: ''nixpacks'', defaultPort\: 3000, type\: ''backend''\}\|array\{file\: ''Cargo\.toml''\|''go\.mod'', deps\: array\{\}\|array\{''github\.com/gin…''\}\|array\{''github\.com/labstack…'', ''github\.com/labstack…''\}, buildPack\: ''nixpacks'', defaultPort\: 8080, type\: ''backend''\}\|array\{file\: ''composer\.json'', deps\: array\{''laravel/framework''\}\|array\{''symfony/framework…''\}, buildPack\: ''nixpacks'', defaultPort\: 8000, type\: ''backend''\}\|array\{file\: ''Gemfile'', deps\: array\{''rails''\}, gemPattern\: ''/gem\\\\s\+\[\\''"\]rails\[\\''"…'', buildPack\: ''nixpacks'', defaultPort\: 3000, type\: ''backend''\}\|array\{file\: ''Gemfile'', deps\: array\{''sinatra''\}, gemPattern\: ''/gem\\\\s\+\[\\''"\]sinatra\[…'', buildPack\: ''nixpacks'', defaultPort\: 4567, type\: ''backend''\}\|array\{file\: ''go\.mod'', deps\: array\{''github\.com/gofiber…'', ''github\.com/gofiber…''\}, buildPack\: ''nixpacks'', defaultPort\: 3000, type\: ''backend''\}\|array\{file\: ''mix\.exs'', deps\: array\{''\:phoenix''\}, mixPattern\: ''/\{\:phoenix,/'', buildPack\: ''nixpacks'', defaultPort\: 4000, type\: ''backend''\}\|array\{file\: ''package\.json'', deps\: array\{''@nestjs/core''\}\|array\{''fastify''\}\|array\{''hono''\}, buildPack\: ''nixpacks'', defaultPort\: 3000, type\: ''backend''\}\|array\{file\: ''package\.json'', deps\: array\{''@remix\-run/node''\}\|array\{''@sveltejs/kit''\}\|array\{''next''\}\|array\{''nuxt''\}, buildPack\: ''nixpacks'', defaultPort\: 3000, type\: ''fullstack''\}\|array\{file\: ''package\.json'', deps\: array\{''astro''\}, buildPack\: ''nixpacks'', defaultPort\: 4321, type\: ''frontend''\}\|array\{file\: ''package\.json'', deps\: array\{''express''\}, excludeDeps\: array\{''@nestjs/core'', ''next''\}, buildPack\: ''nixpacks'', defaultPort\: 3000, type\: ''backend''\}\|array\{file\: ''package\.json'', deps\: array\{''react\-scripts''\}, buildPack\: ''static'', defaultPort\: 80, buildCommand\: ''npm run build'', publishDirectory\: ''build'', type\: ''frontend''\}\|array\{file\: ''package\.json'', deps\: array\{''vite'', ''react''\}, matchMode\: ''all'', excludeDeps\: array\{''next'', ''@remix\-run/react''\}, buildPack\: ''static'', defaultPort\: 80, buildCommand\: ''npm run build'', publishDirectory\: ''dist'', \.\.\.\}\|array\{file\: ''package\.json'', deps\: array\{''vite'', ''svelte''\}, matchMode\: ''all'', excludeDeps\: array\{''@sveltejs/kit''\}, buildPack\: ''static'', defaultPort\: 80, buildCommand\: ''npm run build'', publishDirectory\: ''dist'', \.\.\.\}\|array\{file\: ''package\.json'', deps\: array\{''vite'', ''vue''\}, matchMode\: ''all'', excludeDeps\: array\{''nuxt''\}, buildPack\: ''static'', defaultPort\: 80, buildCommand\: ''npm run build'', publishDirectory\: ''dist'', \.\.\.\}\|array\{file\: ''pom\.xml'', deps\: array\{''spring\-boot\-starter''\}, mavenPattern\: ''/\<artifactId\>spring…'', altFile\: ''build\.gradle'', gradlePattern\: ''/org\\\\…'', buildPack\: ''nixpacks'', defaultPort\: 8080, type\: ''backend''\}\|array\{file\: ''requirements\.txt'', deps\: array\{''Django'', ''django''\}\|array\{''fastapi''\}, altFile\: ''pyproject\.toml'', buildPack\: ''nixpacks'', defaultPort\: 8000, type\: ''backend''\}\|array\{file\: ''requirements\.txt'', deps\: array\{''Flask'', ''flask''\}, altFile\: ''pyproject\.toml'', buildPack\: ''nixpacks'', defaultPort\: 5000, type\: ''backend''\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 2
-			path: app/Services/RepositoryAnalyzer/Detectors/AppDetector.php
-
-		-
 			message: '#^Constant App\\Services\\RepositoryAnalyzer\\Detectors\\HealthCheckDetector\:\:HEALTH_PATHS is unused\.$#'
 			identifier: classConstant.unused
 			count: 1
 			path: app/Services/RepositoryAnalyzer/Detectors/HealthCheckDetector.php
-
-		-
-			message: '#^Offset ''go''\|''node''\|''php''\|''python''\|''ruby'' on array\{node\: array\{''src/routes/\*\.js'', ''src/routes/\*\.ts'', ''routes/\*\.js'', ''routes/\*\.ts'', ''src/app\.js'', ''src/app\.ts'', ''app\.js'', ''app\.ts'', \.\.\.\}, python\: array\{''app/main\.py'', ''main\.py'', ''app\.py'', ''app/routes/\*\.py'', ''routes/\*\.py'', ''app/api/\*\.py'', ''api/\*\.py'', ''src/main\.py'', \.\.\.\}, go\: array\{''main\.go'', ''cmd/main\.go'', ''cmd/\*/main\.go'', ''internal/routes/\*\.go'', ''routes/\*\.go'', ''internal/handler/\*…'', ''handler/\*\.go''\}, php\: array\{''routes/web\.php'', ''routes/api\.php'', ''app/Http/routes\.php''\}, ruby\: array\{''config/routes\.rb'', ''app/controllers/\*…''\}\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Services/RepositoryAnalyzer/Detectors/HealthCheckDetector.php
-
-		-
-			message: '#^Offset ''go''\|''node''\|''php''\|''python''\|''ruby''\|''rust'' on array\{node\: array\{''/\\\\\.listen\\\\s\*\\\\\(\\\\s\*\(…'', ''/\\\\\.listen\\\\s\*\\\\\(\\\\s…'', ''/\\\\\.listen\\\\s\*\\\\\(\\\\s…'', ''/port\\\\s\*\[\:\=\]\\\\s\*\(\\\\d\+…'', ''/PORT\\\\s\*\[\:\=\]\\\\s\*\(\\\\d\+…''\}, python\: array\{''/uvicorn\\\\\.run\\\\s\*\\\\\(\[…'', ''/\\\\\.run\\\\s\*\\\\\(\[\^\)\]…'', ''/\-\-port\\\\s\+\(\\\\d\+\)/'', ''/PORT\\\\s\*\=\\\\s\*\(\\\\d\+\)/'', ''/\:\(\\\\d\+\)\["\\''\]\\\\s\*\$/''\}, go\: array\{''/ListenAndServe\\\\s\*\\\\…'', ''/ListenAndServe\\\\s\*\\\\…'', ''/\\\\\.Start\\\\s\*\\\\\(\\\\s\*\["\\''…'', ''/Addr\\\\s\*\[\:\=\]\\\\s\*\["\\''\]…''\}, rust\: array\{''/bind\\\\s\*\\\\\(\\\\s\*\["\\''\]\\\\S…'', ''/\\\\\.port\\\\s\*\\\\\(\\\\s\*\(\\\\d\+…''\}, php\: array\{''/\-\-port\\\\s\*\[\=\\\\s\]\+\(\\\\d…'', ''/SERVER_PORT\.\*\(\\\\d\{4…''\}, ruby\: array\{''/port\\\\s\+\(\\\\d\+\)/'', ''/\-p\\\\s\+\(\\\\d\+\)/''\}\} in isset\(\) always exists and is not nullable\.$#'
-			identifier: isset.offset
-			count: 1
-			path: app/Services/RepositoryAnalyzer/Detectors/PortDetector.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
@@ -6929,24 +6587,6 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/RepositoryAnalyzer/InfrastructureProvisioner.php
-
-		-
-			message: '#^Offset ''databases'' on array\{services\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DockerComposeService\>, databases\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DetectedDatabase\>, externalServices\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DetectedService\>\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/RepositoryAnalyzer/RepositoryAnalyzer.php
-
-		-
-			message: '#^Offset ''externalServices'' on array\{services\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DockerComposeService\>, databases\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DetectedDatabase\>, externalServices\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DetectedService\>\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/RepositoryAnalyzer/RepositoryAnalyzer.php
-
-		-
-			message: '#^Offset ''services'' on array\{services\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DockerComposeService\>, databases\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DetectedDatabase\>, externalServices\: array\<App\\Services\\RepositoryAnalyzer\\DTOs\\DetectedService\>\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Services/RepositoryAnalyzer/RepositoryAnalyzer.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Environment\:\:\$project\.$#'
@@ -6970,30 +6610,6 @@ parameters:
 			message: '#^Relation ''settings'' is not found in App\\Models\\Server model\.$#'
 			identifier: larastan.relationExistence
 			count: 6
-			path: app/Services/ServerSelectionService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>container_counts" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/ServerSelectionService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>cpu_usage_percent" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/ServerSelectionService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>disk_usage_percent" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: app/Services/ServerSelectionService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>memory_usage_percent" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
 			path: app/Services/ServerSelectionService.php
 
 		-
