@@ -599,7 +599,7 @@ describe('Team Settings Page', () => {
             />
         );
         expect(screen.getByRole('button', { name: /Activity/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Permission Sets/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Roles/i })).toBeInTheDocument();
     });
 
     it('can close invite modal', async () => {

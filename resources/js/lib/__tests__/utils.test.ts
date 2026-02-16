@@ -106,13 +106,10 @@ describe('safeOpenUrl', () => {
         expect(windowOpenSpy).not.toHaveBeenCalled();
     });
 
-    it('should log warning for blocked URLs', () => {
-        const warnSpy = vi.spyOn(console, 'warn');
-        safeOpenUrl('javascript:alert(1)');
-        expect(warnSpy).toHaveBeenCalledWith(
-            'Blocked attempt to open unsafe URL:',
-            'javascript:alert(1)'
-        );
+    it('should return false for blocked URLs without opening', () => {
+        const result = safeOpenUrl('javascript:alert(1)');
+        expect(result).toBe(false);
+        expect(windowOpenSpy).not.toHaveBeenCalled();
     });
 
     it('should return false for null/undefined', () => {

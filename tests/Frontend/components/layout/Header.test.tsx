@@ -45,9 +45,11 @@ describe('Header Component', () => {
         expect(screen.queryByText('New')).not.toBeInTheDocument();
     });
 
-    it('shows Help button', () => {
+    it('shows theme toggle button', () => {
         render(<Header />);
-        expect(screen.getByText('Help')).toBeInTheDocument();
+        // Theme toggle has title attribute
+        const themeButton = document.querySelector('button[title*="theme"]');
+        expect(themeButton).toBeInTheDocument();
     });
 
     it('shows user avatar with first letter of name', () => {
