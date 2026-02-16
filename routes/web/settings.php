@@ -269,6 +269,10 @@ Route::get('/settings/workspace', function () {
     // Owner info
     $owner = $team->members()->wherePivot('role', 'owner')->first();
 
+    // Use permission sets system for edit access
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    $canEdit = $permService->userHasPermission($user, 'settings.update');
+
     return Inertia::render('Settings/Workspace', [
         'workspace' => [
             'id' => $team->id,
@@ -297,7 +301,7 @@ Route::get('/settings/workspace', function () {
         'environmentOptions' => $environmentOptions,
         'localeOptions' => $localeOptions,
         'dateFormatOptions' => $dateFormatOptions,
-        'canEdit' => $user->isAdmin(),
+        'canEdit' => $canEdit,
     ]);
 })->name('settings.workspace');
 
@@ -1554,8 +1558,9 @@ Route::post('/settings/workspace', function (Request $request) {
 
     $team = currentTeam();
     $user = auth()->user();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
 
-    if (! $user->isAdmin()) {
+    if (! $permService->userHasPermission($user, 'settings.update')) {
         return redirect()->back()->withErrors(['workspace' => 'You do not have permission to update workspace settings']);
     }
 
@@ -1578,9 +1583,9 @@ Route::post('/settings/workspace/logo', function (Request $request) {
 
     $team = currentTeam();
     $user = auth()->user();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
 
-    // Check if the user is an admin or owner
-    if (! $user->isAdmin()) {
+    if (! $permService->userHasPermission($user, 'settings.update')) {
         return redirect()->back()->withErrors(['logo' => 'You do not have permission to update workspace logo']);
     }
 
@@ -1599,8 +1604,9 @@ Route::post('/settings/workspace/logo', function (Request $request) {
 Route::delete('/settings/workspace/logo', function () {
     $team = currentTeam();
     $user = auth()->user();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
 
-    if (! $user->isAdmin()) {
+    if (! $permService->userHasPermission($user, 'settings.update')) {
         return redirect()->back()->withErrors(['logo' => 'You do not have permission to remove workspace logo']);
     }
 
