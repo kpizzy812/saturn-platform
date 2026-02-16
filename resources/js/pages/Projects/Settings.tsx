@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, router, useForm } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Input, Badge, Select } from '@/components/ui';
@@ -9,6 +9,8 @@ import {
     Gauge, GitBranch, Loader2,
 } from 'lucide-react';
 import { useProjectActivity } from '@/hooks/useProjectActivity';
+import { useGitBranches } from '@/hooks/useGitBranches';
+import { BranchSelector } from '@/components/ui/BranchSelector';
 
 // --- Types ---
 
@@ -114,6 +116,7 @@ interface Props {
     userTeams: TeamOption[];
     quotas: Record<string, QuotaItem>;
     deploymentDefaults: DeploymentDefaults;
+    projectRepositories: string[];
     notificationOverrides: NotificationOverrides;
 }
 
@@ -132,6 +135,7 @@ export default function ProjectSettings({
     userTeams,
     quotas,
     deploymentDefaults,
+    projectRepositories,
     notificationOverrides,
 }: Props) {
     // General form
@@ -876,7 +880,7 @@ export default function ProjectSettings({
                 <ResourceLimitsSection projectUuid={project.uuid} quotas={quotas} />
 
                 {/* 8. Default Deployment Settings */}
-                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} environments={environments} />
+                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} environments={environments} repositories={projectRepositories} />
 
                 {/* 9. Project Info */}
                 <Card className="mb-6">
@@ -1229,7 +1233,7 @@ const BUILD_PACK_OPTIONS = [
     { value: 'static', label: 'Static' },
 ];
 
-function DeploymentDefaultsSection({ projectUuid, defaults, environments }: { projectUuid: string; defaults: DeploymentDefaults; environments: Environment[] }) {
+function DeploymentDefaultsSection({ projectUuid, defaults, environments, repositories }: { projectUuid: string; defaults: DeploymentDefaults; environments: Environment[]; repositories: string[] }) {
     const { data, setData, patch, processing } = useForm({
         default_build_pack: defaults.default_build_pack ?? '',
         default_auto_deploy: defaults.default_auto_deploy ?? false,
@@ -1239,10 +1243,23 @@ function DeploymentDefaultsSection({ projectUuid, defaults, environments }: { pr
     });
 
     // Per-environment branch state
-    const [branches, setBranches] = useState<Record<number, string>>(
+    const [envBranches, setEnvBranches] = useState<Record<number, string>>(
         Object.fromEntries(environments.map(env => [env.id, env.default_git_branch ?? '']))
     );
     const [savingBranches, setSavingBranches] = useState(false);
+
+    // Fetch branches from first project repository (if any)
+    const { branches: gitBranches, isLoading: branchesLoading, error: branchesError, fetchBranches } = useGitBranches();
+    const [branchesFetched, setBranchesFetched] = useState(false);
+
+    // Auto-fetch branches from the first repository on mount
+    const primaryRepo = (repositories || [])[0];
+    React.useEffect(() => {
+        if (primaryRepo && !branchesFetched) {
+            fetchBranches(primaryRepo);
+            setBranchesFetched(true);
+        }
+    }, [primaryRepo, branchesFetched, fetchBranches]);
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
@@ -1258,7 +1275,7 @@ function DeploymentDefaultsSection({ projectUuid, defaults, environments }: { pr
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest' },
                 body: JSON.stringify({
-                    branches: Object.entries(branches).map(([envId, branch]) => ({
+                    branches: Object.entries(envBranches).map(([envId, branch]) => ({
                         environment_id: Number(envId),
                         branch: branch || null,
                     })),
@@ -1321,18 +1338,25 @@ function DeploymentDefaultsSection({ projectUuid, defaults, environments }: { pr
                 <div className="mt-6 border-t border-border pt-4">
                     <p className="mb-1 text-sm font-medium text-foreground">Git Branch per Environment</p>
                     <p className="mb-3 text-xs text-foreground-muted">
-                        Default branch used when creating new applications in each environment
+                        Default branch for new applications in each environment.
+                        {primaryRepo && (
+                            <> Branches loaded from <span className="font-mono">{primaryRepo.replace(/^https?:\/\//, '').replace(/\.git$/, '')}</span></>
+                        )}
                     </p>
                     <div className="space-y-3">
                         {environments.map((env) => (
                             <div key={env.id} className="flex items-center gap-3">
                                 <span className="w-32 shrink-0 text-sm font-medium text-foreground">{env.name}</span>
-                                <Input
-                                    value={branches[env.id] ?? ''}
-                                    onChange={(e) => setBranches({ ...branches, [env.id]: e.target.value })}
-                                    placeholder={env.name === 'production' ? 'main' : env.name === 'uat' ? 'staging' : 'dev'}
-                                    className="max-w-xs"
-                                />
+                                <div className="max-w-xs flex-1">
+                                    <BranchSelector
+                                        value={envBranches[env.id] ?? ''}
+                                        onChange={(val) => setEnvBranches({ ...envBranches, [env.id]: val })}
+                                        branches={gitBranches}
+                                        isLoading={branchesLoading}
+                                        error={branchesError}
+                                        placeholder={env.name === 'production' ? 'main' : env.name === 'uat' ? 'staging' : 'dev'}
+                                    />
+                                </div>
                             </div>
                         ))}
                     </div>

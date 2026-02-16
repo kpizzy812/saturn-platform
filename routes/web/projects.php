@@ -210,6 +210,15 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
     ];
     $totalResources = array_sum($resourcesCount);
 
+    // Collect unique git repositories from project's applications
+    $projectRepositories = $project->applications()
+        ->whereNotNull('git_repository')
+        ->where('git_repository', '!=', '')
+        ->distinct()
+        ->pluck('git_repository')
+        ->values()
+        ->all();
+
     // Filter environments visible to user (hide production from developers)
     $currentUser = auth()->user();
     $authService = app(ProjectAuthorizationService::class);
@@ -339,6 +348,7 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
         'userTeams' => $userTeams,
         'quotas' => $quotas,
         'deploymentDefaults' => $deploymentDefaults,
+        'projectRepositories' => $projectRepositories,
         'notificationOverrides' => [
             'deployment_success' => $project->notificationOverrides?->deployment_success,
             'deployment_failure' => $project->notificationOverrides?->deployment_failure,

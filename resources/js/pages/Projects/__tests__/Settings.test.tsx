@@ -37,6 +37,26 @@ vi.mock('@/hooks/useProjectActivity', () => ({
     }),
 }));
 
+// Mock useGitBranches hook
+vi.mock('@/hooks/useGitBranches', () => ({
+    useGitBranches: () => ({
+        branches: ['main', 'dev', 'staging'],
+        defaultBranch: 'main',
+        platform: null,
+        isLoading: false,
+        error: null,
+        fetchBranches: vi.fn(),
+        clearBranches: vi.fn(),
+    }),
+}));
+
+// Mock BranchSelector component
+vi.mock('@/components/ui/BranchSelector', () => ({
+    BranchSelector: ({ value, onChange, placeholder }: any) => (
+        <input value={value || ''} onChange={(e: any) => onChange(e.target.value)} placeholder={placeholder} data-testid="branch-selector" />
+    ),
+}));
+
 // Mock UI components
 vi.mock('@/components/ui', () => ({
     Card: ({ children, className }: any) => <div className={className}>{children}</div>,
@@ -112,6 +132,7 @@ const defaultProps = {
         default_preview_deployments: null,
         default_auto_rollback: null,
     },
+    projectRepositories: ['https://github.com/example/repo.git'],
     notificationOverrides: {
         deployment_success: null,
         deployment_failure: null,
