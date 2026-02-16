@@ -39,7 +39,14 @@ uses(Tests\TestCase::class)->in('Unit');
 |
 */
 
-// function something()
-// {
-//     // ..
-// }
+/**
+ * Helper function to access private/protected methods via Reflection
+ */
+function getPrivateMethod(string $class, string $methodName): ReflectionMethod
+{
+    $reflection = new ReflectionClass($class);
+    $method = $reflection->getMethod($methodName);
+    $method->setAccessible(true);
+
+    return $method;
+}

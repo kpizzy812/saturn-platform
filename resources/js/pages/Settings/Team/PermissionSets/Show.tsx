@@ -135,7 +135,7 @@ export default function PermissionSetShow({ permissionSet, allPermissions }: Pro
                         <Link href={`/settings/team/permission-sets/${permissionSet.id}/edit`}>
                             <Button>
                                 <Edit className="mr-2 h-4 w-4" />
-                                Edit Permission Set
+                                Edit Role
                             </Button>
                         </Link>
                     )}
@@ -193,7 +193,7 @@ export default function PermissionSetShow({ permissionSet, allPermissions }: Pro
                     <CardHeader>
                         <CardTitle>Permissions</CardTitle>
                         <CardDescription>
-                            Permissions granted to users with this permission set
+                            Permissions granted to users with this role
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -274,7 +274,7 @@ export default function PermissionSetShow({ permissionSet, allPermissions }: Pro
                     <CardHeader>
                         <CardTitle>Assigned Users</CardTitle>
                         <CardDescription>
-                            Users who have this permission set assigned
+                            Users who have this role assigned
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -282,7 +282,7 @@ export default function PermissionSetShow({ permissionSet, allPermissions }: Pro
                             <div className="flex flex-col items-center justify-center py-8 text-center">
                                 <Users className="h-12 w-12 text-foreground-muted mb-4" />
                                 <p className="text-foreground-muted">
-                                    No users assigned to this permission set yet.
+                                    No users assigned to this role yet.
                                 </p>
                             </div>
                         ) : (

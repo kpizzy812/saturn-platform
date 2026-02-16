@@ -50,6 +50,7 @@ interface PermissionsData {
     isPersonalSet: boolean;
     personalSetId: number | null;
     environments: EnvironmentItem[];
+    activePermissionIds: number[];
     member: Member;
 }
 
@@ -244,17 +245,24 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
 
     const switchToCustom = () => {
         if (!data) return;
-        // If switching from quick mode with a selected set, pre-populate from that set's permissions
-        if (mode === 'quick' && selectedSetId && data.currentPermissionSetId === selectedSetId) {
-            const permIds = new Set(data.currentPermissions.map(p => p.permission_id));
-            setSelectedPermissions(permIds);
-            const envRestrictions: Record<number, Record<string, boolean>> = {};
-            data.currentPermissions.forEach(p => {
-                if (p.environment_restrictions && Object.keys(p.environment_restrictions).length > 0) {
-                    envRestrictions[p.permission_id] = p.environment_restrictions;
-                }
-            });
-            setEnvironmentRestrictions(envRestrictions);
+        if (mode === 'quick') {
+            if (selectedSetId && data.currentPermissionSetId === selectedSetId) {
+                // Pre-populate from current permission set's permissions
+                const permIds = new Set(data.currentPermissions.map(p => p.permission_id));
+                setSelectedPermissions(permIds);
+                const envRestrictions: Record<number, Record<string, boolean>> = {};
+                data.currentPermissions.forEach(p => {
+                    if (p.environment_restrictions && Object.keys(p.environment_restrictions).length > 0) {
+                        envRestrictions[p.permission_id] = p.environment_restrictions;
+                    }
+                });
+                setEnvironmentRestrictions(envRestrictions);
+            } else {
+                // Pre-populate from effective permissions (role-based)
+                const permIds = new Set(data.activePermissionIds);
+                setSelectedPermissions(permIds);
+                setEnvironmentRestrictions({});
+            }
         }
         setMode('custom');
     };
@@ -290,7 +298,7 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                                     : 'text-foreground-muted hover:text-foreground'
                             }`}
                         >
-                            Permission Sets
+                            Roles
                         </button>
                         <button
                             type="button"
@@ -322,7 +330,12 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                                     <UserIcon className="h-4 w-4 text-foreground-muted" />
                                 </div>
                                 <div className="flex-1 text-left">
-                                    <p className="font-medium text-foreground">Role Default</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium text-foreground">Role Default</p>
+                                        <Badge variant="info" className="text-[10px]">
+                                            {data.activePermissionIds.length} active
+                                        </Badge>
+                                    </div>
                                     <p className="text-xs text-foreground-muted">
                                         Use permissions from the member's role ({member.role})
                                     </p>
@@ -331,6 +344,9 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white">
                                         <Check className="h-4 w-4" />
                                     </div>
+                                )}
+                                {data.currentPermissionSetId === null && selectedSetId !== null && (
+                                    <Badge variant="default" className="text-[10px]">Current</Badge>
                                 )}
                             </button>
 
@@ -388,7 +404,14 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                             )}
 
                             <div className="flex items-center justify-between">
-                                <Badge variant="default">{selectedPermissions.size} selected</Badge>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="default">{selectedPermissions.size} selected</Badge>
+                                    {data.activePermissionIds.length > 0 && (
+                                        <span className="text-[10px] text-foreground-muted">
+                                            ({data.activePermissionIds.length} currently active)
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
@@ -447,6 +470,7 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                                         <div className="space-y-1">
                                             {permissions.map((permission) => {
                                                 const isSelected = selectedPermissions.has(permission.id);
+                                                const isCurrentlyActive = data.activePermissionIds.includes(permission.id);
                                                 const hasRestrictions = environmentRestrictions[permission.id] &&
                                                     Object.keys(environmentRestrictions[permission.id]).length > 0;
 
@@ -456,6 +480,8 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                                                             className={`flex items-center justify-between rounded-lg border p-2 cursor-pointer transition-all ${
                                                                 isSelected
                                                                     ? 'border-primary bg-primary/5'
+                                                                    : isCurrentlyActive
+                                                                    ? 'border-success/30 bg-success/5'
                                                                     : 'border-border bg-background hover:border-border/80'
                                                             }`}
                                                             onClick={() => togglePermission(permission.id)}
@@ -465,6 +491,11 @@ export function QuickPermissionsModal({ isOpen, onClose, member, onSuccess }: Pr
                                                                     <p className="text-xs font-medium text-foreground truncate">
                                                                         {permission.name}
                                                                     </p>
+                                                                    {isCurrentlyActive && !isSelected && (
+                                                                        <Badge variant="success" className="text-[9px] px-1 py-0">
+                                                                            Active
+                                                                        </Badge>
+                                                                    )}
                                                                     {permission.is_sensitive && (
                                                                         <Badge variant="warning" className="text-[9px] px-1 py-0">
                                                                             Sensitive

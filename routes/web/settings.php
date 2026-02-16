@@ -724,6 +724,16 @@ Route::get('/settings/team/members/{id}/permissions', function (string $id) {
         ->get()
         ->map(fn ($e) => ['id' => $e->id, 'name' => $e->name]);
 
+    // Get effective permissions (what the user actually has right now)
+    $permissionService = app(\App\Services\Authorization\PermissionService::class);
+    $effectivePermissions = $permissionService->getUserEffectivePermissions($member);
+    $activePermissionIds = [];
+    foreach (\App\Models\Permission::all() as $permission) {
+        if (! empty($effectivePermissions[$permission->key])) {
+            $activePermissionIds[] = $permission->id;
+        }
+    }
+
     return response()->json([
         'permissionSets' => $permissionSets,
         'allPermissions' => $allPermissions,
@@ -732,6 +742,7 @@ Route::get('/settings/team/members/{id}/permissions', function (string $id) {
         'isPersonalSet' => $isPersonalSet,
         'personalSetId' => $personalSetId,
         'environments' => $environments,
+        'activePermissionIds' => $activePermissionIds,
         'member' => [
             'id' => $member->id,
             'name' => $member->name,
@@ -969,6 +980,27 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
         'completed_at' => $t->completed_at?->toISOString(),
     ]);
 
+    // Team members for post-kick transfer dropdown
+    $teamMembers = $team->members->map(fn ($m) => [
+        'id' => $m->id,
+        'name' => $m->name,
+        'email' => $m->email,
+    ]);
+
+    // Filter top_resources to only existing ones for transfer UI
+    $memberResources = [];
+    $topResources = $archive->contribution_summary['top_resources'] ?? [];
+    foreach ($topResources as $resource) {
+        try {
+            $type = $resource['full_type'] ?? null;
+            if ($type && class_exists($type) && $type::find($resource['id'])) {
+                $memberResources[] = $resource;
+            }
+        } catch (\Exception $e) {
+            // Skip non-existing resources
+        }
+    }
+
     return Inertia::render('Settings/Team/ArchiveDetail', [
         'archive' => [
             'id' => $archive->id,
@@ -986,8 +1018,226 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
             'created_at' => $archive->created_at->toISOString(),
         ],
         'transfers' => $transfers,
+        'teamMembers' => $teamMembers,
+        'memberResources' => $memberResources,
     ]);
 })->name('settings.team.archive.detail');
+
+// Archive export (JSON/CSV download)
+Route::get('/settings/team/archives/{id}/export', function (string $id, Request $request) {
+    $team = currentTeam();
+    $user = auth()->user();
+
+    if (! $user->isAdmin()) {
+        abort(403, 'Only admins and owners can export archives.');
+    }
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+    $format = $request->query('format', 'json');
+
+    $transfers = $archive->getTransfers()->map(fn ($t) => [
+        'id' => $t->id,
+        'resource_type' => class_basename($t->transferable_type),
+        'resource_name' => $t->resource_snapshot['name'] ?? 'Unknown',
+        'to_user' => $t->toUser?->name ?? 'Unknown',
+        'status' => $t->status,
+        'completed_at' => $t->completed_at?->toISOString(),
+    ]);
+
+    $exportData = [
+        'archive' => [
+            'member_name' => $archive->member_name,
+            'member_email' => $archive->member_email,
+            'member_role' => $archive->member_role,
+            'member_joined_at' => $archive->member_joined_at?->toISOString(),
+            'removed_at' => $archive->created_at->toISOString(),
+            'kicked_by' => $archive->kicked_by_name,
+            'kick_reason' => $archive->kick_reason,
+            'notes' => $archive->notes,
+        ],
+        'contributions' => $archive->contribution_summary,
+        'access_snapshot' => $archive->access_snapshot,
+        'transfers' => $transfers->toArray(),
+    ];
+
+    if ($format === 'csv') {
+        $filename = 'archive-'.str_replace(' ', '_', $archive->member_name).'-'.now()->format('Y-m-d').'.csv';
+
+        return response()->stream(function () use ($exportData) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Section', 'Key', 'Value']);
+
+            // Archive info
+            foreach ($exportData['archive'] as $key => $value) {
+                fputcsv($handle, ['Archive', $key, $value ?? '']);
+            }
+
+            // Contributions
+            if (! empty($exportData['contributions'])) {
+                foreach ($exportData['contributions'] as $key => $value) {
+                    if (is_array($value)) {
+                        fputcsv($handle, ['Contributions', $key, json_encode($value)]);
+                    } else {
+                        fputcsv($handle, ['Contributions', $key, $value ?? '']);
+                    }
+                }
+            }
+
+            // Access snapshot
+            if (! empty($exportData['access_snapshot'])) {
+                foreach ($exportData['access_snapshot'] as $key => $value) {
+                    if (is_array($value)) {
+                        fputcsv($handle, ['Access Snapshot', $key, json_encode($value)]);
+                    } else {
+                        fputcsv($handle, ['Access Snapshot', $key, $value ?? '']);
+                    }
+                }
+            }
+
+            // Transfers
+            foreach ($exportData['transfers'] as $i => $transfer) {
+                foreach ($transfer as $key => $value) {
+                    fputcsv($handle, ['Transfer #'.($i + 1), $key, $value ?? '']);
+                }
+            }
+
+            fclose($handle);
+        }, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    // Default: JSON
+    $filename = 'archive-'.str_replace(' ', '_', $archive->member_name).'-'.now()->format('Y-m-d').'.json';
+
+    return response()->json($exportData)->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+})->name('settings.team.archive.export');
+
+// Archive notes update
+Route::patch('/settings/team/archives/{id}/notes', function (string $id, Request $request) {
+    $team = currentTeam();
+    $user = auth()->user();
+
+    if (! $user->isAdmin()) {
+        abort(403, 'Only admins and owners can edit archive notes.');
+    }
+
+    $request->validate([
+        'notes' => 'nullable|string|max:5000',
+    ]);
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+    $archive->update(['notes' => $request->input('notes')]);
+
+    \App\Models\AuditLog::log(
+        'archive_notes_updated',
+        $archive,
+        "Updated notes for archived member {$archive->member_name}",
+        ['archive_id' => $archive->id]
+    );
+
+    return redirect()->back();
+})->name('settings.team.archive.notes');
+
+// Archive resource transfer (post-kick)
+Route::post('/settings/team/archives/{id}/transfer', function (string $id, Request $request) {
+    $team = currentTeam();
+    $user = auth()->user();
+
+    if (! $user->isAdmin()) {
+        abort(403, 'Only admins and owners can transfer resources.');
+    }
+
+    $request->validate([
+        'transfers' => 'required|array|min:1',
+        'transfers.*.resource_type' => 'required|string',
+        'transfers.*.resource_id' => 'required|integer',
+        'transfers.*.resource_name' => 'required|string|max:255',
+        'transfers.*.to_user_id' => 'required|integer',
+    ]);
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+
+    $newTransferIds = [];
+    foreach ($request->input('transfers') as $transfer) {
+        // Verify the target user is in the team
+        $targetMember = $team->members()->where('user_id', $transfer['to_user_id'])->first();
+        if (! $targetMember) {
+            continue;
+        }
+
+        $record = \App\Models\TeamResourceTransfer::create([
+            'transfer_type' => \App\Models\TeamResourceTransfer::TYPE_ARCHIVE,
+            'transferable_type' => $transfer['resource_type'],
+            'transferable_id' => $transfer['resource_id'],
+            'from_team_id' => $team->id,
+            'to_team_id' => $team->id,
+            'from_user_id' => $archive->user_id,
+            'to_user_id' => $transfer['to_user_id'],
+            'initiated_by' => $user->id,
+            'reason' => "Post-kick transfer for {$transfer['resource_name']}",
+            'resource_snapshot' => [
+                'name' => $transfer['resource_name'],
+                'type' => class_basename($transfer['resource_type']),
+            ],
+        ]);
+        $record->markAsCompleted();
+        $newTransferIds[] = $record->id;
+    }
+
+    // Append new transfer IDs to archive
+    $existingIds = $archive->transfer_ids ?? [];
+    $archive->update(['transfer_ids' => array_merge($existingIds, $newTransferIds)]);
+
+    \App\Models\AuditLog::log(
+        'archive_resources_transferred',
+        $archive,
+        'Transferred '.count($newTransferIds)." resource(s) from archived member {$archive->member_name}",
+        [
+            'archive_id' => $archive->id,
+            'transfer_ids' => $newTransferIds,
+        ]
+    );
+
+    return response()->json([
+        'success' => true,
+        'transferred' => count($newTransferIds),
+    ]);
+})->name('settings.team.archive.transfer');
+
+// Archive delete
+Route::delete('/settings/team/archives/{id}', function (string $id) {
+    $team = currentTeam();
+    $user = auth()->user();
+
+    if (! $user->isAdmin()) {
+        abort(403, 'Only admins and owners can delete archives.');
+    }
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+
+    // Delete related transfers
+    $transferIds = $archive->transfer_ids ?? [];
+    if (! empty($transferIds)) {
+        \App\Models\TeamResourceTransfer::whereIn('id', $transferIds)->delete();
+    }
+
+    \App\Models\AuditLog::log(
+        'archive_deleted',
+        $archive,
+        "Deleted archive for member {$archive->member_name} ({$archive->member_email})",
+        [
+            'archive_id' => $archive->id,
+            'member_name' => $archive->member_name,
+            'member_email' => $archive->member_email,
+        ]
+    );
+
+    $archive->delete();
+
+    return redirect('/settings/team/archives')->with('success', 'Archive deleted successfully.');
+})->name('settings.team.archive.delete');
 
 Route::post('/settings/team/invite', function (Request $request) {
     $request->validate([

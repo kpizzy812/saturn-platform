@@ -1,8 +1,14 @@
+import { useState } from 'react';
 import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Link } from '@inertiajs/react';
+import { Textarea } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { useConfirmation } from '@/components/ui/ConfirmationModal';
+import { useToast } from '@/components/ui/Toast';
+import { Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     Mail,
@@ -15,6 +21,13 @@ import {
     ArrowRightLeft,
     FolderOpen,
     UserX,
+    Download,
+    FileText,
+    Trash2,
+    MoreVertical,
+    Pencil,
+    StickyNote,
+    Send,
 } from 'lucide-react';
 
 interface ContributionSummary {
@@ -49,6 +62,20 @@ interface Transfer {
     completed_at: string | null;
 }
 
+interface TeamMember {
+    id: number;
+    name: string;
+    email: string;
+}
+
+interface MemberResource {
+    type: string;
+    full_type: string;
+    id: number;
+    name: string;
+    action_count: number;
+}
+
 interface ArchiveData {
     id: number;
     uuid: string;
@@ -68,11 +95,48 @@ interface ArchiveData {
 interface Props {
     archive: ArchiveData;
     transfers: Transfer[];
+    teamMembers: TeamMember[];
+    memberResources: MemberResource[];
 }
 
-export default function ArchiveDetail({ archive, transfers }: Props) {
+export default function ArchiveDetail({ archive, transfers, teamMembers, memberResources }: Props) {
     const contributions = archive.contribution_summary;
     const access = archive.access_snapshot;
+    const { addToast } = useToast();
+
+    // Notes editing state
+    const [isEditingNotes, setIsEditingNotes] = useState(false);
+    const [notesValue, setNotesValue] = useState(archive.notes ?? '');
+    const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+    // Transfer state
+    const [transferAssignments, setTransferAssignments] = useState<Record<string, number>>({});
+    const [isTransferring, setIsTransferring] = useState(false);
+
+    // Delete state
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const { open: openDeleteConfirm, ConfirmationDialog: DeleteDialog } = useConfirmation({
+        title: 'Delete Archive',
+        description: `Are you sure you want to permanently delete the archive for ${archive.member_name}? This will also remove all related transfer records. This action cannot be undone.`,
+        confirmText: 'Delete Archive',
+        cancelText: 'Cancel',
+        variant: 'danger',
+        onConfirm: async () => {
+            setIsDeleting(true);
+            router.delete(`/settings/team/archives/${archive.id}`, {
+                onSuccess: () => {
+                    addToast('success', 'Archive deleted');
+                },
+                onError: () => {
+                    addToast('error', 'Failed to delete archive');
+                },
+                onFinish: () => {
+                    setIsDeleting(false);
+                },
+            });
+        },
+    });
 
     const formatDate = (iso: string | null) => {
         if (!iso) return 'N/A';
@@ -92,6 +156,81 @@ export default function ArchiveDetail({ archive, transfers }: Props) {
         }
     };
 
+    const handleExport = (format: 'json' | 'csv') => {
+        window.location.href = `/settings/team/archives/${archive.id}/export?format=${format}`;
+    };
+
+    const handleSaveNotes = () => {
+        setIsSavingNotes(true);
+        router.patch(
+            `/settings/team/archives/${archive.id}/notes`,
+            { notes: notesValue },
+            {
+                onSuccess: () => {
+                    setIsEditingNotes(false);
+                    addToast('success', 'Notes saved');
+                },
+                onError: () => {
+                    addToast('error', 'Failed to save notes');
+                },
+                onFinish: () => {
+                    setIsSavingNotes(false);
+                },
+            },
+        );
+    };
+
+    const handleTransfer = async () => {
+        const selectedTransfers = Object.entries(transferAssignments)
+            .filter(([, userId]) => userId > 0)
+            .map(([resourceKey, toUserId]) => {
+                const resource = memberResources.find((r) => `${r.full_type}:${r.id}` === resourceKey);
+                if (!resource) return null;
+                return {
+                    resource_type: resource.full_type,
+                    resource_id: resource.id,
+                    resource_name: resource.name,
+                    to_user_id: toUserId,
+                };
+            })
+            .filter(Boolean);
+
+        if (selectedTransfers.length === 0) {
+            addToast('warning', 'No resources selected for transfer');
+            return;
+        }
+
+        setIsTransferring(true);
+        try {
+            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+            const response = await fetch(`/settings/team/archives/${archive.id}/transfer`, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ transfers: selectedTransfers }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                addToast('success', `Transferred ${data.transferred} resource(s)`);
+                setTransferAssignments({});
+                router.reload();
+            } else {
+                addToast('error', 'Failed to transfer resources');
+            }
+        } catch {
+            addToast('error', 'Failed to transfer resources');
+        } finally {
+            setIsTransferring(false);
+        }
+    };
+
+    const hasTransferSelections = Object.values(transferAssignments).some((v) => v > 0);
+
     return (
         <SettingsLayout activeSection="team">
             <div className="space-y-6">
@@ -107,6 +246,27 @@ export default function ArchiveDetail({ archive, transfers }: Props) {
                         <p className="text-sm text-foreground-muted">Archived data for {archive.member_name}</p>
                     </div>
                     <Badge variant={archive.status === 'completed' ? 'success' : 'warning'}>{archive.status}</Badge>
+
+                    {/* Actions Dropdown */}
+                    <Dropdown>
+                        <DropdownTrigger>
+                            <Button variant="secondary" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownTrigger>
+                        <DropdownContent width="md">
+                            <DropdownItem icon={<Download className="h-4 w-4" />} onClick={() => handleExport('json')}>
+                                Download JSON
+                            </DropdownItem>
+                            <DropdownItem icon={<FileText className="h-4 w-4" />} onClick={() => handleExport('csv')}>
+                                Download CSV
+                            </DropdownItem>
+                            <DropdownDivider />
+                            <DropdownItem icon={<Trash2 className="h-4 w-4" />} danger onClick={openDeleteConfirm}>
+                                Delete Archive
+                            </DropdownItem>
+                        </DropdownContent>
+                    </Dropdown>
                 </div>
 
                 {/* Member Profile (Frozen) */}
@@ -267,7 +427,64 @@ export default function ArchiveDetail({ archive, transfers }: Props) {
                     </Card>
                 )}
 
-                {/* Transfers */}
+                {/* Notes */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Notes</CardTitle>
+                                <CardDescription>Internal notes about this archived member</CardDescription>
+                            </div>
+                            {!isEditingNotes && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setNotesValue(archive.notes ?? '');
+                                        setIsEditingNotes(true);
+                                    }}
+                                >
+                                    <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                    {archive.notes ? 'Edit' : 'Add Note'}
+                                </Button>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {isEditingNotes ? (
+                            <div className="space-y-3">
+                                <Textarea
+                                    value={notesValue}
+                                    onChange={(e) => setNotesValue(e.target.value)}
+                                    placeholder="Add notes about this member..."
+                                    rows={4}
+                                />
+                                <div className="flex gap-2">
+                                    <Button onClick={handleSaveNotes} loading={isSavingNotes} size="sm">
+                                        Save
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setIsEditingNotes(false)}
+                                        disabled={isSavingNotes}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : archive.notes ? (
+                            <div className="flex items-start gap-2">
+                                <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-foreground-muted" />
+                                <p className="whitespace-pre-wrap text-sm text-foreground">{archive.notes}</p>
+                            </div>
+                        ) : (
+                            <p className="text-sm italic text-foreground-muted">No notes yet</p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Existing Transfers */}
                 {transfers.length > 0 && (
                     <Card>
                         <CardHeader>
@@ -300,6 +517,66 @@ export default function ArchiveDetail({ archive, transfers }: Props) {
                                         </Badge>
                                     </div>
                                 ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Post-kick Resource Transfer */}
+                {memberResources.length > 0 && teamMembers.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Transfer Resources</CardTitle>
+                            <CardDescription>
+                                Reassign remaining resources from {archive.member_name} to current team members
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {memberResources.map((resource) => {
+                                    const resourceKey = `${resource.full_type}:${resource.id}`;
+                                    return (
+                                        <div
+                                            key={resourceKey}
+                                            className="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
+                                        >
+                                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                <Badge variant="default">{resource.type}</Badge>
+                                                <span className="truncate text-sm text-foreground">
+                                                    {resource.name}
+                                                </span>
+                                            </div>
+                                            <Select
+                                                className="w-48"
+                                                value={String(transferAssignments[resourceKey] ?? '')}
+                                                onChange={(e) =>
+                                                    setTransferAssignments((prev) => ({
+                                                        ...prev,
+                                                        [resourceKey]: Number(e.target.value),
+                                                    }))
+                                                }
+                                                options={[
+                                                    { value: '', label: 'Select member...' },
+                                                    ...teamMembers.map((m) => ({
+                                                        value: String(m.id),
+                                                        label: m.name,
+                                                    })),
+                                                ]}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-4">
+                                <Button
+                                    onClick={handleTransfer}
+                                    loading={isTransferring}
+                                    disabled={!hasTransferSelections}
+                                    size="sm"
+                                >
+                                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                                    Transfer Selected
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -344,6 +621,8 @@ export default function ArchiveDetail({ archive, transfers }: Props) {
                     </Card>
                 )}
             </div>
+
+            <DeleteDialog />
         </SettingsLayout>
     );
 }

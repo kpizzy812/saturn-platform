@@ -28,10 +28,27 @@ import { LogsTab } from './Logs';
 import { VariablesTab } from './Variables';
 import { SettingsTab } from './Settings';
 import { RollbacksTab } from './Rollbacks';
+import { DomainsTab } from './Domains';
 
 interface Props {
     service: Service;
     containers?: ServiceContainer[];
+}
+
+function extractDomains(service: Service) {
+    if (!service.applications) return [];
+    return service.applications
+        .filter((app) => app.fqdn)
+        .flatMap((app, _appIdx) =>
+            (app.fqdn ?? '').split(',').map((fqdn, idx) => ({
+                id: app.id * 100 + idx,
+                domain: fqdn.trim().replace(/^https?:\/\//, ''),
+                isPrimary: idx === 0,
+                sslStatus: (fqdn.trim().startsWith('https://') ? 'active' : 'none') as 'active' | 'pending' | 'failed' | 'none',
+                sslProvider: (fqdn.trim().startsWith('https://') ? 'letsencrypt' : null) as 'letsencrypt' | 'custom' | null,
+                createdAt: app.created_at,
+            }))
+        );
 }
 
 export default function ServiceShow({ service, containers = [] }: Props) {
@@ -117,6 +134,10 @@ export default function ServiceShow({ service, containers = [] }: Props) {
         {
             label: 'Overview',
             content: <OverviewTab service={service} />,
+        },
+        {
+            label: 'Domains',
+            content: <DomainsTab service={service} domains={extractDomains(service)} />,
         },
         {
             label: 'Deployments',
@@ -308,6 +329,11 @@ function OverviewTab({ service }: { service: Service }) {
                     const deployments = (data.deployments || data || []).map((d: {
                         id: number;
                         uuid?: string;
+                        commit?: string;
+                        commit_message?: string;
+                        status?: string;
+                        duration?: string;
+                        author?: string;
                         properties?: {
                             commit?: string;
                             commit_message?: string;
@@ -319,11 +345,11 @@ function OverviewTab({ service }: { service: Service }) {
                     }) => ({
                         id: d.id,
                         uuid: d.uuid || String(d.id),
-                        commit: d.properties?.commit?.substring(0, 7) || 'N/A',
-                        message: d.properties?.commit_message || d.description || 'Deployment',
-                        status: mapDeploymentStatus(d.properties?.status),
+                        commit: d.commit?.substring(0, 7) || d.properties?.commit?.substring(0, 7) || '',
+                        message: d.commit_message || d.properties?.commit_message || d.description || 'Deployment',
+                        status: mapDeploymentStatus(d.status || d.properties?.status),
                         time: formatRelativeTime(d.created_at),
-                        duration: d.properties?.duration || '-',
+                        duration: d.duration || d.properties?.duration || '-',
                     }));
                     setRecentDeployments(deployments);
                 }
@@ -443,9 +469,15 @@ function OverviewTab({ service }: { service: Service }) {
                                             )}
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
-                                                    <code className="text-sm font-medium text-foreground">{deployment.commit}</code>
-                                                    <span className="text-sm text-foreground-muted">·</span>
+                                                    {deployment.commit ? (
+                                                        <>
+                                                            <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
+                                                            <code className="text-sm font-medium text-foreground">{deployment.commit}</code>
+                                                            <span className="text-sm text-foreground-muted">·</span>
+                                                        </>
+                                                    ) : (
+                                                        <Activity className="h-3.5 w-3.5 text-foreground-muted" />
+                                                    )}
                                                     <span className="text-sm text-foreground">{deployment.message}</span>
                                                 </div>
                                                 <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">

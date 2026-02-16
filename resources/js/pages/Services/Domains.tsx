@@ -20,7 +20,7 @@ interface Props {
     domains?: Domain[];
 }
 
-export function DomainsTab({ service, domains: initialDomains = [] }: Props) {
+export function DomainsTab({ service: _service, domains: initialDomains = [] }: Props) {
     const confirm = useConfirm();
     const [domains, setDomains] = useState<Domain[]>(initialDomains);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);

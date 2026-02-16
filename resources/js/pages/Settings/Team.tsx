@@ -332,7 +332,7 @@ export default function TeamSettings({
                                         <Link href="/settings/team/permission-sets">
                                             <Button variant="secondary" size="sm">
                                                 <Shield className="mr-2 h-4 w-4" />
-                                                Permission Sets
+                                                Roles
                                             </Button>
                                         </Link>
                                         <Link href="/settings/team/archives">

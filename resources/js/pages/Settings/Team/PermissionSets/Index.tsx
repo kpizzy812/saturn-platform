@@ -86,7 +86,7 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
         router.delete(`/settings/team/permission-sets/${selectedSet.id}`, {
             onSuccess: () => {
                 toast({
-                    title: 'Permission set deleted',
+                    title: 'Role deleted',
                     description: `${selectedSet.name} has been deleted.`,
                 });
                 setShowDeleteModal(false);
@@ -95,7 +95,7 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
             onError: () => {
                 toast({
                     title: 'Failed to delete',
-                    description: 'Unable to delete permission set. It may be in use.',
+                    description: 'Unable to delete role. It may be in use.',
                     variant: 'error',
                 });
             },
@@ -117,7 +117,7 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                             </Button>
                         </Link>
                         <div>
-                            <h2 className="text-2xl font-semibold text-foreground">Permission Sets</h2>
+                            <h2 className="text-2xl font-semibold text-foreground">Roles</h2>
                             <p className="text-sm text-foreground-muted">
                                 Manage roles and permissions for team members
                             </p>
@@ -127,18 +127,18 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                         <Link href="/settings/team/permission-sets/create">
                             <Button>
                                 <Plus className="mr-2 h-4 w-4" />
-                                Create Permission Set
+                                Create Role
                             </Button>
                         </Link>
                     )}
                 </div>
 
-                {/* System Permission Sets */}
+                {/* System Roles */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Built-in Roles</CardTitle>
                         <CardDescription>
-                            System-defined permission sets with predefined permissions
+                            System-defined roles with predefined permissions
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -183,12 +183,12 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                     </CardContent>
                 </Card>
 
-                {/* Custom Permission Sets */}
+                {/* Custom Roles */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Custom Permission Sets</CardTitle>
+                        <CardTitle>Custom Roles</CardTitle>
                         <CardDescription>
-                            Create custom permission sets for fine-grained access control
+                            Create custom roles for fine-grained access control
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -196,12 +196,12 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                             <div className="flex flex-col items-center justify-center py-8 text-center">
                                 <Lock className="h-12 w-12 text-foreground-muted mb-4" />
                                 <p className="text-foreground-muted mb-4">
-                                    No custom permission sets yet. Create one to define custom access levels.
+                                    No custom roles yet. Create one to define custom access levels.
                                 </p>
                                 <Link href="/settings/team/permission-sets/create">
                                     <Button variant="secondary">
                                         <Plus className="mr-2 h-4 w-4" />
-                                        Create Permission Set
+                                        Create Role
                                     </Button>
                                 </Link>
                             </div>
@@ -277,8 +277,8 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
             <Modal
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
-                title="Delete Permission Set"
-                description={`Are you sure you want to delete "${selectedSet?.name}"? Users assigned to this set will need to be reassigned.`}
+                title="Delete Role"
+                description={`Are you sure you want to delete "${selectedSet?.name}"? Users assigned to this role will need to be reassigned.`}
             >
                 <ModalFooter>
                     <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>

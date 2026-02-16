@@ -110,13 +110,13 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
         }, {
             onSuccess: () => {
                 toast({
-                    title: 'Permission set created',
+                    title: 'Role created',
                     description: `${data.name} has been created successfully.`,
                 });
             },
             onError: () => {
                 toast({
-                    title: 'Failed to create permission set',
+                    title: 'Failed to create role',
                     description: 'Please check the form and try again.',
                     variant: 'error',
                 });
@@ -152,9 +152,9 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
                             </Button>
                         </Link>
                         <div>
-                            <h2 className="text-2xl font-semibold text-foreground">Create Permission Set</h2>
+                            <h2 className="text-2xl font-semibold text-foreground">Create Role</h2>
                             <p className="text-sm text-foreground-muted">
-                                Define a custom set of permissions for team members
+                                Define a custom role with specific permissions for team members
                             </p>
                         </div>
                     </div>
@@ -165,7 +165,7 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
                             </Button>
                         </Link>
                         <Button type="submit" loading={processing} disabled={!data.name || selectedPermissions.size === 0}>
-                            Create Permission Set
+                            Create Role
                         </Button>
                     </div>
                 </div>
@@ -175,7 +175,7 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
                     <CardHeader>
                         <CardTitle>Basic Information</CardTitle>
                         <CardDescription>
-                            Name and describe your permission set
+                            Name and describe your role
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -255,7 +255,7 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
                             <div>
                                 <CardTitle>Permissions</CardTitle>
                                 <CardDescription>
-                                    Select the permissions to include in this set
+                                    Select the permissions to include in this role
                                 </CardDescription>
                             </div>
                             <Badge variant="default">{selectedPermissions.size} selected</Badge>

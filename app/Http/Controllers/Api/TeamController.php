@@ -489,9 +489,9 @@ class TeamController extends Controller
                 'action' => $mappedAction,
                 'description' => $activity->description,
                 'user' => [
-                    'name' => $causer?->name ?? 'System',
-                    'email' => $causer?->email ?? 'system@saturn.local',
-                    'avatar' => $causer?->avatar ? '/storage/'.$causer->avatar : null,
+                    'name' => $causer->name ?? 'System',
+                    'email' => $causer->email ?? 'system@saturn.local',
+                    'avatar' => $causer->avatar ? '/storage/'.$causer->avatar : null,
                 ],
                 'resource' => $resourceType ? [
                     'type' => $resourceType,
@@ -665,8 +665,8 @@ class TeamController extends Controller
             return [
                 'id' => $activity->id,
                 'timestamp' => $activity->created_at->toIso8601String(),
-                'user_name' => $causer?->name ?? 'System',
-                'user_email' => $causer?->email ?? 'system@saturn.local',
+                'user_name' => $causer->name ?? 'System',
+                'user_email' => $causer->email ?? 'system@saturn.local',
                 'action' => $action,
                 'description' => $activity->description,
                 'resource_type' => $resourceType,

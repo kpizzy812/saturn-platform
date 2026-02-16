@@ -244,8 +244,8 @@ export default function MemberShow({
             {
                 onSuccess: () => {
                     toast({
-                        title: 'Permission set updated',
-                        description: value === '' ? 'Switched to role-based permissions.' : 'Permission set assigned.',
+                        title: 'Role updated',
+                        description: value === '' ? 'Switched to role-based permissions.' : 'Role assigned.',
                         variant: 'success',
                     });
                 },
@@ -253,7 +253,7 @@ export default function MemberShow({
                     toast({
                         title: 'Error',
                         description:
-                            Object.values(errors).flat().join(', ') || 'Failed to update permission set',
+                            Object.values(errors).flat().join(', ') || 'Failed to update role',
                         variant: 'error',
                     });
                     setSelectedPermissionSetId(
@@ -430,7 +430,7 @@ export default function MemberShow({
                         <CardTitle>Access Permissions</CardTitle>
                         <CardDescription>
                             {canEditMember
-                                ? 'Assign a permission set or use role-based defaults'
+                                ? 'Assign a role or use role-based defaults'
                                 : 'What this member can do based on their role'}
                         </CardDescription>
                     </CardHeader>
@@ -439,7 +439,7 @@ export default function MemberShow({
                         {canEditMember && permissionSets.length > 0 && (
                             <div className="mb-4">
                                 <Select
-                                    label="Permission Set"
+                                    label="Role"
                                     value={selectedPermissionSetId}
                                     onChange={(e) => handlePermissionSetChange(e.target.value)}
                                     disabled={isUpdatingPermissionSet}

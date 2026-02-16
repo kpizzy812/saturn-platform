@@ -262,6 +262,17 @@ export interface ServiceContainer {
     type: 'application' | 'database';
 }
 
+export interface ServiceApplication {
+    id: number;
+    uuid: string;
+    name: string;
+    fqdn: string | null;
+    status?: string;
+    service_id: number;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Service {
     id: number;
     uuid: string;
@@ -271,6 +282,7 @@ export interface Service {
     docker_compose_raw: string;
     environment_id: number;
     destination_id: number;
+    applications?: ServiceApplication[];
     // Resource limits
     limits_memory: string;
     limits_memory_swap: string;

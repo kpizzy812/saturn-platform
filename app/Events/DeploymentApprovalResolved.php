@@ -39,7 +39,7 @@ class DeploymentApprovalResolved implements ShouldBroadcast
     public static function fromApproval(DeploymentApproval $approval): self
     {
         $deployment = $approval->deployment;
-        $application = $deployment?->application;
+        $application = $deployment->application;
         $environment = $application?->environment;
         $project = $environment?->project;
         $team = $project?->team;
@@ -48,13 +48,13 @@ class DeploymentApprovalResolved implements ShouldBroadcast
             approvalId: $approval->id,
             approvalUuid: $approval->uuid,
             status: $approval->status,
-            deploymentId: $deployment?->id ?? 0,
-            deploymentUuid: $deployment?->deployment_uuid ?? '',
+            deploymentId: $deployment->id ?? 0,
+            deploymentUuid: $deployment->deployment_uuid ?? '',
             applicationId: $application?->id ?? 0,
             applicationName: $application?->name ?? 'Unknown',
             environmentName: $environment?->name ?? 'Unknown',
             projectName: $project?->name ?? 'Unknown',
-            resolvedByEmail: $approval->approvedBy?->email ?? 'Unknown',
+            resolvedByEmail: $approval->approvedBy->email ?? 'Unknown',
             comment: $approval->comment,
             requestedById: $approval->requested_by,
             teamId: $team?->id

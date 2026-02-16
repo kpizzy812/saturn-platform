@@ -1,12 +1,36 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, Link } from '@inertiajs/react';
+import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Save, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Save, Trash2, AlertTriangle, Loader2, ArrowLeft } from 'lucide-react';
 import type { Service } from '@/types';
 
 interface Props {
     service: Service;
+}
+
+export default function SettingsPage({ service }: Props) {
+    return (
+        <AppLayout
+            title={`${service.name} - Settings`}
+            breadcrumbs={[
+                { label: 'Dashboard', href: '/dashboard' },
+                { label: 'Services', href: '/services' },
+                { label: service.name, href: `/services/${service.uuid}` },
+                { label: 'Settings' },
+            ]}
+        >
+            <Link
+                href={`/services/${service.uuid}`}
+                className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
+            >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to {service.name}
+            </Link>
+            <SettingsTab service={service} />
+        </AppLayout>
+    );
 }
 
 export function SettingsTab({ service }: Props) {

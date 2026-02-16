@@ -34,7 +34,7 @@ class ActivityHelper
 
             foreach ($deployments as $deployment) {
                 $app = $deployment->application;
-                $appName = $app?->name ?? 'Unknown';
+                $appName = $app->name ?? 'Unknown';
                 $status = $deployment->status;
                 $deploymentUser = $deployment->user ?? $user;
 
@@ -58,14 +58,14 @@ class ActivityHelper
                     'action' => $action,
                     'description' => $description,
                     'user' => [
-                        'name' => $deploymentUser?->name ?? 'System',
-                        'email' => $deploymentUser?->email ?? 'system@saturn.local',
-                        'avatar' => $deploymentUser?->avatar ? '/storage/'.$deploymentUser->avatar : null,
+                        'name' => $deploymentUser->name ?? 'System',
+                        'email' => $deploymentUser->email ?? 'system@saturn.local',
+                        'avatar' => $deploymentUser->avatar ? '/storage/'.$deploymentUser->avatar : null,
                     ],
                     'resource' => [
                         'type' => 'application',
                         'name' => $appName,
-                        'id' => (string) ($app?->uuid ?? ''),
+                        'id' => (string) ($app->uuid ?? ''),
                     ],
                     'timestamp' => $deployment->created_at->toIso8601String(),
                 ]);
@@ -113,9 +113,9 @@ class ActivityHelper
                 'action' => $action,
                 'description' => $activity->description ?? self::buildDescription($action, $resourceName),
                 'user' => [
-                    'name' => $causer?->name ?? 'System',
-                    'email' => $causer?->email ?? 'system@saturn.local',
-                    'avatar' => $causer?->avatar ? '/storage/'.$causer->avatar : null,
+                    'name' => $causer->name ?? 'System',
+                    'email' => $causer->email ?? 'system@saturn.local',
+                    'avatar' => $causer->avatar ? '/storage/'.$causer->avatar : null,
                 ],
                 'resource' => [
                     'type' => $resourceType ?? 'application',
@@ -148,7 +148,7 @@ class ActivityHelper
             }
 
             $app = $deployment->application;
-            $appName = $app?->name ?? 'Unknown';
+            $appName = $app->name ?? 'Unknown';
             $status = $deployment->status;
             $user = auth()->user();
 
@@ -165,14 +165,14 @@ class ActivityHelper
                 'action' => $action,
                 'description' => self::buildDescription($action, $appName),
                 'user' => [
-                    'name' => $deploymentUser?->name ?? 'System',
-                    'email' => $deploymentUser?->email ?? 'system@saturn.local',
-                    'avatar' => $deploymentUser?->avatar ? '/storage/'.$deploymentUser->avatar : null,
+                    'name' => $deploymentUser->name ?? 'System',
+                    'email' => $deploymentUser->email ?? 'system@saturn.local',
+                    'avatar' => $deploymentUser->avatar ? '/storage/'.$deploymentUser->avatar : null,
                 ],
                 'resource' => [
                     'type' => 'application',
                     'name' => $appName,
-                    'id' => (string) ($app?->uuid ?? ''),
+                    'id' => (string) ($app->uuid ?? ''),
                 ],
                 'timestamp' => $deployment->created_at->toIso8601String(),
             ];
@@ -216,9 +216,9 @@ class ActivityHelper
             'action' => $action,
             'description' => $activity->description ?? self::buildDescription($action, $resourceName),
             'user' => [
-                'name' => $causer?->name ?? 'System',
-                'email' => $causer?->email ?? 'system@saturn.local',
-                'avatar' => $causer?->avatar ? '/storage/'.$causer->avatar : null,
+                'name' => $causer->name ?? 'System',
+                'email' => $causer->email ?? 'system@saturn.local',
+                'avatar' => $causer->avatar ? '/storage/'.$causer->avatar : null,
             ],
             'resource' => [
                 'type' => $resourceType ?? 'application',
@@ -254,7 +254,7 @@ class ActivityHelper
 
             return $related->map(function ($rel) use ($user) {
                 $app = $rel->application;
-                $appName = $app?->name ?? 'Unknown';
+                $appName = $app->name ?? 'Unknown';
                 $action = match ($rel->status) {
                     'finished' => 'deployment_completed',
                     'failed' => 'deployment_failed',
@@ -266,13 +266,13 @@ class ActivityHelper
                     'action' => $action,
                     'description' => self::buildDescription($action, $appName),
                     'user' => [
-                        'name' => $user?->name ?? 'System',
-                        'email' => $user?->email ?? 'system@saturn.local',
+                        'name' => $user->name ?? 'System',
+                        'email' => $user->email ?? 'system@saturn.local',
                     ],
                     'resource' => [
                         'type' => 'application',
                         'name' => $appName,
-                        'id' => (string) ($app?->uuid ?? ''),
+                        'id' => (string) ($app->uuid ?? ''),
                     ],
                     'timestamp' => $rel->created_at->toIso8601String(),
                 ];
@@ -305,8 +305,8 @@ class ActivityHelper
                 'action' => self::mapAction($event, $rel->subject),
                 'description' => $rel->description ?? 'Activity',
                 'user' => [
-                    'name' => $causer?->name ?? 'System',
-                    'email' => $causer?->email ?? 'system@saturn.local',
+                    'name' => $causer->name ?? 'System',
+                    'email' => $causer->email ?? 'system@saturn.local',
                 ],
                 'resource' => [
                     'type' => 'application',

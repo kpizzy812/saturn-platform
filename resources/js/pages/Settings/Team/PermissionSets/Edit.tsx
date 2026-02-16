@@ -151,13 +151,13 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
         }, {
             onSuccess: () => {
                 toast({
-                    title: 'Permission set updated',
+                    title: 'Role updated',
                     description: `${data.name} has been updated successfully.`,
                 });
             },
             onError: () => {
                 toast({
-                    title: 'Failed to update permission set',
+                    title: 'Failed to update role',
                     description: 'Please check the form and try again.',
                     variant: 'error',
                 });
@@ -170,14 +170,14 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
         router.delete(`/settings/team/permission-sets/${permissionSet.id}`, {
             onSuccess: () => {
                 toast({
-                    title: 'Permission set deleted',
+                    title: 'Role deleted',
                     description: `${permissionSet.name} has been deleted.`,
                 });
             },
             onError: () => {
                 toast({
                     title: 'Failed to delete',
-                    description: 'Unable to delete permission set. It may be in use.',
+                    description: 'Unable to delete role. It may be in use.',
                     variant: 'error',
                 });
             },
@@ -216,7 +216,7 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
                             </Button>
                         </Link>
                         <div>
-                            <h2 className="text-2xl font-semibold text-foreground">Edit Permission Set</h2>
+                            <h2 className="text-2xl font-semibold text-foreground">Edit Role</h2>
                             <p className="text-sm text-foreground-muted">
                                 Modify the permissions for {permissionSet.name}
                             </p>
@@ -247,7 +247,7 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
                     <CardHeader>
                         <CardTitle>Basic Information</CardTitle>
                         <CardDescription>
-                            Name and describe your permission set
+                            Name and describe your role
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -264,7 +264,7 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
                                 {errors.name && <p className="text-sm text-danger">{errors.name}</p>}
                                 {permissionSet.is_system && (
                                     <p className="text-xs text-foreground-muted">
-                                        System permission sets cannot be renamed.
+                                        System roles cannot be renamed.
                                     </p>
                                 )}
                             </div>
@@ -335,7 +335,7 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
                             <div>
                                 <CardTitle>Permissions</CardTitle>
                                 <CardDescription>
-                                    Select the permissions to include in this set
+                                    Select the permissions to include in this role
                                 </CardDescription>
                             </div>
                             <Badge variant="default">{selectedPermissions.size} selected</Badge>
@@ -487,8 +487,8 @@ export default function PermissionSetEdit({ permissionSet, allPermissions, envir
             <Modal
                 isOpen={showDeleteModal}
                 onClose={() => setShowDeleteModal(false)}
-                title="Delete Permission Set"
-                description={`Are you sure you want to delete "${permissionSet.name}"? Users assigned to this set will need to be reassigned.`}
+                title="Delete Role"
+                description={`Are you sure you want to delete "${permissionSet.name}"? Users assigned to this role will need to be reassigned.`}
             >
                 <ModalFooter>
                     <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={isDeleting}>
