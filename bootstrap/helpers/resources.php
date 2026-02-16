@@ -21,35 +21,20 @@ use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 use Laravel\Horizon\Contracts\JobRepository;
 use Spatie\Url\Url;
 
 /**
- * Get service templates from the official source or local file.
+ * Get service templates from the local file.
+ *
+ * Saturn uses its own curated templates from git — the $force parameter
+ * is kept for API compatibility but always reads from the local file.
  */
 function get_service_templates(bool $force = false): Collection
 {
+    $services = File::get(base_path('templates/'.config('constants.services.file_name')));
 
-    if ($force) {
-        try {
-            $response = Http::retry(3, 1000)->get(config('constants.services.official'));
-            if ($response->failed()) {
-                return collect([]);
-            }
-            $services = $response->json();
-
-            return collect($services);
-        } catch (\Throwable) {
-            $services = File::get(base_path('templates/'.config('constants.services.file_name')));
-
-            return collect(json_decode($services))->sortKeys();
-        }
-    } else {
-        $services = File::get(base_path('templates/'.config('constants.services.file_name')));
-
-        return collect(json_decode($services))->sortKeys();
-    }
+    return collect(json_decode($services))->sortKeys();
 }
 
 /**

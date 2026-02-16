@@ -8,8 +8,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 
 class PullTemplatesFromCDN implements ShouldBeEncrypted, ShouldQueue
 {
@@ -24,19 +22,8 @@ class PullTemplatesFromCDN implements ShouldBeEncrypted, ShouldQueue
 
     public function handle(): void
     {
-        try {
-            if (isDev()) {
-                return;
-            }
-            $response = Http::retry(3, 1000)->get(config('constants.services.official'));
-            if ($response->successful()) {
-                $services = $response->json();
-                File::put(base_path('templates/'.config('constants.services.file_name')), json_encode($services));
-            } else {
-                send_internal_notification('PullTemplatesAndVersions failed with: '.$response->status().' '.$response->body());
-            }
-        } catch (\Throwable $e) {
-            send_internal_notification('PullTemplatesAndVersions failed with: '.$e->getMessage());
-        }
+        // Saturn uses its own curated service templates from git.
+        // Do NOT pull from upstream Coolify CDN — it overwrites our
+        // fixes (e.g. corrected healthcheck URLs) with upstream bugs.
     }
 }
