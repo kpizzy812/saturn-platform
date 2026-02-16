@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +25,6 @@ import {
     Server,
     RefreshCw,
     Trash2,
-    Download,
     RotateCcw,
     FileArchive,
     AlertTriangle,
@@ -85,7 +84,7 @@ interface Props {
 
 function ExecutionRow({
     execution,
-    backupUuid,
+    backupUuid: _backupUuid,
     onRestore,
     onDelete,
 }: {

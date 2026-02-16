@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Input } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input } from '@/components/ui';
 import { Plus, Search, Lock, Unlock, Building2, FolderKanban, Layers } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,7 +21,7 @@ interface Props {
     team: { id: number; name: string };
 }
 
-export default function SharedVariablesIndex({ variables = [], team }: Props) {
+export default function SharedVariablesIndex({ variables = [], team: _team }: Props) {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'team' | 'project' | 'environment'>('all');
 

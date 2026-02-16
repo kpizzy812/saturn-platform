@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button, Input } from '@/components/ui';
+import { Card, CardContent, Button, Input } from '@/components/ui';
 import { PreviewCard } from '@/components/features/PreviewCard';
-import { GitPullRequest, Settings, Search, Filter, Plus } from 'lucide-react';
+import { GitPullRequest, Settings, Search, Filter } from 'lucide-react';
 import type { PreviewDeployment, PreviewDeploymentStatus, Application } from '@/types';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function PreviewsIndex({ application, previews: propPreviews, projectUuid, environmentUuid }: Props) {
-    const [previews, setPreviews] = React.useState<PreviewDeployment[]>(
+    const [previews, _setPreviews] = React.useState<PreviewDeployment[]>(
         propPreviews || []
     );
     const [filterStatus, setFilterStatus] = React.useState<PreviewDeploymentStatus | 'all'>('all');

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { X, Wifi, WifiOff, Terminal } from 'lucide-react';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
-import { useLogStream, type LogEntry } from '@/hooks/useLogStream';
+import { useLogStream } from '@/hooks/useLogStream';
 
 interface LogsViewerProps {
     isOpen: boolean;
@@ -33,7 +33,7 @@ export function LogsViewer({
     serviceType = 'application',
     containerName,
 }: LogsViewerProps) {
-    const [selectedLevel, setSelectedLevel] = React.useState<string>('all');
+    const [_selectedLevel, _setSelectedLevel] = React.useState<string>('all');
 
     // Use the real log stream hook when serviceUuid is provided
     const {
@@ -41,7 +41,7 @@ export function LogsViewer({
         isStreaming,
         isConnected,
         isPolling,
-        loading,
+        loading: _loading,
         error,
         clearLogs,
         refresh,

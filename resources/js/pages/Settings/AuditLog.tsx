@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Select, Badge, Spinner } from '@/components/ui';
-import { FileText, Download, Filter, User, GitBranch, Settings, Trash2, Key, Shield, RefreshCw, AlertCircle } from 'lucide-react';
+import { FileText, Filter, User, GitBranch, Settings, Trash2, Key, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 interface AuditLogEntry {

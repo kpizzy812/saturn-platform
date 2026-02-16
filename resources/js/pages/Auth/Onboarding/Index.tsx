@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Input, Button, Card, CardHeader, CardTitle, CardDescription, CardContent, BrandIcon } from '@/components/ui';
+import { Input, Button, Card, CardContent, BrandIcon } from '@/components/ui';
 import { Rocket, FolderKanban, Github, Zap, CheckCircle2, ChevronRight } from 'lucide-react';
 
 interface Template {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Input, Badge, Select } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, Select } from '@/components/ui';
 import { ArrowLeft, UserPlus, Trash2, Shield, Users, Crown, Code, Eye } from 'lucide-react';
 import { RoleSelector, getRoleLabel, getRoleBadgeVariant } from '@/components/projects/RoleSelector';
 import type { ProjectRole } from '@/types/models';

@@ -72,8 +72,8 @@ export default function DeploymentDetails({
     application,
     deployment: initialDeployment,
     logs: initialLogs,
-    projectUuid,
-    environmentUuid,
+    projectUuid: _projectUuid,
+    environmentUuid: _environmentUuid,
 }: Props) {
     const confirm = useConfirm();
     const [deployment, setDeployment] = React.useState(initialDeployment);

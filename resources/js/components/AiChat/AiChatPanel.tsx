@@ -1,6 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { AlertCircle, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { AiChatSession, AiChatMessage, ChatContext, ConfirmCommandOptions } from '@/types/ai-chat';
 import { AiChatMessage as MessageComponent } from './AiChatMessage';
 import { AiChatInput } from './AiChatInput';

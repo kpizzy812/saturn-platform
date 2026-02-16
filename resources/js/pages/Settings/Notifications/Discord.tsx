@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge } from '@/components/ui';
 import { useForm } from '@inertiajs/react';
-import { Bell, Send, CheckCircle2 } from 'lucide-react';
+import { Send, CheckCircle2 } from 'lucide-react';
 
 interface DiscordNotificationSettings {
     discord_enabled: boolean;

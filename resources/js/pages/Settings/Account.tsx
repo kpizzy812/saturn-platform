@@ -98,7 +98,7 @@ export default function AccountSettings() {
         setPassword({ ...password, new: value });
 
         if (value) {
-            const { valid, error, strength } = validatePassword(value);
+            const { valid: _valid, error, strength } = validatePassword(value);
             setPasswordErrors({ ...passwordErrors, new: error });
             if (strength) {
                 setPasswordStrength(strength);
@@ -119,7 +119,7 @@ export default function AccountSettings() {
         setPassword({ ...password, confirm: value });
 
         if (value && password.new) {
-            const { valid, error } = validatePasswordMatch(password.new, value);
+            const { valid: _valid2, error } = validatePasswordMatch(password.new, value);
             setPasswordErrors({ ...passwordErrors, confirm: error });
         } else {
             setPasswordErrors({ ...passwordErrors, confirm: undefined });

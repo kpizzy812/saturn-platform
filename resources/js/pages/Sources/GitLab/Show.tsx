@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     GitBranch, ArrowLeft, CheckCircle2, AlertCircle, ExternalLink,
-    Trash2, Settings, Save, Copy, Shield, Globe
+    Trash2, Settings, Save, Shield, Globe
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 

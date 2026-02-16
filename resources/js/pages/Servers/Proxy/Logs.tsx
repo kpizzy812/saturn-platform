@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, useConfirm } from '@/components/ui';
 import { Terminal, Download, Trash2, Play, Pause, Search } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 

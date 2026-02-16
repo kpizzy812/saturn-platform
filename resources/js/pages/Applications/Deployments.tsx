@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
-import { Rocket, GitCommit, Clock, User, Search, RotateCcw, ExternalLink, ChevronRight } from 'lucide-react';
+import { Rocket, GitCommit, Clock, User, Search, RotateCcw, ExternalLink } from 'lucide-react';
 import type { Application, Deployment, DeploymentStatus, DeploymentTrigger } from '@/types';
 
 interface Props {
@@ -25,9 +25,9 @@ interface ExtendedDeployment extends Deployment {
 
 export default function ApplicationDeployments({ application, deployments: propDeployments, projectUuid, environmentUuid }: Props) {
     const confirm = useConfirm();
-    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>((propDeployments || []) as ExtendedDeployment[]);
+    const [deployments, _setDeployments] = React.useState<ExtendedDeployment[]>((propDeployments || []) as ExtendedDeployment[]);
     const [searchQuery, setSearchQuery] = React.useState('');
-    const [selectedDeployment, setSelectedDeployment] = React.useState<ExtendedDeployment | null>(null);
+    const [_selectedDeployment, _setSelectedDeployment] = React.useState<ExtendedDeployment | null>(null);
 
     const filteredDeployments = React.useMemo(() => {
         if (!searchQuery) return deployments;

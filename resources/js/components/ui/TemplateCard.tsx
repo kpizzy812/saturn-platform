@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { Link } from '@inertiajs/react';
 import { Badge } from './Badge';
 import { Download, Box } from 'lucide-react';

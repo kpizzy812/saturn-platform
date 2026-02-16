@@ -27,7 +27,6 @@ import {
     ArrowRightLeft,
     Rocket,
     BarChart3,
-    Eye,
     LogOut,
     ArrowLeft,
 } from 'lucide-react';

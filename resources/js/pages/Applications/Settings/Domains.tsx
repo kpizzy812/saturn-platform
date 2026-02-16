@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Badge, useConfirm } from '@/components/ui';
 import { Globe, Plus, Trash2, Star, ExternalLink } from 'lucide-react';
@@ -84,7 +84,7 @@ export default function ApplicationDomains({ application, domains: propDomains, 
             fqdn: newFqdns,
         }, {
             onSuccess: () => {
-                setDomains(domains.map((d, idx) => ({
+                setDomains(domains.map((d, _idx) => ({
                     ...d,
                     is_primary: d.domain === domain,
                 })));

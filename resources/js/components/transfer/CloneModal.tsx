@@ -3,7 +3,7 @@ import { router } from '@inertiajs/react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Button, Badge } from '@/components/ui';
 import { Copy, Server, Folder, Loader2, AlertCircle, CheckCircle, Rocket, Box } from 'lucide-react';
-import type { Application, Service, Environment, Project } from '@/types';
+import type { Application, Service } from '@/types';
 
 interface CloneTarget {
     environments: Array<{

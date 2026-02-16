@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import {
-    Network, Server, Box, Edit, Trash2, ArrowLeft,
+    Network, Box, Edit, Trash2, ArrowLeft,
     CheckCircle2, XCircle, Settings, ExternalLink,
     Copy, AlertTriangle, Info
 } from 'lucide-react';

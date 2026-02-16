@@ -1,14 +1,12 @@
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardContent, Badge, Button } from '@/components/ui';
 import { Sparkline } from '@/components/ui/Chart';
 import {
     Activity,
     AlertTriangle,
     TrendingUp,
-    Clock,
     Server,
-    Database,
     Zap,
     ArrowRight,
     AlertCircle,

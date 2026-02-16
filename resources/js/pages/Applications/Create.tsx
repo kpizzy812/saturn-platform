@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, Badge, BranchSelector } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, BranchSelector } from '@/components/ui';
 import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook } from 'lucide-react';
 import { Bitbucket } from '@/components/icons/Bitbucket';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
-import type { Project, Environment, Server } from '@/types';
+import type { Project, Server } from '@/types';
 
 interface WildcardDomain {
     host: string;

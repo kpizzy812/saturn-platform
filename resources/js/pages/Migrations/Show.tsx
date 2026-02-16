@@ -79,7 +79,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
         migration: liveMigration,
         isConnected,
         logEntries,
-        refetch,
+        refetch: _refetch,
     } = useMigrationProgress({
         migrationUuid: initialMigration.uuid,
         onComplete: () => {

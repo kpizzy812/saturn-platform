@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
 import {
     Server, Settings, RefreshCw, Terminal, Activity,
-    HardDrive, Cpu, MemoryStick, Network, Clock,
+    HardDrive, Cpu, MemoryStick, Network,
     CheckCircle, XCircle, AlertTriangle, Globe, Loader2, Trash2
 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { SettingsLayout } from '../Index';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Input, Select, Textarea, Checkbox } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge, Input, Textarea, Checkbox } from '@/components/ui';
 import { Link, router } from '@inertiajs/react';
 import {
     Mail,
@@ -10,7 +10,6 @@ import {
     Clock,
     RotateCw,
     Trash2,
-    Crown,
     Shield,
     User as UserIcon,
     Lock,
@@ -39,7 +38,7 @@ interface Props {
 }
 
 export default function TeamInvite({ projects = [], pendingInvitations = [] }: Props) {
-    const [invitations, setInvitations] = React.useState<Invitation[]>(pendingInvitations);
+    const [invitations, _setInvitations] = React.useState<Invitation[]>(pendingInvitations);
 
     // Form state
     const [emails, setEmails] = React.useState<string[]>(['']);

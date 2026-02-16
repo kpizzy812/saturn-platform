@@ -180,7 +180,7 @@ export function FilterBuilder({ columns, filters, onFiltersChange, onApply }: Fi
             {/* Active Filters Preview */}
             {activeFiltersCount > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
-                    {filters.conditions.slice(0, 3).map((condition, idx) => (
+                    {filters.conditions.slice(0, 3).map((condition, _idx) => (
                         <Badge
                             key={condition.id}
                             variant="secondary"

@@ -1,4 +1,4 @@
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Checkbox } from '@/components/ui';
 import { ArrowLeft, Save, Building2, FolderKanban, Layers } from 'lucide-react';

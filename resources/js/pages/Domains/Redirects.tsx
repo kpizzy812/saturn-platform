@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, useConfirm, useToast } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge, Modal, ModalFooter, useConfirm, useToast } from '@/components/ui';
 import { Route, ArrowRight, Plus, Trash2, Edit, ExternalLink, Check, X } from 'lucide-react';
 import { safeOpenUrl } from '@/lib/utils';
 
@@ -22,7 +22,7 @@ interface Props {
 export default function DomainsRedirects({ redirects: propRedirects = [] }: Props) {
     const confirm = useConfirm();
     const { addToast } = useToast();
-    const [redirects, setRedirects] = useState<RedirectRule[]>(propRedirects);
+    const [redirects, _setRedirects] = useState<RedirectRule[]>(propRedirects);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [source, setSource] = useState('');

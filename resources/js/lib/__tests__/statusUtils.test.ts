@@ -12,8 +12,6 @@ import {
     isLoadingStatus,
     getAggregateStatus,
     getStatusBadgeConfig,
-    type StatusConfig,
-    type BadgeVariant,
 } from '../statusUtils';
 
 describe('statusUtils', () => {

@@ -2,7 +2,6 @@ import { AppLayout } from '@/components/layout';
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, Badge, Button, Select, Spinner } from '@/components/ui';
 import {
-    Download,
     Play,
     Pause,
     Search,
@@ -84,7 +83,7 @@ function LogLevelBadge({ level }: { level: LogLevel }) {
     return <Badge variant={variant}>{label}</Badge>;
 }
 
-function LogEntryRow({ log, expanded, onToggle }: { log: LogEntry; expanded: boolean; onToggle: () => void }) {
+function LogEntryRow({ log, expanded: _expanded, onToggle }: { log: LogEntry; expanded: boolean; onToggle: () => void }) {
     const timestamp = new Date(log.timestamp).toLocaleTimeString();
 
     return (

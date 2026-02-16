@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -37,7 +37,7 @@ const sourceIcons = {
     gitlab: Gitlab,
 };
 
-const notificationIcons = {
+const _notificationIcons = {
     slack: MessageSquare,
     discord: Zap,
 };

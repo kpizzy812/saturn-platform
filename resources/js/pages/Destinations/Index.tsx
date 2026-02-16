@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Badge } from '@/components/ui';
 import { Plus, Network, Server, CheckCircle2, XCircle, Box } from 'lucide-react';
 import { getStatusLabel } from '@/lib/statusUtils';
 

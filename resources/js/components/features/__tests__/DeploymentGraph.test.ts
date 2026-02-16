@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDeploymentLogs, type DeploymentStage } from '../DeploymentGraph';
+import { parseDeploymentLogs } from '../DeploymentGraph';
 
 describe('parseDeploymentLogs', () => {
     it('marks running stage as failed when deployment status is failed', () => {

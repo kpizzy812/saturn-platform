@@ -38,7 +38,7 @@ vi.mock('@/components/ui', () => ({
 
 // Mock utils
 vi.mock('@/lib/utils', () => ({
-    formatRelativeTime: (date: string) => '30 minutes ago',
+    formatRelativeTime: (_date: string) => '30 minutes ago',
 }));
 
 describe('DeploymentShow', () => {

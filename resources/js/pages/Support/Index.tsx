@@ -22,7 +22,6 @@ import {
     AlertCircle,
     Zap,
     Shield,
-    Code,
     Server,
     Database,
     Github,

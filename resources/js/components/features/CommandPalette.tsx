@@ -8,7 +8,6 @@ import {
     Box,
     GitBranch,
     Terminal,
-    Eye,
     Plus,
     Layers,
     Globe,

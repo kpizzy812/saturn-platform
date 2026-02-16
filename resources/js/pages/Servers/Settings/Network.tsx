@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Textarea } from '@/components/ui';
-import { ArrowLeft, Network as NetworkIcon, Save, Shield, Globe, Plus, Trash2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/components/ui';
+import { ArrowLeft, Network as NetworkIcon, Save, Shield, Plus, Trash2 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
 interface Props {

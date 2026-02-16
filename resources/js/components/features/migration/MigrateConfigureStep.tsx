@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { Database, Box, Settings2 } from 'lucide-react';
 import { Button, Select, Checkbox, Alert, Spinner } from '@/components/ui';
 import type { EnvironmentMigrationOptions, MigrationTargets } from '@/types';

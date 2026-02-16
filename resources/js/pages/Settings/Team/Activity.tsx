@@ -51,7 +51,7 @@ export default function TeamActivity() {
         loading,
         error,
         meta,
-        filters,
+        filters: _filters,
         setFilters,
         refresh,
         loadMore,

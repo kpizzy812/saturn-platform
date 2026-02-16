@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Link, router, useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Textarea } from '@/components/ui';
 import { ArrowLeft, Server, Save, Info } from 'lucide-react';

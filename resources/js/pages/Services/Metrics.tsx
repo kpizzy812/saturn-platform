@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
-import { BarChart3, Cpu, MemoryStick, Network, Activity, RefreshCw, AlertCircle, Container } from 'lucide-react';
+import { Cpu, MemoryStick, Network, Activity, RefreshCw, AlertCircle, Container } from 'lucide-react';
 import { useServiceMetrics } from '@/hooks/useServiceMetrics';
 import type { ContainerMetrics } from '@/hooks/useServiceMetrics';
 import type { Service } from '@/types';

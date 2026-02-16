@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui';
 import type { EnvironmentType } from '@/types';

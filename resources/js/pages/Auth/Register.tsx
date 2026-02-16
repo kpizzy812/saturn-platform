@@ -1,6 +1,6 @@
 import { useForm, Link } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Input, Button, Checkbox } from '@/components/ui';
+import { Input, Button } from '@/components/ui';
 import { Github, Mail } from 'lucide-react';
 
 export default function Register() {

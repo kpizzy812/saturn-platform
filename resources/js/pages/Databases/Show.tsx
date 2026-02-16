@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { useState, useMemo } from 'react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
-import { ArrowLeft, Database, Copy, Eye, EyeOff, RotateCw, Download, Upload, Trash2, Server, HardDrive, Activity, Loader2, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, Copy, Eye, EyeOff, RotateCw, Download, Upload, Trash2, Server, HardDrive, Activity, Loader2, ArrowRightLeft } from 'lucide-react';
 import { BrandIcon } from '@/components/ui/BrandIcon';
 import { TransferModal } from '@/components/transfer';
 import { useDatabaseMetrics, formatMetricValue } from '@/hooks';
@@ -72,7 +72,7 @@ export default function DatabaseShow({ database }: Props) {
     const { addToast } = useToast();
 
     // Real-time database status updates
-    const { isConnected } = useRealtimeStatus({
+    const { isConnected: _isConnected } = useRealtimeStatus({
         onDatabaseStatusChange: (data) => {
             // Update database status when WebSocket event arrives
             if (data.databaseId === database.id) {

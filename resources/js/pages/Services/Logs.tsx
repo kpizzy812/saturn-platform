@@ -26,7 +26,7 @@ export function LogsTab({ service, containers = [] }: Props) {
     const {
         logs,
         isStreaming,
-        isConnected,
+        isConnected: _isConnected,
         clearLogs,
         toggleStreaming,
         downloadLogs: handleDownloadLogs,
@@ -80,7 +80,7 @@ export function LogsTab({ service, containers = [] }: Props) {
         }
     };
 
-    const selectedContainerInfo = containers.find(c => c.name === selectedContainer);
+    const _selectedContainerInfo = containers.find(c => c.name === selectedContainer);
 
     return (
         <div className="space-y-4">

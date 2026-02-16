@@ -13,7 +13,6 @@ import {
     ArrowLeft,
     TrendingUp,
     TrendingDown,
-    Server as ServerIcon
 } from 'lucide-react';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
 import type { Server } from '@/types';

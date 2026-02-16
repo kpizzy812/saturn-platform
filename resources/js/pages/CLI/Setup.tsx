@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Head } from '@inertiajs/react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Badge, useToast } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Badge, useToast } from '@/components/ui';
 import { Terminal, Copy, Download, CheckCircle2, ChevronRight, Command } from 'lucide-react';
 
 interface InstallCommand {

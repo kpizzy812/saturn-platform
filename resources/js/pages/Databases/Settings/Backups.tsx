@@ -3,7 +3,7 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Checkbox, Select } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { ArrowLeft, Database, Save, Clock, HardDrive, Cloud, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Clock, HardDrive, Cloud, AlertCircle } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {

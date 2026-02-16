@@ -8,19 +8,14 @@ import {
     Badge,
     Input,
     Select,
-    Modal,
-    ModalFooter,
 } from '@/components/ui';
 import {
     Clock,
     Calendar,
     CheckCircle,
     XCircle,
-    Download,
     RefreshCw,
-    Filter,
     ArrowLeft,
-    Play,
     ChevronDown,
     ChevronUp,
 } from 'lucide-react';
@@ -37,7 +32,7 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
     const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'failed'>('all');
     const [dateRange, setDateRange] = useState('all');
     const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
-    const [viewTaskId, setViewTaskId] = useState<number | null>(null);
+    const [viewTaskId, _setViewTaskId] = useState<number | null>(null);
     const [isExporting, setIsExporting] = useState(false);
 
     // Filter history
@@ -203,7 +198,7 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
         );
     };
 
-    const viewingTask = history.find((t) => t.id === viewTaskId);
+    const _viewingTask = history.find((t) => t.id === viewTaskId);
 
     return (
         <AppLayout

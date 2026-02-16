@@ -8,7 +8,6 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import {
     Activity,
     Server,
-    Database,
     Cpu,
     MemoryStick,
     HardDrive,

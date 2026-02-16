@@ -11,10 +11,8 @@ import {
     X,
     Rocket,
     Package,
-    Server as ServerIcon,
     Database as DatabaseIcon,
     Globe,
-    GitBranch,
 } from 'lucide-react';
 import type { Tag, Application, Service, StandaloneDatabase } from '@/types';
 

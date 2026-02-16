@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
+import { Card, CardContent, Button } from '@/components/ui';
 import {
     Download, RotateCw, ChevronDown, ChevronRight,
     CheckCircle, XCircle, AlertCircle, Terminal

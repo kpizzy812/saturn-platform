@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Modal, useConfirm } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, useConfirm } from '@/components/ui';
 import { Plus, Eye, EyeOff, Copy, Edit2, Trash2, Check } from 'lucide-react';
 import type { Service } from '@/types';
 
@@ -15,7 +15,7 @@ interface Props {
     variables?: Variable[];
 }
 
-export function VariablesTab({ service, variables: initialVariables = [] }: Props) {
+export function VariablesTab({ service: _service, variables: initialVariables = [] }: Props) {
     const confirm = useConfirm();
     const [variables, setVariables] = useState<Variable[]>(initialVariables);
     const [showValues, setShowValues] = useState<Record<number, boolean>>({});

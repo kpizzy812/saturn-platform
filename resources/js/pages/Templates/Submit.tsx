@@ -63,7 +63,7 @@ export default function TemplateSubmit() {
             onSuccess: () => {
                 addToast('success', 'Template submitted successfully for review');
             },
-            onError: (errors) => {
+            onError: (_errors) => {
                 addToast('error', 'Failed to submit template');
                 setIsSubmitting(false);
             },

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Textarea, Select } from '@/components/ui';
-import { ArrowLeft, ChevronRight, Cloud, Check, Loader2 } from 'lucide-react';
+import { Card, CardContent, Button, Input, Textarea } from '@/components/ui';
+import { ArrowLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { BrandIcon } from '@/components/ui/BrandIcon';
 import type { S3Provider } from '@/types';
 

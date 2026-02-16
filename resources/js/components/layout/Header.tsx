@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { Link, usePage, router } from '@inertiajs/react';
 import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';

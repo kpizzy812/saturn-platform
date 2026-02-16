@@ -1,7 +1,6 @@
-import * as React from 'react';
 import { Link } from '@inertiajs/react';
-import { Card, CardContent, Badge, Button, Spinner } from '@/components/ui';
-import { GitPullRequest, ExternalLink, Plus, Settings } from 'lucide-react';
+import { Card, CardContent, Badge, Button } from '@/components/ui';
+import { GitPullRequest, ExternalLink, Settings } from 'lucide-react';
 import type { PreviewDeployment } from '@/types';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusVariant } from '@/lib/statusUtils';

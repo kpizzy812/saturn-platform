@@ -3,7 +3,7 @@ import { SettingsLayout } from '../../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { useToast } from '@/components/ui/Toast';
 import {
     ArrowLeft,
@@ -84,7 +84,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default function PermissionSetShow({ permissionSet, allPermissions }: Props) {
-    const { toast } = useToast();
+    const { toast: _toast } = useToast();
 
     const getIcon = () => {
         return iconMap[permissionSet.icon || 'user'] || <UserIcon className="h-5 w-5" />;

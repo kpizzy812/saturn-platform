@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Checkbox } from '@/components/ui';
-import { ArrowLeft, Save, Network, Server } from 'lucide-react';
+import { ArrowLeft, Save, Network } from 'lucide-react';
 
 interface Props {
     servers: { id: number; uuid: string; name: string; ip: string }[];

@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Inpu
 import {
     ArrowLeft, Save, Trash2, AlertTriangle, Plus, Pencil, Check, X,
     Eye, EyeOff, ExternalLink, Layers, Server, Bell, Users, Key, UserCog,
+    Activity, Tag, Archive, ArchiveRestore, Download, ArrowRightLeft, Copy,
+    Gauge, GitBranch, Loader2,
 } from 'lucide-react';
+import { useProjectActivity } from '@/hooks/useProjectActivity';
 
 // --- Types ---
 
@@ -26,6 +29,8 @@ interface Project {
     resources_count: ResourcesCount;
     total_resources: number;
     default_server_id: number | null;
+    is_archived: boolean;
+    archived_at: string | null;
 }
 
 interface Environment {
@@ -61,6 +66,41 @@ interface TeamMember {
     role: string;
 }
 
+interface TagItem {
+    id: number;
+    name: string;
+}
+
+interface TeamOption {
+    id: number;
+    name: string;
+}
+
+interface QuotaItem {
+    current: number;
+    limit: number | null;
+}
+
+interface DeploymentDefaults {
+    default_build_pack: string | null;
+    default_git_branch: string | null;
+    default_auto_deploy: boolean | null;
+    default_force_https: boolean | null;
+    default_preview_deployments: boolean | null;
+    default_auto_rollback: boolean | null;
+}
+
+interface NotificationOverrides {
+    deployment_success: boolean | null;
+    deployment_failure: boolean | null;
+    backup_success: boolean | null;
+    backup_failure: boolean | null;
+    status_change: boolean | null;
+    custom_discord_webhook: string | null;
+    custom_slack_webhook: string | null;
+    custom_webhook_url: string | null;
+}
+
 interface Props {
     project: Project;
     environments: Environment[];
@@ -69,6 +109,12 @@ interface Props {
     notificationChannels: Record<string, NotificationChannel>;
     teamMembers: TeamMember[];
     teamName: string;
+    projectTags: TagItem[];
+    availableTags: TagItem[];
+    userTeams: TeamOption[];
+    quotas: Record<string, QuotaItem>;
+    deploymentDefaults: DeploymentDefaults;
+    notificationOverrides: NotificationOverrides;
 }
 
 // --- Component ---
@@ -81,6 +127,12 @@ export default function ProjectSettings({
     notificationChannels,
     teamMembers,
     teamName,
+    projectTags: initialTags,
+    availableTags,
+    userTeams,
+    quotas,
+    deploymentDefaults,
+    notificationOverrides,
 }: Props) {
     // General form
     const { data, setData, patch, processing, errors } = useForm({
@@ -115,6 +167,11 @@ export default function ProjectSettings({
     const [editVarValue, setEditVarValue] = useState('');
     const [visibleVarIds, setVisibleVarIds] = useState<Set<number>>(new Set());
     const [varError, setVarError] = useState('');
+
+    // Tags state
+    const [tags, setTags] = useState<TagItem[]>(initialTags);
+    const [tagInput, setTagInput] = useState('');
+    const [tagError, setTagError] = useState('');
 
     // --- Handlers ---
 
@@ -284,6 +341,53 @@ export default function ProjectSettings({
             return next;
         });
     };
+
+    // Tag handlers
+    const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const handleAddTag = async (tagId?: number, name?: string) => {
+        setTagError('');
+        try {
+            const res = await fetch(`/projects/${project.uuid}/tags`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+                body: JSON.stringify(tagId ? { tag_id: tagId } : { name }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                setTagError(err.message || 'Failed to add tag');
+                return;
+            }
+            const tag = await res.json();
+            if (!tags.find(t => t.id === tag.id)) {
+                setTags([...tags, tag]);
+            }
+            setTagInput('');
+        } catch {
+            setTagError('Failed to add tag');
+        }
+    };
+
+    const handleRemoveTag = async (tagId: number) => {
+        setTagError('');
+        try {
+            const res = await fetch(`/projects/${project.uuid}/tags/${tagId}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken() },
+            });
+            if (!res.ok) {
+                setTagError('Failed to remove tag');
+                return;
+            }
+            setTags(tags.filter(t => t.id !== tagId));
+        } catch {
+            setTagError('Failed to remove tag');
+        }
+    };
+
+    const filteredAvailableTags = (availableTags || []).filter(
+        t => !tags.find(pt => pt.id === t.id) && t.name.includes(tagInput.toLowerCase())
+    );
 
     const channelIcons: Record<string, string> = {
         discord: 'Discord',
@@ -634,47 +738,97 @@ export default function ProjectSettings({
                     </CardContent>
                 </Card>
 
-                {/* 5. Notifications */}
+                {/* 5. Tags */}
                 <Card className="mb-6">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Bell className="h-5 w-5" />
-                            Notifications
+                            <Tag className="h-5 w-5" />
+                            Tags
                         </CardTitle>
-                        <CardDescription>
-                            Notification channels are configured at team level
-                        </CardDescription>
+                        <CardDescription>Organize your project with labels</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            {Object.entries(notificationChannels).map(([channel, status]) => (
-                                <div key={channel} className="flex items-center justify-between">
-                                    <span className="text-sm font-medium capitalize text-foreground">
-                                        {channelIcons[channel] || channel}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        {status.configured ? (
-                                            <Badge variant={status.enabled ? 'success' : 'secondary'} size="sm">
-                                                {status.enabled ? 'Enabled' : 'Disabled'}
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="secondary" size="sm">Not configured</Badge>
-                                        )}
-                                    </div>
-                                </div>
+                        {tagError && (
+                            <div className="mb-4 rounded-lg border border-danger/50 bg-danger/5 p-3 text-sm text-danger">
+                                {tagError}
+                            </div>
+                        )}
+
+                        {/* Current tags */}
+                        <div className="mb-4 flex flex-wrap gap-2">
+                            {tags.length === 0 && (
+                                <span className="text-sm text-foreground-muted">No tags</span>
+                            )}
+                            {tags.map((tag) => (
+                                <span
+                                    key={tag.id}
+                                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
+                                >
+                                    {tag.name}
+                                    <button
+                                        onClick={() => handleRemoveTag(tag.id)}
+                                        className="ml-0.5 rounded-full p-0.5 hover:bg-primary/20"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </span>
                             ))}
                         </div>
-                        <div className="mt-4 border-t border-border pt-4">
-                            <Link
-                                href="/settings/notifications"
-                                className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground"
-                            >
-                                Configure Notifications
-                                <ExternalLink className="h-3.5 w-3.5" />
-                            </Link>
+
+                        {/* Add tag input */}
+                        <div className="relative">
+                            <div className="flex items-end gap-3">
+                                <div className="flex-1">
+                                    <Input
+                                        value={tagInput}
+                                        onChange={(e) => setTagInput(e.target.value)}
+                                        placeholder="Search or create tag..."
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && tagInput.trim()) {
+                                                const existing = filteredAvailableTags.find(t => t.name === tagInput.toLowerCase().trim());
+                                                handleAddTag(existing?.id, existing ? undefined : tagInput.trim());
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <Button
+                                    onClick={() => {
+                                        if (!tagInput.trim()) return;
+                                        const existing = filteredAvailableTags.find(t => t.name === tagInput.toLowerCase().trim());
+                                        handleAddTag(existing?.id, existing ? undefined : tagInput.trim());
+                                    }}
+                                    disabled={!tagInput.trim()}
+                                    size="default"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add
+                                </Button>
+                            </div>
+
+                            {/* Suggestions dropdown */}
+                            {tagInput && filteredAvailableTags.length > 0 && (
+                                <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-background shadow-lg">
+                                    {filteredAvailableTags.slice(0, 8).map((tag) => (
+                                        <button
+                                            key={tag.id}
+                                            onClick={() => handleAddTag(tag.id)}
+                                            className="block w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background-secondary"
+                                        >
+                                            {tag.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* 6. Notifications */}
+                <NotificationOverridesSection
+                    projectUuid={project.uuid}
+                    overrides={notificationOverrides}
+                    channels={notificationChannels}
+                />
 
                 {/* 6. Team Access */}
                 <Card className="mb-6">
@@ -718,7 +872,13 @@ export default function ProjectSettings({
                     </CardContent>
                 </Card>
 
-                {/* 7. Project Info */}
+                {/* 7. Resource Limits */}
+                <ResourceLimitsSection projectUuid={project.uuid} quotas={quotas} />
+
+                {/* 8. Default Deployment Settings */}
+                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} />
+
+                {/* 9. Project Info */}
                 <Card className="mb-6">
                     <CardHeader>
                         <CardTitle>Project Information</CardTitle>
@@ -755,18 +915,60 @@ export default function ProjectSettings({
                                 </dd>
                             </div>
                         </dl>
+
+                        {/* Export & Clone buttons */}
+                        <div className="mt-4 flex gap-3 border-t border-border pt-4">
+                            <Button variant="secondary" size="sm" onClick={() => window.open(`/projects/${project.uuid}/export`, '_blank')}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Export Config
+                            </Button>
+                            <CloneProjectButton projectUuid={project.uuid} projectName={project.name} />
+                        </div>
                     </CardContent>
                 </Card>
 
-                {/* 8. Danger Zone */}
+                {/* 8. Activity Log */}
+                <ActivityLogSection projectUuid={project.uuid} />
+
+                {/* 9. Danger Zone */}
                 <Card className="border-danger/50">
                     <CardHeader>
                         <CardTitle className="text-danger">Danger Zone</CardTitle>
                         <CardDescription>
-                            Irreversible actions that affect your project
+                            Actions that affect your project
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-6">
+                        {/* Transfer */}
+                        {userTeams.length > 0 && (
+                            <DangerZoneTransfer projectUuid={project.uuid} projectName={project.name} teams={userTeams} />
+                        )}
+
+                        {/* Archive / Unarchive */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="font-medium text-foreground">
+                                    {project.is_archived ? 'Unarchive Project' : 'Archive Project'}
+                                </p>
+                                <p className="text-sm text-foreground-muted">
+                                    {project.is_archived
+                                        ? 'Restore this project to active state'
+                                        : 'Disable the project and prevent new deployments'}
+                                </p>
+                            </div>
+                            <Button
+                                variant="secondary"
+                                onClick={() => router.post(`/projects/${project.uuid}/${project.is_archived ? 'unarchive' : 'archive'}`)}
+                            >
+                                {project.is_archived
+                                    ? <><ArchiveRestore className="mr-2 h-4 w-4" /> Unarchive</>
+                                    : <><Archive className="mr-2 h-4 w-4" /> Archive</>}
+                            </Button>
+                        </div>
+
+                        <div className="border-t border-border" />
+
+                        {/* Delete */}
                         {!showDeleteConfirm ? (
                             <div className="flex items-center justify-between">
                                 <div>
@@ -850,5 +1052,544 @@ export default function ProjectSettings({
                 </Card>
             </div>
         </AppLayout>
+    );
+}
+
+// --- Activity Log Section ---
+
+const ACTION_OPTIONS = [
+    { value: '', label: 'All Actions' },
+    { value: 'create', label: 'Created' },
+    { value: 'update', label: 'Updated' },
+    { value: 'delete', label: 'Deleted' },
+    { value: 'deployment_completed', label: 'Deployment Completed' },
+    { value: 'deployment_failed', label: 'Deployment Failed' },
+    { value: 'deployment_started', label: 'Deployment Started' },
+];
+
+function ActivityLogSection({ projectUuid }: { projectUuid: string }) {
+    const { activities, loading, error, actionFilter, setActionFilter, loadMore, hasMore } = useProjectActivity({
+        projectUuid,
+    });
+
+    return (
+        <Card className="mb-6">
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Activity className="h-5 w-5" />
+                            Activity Log
+                        </CardTitle>
+                        <CardDescription>Recent activity in this project</CardDescription>
+                    </div>
+                    <select
+                        value={actionFilter}
+                        onChange={(e) => setActionFilter(e.target.value)}
+                        className="rounded-lg border border-border bg-background-secondary px-3 py-1.5 text-sm text-foreground"
+                    >
+                        {ACTION_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {error && (
+                    <div className="mb-4 rounded-lg border border-danger/50 bg-danger/5 p-3 text-sm text-danger">
+                        {error.message}
+                    </div>
+                )}
+
+                {loading && activities.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 text-foreground-muted">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading activities...
+                    </div>
+                ) : activities.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-foreground-muted">
+                        No activity recorded yet
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {activities.map((item) => (
+                            <div key={item.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{
+                                    backgroundColor: item.action.includes('failed') ? 'var(--color-danger)' :
+                                        item.action.includes('completed') ? 'var(--color-success)' :
+                                        item.action === 'delete' ? 'var(--color-warning)' :
+                                        'var(--color-primary)',
+                                }} />
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm text-foreground">{item.description}</p>
+                                    <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">
+                                        <span>{item.user?.name ?? 'System'}</span>
+                                        <span>&middot;</span>
+                                        <span>{new Date(item.timestamp).toLocaleString()}</span>
+                                        {item.resource?.type && (
+                                            <>
+                                                <span>&middot;</span>
+                                                <Badge variant="secondary" size="sm">{item.resource.type}</Badge>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {hasMore && (
+                            <div className="pt-2 text-center">
+                                <Button variant="ghost" size="sm" onClick={loadMore} disabled={loading}>
+                                    {loading ? (
+                                        <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Loading...</>
+                                    ) : (
+                                        'Load More'
+                                    )}
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// --- Resource Limits Section ---
+
+const QUOTA_LABELS: Record<string, string> = {
+    application: 'Applications',
+    service: 'Services',
+    database: 'Databases',
+    environment: 'Environments',
+};
+
+function ResourceLimitsSection({ projectUuid, quotas }: { projectUuid: string; quotas: Record<string, QuotaItem> }) {
+    const { data, setData, patch, processing } = useForm({
+        max_applications: quotas.application?.limit?.toString() ?? '',
+        max_services: quotas.service?.limit?.toString() ?? '',
+        max_databases: quotas.database?.limit?.toString() ?? '',
+        max_environments: quotas.environment?.limit?.toString() ?? '',
+    });
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        patch(`/projects/${projectUuid}/settings/quotas`, { preserveScroll: true });
+    };
+
+    return (
+        <Card className="mb-6">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Gauge className="h-5 w-5" />
+                    Resource Limits
+                </CardTitle>
+                <CardDescription>Set limits for resources in this project. Empty = unlimited.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSave} className="space-y-4">
+                    {Object.entries(quotas).map(([type, quota]) => (
+                        <div key={type} className="flex items-center justify-between">
+                            <div>
+                                <span className="font-medium text-foreground">{QUOTA_LABELS[type] || type}</span>
+                                <span className="ml-2 text-sm text-foreground-muted">
+                                    {quota.current} / {quota.limit ?? '\u221E'}
+                                </span>
+                            </div>
+                            <Input
+                                type="number"
+                                min="0"
+                                placeholder="Unlimited"
+                                className="w-28"
+                                value={(data as Record<string, string>)[`max_${type}s`] ?? ''}
+                                onChange={(e) => setData(`max_${type}s` as keyof typeof data, e.target.value === '' ? '' : e.target.value)}
+                            />
+                        </div>
+                    ))}
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={processing}>
+                            <Save className="mr-2 h-4 w-4" />
+                            {processing ? 'Saving...' : 'Save Limits'}
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+    );
+}
+
+// --- Deployment Defaults Section ---
+
+const BUILD_PACK_OPTIONS = [
+    { value: '', label: 'No default' },
+    { value: 'nixpacks', label: 'Nixpacks' },
+    { value: 'dockerfile', label: 'Dockerfile' },
+    { value: 'dockerimage', label: 'Docker Image' },
+    { value: 'dockercompose', label: 'Docker Compose' },
+    { value: 'static', label: 'Static' },
+];
+
+function DeploymentDefaultsSection({ projectUuid, defaults }: { projectUuid: string; defaults: DeploymentDefaults }) {
+    const { data, setData, patch, processing } = useForm({
+        default_build_pack: defaults.default_build_pack ?? '',
+        default_git_branch: defaults.default_git_branch ?? '',
+        default_auto_deploy: defaults.default_auto_deploy ?? false,
+        default_force_https: defaults.default_force_https ?? false,
+        default_preview_deployments: defaults.default_preview_deployments ?? false,
+        default_auto_rollback: defaults.default_auto_rollback ?? false,
+    });
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        patch(`/projects/${projectUuid}/settings/deployment-defaults`, { preserveScroll: true });
+    };
+
+    return (
+        <Card className="mb-6">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <GitBranch className="h-5 w-5" />
+                    Default Deployment Settings
+                </CardTitle>
+                <CardDescription>Applied to new applications created in this project</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSave} className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground">Build Pack</label>
+                            <Select
+                                value={data.default_build_pack}
+                                onChange={(e) => setData('default_build_pack', e.target.value)}
+                                options={BUILD_PACK_OPTIONS}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground">Git Branch</label>
+                            <Input
+                                value={data.default_git_branch}
+                                onChange={(e) => setData('default_git_branch', e.target.value)}
+                                placeholder="main"
+                                className="mt-1"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        {[
+                            { key: 'default_auto_deploy' as const, label: 'Auto Deploy' },
+                            { key: 'default_force_https' as const, label: 'Force HTTPS' },
+                            { key: 'default_preview_deployments' as const, label: 'Preview Deployments' },
+                            { key: 'default_auto_rollback' as const, label: 'Auto Rollback on Failure' },
+                        ].map(({ key, label }) => (
+                            <label key={key} className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    checked={data[key] as boolean}
+                                    onChange={(e) => setData(key, e.target.checked)}
+                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                />
+                                <span className="text-sm text-foreground">{label}</span>
+                            </label>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={processing}>
+                            <Save className="mr-2 h-4 w-4" />
+                            {processing ? 'Saving...' : 'Save Defaults'}
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+    );
+}
+
+// --- Clone Project Button ---
+
+function CloneProjectButton({ projectUuid, projectName }: { projectUuid: string; projectName: string }) {
+    const [showModal, setShowModal] = useState(false);
+    const { data, setData, post, processing } = useForm({
+        name: `${projectName} (Copy)`,
+        clone_shared_vars: false,
+        clone_tags: true,
+        clone_settings: true,
+    });
+
+    const handleClone = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(`/projects/${projectUuid}/clone`);
+    };
+
+    if (!showModal) {
+        return (
+            <Button variant="secondary" size="sm" onClick={() => setShowModal(true)}>
+                <Copy className="mr-2 h-4 w-4" />
+                Clone Project
+            </Button>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowModal(false)}>
+            <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold text-foreground">Clone Project</h3>
+                <p className="mt-1 text-sm text-foreground-muted">Create a copy of this project structure (no resources are cloned).</p>
+
+                <form onSubmit={handleClone} className="mt-4 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-foreground">New Project Name</label>
+                        <Input value={data.name} onChange={(e) => setData('name', e.target.value)} className="mt-1" />
+                    </div>
+                    <div className="space-y-2">
+                        {[
+                            { key: 'clone_settings' as const, label: 'Clone settings (default server, quotas, deploy defaults)' },
+                            { key: 'clone_tags' as const, label: 'Clone tags' },
+                            { key: 'clone_shared_vars' as const, label: 'Clone shared variables (values included)' },
+                        ].map(({ key, label }) => (
+                            <label key={key} className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={data[key] as boolean}
+                                    onChange={(e) => setData(key, e.target.checked)}
+                                    className="h-4 w-4 rounded border-border"
+                                />
+                                <span className="text-sm text-foreground">{label}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button variant="ghost" type="button" onClick={() => setShowModal(false)}>Cancel</Button>
+                        <Button type="submit" disabled={processing || !data.name.trim()}>
+                            {processing ? 'Cloning...' : 'Clone'}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// --- Transfer Project Section ---
+
+function DangerZoneTransfer({ projectUuid, projectName, teams }: { projectUuid: string; projectName: string; teams: TeamOption[] }) {
+    const [showTransfer, setShowTransfer] = useState(false);
+    const [confirmName, setConfirmName] = useState('');
+    const { data, setData, post, processing } = useForm({
+        target_team_id: '',
+    });
+
+    const handleTransfer = () => {
+        if (confirmName !== projectName || !data.target_team_id) return;
+        post(`/projects/${projectUuid}/transfer`);
+    };
+
+    if (!showTransfer) {
+        return (
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="font-medium text-foreground">Transfer Project</p>
+                    <p className="text-sm text-foreground-muted">Move this project to another team</p>
+                </div>
+                <Button variant="secondary" onClick={() => setShowTransfer(true)}>
+                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    Transfer
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-lg border border-warning/50 bg-warning/5 p-4">
+            <p className="font-medium text-foreground">Transfer to another team</p>
+            <div className="mt-3 space-y-3">
+                <div>
+                    <label className="block text-sm font-medium text-foreground">Target Team</label>
+                    <Select
+                        value={data.target_team_id}
+                        onChange={(e) => setData('target_team_id', e.target.value)}
+                        options={[
+                            { value: '', label: 'Select team...' },
+                            ...teams.map(t => ({ value: t.id.toString(), label: t.name })),
+                        ]}
+                        className="mt-1"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm text-foreground">
+                        Type <span className="font-mono font-bold">{projectName}</span> to confirm:
+                    </label>
+                    <Input value={confirmName} onChange={(e) => setConfirmName(e.target.value)} className="mt-1" />
+                </div>
+                <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => { setShowTransfer(false); setConfirmName(''); }}>Cancel</Button>
+                    <Button variant="danger" onClick={handleTransfer} disabled={processing || confirmName !== projectName || !data.target_team_id}>
+                        {processing ? 'Transferring...' : 'Transfer Project'}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// --- Notification Overrides Section ---
+
+const NOTIFICATION_EVENTS = [
+    { key: 'deployment_success', label: 'Deployment Success' },
+    { key: 'deployment_failure', label: 'Deployment Failure' },
+    { key: 'backup_success', label: 'Backup Success' },
+    { key: 'backup_failure', label: 'Backup Failure' },
+    { key: 'status_change', label: 'Status Change' },
+] as const;
+
+type TriState = boolean | null;
+
+function triStateLabel(value: TriState): string {
+    if (value === null) return 'Inherit';
+    return value ? 'Enabled' : 'Disabled';
+}
+
+function triStateBadge(value: TriState): 'secondary' | 'success' | 'warning' {
+    if (value === null) return 'secondary';
+    return value ? 'success' : 'warning';
+}
+
+function cycleTriState(value: TriState): TriState {
+    if (value === null) return true;
+    if (value === true) return false;
+    return null;
+}
+
+function NotificationOverridesSection({
+    projectUuid,
+    overrides,
+    channels,
+}: {
+    projectUuid: string;
+    overrides: NotificationOverrides;
+    channels: Record<string, NotificationChannel>;
+}) {
+    const { data, setData, patch, processing } = useForm({
+        deployment_success: overrides.deployment_success,
+        deployment_failure: overrides.deployment_failure,
+        backup_success: overrides.backup_success,
+        backup_failure: overrides.backup_failure,
+        status_change: overrides.status_change,
+        custom_discord_webhook: '',
+        custom_slack_webhook: '',
+        custom_webhook_url: '',
+    });
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        patch(`/projects/${projectUuid}/notification-overrides`, { preserveScroll: true });
+    };
+
+    const channelIcons: Record<string, string> = {
+        discord: 'Discord',
+        slack: 'Slack',
+        telegram: 'Telegram',
+        email: 'Email',
+        webhook: 'Webhook',
+    };
+
+    return (
+        <Card className="mb-6">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5" />
+                    Notification Overrides
+                </CardTitle>
+                <CardDescription>
+                    Override team notification settings for this project. Click to cycle: Inherit &rarr; Enabled &rarr; Disabled.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSave} className="space-y-4">
+                    {/* Event toggles */}
+                    <div className="space-y-3">
+                        {NOTIFICATION_EVENTS.map(({ key, label }) => {
+                            const value = data[key] as TriState;
+                            return (
+                                <div key={key} className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-foreground">{label}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setData(key, cycleTriState(value))}
+                                        className="min-w-[80px]"
+                                    >
+                                        <Badge variant={triStateBadge(value)} size="sm">
+                                            {triStateLabel(value)}
+                                        </Badge>
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Team channels summary */}
+                    <div className="border-t border-border pt-4">
+                        <p className="mb-2 text-xs font-medium uppercase text-foreground-muted">Team Channels</p>
+                        <div className="flex flex-wrap gap-2">
+                            {Object.entries(channels).map(([channel, status]) => (
+                                <Badge key={channel} variant={status.enabled ? 'success' : 'secondary'} size="sm">
+                                    {channelIcons[channel] || channel}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Custom webhooks */}
+                    <div className="border-t border-border pt-4">
+                        <p className="mb-3 text-xs font-medium uppercase text-foreground-muted">Custom Webhooks (optional)</p>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm text-foreground">Discord Webhook URL</label>
+                                <Input
+                                    value={data.custom_discord_webhook}
+                                    onChange={(e) => setData('custom_discord_webhook', e.target.value)}
+                                    placeholder={overrides.custom_discord_webhook ? 'Currently set (enter to change)' : 'https://discord.com/api/webhooks/...'}
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-foreground">Slack Webhook URL</label>
+                                <Input
+                                    value={data.custom_slack_webhook}
+                                    onChange={(e) => setData('custom_slack_webhook', e.target.value)}
+                                    placeholder={overrides.custom_slack_webhook ? 'Currently set (enter to change)' : 'https://hooks.slack.com/services/...'}
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-foreground">Generic Webhook URL</label>
+                                <Input
+                                    value={data.custom_webhook_url}
+                                    onChange={(e) => setData('custom_webhook_url', e.target.value)}
+                                    placeholder={overrides.custom_webhook_url ? 'Currently set (enter to change)' : 'https://...'}
+                                    className="mt-1"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <Link
+                            href="/settings/notifications"
+                            className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground"
+                        >
+                            Team Notifications
+                            <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
+                        <Button type="submit" disabled={processing}>
+                            <Save className="mr-2 h-4 w-4" />
+                            {processing ? 'Saving...' : 'Save Overrides'}
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
     );
 }

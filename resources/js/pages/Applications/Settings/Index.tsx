@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Select, Modal, ModalFooter } from '@/components/ui';
-import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History, HelpCircle, Copy, Check, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History, HelpCircle, Copy, Check } from 'lucide-react';
 import type { Application } from '@/types';
 
 interface ApplicationSettings {

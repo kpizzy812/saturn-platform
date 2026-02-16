@@ -4,8 +4,8 @@ import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme, BrandIcon } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, Clock, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, GitCommit, Eye, EyeOff, FileText, Database, Key, Link2, HardDrive, RefreshCw, Table, Shield, Box, Layers, GitBranch, MoreVertical, RotateCcw, StopCircle, Trash2, Command, Search, Sun, Moon, ArrowUpRight, Import } from 'lucide-react';
-import type { Project, Environment, Application, StandaloneDatabase } from '@/types';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import } from 'lucide-react';
+import type { Project, Environment } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
@@ -34,7 +34,7 @@ import {
     LocalSetupModal,
 } from '@/components/features/Projects';
 import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
-import { MigrateButton, MigrateModal, EnvironmentMigrateModal } from '@/components/features/migration';
+import { MigrateModal, EnvironmentMigrateModal } from '@/components/features/migration';
 import { CloneModal } from '@/components/transfer';
 import { useMigrationTargets } from '@/hooks/useMigrations';
 import type { EnvironmentMigration, EnvironmentMigrationOptions } from '@/types';

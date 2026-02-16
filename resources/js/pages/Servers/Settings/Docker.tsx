@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/components/ui';
-import { ArrowLeft, Server, Save, HardDrive, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Save, HardDrive, RefreshCw, CheckCircle } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
 interface Props {

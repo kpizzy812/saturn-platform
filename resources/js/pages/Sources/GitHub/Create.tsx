@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
 import {
     Github, ArrowLeft, CheckCircle2, ExternalLink,
     AlertCircle, Info, Loader2, Shield, Zap

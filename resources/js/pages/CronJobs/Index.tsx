@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
-    Plus, Clock, Play, Pause, Trash2, MoreVertical,
+    Plus, Clock, Play, Pause, Trash2,
     CheckCircle, XCircle, AlertCircle, Calendar
 } from 'lucide-react';
 import type { CronJob } from '@/types/models';

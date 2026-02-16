@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button, Input, Select } from '@/components/ui';
+import { Card, CardContent, Badge, Button, Input } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import type { Deployment, DeploymentStatus } from '@/types';
@@ -40,7 +40,7 @@ interface ExtendedDeployment extends Deployment {
 }
 
 export default function DeploymentsIndex({ deployments: propDeployments, currentPage = 1, totalPages = 1, filters: initialFilters }: Props) {
-    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(
+    const [deployments, _setDeployments] = React.useState<ExtendedDeployment[]>(
         Array.isArray(propDeployments) ? propDeployments as ExtendedDeployment[] : []
     );
     const [filterStatus, setFilterStatus] = React.useState<DeploymentStatus | 'all'>(initialFilters?.status || 'all');

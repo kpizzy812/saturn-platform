@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import {
     Plus, Trash2, Eye, EyeOff, Copy, Check,
@@ -43,7 +43,7 @@ interface Props {
     availableEvents: AvailableEvent[];
 }
 
-export function WebhooksTab({ service }: { service: Service }) {
+export function WebhooksTab({ service: _service }: { service: Service }) {
     const { webhooks: initialWebhooks = [], availableEvents = [] } = usePage<{ props: Props }>().props as unknown as Props;
 
     const [webhooks, setWebhooks] = useState<WebhookConfig[]>(initialWebhooks);
@@ -332,7 +332,7 @@ interface AddWebhookModalProps {
     onAdd: (webhook: WebhookConfig) => void;
 }
 
-function AddWebhookModal({ availableEvents, onClose, onAdd }: AddWebhookModalProps) {
+function AddWebhookModal({ availableEvents, onClose, onAdd: _onAdd }: AddWebhookModalProps) {
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [selectedEvents, setSelectedEvents] = useState<string[]>([]);

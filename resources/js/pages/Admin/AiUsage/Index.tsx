@@ -356,7 +356,7 @@ export default function AiUsageIndex({
                     <CardContent>
                         {dailyUsage.length > 0 ? (
                             <div className="flex items-end gap-1 h-40">
-                                {dailyUsage.slice(-30).map((day, index) => {
+                                {dailyUsage.slice(-30).map((day, _index) => {
                                     const height = (day.cost / maxDailyCost) * 100;
                                     return (
                                         <div

@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/components/ui';
-import { ArrowLeft, Plus, Server, HardDrive, Network, CheckCircle, XCircle } from 'lucide-react';
+import { Card, CardContent, Button, Badge } from '@/components/ui';
+import { ArrowLeft, Plus, HardDrive, Network, CheckCircle } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 
 interface Props {

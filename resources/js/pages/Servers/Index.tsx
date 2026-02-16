@@ -3,7 +3,7 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { Plus, Server, Cpu, HardDrive, Activity, MoreVertical, CheckCircle, XCircle, Settings, Trash2, RefreshCw, Terminal } from 'lucide-react';
+import { Plus, Server, MoreVertical, CheckCircle, XCircle, Settings, Trash2, RefreshCw, Terminal } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Server as ServerType } from '@/types';
 
@@ -28,7 +28,7 @@ export default function ServersIndex({ servers = [] }: Props) {
     }, [servers]);
 
     // Real-time server status updates
-    const { isConnected } = useRealtimeStatus({
+    const { isConnected: _isConnected } = useRealtimeStatus({
         onServerStatusChange: (data) => {
             // Update server status when WebSocket event arrives
             setServerStatuses(prev => ({

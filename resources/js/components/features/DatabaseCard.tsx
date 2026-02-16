@@ -3,7 +3,7 @@ import { useConfirm, Badge, StatusBadge } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { MoreVertical, Settings, Trash2, RotateCw } from 'lucide-react';
 import type { StandaloneDatabase, DatabaseType, EnvironmentType } from '@/types';
-import { getStatusColor } from '@/lib/statusUtils';
+
 import { getDbLogo } from '@/components/features/Projects/DatabaseLogos';
 
 interface DatabaseCardProps {

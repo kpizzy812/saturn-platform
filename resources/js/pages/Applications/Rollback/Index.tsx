@@ -411,7 +411,7 @@ export default function ApplicationRollbackIndex({
                     </Card>
                 ) : (
                     <div className="space-y-2">
-                        {filteredDeployments.map((deployment, index) => {
+                        {filteredDeployments.map((deployment, _index) => {
                             const isCurrentActive = deployment.id === currentDeployment?.id;
                             const commitShort = deployment.commit?.substring(0, 7) || 'unknown';
                             const message = deployment.commit_message || 'No commit message';

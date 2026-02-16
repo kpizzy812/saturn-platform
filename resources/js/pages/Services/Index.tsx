@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Badge, Button, useConfirm } from '@/components/ui';
+import { Button, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';

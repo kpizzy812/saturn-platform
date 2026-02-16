@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input, Select } from '@/components/ui';
+import { Card, CardContent, Input } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
 import type { ActivityLog, ActivityAction } from '@/types';
 import {
@@ -19,7 +19,6 @@ import {
     UserPlus,
     UserMinus,
     Key,
-    Globe,
     Filter,
 } from 'lucide-react';
 
@@ -48,7 +47,7 @@ const actionIcons: Record<ActivityAction, React.ReactNode> = {
 type FilterAction = 'all' | 'deployment' | 'settings' | 'team' | 'database' | 'server';
 
 export default function ActivityIndex({ activities: propActivities }: Props) {
-    const [activities, setActivities] = React.useState<ActivityLog[]>(
+    const [activities, _setActivities] = React.useState<ActivityLog[]>(
         propActivities || []
     );
     const [filterAction, setFilterAction] = React.useState<FilterAction>('all');

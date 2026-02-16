@@ -56,7 +56,7 @@ export function RollbacksTab({ service, containers = [] }: Props) {
         }
     }, [service.uuid, pullLatest, addToast]);
 
-    const getStateColor = (state: string): string => {
+    const _getStateColor = (state: string): string => {
         const stateLower = state.toLowerCase();
         if (stateLower === 'running') return 'text-success';
         if (stateLower === 'exited' || stateLower === 'dead') return 'text-danger';

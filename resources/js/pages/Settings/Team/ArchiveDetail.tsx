@@ -114,7 +114,7 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
     const [isTransferring, setIsTransferring] = useState(false);
 
     // Delete state
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [_isDeleting, _setIsDeleting] = useState(false);
 
     const { open: openDeleteConfirm, ConfirmationDialog: DeleteDialog } = useConfirmation({
         title: 'Delete Archive',

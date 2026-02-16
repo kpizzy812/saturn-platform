@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, Checkbox, Modal, ModalFooter } from '@/components/ui';
-import { ArrowLeft, Plus, Trash2, Eye, EyeOff, Copy, Key, Shield, UserPlus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Trash2, Eye, EyeOff, Key, Shield, UserPlus, RefreshCw } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -111,7 +111,7 @@ export default function DatabaseUsers({ database, users }: Props) {
         }
     };
 
-    const copyToClipboard = (text: string) => {
+    const _copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
     };
 

@@ -42,7 +42,7 @@ interface Props {
 const HISTORY_KEY = 'saturn_query_history';
 const SAVED_QUERIES_KEY = 'saturn_saved_queries';
 
-export default function DatabaseQuery({ database, databases = [], queryHistory: initialHistory = [], savedQueries: initialSavedQueries = [] }: Props) {
+export default function DatabaseQuery({ database, databases = [], queryHistory: _initialHistory = [], savedQueries: _initialSavedQueries = [] }: Props) {
     const { addToast } = useToast();
     const [currentQuery, setCurrentQuery] = useState('SELECT 1;');
     const [isExecuting, setIsExecuting] = useState(false);

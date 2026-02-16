@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { usePage } from '@inertiajs/react';
 import { getEcho } from '@/lib/echo';
-import { router } from '@inertiajs/react';
 
 /**
  * Log entry structure
@@ -173,7 +172,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     } = options;
 
     const page = usePage();
-    const auth = (page.props as any).auth;
+    const _auth = (page.props as any).auth;
     const teamId = (page.props as any).team?.id;
 
     const [logs, setLogs] = React.useState<LogEntry[]>([]);

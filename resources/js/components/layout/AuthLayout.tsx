@@ -1,10 +1,10 @@
-import * as React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import type { ReactNode } from 'react';
+import { Head } from '@inertiajs/react';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
 import { FlashMessages } from './FlashMessages';
 
 interface AuthLayoutProps {
-    children: React.ReactNode;
+    children: ReactNode;
     title: string;
     subtitle?: string;
 }

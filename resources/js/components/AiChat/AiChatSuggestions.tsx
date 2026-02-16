@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rocket, RefreshCw, Square, Activity, FileText, Search, Stethoscope, BarChart3, FileCode } from 'lucide-react';
+import { Rocket, RefreshCw, Activity, FileText, Search, Stethoscope, BarChart3, FileCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatContext } from '@/types/ai-chat';
 

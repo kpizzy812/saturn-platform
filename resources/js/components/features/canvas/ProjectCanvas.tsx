@@ -233,9 +233,9 @@ function ProjectCanvasInner({
     onNodeClick,
     onNodeContextMenu,
     onEdgeDelete,
-    onZoomIn,
-    onZoomOut,
-    onFitView,
+    onZoomIn: _onZoomIn,
+    onZoomOut: _onZoomOut,
+    onFitView: _onFitView,
     onViewportChange,
     onLinkCreated,
     onLinkDeleted,
@@ -585,10 +585,8 @@ function ProjectCanvasInner({
             let sourceNode = params.source;
             let targetNode = params.target;
 
-            const sourceIsApp = /^app-\d+$/.test(sourceNode);
             const sourceIsDb = /^db-\d+$/.test(sourceNode);
             const targetIsApp = /^app-\d+$/.test(targetNode);
-            const targetIsDb = /^db-\d+$/.test(targetNode);
             const sourceIsSvc = /^svc-\d+$/.test(sourceNode);
             const targetIsSvc = /^svc-\d+$/.test(targetNode);
 
@@ -707,7 +705,7 @@ function ProjectCanvasInner({
 
             try {
                 // Update forward link
-                const response = await axios.patch(
+                await axios.patch(
                     `/environments/${environmentUuid}/links/${link.id}/json`,
                     { use_external_url: newValue },
                     {

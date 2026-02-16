@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { AppLayout } from '@/components/layout';
-import { Link, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, FileText, Shield, Bell } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Bell } from 'lucide-react';
 
 interface SettingSection {
     id: string;

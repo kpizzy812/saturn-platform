@@ -11,7 +11,6 @@ import {
     MoreVertical,
     GitBranch,
     Globe,
-    Server as ServerIcon,
     Database as DatabaseIcon,
     Clock,
     Activity,
@@ -36,7 +35,7 @@ import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import { CloneModal } from '@/components/transfer';
-import type { Application, ApplicationStatus, Deployment, Environment, Project } from '@/types';
+import type { Application, Deployment, Environment, Project } from '@/types';
 
 interface ApplicationWithRelations extends Application {
     project: Project;
@@ -715,7 +714,7 @@ interface ResourceBarProps {
     unit: string;
 }
 
-function ResourceBar({ label, value, max, unit }: ResourceBarProps) {
+function _ResourceBar({ label, value, max, unit }: ResourceBarProps) {
     const percentage = (value / max) * 100;
 
     return (

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useEnvironmentMigrationTargets } from '@/hooks/useMigrations';
 import type {
-    Application, StandaloneDatabase, Service, Environment, Server,
+    Application, StandaloneDatabase, Service, Environment,
     BulkCheckResult, BulkCheckResourceResult, MigrationMode,
 } from '@/types';
 import axios from 'axios';

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button } from '@/components/ui';
+import { Card, CardContent, Button } from '@/components/ui';
 import {
     Download,
     RotateCw,
@@ -185,7 +185,7 @@ export default function BuildLogsView({ deploymentUuid, deployment }: Props) {
     const [expandAll, setExpandAll] = React.useState(false);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [logLevel, setLogLevel] = React.useState<'all' | 'info' | 'warn' | 'error'>('all');
-    const [isFullscreen, setIsFullscreen] = React.useState(false);
+    const [_isFullscreen, _setIsFullscreen] = React.useState(false);
 
     // Update expanded step when running step changes
     React.useEffect(() => {

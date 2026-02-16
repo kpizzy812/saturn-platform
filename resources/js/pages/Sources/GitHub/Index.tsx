@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
-import { Plus, Github, CheckCircle2, RefreshCw, Trash2, ExternalLink, ArrowLeft, Settings } from 'lucide-react';
+import { Plus, Github, RefreshCw, Trash2, ExternalLink, ArrowLeft, Settings } from 'lucide-react';
 
 interface GitHubApp {
     id: number;

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Head } from '@inertiajs/react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Checkbox, useToast } from '@/components/ui';
-import { Terminal, Copy, Download, CheckCircle2, Play, Folder, FileCode, Package } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Checkbox, useToast } from '@/components/ui';
+import { Terminal, Copy, Download, CheckCircle2, Package } from 'lucide-react';
 
 interface Project {
     id: number;

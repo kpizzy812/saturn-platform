@@ -20,11 +20,9 @@ import {
     MoreVertical,
     UserCog,
     FolderCog,
-    Settings,
     Activity,
     Clock,
     Search,
-    Filter,
     Archive
 } from 'lucide-react';
 
@@ -89,9 +87,9 @@ export default function TeamSettings({
     members: initialMembers,
     invitations: initialInvitations,
     receivedInvitations: initialReceivedInvitations = [],
-    currentUserRole,
+    currentUserRole: _currentUserRole,
     canManageTeam,
-    canManageRoles,
+    canManageRoles: _canManageRoles,
 }: Props) {
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [invitations, setInvitations] = React.useState<Invitation[]>(initialInvitations);

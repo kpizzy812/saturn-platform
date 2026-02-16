@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 
 // Lazy load the widget to avoid initial bundle size impact
 const AiChatWidget = lazy(() => import('./AiChatWidget'));

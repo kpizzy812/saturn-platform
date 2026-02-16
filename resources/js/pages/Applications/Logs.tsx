@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Badge } from '@/components/ui';
+import { Card, CardContent, Button, Input } from '@/components/ui';
 import { Terminal, Download, Pause, Play, Trash2, Search, Filter, ChevronDown, Box } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useLogStream, LogEntry } from '@/hooks/useLogStream';

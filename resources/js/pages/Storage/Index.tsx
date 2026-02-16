@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Input, StatusBadge } from '@/components/ui';
+import { Card, CardContent, Button, Input } from '@/components/ui';
 import {
     Plus,
     Search,

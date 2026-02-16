@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Head } from '@inertiajs/react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, useToast } from '@/components/ui';
-import { Terminal, Copy, Search, ChevronDown, ChevronRight, Command, Book } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Badge, useToast } from '@/components/ui';
+import { Terminal, Copy, Search, ChevronDown, ChevronRight, Book } from 'lucide-react';
 
 interface CLICommand {
     name: string;

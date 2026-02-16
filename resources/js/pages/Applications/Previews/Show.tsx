@@ -11,7 +11,6 @@ import {
     GitCommit,
     Calendar,
     Clock,
-    Server,
     Cpu,
     HardDrive,
     AlertCircle,
@@ -28,7 +27,7 @@ interface Props {
     environmentUuid?: string;
 }
 
-export default function PreviewShow({ application, preview, previewUuid, projectUuid, environmentUuid }: Props) {
+export default function PreviewShow({ application, preview, previewUuid: _previewUuid, projectUuid, environmentUuid }: Props) {
     const confirm = useConfirm();
 
     if (!preview) {
@@ -283,7 +282,7 @@ export default function PreviewShow({ application, preview, previewUuid, project
     );
 }
 
-function EnvironmentVariable({ name, value }: { name: string; value: string }) {
+function _EnvironmentVariable({ name, value }: { name: string; value: string }) {
     const [isRevealed, setIsRevealed] = React.useState(false);
     const isSensitive = value.includes('***');
 

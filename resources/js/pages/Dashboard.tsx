@@ -176,7 +176,7 @@ export default function Dashboard({ projects = [] }: Props) {
     }, [projects]);
 
     // Real-time status updates
-    const { isConnected } = useRealtimeStatus({
+    const { isConnected: _isConnected } = useRealtimeStatus({
         onApplicationStatusChange: (data) => {
             // Update application status when WebSocket event arrives
             setApplicationStatuses(prev => ({

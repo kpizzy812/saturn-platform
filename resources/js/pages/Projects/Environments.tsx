@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Input, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
 import {
     Plus, GitBranch, Box, Database, Layers,
     Trash2, Calendar,
@@ -179,7 +179,7 @@ interface EnvironmentCardProps {
     onDelete: () => void;
 }
 
-function EnvironmentCard({ environment, projectUuid, onDelete }: EnvironmentCardProps) {
+function EnvironmentCard({ environment, projectUuid: _projectUuid, onDelete }: EnvironmentCardProps) {
     const resourceCount = environment.applications_count + environment.services_count + environment.databases_count;
 
     return (

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { SettingsLayout } from '../Index';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge, Textarea } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge } from '@/components/ui';
 import { useForm } from '@inertiajs/react';
 import { Send, CheckCircle2, Code } from 'lucide-react';
 

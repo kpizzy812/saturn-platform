@@ -57,7 +57,7 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const [perPage, setPerPage] = useState(50);
+    const [perPage, _setPerPage] = useState(50);
     const [totalRows, setTotalRows] = useState(0);
     const [lastPage, setLastPage] = useState(1);
 

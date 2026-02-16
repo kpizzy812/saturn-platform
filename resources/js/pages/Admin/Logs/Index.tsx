@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
+
 import {
     Search,
     Filter,
@@ -12,7 +12,6 @@ import {
     AlertTriangle,
     Info,
     XCircle,
-    CheckCircle,
     Activity,
     Shield,
     User,

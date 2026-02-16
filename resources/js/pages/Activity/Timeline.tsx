@@ -1,8 +1,7 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Badge, Button, Input } from '@/components/ui';
-import { ActivityTimeline as ActivityTimelineComponent } from '@/components/ui/ActivityTimeline';
+import { Card, CardContent, Button, Input } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
 import type { ActivityLog, ActivityAction } from '@/types';
 import {
@@ -53,7 +52,7 @@ interface ExtendedActivityLog extends ActivityLog {
 type EventType = 'all' | 'deployment' | 'settings' | 'team' | 'database' | 'server' | 'scaling';
 
 export default function ActivityTimelinePage({ activities: propActivities, projectId, currentPage = 1, totalPages = 3, filters: initialFilters }: Props) {
-    const [activities, setActivities] = React.useState<ExtendedActivityLog[]>(
+    const [activities, _setActivities] = React.useState<ExtendedActivityLog[]>(
         (propActivities as ExtendedActivityLog[]) || []
     );
     const [eventType, setEventType] = React.useState<EventType>(

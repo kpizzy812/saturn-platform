@@ -19,7 +19,6 @@ import {
     Calendar,
     Play,
     Trash2,
-    MoreVertical,
     CheckCircle,
     XCircle,
     AlertCircle,

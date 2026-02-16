@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Checkbox, Select } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Checkbox } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { ChevronLeft, Save } from 'lucide-react';
 

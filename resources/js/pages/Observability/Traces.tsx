@@ -1,13 +1,12 @@
 import { AppLayout } from '@/components/layout';
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, Badge, Button } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
 import {
     Clock,
     AlertCircle,
     CheckCircle,
     ChevronRight,
-    Filter,
     Search,
     GitBranch,
 } from 'lucide-react';

@@ -60,33 +60,6 @@ function getSeverityStyle(severity: IssueSeverity) {
     };
 }
 
-/**
- * Get health status icon and color.
- */
-function getHealthStyle(health: HealthStatus) {
-    return {
-        healthy: {
-            icon: CheckCircle,
-            color: 'text-green-500',
-            label: 'Healthy',
-        },
-        unhealthy: {
-            icon: XCircle,
-            color: 'text-red-500',
-            label: 'Unhealthy',
-        },
-        degraded: {
-            icon: AlertTriangle,
-            color: 'text-yellow-500',
-            label: 'Degraded',
-        },
-        unknown: {
-            icon: AlertCircle,
-            color: 'text-gray-500',
-            label: 'Unknown',
-        },
-    }[health];
-}
 
 /**
  * Issue item component.

@@ -6,7 +6,7 @@ import {
 } from '@/components/ui';
 import {
     Edit, Trash2, Play, Pause, Clock, CheckCircle, XCircle,
-    AlertCircle, TrendingUp, Calendar, Terminal, Settings as SettingsIcon
+    AlertCircle, TrendingUp, Terminal
 } from 'lucide-react';
 import { getStatusVariant, getStatusLabel, getStatusIcon } from '@/lib/statusUtils';
 import type { CronJob, CronJobExecution } from '@/types/models';
@@ -43,7 +43,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         }
     };
 
-    const formatCronSchedule = (schedule: string) => {
+    const _formatCronSchedule = (schedule: string) => {
         const presets: Record<string, string> = {
             '* * * * *': 'Every minute',
             '*/5 * * * *': 'Every 5 minutes',
@@ -56,7 +56,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         return presets[schedule] || schedule;
     };
 
-    const formatDuration = (seconds: number) => {
+    const _formatDuration = (seconds: number) => {
         if (seconds < 60) return `${seconds}s`;
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
         const hours = Math.floor(seconds / 3600);
@@ -64,7 +64,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         return `${hours}h ${minutes}m`;
     };
 
-    const formatRelativeTime = (dateString: string) => {
+    const _formatRelativeTime = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
@@ -76,7 +76,7 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         return `${Math.floor(diffMins / 1440)}d ago`;
     };
 
-    const getSuccessRate = () => {
+    const _getSuccessRate = () => {
         const total = cronJob.success_count + cronJob.failure_count;
         if (total === 0) return 100;
         return Math.round((cronJob.success_count / total) * 100);

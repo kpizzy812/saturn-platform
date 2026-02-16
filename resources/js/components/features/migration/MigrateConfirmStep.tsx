@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { ArrowRight, Check, X, AlertTriangle } from 'lucide-react';
 import { Button, Alert } from '@/components/ui';
 import type { EnvironmentMigrationOptions } from '@/types';

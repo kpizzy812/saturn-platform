@@ -18,11 +18,8 @@ import {
     ChevronDown,
     ChevronUp,
     Code,
-    ExternalLink,
-    Eye,
     EyeOff,
     Sparkles,
-    Clock,
 } from 'lucide-react';
 
 interface CodeReviewCardProps {
@@ -390,9 +387,9 @@ export function CodeReviewCard({ deploymentUuid, commitSha, className }: CodeRev
         review,
         isLoading,
         isAnalyzing,
-        error,
+        _error,
         triggerReview,
-        refetch,
+        _refetch,
     } = useCodeReview({
         deploymentUuid,
         autoRefresh: true, // Hook handles auto-refresh internally based on isAnalyzing

@@ -14,7 +14,7 @@ import {
     useDatabases,
     useDatabase,
     useDatabaseBackups,
-    useServices,
+    useServices: _useServices,
     useService,
     useServiceEnvs,
     useProjects,
@@ -67,7 +67,7 @@ export function ApplicationControlPanelExample({ uuid }: { uuid: string }) {
         startApplication,
         stopApplication,
         restartApplication,
-        updateApplication,
+        updateApplication: _updateApplication,
     } = useApplication({ uuid, autoRefresh: true });
 
     const [isStarting, setIsStarting] = React.useState(false);
@@ -394,7 +394,7 @@ export function ServiceControlPanelExample({ uuid }: { uuid: string }) {
  * Example 9: Service Environment Variables
  */
 export function ServiceEnvironmentVariablesExample({ serviceUuid }: { serviceUuid: string }) {
-    const { envs, isLoading, error, createEnv, updateEnv, deleteEnv } = useServiceEnvs({
+    const { envs, isLoading, error, createEnv, updateEnv: _updateEnv, deleteEnv } = useServiceEnvs({
         serviceUuid,
     });
 

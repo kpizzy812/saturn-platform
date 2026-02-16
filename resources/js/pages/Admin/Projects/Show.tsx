@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
@@ -15,7 +15,6 @@ import {
 import {
     FolderKanban,
     Layers,
-    Calendar,
     Users,
     MoreHorizontal,
     Eye,
@@ -23,8 +22,6 @@ import {
     Database,
     Box,
     Globe,
-    Play,
-    Pause,
     ExternalLink,
 } from 'lucide-react';
 

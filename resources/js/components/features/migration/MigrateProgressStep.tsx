@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { CheckCircle2, Clock, Loader2, XCircle, AlertCircle } from 'lucide-react';
 import { Button, Alert, Progress } from '@/components/ui';
 import type { EnvironmentMigration } from '@/types';

@@ -94,7 +94,7 @@ export function useWebhooks({
 
             router.post('/integrations/webhooks', data, {
                 preserveScroll: true,
-                onSuccess: (page) => {
+                onSuccess: (_page) => {
                     setLoading(false);
                     // Refresh to get new data
                     router.reload({ only: ['webhooks'] });

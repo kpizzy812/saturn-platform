@@ -16,7 +16,6 @@ import {
     Download,
     CheckCircle,
     Filter,
-    ArrowUpDown,
     Copy,
     Trash2,
 } from 'lucide-react';

@@ -20,7 +20,7 @@ export default function NotificationsIndex({ notifications: propNotifications }:
     // Use the notifications hook
     const {
         notifications,
-        unreadCount: hookUnreadCount,
+        unreadCount: _hookUnreadCount,
         markAsRead,
         markAllAsRead,
         deleteNotification,

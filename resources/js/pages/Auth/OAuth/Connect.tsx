@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Badge, useConfirm } from '@/components/ui';
+import { Button, Card, CardContent, Badge, useConfirm } from '@/components/ui';
 import { Github, Mail, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 
 interface OAuthProvider {

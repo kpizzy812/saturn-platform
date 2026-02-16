@@ -14,7 +14,6 @@ import {
     DropdownDivider,
 } from '@/components/ui/Dropdown';
 import {
-    ListOrdered,
     Clock,
     CheckCircle,
     XCircle,
@@ -22,9 +21,7 @@ import {
     Trash2,
     Search,
     MoreHorizontal,
-    Play,
     AlertTriangle,
-    Activity,
     Loader2,
     ChevronDown,
     ChevronUp,

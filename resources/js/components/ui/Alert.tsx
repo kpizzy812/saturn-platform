@@ -25,7 +25,7 @@ const variantIcons = {
 };
 
 export function Alert({ children, variant = 'default', className }: AlertProps) {
-    const Icon = variantIcons[variant];
+    const _Icon = variantIcons[variant];
 
     return (
         <div

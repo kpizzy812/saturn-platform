@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, useConfirm } from '@/components/ui';
 import { Key, Plus, Trash2, Eye, EyeOff, Download, Upload, Save, FileSearch } from 'lucide-react';

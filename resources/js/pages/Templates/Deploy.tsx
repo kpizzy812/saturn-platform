@@ -2,7 +2,7 @@ import { AppLayout } from '@/components/layout';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
-import { Link, router, useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import {
     ArrowLeft,

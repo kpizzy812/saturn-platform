@@ -47,7 +47,7 @@ interface PermissionSelection {
 export default function PermissionSetCreate({ allPermissions, environments, parentSets }: Props) {
     const { toast } = useToast();
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post: _post, processing, errors } = useForm({
         name: '',
         description: '',
         color: 'primary',

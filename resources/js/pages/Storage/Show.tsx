@@ -2,13 +2,11 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
 import {
-    Cloud,
     Settings,
     RefreshCw,
     Database,
     CheckCircle,
     XCircle,
-    Server,
     HardDrive,
     Trash2,
     Edit,

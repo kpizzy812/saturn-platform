@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { LineChart, BarChart } from '@/components/ui/Chart';
+import { LineChart } from '@/components/ui/Chart';
 import {
     Cpu,
     MemoryStick,

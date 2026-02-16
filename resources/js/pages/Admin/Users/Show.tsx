@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';

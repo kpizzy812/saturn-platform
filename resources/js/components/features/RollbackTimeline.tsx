@@ -91,7 +91,7 @@ export function RollbackTimeline({
 
                 {/* Deployments */}
                 <div className="relative flex gap-4" style={{ zIndex: 1 }}>
-                    {deployments.map((deployment, index) => {
+                    {deployments.map((deployment, _index) => {
                         const isCurrent = deployment.id === currentDeploymentId;
                         const commitShort = deployment.commit?.substring(0, 7) || 'unknown';
 

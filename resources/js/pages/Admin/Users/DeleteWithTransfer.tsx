@@ -7,14 +7,11 @@ import { Button } from '@/components/ui/Button';
 import { useConfirm } from '@/components/ui';
 import {
     AlertTriangle,
-    ArrowRight,
     Building2,
     ChevronDown,
     ChevronRight,
-    Database,
     FolderKanban,
     Layers,
-    Server,
     Trash2,
     User,
     Users,

@@ -6,7 +6,6 @@ import { useToast } from '@/components/ui/Toast';
 import { getStatusLabel } from '@/lib/statusUtils';
 import {
     ArrowLeft,
-    Database,
     Settings,
     Cpu,
     Shield,

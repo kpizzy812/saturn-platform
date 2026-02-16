@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link, router } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, Badge, Button } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
@@ -14,7 +14,6 @@ import {
     ChevronLeft,
     Calendar,
     Activity,
-    User,
     Rocket,
 } from 'lucide-react';
 

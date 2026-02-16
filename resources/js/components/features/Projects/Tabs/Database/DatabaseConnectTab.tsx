@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Copy, Shield, Globe, RefreshCw, ExternalLink } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useDatabase } from '@/hooks/useDatabases';

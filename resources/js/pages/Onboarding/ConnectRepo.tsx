@@ -168,7 +168,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
         });
     };
 
-    const getProviderIcon = (prov: string) => {
+    const _getProviderIcon = (prov: string) => {
         switch (prov) {
             case 'github':
                 return <Github className="h-5 w-5" />;
@@ -587,7 +587,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
 }
 
 function ProviderButton({
-    provider,
+    provider: _provider,
     selected,
     icon,
     label,

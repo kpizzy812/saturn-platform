@@ -1,4 +1,4 @@
-import * as React from 'react';
+
 import { useState } from 'react';
 import { ArrowRight, Check, X, Clock, Box, Database, Settings2 } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter, Badge, Modal, ModalFooter, Textarea } from '@/components/ui';

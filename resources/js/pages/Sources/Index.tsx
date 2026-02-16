@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge, BrandIcon } from '@/components/ui';
-import { Plus, Github, GitlabIcon as GitLab, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
+import { Card, CardContent, Button, Badge } from '@/components/ui';
+import { Plus, Github, GitlabIcon as GitLab, CheckCircle2, XCircle } from 'lucide-react';
 import { Bitbucket } from '@/components/icons/Bitbucket';
 
 interface GitSource {

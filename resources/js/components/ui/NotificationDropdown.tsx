@@ -56,10 +56,10 @@ function toRelativePath(url: string): string {
     return path;
 }
 
-function NotificationItemCompact({ notification, onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: string) => void }) {
+function NotificationItemCompact({ notification, onMarkAsRead: _onMarkAsRead }: { notification: Notification; onMarkAsRead: (id: string) => void }) {
     const icon = notificationIcons[notification.type] || notificationIcons.info;
 
-    const handleClick = (e: React.MouseEvent) => {
+    const handleClick = (_e: React.MouseEvent) => {
         const targetUrl = notification.actionUrl
             ? toRelativePath(notification.actionUrl)
             : `/notifications/${notification.id}`;

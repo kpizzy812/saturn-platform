@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from '@inertiajs/react';
 import { Card, CardContent, Button, Badge, Tabs, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Users, Trash2, RefreshCw, Eye, EyeOff, Copy, ToggleLeft, Loader2, Table, Search } from 'lucide-react';
+import { Users, Trash2, RefreshCw, Eye, EyeOff, Copy, Loader2, Table, Search } from 'lucide-react';
 import { useDatabaseMetrics, useDatabaseUsers, useDatabaseLogs, useMysqlSettings, formatMetricValue, type MysqlMetrics } from '@/hooks';
 import type { StandaloneDatabase } from '@/types';
 

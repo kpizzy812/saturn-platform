@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, Checkbox, useConfirm } from '@/components/ui';
 import { Bell, Plus, Trash2, Edit, Check, X, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
@@ -59,7 +59,7 @@ const notificationChannels = [
 
 export default function ObservabilityAlerts({ alerts: propAlerts = [], history = [] }: Props) {
     const confirm = useConfirm();
-    const [alerts, setAlerts] = useState<Alert[]>(propAlerts);
+    const [alerts, _setAlerts] = useState<Alert[]>(propAlerts);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [name, setName] = useState('');

@@ -11,7 +11,6 @@ import {
     MoreVertical,
     Edit2,
     Trash2,
-    Users,
     Package,
     Server as ServerIcon,
     Database as DatabaseIcon,

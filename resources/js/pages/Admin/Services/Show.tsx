@@ -25,7 +25,7 @@ import {
     Globe,
 } from 'lucide-react';
 
-interface ServiceContainer {
+interface _ServiceContainer {
     id: number;
     name: string;
     status: string;

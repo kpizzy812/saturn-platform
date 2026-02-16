@@ -28,7 +28,7 @@ interface Props {
 
 export default function ProxyDomains({ server, domains: initialDomains }: Props) {
     const confirm = useConfirm();
-    const [domains, setDomains] = useState<Domain[]>(initialDomains);
+    const [domains, _setDomains] = useState<Domain[]>(initialDomains);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newDomain, setNewDomain] = useState('');
 
