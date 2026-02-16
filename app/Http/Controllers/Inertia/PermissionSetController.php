@@ -65,15 +65,17 @@ class PermissionSetController extends Controller
         $allPermissions = Permission::orderBy('sort_order')
             ->get()
             ->groupBy('category')
-            ->map(fn (\Illuminate\Database\Eloquent\Collection $group, int|string $key) => $group->map(fn (\App\Models\Permission $p) => [
-                'id' => $p->id,
-                'key' => $p->key,
-                'name' => $p->name,
-                'description' => $p->description,
-                'resource' => $p->resource,
-                'action' => $p->action,
-                'is_sensitive' => $p->is_sensitive,
-            ]));
+            ->map(function (\Illuminate\Database\Eloquent\Collection $group, int|string $key): array {
+                return $group->map(fn (\App\Models\Permission $p) => [
+                    'id' => $p->id,
+                    'key' => $p->key,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'resource' => $p->resource,
+                    'action' => $p->action,
+                    'is_sensitive' => $p->is_sensitive,
+                ])->all();
+            });
 
         return Inertia::render('Settings/Team/PermissionSets/Show', [
             'permissionSet' => $this->formatPermissionSet($permissionSet, true),
@@ -98,15 +100,17 @@ class PermissionSetController extends Controller
         $allPermissions = Permission::orderBy('sort_order')
             ->get()
             ->groupBy('category')
-            ->map(fn (\Illuminate\Database\Eloquent\Collection $group, int|string $key) => $group->map(fn (\App\Models\Permission $p) => [
-                'id' => $p->id,
-                'key' => $p->key,
-                'name' => $p->name,
-                'description' => $p->description,
-                'resource' => $p->resource,
-                'action' => $p->action,
-                'is_sensitive' => $p->is_sensitive,
-            ]));
+            ->map(function (\Illuminate\Database\Eloquent\Collection $group, int|string $key): array {
+                return $group->map(fn (\App\Models\Permission $p) => [
+                    'id' => $p->id,
+                    'key' => $p->key,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'resource' => $p->resource,
+                    'action' => $p->action,
+                    'is_sensitive' => $p->is_sensitive,
+                ])->all();
+            });
 
         // Get existing permission sets that can be parents
         $parentSets = PermissionSet::forTeam($team->id)
@@ -211,15 +215,17 @@ class PermissionSetController extends Controller
         $allPermissions = Permission::orderBy('sort_order')
             ->get()
             ->groupBy('category')
-            ->map(fn (\Illuminate\Database\Eloquent\Collection $group, int|string $key) => $group->map(fn (\App\Models\Permission $p) => [
-                'id' => $p->id,
-                'key' => $p->key,
-                'name' => $p->name,
-                'description' => $p->description,
-                'resource' => $p->resource,
-                'action' => $p->action,
-                'is_sensitive' => $p->is_sensitive,
-            ]));
+            ->map(function (\Illuminate\Database\Eloquent\Collection $group, int|string $key): array {
+                return $group->map(fn (\App\Models\Permission $p) => [
+                    'id' => $p->id,
+                    'key' => $p->key,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'resource' => $p->resource,
+                    'action' => $p->action,
+                    'is_sensitive' => $p->is_sensitive,
+                ])->all();
+            });
 
         // Get existing permission sets that can be parents (excluding self and children)
         $parentSets = PermissionSet::forTeam($team->id)

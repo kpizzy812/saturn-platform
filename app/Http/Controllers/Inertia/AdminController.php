@@ -233,7 +233,7 @@ class AdminController extends Controller
         $servers = Server::with('team')
             ->orderBy('updated_at', 'desc')
             ->paginate(50)
-            ->through(function (Server $server) {
+            ->through(function (Server $server): array {
                 return [
                     'id' => $server->id,
                     'uuid' => $server->uuid,
@@ -241,7 +241,7 @@ class AdminController extends Controller
                     'description' => $server->description,
                     'ip' => $server->ip,
                     'is_reachable' => $server->is_reachable,
-                    'is_build_server' => $server->is_build_server,
+                    'is_build_server' => $server->isBuildServer(),
                     'team_id' => $server->team_id,
                     'team_name' => $server->team->name ?? null,
                     'created_at' => $server->created_at,

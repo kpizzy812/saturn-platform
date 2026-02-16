@@ -91,7 +91,7 @@ parameters:
 			path: app/Http/Controllers/Api/PermissionSetController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection, string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/Api/PermissionSetController.php
@@ -163,7 +163,7 @@ parameters:
 			path: app/Http/Controllers/Inertia/PermissionSetController.php
 
 		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection, string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Permission\>, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\>, Closure\(Illuminate\\Database\\Eloquent\\Collection, int\|string\)\: Illuminate\\Support\\Collection\<int, array\{id\: int, key\: string, name\: string, description\: string\|null, resource\: string, action\: string, is_sensitive\: bool\}\> given\.$#'
 			identifier: argument.type
 			count: 3
 			path: app/Http/Controllers/Inertia/PermissionSetController.php

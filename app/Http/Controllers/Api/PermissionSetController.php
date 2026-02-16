@@ -87,15 +87,17 @@ class PermissionSetController extends Controller
         $permissions = Permission::orderBy('sort_order')
             ->get()
             ->groupBy('category')
-            ->map(fn (\Illuminate\Database\Eloquent\Collection $group, int|string $key) => $group->map(fn (\App\Models\Permission $p) => [
-                'id' => $p->id,
-                'key' => $p->key,
-                'name' => $p->name,
-                'description' => $p->description,
-                'resource' => $p->resource,
-                'action' => $p->action,
-                'is_sensitive' => $p->is_sensitive,
-            ]));
+            ->map(function (\Illuminate\Database\Eloquent\Collection $group, int|string $key): array {
+                return $group->map(fn (\App\Models\Permission $p) => [
+                    'id' => $p->id,
+                    'key' => $p->key,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'resource' => $p->resource,
+                    'action' => $p->action,
+                    'is_sensitive' => $p->is_sensitive,
+                ])->all();
+            });
 
         return response()->json([
             'data' => $permissions,

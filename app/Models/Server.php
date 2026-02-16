@@ -76,7 +76,6 @@ use Visus\Cuid2\Cuid2;
  * @property int|null $private_key_id
  * @property int $team_id
  * @property \Spatie\SchemalessAttributes\SchemalessAttributes $proxy
- * @property bool $is_build_server
  * @property bool $force_disabled
  * @property bool $delete_unused_volumes
  * @property bool $delete_unused_networks
