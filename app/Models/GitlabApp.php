@@ -10,6 +10,25 @@ class GitlabApp extends BaseModel
 {
     use Auditable, LogsActivity;
 
+    protected $fillable = [
+        'name',
+        'organization',
+        'api_url',
+        'html_url',
+        'custom_port',
+        'custom_user',
+        'is_system_wide',
+        'is_public',
+        'app_id',
+        'app_secret',
+        'oauth_id',
+        'group_name',
+        'public_key',
+        'webhook_token',
+        'deploy_key_id',
+        'private_key_id',
+    ];
+
     // Security: Encrypt secrets at rest
     protected $casts = [
         'webhook_token' => 'encrypted',
