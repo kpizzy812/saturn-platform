@@ -1,0 +1,196 @@
+# =============================================================================
+# Saturn Platform - Traefik Dynamic Configuration (Multi-Environment)
+# =============================================================================
+# Routes traffic to 3 isolated Saturn environments.
+# Place this file at /data/saturn/proxy/dynamic/saturn.yaml on VPS.
+#
+# Domains:
+#   dev.saturn.ac    → saturn-dev:8080     (development)
+#   uat.saturn.ac    → saturn-staging:8080  (staging)
+#   saturn.ac        → saturn-production:8080 (production)
+# =============================================================================
+
+http:
+  middlewares:
+    redirect-to-https:
+      redirectscheme:
+        scheme: https
+    gzip:
+      compress: true
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: nosniff
+          X-Frame-Options: SAMEORIGIN
+          Referrer-Policy: strict-origin-when-cross-origin
+          X-XSS-Protection: "1; mode=block"
+    hsts-headers:
+      headers:
+        customResponseHeaders:
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+
+  # ===========================================================================
+  # Development — dev.saturn.ac → saturn-dev
+  # ===========================================================================
+  routers:
+    # HTTP → HTTPS redirect
+    dev-http:
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - http
+      service: dev-app
+      rule: Host(`dev.saturn.ac`)
+
+    # App HTTPS
+    dev-https:
+      entryPoints:
+        - https
+      service: dev-app
+      rule: Host(`dev.saturn.ac`)
+      middlewares:
+        - security-headers
+        - gzip
+      tls:
+        certresolver: letsencrypt
+
+    # WebSocket HTTPS
+    dev-realtime-wss:
+      entryPoints:
+        - https
+      service: dev-realtime
+      rule: 'Host(`dev.saturn.ac`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)'
+      tls:
+        certresolver: letsencrypt
+
+    # Terminal WebSocket HTTPS
+    dev-terminal-wss:
+      entryPoints:
+        - https
+      service: dev-terminal
+      rule: 'Host(`dev.saturn.ac`) && PathPrefix(`/terminal/ws`)'
+      tls:
+        certresolver: letsencrypt
+
+  # ===========================================================================
+  # Staging (UAT) — uat.saturn.ac → saturn-staging
+  # ===========================================================================
+    staging-http:
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - http
+      service: staging-app
+      rule: Host(`uat.saturn.ac`)
+
+    staging-https:
+      entryPoints:
+        - https
+      service: staging-app
+      rule: Host(`uat.saturn.ac`)
+      middlewares:
+        - security-headers
+        - gzip
+      tls:
+        certresolver: letsencrypt
+
+    staging-realtime-wss:
+      entryPoints:
+        - https
+      service: staging-realtime
+      rule: 'Host(`uat.saturn.ac`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)'
+      tls:
+        certresolver: letsencrypt
+
+    staging-terminal-wss:
+      entryPoints:
+        - https
+      service: staging-terminal
+      rule: 'Host(`uat.saturn.ac`) && PathPrefix(`/terminal/ws`)'
+      tls:
+        certresolver: letsencrypt
+
+  # ===========================================================================
+  # Production — saturn.ac → saturn-production
+  # ===========================================================================
+    production-http:
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - http
+      service: production-app
+      rule: Host(`saturn.ac`)
+
+    production-https:
+      entryPoints:
+        - https
+      service: production-app
+      rule: Host(`saturn.ac`)
+      middlewares:
+        - security-headers
+        - hsts-headers
+        - gzip
+      tls:
+        certresolver: letsencrypt
+
+    production-realtime-wss:
+      entryPoints:
+        - https
+      service: production-realtime
+      rule: 'Host(`saturn.ac`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)'
+      tls:
+        certresolver: letsencrypt
+
+    production-terminal-wss:
+      entryPoints:
+        - https
+      service: production-terminal
+      rule: 'Host(`saturn.ac`) && PathPrefix(`/terminal/ws`)'
+      tls:
+        certresolver: letsencrypt
+
+  # ===========================================================================
+  # Services
+  # ===========================================================================
+  services:
+    # Dev
+    dev-app:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-dev:8080'
+    dev-realtime:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-realtime-dev:6001'
+    dev-terminal:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-realtime-dev:6002'
+
+    # Staging
+    staging-app:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-staging:8080'
+    staging-realtime:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-realtime-staging:6001'
+    staging-terminal:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-realtime-staging:6002'
+
+    # Production
+    production-app:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-production:8080'
+    production-realtime:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-realtime-production:6001'
+    production-terminal:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-realtime-production:6002'

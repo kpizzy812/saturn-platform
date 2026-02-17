@@ -173,18 +173,18 @@ create_directories() {
 # Docker Networks (Multi-Environment)
 # =============================================================================
 create_docker_networks() {
-    # Shared proxy network
-    if docker network inspect saturn-proxy &>/dev/null; then
-        log_info "Docker network 'saturn-proxy' already exists"
+    # Shared network (Traefik proxy + all environments)
+    if docker network inspect saturn &>/dev/null; then
+        log_info "Docker network 'saturn' already exists"
     else
-        log_info "Creating Docker network 'saturn-proxy'..."
-        docker network create saturn-proxy
-        log_success "Docker network 'saturn-proxy' created"
+        log_info "Creating Docker network 'saturn'..."
+        docker network create saturn
+        log_success "Docker network 'saturn' created"
     fi
 
-    # Per-environment isolated networks
+    # Per-environment internal networks (DB/Redis isolation)
     for env in "${ENVIRONMENTS[@]}"; do
-        local net="saturn-${env}"
+        local net="saturn-${env}-internal"
         if docker network inspect "$net" &>/dev/null; then
             log_info "Docker network '${net}' already exists"
         else
@@ -333,10 +333,10 @@ print_summary() {
     echo "  - ${SATURN_DATA}/shared/   (proxy config, deploy key)"
     echo ""
     echo "Docker networks:"
-    echo "  - saturn-proxy       (shared, connects Caddy to all environments)"
-    echo "  - saturn-dev         (isolated dev network)"
-    echo "  - saturn-staging     (isolated staging network)"
-    echo "  - saturn-production  (isolated production network)"
+    echo "  - saturn                    (shared, Traefik proxy)"
+    echo "  - saturn-dev-internal       (isolated dev DB/Redis)"
+    echo "  - saturn-staging-internal   (isolated staging DB/Redis)"
+    echo "  - saturn-production-internal (isolated production DB/Redis)"
     echo ""
     echo "User: ${SATURN_USER}"
     echo ""
@@ -350,7 +350,7 @@ print_summary() {
     echo "       cp deploy/environments/dev/.env.example ${SATURN_DATA}/dev/source/.env"
     echo "       cp deploy/environments/staging/.env.example ${SATURN_DATA}/staging/source/.env"
     echo "       cp deploy/environments/production/.env.example ${SATURN_DATA}/production/source/.env"
-    echo "  3. Start Caddy proxy:  bash deploy/scripts/setup-proxy.sh"
+    echo "  3. Update Traefik config:  bash deploy/scripts/setup-proxy.sh"
     echo "  4. Deploy:  SATURN_ENV=dev ./deploy/scripts/deploy.sh"
     echo ""
 }

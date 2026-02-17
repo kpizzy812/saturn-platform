@@ -89,11 +89,11 @@ validate_prerequisites() {
         exit 1
     fi
 
-    # Ensure saturn-proxy network exists
-    if ! docker network inspect saturn-proxy &>/dev/null 2>&1; then
-        log_info "Creating shared network 'saturn-proxy'..."
-        docker network create saturn-proxy
-        log_success "Network 'saturn-proxy' created"
+    # Ensure shared network exists (Traefik proxy)
+    if ! docker network inspect saturn &>/dev/null 2>&1; then
+        log_info "Creating shared network 'saturn'..."
+        docker network create saturn
+        log_success "Network 'saturn' created"
     fi
 
     # Check .env file
