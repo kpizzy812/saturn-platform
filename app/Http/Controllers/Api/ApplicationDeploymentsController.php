@@ -141,7 +141,7 @@ class ApplicationDeploymentsController extends Controller
             application: $application,
             reason: ApplicationRollbackEvent::REASON_MANUAL,
             type: 'manual',
-            failedDeployment: $application->deployments()->latest()->first(),
+            failedDeployment: ApplicationDeploymentQueue::where('application_id', $application->id)->latest()->first(),
             user: auth()->user()
         );
 
