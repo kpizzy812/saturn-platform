@@ -141,6 +141,9 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
         try {
             // Get additional metrics if server is usable
             $diskUsage = null;
+            $cpuUsage = null;
+            $memoryUsage = null;
+            $uptimeSeconds = null;
             $containerCounts = null;
 
             if ($isUsable) {
@@ -152,6 +155,40 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                     }
                 } catch (\Throwable $e) {
                     // Ignore disk usage errors
+                }
+
+                // Try to get CPU and memory usage + uptime
+                try {
+                    $metricsOutput = instant_remote_process_with_timeout(
+                        ['cat /proc/loadavg && free -b | grep Mem && cat /proc/uptime'],
+                        $this->server,
+                        false
+                    );
+                    if ($metricsOutput) {
+                        $lines = explode("\n", trim($metricsOutput));
+                        // Parse CPU load average (1-min) / number of cores
+                        $loadParts = explode(' ', $lines[0]);
+                        $load1min = (float) $loadParts[0];
+                        $nproc = instant_remote_process_with_timeout(['nproc'], $this->server, false);
+                        $cores = max(1, (int) trim($nproc ?? '1'));
+                        $cpuUsage = round(($load1min / $cores) * 100, 1);
+
+                        // Parse memory: "Mem: total used free shared buff/cache available"
+                        if (count($lines) > 1) {
+                            $memParts = preg_split('/\s+/', trim($lines[1]));
+                            $memTotal = (float) ($memParts[1] ?? 0);
+                            $memAvailable = (float) ($memParts[6] ?? 0);
+                            if ($memTotal > 0) {
+                                $memoryUsage = round((1 - $memAvailable / $memTotal) * 100, 1);
+                            }
+                        }
+                        // Parse uptime
+                        if (count($lines) > 2) {
+                            $uptimeSeconds = (int) ((float) explode(' ', trim($lines[2]))[0]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore metric collection errors
                 }
 
                 // Try to get container counts
@@ -172,7 +209,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             }
 
             // Determine overall status
-            $status = ServerHealthCheck::determineStatus($isReachable, $isUsable, $diskUsage);
+            $status = ServerHealthCheck::determineStatus($isReachable, $isUsable, $diskUsage, $cpuUsage, $memoryUsage);
 
             // Create health check record
             ServerHealthCheck::create([
@@ -182,6 +219,9 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                 'is_usable' => $isUsable,
                 'response_time_ms' => $responseTimeMs,
                 'disk_usage_percent' => $diskUsage,
+                'cpu_usage_percent' => $cpuUsage,
+                'memory_usage_percent' => $memoryUsage,
+                'uptime_seconds' => $uptimeSeconds,
                 'error_message' => $errorMessage,
                 'docker_version' => $dockerVersion,
                 'container_counts' => $containerCounts,
