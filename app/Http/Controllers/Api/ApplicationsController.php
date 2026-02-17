@@ -89,6 +89,23 @@ class ApplicationsController extends Controller
             return $this->removeSensitiveData($application);
         });
 
+        $perPage = (int) $request->query('per_page', 0);
+        if ($perPage > 0) {
+            $perPage = min($perPage, 100);
+            $page = max(1, (int) $request->query('page', 1));
+            $total = $applications->count();
+
+            return response()->json([
+                'data' => $applications->forPage($page, $perPage)->values(),
+                'meta' => [
+                    'total' => $total,
+                    'per_page' => $perPage,
+                    'current_page' => $page,
+                    'last_page' => (int) ceil($total / $perPage),
+                ],
+            ]);
+        }
+
         return response()->json($applications);
     }
 

@@ -187,7 +187,7 @@ Route::group([
     Route::delete('/cloud-tokens/{uuid}', [CloudProviderTokensController::class, 'destroy'])->middleware(['api.ability:write']);
     Route::post('/cloud-tokens/{uuid}/validate', [CloudProviderTokensController::class, 'validateToken'])->middleware(['api.ability:read']);
 
-    Route::match(['get', 'post'], '/deploy', [DeployController::class, 'deploy'])->middleware(['api.ability:deploy']);
+    Route::match(['get', 'post'], '/deploy', [DeployController::class, 'deploy'])->middleware(['api.ability:deploy', 'throttle:deploy']);
     Route::get('/deployments', [DeployController::class, 'deployments'])->middleware(['api.ability:read']);
     Route::get('/deployments/{uuid}', [DeployController::class, 'deployment_by_uuid'])->middleware(['api.ability:read']);
     // Rate limited log streaming endpoint - 60 requests per minute
@@ -290,10 +290,10 @@ Route::group([
     Route::get('/servers/{uuid}/validate', [ServersController::class, 'validate_server'])->middleware(['api.ability:read']);
     Route::get('/servers/{uuid}/sentinel/metrics', [SentinelMetricsController::class, 'metrics'])->middleware(['api.ability:read']);
 
-    Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:read']);
-    Route::patch('/servers/{uuid}', [ServersController::class, 'update_server'])->middleware(['api.ability:write']);
-    Route::delete('/servers/{uuid}', [ServersController::class, 'delete_server'])->middleware(['api.ability:write']);
-    Route::post('/servers/{uuid}/reboot', [ServersController::class, 'reboot_server'])->middleware(['api.ability:write']);
+    Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:read', 'throttle:api-write']);
+    Route::patch('/servers/{uuid}', [ServersController::class, 'update_server'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::delete('/servers/{uuid}', [ServersController::class, 'delete_server'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::post('/servers/{uuid}/reboot', [ServersController::class, 'reboot_server'])->middleware(['api.ability:write', 'throttle:api-write']);
 
     Route::get('/hetzner/locations', [HetznerController::class, 'locations'])->middleware(['api.ability:read']);
     Route::get('/hetzner/server-types', [HetznerController::class, 'serverTypes'])->middleware(['api.ability:read']);
@@ -304,16 +304,16 @@ Route::group([
     Route::get('/resources', [ResourcesController::class, 'resources'])->middleware(['api.ability:read']);
 
     Route::get('/applications', [ApplicationsController::class, 'applications'])->middleware(['api.ability:read']);
-    Route::post('/applications/public', [ApplicationCreateController::class, 'create_public_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/private-github-app', [ApplicationCreateController::class, 'create_private_gh_app_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/private-deploy-key', [ApplicationCreateController::class, 'create_private_deploy_key_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/dockerfile', [ApplicationCreateController::class, 'create_dockerfile_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/dockerimage', [ApplicationCreateController::class, 'create_dockerimage_application'])->middleware(['api.ability:write']);
-    Route::post('/applications/dockercompose', [ApplicationCreateController::class, 'create_dockercompose_application'])->middleware(['api.ability:write']);
+    Route::post('/applications/public', [ApplicationCreateController::class, 'create_public_application'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::post('/applications/private-github-app', [ApplicationCreateController::class, 'create_private_gh_app_application'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::post('/applications/private-deploy-key', [ApplicationCreateController::class, 'create_private_deploy_key_application'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::post('/applications/dockerfile', [ApplicationCreateController::class, 'create_dockerfile_application'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::post('/applications/dockerimage', [ApplicationCreateController::class, 'create_dockerimage_application'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::post('/applications/dockercompose', [ApplicationCreateController::class, 'create_dockercompose_application'])->middleware(['api.ability:write', 'throttle:api-write']);
 
     Route::get('/applications/{uuid}', [ApplicationsController::class, 'application_by_uuid'])->middleware(['api.ability:read']);
-    Route::patch('/applications/{uuid}', [ApplicationsController::class, 'update_by_uuid'])->middleware(['api.ability:write']);
-    Route::delete('/applications/{uuid}', [ApplicationsController::class, 'delete_by_uuid'])->middleware(['api.ability:write']);
+    Route::patch('/applications/{uuid}', [ApplicationsController::class, 'update_by_uuid'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::delete('/applications/{uuid}', [ApplicationsController::class, 'delete_by_uuid'])->middleware(['api.ability:write', 'throttle:api-write']);
 
     Route::get('/applications/{uuid}/envs', [ApplicationEnvsController::class, 'envs'])->middleware(['api.ability:read']);
     Route::post('/applications/{uuid}/envs', [ApplicationEnvsController::class, 'create_env'])->middleware(['api.ability:write']);
@@ -322,9 +322,9 @@ Route::group([
     Route::delete('/applications/{uuid}/envs/{env_uuid}', [ApplicationEnvsController::class, 'delete_env_by_uuid'])->middleware(['api.ability:write']);
     Route::get('/applications/{uuid}/logs', [ApplicationsController::class, 'logs_by_uuid'])->middleware(['api.ability:read']);
 
-    Route::match(['get', 'post'], '/applications/{uuid}/start', [ApplicationActionsController::class, 'action_deploy'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/applications/{uuid}/restart', [ApplicationActionsController::class, 'action_restart'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/applications/{uuid}/stop', [ApplicationActionsController::class, 'action_stop'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/applications/{uuid}/start', [ApplicationActionsController::class, 'action_deploy'])->middleware(['api.ability:write', 'throttle:deploy']);
+    Route::match(['get', 'post'], '/applications/{uuid}/restart', [ApplicationActionsController::class, 'action_restart'])->middleware(['api.ability:write', 'throttle:deploy']);
+    Route::match(['get', 'post'], '/applications/{uuid}/stop', [ApplicationActionsController::class, 'action_stop'])->middleware(['api.ability:write', 'throttle:deploy']);
 
     // Application Rollback Routes
     Route::get('/applications/{uuid}/deployments', [ApplicationDeploymentsController::class, 'get_deployments'])->middleware(['api.ability:read']);
@@ -351,8 +351,8 @@ Route::group([
     // Database CRUD routes
     Route::get('/databases', [DatabasesController::class, 'index'])->middleware(['api.ability:read']);
     Route::get('/databases/{uuid}', [DatabasesController::class, 'show'])->middleware(['api.ability:read']);
-    Route::patch('/databases/{uuid}', [DatabasesController::class, 'update'])->middleware(['api.ability:write']);
-    Route::delete('/databases/{uuid}', [DatabasesController::class, 'destroy'])->middleware(['api.ability:write']);
+    Route::patch('/databases/{uuid}', [DatabasesController::class, 'update'])->middleware(['api.ability:write', 'throttle:api-write']);
+    Route::delete('/databases/{uuid}', [DatabasesController::class, 'destroy'])->middleware(['api.ability:write', 'throttle:api-write']);
 
     // Database creation routes
     Route::post('/databases/postgresql', [DatabaseCreateController::class, 'postgresql'])->middleware(['api.ability:write']);
@@ -409,9 +409,9 @@ Route::group([
     })->middleware(['api.ability:read', 'throttle:60,1']);
 
     // Database action routes
-    Route::match(['get', 'post'], '/databases/{uuid}/start', [DatabaseActionsController::class, 'start'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/databases/{uuid}/restart', [DatabaseActionsController::class, 'restart'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/databases/{uuid}/stop', [DatabaseActionsController::class, 'stop'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/databases/{uuid}/start', [DatabaseActionsController::class, 'start'])->middleware(['api.ability:write', 'throttle:deploy']);
+    Route::match(['get', 'post'], '/databases/{uuid}/restart', [DatabaseActionsController::class, 'restart'])->middleware(['api.ability:write', 'throttle:deploy']);
+    Route::match(['get', 'post'], '/databases/{uuid}/stop', [DatabaseActionsController::class, 'stop'])->middleware(['api.ability:write', 'throttle:deploy']);
 
     // Database structure for transfers
     Route::get('/databases/{uuid}/structure', [ResourceTransferController::class, 'structure'])->middleware(['api.ability:read']);
@@ -535,9 +535,9 @@ Route::group([
         ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
 
-    Route::match(['get', 'post'], '/services/{uuid}/start', [ServiceActionsController::class, 'start'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/services/{uuid}/restart', [ServiceActionsController::class, 'restart'])->middleware(['api.ability:write']);
-    Route::match(['get', 'post'], '/services/{uuid}/stop', [ServiceActionsController::class, 'stop'])->middleware(['api.ability:write']);
+    Route::match(['get', 'post'], '/services/{uuid}/start', [ServiceActionsController::class, 'start'])->middleware(['api.ability:write', 'throttle:deploy']);
+    Route::match(['get', 'post'], '/services/{uuid}/restart', [ServiceActionsController::class, 'restart'])->middleware(['api.ability:write', 'throttle:deploy']);
+    Route::match(['get', 'post'], '/services/{uuid}/stop', [ServiceActionsController::class, 'stop'])->middleware(['api.ability:write', 'throttle:deploy']);
 
     // Service deployments (activity log based)
     Route::get('/services/{uuid}/deployments', function (string $uuid, \Illuminate\Http\Request $request) {

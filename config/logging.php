@@ -62,7 +62,7 @@ return [
         'production' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
-            'level' => env('LOG_LEVEL', 'warning'),
+            'level' => env('LOG_LEVEL', 'info'),
             'days' => 30,
             'formatter' => JsonFormatter::class,
             'processors' => [UidProcessor::class],

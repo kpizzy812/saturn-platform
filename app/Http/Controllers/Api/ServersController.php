@@ -95,7 +95,30 @@ class ServersController extends Controller
             return $server;
         });
 
-        return response()->json($servers);
+        return $this->paginatedResponse($request, $servers);
+    }
+
+    private function paginatedResponse(Request $request, $items)
+    {
+        $perPage = (int) $request->query('per_page', 0);
+        if ($perPage > 0) {
+            $perPage = min($perPage, 100);
+            $page = max(1, (int) $request->query('page', 1));
+            $total = $items->count();
+            $data = $items->forPage($page, $perPage)->values();
+
+            return response()->json([
+                'data' => $data,
+                'meta' => [
+                    'total' => $total,
+                    'per_page' => $perPage,
+                    'current_page' => $page,
+                    'last_page' => (int) ceil($total / $perPage),
+                ],
+            ]);
+        }
+
+        return response()->json($items);
     }
 
     #[OA\Get(

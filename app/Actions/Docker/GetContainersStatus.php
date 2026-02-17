@@ -15,6 +15,7 @@ use App\Services\ContainerStatusAggregator;
 use App\Traits\CalculatesExcludedStatus;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -41,6 +42,22 @@ class GetContainersStatus
     protected ?Collection $serviceContainerStatuses;
 
     public function handle(Server $server, ?Collection $containers = null, ?Collection $containerReplicates = null)
+    {
+        $lock = Cache::lock("server-status:{$server->id}", 120);
+        if (! $lock->get()) {
+            Log::debug("Skipping container status check for server {$server->id} — already in progress");
+
+            return 'Status check already in progress.';
+        }
+
+        try {
+            return $this->executeStatusCheck($server, $containers, $containerReplicates);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function executeStatusCheck(Server $server, ?Collection $containers = null, ?Collection $containerReplicates = null)
     {
         $this->containers = $containers;
         $this->containerReplicates = $containerReplicates;

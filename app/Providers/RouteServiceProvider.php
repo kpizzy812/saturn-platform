@@ -54,5 +54,15 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('5', function (Request $request) {
             return Limit::perMinute(5)->by($request->user()?->id ?: $request->ip());
         });
+
+        // Deploy endpoints: 10 requests per minute
+        RateLimiter::for('deploy', function (Request $request) {
+            return Limit::perMinute(10)->by($request->user()?->id ?: $request->ip());
+        });
+
+        // Write endpoints (create/update/delete): 30 requests per minute
+        RateLimiter::for('api-write', function (Request $request) {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }
