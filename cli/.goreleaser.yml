@@ -1,0 +1,39 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: saturn
+    binary: saturn
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/saturn-platform/saturn-cli/internal/version.version={{ .Version }}
+    main: ./saturn/main.go
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+archives:
+  - id: saturn-archive
+    ids:
+      - saturn
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+
+    format_overrides:
+      - goos: windows
+        formats: [zip]

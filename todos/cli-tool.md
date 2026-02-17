@@ -1,76 +1,107 @@
 # Saturn CLI Tool
 
-## Goal
-CLI utility for deploying services/containers to Saturn from local machine, similar to `heroku push` / `railway up`.
+## Current Status
 
-## User Stories
-- Developer builds a service locally (proxy, postback API, etc.) and deploys it to Saturn with one command
-- Developer pushes Docker image from local to Saturn without intermediate registry
-- Developer triggers redeploy of existing service from terminal
+**CLI codebase forked from [coollabsio/coolify-cli](https://github.com/coollabsio/coolify-cli) and rebranded.**
+Located at: `cli/` directory in the monorepo.
 
-## Phase 1 — Minimal CLI (bash/shell wrapper over API)
+### What's Done
+- [x] Go CLI source code in `cli/` (forked from coolify-cli v1.4.0)
+- [x] Full rebranding: coolify → saturn (binary, config paths, GitHub URLs, user-facing strings)
+- [x] Frontend pages: `/cli/setup` and `/cli/commands` (React/Inertia)
+- [x] Frontend tests: 34 tests passing
+- [x] Install scripts: `cli/scripts/install.sh` and `cli/scripts/install.ps1`
+- [x] GoReleaser config: `.goreleaser.yml` (6 platform builds)
+- [x] Web routes: `routes/web/misc.php`
 
-### Commands
-```bash
-saturn login                         # Save API token to ~/.saturn/config
-saturn deploy --image myapp:latest   # Deploy Docker image
-saturn deploy --compose ./docker-compose.yml  # Deploy compose file
-saturn services                      # List services
-saturn logs <service-uuid>           # Stream service logs
-saturn redeploy <service-uuid>       # Trigger redeploy
+### What's NOT Done Yet
+- [ ] GitHub repository `saturn-platform/saturn-cli` (needed for releases & self-update)
+- [ ] GoReleaser CI/CD pipeline (`.github/workflows/release-cli.yml`)
+- [ ] Install URL `get.saturn.app` (needs DNS + hosting for install scripts)
+- [ ] Homebrew tap for `brew install saturn-cli`
+- [ ] Go build verification (Go not installed locally)
+- [ ] API endpoint compatibility audit (Saturn API vs Coolify API)
+- [ ] Phase 2: Direct image push from local
+
+## Architecture
+
+Go CLI (Cobra + Viper) with 3-layer architecture:
+```
+cli/
+├── saturn/main.go          # Entry point
+├── cmd/                    # Command layer (Cobra commands)
+│   ├── root.go            # Root command + global flags
+│   ├── application/       # app list/create/start/stop/restart/env
+│   ├── database/          # database list/create/backup
+│   ├── deployment/        # deploy uuid/batch/list/cancel
+│   ├── service/           # service list/create/start/stop
+│   ├── server/            # server list/get/validate
+│   ├── project/           # project list/create
+│   ├── context/           # context add/use/list/verify/set-token
+│   ├── teams/             # teams list/current
+│   ├── update/            # self-update
+│   └── version/           # version info
+├── internal/
+│   ├── api/               # HTTP client for Saturn API
+│   ├── config/            # Config management (~/.config/saturn/)
+│   ├── models/            # Data models
+│   ├── service/           # Business logic layer
+│   ├── cli/               # CLI helpers
+│   └── version/           # Version checking
+├── scripts/
+│   ├── install.sh         # Linux/macOS installer
+│   └── install.ps1        # Windows installer
+└── .goreleaser.yml        # Multi-platform build config
 ```
 
-### Implementation
-- Simple bash script or Python CLI (click/typer)
-- Uses existing REST API v1 (`/api/v1/services`, `/api/v1/deploy`, etc.)
-- Config stored in `~/.saturn/config.json` (token, server URL)
-- No new backend changes needed
+## Commands Reference
 
-### API Endpoints Already Available
-- `POST /api/v1/services` — create service
-- `POST /api/v1/deploy` — trigger deploy by UUID
-- `GET /api/v1/services` — list services
-- `GET /api/v1/applications` — list applications
+| Command | Description |
+|---------|-------------|
+| `saturn context add <name> <url> <token>` | Add Saturn instance |
+| `saturn context list` | List all instances |
+| `saturn context use <name>` | Switch instance |
+| `saturn context verify` | Test connection |
+| `saturn app list` | List applications |
+| `saturn app create <type>` | Create application |
+| `saturn app start/stop/restart <uuid>` | Control app lifecycle |
+| `saturn app env list/sync <uuid>` | Manage env vars |
+| `saturn deploy uuid <uuid>` | Deploy by UUID |
+| `saturn deploy batch <uuids>` | Batch deploy |
+| `saturn service list` | List services |
+| `saturn service create <type>` | Create one-click service |
+| `saturn database list` | List databases |
+| `saturn database create <type>` | Create database |
+| `saturn server list` | List servers |
+| `saturn project list/create` | Manage projects |
+| `saturn teams list/current` | Team info |
+| `saturn version` | Show CLI version |
+| `saturn update` | Self-update |
 
-## Phase 2 — Direct Image Push (requires backend work)
+## Next Steps (Priority Order)
 
-### Goal
-Push locally-built Docker image directly to Saturn without needing an external registry.
+### 1. API Compatibility Audit
+Compare Saturn API endpoints with what the CLI expects. Key areas:
+- Application CRUD & lifecycle
+- Service management
+- Database operations
+- Deployment triggering
+- Server management
 
-### Approach Options
-1. **Built-in Docker Registry** — Run a private registry on Saturn server, CLI pushes to it
-2. **Image tar upload** — `docker save` → upload tar → `docker load` on server
-3. **Buildpack on server** — Push source code, build on server (like Heroku)
-
-### Backend Changes Needed
-- New API endpoint: `POST /api/v1/images/upload` — accept Docker image tar
-- New API endpoint: `POST /api/v1/deploy/from-source` — accept source code archive
-- Server-side: `docker load` from uploaded tar
-- Optional: integrated Docker registry service
-
-## Phase 3 — Full-Featured CLI (Go/Rust binary)
-
-### Additional Commands
+### 2. Build & Test
 ```bash
-saturn init                          # Initialize project config (.saturn.yml)
-saturn env set KEY=VALUE             # Manage environment variables
-saturn env list
-saturn domains add example.com       # Manage domains
-saturn status                        # Show service status
-saturn ssh <service>                 # SSH into container
-saturn up                            # Deploy from current directory (auto-detect)
+cd cli
+go build -o saturn ./saturn/
+go test ./internal/...
 ```
 
-### Distribution
-- Homebrew tap: `brew install saturn-cli`
-- Direct binary download
-- npm package: `npx @saturn/cli`
+### 3. GitHub Release Pipeline
+- Create `saturn-platform/saturn-cli` repo (or keep in monorepo)
+- Set up GoReleaser GitHub Action
+- Tag first release
 
-## Priority
-- Phase 1: **HIGH** — can be done in 1-2 days, immediate value
-- Phase 2: **MEDIUM** — requires backend work, 3-5 days
-- Phase 3: **LOW** — nice to have, 1-2 weeks
-
-## Notes
-- Phase 1 is essentially a thin wrapper around existing API — no backend changes
-- For "push from local" workflow right now: build → push to GHCR/DockerHub → set docker-image type in Saturn → trigger deploy via API
+### 4. Phase 2 — Direct Image Push (future)
+Push locally-built Docker images directly to Saturn without external registry.
+Needs new backend endpoints:
+- `POST /api/v1/images/upload` — accept Docker image tar
+- `POST /api/v1/deploy/from-source` — accept source code archive

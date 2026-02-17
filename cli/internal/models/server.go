@@ -1,0 +1,34 @@
+package models
+
+// Server represents a Saturn server
+type Server struct {
+	ID       int      `json:"-" table:"-"`
+	UUID     string   `json:"uuid"`
+	Name     string   `json:"name"`
+	IP       string   `json:"ip" sensitive:"true"`
+	User     string   `json:"user" sensitive:"true"`
+	Port     int      `json:"port" sensitive:"true"`
+	Settings Settings `json:"settings" table:"-"`
+}
+
+// Settings for server
+type Settings struct {
+	IsReachable bool `json:"is_reachable"`
+	IsUsable    bool `json:"is_usable"`
+}
+
+// ServerCreateRequest for creating servers
+type ServerCreateRequest struct {
+	Name            string `json:"name"`
+	IP              string `json:"ip"`
+	Port            int    `json:"port"`
+	User            string `json:"user"`
+	PrivateKeyUUID  string `json:"private_key_uuid"`
+	InstantValidate bool   `json:"instant_validate"`
+}
+
+// Domain represents a domain configuration
+type Domain struct {
+	IP      string   `json:"ip"`
+	Domains []string `json:"domains"`
+}

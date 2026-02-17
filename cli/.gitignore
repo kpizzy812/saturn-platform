@@ -1,0 +1,13 @@
+saturn-cli
+/saturn/saturn
+/bin/
+config.json
+.claude
+
+# Generated documentation (can be regenerated)
+man/
+docs/cli/
+dist/
+
+# Test coverage
+coverage.out

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Head } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Badge, useToast } from '@/components/ui';
-import { Terminal, Copy, Search, ChevronDown, ChevronRight, Book } from 'lucide-react';
+import { Terminal, Copy, Search, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface CLICommand {
     name: string;
@@ -13,143 +13,231 @@ interface CLICommand {
 }
 
 const commands: CLICommand[] = [
+    // Context
     {
-        name: 'login',
-        description: 'Authenticate with your Saturn account',
-        usage: 'saturn login [options]',
-        category: 'Authentication',
+        name: 'context add',
+        description: 'Add a new Saturn instance connection',
+        usage: 'saturn context add <name> <url> <token>',
+        category: 'Context',
+        examples: [
+            { command: 'saturn context add production https://saturn.app my-api-token', description: 'Add production instance' },
+            { command: 'saturn context add local http://localhost:8000 root', description: 'Add local dev instance' },
+        ],
+    },
+    {
+        name: 'context list',
+        description: 'List all configured instances',
+        usage: 'saturn context list',
+        category: 'Context',
+    },
+    {
+        name: 'context use',
+        description: 'Switch to a different instance',
+        usage: 'saturn context use <name>',
+        category: 'Context',
+        examples: [
+            { command: 'saturn context use production', description: 'Switch to production' },
+        ],
+    },
+    {
+        name: 'context verify',
+        description: 'Verify connection to the current instance',
+        usage: 'saturn context verify',
+        category: 'Context',
+    },
+    {
+        name: 'context set-token',
+        description: 'Update the API token for an instance',
+        usage: 'saturn context set-token <name> <token>',
+        category: 'Context',
+    },
+    // Applications
+    {
+        name: 'app list',
+        description: 'List all applications',
+        usage: 'saturn app list',
+        category: 'Applications',
+    },
+    {
+        name: 'app create',
+        description: 'Create a new application',
+        usage: 'saturn app create <type> [options]',
+        category: 'Applications',
         options: [
-            { flag: '--token <token>', description: 'Use an API token for authentication' },
-            { flag: '--org <org>', description: 'Specify organization to login to' },
+            { flag: '--server-uuid <uuid>', description: 'Target server UUID' },
+            { flag: '--project-uuid <uuid>', description: 'Project UUID' },
+            { flag: '--environment-name <name>', description: 'Environment name' },
         ],
         examples: [
-            { command: 'saturn login', description: 'Interactive login via browser' },
-            { command: 'saturn login --token sat_xxx', description: 'Login with API token' },
+            { command: 'saturn app create public --server-uuid <uuid> --project-uuid <uuid> --environment-name production --git-repository https://github.com/user/repo', description: 'Create from public repo' },
+            { command: 'saturn app create dockerimage --server-uuid <uuid> --project-uuid <uuid> --environment-name production --docker-image nginx:latest', description: 'Create from Docker image' },
         ],
     },
     {
-        name: 'logout',
-        description: 'Sign out from your Saturn account',
-        usage: 'saturn logout',
-        category: 'Authentication',
+        name: 'app start / stop / restart',
+        description: 'Control application lifecycle',
+        usage: 'saturn app start|stop|restart <uuid>',
+        category: 'Applications',
         examples: [
-            { command: 'saturn logout', description: 'Clear local authentication' },
+            { command: 'saturn app restart abc-123-def', description: 'Restart application' },
         ],
     },
     {
-        name: 'deploy',
-        description: 'Deploy your application to Saturn',
-        usage: 'saturn deploy [options]',
-        category: 'Deployment',
+        name: 'app env list / sync',
+        description: 'Manage application environment variables',
+        usage: 'saturn app env list|sync <uuid> [options]',
+        category: 'Applications',
         options: [
-            { flag: '--env <environment>', description: 'Specify deployment environment' },
-            { flag: '--build-args <args>', description: 'Pass build arguments' },
-            { flag: '--watch', description: 'Watch for changes and auto-deploy' },
-            { flag: '--detach', description: 'Run deployment in background' },
+            { flag: '--file <path>', description: 'Path to .env file for sync' },
         ],
         examples: [
-            { command: 'saturn deploy', description: 'Deploy current directory' },
-            { command: 'saturn deploy --env production', description: 'Deploy to production environment' },
-            { command: 'saturn deploy --watch', description: 'Deploy and watch for changes' },
+            { command: 'saturn app env list abc-123', description: 'List env vars' },
+            { command: 'saturn app env sync abc-123 --file .env.production', description: 'Sync from .env file' },
+        ],
+    },
+    // Deployments
+    {
+        name: 'deploy uuid',
+        description: 'Deploy a resource by UUID',
+        usage: 'saturn deploy uuid <uuid>',
+        category: 'Deployments',
+        examples: [
+            { command: 'saturn deploy uuid abc-123-def', description: 'Deploy specific resource' },
         ],
     },
     {
-        name: 'logs',
-        description: 'View application logs',
-        usage: 'saturn logs [service] [options]',
-        category: 'Deployment',
+        name: 'deploy batch',
+        description: 'Deploy multiple resources at once',
+        usage: 'saturn deploy batch <uuid1>,<uuid2>,...',
+        category: 'Deployments',
+        examples: [
+            { command: 'saturn deploy batch app1,app2,app3', description: 'Deploy multiple apps' },
+        ],
+    },
+    {
+        name: 'deploy list',
+        description: 'List deployments for an application',
+        usage: 'saturn deploy list <app-uuid>',
+        category: 'Deployments',
+    },
+    {
+        name: 'deploy cancel',
+        description: 'Cancel a running deployment',
+        usage: 'saturn deploy cancel <deployment-uuid>',
+        category: 'Deployments',
+    },
+    // Services
+    {
+        name: 'service list',
+        description: 'List all one-click services',
+        usage: 'saturn service list',
+        category: 'Services',
+    },
+    {
+        name: 'service create',
+        description: 'Create a one-click service (n8n, WordPress, etc.)',
+        usage: 'saturn service create <type> [options]',
+        category: 'Services',
         options: [
-            { flag: '--follow, -f', description: 'Follow log output' },
-            { flag: '--tail <n>', description: 'Show last N lines' },
-            { flag: '--since <time>', description: 'Show logs since timestamp' },
+            { flag: '--server-uuid <uuid>', description: 'Target server UUID' },
+            { flag: '--project-uuid <uuid>', description: 'Project UUID' },
+            { flag: '--environment-name <name>', description: 'Environment name' },
+            { flag: '--name <name>', description: 'Custom service name' },
+            { flag: '--instant-deploy', description: 'Deploy immediately after creation' },
+            { flag: '--list-types', description: 'List available service types' },
         ],
         examples: [
-            { command: 'saturn logs', description: 'View recent logs' },
-            { command: 'saturn logs api-server -f', description: 'Follow logs for api-server' },
-            { command: 'saturn logs --tail 100', description: 'Show last 100 log lines' },
+            { command: 'saturn service create --list-types', description: 'List all available services' },
+            { command: 'saturn service create n8n --server-uuid=<uuid> --project-uuid=<uuid> --environment-name=production --instant-deploy', description: 'Deploy n8n instantly' },
         ],
     },
     {
-        name: 'run',
-        description: 'Run your application locally with Saturn environment',
-        usage: 'saturn run [command]',
-        category: 'Development',
-        options: [
-            { flag: '--env <environment>', description: 'Use specific environment variables' },
-            { flag: '--service <service>', description: 'Run specific service' },
-        ],
+        name: 'service start / stop / restart',
+        description: 'Control service lifecycle',
+        usage: 'saturn service start|stop|restart <uuid>',
+        category: 'Services',
+    },
+    // Databases
+    {
+        name: 'database list',
+        description: 'List all databases',
+        usage: 'saturn database list',
+        category: 'Databases',
+    },
+    {
+        name: 'database create',
+        description: 'Create a standalone database',
+        usage: 'saturn database create <type> [options]',
+        category: 'Databases',
         examples: [
-            { command: 'saturn run npm start', description: 'Run npm start with Saturn env' },
-            { command: 'saturn run --service api npm test', description: 'Run tests for api service' },
+            { command: 'saturn database create postgresql --server-uuid=<uuid> --project-uuid=<uuid> --environment-name=production', description: 'Create PostgreSQL database' },
         ],
     },
     {
-        name: 'env',
-        description: 'Manage environment variables',
-        usage: 'saturn env [action] [options]',
-        category: 'Configuration',
-        options: [
-            { flag: 'list', description: 'List all environment variables' },
-            { flag: 'set <key> <value>', description: 'Set an environment variable' },
-            { flag: 'unset <key>', description: 'Remove an environment variable' },
-            { flag: 'pull', description: 'Download remote env to .env file' },
-            { flag: 'push', description: 'Upload local .env to remote' },
-        ],
-        examples: [
-            { command: 'saturn env list', description: 'List all variables' },
-            { command: 'saturn env set DATABASE_URL postgres://...', description: 'Set a variable' },
-            { command: 'saturn env pull', description: 'Download variables to .env' },
-        ],
+        name: 'database backup',
+        description: 'Manage database backups',
+        usage: 'saturn database backup list|create|trigger <uuid>',
+        category: 'Databases',
+    },
+    // Servers
+    {
+        name: 'server list',
+        description: 'List all connected servers',
+        usage: 'saturn server list',
+        category: 'Servers',
     },
     {
-        name: 'projects',
-        description: 'List and manage projects',
-        usage: 'saturn projects [action]',
+        name: 'server get',
+        description: 'Get server details',
+        usage: 'saturn server get <uuid>',
+        category: 'Servers',
+    },
+    {
+        name: 'server validate',
+        description: 'Validate server SSH connection',
+        usage: 'saturn server validate <uuid>',
+        category: 'Servers',
+    },
+    // Projects
+    {
+        name: 'project list',
+        description: 'List all projects',
+        usage: 'saturn project list',
         category: 'Projects',
-        options: [
-            { flag: 'list', description: 'List all projects' },
-            { flag: 'switch <project>', description: 'Switch to a different project' },
-            { flag: 'create <name>', description: 'Create a new project' },
-        ],
-        examples: [
-            { command: 'saturn projects list', description: 'Show all projects' },
-            { command: 'saturn projects switch my-api', description: 'Switch to my-api project' },
-        ],
     },
     {
-        name: 'services',
-        description: 'Manage services in your project',
-        usage: 'saturn services [action]',
+        name: 'project create',
+        description: 'Create a new project',
+        usage: 'saturn project create --name <name>',
         category: 'Projects',
-        options: [
-            { flag: 'list', description: 'List all services' },
-            { flag: 'restart <service>', description: 'Restart a service' },
-            { flag: 'scale <service> <replicas>', description: 'Scale a service' },
-        ],
         examples: [
-            { command: 'saturn services list', description: 'List all services' },
-            { command: 'saturn services restart api', description: 'Restart api service' },
-            { command: 'saturn services scale worker 3', description: 'Scale worker to 3 replicas' },
+            { command: 'saturn project create --name "My Project"', description: 'Create a new project' },
         ],
     },
+    // Utility
     {
-        name: 'status',
-        description: 'Check deployment status',
-        usage: 'saturn status [service]',
-        category: 'Deployment',
-        examples: [
-            { command: 'saturn status', description: 'Show status of all services' },
-            { command: 'saturn status api-server', description: 'Show status of api-server' },
-        ],
+        name: 'version',
+        description: 'Show CLI version',
+        usage: 'saturn version',
+        category: 'Utility',
     },
     {
-        name: 'whoami',
-        description: 'Display current authenticated user',
-        usage: 'saturn whoami',
-        category: 'Authentication',
-        examples: [
-            { command: 'saturn whoami', description: 'Show current user and organization' },
-        ],
+        name: 'update',
+        description: 'Update CLI to the latest version',
+        usage: 'saturn update',
+        category: 'Utility',
+    },
+    {
+        name: 'teams list / current',
+        description: 'List teams or show current team',
+        usage: 'saturn teams list|current',
+        category: 'Utility',
+    },
+    {
+        name: 'completion',
+        description: 'Generate shell completion scripts',
+        usage: 'saturn completion <bash|zsh|fish|powershell>',
+        category: 'Utility',
     },
 ];
 
@@ -227,20 +315,50 @@ export default function CLICommands() {
                         <CardContent>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn login</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Authenticate with Saturn</p>
+                                    <code className="text-sm font-medium text-foreground">saturn context add</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Connect to Saturn instance</p>
                                 </div>
                                 <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn deploy</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Deploy your application</p>
+                                    <code className="text-sm font-medium text-foreground">saturn deploy uuid &lt;uuid&gt;</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Deploy a resource</p>
                                 </div>
                                 <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn logs -f</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Follow application logs</p>
+                                    <code className="text-sm font-medium text-foreground">saturn app list</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">List all applications</p>
                                 </div>
                                 <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn run</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Run locally with env</p>
+                                    <code className="text-sm font-medium text-foreground">saturn service create</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Create one-click service</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Global Flags */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Global Flags</CardTitle>
+                            <CardDescription>
+                                Available for all commands
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                    <code className="text-sm font-medium text-foreground">--token &lt;token&gt;</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Override authentication token</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                    <code className="text-sm font-medium text-foreground">--context &lt;name&gt;</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Use specific context</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                    <code className="text-sm font-medium text-foreground">--format table|json|pretty</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Output format</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                    <code className="text-sm font-medium text-foreground">--debug</code>
+                                    <p className="mt-1 text-xs text-foreground-muted">Enable debug logging</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -375,31 +493,6 @@ export default function CLICommands() {
                             </Card>
                         )
                     ))}
-
-                    {/* Documentation Link */}
-                    <Card>
-                        <CardContent className="py-4">
-                            <a
-                                href="https://docs.saturn.app/cli"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between rounded-lg border border-border bg-background p-4 transition-colors hover:border-border/80 hover:bg-background-secondary"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                        <Book className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-foreground">Full CLI Documentation</p>
-                                        <p className="text-sm text-foreground-muted">
-                                            Read the complete CLI guide
-                                        </p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-foreground-muted" />
-                            </a>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </>

@@ -65,7 +65,7 @@ export default function CLISetup() {
                                 </div>
                                 <div>
                                     <p className="font-medium text-foreground">Latest Version</p>
-                                    <p className="text-sm text-foreground-muted">v2.1.0</p>
+                                    <p className="text-sm text-foreground-muted">v1.4.0</p>
                                 </div>
                             </div>
                             <Badge variant="success">Stable</Badge>
@@ -123,16 +123,16 @@ export default function CLISetup() {
                             {/* Alternative Installation Methods */}
                             <div className="mt-6 rounded-lg border border-border bg-background p-4">
                                 <p className="mb-2 text-sm font-medium text-foreground">
-                                    Alternative: Install via npm
+                                    Alternative: Install via Go
                                 </p>
                                 <div className="relative">
                                     <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
                                         <code className="text-sm text-foreground-muted">
-                                            npm install -g @saturn/cli
+                                            go install github.com/saturn-platform/saturn-cli/saturn@latest
                                         </code>
                                     </pre>
                                     <button
-                                        onClick={() => handleCopy('npm install -g @saturn/cli', 'npm command')}
+                                        onClick={() => handleCopy('go install github.com/saturn-platform/saturn-cli/saturn@latest', 'Go install command')}
                                         className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
                                     >
                                         <Copy className="h-3 w-3" />
@@ -178,7 +178,7 @@ export default function CLISetup() {
                                             Expected output
                                         </p>
                                         <code className="mt-1 block text-sm text-foreground-muted">
-                                            saturn version 2.1.0
+                                            saturn version 1.4.0
                                         </code>
                                     </div>
                                 </div>
@@ -198,52 +198,46 @@ export default function CLISetup() {
                             <div className="space-y-4">
                                 <div>
                                     <p className="mb-3 text-sm text-foreground-muted">
-                                        Method 1: Interactive login (recommended)
-                                    </p>
-                                    <div className="relative">
-                                        <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-4 pr-12">
-                                            <code className="text-sm text-foreground">
-                                                saturn login
-                                            </code>
-                                        </pre>
-                                        <button
-                                            onClick={() => handleCopy('saturn login', 'Login command')}
-                                            className="absolute right-3 top-3 rounded-md p-2 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                    <p className="mt-2 text-xs text-foreground-subtle">
-                                        This will open your browser to authenticate
-                                    </p>
-                                </div>
-
-                                <div className="my-4 flex items-center gap-3">
-                                    <div className="h-px flex-1 bg-border" />
-                                    <span className="text-xs text-foreground-subtle">OR</span>
-                                    <div className="h-px flex-1 bg-border" />
-                                </div>
-
-                                <div>
-                                    <p className="mb-3 text-sm text-foreground-muted">
-                                        Method 2: Use an API token
+                                        Add your Saturn instance with an API token
                                     </p>
                                     <Input
                                         label="API Token"
                                         type="password"
                                         value={apiToken}
                                         onChange={(e) => setApiToken(e.target.value)}
-                                        placeholder="sat_xxxxxxxxxxxxxxxx"
+                                        placeholder="Enter your API token"
                                         hint="Create a token in Settings → API Tokens"
                                     />
                                     <div className="relative mt-3">
                                         <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-4 pr-12">
                                             <code className="text-sm text-foreground">
-                                                saturn login --token {apiToken || 'YOUR_TOKEN'}
+                                                saturn context add saturn {window.location.origin} {apiToken || 'YOUR_TOKEN'}
                                             </code>
                                         </pre>
                                         <button
-                                            onClick={() => handleCopy(`saturn login --token ${apiToken || 'YOUR_TOKEN'}`, 'Token login command')}
+                                            onClick={() => handleCopy(`saturn context add saturn ${window.location.origin} ${apiToken || 'YOUR_TOKEN'}`, 'Context add command')}
+                                            className="absolute right-3 top-3 rounded-md p-2 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <p className="mt-2 text-xs text-foreground-subtle">
+                                        This saves the connection to ~/.config/saturn/config.json
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="mb-3 text-sm text-foreground-muted">
+                                        Verify the connection
+                                    </p>
+                                    <div className="relative">
+                                        <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-4 pr-12">
+                                            <code className="text-sm text-foreground">
+                                                saturn context verify
+                                            </code>
+                                        </pre>
+                                        <button
+                                            onClick={() => handleCopy('saturn context verify', 'Verify command')}
                                             className="absolute right-3 top-3 rounded-md p-2 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
                                         >
                                             <Copy className="h-4 w-4" />

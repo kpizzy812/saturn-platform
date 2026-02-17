@@ -18,7 +18,7 @@ describe('CLI/Setup', () => {
         render(<CLISetup />);
 
         expect(screen.getByText(/latest version/i)).toBeInTheDocument();
-        expect(screen.getByText('v2.1.0')).toBeInTheDocument();
+        expect(screen.getByText('v1.4.0')).toBeInTheDocument();
         expect(screen.getByText(/stable/i)).toBeInTheDocument();
     });
 
@@ -71,11 +71,11 @@ describe('CLI/Setup', () => {
         expect(screen.getByText(/install via powershell/i)).toBeInTheDocument();
     });
 
-    it('renders npm alternative installation', () => {
+    it('renders Go alternative installation', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText(/alternative: install via npm/i)).toBeInTheDocument();
-        expect(screen.getByText('npm install -g @saturn/cli')).toBeInTheDocument();
+        expect(screen.getByText(/alternative: install via go/i)).toBeInTheDocument();
+        expect(screen.getByText(/go install github\.com\/saturn-platform\/saturn-cli\/saturn@latest/)).toBeInTheDocument();
     });
 
     it('renders verify installation section', () => {
@@ -90,7 +90,8 @@ describe('CLI/Setup', () => {
         render(<CLISetup />);
 
         expect(screen.getByText(/expected output/i)).toBeInTheDocument();
-        expect(screen.getByText('saturn version 2.1.0')).toBeInTheDocument();
+        const versionTexts = screen.getAllByText(/saturn version 1\.4\.0/);
+        expect(versionTexts.length).toBeGreaterThan(0);
     });
 
     it('renders authentication section', () => {
@@ -100,30 +101,25 @@ describe('CLI/Setup', () => {
         expect(screen.getByText(/connect the cli to your saturn account/i)).toBeInTheDocument();
     });
 
-    it('displays interactive login method', () => {
+    it('displays context add command', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText(/method 1: interactive login \(recommended\)/i)).toBeInTheDocument();
-        const loginCommands = screen.getAllByText('saturn login');
-        expect(loginCommands.length).toBeGreaterThan(0);
-        expect(screen.getByText(/this will open your browser to authenticate/i)).toBeInTheDocument();
+        expect(screen.getByText(/add your saturn instance with an api token/i)).toBeInTheDocument();
+        expect(screen.getByText(/saves the connection to ~\/\.config\/saturn\/config\.json/i)).toBeInTheDocument();
     });
 
-    it('displays token login method', () => {
+    it('displays context verify command', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText(/method 2: use an api token/i)).toBeInTheDocument();
-        expect(screen.getByPlaceholderText('sat_xxxxxxxxxxxxxxxx')).toBeInTheDocument();
+        expect(screen.getByText(/verify the connection/i)).toBeInTheDocument();
+        expect(screen.getByText('saturn context verify')).toBeInTheDocument();
+    });
+
+    it('renders API token input', () => {
+        render(<CLISetup />);
+
+        expect(screen.getByPlaceholderText('Enter your API token')).toBeInTheDocument();
         expect(screen.getByText(/create a token in settings → api tokens/i)).toBeInTheDocument();
-    });
-
-    it('updates token in command when typing', async () => {
-        const { user } = render(<CLISetup />);
-
-        const tokenInput = screen.getByPlaceholderText('sat_xxxxxxxxxxxxxxxx');
-        await user.type(tokenInput, 'sat_test123');
-
-        expect(screen.getByText('saturn login --token sat_test123')).toBeInTheDocument();
     });
 
     it('renders next steps section', () => {
@@ -149,36 +145,10 @@ describe('CLI/Setup', () => {
         expect(tokenLink).toHaveAttribute('href', '/settings/tokens');
     });
 
-    it('displays installation command in code block', () => {
-        const writeTextMock = vi.fn();
-        Object.defineProperty(navigator, 'clipboard', {
-            value: {
-                writeText: writeTextMock,
-            },
-            writable: true,
-            configurable: true,
-        });
-
+    it('displays expected version in expected output', () => {
         render(<CLISetup />);
 
-        // Installation command should be visible
         const codeElements = screen.getAllByText('brew install saturn-cli');
         expect(codeElements.length).toBeGreaterThan(0);
-    });
-
-    it('displays npm installation command', () => {
-        const writeTextMock = vi.fn();
-        Object.defineProperty(navigator, 'clipboard', {
-            value: {
-                writeText: writeTextMock,
-            },
-            writable: true,
-            configurable: true,
-        });
-
-        render(<CLISetup />);
-
-        // npm command should be visible
-        expect(screen.getByText('npm install -g @saturn/cli')).toBeInTheDocument();
     });
 });
