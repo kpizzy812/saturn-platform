@@ -65,7 +65,7 @@ export default function DatabaseExtensions({ database }: Props) {
     const popularExtensions = filteredExtensions.filter((ext) => ext.popular);
     const otherExtensions = filteredExtensions.filter((ext) => !ext.popular);
 
-    const [togglingId, _setTogglingId] = useState<number | null>(null);
+    const [_togglingId, setTogglingId] = useState<number | null>(null);
 
     const handleToggle = async (extensionId: number) => {
         const extension = extensions.find((ext) => ext.id === extensionId);

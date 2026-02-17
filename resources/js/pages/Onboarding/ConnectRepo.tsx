@@ -168,17 +168,6 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
         });
     };
 
-    const _getProviderIcon = (prov: string) => {
-        switch (prov) {
-            case 'github':
-                return <Github className="h-5 w-5" />;
-            case 'gitlab':
-                return <Gitlab className="h-5 w-5" />;
-            default:
-                return <FolderGit className="h-5 w-5" />;
-        }
-    };
-
     const getLanguageColor = (language: string | null) => {
         const colors: Record<string, string> = {
             TypeScript: 'bg-blue-500',

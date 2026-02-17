@@ -163,8 +163,6 @@ export default function VolumesIndex({ volumes }: Props) {
 }
 
 function VolumeCard({ volume }: { volume: Volume }) {
-    const _usagePercent = (volume.used / volume.size) * 100;
-
     return (
         <Link href={`/volumes/${volume.uuid}`}>
             <Card className="transition-all hover:border-primary/50 hover:shadow-lg">

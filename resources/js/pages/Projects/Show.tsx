@@ -569,7 +569,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         if (node) {
             setLogsViewerService(node.name);
             setLogsViewerServiceUuid(node.uuid);
-            setLogsViewerServiceType(node.type === 'db' ? 'database' : node.type === 'service' ? 'service' : 'application');
+            setLogsViewerServiceType(node.type === 'db' ? 'database' : 'application');
             setLogsViewerContainerName(undefined);
             setLogsViewerOpen(true);
         }
@@ -1630,7 +1630,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         </div>
                                         );
                                     })}
-                                    {(envWithRealtimeStatuses?.databases || []).map((db) => {
+                                    {(envWithRealtimeStatuses?.databases as any[] || []).map((db) => {
                                         const dbStatusStr = typeof db.status === 'object' ? `${db.status.state}:${db.status.health}` : String(db.status || 'stopped');
                                         const dbState = dbStatusStr.split(':')[0];
                                         const dbHealth = dbStatusStr.split(':')[1];
@@ -1722,7 +1722,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         </button>
                                         );
                                     })}
-                                    {(envWithRealtimeStatuses?.databases || []).map((db) => {
+                                    {(envWithRealtimeStatuses?.databases as any[] || []).map((db) => {
                                         const logDbStatusStr = typeof db.status === 'object' ? `${db.status.state}:${db.status.health}` : String(db.status || 'stopped');
                                         const logDbState = logDbStatusStr.split(':')[0];
                                         const logDbHealth = logDbStatusStr.split(':')[1];

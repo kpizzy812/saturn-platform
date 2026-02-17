@@ -2,7 +2,6 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
 import {
-    Settings,
     RefreshCw,
     Database,
     CheckCircle,

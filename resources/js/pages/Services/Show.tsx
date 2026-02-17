@@ -7,7 +7,7 @@ import { Link, router } from '@inertiajs/react';
 import {
     Play, RotateCw, Trash2, Settings, Activity,
     Cpu, MemoryStick, Network, GitCommit, Clock,
-    CheckCircle, XCircle, AlertCircle, ArrowLeft, Copy
+    CheckCircle, XCircle, ArrowLeft, Copy
 } from 'lucide-react';
 import type { Service, ServiceContainer } from '@/types';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';

@@ -177,7 +177,6 @@ function BulkField({ field, included, onIncludeChange, value, onValueChange }: B
 
 export default function AdminServersBulk({ servers: serversData, allTags = [], filters = {} }: Props) {
     const items = serversData?.data ?? [];
-    const _total = serversData?.total ?? 0;
     const confirm = useConfirm();
 
     // Filters

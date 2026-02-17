@@ -52,7 +52,7 @@ vi.mock('@/components/ui', () => ({
     CardTitle: ({ children, className }: any) => <h3 className={className}>{children}</h3>,
     CardDescription: ({ children }: any) => <p>{children}</p>,
     Badge: ({ children, variant }: any) => <span data-variant={variant}>{children}</span>,
-    Button: ({ children, onClick, disabled, variant, type, size }: any) => (
+    Button: ({ children, onClick, disabled, variant, type }: any) => (
         <button onClick={onClick} disabled={disabled} data-variant={variant} type={type}>{children}</button>
     ),
     Input: ({ value, onChange, placeholder, className, ...props }: any) => (

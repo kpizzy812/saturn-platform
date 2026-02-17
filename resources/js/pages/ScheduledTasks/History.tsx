@@ -32,7 +32,6 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
     const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'failed'>('all');
     const [dateRange, setDateRange] = useState('all');
     const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
-    const [viewTaskId, _setViewTaskId] = useState<number | null>(null);
     const [isExporting, setIsExporting] = useState(false);
 
     // Filter history
@@ -197,8 +196,6 @@ export default function ScheduledTasksHistory({ history = [] }: Props) {
             </Badge>
         );
     };
-
-    const _viewingTask = history.find((t) => t.id === viewTaskId);
 
     return (
         <AppLayout

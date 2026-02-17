@@ -1,6 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { CardContent, Badge, Button, useConfirm, useToast } from '@/components/ui';
+import { Badge, Button, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, FolderKanban, MoreVertical, Settings, Trash2 } from 'lucide-react';
 import type { Project } from '@/types';

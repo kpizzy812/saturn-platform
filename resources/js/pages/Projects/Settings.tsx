@@ -392,14 +392,6 @@ export default function ProjectSettings({
         t => !tags.find(pt => pt.id === t.id) && t.name.includes(tagInput.toLowerCase())
     );
 
-    const channelIcons: Record<string, string> = {
-        discord: 'Discord',
-        slack: 'Slack',
-        telegram: 'Telegram',
-        email: 'Email',
-        webhook: 'Webhook',
-    };
-
     return (
         <AppLayout
             title={`${project.name} - Settings`}
@@ -1120,7 +1112,7 @@ function ActivityLogSection({ projectUuid }: { projectUuid: string }) {
                                 <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{
                                     backgroundColor: item.action.includes('failed') ? 'var(--color-danger)' :
                                         item.action.includes('completed') ? 'var(--color-success)' :
-                                        item.action === 'delete' ? 'var(--color-warning)' :
+                                        item.action.includes('delete') ? 'var(--color-warning)' :
                                         'var(--color-primary)',
                                 }} />
                                 <div className="min-w-0 flex-1">

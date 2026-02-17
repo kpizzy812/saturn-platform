@@ -1,7 +1,5 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { AlertCircle, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
-
 interface AlertProps {
     children: React.ReactNode;
     variant?: 'default' | 'info' | 'success' | 'warning' | 'danger';
@@ -16,17 +14,7 @@ const variantStyles = {
     danger: 'bg-danger/10 border-danger/30 text-danger',
 };
 
-const variantIcons = {
-    default: Info,
-    info: Info,
-    success: CheckCircle2,
-    warning: AlertTriangle,
-    danger: AlertCircle,
-};
-
 export function Alert({ children, variant = 'default', className }: AlertProps) {
-    const _Icon = variantIcons[variant];
-
     return (
         <div
             className={cn(

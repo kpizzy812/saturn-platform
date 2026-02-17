@@ -656,7 +656,7 @@ describe('Saturn UI Components', () => {
         describe('Accessibility', () => {
             it('associates label with input', () => {
                 render(<Input id="email-input" label="Email Address" />);
-                const _input = screen.getByRole('textbox');
+                screen.getByRole('textbox');
                 const label = screen.getByText('Email Address');
                 expect(label).toHaveAttribute('for', 'email-input');
             });
@@ -741,7 +741,7 @@ describe('Saturn UI Components', () => {
         describe('Accessibility', () => {
             it('associates label with textarea', () => {
                 render(<Textarea id="desc" label="Description" />);
-                const _textarea = screen.getByRole('textbox');
+                screen.getByRole('textbox');
                 const label = screen.getByText('Description');
                 expect(label).toHaveAttribute('for', 'desc');
             });

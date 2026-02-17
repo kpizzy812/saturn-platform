@@ -707,33 +707,6 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
     );
 }
 
-interface ResourceBarProps {
-    label: string;
-    value: number;
-    max: number;
-    unit: string;
-}
-
-function _ResourceBar({ label, value, max, unit }: ResourceBarProps) {
-    const percentage = (value / max) * 100;
-
-    return (
-        <div>
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-foreground-muted">{label}</span>
-                <span className="text-sm font-medium text-foreground">
-                    {value} {unit} / {max} {unit}
-                </span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-background-tertiary overflow-hidden">
-                <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${percentage}%` }}
-                />
-            </div>
-        </div>
-    );
-}
 
 interface AutoDeployCardProps {
     status: 'automatic' | 'manual_webhook' | 'not_configured';

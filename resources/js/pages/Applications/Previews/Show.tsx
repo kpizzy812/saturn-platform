@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
@@ -282,26 +281,3 @@ export default function PreviewShow({ application, preview, previewUuid: _previe
     );
 }
 
-function _EnvironmentVariable({ name, value }: { name: string; value: string }) {
-    const [isRevealed, setIsRevealed] = React.useState(false);
-    const isSensitive = value.includes('***');
-
-    return (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary p-3">
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground mb-0.5">{name}</p>
-                <code className="text-xs text-foreground-muted break-all">
-                    {isSensitive && !isRevealed ? value : value}
-                </code>
-            </div>
-            {isSensitive && (
-                <button
-                    onClick={() => setIsRevealed(!isRevealed)}
-                    className="ml-2 text-xs text-primary hover:text-primary/80"
-                >
-                    {isRevealed ? 'Hide' : 'Reveal'}
-                </button>
-            )}
-        </div>
-    );
-}

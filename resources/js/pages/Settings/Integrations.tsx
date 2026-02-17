@@ -37,11 +37,6 @@ const sourceIcons = {
     gitlab: Gitlab,
 };
 
-const _notificationIcons = {
-    slack: MessageSquare,
-    discord: Zap,
-};
-
 export default function IntegrationsSettings({ sources = [], notificationChannels }: Props) {
     const { addToast } = useToast();
 

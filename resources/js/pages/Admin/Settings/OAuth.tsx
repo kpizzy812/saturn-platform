@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -178,7 +178,6 @@ function ProviderCard({
     const [isSaving, setIsSaving] = React.useState(false);
     const [expanded, setExpanded] = React.useState(provider.enabled);
 
-    const _hasCredentials = !!(formData.client_id && formData.client_secret && formData.client_secret !== SECRET_PLACEHOLDER);
     const canEnable = !!formData.client_id && !!formData.client_secret;
 
     const handleSave = () => {

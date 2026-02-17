@@ -387,9 +387,7 @@ export function CodeReviewCard({ deploymentUuid, commitSha, className }: CodeRev
         review,
         isLoading,
         isAnalyzing,
-        _error,
         triggerReview,
-        _refetch,
     } = useCodeReview({
         deploymentUuid,
         autoRefresh: true, // Hook handles auto-refresh internally based on isAnalyzing

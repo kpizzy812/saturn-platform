@@ -123,7 +123,7 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                 // Poll to refresh the list once the job creates the execution record
                 if (pollTimerRef.current) clearInterval(pollTimerRef.current);
                 pollTimerRef.current = setInterval(() => {
-                    router.reload({ only: ['backups'], preserveScroll: true });
+                    router.reload({ only: ['backups'] });
                 }, 3000);
                 // Stop polling after 60s
                 pollTimeoutRef.current = setTimeout(() => {

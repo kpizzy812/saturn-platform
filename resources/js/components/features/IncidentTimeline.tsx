@@ -182,7 +182,6 @@ function TimelineEventItem({
     const [expanded, setExpanded] = React.useState(false);
     const config = severityConfig[event.severity];
     const TypeIcon = typeIcons[event.type] || Activity;
-    const _SeverityIcon = config.icon;
 
     return (
         <div

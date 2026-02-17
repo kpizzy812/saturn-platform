@@ -43,45 +43,6 @@ export default function CronJobShow({ cronJob, executions = [] }: Props) {
         }
     };
 
-    const formatCronSchedule = (schedule: string) => {
-        const presets: Record<string, string> = {
-            '* * * * *': 'Every minute',
-            '*/5 * * * *': 'Every 5 minutes',
-            '0 * * * *': 'Hourly',
-            '0 0 * * *': 'Daily at midnight',
-            '0 2 * * *': 'Daily at 2:00 AM',
-            '0 0 * * 0': 'Weekly on Sunday',
-            '0 0 1 * *': 'Monthly on the 1st',
-        };
-        return presets[schedule] || schedule;
-    };
-
-    const formatDuration = (seconds: number) => {
-        if (seconds < 60) return `${seconds}s`;
-        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        return `${hours}h ${minutes}m`;
-    };
-
-    const formatRelativeTime = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-        return `${Math.floor(diffMins / 1440)}d ago`;
-    };
-
-    const getSuccessRate = () => {
-        const total = cronJob.success_count + cronJob.failure_count;
-        if (total === 0) return 100;
-        return Math.round((cronJob.success_count / total) * 100);
-    };
-
     const tabs = [
         {
             label: 'Overview',

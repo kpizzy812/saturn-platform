@@ -111,10 +111,6 @@ export default function DatabaseUsers({ database, users }: Props) {
         }
     };
 
-    const _copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-    };
-
     return (
         <AppLayout
             title={`${database.name} - Users`}

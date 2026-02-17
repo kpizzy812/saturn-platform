@@ -80,8 +80,6 @@ export function LogsTab({ service, containers = [] }: Props) {
         }
     };
 
-    const _selectedContainerInfo = containers.find(c => c.name === selectedContainer);
-
     return (
         <div className="space-y-4">
             {/* Container Selector */}

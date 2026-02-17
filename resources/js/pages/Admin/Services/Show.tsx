@@ -25,13 +25,6 @@ import {
     Globe,
 } from 'lucide-react';
 
-interface _ServiceContainer {
-    id: number;
-    name: string;
-    status: string;
-    is_log_drain_enabled?: boolean;
-}
-
 interface ServiceApplication {
     id: number;
     uuid: string;
