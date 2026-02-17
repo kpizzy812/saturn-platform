@@ -118,6 +118,11 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 throw new \Exception("Backup file not found at {$backupLocation}");
             }
 
+            // Decrypt backup if encrypted
+            if ($this->execution->is_encrypted) {
+                $backupLocation = $this->decryptBackup($backupLocation);
+            }
+
             // Perform restore based on database type
             if (str($databaseType)->contains('postgres')) {
                 $this->restorePostgresql($backupLocation);
@@ -431,6 +436,35 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
         $latestVersion = getHelperVersion();
 
         return "{$helperImage}:{$latestVersion}";
+    }
+
+    /**
+     * Decrypt an encrypted backup file before restore.
+     * Returns the path to the decrypted file.
+     */
+    private function decryptBackup(string $encryptedLocation): string
+    {
+        $encryptionKey = $this->backup->encryption_key;
+        if (blank($encryptionKey)) {
+            throw new \Exception('Backup is encrypted but no encryption key found');
+        }
+
+        // Remove .enc extension for decrypted output
+        $decryptedLocation = str($encryptedLocation)->endsWith('.enc')
+            ? substr($encryptedLocation, 0, -4)
+            : $encryptedLocation.'.decrypted';
+
+        $escapedKey = escapeshellarg($encryptionKey);
+        $escapedInput = escapeshellarg($encryptedLocation);
+        $escapedOutput = escapeshellarg($decryptedLocation);
+
+        $commands = [
+            "openssl enc -aes-256-cbc -d -salt -pbkdf2 -in {$escapedInput} -out {$escapedOutput} -pass pass:{$escapedKey}",
+        ];
+
+        instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
+
+        return $decryptedLocation;
     }
 
     private function addToErrorOutput(string $output): void

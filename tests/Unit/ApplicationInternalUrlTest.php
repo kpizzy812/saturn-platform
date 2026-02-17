@@ -19,13 +19,12 @@ describe('Application::internalAppUrl', function () {
         expect($app->internal_app_url)->toBe('http://def456:8080');
     });
 
-    it('uses empty port when ports_exposes is empty string', function () {
-        // explode(',', '') returns [''], so first element is ''
+    it('defaults to port 80 when ports_exposes is empty string', function () {
         $app = new Application;
         $app->uuid = 'ghi789';
         $app->ports_exposes = '';
 
-        expect($app->internal_app_url)->toBe('http://ghi789:');
+        expect($app->internal_app_url)->toBe('http://ghi789:80');
     });
 
     it('defaults to port 80 when ports_exposes is null', function () {

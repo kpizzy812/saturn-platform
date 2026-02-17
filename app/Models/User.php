@@ -360,7 +360,7 @@ class User extends Authenticatable implements SendsEmail
         /** @var \Illuminate\Database\Eloquent\Relations\Pivot|null $projectPivot */
         $projectPivot = $membership ? data_get($membership, 'pivot') : null;
 
-        return $projectPivot?->getAttribute('role');
+        return data_get($projectPivot, 'role');
     }
 
     /**
@@ -619,7 +619,7 @@ class User extends Authenticatable implements SendsEmail
             /** @var TeamUser|null $selfPivot */
             $selfPivot = data_get($this, 'pivot');
 
-            return $selfPivot?->getAttribute('role');
+            return data_get($selfPivot, 'role');
         }
         $user = Auth::user()->teams->where('id', currentTeam()->id)->first();
 
@@ -639,7 +639,7 @@ class User extends Authenticatable implements SendsEmail
 
         /** @var TeamUser|null $teamPivot */
         $teamPivot = data_get($team, 'pivot');
-        $role = $teamPivot?->getAttribute('role');
+        $role = data_get($teamPivot, 'role');
 
         return $role === 'admin' || $role === 'owner';
     }

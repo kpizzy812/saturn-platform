@@ -103,20 +103,20 @@ test('mongodb supports backups', function () {
     expect((new StandaloneMongodb)->isBackupSolutionAvailable())->toBeTrue();
 });
 
-test('redis does not support backups', function () {
-    expect((new StandaloneRedis)->isBackupSolutionAvailable())->toBeFalse();
+test('redis supports backups via RDB dump', function () {
+    expect((new StandaloneRedis)->isBackupSolutionAvailable())->toBeTrue();
 });
 
-test('keydb does not support backups', function () {
-    expect((new StandaloneKeydb)->isBackupSolutionAvailable())->toBeFalse();
+test('keydb supports backups via RDB dump', function () {
+    expect((new StandaloneKeydb)->isBackupSolutionAvailable())->toBeTrue();
 });
 
-test('dragonfly does not support backups', function () {
-    expect((new StandaloneDragonfly)->isBackupSolutionAvailable())->toBeFalse();
+test('dragonfly supports backups via RDB dump', function () {
+    expect((new StandaloneDragonfly)->isBackupSolutionAvailable())->toBeTrue();
 });
 
-test('clickhouse does not support backups', function () {
-    expect((new StandaloneClickhouse)->isBackupSolutionAvailable())->toBeFalse();
+test('clickhouse supports backups via native dump', function () {
+    expect((new StandaloneClickhouse)->isBackupSolutionAvailable())->toBeTrue();
 });
 
 // isLogDrainEnabled() Tests

@@ -11,10 +11,10 @@ test('fillable does not contain id', function () {
     expect($fillable)->not->toContain('id');
 });
 
-test('fillable does not contain server_id', function () {
+test('fillable includes server_id for creation', function () {
     $fillable = (new StandaloneDocker)->getFillable();
 
-    expect($fillable)->not->toContain('server_id');
+    expect($fillable)->toContain('server_id');
 });
 
 test('fillable is not empty', function () {

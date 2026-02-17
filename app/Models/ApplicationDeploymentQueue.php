@@ -122,6 +122,7 @@ class ApplicationDeploymentQueue extends Model
         'approved_at',
         'rejection_reason',
         'user_id',
+        'build_server_id',
     ];
 
     protected $casts = [

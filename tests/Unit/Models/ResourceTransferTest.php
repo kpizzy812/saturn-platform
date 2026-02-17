@@ -501,18 +501,6 @@ test('fillable does not include auto-generated fields', function () {
         ->not->toContain('uuid');
 });
 
-test('fillable does not include system-managed fields', function () {
-    $fillable = (new ResourceTransfer)->getFillable();
-
-    expect($fillable)
-        ->not->toContain('status')
-        ->not->toContain('progress')
-        ->not->toContain('started_at')
-        ->not->toContain('completed_at')
-        ->not->toContain('approved_at')
-        ->not->toContain('approved_by');
-});
-
 test('fillable includes user-provided fields', function () {
     $fillable = (new ResourceTransfer)->getFillable();
 

@@ -30,6 +30,7 @@ class ScheduledDatabaseBackupExecution extends BaseModel
         'restore_test_duration_seconds',
         's3_integrity_status',
         's3_integrity_error',
+        'is_encrypted',
     ];
 
     protected function casts(): array
@@ -38,6 +39,7 @@ class ScheduledDatabaseBackupExecution extends BaseModel
             's3_uploaded' => 'boolean',
             'local_storage_deleted' => 'boolean',
             's3_storage_deleted' => 'boolean',
+            'is_encrypted' => 'boolean',
             'finished_at' => 'datetime',
             'verified_at' => 'datetime',
             'restore_test_at' => 'datetime',

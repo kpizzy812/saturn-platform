@@ -101,7 +101,7 @@ describe('Project getApprovers', function () {
         $teamAdmins = collect([$user1, $user3]);
 
         $team = m::mock(Team::class)->makePartial();
-        $teamMembersRelation = m::mock();
+        $teamMembersRelation = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teamMembersRelation->shouldReceive('wherePivotIn')
             ->with('role', ['owner', 'admin'])
             ->andReturnSelf();

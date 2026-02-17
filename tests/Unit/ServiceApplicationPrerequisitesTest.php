@@ -1,14 +1,9 @@
 <?php
 
 use App\Models\Service;
-use Illuminate\Support\Facades\Log;
-
-beforeEach(function () {
-    Log::shouldReceive('error')->andReturn(null);
-});
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 it('applies beszel gzip prerequisite correctly', function () {
-    // Create a simple object to track the property change
     $application = new class
     {
         public $is_gzip_enabled = true;
@@ -16,7 +11,7 @@ it('applies beszel gzip prerequisite correctly', function () {
         public function save() {}
     };
 
-    $query = Mockery::mock();
+    $query = Mockery::mock(HasMany::class);
     $query->shouldReceive('whereName')
         ->with('beszel')
         ->once()
@@ -26,7 +21,7 @@ it('applies beszel gzip prerequisite correctly', function () {
         ->andReturn($application);
 
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'beszel-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'beszel-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
     $service->shouldReceive('applications')
         ->once()
@@ -51,7 +46,7 @@ it('applies appwrite stripprefix prerequisite correctly', function () {
     }
 
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'appwrite-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'appwrite-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
 
     $service->shouldReceive('applications')->times(3)->andReturnUsing(function () use (&$applications) {
@@ -59,7 +54,7 @@ it('applies appwrite stripprefix prerequisite correctly', function () {
         $names = ['appwrite', 'appwrite-console', 'appwrite-realtime'];
         $currentName = $names[$callCount++];
 
-        $query = Mockery::mock();
+        $query = Mockery::mock(HasMany::class);
         $query->shouldReceive('whereName')
             ->with($currentName)
             ->once()
@@ -79,7 +74,7 @@ it('applies appwrite stripprefix prerequisite correctly', function () {
 });
 
 it('handles missing applications gracefully', function () {
-    $query = Mockery::mock();
+    $query = Mockery::mock(HasMany::class);
     $query->shouldReceive('whereName')
         ->with('beszel')
         ->once()
@@ -89,7 +84,7 @@ it('handles missing applications gracefully', function () {
         ->andReturn(null);
 
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'beszel-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'beszel-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
     $service->shouldReceive('applications')
         ->once()
@@ -103,7 +98,7 @@ it('handles missing applications gracefully', function () {
 
 it('skips services without prerequisites', function () {
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'unknown-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'unknown-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
     $service->shouldNotReceive('applications');
 
@@ -114,11 +109,10 @@ it('skips services without prerequisites', function () {
 
 it('correctly parses service name with single hyphen', function () {
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'docker-registry-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'docker-registry-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
     $service->shouldNotReceive('applications');
 
-    // Should not throw exception - validates that 'docker-registry' is correctly parsed
     applyServiceApplicationPrerequisites($service);
 
     expect(true)->toBeTrue();
@@ -126,11 +120,10 @@ it('correctly parses service name with single hyphen', function () {
 
 it('correctly parses service name with multiple hyphens', function () {
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'elasticsearch-with-kibana-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'elasticsearch-with-kibana-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
     $service->shouldNotReceive('applications');
 
-    // Should not throw exception - validates that 'elasticsearch-with-kibana' is correctly parsed
     applyServiceApplicationPrerequisites($service);
 
     expect(true)->toBeTrue();
@@ -138,11 +131,10 @@ it('correctly parses service name with multiple hyphens', function () {
 
 it('correctly parses service name with hyphens in template name', function () {
     $service = Mockery::mock(Service::class)->makePartial();
-    $service->name = 'apprise-api-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3'; // CUID2 format
+    $service->name = 'apprise-api-clx1ab2cd3ef4g5hi6jk7l8m9n0o1p2q3';
     $service->id = 1;
     $service->shouldNotReceive('applications');
 
-    // Should not throw exception - validates that 'apprise-api' is correctly parsed
     applyServiceApplicationPrerequisites($service);
 
     expect(true)->toBeTrue();

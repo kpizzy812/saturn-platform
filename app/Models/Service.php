@@ -340,7 +340,7 @@ class Service extends BaseModel
         $resources = $applications->concat($databases);
 
         foreach ($resources as $resource) {
-            $isExcluded = $resource->getAttribute('exclude_from_status') || str($resource->getAttribute('status'))->contains(':excluded');
+            $isExcluded = data_get($resource, 'exclude_from_status') || str(data_get($resource, 'status', ''))->contains(':excluded');
 
             // Filter based on excludedOnly flag
             if ($excludedOnly && ! $isExcluded) {
@@ -355,7 +355,7 @@ class Service extends BaseModel
             }
 
             // Strip :excluded suffix before aggregation (it's in the 3rd part of "status:health:excluded")
-            $status = str($resource->getAttribute('status'))->before(':excluded')->toString();
+            $status = str(data_get($resource, 'status', ''))->before(':excluded')->toString();
             $statusStrings->push($status);
         }
 

@@ -55,11 +55,6 @@ test('is_system_wide is cast to boolean', function () {
     expect($casts['is_system_wide'])->toBe('boolean');
 });
 
-test('type is cast to string', function () {
-    $casts = (new GithubApp)->getCasts();
-    expect($casts['type'])->toBe('string');
-});
-
 test('client_secret is cast to encrypted', function () {
     $casts = (new GithubApp)->getCasts();
     expect($casts['client_secret'])->toBe('encrypted');

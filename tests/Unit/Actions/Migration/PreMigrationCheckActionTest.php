@@ -166,31 +166,12 @@ class PreMigrationCheckActionTest extends TestCase
         $envVar->key = 'API_KEY';
         $envVar->value = '';
 
-        // Create anonymous class with environment_variables as both a method
-        // (for method_exists check) and accessible via __get (for property-style access)
-        $resource = new class($envVar) extends Model
-        {
-            private $envVar;
-
-            public function __construct($envVar)
-            {
-                $this->envVar = $envVar;
-            }
-
-            public function environment_variables()
-            {
-                return new Collection([$this->envVar]);
-            }
-
-            public function __get($key)
-            {
-                if ($key === 'environment_variables') {
-                    return $this->environment_variables();
-                }
-
-                return parent::__get($key);
-            }
-        };
+        $resource = Mockery::mock(\App\Models\Application::class)->makePartial();
+        $resource->shouldReceive('getAttribute')->with('environment_variables')
+            ->andReturn(new Collection([$envVar]));
+        $resource->shouldReceive('getAttribute')->andReturnUsing(function ($key) {
+            return null;
+        });
 
         $environment = $this->createMockEnvironment('production');
 

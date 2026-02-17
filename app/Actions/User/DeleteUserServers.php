@@ -31,7 +31,7 @@ class DeleteUserServers
             // Only include servers from teams where user is owner or admin
             /** @var TeamUser|null $teamPivot */
             $teamPivot = data_get($team, 'pivot');
-            $userRole = $teamPivot?->getAttribute('role');
+            $userRole = data_get($teamPivot, 'role');
             if ($userRole === 'owner' || $userRole === 'admin') {
                 $teamServers = $team->servers()->get();
                 $servers = $servers->merge($teamServers);

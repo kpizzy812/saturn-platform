@@ -160,9 +160,43 @@
   - `CleanupSleepingPreviewsJob.php` - INTERVAL column MINUTE → interval * '1 minute'
 - ✅ Создан **FULL_AUDIT_REPORT.md** - полный отчёт с 47 критических, 40 высоких проблем
 
+### 2026-02-17 (Фаза 7 - Code Quality)
+- ✅ **TypeScript strict mode**: 45 TS ошибок → 0 (`tsc --noEmit`)
+- ✅ **npm audit**: 4 уязвимости → 0 (axios, qs, tar)
+- ✅ **composer audit**: 6 уязвимостей → 1 (phpunit dev-only, Pest 3.x конфликт)
+- ✅ **PHPStan**: подтверждено 0 ошибок (level 5, no baseline)
+
+### 2026-02-17 (Фаза 8 - Security & Reliability)
+- ✅ **Race condition в Build Server** (#15):
+  - `Cache::lock()` заменён на `DB::transaction()` + `lockForUpdate()`
+  - `build_server_id` добавлен в `$fillable` ApplicationDeploymentQueue
+  - Файл: `app/Jobs/ApplicationDeploymentJob.php:420-450`
+- ✅ **Шифрование бэкапов БД** (#16):
+  - AES-256-CBC + PBKDF2 через openssl на удалённом сервере
+  - Поля: `encrypt_backup`, `encryption_key` (encrypted cast) в ScheduledDatabaseBackup
+  - Поле: `is_encrypted` в ScheduledDatabaseBackupExecution
+  - Автогенерация ключа при первом бэкапе
+  - Расшифровка при restore (DatabaseRestoreJob)
+  - Миграция: `2026_02_17_000006_add_encryption_to_scheduled_database_backups_table.php`
+- ⏳ **API тест покрытие** (#17):
+  - Было: 7/38 контроллеров (18%)
+  - В процессе: +8 контроллеров (Services, Deploy, Resources, Other, ServiceActions, ServiceEnvs, PermissionSets, DatabaseBackups)
+
+### Верификация тезисов (2026-02-17)
+Проведена полная верификация всех предложенных улучшений:
+- ✅ **Уже реализовано** (ошибочные тезисы):
+  - Webhook signature verification — все провайдеры (GitHub, GitLab, Bitbucket, Gitea, Stripe) с `hash_equals()`
+  - Redis health monitoring — endpoint `/admin/health` + `CleanupRedis` command
+  - SESSION_SECURE_COOKIE — уже `true` в production
+  - ESLint — полная конфигурация FlatConfig (TS/React)
+  - Pre-commit hooks — git hooks с Pint + OpenAPI generation
+  - CSP — nonce + strict-dynamic, без unsafe-eval
+  - `$guarded = []` — 0 моделей (все 38 используют `$fillable`)
+
 **Оставшиеся проблемы (tech debt, не security):**
 - [ ] 17 TODO API endpoints (Preview Deployments, Billing)
 - [ ] 4 God Classes (Application.php 2293 строк, etc.)
 - [ ] Code duplication в 8 Start*.php Actions
 - [ ] Docker Swarm не поддерживается (2 места)
+- [ ] API test coverage: 31 контроллер без тестов
 

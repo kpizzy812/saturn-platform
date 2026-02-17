@@ -24,8 +24,8 @@ it('ensures service parser updates image after finding or creating service', fun
 
     // Check that image update logic exists after firstOrCreate
     expect($parserFile)
-        ->toContain('if ($savedService->image !== $image) {')
-        ->toContain('$savedService->image = $image;')
+        ->toContain('if ($savedService->image !== $image->value()) {')
+        ->toContain('$savedService->image = $image->value();')
         ->toContain('$savedService->save();');
 });
 

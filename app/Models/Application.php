@@ -788,11 +788,12 @@ class Application extends BaseModel
     public function gitCommitLink($link): string
     {
         if (! is_null(data_get($this, 'source.html_url')) && ! is_null(data_get($this, 'git_repository')) && ! is_null(data_get($this, 'git_branch'))) {
-            if (str($this->source->getAttribute('html_url'))->contains('bitbucket')) {
-                return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/commits/{$link}";
+            $htmlUrl = data_get($this->source, 'html_url');
+            if (str($htmlUrl)->contains('bitbucket')) {
+                return "{$htmlUrl}/{$this->git_repository}/commits/{$link}";
             }
 
-            return "{$this->source->getAttribute('html_url')}/{$this->git_repository}/commit/{$link}";
+            return "{$htmlUrl}/{$this->git_repository}/commit/{$link}";
         }
         if (str($this->git_repository)->contains('bitbucket')) {
             $git_repository = str_replace('.git', '', $this->git_repository);
@@ -993,7 +994,7 @@ class Application extends BaseModel
     public function portsExposesArray(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->ports_exposes === ''
+            get: fn () => empty($this->ports_exposes)
                 ? []
                 : explode(',', $this->ports_exposes)
         );

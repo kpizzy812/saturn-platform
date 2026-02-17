@@ -36,7 +36,7 @@ class DeleteUserTeams
 
             /** @var TeamUser|null $teamPivot */
             $teamPivot = data_get($team, 'pivot');
-            $userRole = $teamPivot?->getAttribute('role');
+            $userRole = data_get($teamPivot, 'role');
             $memberCount = $team->members->count();
 
             if ($memberCount === 1) {
@@ -50,7 +50,7 @@ class DeleteUserTeams
                         /** @var TeamUser|null $memberPivot */
                         $memberPivot = data_get($member, 'pivot');
 
-                        return $memberPivot?->getAttribute('role') === 'owner';
+                        return data_get($memberPivot, 'role') === 'owner';
                     });
 
                 if ($otherOwners->isNotEmpty()) {
@@ -179,7 +179,7 @@ class DeleteUserTeams
                 /** @var TeamUser|null $memberPivot */
                 $memberPivot = data_get($member, 'pivot');
 
-                return $memberPivot?->getAttribute('role') === 'admin';
+                return data_get($memberPivot, 'role') === 'admin';
             })
             ->first();
 

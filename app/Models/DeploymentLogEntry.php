@@ -55,7 +55,7 @@ class DeploymentLogEntry extends Model
             'command' => $this->command,
             'output' => $this->output,
             'type' => $this->type,
-            'timestamp' => $this->created_at->toIso8601String(),
+            'timestamp' => $this->created_at?->toIso8601String(),
             'hidden' => $this->hidden,
             'batch' => $this->batch,
             'stage' => $this->stage,

@@ -11,20 +11,19 @@ test('fillable attributes are defined and not empty', function () {
     expect($backup->getFillable())->not->toBeEmpty();
 });
 
-test('fillable does not include id or team_id', function () {
+test('fillable does not include id', function () {
     $fillable = (new ScheduledDatabaseBackup)->getFillable();
 
-    expect($fillable)
-        ->not->toContain('id')
-        ->not->toContain('team_id');
+    expect($fillable)->not->toContain('id');
 });
 
-test('fillable does not include relationship fields', function () {
+test('fillable includes relationship fields needed for creation', function () {
     $fillable = (new ScheduledDatabaseBackup)->getFillable();
 
     expect($fillable)
-        ->not->toContain('database_type')
-        ->not->toContain('database_id');
+        ->toContain('team_id')
+        ->toContain('database_type')
+        ->toContain('database_id');
 });
 
 test('fillable does not include system-managed fields', function () {

@@ -43,12 +43,12 @@ class ProjectAuthorizationService
         }
 
         // Owner/Admin always have full access to all projects
-        if (in_array($teamMembership->pivot->getAttribute('role'), ['owner', 'admin'])) {
+        if (in_array(data_get($teamMembership, 'pivot.role'), ['owner', 'admin'])) {
             return true;
         }
 
         // Check allowed_projects restriction
-        $allowedProjects = $teamMembership->pivot->getAttribute('allowed_projects');
+        $allowedProjects = data_get($teamMembership, 'pivot.allowed_projects');
 
         // null means all projects are allowed (default behavior)
         if ($allowedProjects === null) {
@@ -82,7 +82,7 @@ class ProjectAuthorizationService
         // Fallback to team role
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
         if ($teamMembership) {
-            $teamRole = $teamMembership->pivot->getAttribute('role');
+            $teamRole = data_get($teamMembership, 'pivot.role');
 
             return in_array($teamRole, ['owner', 'admin']);
         }
@@ -118,7 +118,7 @@ class ProjectAuthorizationService
 
         // Check if user is team owner
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
-        if ($teamMembership && $teamMembership->pivot->getAttribute('role') === 'owner') {
+        if ($teamMembership && data_get($teamMembership, 'pivot.role') === 'owner') {
             return true;
         }
 
@@ -176,7 +176,7 @@ class ProjectAuthorizationService
         // Fallback to team role
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
         if ($teamMembership) {
-            $teamRole = $teamMembership->pivot->getAttribute('role');
+            $teamRole = data_get($teamMembership, 'pivot.role');
 
             return in_array($teamRole, ['owner', 'admin']);
         }
@@ -271,7 +271,7 @@ class ProjectAuthorizationService
         // Fallback to team role
         $teamMembership = $user->teams()->where('team_id', $project->team_id)->first();
         if ($teamMembership) {
-            return $teamMembership->pivot->getAttribute('role');
+            return data_get($teamMembership, 'pivot.role');
         }
 
         return null;

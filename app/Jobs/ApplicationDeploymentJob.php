@@ -44,7 +44,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -419,25 +418,33 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             if (data_get($this->application, 'settings.is_build_server_enabled')) {
                 $teamId = data_get($this->application, 'environment.project.team.id');
-                $lock = Cache::lock("build-server-assignment:{$teamId}", 10);
-                try {
-                    $lock->block(5);
+                DB::transaction(function () use ($teamId) {
+                    // Lock the deployment queue record to prevent concurrent writes
+                    $deployment = ApplicationDeploymentQueue::lockForUpdate()
+                        ->find($this->application_deployment_queue->id);
+
+                    if (! $deployment) {
+                        $this->application_deployment_queue->addLogEntry('Deployment queue record not found. Using the deployment server.');
+                        $this->build_server = $this->server;
+                        $this->original_server = $this->server;
+
+                        return;
+                    }
+
                     $buildServers = Server::buildServers($teamId)->get();
                     if ($buildServers->count() === 0) {
-                        $this->application_deployment_queue->addLogEntry('No suitable build server found. Using the deployment server.');
+                        $deployment->addLogEntry('No suitable build server found. Using the deployment server.');
                         $this->build_server = $this->server;
                         $this->original_server = $this->server;
                     } else {
                         $this->build_server = $buildServers->random();
-                        $this->application_deployment_queue->build_server_id = $this->build_server->id;
-                        $this->application_deployment_queue->save();
-                        $this->application_deployment_queue->addLogEntry("Found a suitable build server ({$this->build_server->name}).");
+                        $deployment->update(['build_server_id' => $this->build_server->id]);
+                        $deployment->addLogEntry("Found a suitable build server ({$this->build_server->name}).");
                         $this->original_server = $this->server;
                         $this->use_build_server = true;
                     }
-                } finally {
-                    $lock->release();
-                }
+                    $this->application_deployment_queue = $deployment;
+                });
             } else {
                 // Set build server & original_server to the same as deployment server
                 $this->build_server = $this->server;

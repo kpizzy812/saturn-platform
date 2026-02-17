@@ -268,9 +268,9 @@ test('restore method exists', function () {
 });
 
 // isBackupSolutionAvailable Tests
-test('isBackupSolutionAvailable returns false', function () {
+test('isBackupSolutionAvailable returns true', function () {
     $db = new StandaloneClickhouse;
-    expect($db->isBackupSolutionAvailable())->toBeFalse();
+    expect($db->isBackupSolutionAvailable())->toBeTrue();
 });
 
 // Traits Tests

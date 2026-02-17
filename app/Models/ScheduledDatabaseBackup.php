@@ -25,6 +25,8 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property string $database_type
  * @property int $database_id
  * @property int $team_id
+ * @property bool $encrypt_backup
+ * @property string|null $encryption_key
  * @property bool $restore_test_enabled
  * @property \Carbon\Carbon|null $last_restore_test_at
  * @property \Carbon\Carbon $created_at
@@ -54,6 +56,8 @@ class ScheduledDatabaseBackup extends BaseModel
         'disable_local_backup',
         'verify_after_backup',
         'restore_test_enabled',
+        'encrypt_backup',
+        'encryption_key',
         'database_id',
         'database_type',
         'team_id',
@@ -66,6 +70,8 @@ class ScheduledDatabaseBackup extends BaseModel
             'save_s3' => 'boolean',
             'dump_all' => 'boolean',
             'disable_local_backup' => 'boolean',
+            'encrypt_backup' => 'boolean',
+            'encryption_key' => 'encrypted',
             'verify_after_backup' => 'boolean',
             'restore_test_enabled' => 'boolean',
             'last_restore_test_at' => 'datetime',

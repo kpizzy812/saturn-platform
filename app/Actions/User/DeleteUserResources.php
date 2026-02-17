@@ -38,7 +38,7 @@ class DeleteUserResources
 
             /** @var TeamUser|null $teamPivot */
             $teamPivot = data_get($team, 'pivot');
-            $userRole = $teamPivot?->getAttribute('role');
+            $userRole = data_get($teamPivot, 'role');
             $memberCount = $team->members->count();
 
             // Skip if user is not owner

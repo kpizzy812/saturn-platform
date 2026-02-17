@@ -382,6 +382,12 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     } else {
                         throw new \Exception('Local backup file is empty or was not created');
                     }
+
+                    // Encrypt backup if enabled
+                    if ($this->backup->encrypt_backup) {
+                        $this->encrypt_backup();
+                        $size = $this->calculate_size();
+                    }
                 } catch (\Throwable $e) {
                     // Local backup failed
                     if ($this->backup_log) {
@@ -430,6 +436,7 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                     'size' => $size,
                     's3_uploaded' => $this->backup->save_s3 ? $this->s3_uploaded : null,
                     'local_storage_deleted' => $localStorageDeleted,
+                    'is_encrypted' => $this->backup->encrypt_backup,
                 ]);
 
                 // Send appropriate notification
@@ -806,6 +813,41 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         $latestVersion = getHelperVersion();
 
         return "{$helperImage}:{$latestVersion}";
+    }
+
+    /**
+     * Encrypt backup file using openssl AES-256-CBC with PBKDF2.
+     * Auto-generates and stores encryption key if not set.
+     */
+    private function encrypt_backup(): void
+    {
+        $encryptionKey = $this->backup->encryption_key;
+
+        // Auto-generate encryption key if not set
+        if (blank($encryptionKey)) {
+            $encryptionKey = bin2hex(random_bytes(32));
+            $this->backup->update(['encryption_key' => $encryptionKey]);
+        }
+
+        $encryptedLocation = $this->backup_location.'.enc';
+        $escapedKey = escapeshellarg($encryptionKey);
+        $escapedInput = escapeshellarg($this->backup_location);
+        $escapedOutput = escapeshellarg($encryptedLocation);
+
+        $commands = [
+            "openssl enc -aes-256-cbc -salt -pbkdf2 -in {$escapedInput} -out {$escapedOutput} -pass pass:{$escapedKey}",
+            "rm -f {$escapedInput}",
+        ];
+
+        instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
+
+        // Update backup location to encrypted file
+        $this->backup_location = $encryptedLocation;
+
+        // Update execution record with new filename
+        if ($this->backup_log) {
+            $this->backup_log->update(['filename' => $encryptedLocation]);
+        }
     }
 
     public function failed(?Throwable $exception): void

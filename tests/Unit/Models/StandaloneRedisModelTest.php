@@ -314,9 +314,9 @@ test('appends includes server_status', function () {
 });
 
 // Additional Method Tests
-test('isBackupSolutionAvailable returns false', function () {
+test('isBackupSolutionAvailable returns true', function () {
     $redis = new StandaloneRedis;
-    expect($redis->isBackupSolutionAvailable())->toBeFalse();
+    expect($redis->isBackupSolutionAvailable())->toBeTrue();
 });
 
 test('project returns environment project', function () {
