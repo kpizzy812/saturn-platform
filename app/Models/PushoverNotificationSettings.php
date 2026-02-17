@@ -12,6 +12,11 @@ class PushoverNotificationSettings extends Model implements NotificationSettings
 
     public $timestamps = false;
 
+    protected $hidden = [
+        'pushover_user_key',
+        'pushover_api_token',
+    ];
+
     protected $fillable = [
         'team_id',
 

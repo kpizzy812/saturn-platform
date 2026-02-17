@@ -12,6 +12,10 @@ class WebhookNotificationSettings extends Model implements NotificationSettingsC
 
     public $timestamps = false;
 
+    protected $hidden = [
+        'webhook_url',
+    ];
+
     protected $fillable = [
         'team_id',
 

@@ -517,7 +517,7 @@ class ServersController extends Controller
                     $fail('The IP must be a valid IP address or hostname.');
                 }
             }],
-            'port' => 'integer|nullable',
+            'port' => 'integer|nullable|min:1|max:65535',
             'private_key_uuid' => 'string|required',
             'user' => ['string', 'nullable', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
             'is_build_server' => 'boolean|nullable',
@@ -684,7 +684,7 @@ class ServersController extends Controller
                     $fail('The IP must be a valid IP address or hostname.');
                 }
             }],
-            'port' => 'integer|nullable',
+            'port' => 'integer|nullable|min:1|max:65535',
             'private_key_uuid' => 'string|nullable',
             'user' => ['string', 'nullable', 'max:64', 'regex:/^[a-zA-Z0-9_-]+$/'],
             'is_build_server' => 'boolean|nullable',

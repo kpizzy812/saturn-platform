@@ -12,6 +12,10 @@ class SlackNotificationSettings extends Model implements NotificationSettingsCon
 
     public $timestamps = false;
 
+    protected $hidden = [
+        'slack_webhook_url',
+    ];
+
     protected $fillable = [
         'team_id',
 

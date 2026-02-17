@@ -343,7 +343,7 @@ Route::get('/settings/notifications/discord', function () {
     $team = auth()->user()->currentTeam();
 
     return Inertia::render('Settings/Notifications/Discord', [
-        'settings' => $team->discordNotificationSettings,
+        'settings' => $team->discordNotificationSettings->makeVisible(['discord_webhook_url']),
     ]);
 })->name('settings.notifications.discord');
 
@@ -351,7 +351,7 @@ Route::get('/settings/notifications/slack', function () {
     $team = auth()->user()->currentTeam();
 
     return Inertia::render('Settings/Notifications/Slack', [
-        'settings' => $team->slackNotificationSettings,
+        'settings' => $team->slackNotificationSettings->makeVisible(['slack_webhook_url']),
     ]);
 })->name('settings.notifications.slack');
 
@@ -359,7 +359,7 @@ Route::get('/settings/notifications/telegram', function () {
     $team = auth()->user()->currentTeam();
 
     return Inertia::render('Settings/Notifications/Telegram', [
-        'settings' => $team->telegramNotificationSettings,
+        'settings' => $team->telegramNotificationSettings->makeVisible(['telegram_token', 'telegram_chat_id']),
     ]);
 })->name('settings.notifications.telegram');
 
@@ -367,7 +367,7 @@ Route::get('/settings/notifications/email', function () {
     $team = auth()->user()->currentTeam();
 
     return Inertia::render('Settings/Notifications/Email', [
-        'settings' => $team->emailNotificationSettings,
+        'settings' => $team->emailNotificationSettings->makeVisible(['smtp_password', 'resend_api_key']),
         'canUseInstanceSettings' => config('saturn.is_self_hosted'),
     ]);
 })->name('settings.notifications.email');
@@ -376,7 +376,7 @@ Route::get('/settings/notifications/webhook', function () {
     $team = auth()->user()->currentTeam();
 
     return Inertia::render('Settings/Notifications/Webhook', [
-        'settings' => $team->webhookNotificationSettings,
+        'settings' => $team->webhookNotificationSettings->makeVisible(['webhook_url']),
     ]);
 })->name('settings.notifications.webhook');
 
@@ -384,7 +384,7 @@ Route::get('/settings/notifications/pushover', function () {
     $team = auth()->user()->currentTeam();
 
     return Inertia::render('Settings/Notifications/Pushover', [
-        'settings' => $team->pushoverNotificationSettings,
+        'settings' => $team->pushoverNotificationSettings->makeVisible(['pushover_user_key', 'pushover_api_token']),
     ]);
 })->name('settings.notifications.pushover');
 

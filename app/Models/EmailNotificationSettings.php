@@ -9,6 +9,11 @@ class EmailNotificationSettings extends Model implements NotificationSettingsCon
 {
     public $timestamps = false;
 
+    protected $hidden = [
+        'smtp_password',
+        'resend_api_key',
+    ];
+
     protected $fillable = [
         'team_id',
 

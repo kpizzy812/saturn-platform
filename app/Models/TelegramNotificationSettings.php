@@ -12,6 +12,11 @@ class TelegramNotificationSettings extends Model implements NotificationSettings
 
     public $timestamps = false;
 
+    protected $hidden = [
+        'telegram_token',
+        'telegram_chat_id',
+    ];
+
     protected $fillable = [
         'team_id',
 

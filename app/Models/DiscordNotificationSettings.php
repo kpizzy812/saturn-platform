@@ -12,6 +12,10 @@ class DiscordNotificationSettings extends Model implements NotificationSettingsC
 
     public $timestamps = false;
 
+    protected $hidden = [
+        'discord_webhook_url',
+    ];
+
     protected $fillable = [
         'team_id',
 
