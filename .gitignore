@@ -45,3 +45,11 @@ CHANGELOG.md
 .env.development
 coverage/
 --cache-directory
+
+# AI tooling (local dev only)
+.ai/
+.claude/
+.cursor/
+.mcp.json
+CLAUDE.md
+.AI_INSTRUCTIONS_SYNC.md
