@@ -166,6 +166,22 @@ start_infrastructure() {
     log_success "Infrastructure healthy"
 }
 
+sync_db_password() {
+    log_step "Syncing database password..."
+
+    # PostgreSQL only sets POSTGRES_PASSWORD on first initdb.
+    # If the .env password was changed, the DB volume still has the old one.
+    # This ensures they always match.
+    local db_password
+    db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
+
+    if [[ -n "$db_password" ]]; then
+        docker exec "${CONTAINER_DB}" psql -U saturn -d saturn \
+            -c "ALTER USER saturn PASSWORD '${db_password}';" > /dev/null 2>&1 || true
+        log_success "Database password synced"
+    fi
+}
+
 run_migrations() {
     log_step "Running migrations (before app starts)..."
 
@@ -303,6 +319,7 @@ deploy() {
     pull_images
     stop_services
     start_infrastructure
+    sync_db_password
     run_migrations
     start_app
     run_seeders
