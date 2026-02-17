@@ -109,7 +109,7 @@ class GetContainersStatus
             }
         }
         $databases = $this->server->databases();
-        $services = $this->server->services()->get();
+        $services = $this->server->services()->with(['applications', 'databases'])->get();
         $previews = $this->server->previews();
         $foundApplications = [];
         $foundApplicationPreviews = [];
@@ -302,9 +302,9 @@ class GetContainersStatus
 
                 // Mark service as found
                 if ($subType === 'application') {
-                    $service = $parentService->applications()->where('id', $subId)->first();
+                    $service = $parentService->applications->where('id', $subId)->first();
                 } else {
-                    $service = $parentService->databases()->where('id', $subId)->first();
+                    $service = $parentService->databases->where('id', $subId)->first();
                 }
                 if ($service) {
                     $foundServices[] = "$service->id-$service->name";
@@ -314,8 +314,8 @@ class GetContainersStatus
         $exitedServices = collect([]);
         $service = null;
         foreach ($services as $service) {
-            $apps = $service->applications()->get();
-            $dbs = $service->databases()->get();
+            $apps = $service->applications;
+            $dbs = $service->databases;
             foreach ($apps as $app) {
                 if (in_array("$app->id-$app->name", $foundServices)) {
                     continue;
@@ -561,9 +561,9 @@ class GetContainersStatus
             // Get the service sub-resource (ServiceApplication or ServiceDatabase)
             $subResource = null;
             if ($subType === 'application') {
-                $subResource = $service->applications()->where('id', $subId)->first();
+                $subResource = $service->applications->where('id', $subId)->first();
             } elseif ($subType === 'database') {
-                $subResource = $service->databases()->where('id', $subId)->first();
+                $subResource = $service->databases->where('id', $subId)->first();
             }
 
             if (! $subResource) {

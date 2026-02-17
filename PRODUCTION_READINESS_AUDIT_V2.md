@@ -49,9 +49,9 @@
 
 ## VERIFIED CRITICAL (3 проблемы)
 
-### CRIT-V1: N+1 запросы в GetContainersStatus
+### CRIT-V1: N+1 запросы в GetContainersStatus — FIXED
 **Файл:** `app/Actions/Docker/GetContainersStatus.php:317-318, 564-566`
-**Статус:** ПОДТВЕРЖДЕНО
+**Статус:** ИСПРАВЛЕНО
 **Суть:** Внутри `foreach ($services as $service)` вызывает:
 ```php
 $service->applications()->get()   // +1 запрос на каждый сервис
@@ -60,7 +60,7 @@ $service->databases()->get()      // +1 запрос на каждый серв�
 Без eager loading через `with()`. 10 сервисов = 20+ лишних запросов.
 **Fix:** `$services = $server->services()->with('applications', 'databases')->get()`
 
-### CRIT-V2: `::all()` загружает целые таблицы в память
+### CRIT-V2: `::all()` загружает целые таблицы в память — FIXED
 **Файл:** `app/Console/Commands/CleanupStuckedResources.php`
 **Статус:** ПОДТВЕРЖДЕНО
 **Суть:** Массовое использование `::all()->filter()`:
@@ -75,7 +75,7 @@ $service->databases()->get()      // +1 запрос на каждый серв�
 При тысячах записей — OOM и timeout. Фильтрация в PHP вместо SQL.
 **Fix:** Перенести фильтры в `whereHas()`, `where()`, использовать `chunk()`
 
-### CRIT-V3: PHP error logging ОТКЛЮЧЕНО в production
+### CRIT-V3: PHP error logging ОТКЛЮЧЕНО в production — FIXED
 **Файл:** `docker/production/etc/php/conf.d/zzz-custom-php.ini`
 **Статус:** ПОДТВЕРЖДЕНО
 ```ini
