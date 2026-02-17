@@ -1,30 +1,11 @@
 # Debug mode — install dev dependencies for debugging tools (telescope, debugbar, etc.)
 #
-# --no-scripts is required because package:discover needs a fully booted Laravel app,
-# which is impossible in the entrypoint (no DB connection yet).
-#
-# After installing, we rebuild bootstrap/cache/packages.php directly via
-# PackageManifest::build() — reads vendor/composer/installed.json, writes the manifest,
-# NO Laravel bootstrap required. This breaks the deadlock where:
-#   - with --no-scripts: stale packages.php → "make() on null"
-#   - without --no-scripts: package:discover needs app boot → crash
+# Note: symfony/console is pinned to <7.4 in composer.json because
+# laravel/framework v12.21.0 is incompatible with Symfony Console 7.4+
+# (see https://github.com/laravel/framework/issues/57955).
+# Once Laravel is updated to >=12.38.0, the pin can be removed.
 if [ "$APP_DEBUG" = "true" ]; then
     echo "Debug mode is enabled"
     echo "Installing development dependencies..."
-    composer install --dev --no-interaction --no-progress --no-scripts
-
-    # Rebuild package manifest without booting Laravel
-    echo "Rebuilding package manifest..."
-    php -r "
-        require 'vendor/autoload.php';
-        \$basePath = getcwd();
-        (new Illuminate\Foundation\PackageManifest(
-            new Illuminate\Filesystem\Filesystem,
-            \$basePath,
-            \$basePath . '/bootstrap/cache/packages.php'
-        ))->build();
-    "
-
-    # Delete stale services cache — Laravel will rebuild it on first boot
-    rm -f bootstrap/cache/services.php
+    composer install --no-interaction --no-progress
 fi

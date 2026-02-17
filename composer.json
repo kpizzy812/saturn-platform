@@ -19,6 +19,7 @@
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/fortify": "^1.27.0",
         "laravel/framework": "^12.20.0",
+        "symfony/console": ">=7.2 <7.4",
         "laravel/horizon": "^5.33.1",
         "laravel/pail": "^1.2.3",
         "laravel/prompts": "^0.3.6|^0.3.6|^0.3.6",
