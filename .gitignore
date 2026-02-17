@@ -43,3 +43,5 @@ CHANGELOG.md
 .phpstan-cache
 .env.production
 .env.development
+coverage/
+--cache-directory

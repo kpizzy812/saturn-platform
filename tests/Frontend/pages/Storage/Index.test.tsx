@@ -1,23 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '../../utils/test-utils';
-import { router } from '@inertiajs/react';
 import StorageIndex from '../../../../resources/js/pages/Storage/Index';
 import type { S3Storage } from '../../../../resources/js/types';
 
-vi.mock('@inertiajs/react', async () => {
-    const actual = await vi.importActual('@inertiajs/react');
-    return {
-        ...actual,
-        router: {
-            get: vi.fn(),
-            post: vi.fn(),
-            delete: vi.fn(),
-        },
-        Link: ({ children, href }: { children: React.ReactNode; href: string }) => (
-            <a href={href}>{children}</a>
-        ),
-    };
-});
+// Mock AppLayout to avoid layout complexities
+vi.mock('@/components/layout', () => ({
+    AppLayout: ({ children }: any) => <div>{children}</div>,
+}));
 
 describe('Storage/Index', () => {
     beforeEach(() => {

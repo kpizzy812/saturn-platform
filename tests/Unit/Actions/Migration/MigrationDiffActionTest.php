@@ -5,7 +5,6 @@ namespace Tests\Unit\Actions\Migration;
 use App\Actions\Migration\MigrationDiffAction;
 use App\Models\Application;
 use App\Models\Environment;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,94 +19,38 @@ class MigrationDiffActionTest extends TestCase
     }
 
     /**
-     * Create a mock application using anonymous class extending Application.
-     * Using Application so that getConfigFields() returns proper whitelist via instanceof.
+     * Create a mock Application using Mockery.
+     * The action uses getAttribute() to access relationship data,
+     * and method_exists() to check for relationship methods.
      */
-    protected function createMockApp(array $attributes = [], ?Collection $envVars = null, ?Collection $storages = null): Model
+    protected function createMockApp(array $attributes = [], ?Collection $envVars = null, ?Collection $storages = null): Application
     {
-        return new class($attributes, $envVars, $storages) extends Application
-        {
-            public $id;
+        $defaults = [
+            'id' => 1,
+            'name' => 'test-app',
+            'git_repository' => 'https://github.com/test/repo',
+            'git_branch' => 'main',
+            'build_pack' => 'nixpacks',
+        ];
 
-            public $name;
+        $merged = array_merge($defaults, $attributes);
 
-            public $git_repository;
-
-            public $git_branch;
-
-            public $build_pack;
-
-            private Collection $envVarsCollection;
-
-            private Collection $storagesCollection;
-
-            private Collection $fileStoragesCollection;
-
-            public function __construct(array $attributes, ?Collection $envVars, ?Collection $storages)
-            {
-                // Don't call parent::__construct to avoid DB connection
-                $this->id = $attributes['id'] ?? 1;
-                $this->name = $attributes['name'] ?? 'test-app';
-                $this->git_repository = $attributes['git_repository'] ?? 'https://github.com/test/repo';
-                $this->git_branch = $attributes['git_branch'] ?? 'main';
-                $this->build_pack = $attributes['build_pack'] ?? 'nixpacks';
-                $this->envVarsCollection = $envVars ?? new Collection;
-                $this->storagesCollection = $storages ?? new Collection;
-                $this->fileStoragesCollection = new Collection;
+        $mock = Mockery::mock(Application::class)->makePartial();
+        $mock->shouldReceive('getAttribute')->andReturnUsing(function (string $key) use ($merged, $envVars, $storages) {
+            if ($key === 'environment_variables') {
+                return $envVars ?? new Collection;
+            }
+            if ($key === 'persistentStorages') {
+                return $storages ?? new Collection;
+            }
+            if ($key === 'fileStorages') {
+                return new Collection;
             }
 
-            // Provide methods (not just properties) so method_exists() works
-            public function environment_variables()
-            {
-                return $this->envVarsCollection;
-            }
+            return $merged[$key] ?? null;
+        });
 
-            public function persistentStorages()
-            {
-                return $this->storagesCollection;
-            }
-
-            public function fileStorages()
-            {
-                return $this->fileStoragesCollection;
-            }
-
-            // Override getAttribute to return public properties
-            public function getAttribute($key)
-            {
-                if (property_exists($this, $key)) {
-                    return $this->$key;
-                }
-
-                return null;
-            }
-
-            // Override __get to handle relationship-style property access
-            public function __get($key)
-            {
-                if ($key === 'environment_variables') {
-                    return $this->environment_variables();
-                }
-                if ($key === 'persistentStorages') {
-                    return $this->persistentStorages();
-                }
-                if ($key === 'fileStorages') {
-                    return $this->fileStorages();
-                }
-                if (property_exists($this, $key)) {
-                    return $this->$key;
-                }
-
-                return parent::__get($key);
-            }
-
-            // Prevent Eloquent boot
-            protected static function boot() {}
-
-            protected static function booting() {}
-
-            protected static function booted() {}
-        };
+        return $mock;
     }
 
     protected function createMockEnvironment(): Environment

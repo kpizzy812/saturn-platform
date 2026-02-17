@@ -14,7 +14,7 @@ import {
     useDatabases,
     useDatabase,
     useDatabaseBackups,
-    useServices: _useServices,
+    useServices as _useServices,
     useService,
     useServiceEnvs,
     useProjects,
