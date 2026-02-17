@@ -803,7 +803,6 @@ Route::post('/settings/team/members/{id}/permissions/custom', function (Request 
     $request->validate([
         'permissions' => 'required|array',
         'permissions.*.permission_id' => 'required|integer|exists:permissions,id',
-        'permissions.*.environment_restrictions' => 'nullable|array',
     ]);
 
     $team = currentTeam();

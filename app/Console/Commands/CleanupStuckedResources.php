@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ApplicationDeploymentStatus;
 use App\Jobs\CleanupHelperContainersJob;
 use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
@@ -38,6 +39,26 @@ class CleanupStuckedResources extends Command
 
     private function cleanup_stucked_resources()
     {
+        // Mark deployments stuck in in_progress/queued for >1 hour as timed-out
+        try {
+            $stuckDeployments = ApplicationDeploymentQueue::whereIn('status', [
+                ApplicationDeploymentStatus::IN_PROGRESS->value,
+                ApplicationDeploymentStatus::QUEUED->value,
+            ])
+                ->where('updated_at', '<', now()->subHour())
+                ->get();
+
+            foreach ($stuckDeployments as $deployment) {
+                echo "Marking stuck deployment as timed-out: {$deployment->deployment_uuid} (status: {$deployment->status}, last updated: {$deployment->updated_at})\n";
+                $deployment->update([
+                    'status' => ApplicationDeploymentStatus::TIMED_OUT->value,
+                ]);
+                $deployment->addLogEntry('Deployment marked as timed-out by cleanup job (stuck for >1 hour).', 'stderr');
+            }
+        } catch (\Throwable $e) {
+            echo "Error in cleaning stuck deployments: {$e->getMessage()}\n";
+        }
+
         try {
             $teams = Team::all()->filter(function ($team) {
                 return $team->members()->count() === 0 && $team->servers()->count() === 0;

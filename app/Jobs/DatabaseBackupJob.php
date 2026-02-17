@@ -571,7 +571,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             $escapedContainerName = escapeshellarg($this->container_name);
             $backupCommand = 'docker exec';
             if ($this->postgres_password) {
-                $backupCommand .= " -e PGPASSWORD=\"{$this->postgres_password}\"";
+                $escapedPassword = escapeshellarg($this->postgres_password);
+                $backupCommand .= " -e PGPASSWORD={$escapedPassword}";
             }
             if ($this->backup->dump_all) {
                 $backupCommand .= " {$escapedContainerName} pg_dumpall --username {$this->database->postgres_user} | gzip > $this->backup_location";
@@ -599,13 +600,14 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $commands[] = 'mkdir -p '.$this->backup_dir;
             $escapedContainerName = escapeshellarg($this->container_name);
+            $escapedMysqlPassword = escapeshellarg($this->database->mysql_root_password);
             if ($this->backup->dump_all) {
-                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p\"{$this->database->mysql_root_password}\" --all-databases --single-transaction --quick --lock-tables=false --compress | gzip > $this->backup_location";
+                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p{$escapedMysqlPassword} --all-databases --single-transaction --quick --lock-tables=false --compress | gzip > $this->backup_location";
             } else {
                 // Validate and escape database name to prevent command injection
                 validateShellSafePath($database, 'database name');
                 $escapedDatabase = escapeshellarg($database);
-                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p\"{$this->database->mysql_root_password}\" --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
+                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p{$escapedMysqlPassword} --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
             }
             $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
             $this->backup_output = trim($this->backup_output);
@@ -623,13 +625,14 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $commands[] = 'mkdir -p '.$this->backup_dir;
             $escapedContainerName = escapeshellarg($this->container_name);
+            $escapedMariaPassword = escapeshellarg($this->database->mariadb_root_password);
             if ($this->backup->dump_all) {
-                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p\"{$this->database->mariadb_root_password}\" --all-databases --single-transaction --quick --lock-tables=false --compress > $this->backup_location";
+                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p{$escapedMariaPassword} --all-databases --single-transaction --quick --lock-tables=false --compress > $this->backup_location";
             } else {
                 // Validate and escape database name to prevent command injection
                 validateShellSafePath($database, 'database name');
                 $escapedDatabase = escapeshellarg($database);
-                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p\"{$this->database->mariadb_root_password}\" --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
+                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p{$escapedMariaPassword} --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
             }
             $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
             $this->backup_output = trim($this->backup_output);

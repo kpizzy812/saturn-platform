@@ -26,9 +26,9 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $tries = 1;
+    public $tries = 3;
 
-    public $maxExceptions = 1;
+    public $maxExceptions = 2;
 
     public $timeout = 3600;
 
@@ -53,6 +53,14 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
     public ?string $mongo_root_password = null;
 
     public ?S3Storage $s3 = null;
+
+    /**
+     * Calculate the number of seconds to wait before retrying the job.
+     */
+    public function backoff(): array
+    {
+        return [60, 120];
+    }
 
     public function __construct(
         public ScheduledDatabaseBackup $backup,
@@ -262,7 +270,8 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 // Full dump restore
                 $restoreCommand = 'docker exec';
                 if ($this->postgres_password) {
-                    $restoreCommand .= " -e PGPASSWORD=\"{$this->postgres_password}\"";
+                    $escapedPassword = escapeshellarg($this->postgres_password);
+                    $restoreCommand .= " -e PGPASSWORD={$escapedPassword}";
                 }
                 $restoreCommand .= " {$escapedContainerName} psql --username {$this->database->postgres_user} -d postgres";
                 $commands[] = "gunzip -c {$backupLocation} | {$restoreCommand}";
@@ -270,7 +279,8 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 // Custom format restore
                 $restoreCommand = 'docker exec';
                 if ($this->postgres_password) {
-                    $restoreCommand .= " -e PGPASSWORD=\"{$this->postgres_password}\"";
+                    $escapedPassword = escapeshellarg($this->postgres_password);
+                    $restoreCommand .= " -e PGPASSWORD={$escapedPassword}";
                 }
                 // Validate database name
                 validateShellSafePath($databaseName, 'database name');
@@ -295,13 +305,14 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             $commands = [];
             $escapedContainerName = escapeshellarg($this->container_name);
 
+            $escapedMysqlPassword = escapeshellarg($this->database->mysql_root_password);
             // Check if it's a dump_all backup (gzipped)
             if (str($backupLocation)->endsWith('.gz')) {
-                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$escapedContainerName} mysql -u root -p\"{$this->database->mysql_root_password}\"";
+                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$escapedContainerName} mysql -u root -p{$escapedMysqlPassword}";
             } else {
                 validateShellSafePath($databaseName, 'database name');
                 $escapedDatabase = escapeshellarg($databaseName);
-                $commands[] = "docker exec -i {$escapedContainerName} mysql -u root -p\"{$this->database->mysql_root_password}\" {$escapedDatabase} < {$backupLocation}";
+                $commands[] = "docker exec -i {$escapedContainerName} mysql -u root -p{$escapedMysqlPassword} {$escapedDatabase} < {$backupLocation}";
             }
 
             $this->restore_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
@@ -319,13 +330,14 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             $commands = [];
             $escapedContainerName = escapeshellarg($this->container_name);
 
+            $escapedMariaPassword = escapeshellarg($this->database->mariadb_root_password);
             // Check if it's a dump_all backup
             if (str($backupLocation)->endsWith('.gz')) {
-                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$escapedContainerName} mariadb -u root -p\"{$this->database->mariadb_root_password}\"";
+                $commands[] = "gunzip -c {$backupLocation} | docker exec -i {$escapedContainerName} mariadb -u root -p{$escapedMariaPassword}";
             } else {
                 validateShellSafePath($databaseName, 'database name');
                 $escapedDatabase = escapeshellarg($databaseName);
-                $commands[] = "docker exec -i {$escapedContainerName} mariadb -u root -p\"{$this->database->mariadb_root_password}\" {$escapedDatabase} < {$backupLocation}";
+                $commands[] = "docker exec -i {$escapedContainerName} mariadb -u root -p{$escapedMariaPassword} {$escapedDatabase} < {$backupLocation}";
             }
 
             $this->restore_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);

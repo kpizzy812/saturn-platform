@@ -10,4 +10,5 @@ enum ApplicationDeploymentStatus: string
     case FAILED = 'failed';
     case CANCELLED_BY_USER = 'cancelled-by-user';
     case PENDING_APPROVAL = 'pending_approval';
+    case TIMED_OUT = 'timed-out';
 }

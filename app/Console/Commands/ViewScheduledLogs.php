@@ -36,7 +36,7 @@ class ViewScheduledLogs extends Command
             return;
         }
 
-        $lines = $this->option('lines');
+        $lines = max(1, (int) $this->option('lines'));
         $follow = $this->option('follow');
 
         // Build grep filters
@@ -44,44 +44,36 @@ class ViewScheduledLogs extends Command
         $filterDescription = $this->getFilterDescription();
         $logTypeDescription = $this->getLogTypeDescription();
 
+        // Escape all paths for shell safety
+        $escapedPaths = array_map('escapeshellarg', $logPaths);
+        $escapedPathsStr = implode(' ', $escapedPaths);
+        $escapedLines = escapeshellarg((string) $lines);
+        $escapedFilters = $filters ? escapeshellarg($filters) : null;
+
         if ($follow) {
             $this->info("Following {$logTypeDescription} logs for {$date}{$filterDescription} (Press Ctrl+C to stop)...");
             $this->line('');
 
-            if (count($logPaths) === 1) {
-                $logPath = $logPaths[0];
-                if ($filters) {
-                    passthru("tail -f {$logPath} | grep -E '{$filters}'");
-                } else {
-                    passthru("tail -f {$logPath}");
-                }
+            if ($escapedFilters) {
+                passthru("tail -f {$escapedPathsStr} | grep -E {$escapedFilters}");
             } else {
-                // Multiple files - use multitail or tail with process substitution
-                $logPathsStr = implode(' ', $logPaths);
-                if ($filters) {
-                    passthru("tail -f {$logPathsStr} | grep -E '{$filters}'");
-                } else {
-                    passthru("tail -f {$logPathsStr}");
-                }
+                passthru("tail -f {$escapedPathsStr}");
             }
         } else {
             $this->info("Showing last {$lines} lines of {$logTypeDescription} logs for {$date}{$filterDescription}:");
             $this->line('');
 
-            if (count($logPaths) === 1) {
-                $logPath = $logPaths[0];
-                if ($filters) {
-                    passthru("tail -n {$lines} {$logPath} | grep -E '{$filters}'");
+            if (count($logPaths) > 1) {
+                if ($escapedFilters) {
+                    passthru("tail -n {$escapedLines} {$escapedPathsStr} | sort | grep -E {$escapedFilters}");
                 } else {
-                    passthru("tail -n {$lines} {$logPath}");
+                    passthru("tail -n {$escapedLines} {$escapedPathsStr} | sort");
                 }
             } else {
-                // Multiple files - concatenate and sort by timestamp
-                $logPathsStr = implode(' ', $logPaths);
-                if ($filters) {
-                    passthru("tail -n {$lines} {$logPathsStr} | sort | grep -E '{$filters}'");
+                if ($escapedFilters) {
+                    passthru("tail -n {$escapedLines} {$escapedPathsStr} | grep -E {$escapedFilters}");
                 } else {
-                    passthru("tail -n {$lines} {$logPathsStr} | sort");
+                    passthru("tail -n {$escapedLines} {$escapedPathsStr}");
                 }
             }
         }

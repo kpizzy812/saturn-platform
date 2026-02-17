@@ -123,7 +123,10 @@ class DeployController extends Controller
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 400);
         }
-        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        $servers = Server::whereTeamId($teamId)->pluck('id');
+        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)
+            ->whereIn('server_id', $servers)
+            ->first();
         if (! $deployment) {
             return response()->json(['message' => 'Deployment not found.'], 404);
         }

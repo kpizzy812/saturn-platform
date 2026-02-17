@@ -331,46 +331,8 @@ Route::group([
     Route::get('/applications/{uuid}/rollback-events', [ApplicationDeploymentsController::class, 'get_rollback_events'])->middleware(['api.ability:read']);
     Route::post('/applications/{uuid}/rollback/{deploymentUuid}', [ApplicationDeploymentsController::class, 'execute_rollback'])->middleware(['api.ability:deploy', 'throttle:5,1']);
 
-    // Application Preview Deployment Routes
-    Route::get('/applications/{uuid}/previews', function (string $uuid) {
-        // TODO: Implement preview deployments listing
-        return response()->json([]);
-    })->middleware(['api.ability:read']);
-    Route::post('/applications/{uuid}/previews', function (string $uuid) {
-        // TODO: Implement create preview deployment
-        return response()->json(['message' => 'Preview deployment creation not yet implemented'], 501);
-    })->middleware(['api.ability:deploy']);
-    Route::get('/applications/{uuid}/preview-settings', function (string $uuid) {
-        // TODO: Implement get preview settings
-        return response()->json([
-            'enabled' => false,
-            'auto_deploy_on_pr' => false,
-            'url_template' => 'pr-{pr_number}-{app_name}.preview.saturn.example',
-            'auto_delete_days' => 7,
-            'resource_limits' => [
-                'cpu' => '1',
-                'memory' => '512M',
-            ],
-        ]);
-    })->middleware(['api.ability:read']);
-    Route::patch('/applications/{uuid}/preview-settings', function (string $uuid) {
-        // TODO: Implement update preview settings
-        return response()->json(['message' => 'Preview settings update not yet implemented'], 501);
-    })->middleware(['api.ability:write']);
-
-    // Preview Deployment Individual Routes
-    Route::get('/previews/{uuid}', function (string $uuid) {
-        // TODO: Implement get preview deployment by UUID
-        return response()->json(['message' => 'Preview deployment not found'], 404);
-    })->middleware(['api.ability:read']);
-    Route::delete('/previews/{uuid}', function (string $uuid) {
-        // TODO: Implement delete preview deployment
-        return response()->json(['message' => 'Preview deployment deletion not yet implemented'], 501);
-    })->middleware(['api.ability:write']);
-    Route::post('/previews/{uuid}/redeploy', function (string $uuid) {
-        // TODO: Implement redeploy preview deployment
-        return response()->json(['message' => 'Preview deployment redeploy not yet implemented'], 501);
-    })->middleware(['api.ability:deploy']);
+    // Application Preview Deployment Routes — disabled until implemented
+    // TODO: Implement preview deployment API endpoints
 
     Route::get('/github-apps', [GithubController::class, 'list_github_apps'])->middleware(['api.ability:read']);
     Route::post('/github-apps', [GithubController::class, 'create_github_app'])->middleware(['api.ability:write']);

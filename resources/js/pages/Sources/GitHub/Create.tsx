@@ -73,8 +73,6 @@ export default function GitHubCreate({ webhookUrl }: Props) {
                     stateInput.value = data.uuid;
                 }
                 formRef.current.submit();
-                // Reset button state since GitHub opens in a new tab
-                setTimeout(() => setCreating(false), 1000);
             }
         } catch {
             setCreating(false);
@@ -94,7 +92,7 @@ export default function GitHubCreate({ webhookUrl }: Props) {
             <Head title="Create GitHub App" />
 
             {/* Hidden form for GitHub App Manifest submission */}
-            <form ref={formRef} method="post" action="https://github.com/settings/apps/new" target="_blank" className="hidden">
+            <form ref={formRef} method="post" action="https://github.com/settings/apps/new" className="hidden">
                 <input type="hidden" name="manifest" value="" />
                 <input type="hidden" name="state" value="" />
             </form>

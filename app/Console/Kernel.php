@@ -100,6 +100,9 @@ class Kernel extends ConsoleKernel
             // Cleanup orphaned PR preview containers daily
             $this->scheduleInstance->job(new CleanupOrphanedPreviewContainersJob)->daily()->onOneServer();
 
+            // Cleanup stuck resources (timed-out deployments, orphaned records) hourly
+            $this->scheduleInstance->command('cleanup:stucked-resources')->hourly()->onOneServer();
+
             // Automated backup restore testing (runs daily, checks which backups need testing)
             $this->scheduleInstance->job(new BackupRestoreTestManagerJob)->daily()->at('03:00')->timezone($this->instanceTimezone)->onOneServer();
         }
