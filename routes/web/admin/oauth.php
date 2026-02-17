@@ -13,7 +13,7 @@ use Inertia\Inertia;
 
 Route::get('/settings/oauth', function () {
     $providers = OauthSetting::all()->map(function ($provider) {
-        $data = $provider->toArray();
+        $data = $provider->makeVisible(['client_id', 'redirect_uri', 'tenant', 'base_url'])->toArray();
 
         // Mask client_secret - only indicate presence
         if (! empty($provider->client_secret)) {
