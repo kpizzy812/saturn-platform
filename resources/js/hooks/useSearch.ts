@@ -6,6 +6,8 @@ export interface SearchResult {
     name: string;
     description: string | null;
     href: string;
+    project_name?: string | null;
+    environment_name?: string | null;
 }
 
 const DEBOUNCE_MS = 300;

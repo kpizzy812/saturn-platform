@@ -2,10 +2,26 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '../../../Frontend/utils/test-utils';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import type { RecentResource } from '@/hooks/useRecentResources';
+import type { FavoriteResource } from '@/hooks/useResourceFrequency';
+import { useSearch } from '@/hooks/useSearch';
 
 // Mock useSearch hook
 vi.mock('@/hooks/useSearch', () => ({
     useSearch: vi.fn(() => ({ results: [], isLoading: false })),
+}));
+
+// Stable function references for usePaletteBrowse mock
+const mockFetchBrowse = vi.fn();
+const mockClearCache = vi.fn();
+
+// Mock usePaletteBrowse hook
+vi.mock('@/hooks/usePaletteBrowse', () => ({
+    usePaletteBrowse: vi.fn(() => ({
+        items: [],
+        isLoading: false,
+        fetchBrowse: mockFetchBrowse,
+        clearCache: mockClearCache,
+    })),
 }));
 
 // Mock Inertia router
@@ -14,6 +30,8 @@ vi.mock('@inertiajs/react', () => ({
         visit: vi.fn(),
     },
 }));
+
+const mockUseSearch = useSearch as ReturnType<typeof vi.fn>;
 
 describe('CommandPalette', () => {
     const onClose = vi.fn();
@@ -36,11 +54,7 @@ describe('CommandPalette', () => {
 
     it('should not show "Projects" in navigation', () => {
         render(<CommandPalette open={true} onClose={onClose} />);
-        // Check that there's no button containing "Projects" text
-        const allText = document.body.textContent;
-        // Dashboard should be present but not Projects as a standalone entry
         expect(screen.getByText('Dashboard')).toBeInTheDocument();
-        // Projects should not appear as a navigation item
         const buttons = screen.getAllByRole('button');
         const projectButton = buttons.find((b) => b.textContent?.trim() === 'Projects');
         expect(projectButton).toBeUndefined();
@@ -61,7 +75,6 @@ describe('CommandPalette', () => {
         const input = screen.getByPlaceholderText('Search commands and resources...');
         fireEvent.change(input, { target: { value: 'deploy' } });
         expect(screen.getByText('Deploy')).toBeInTheDocument();
-        // Dashboard should be filtered out
         expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
     });
 
@@ -97,7 +110,6 @@ describe('CommandPalette', () => {
 
     it('should call onClose when backdrop is clicked', () => {
         render(<CommandPalette open={true} onClose={onClose} />);
-        // Click the backdrop (first element with bg-black/50)
         const backdrop = document.querySelector('.bg-black\\/50');
         expect(backdrop).toBeTruthy();
         fireEvent.click(backdrop!);
@@ -110,5 +122,78 @@ describe('CommandPalette', () => {
         expect(screen.getByText('Actions')).toBeInTheDocument();
         // "Settings" appears as both group label and command name
         expect(screen.getAllByText('Settings')).toHaveLength(2);
+    });
+
+    // Drill-down tests
+
+    it('should show drill-in chevron on drillable items', () => {
+        render(<CommandPalette open={true} onClose={onClose} />);
+        // Dashboard, Servers, Applications, Services, Databases should all have chevrons
+        const buttons = screen.getAllByRole('button');
+        const dashboardBtn = buttons.find((b) => b.textContent?.includes('Dashboard'));
+        expect(dashboardBtn).toBeTruthy();
+        // ChevronRight SVG should be inside drillable items
+        const svgs = dashboardBtn!.querySelectorAll('svg');
+        expect(svgs.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should show keyboard hints in footer', () => {
+        render(<CommandPalette open={true} onClose={onClose} />);
+        expect(screen.getByText('navigate')).toBeInTheDocument();
+        expect(screen.getByText('select')).toBeInTheDocument();
+        expect(screen.getByText('drill in')).toBeInTheDocument();
+    });
+
+    // Favorites tests
+
+    it('should show favorites when provided', () => {
+        const favorites: FavoriteResource[] = [
+            { type: 'server', id: 'srv-1', name: 'Favorite Server', href: '/servers/srv-1', score: 5 },
+        ];
+
+        render(<CommandPalette open={true} onClose={onClose} favorites={favorites} />);
+        expect(screen.getByText('Favorites')).toBeInTheDocument();
+        expect(screen.getByText('Favorite Server')).toBeInTheDocument();
+    });
+
+    it('should not show favorites when there is a query', () => {
+        const favorites: FavoriteResource[] = [
+            { type: 'server', id: 'srv-1', name: 'Favorite Server', href: '/servers/srv-1', score: 5 },
+        ];
+
+        render(<CommandPalette open={true} onClose={onClose} favorites={favorites} />);
+        const input = screen.getByPlaceholderText('Search commands and resources...');
+        fireEvent.change(input, { target: { value: 'settings' } });
+        expect(screen.queryByText('Favorites')).not.toBeInTheDocument();
+    });
+
+    it('should not show favorites when empty', () => {
+        render(<CommandPalette open={true} onClose={onClose} favorites={[]} />);
+        expect(screen.queryByText('Favorites')).not.toBeInTheDocument();
+    });
+
+    // Search context tests
+
+    it('should show search context from useSearch', () => {
+        mockUseSearch.mockReturnValue({
+            results: [
+                {
+                    type: 'application',
+                    uuid: 'app-1',
+                    name: 'API Service',
+                    description: 'Main API',
+                    href: '/applications/app-1',
+                    project_name: 'Saturn',
+                    environment_name: 'production',
+                },
+            ],
+            isLoading: false,
+        });
+
+        render(<CommandPalette open={true} onClose={onClose} />);
+        const input = screen.getByPlaceholderText('Search commands and resources...');
+        fireEvent.change(input, { target: { value: 'API Service' } });
+
+        expect(screen.getByText('Saturn / production')).toBeInTheDocument();
     });
 });

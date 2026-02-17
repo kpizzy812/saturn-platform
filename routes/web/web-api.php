@@ -1151,19 +1151,31 @@ Route::get('/web-api/search', function (Request $request) {
     // Applications
     $results = $results->concat(
         \App\Models\Application::ownedByCurrentTeam()
+            ->with('environment:id,name,project_id', 'environment.project:id,name')
             ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern)->orWhere('fqdn', 'ILIKE', $pattern))
             ->limit(5)
             ->get()
-            ->map(fn ($a) => ['type' => 'application', 'uuid' => $a->uuid, 'name' => $a->name, 'description' => $a->description ?? $a->fqdn, 'href' => "/applications/{$a->uuid}"])
+            ->map(fn ($a) => [
+                'type' => 'application', 'uuid' => $a->uuid, 'name' => $a->name,
+                'description' => $a->description ?? $a->fqdn, 'href' => "/applications/{$a->uuid}",
+                'project_name' => $a->environment?->project?->name,
+                'environment_name' => $a->environment?->name,
+            ])
     );
 
     // Services
     $results = $results->concat(
         \App\Models\Service::ownedByCurrentTeam()
+            ->with('environment:id,name,project_id', 'environment.project:id,name')
             ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern))
             ->limit(5)
             ->get()
-            ->map(fn ($s) => ['type' => 'service', 'uuid' => $s->uuid, 'name' => $s->name, 'description' => $s->description, 'href' => "/services/{$s->uuid}"])
+            ->map(fn ($s) => [
+                'type' => 'service', 'uuid' => $s->uuid, 'name' => $s->name,
+                'description' => $s->description, 'href' => "/services/{$s->uuid}",
+                'project_name' => $s->environment?->project?->name,
+                'environment_name' => $s->environment?->name,
+            ])
     );
 
     // Databases (all types)
@@ -1181,10 +1193,16 @@ Route::get('/web-api/search', function (Request $request) {
     foreach ($databaseModels as $model) {
         $results = $results->concat(
             $model::ownedByCurrentTeam()
+                ->with('environment:id,name,project_id', 'environment.project:id,name')
                 ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern))
                 ->limit(3)
                 ->get()
-                ->map(fn ($db) => ['type' => 'database', 'uuid' => $db->uuid, 'name' => $db->name, 'description' => $db->description, 'href' => "/databases/{$db->uuid}"])
+                ->map(fn ($db) => [
+                    'type' => 'database', 'uuid' => $db->uuid, 'name' => $db->name,
+                    'description' => $db->description, 'href' => "/databases/{$db->uuid}",
+                    'project_name' => $db->environment?->project?->name,
+                    'environment_name' => $db->environment?->name,
+                ])
         );
     }
 
@@ -1204,3 +1222,199 @@ Route::get('/web-api/search', function (Request $request) {
 
     return response()->json(['results' => $sorted]);
 })->middleware('throttle:60,1')->name('web-api.search');
+
+// Command Palette drill-down browse
+Route::get('/web-api/command-palette/browse', function (Request $request) {
+    $type = $request->query('type', '');
+    $parentUuid = $request->query('parent_uuid', '');
+
+    $allowed = ['projects', 'servers', 'applications', 'databases', 'services', 'environments', 'env_resources'];
+    if (! in_array($type, $allowed, true)) {
+        return response()->json(['items' => []]);
+    }
+
+    $items = collect();
+
+    switch ($type) {
+        case 'projects':
+            $items = \App\Models\Project::ownedByCurrentTeam()
+                ->select('id', 'uuid', 'name', 'description')
+                ->get()
+                ->map(fn ($p) => [
+                    'id' => $p->uuid,
+                    'name' => $p->name,
+                    'description' => $p->description,
+                    'href' => "/projects/{$p->uuid}",
+                    'has_children' => true,
+                    'child_type' => 'environments',
+                ]);
+            break;
+
+        case 'environments':
+            if (! $parentUuid) {
+                break;
+            }
+            $project = \App\Models\Project::ownedByCurrentTeam()
+                ->where('uuid', $parentUuid)
+                ->first();
+            if (! $project) {
+                break;
+            }
+            $items = $project->environments()
+                ->select('id', 'uuid', 'name', 'project_id')
+                ->get()
+                ->map(fn ($e) => [
+                    'id' => $e->uuid,
+                    'name' => $e->name,
+                    'description' => $project->name,
+                    'href' => "/projects/{$project->uuid}/{$e->uuid}",
+                    'has_children' => true,
+                    'child_type' => 'env_resources',
+                ]);
+            break;
+
+        case 'env_resources':
+            if (! $parentUuid) {
+                break;
+            }
+            $env = \App\Models\Environment::ownedByCurrentTeam()
+                ->where('uuid', $parentUuid)
+                ->with('project:id,uuid,name')
+                ->first();
+            if (! $env) {
+                break;
+            }
+            $projectName = $env->project->name ?? '';
+
+            // Applications
+            $items = $items->concat(
+                $env->applications()->select('id', 'uuid', 'name', 'fqdn')->get()
+                    ->map(fn ($a) => [
+                        'id' => $a->uuid,
+                        'name' => $a->name,
+                        'description' => $a->fqdn,
+                        'href' => "/applications/{$a->uuid}",
+                        'has_children' => false,
+                        'child_type' => null,
+                        'meta' => ['type' => 'application', 'project' => $projectName, 'environment' => $env->name],
+                    ])
+            );
+
+            // Services
+            $items = $items->concat(
+                $env->services()->select('id', 'uuid', 'name', 'description')->get()
+                    ->map(fn ($s) => [
+                        'id' => $s->uuid,
+                        'name' => $s->name,
+                        'description' => $s->description,
+                        'href' => "/services/{$s->uuid}",
+                        'has_children' => false,
+                        'child_type' => null,
+                        'meta' => ['type' => 'service', 'project' => $projectName, 'environment' => $env->name],
+                    ])
+            );
+
+            // Databases (all types)
+            foreach ($env->databases() as $db) {
+                $items->push([
+                    'id' => $db->uuid,
+                    'name' => $db->name,
+                    'description' => $db->description,
+                    'href' => "/databases/{$db->uuid}",
+                    'has_children' => false,
+                    'child_type' => null,
+                    'meta' => ['type' => 'database', 'project' => $projectName, 'environment' => $env->name],
+                ]);
+            }
+            break;
+
+        case 'servers':
+            $items = \App\Models\Server::ownedByCurrentTeam(['id', 'uuid', 'name', 'ip', 'description'])
+                ->get()
+                ->map(fn ($s) => [
+                    'id' => $s->uuid,
+                    'name' => $s->name,
+                    'description' => $s->description ?? $s->ip,
+                    'href' => "/servers/{$s->uuid}",
+                    'has_children' => false,
+                    'child_type' => null,
+                ]);
+            break;
+
+        case 'applications':
+            $items = \App\Models\Application::ownedByCurrentTeam()
+                ->with('environment:id,name,project_id', 'environment.project:id,name')
+                ->select('id', 'uuid', 'name', 'fqdn', 'description', 'environment_id')
+                ->get()
+                ->map(fn ($a) => [
+                    'id' => $a->uuid,
+                    'name' => $a->name,
+                    'description' => $a->description ?? $a->fqdn,
+                    'href' => "/applications/{$a->uuid}",
+                    'has_children' => false,
+                    'child_type' => null,
+                    'meta' => [
+                        'type' => 'application',
+                        'project' => $a->environment?->project?->name,
+                        'environment' => $a->environment?->name,
+                    ],
+                ]);
+            break;
+
+        case 'databases':
+            $databaseModels = [
+                \App\Models\StandalonePostgresql::class,
+                \App\Models\StandaloneMysql::class,
+                \App\Models\StandaloneMongodb::class,
+                \App\Models\StandaloneRedis::class,
+                \App\Models\StandaloneMariadb::class,
+                \App\Models\StandaloneKeydb::class,
+                \App\Models\StandaloneDragonfly::class,
+                \App\Models\StandaloneClickhouse::class,
+            ];
+            foreach ($databaseModels as $model) {
+                $items = $items->concat(
+                    $model::ownedByCurrentTeam()
+                        ->with('environment:id,name,project_id', 'environment.project:id,name')
+                        ->select('id', 'uuid', 'name', 'description', 'environment_id')
+                        ->get()
+                        ->map(fn ($db) => [
+                            'id' => $db->uuid,
+                            'name' => $db->name,
+                            'description' => $db->description,
+                            'href' => "/databases/{$db->uuid}",
+                            'has_children' => false,
+                            'child_type' => null,
+                            'meta' => [
+                                'type' => 'database',
+                                'project' => $db->environment?->project?->name,
+                                'environment' => $db->environment?->name,
+                            ],
+                        ])
+                );
+            }
+            break;
+
+        case 'services':
+            $items = \App\Models\Service::ownedByCurrentTeam()
+                ->with('environment:id,name,project_id', 'environment.project:id,name')
+                ->select('id', 'uuid', 'name', 'description', 'environment_id')
+                ->get()
+                ->map(fn ($s) => [
+                    'id' => $s->uuid,
+                    'name' => $s->name,
+                    'description' => $s->description,
+                    'href' => "/services/{$s->uuid}",
+                    'has_children' => false,
+                    'child_type' => null,
+                    'meta' => [
+                        'type' => 'service',
+                        'project' => $s->environment?->project?->name,
+                        'environment' => $s->environment?->name,
+                    ],
+                ]);
+            break;
+    }
+
+    return response()->json(['items' => $items->values()]);
+})->middleware('throttle:60,1')->name('web-api.command-palette.browse');

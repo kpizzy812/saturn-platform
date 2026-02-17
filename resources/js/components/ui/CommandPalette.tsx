@@ -2,7 +2,9 @@ import * as React from 'react';
 import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { useSearch } from '@/hooks/useSearch';
+import { usePaletteBrowse, type BrowseItem } from '@/hooks/usePaletteBrowse';
 import type { RecentResource } from '@/hooks/useRecentResources';
+import type { FavoriteResource } from '@/hooks/useResourceFrequency';
 import {
     Search,
     FolderKanban,
@@ -20,25 +22,37 @@ import {
     GitBranch,
     Clock,
     Loader2,
+    Star,
+    ChevronRight,
 } from 'lucide-react';
 
-interface CommandItem {
+export interface CommandItem {
     id: string;
     name: string;
     description?: string;
+    context?: string;
     icon: React.ReactNode;
     href?: string;
     action?: () => void;
     group: string;
+    has_children?: boolean;
+    child_type?: string;
+    parent_uuid?: string;
+}
+
+interface DrillDownLevel {
+    type: string;
+    label: string;
+    parentUuid?: string;
 }
 
 const commands: CommandItem[] = [
-    // Navigation
-    { id: 'dashboard', name: 'Dashboard', icon: <FolderKanban className="h-4 w-4" />, href: '/dashboard', group: 'navigation' },
-    { id: 'servers', name: 'Servers', icon: <Server className="h-4 w-4" />, href: '/servers', group: 'navigation' },
-    { id: 'applications', name: 'Applications', icon: <Layers className="h-4 w-4" />, href: '/applications', group: 'navigation' },
-    { id: 'services', name: 'Services', icon: <Box className="h-4 w-4" />, href: '/services', group: 'navigation' },
-    { id: 'databases', name: 'Databases', icon: <Database className="h-4 w-4" />, href: '/databases', group: 'navigation' },
+    // Navigation (drillable)
+    { id: 'dashboard', name: 'Dashboard', icon: <FolderKanban className="h-4 w-4" />, href: '/dashboard', group: 'navigation', has_children: true, child_type: 'projects' },
+    { id: 'servers', name: 'Servers', icon: <Server className="h-4 w-4" />, href: '/servers', group: 'navigation', has_children: true, child_type: 'servers' },
+    { id: 'applications', name: 'Applications', icon: <Layers className="h-4 w-4" />, href: '/applications', group: 'navigation', has_children: true, child_type: 'applications' },
+    { id: 'services', name: 'Services', icon: <Box className="h-4 w-4" />, href: '/services', group: 'navigation', has_children: true, child_type: 'services' },
+    { id: 'databases', name: 'Databases', icon: <Database className="h-4 w-4" />, href: '/databases', group: 'navigation', has_children: true, child_type: 'databases' },
     { id: 'activity', name: 'Activity', icon: <Activity className="h-4 w-4" />, href: '/activity', group: 'navigation' },
     { id: 'approvals', name: 'Approvals', description: 'Pending deployment, migration, and transfer approvals', icon: <ClipboardCheck className="h-4 w-4" />, href: '/approvals', group: 'navigation' },
     { id: 'transfers', name: 'Transfer History', description: 'View resource transfer history', icon: <ArrowRightLeft className="h-4 w-4" />, href: '/transfers', group: 'navigation' },
@@ -64,6 +78,7 @@ const RESOURCE_ICONS: Record<string, React.ReactNode> = {
 };
 
 const groupLabels: Record<string, string> = {
+    favorites: 'Favorites',
     recent: 'Recent',
     resources: 'Resources',
     navigation: 'Navigate',
@@ -71,24 +86,70 @@ const groupLabels: Record<string, string> = {
     settings: 'Settings',
 };
 
-const groupOrder = ['recent', 'resources', 'navigation', 'actions', 'settings'];
+const groupOrder = ['favorites', 'recent', 'resources', 'navigation', 'actions', 'settings'];
+
+function browseItemToCommand(item: BrowseItem): CommandItem {
+    const metaType = item.meta?.type;
+    const icon = metaType ? (RESOURCE_ICONS[metaType] || <Box className="h-4 w-4" />) : <FolderKanban className="h-4 w-4" />;
+    const context = item.meta?.project && item.meta?.environment
+        ? `${item.meta.project} / ${item.meta.environment}`
+        : undefined;
+
+    return {
+        id: `browse-${item.id}`,
+        name: item.name,
+        description: item.description || undefined,
+        context,
+        icon,
+        href: item.href,
+        group: 'navigation',
+        has_children: item.has_children,
+        child_type: item.child_type || undefined,
+        parent_uuid: item.id,
+    };
+}
 
 interface CommandPaletteProps {
     open: boolean;
     onClose: () => void;
     recentItems?: RecentResource[];
+    favorites?: FavoriteResource[];
 }
 
-export function CommandPalette({ open, onClose, recentItems = [] }: CommandPaletteProps) {
+export function CommandPalette({ open, onClose, recentItems = [], favorites = [] }: CommandPaletteProps) {
     const [query, setQuery] = React.useState('');
     const [selectedIndex, setSelectedIndex] = React.useState(0);
+    const [stack, setStack] = React.useState<DrillDownLevel[]>([]);
     const inputRef = React.useRef<HTMLInputElement>(null);
     const listRef = React.useRef<HTMLDivElement>(null);
     const { results: searchResults, isLoading: isSearching } = useSearch(open ? query : '');
+    const { items: browseItems, isLoading: isBrowsing, fetchBrowse, clearCache } = usePaletteBrowse();
+
+    const isInDrillDown = stack.length > 0;
+
+    // Fetch browse data when navigating into a level
+    React.useEffect(() => {
+        if (!open || stack.length === 0) return;
+        const current = stack[stack.length - 1];
+        fetchBrowse(current.type, current.parentUuid);
+    }, [open, stack, fetchBrowse]);
+
+    // Build favorite items
+    const favoriteCommandItems: CommandItem[] = React.useMemo(() => {
+        if (query !== '' || isInDrillDown || favorites.length === 0) return [];
+        return favorites.map((item) => ({
+            id: `fav-${item.type}-${item.id}`,
+            name: item.name,
+            icon: <Star className="h-4 w-4" />,
+            href: item.href,
+            group: 'favorites',
+            description: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+        }));
+    }, [query, favorites, isInDrillDown]);
 
     // Build recent items as CommandItems
     const recentCommandItems: CommandItem[] = React.useMemo(() => {
-        if (query !== '' || recentItems.length === 0) return [];
+        if (query !== '' || isInDrillDown || recentItems.length === 0) return [];
         return recentItems.map((item) => ({
             id: `recent-${item.type}-${item.uuid}`,
             name: item.name,
@@ -97,43 +158,80 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
             href: item.href,
             group: 'recent',
         }));
-    }, [query, recentItems]);
+    }, [query, recentItems, isInDrillDown]);
 
     // Build search results as CommandItems
     const searchCommandItems: CommandItem[] = React.useMemo(() => {
         if (query.length < 2 || searchResults.length === 0) return [];
-        return searchResults.map((item) => ({
-            id: `search-${item.type}-${item.uuid}`,
-            name: item.name,
-            description: item.description || (item.type.charAt(0).toUpperCase() + item.type.slice(1)),
-            icon: RESOURCE_ICONS[item.type] || <Box className="h-4 w-4" />,
-            href: item.href,
-            group: 'resources',
-        }));
+        return searchResults.map((item) => {
+            const context = item.project_name && item.environment_name
+                ? `${item.project_name} / ${item.environment_name}`
+                : item.project_name || undefined;
+            return {
+                id: `search-${item.type}-${item.uuid}`,
+                name: item.name,
+                description: item.description || (item.type.charAt(0).toUpperCase() + item.type.slice(1)),
+                context,
+                icon: RESOURCE_ICONS[item.type] || <Box className="h-4 w-4" />,
+                href: item.href,
+                group: 'resources',
+            };
+        });
     }, [query, searchResults]);
 
-    // Filter static commands by query
-    const filteredCommands = query === ''
-        ? commands
-        : commands.filter((command) =>
+    // Build items for drill-down mode
+    const drillDownCommandItems: CommandItem[] = React.useMemo(() => {
+        if (!isInDrillDown) return [];
+        return browseItems.map(browseItemToCommand);
+    }, [isInDrillDown, browseItems]);
+
+    // Filter static commands by query (only in root mode)
+    const filteredCommands = React.useMemo(() => {
+        if (isInDrillDown) return [];
+        if (query === '') return commands;
+        return commands.filter((command) =>
             command.name.toLowerCase().includes(query.toLowerCase()) ||
             command.description?.toLowerCase().includes(query.toLowerCase()),
         );
+    }, [query, isInDrillDown]);
 
     // Combine all items into groups
-    const allItems = [...recentCommandItems, ...searchCommandItems, ...filteredCommands];
+    const allItems = isInDrillDown
+        ? drillDownCommandItems
+        : [...favoriteCommandItems, ...recentCommandItems, ...searchCommandItems, ...filteredCommands];
 
     // Build grouped commands maintaining order
-    const groupedCommands = groupOrder.reduce((acc, group) => {
-        const items = allItems.filter((c) => c.group === group);
-        if (items.length > 0) {
-            acc.push({ group, items });
-        }
-        return acc;
-    }, [] as Array<{ group: string; items: CommandItem[] }>);
+    const groupedCommands = isInDrillDown
+        ? (drillDownCommandItems.length > 0 ? [{ group: 'navigation', items: drillDownCommandItems }] : [])
+        : groupOrder.reduce((acc, group) => {
+            const items = allItems.filter((c) => c.group === group);
+            if (items.length > 0) {
+                acc.push({ group, items });
+            }
+            return acc;
+        }, [] as Array<{ group: string; items: CommandItem[] }>);
 
     // Flat list for keyboard navigation
     const flatItems = groupedCommands.flatMap((g) => g.items);
+
+    const drillInto = React.useCallback((command: CommandItem) => {
+        if (command.child_type) {
+            setStack((prev) => [
+                ...prev,
+                { type: command.child_type!, label: command.name, parentUuid: command.parent_uuid },
+            ]);
+            setQuery('');
+            setSelectedIndex(0);
+        }
+    }, []);
+
+    const drillBack = React.useCallback(() => {
+        setStack((prev) => {
+            if (prev.length === 0) return prev;
+            return prev.slice(0, -1);
+        });
+        setSelectedIndex(0);
+    }, []);
 
     const executeCommand = React.useCallback((command: CommandItem) => {
         if (command.action) {
@@ -145,6 +243,7 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
         onClose();
         setQuery('');
         setSelectedIndex(0);
+        setStack([]);
     }, [onClose]);
 
     // Reset selected index when query changes
@@ -162,12 +261,13 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
         if (open) {
             setQuery('');
             setSelectedIndex(0);
-            // Small delay to ensure DOM is ready
+            setStack([]);
+            clearCache();
             requestAnimationFrame(() => {
                 inputRef.current?.focus();
             });
         }
-    }, [open]);
+    }, [open, clearCache]);
 
     // Scroll selected item into view
     React.useEffect(() => {
@@ -187,6 +287,17 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setSelectedIndex((prev) => Math.max(prev - 1, 0));
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            const selected = flatItems[selectedIndex];
+            if (selected?.has_children && selected?.child_type) {
+                drillInto(selected);
+            }
+        } else if (e.key === 'ArrowLeft' || (e.key === 'Backspace' && query === '')) {
+            if (isInDrillDown) {
+                e.preventDefault();
+                drillBack();
+            }
         } else if (e.key === 'Enter') {
             e.preventDefault();
             const selected = flatItems[selectedIndex];
@@ -195,7 +306,12 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
             }
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            onClose();
+            if (isInDrillDown) {
+                setStack([]);
+                setSelectedIndex(0);
+            } else {
+                onClose();
+            }
         }
     };
 
@@ -203,7 +319,10 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
 
     let globalIndex = 0;
     const hasQuery = query.length >= 2;
-    const noResults = hasQuery && !isSearching && searchCommandItems.length === 0 && filteredCommands.length === 0;
+    const isLoadingAny = isSearching || isBrowsing;
+    const noResults = isInDrillDown
+        ? !isBrowsing && drillDownCommandItems.length === 0
+        : hasQuery && !isSearching && searchCommandItems.length === 0 && filteredCommands.length === 0;
 
     return (
         <>
@@ -221,7 +340,7 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
                 >
                     {/* Search Input */}
                     <div className="flex items-center gap-3 border-b border-border px-5 py-1">
-                        {isSearching ? (
+                        {isLoadingAny ? (
                             <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
                         ) : (
                             <Search className="h-5 w-5 text-foreground-muted" />
@@ -230,7 +349,7 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
                             ref={inputRef}
                             type="text"
                             className="h-12 w-full bg-transparent text-foreground placeholder-foreground-muted focus:outline-none"
-                            placeholder="Search commands and resources..."
+                            placeholder={isInDrillDown ? `Search in ${stack[stack.length - 1]?.label}...` : 'Search commands and resources...'}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -240,20 +359,56 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
                         </kbd>
                     </div>
 
+                    {/* Breadcrumb */}
+                    {isInDrillDown && (
+                        <div className="flex items-center gap-1.5 border-b border-border px-5 py-2 text-xs text-foreground-muted">
+                            <button
+                                className="hover:text-foreground transition-colors"
+                                onClick={() => { setStack([]); setSelectedIndex(0); }}
+                            >
+                                Commands
+                            </button>
+                            {stack.map((level, i) => (
+                                <React.Fragment key={i}>
+                                    <ChevronRight className="h-3 w-3" />
+                                    <button
+                                        className={cn(
+                                            'transition-colors',
+                                            i === stack.length - 1 ? 'text-foreground font-medium' : 'hover:text-foreground',
+                                        )}
+                                        onClick={() => {
+                                            if (i < stack.length - 1) {
+                                                setStack((prev) => prev.slice(0, i + 1));
+                                                setSelectedIndex(0);
+                                            }
+                                        }}
+                                    >
+                                        {level.label}
+                                    </button>
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Results */}
                     <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
                         {noResults ? (
                             <div className="px-4 py-10 text-center text-foreground-muted">
-                                No results found for &ldquo;{query}&rdquo;
+                                {isInDrillDown
+                                    ? 'No items found'
+                                    : <>No results found for &ldquo;{query}&rdquo;</>
+                                }
                             </div>
                         ) : (
                             groupedCommands.map(({ group, items }) => {
                                 const startIndex = globalIndex;
                                 const rendered = (
                                     <div key={group} className="mb-2">
-                                        <div className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground-subtle">
-                                            {groupLabels[group]}
-                                        </div>
+                                        {!isInDrillDown && (
+                                            <div className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground-subtle">
+                                                {groupLabels[group]}
+                                            </div>
+                                        )}
                                         {items.map((command, idx) => {
                                             const itemIndex = startIndex + idx;
                                             return (
@@ -269,13 +424,29 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
                                                 >
                                                     <span className="text-foreground-muted">{command.icon}</span>
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="text-sm text-foreground">{command.name}</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm text-foreground">{command.name}</span>
+                                                            {command.context && (
+                                                                <span className="truncate text-xs text-foreground-subtle">
+                                                                    {command.context}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         {command.description && (
-                                                            <div className="text-xs text-foreground-muted">
+                                                            <div className="truncate text-xs text-foreground-muted">
                                                                 {command.description}
                                                             </div>
                                                         )}
                                                     </div>
+                                                    {command.has_children && (
+                                                        <ChevronRight
+                                                            className="h-4 w-4 shrink-0 text-foreground-subtle"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                drillInto(command);
+                                                            }}
+                                                        />
+                                                    )}
                                                 </button>
                                             );
                                         })}
@@ -298,6 +469,16 @@ export function CommandPalette({ open, onClose, recentItems = [] }: CommandPalet
                                 <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&crarr;</kbd>
                                 <span>select</span>
                             </span>
+                            <span className="flex items-center gap-2">
+                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&rarr;</kbd>
+                                <span>drill in</span>
+                            </span>
+                            {isInDrillDown && (
+                                <span className="flex items-center gap-2">
+                                    <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&larr;</kbd>
+                                    <span>back</span>
+                                </span>
+                            )}
                         </div>
                         <span className="text-foreground-subtle">Saturn</span>
                     </div>

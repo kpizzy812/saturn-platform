@@ -5,6 +5,7 @@ import { FlashMessages } from './FlashMessages';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
 import { PageTransition } from '@/components/animation';
 import { useRecentResources, type RecentResource } from '@/hooks/useRecentResources';
+import { useResourceFrequency } from '@/hooks/useResourceFrequency';
 import { ChevronRight } from 'lucide-react';
 
 export interface Breadcrumb {
@@ -70,8 +71,10 @@ const RESOURCE_PATTERNS: Array<{
 export function AppLayout({ children, title, showNewProject = true, breadcrumbs }: AppLayoutProps) {
     const commandPalette = useCommandPalette();
     const { recentItems, addRecent } = useRecentResources();
+    const { addVisit, getFavorites } = useResourceFrequency();
     const page = usePage();
     const url = page.url;
+    const favorites = React.useMemo(() => getFavorites(), [getFavorites]);
 
     // Track resource visits
     React.useEffect(() => {
@@ -87,6 +90,12 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
                         type,
                         name: resource.name,
                         uuid: resource.uuid,
+                        href: pathname,
+                    });
+                    addVisit({
+                        type,
+                        id: resource.uuid,
+                        name: resource.name,
                         href: pathname,
                     });
                 }
@@ -106,7 +115,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
                     <PageTransition>{children}</PageTransition>
                 </main>
             </div>
-            <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} recentItems={recentItems} />
+            <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} recentItems={recentItems} favorites={favorites} />
         </>
     );
 }
