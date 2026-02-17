@@ -1,0 +1,54 @@
+# =============================================================================
+# Saturn Platform - Caddy Reverse Proxy
+# =============================================================================
+# Runs once on VPS, routes traffic to all Saturn environments.
+# Caddy handles automatic HTTPS (Let's Encrypt) for all domains.
+#
+# Usage:
+#   docker compose -f docker-compose.proxy.yml up -d
+#
+# Domains:
+#   dev.saturn.ac    → saturn-dev:8080
+#   uat.saturn.ac    → saturn-staging:8080
+#   saturn.ac        → saturn-production:8080
+# =============================================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: saturn-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - /data/saturn/shared/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      - caddy-logs:/var/log/caddy
+    networks:
+      - saturn-proxy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+volumes:
+  caddy-data:
+    name: saturn-caddy-data
+  caddy-config:
+    name: saturn-caddy-config
+  caddy-logs:
+    name: saturn-caddy-logs
+
+networks:
+  saturn-proxy:
+    name: saturn-proxy
+    driver: bridge

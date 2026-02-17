@@ -1,16 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# Saturn Platform - Deployment Script
+# Saturn Platform - Deployment Script (Multi-Environment)
 # =============================================================================
-# Deploys Saturn to /data/saturn on the server.
+# Deploys Saturn to an isolated environment on the server.
+# Each environment has its own DB, Redis, network, and data directory.
 #
 # Usage:
-#   ./deploy.sh              # Deploy (default)
-#   ./deploy.sh --rollback   # Rollback to previous backup
+#   SATURN_ENV=dev ./deploy.sh              # Deploy dev environment
+#   SATURN_ENV=staging ./deploy.sh          # Deploy staging environment
+#   SATURN_ENV=production ./deploy.sh       # Deploy production environment
+#   SATURN_ENV=dev ./deploy.sh --rollback   # Rollback dev environment
 #
 # Environment variables:
-#   SATURN_IMAGE_TAG  - Docker image tag (default: main)
-#   REGISTRY_URL      - Docker registry (default: ghcr.io)
+#   SATURN_ENV        - Required: dev|staging|production
+#   SATURN_IMAGE      - Docker image (default: ghcr.io/kpizzy812/saturn-platform:latest)
 # =============================================================================
 
 set -euo pipefail
@@ -23,11 +26,11 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_step() { echo -e "${CYAN}[STEP]${NC} $1"; }
+log_info() { echo -e "${BLUE}[${SATURN_ENV}][INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[${SATURN_ENV}][OK]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[${SATURN_ENV}][WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[${SATURN_ENV}][ERROR]${NC} $1"; }
+log_step() { echo -e "${CYAN}[${SATURN_ENV}][STEP]${NC} $1"; }
 
 # =============================================================================
 # Configuration
@@ -35,14 +38,40 @@ log_step() { echo -e "${CYAN}[STEP]${NC} $1"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Data directory on server
-SATURN_DATA="/data/saturn"
+# Validate SATURN_ENV
+SATURN_ENV="${SATURN_ENV:?SATURN_ENV is required (dev|staging|production)}"
+case "$SATURN_ENV" in
+    dev|staging|production) ;;
+    *) echo "ERROR: SATURN_ENV must be dev, staging, or production (got: $SATURN_ENV)"; exit 1 ;;
+esac
 
-# Docker settings - Saturn image from GHCR
+# Data directory — isolated per environment
+SATURN_DATA="/data/saturn/${SATURN_ENV}"
+
+# Docker image
 SATURN_IMAGE="${SATURN_IMAGE:-ghcr.io/kpizzy812/saturn-platform:latest}"
+
+# Container names
+CONTAINER_APP="saturn-${SATURN_ENV}"
+CONTAINER_DB="saturn-db-${SATURN_ENV}"
+CONTAINER_REDIS="saturn-redis-${SATURN_ENV}"
+CONTAINER_REALTIME="saturn-realtime-${SATURN_ENV}"
 
 # Action
 ACTION="${1:-deploy}"
+
+# =============================================================================
+# Docker Compose Helper
+# =============================================================================
+compose_cmd() {
+    cd "$PROJECT_ROOT"
+    export SATURN_ENV SATURN_IMAGE
+    docker compose \
+        -f docker-compose.env.yml \
+        -p "saturn-${SATURN_ENV}" \
+        --env-file "${SATURN_DATA}/source/.env" \
+        "$@"
+}
 
 # =============================================================================
 # Validation
@@ -60,10 +89,17 @@ validate_prerequisites() {
         exit 1
     fi
 
+    # Ensure saturn-proxy network exists
+    if ! docker network inspect saturn-proxy &>/dev/null 2>&1; then
+        log_info "Creating shared network 'saturn-proxy'..."
+        docker network create saturn-proxy
+        log_success "Network 'saturn-proxy' created"
+    fi
+
     # Check .env file
     if [[ ! -f "${SATURN_DATA}/source/.env" ]]; then
         log_error ".env file not found at ${SATURN_DATA}/source/.env"
-        log_info "Copy deploy/environments/dev/.env.example to ${SATURN_DATA}/source/.env"
+        log_info "Copy deploy/environments/${SATURN_ENV}/.env.example to ${SATURN_DATA}/source/.env"
         log_info "Then configure it with your settings"
         exit 1
     fi
@@ -75,23 +111,9 @@ validate_prerequisites() {
     mkdir -p "${SATURN_DATA}/databases"
     mkdir -p "${SATURN_DATA}/services"
     mkdir -p "${SATURN_DATA}/backups"
-    mkdir -p "${SATURN_DATA}/uploads"  # For avatars, logos, and other public uploads
+    mkdir -p "${SATURN_DATA}/uploads"
 
     log_success "Prerequisites OK"
-}
-
-# =============================================================================
-# Docker Compose Helper
-# =============================================================================
-compose_cmd() {
-    cd "$PROJECT_ROOT"
-    export SATURN_IMAGE
-    docker compose \
-        -f docker-compose.yml \
-        -f docker-compose.prod.yml \
-        -f docker-compose.dev.override.yml \
-        --env-file "${SATURN_DATA}/source/.env" \
-        "$@"
 }
 
 # =============================================================================
@@ -105,8 +127,8 @@ backup_database() {
 
     mkdir -p "$backup_dir"
 
-    if docker ps --format '{{.Names}}' | grep -q "^saturn-db$"; then
-        docker exec saturn-db pg_dump -U saturn -d saturn \
+    if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_DB}$"; then
+        docker exec "${CONTAINER_DB}" pg_dump -U saturn -d saturn \
             > "${backup_dir}/pre_deploy_${timestamp}.sql" 2>/dev/null || true
         log_success "Backup: pre_deploy_${timestamp}.sql"
     else
@@ -133,11 +155,6 @@ stop_services() {
 
     compose_cmd down --remove-orphans 2>/dev/null || true
 
-    # Clean up any orphaned containers with mangled names
-    for name in saturn-dev saturn-db saturn-redis saturn-realtime; do
-        docker ps -a --format '{{.Names}}' | grep "_${name}$" | xargs -r docker rm -f 2>/dev/null || true
-    done
-
     log_success "Services stopped"
 }
 
@@ -152,7 +169,6 @@ start_infrastructure() {
 run_migrations() {
     log_step "Running migrations (before app starts)..."
 
-    # Run migrations via temporary container — app is NOT serving traffic yet
     compose_cmd run --rm --no-deps saturn php artisan migrate --force || {
         log_error "Migration failed"
         exit 1
@@ -169,7 +185,7 @@ start_app() {
     # Wait for app container to be ready
     local retries=30
     while [[ $retries -gt 0 ]]; do
-        if docker ps --format '{{.Names}}' | grep -q "^saturn-dev$"; then
+        if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_APP}$"; then
             break
         fi
         sleep 1
@@ -177,16 +193,16 @@ start_app() {
     done
 
     if [[ $retries -eq 0 ]]; then
-        log_error "Container saturn-dev did not start"
+        log_error "Container ${CONTAINER_APP} did not start"
         exit 1
     fi
 
-    # Wait for container health before running post-deploy commands
+    # Wait for container health
     log_info "Waiting for app container to be healthy..."
     sleep 5
 
-    # Create storage symlink for public uploads (avatars, logos)
-    docker exec saturn-dev php artisan storage:link --force 2>/dev/null || true
+    # Create storage symlink for public uploads
+    docker exec "${CONTAINER_APP}" php artisan storage:link --force 2>/dev/null || true
 
     log_success "App started"
 }
@@ -194,7 +210,7 @@ start_app() {
 run_seeders() {
     log_step "Running seeders..."
 
-    docker exec saturn-dev php artisan db:seed --class=ProductionSeeder --force || {
+    docker exec "${CONTAINER_APP}" php artisan db:seed --class=ProductionSeeder --force || {
         log_warn "ProductionSeeder failed (may be expected on first run)"
     }
 
@@ -204,9 +220,9 @@ run_seeders() {
 clear_caches() {
     log_step "Rebuilding caches..."
 
-    docker exec saturn-dev php artisan config:cache || true
-    docker exec saturn-dev php artisan route:cache || true
-    docker exec saturn-dev php artisan view:cache || true
+    docker exec "${CONTAINER_APP}" php artisan config:cache || true
+    docker exec "${CONTAINER_APP}" php artisan route:cache || true
+    docker exec "${CONTAINER_APP}" php artisan view:cache || true
 
     log_success "Caches rebuilt"
 }
@@ -218,7 +234,8 @@ health_check() {
     local retry=0
 
     while [[ $retry -lt $max_retries ]]; do
-        if curl -sf "http://127.0.0.1:8000/api/health" > /dev/null 2>&1; then
+        # Health check via docker exec (no host ports exposed)
+        if docker exec "${CONTAINER_APP}" curl -sf "http://127.0.0.1:8080/api/health" > /dev/null 2>&1; then
             log_success "Health check passed!"
             return 0
         fi
@@ -257,7 +274,7 @@ rollback() {
     fi
 
     log_info "Restoring from: $(basename $latest_backup)"
-    docker exec -i saturn-db psql -U saturn -d saturn < "$latest_backup"
+    docker exec -i "${CONTAINER_DB}" psql -U saturn -d saturn < "$latest_backup"
 
     log_success "Rollback completed"
 }
@@ -268,8 +285,9 @@ rollback() {
 deploy() {
     echo ""
     echo "============================================"
-    echo -e "${CYAN}Saturn Platform - Deploy${NC}"
+    echo -e "${CYAN}Saturn Platform - Deploy [${SATURN_ENV}]${NC}"
     echo "============================================"
+    echo "Env:   ${SATURN_ENV}"
     echo "Data:  ${SATURN_DATA}"
     echo "Image: ${SATURN_IMAGE}"
     echo ""
@@ -284,9 +302,9 @@ deploy() {
     backup_database
     pull_images
     stop_services
-    start_infrastructure    # 1. Start DB, Redis, Soketi (wait for healthy)
-    run_migrations          # 2. Run migrations BEFORE app starts serving traffic
-    start_app               # 3. Start Saturn app (schema is already up to date)
+    start_infrastructure
+    run_migrations
+    start_app
     run_seeders
     clear_caches
     cleanup_old_backups
@@ -294,19 +312,17 @@ deploy() {
     if health_check; then
         echo ""
         echo "============================================"
-        echo -e "${GREEN}Deployment Successful!${NC}"
+        echo -e "${GREEN}[${SATURN_ENV}] Deployment Successful!${NC}"
         echo "============================================"
         echo ""
-        echo "Saturn is running at: http://YOUR_SERVER_IP:8000"
-        echo ""
         echo "Commands:"
-        echo "  Logs:  docker logs -f saturn-dev"
-        echo "  Shell: docker exec -it saturn-dev sh"
-        echo "  DB:    docker exec -it saturn-db psql -U saturn"
+        echo "  Logs:  docker logs -f ${CONTAINER_APP}"
+        echo "  Shell: docker exec -it ${CONTAINER_APP} sh"
+        echo "  DB:    docker exec -it ${CONTAINER_DB} psql -U saturn"
         echo ""
     else
         log_error "Deployment done but health check failed"
-        log_error "Check: docker logs saturn-dev"
+        log_error "Check: docker logs ${CONTAINER_APP}"
         exit 1
     fi
 }

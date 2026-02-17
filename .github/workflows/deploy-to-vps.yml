@@ -1,15 +1,18 @@
 # =============================================================================
-# Saturn Platform - VPS Deployment Workflow
+# Saturn Platform - Multi-Environment VPS Deployment Workflow
 # =============================================================================
-# Runs tests, builds Saturn Docker image, and deploys to your VPS via SSH.
+# Builds Saturn Docker image and deploys to isolated environments on VPS.
 #
 # Triggers:
-#   - Push to dev/main → Test + Build image + Auto deploy
-#   - Manual trigger
+#   - Push to dev      → auto-deploy to dev.saturn.ac
+#   - Push to staging   → auto-deploy to uat.saturn.ac
+#   - Push to main      → manual approval → deploy to saturn.ac
+#   - Manual trigger (workflow_dispatch)
 #
 # GitHub Environments:
-#   - development (dev branch)   - Dev server secrets
-#   - production (main branch)   - Production server secrets
+#   - development (dev branch)     - auto deploy, no approval
+#   - staging (staging branch)     - auto deploy, no approval
+#   - production (main branch)     - requires manual approval
 #
 # Required Secrets (per environment):
 #   - VPS_HOST        - Server IP
@@ -25,6 +28,7 @@ on:
   push:
     branches:
       - dev
+      - staging
       - main
     paths-ignore:
       - '**.md'
@@ -48,7 +52,54 @@ env:
 
 jobs:
   # =============================================================================
-  # Job 1: Run tests and static analysis (temporarily disabled)
+  # Job 1: Determine environment from branch
+  # =============================================================================
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      saturn_env: ${{ steps.env.outputs.saturn_env }}
+      image_tag: ${{ steps.env.outputs.image_tag }}
+      domain: ${{ steps.env.outputs.domain }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          case "${{ github.ref_name }}" in
+            dev)
+              echo "environment=development" >> $GITHUB_OUTPUT
+              echo "saturn_env=dev" >> $GITHUB_OUTPUT
+              echo "image_tag=dev" >> $GITHUB_OUTPUT
+              echo "domain=dev.saturn.ac" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "environment=staging" >> $GITHUB_OUTPUT
+              echo "saturn_env=staging" >> $GITHUB_OUTPUT
+              echo "image_tag=staging" >> $GITHUB_OUTPUT
+              echo "domain=uat.saturn.ac" >> $GITHUB_OUTPUT
+              ;;
+            main)
+              echo "environment=production" >> $GITHUB_OUTPUT
+              echo "saturn_env=production" >> $GITHUB_OUTPUT
+              echo "image_tag=latest" >> $GITHUB_OUTPUT
+              echo "domain=saturn.ac" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "ERROR: Unsupported branch: ${{ github.ref_name }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Print environment info
+        run: |
+          echo "Branch:      ${{ github.ref_name }}"
+          echo "Environment: ${{ steps.env.outputs.environment }}"
+          echo "SATURN_ENV:  ${{ steps.env.outputs.saturn_env }}"
+          echo "Image tag:   ${{ steps.env.outputs.image_tag }}"
+          echo "Domain:      ${{ steps.env.outputs.domain }}"
+
+  # =============================================================================
+  # Job 2: Run tests and static analysis (temporarily disabled)
   # =============================================================================
   test:
     if: false
@@ -101,36 +152,16 @@ jobs:
       - name: Run PHPStan (static analysis)
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
-      # TODO: Re-enable when pre-existing test failures are fixed
-      # - name: Run PHP Unit tests
-      #   timeout-minutes: 5
-      #   run: php -d memory_limit=1G ./vendor/bin/pest tests/Unit
-
-      # - name: Set up Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '20'
-      #     cache: 'npm'
-
-      # - name: Install JS dependencies
-      #   run: npm ci
-
-      # - name: Run JS tests
-      #   timeout-minutes: 3
-      #   run: npm run test -- --run
-
   # =============================================================================
-  # Job 2: Build and push Docker image
+  # Job 3: Build and push Docker image
   # =============================================================================
   build:
-    # needs: [test]  # TODO: re-enable when test job is active
+    needs: [prepare]
     if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
     steps:
       - uses: actions/checkout@v4
 
@@ -169,13 +200,13 @@ jobs:
             CLOUDFLARED_VERSION=2025.7.0
 
   # =============================================================================
-  # Job 3: Deploy to VPS
+  # Job 4: Deploy to VPS
   # =============================================================================
   deploy:
-    needs: [build]  # TODO: add test back when re-enabled
+    needs: [prepare, build]
     if: always() && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
-    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+    environment: ${{ needs.prepare.outputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -188,9 +219,12 @@ jobs:
           ssh-keyscan -p ${{ secrets.VPS_PORT }} ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Copy deployment files
+        env:
+          SATURN_ENV: ${{ needs.prepare.outputs.saturn_env }}
         run: |
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no" \
-            --include='docker-compose*.yml' \
+            --include='docker-compose.env.yml' \
+            --include='docker-compose.proxy.yml' \
             --include='deploy/***' \
             --exclude='*' \
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/saturn/
@@ -198,21 +232,21 @@ jobs:
       - name: Deploy .env file
         env:
           PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+          SATURN_ENV: ${{ needs.prepare.outputs.saturn_env }}
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENV_SCRIPT'
-          mkdir -p /data/saturn/source
-          ENV_SCRIPT
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p /data/saturn/${SATURN_ENV}/source"
 
-          # Write .env file securely (not via heredoc to avoid expansion issues)
+          # Write .env file securely
           echo "$PRODUCTION_ENV" | ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /data/saturn/source/.env"
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /data/saturn/${SATURN_ENV}/source/.env"
 
-          echo "✓ .env deployed to /data/saturn/source/.env"
+          echo "✓ .env deployed to /data/saturn/${SATURN_ENV}/source/.env"
 
       - name: Deploy to VPS
         env:
           SATURN_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          SATURN_ENV: ${{ needs.prepare.outputs.saturn_env }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
@@ -225,6 +259,7 @@ jobs:
           cd ~/saturn
           chmod +x deploy/scripts/*.sh
           export SATURN_IMAGE="${SATURN_IMAGE}"
+          export SATURN_ENV="${SATURN_ENV}"
           ./deploy/scripts/deploy.sh
 
           # Logout from GHCR
@@ -236,7 +271,16 @@ jobs:
         run: rm -f ~/.ssh/deploy_key
 
       - name: Deployment summary
+        env:
+          SATURN_ENV: ${{ needs.prepare.outputs.saturn_env }}
+          DOMAIN: ${{ needs.prepare.outputs.domain }}
         run: |
           echo "## Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL:** http://${{ secrets.VPS_HOST }}:8000" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | \`${SATURN_ENV}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | https://${DOMAIN} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,112 @@
+# =============================================================================
+# Saturn Platform - Caddy Reverse Proxy Configuration
+# =============================================================================
+# Routes traffic to isolated Saturn environments.
+# Caddy automatically obtains and renews TLS certificates via Let's Encrypt.
+# =============================================================================
+
+# Global options
+{
+	email admin@saturn.ac
+	admin localhost:2019
+}
+
+# =============================================================================
+# Development — dev.saturn.ac → saturn-dev
+# =============================================================================
+dev.saturn.ac {
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-XSS-Protection "1; mode=block"
+		-Server
+	}
+
+	# WebSocket — /app/* and /apps/* paths used by Soketi/Pusher
+	@websocket {
+		path /app/*
+		path /apps/*
+	}
+	reverse_proxy @websocket saturn-realtime-dev:6001
+
+	# All other traffic to Saturn app
+	reverse_proxy saturn-dev:8080
+
+	# Access log
+	log {
+		output file /var/log/caddy/dev-access.log {
+			roll_size 50mb
+			roll_keep 5
+		}
+		format json
+	}
+}
+
+# =============================================================================
+# Staging (UAT) — uat.saturn.ac → saturn-staging
+# =============================================================================
+uat.saturn.ac {
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-XSS-Protection "1; mode=block"
+		-Server
+	}
+
+	# WebSocket
+	@websocket {
+		path /app/*
+		path /apps/*
+	}
+	reverse_proxy @websocket saturn-realtime-staging:6001
+
+	# All other traffic to Saturn app
+	reverse_proxy saturn-staging:8080
+
+	# Access log
+	log {
+		output file /var/log/caddy/staging-access.log {
+			roll_size 50mb
+			roll_keep 5
+		}
+		format json
+	}
+}
+
+# =============================================================================
+# Production — saturn.ac → saturn-production
+# =============================================================================
+saturn.ac {
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-XSS-Protection "1; mode=block"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+
+	# WebSocket
+	@websocket {
+		path /app/*
+		path /apps/*
+	}
+	reverse_proxy @websocket saturn-realtime-production:6001
+
+	# All other traffic to Saturn app
+	reverse_proxy saturn-production:8080
+
+	# Access log
+	log {
+		output file /var/log/caddy/production-access.log {
+			roll_size 100mb
+			roll_keep 10
+		}
+		format json
+	}
+}

@@ -1,9 +1,9 @@
 #!/bin/bash
 # =============================================================================
-# Saturn Platform - Server Setup Script
+# Saturn Platform - Server Setup Script (Multi-Environment)
 # =============================================================================
-# This script prepares a fresh Ubuntu/Debian VPS for Saturn deployment.
-# Run this once on a new server before first deployment.
+# Prepares a fresh Ubuntu/Debian VPS for Saturn deployment with 3 isolated
+# environments: dev, staging, production.
 #
 # Usage: curl -sSL <raw-url> | sudo bash
 # Or:    sudo bash setup-server.sh
@@ -29,6 +29,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 SATURN_USER="${SATURN_USER:-saturn}"
 SATURN_HOME="/home/${SATURN_USER}"
 SATURN_DATA="/data/saturn"
+ENVIRONMENTS=("dev" "staging" "production")
 
 # =============================================================================
 # Pre-flight checks
@@ -139,32 +140,59 @@ create_saturn_user() {
 }
 
 # =============================================================================
-# Directory Structure
+# Directory Structure (Multi-Environment)
 # =============================================================================
 create_directories() {
-    log_info "Creating Saturn directory structure..."
+    log_info "Creating Saturn directory structure for all environments..."
 
-    mkdir -p "${SATURN_DATA}"/{source,ssh,applications,databases,services,backups}
+    # Per-environment directories
+    for env in "${ENVIRONMENTS[@]}"; do
+        log_info "  Creating directories for '${env}'..."
+        mkdir -p "${SATURN_DATA}/${env}"/{source,ssh/keys,applications,databases,services,backups,uploads}
+    done
+
+    # Shared directories (proxy, caddy)
+    mkdir -p "${SATURN_DATA}/shared/proxy"
+    mkdir -p "${SATURN_DATA}/shared/caddy-logs"
+
+    # Home directory
     mkdir -p "${SATURN_HOME}/saturn"
 
     # Set permissions
     chown -R "${SATURN_USER}:${SATURN_USER}" "${SATURN_DATA}"
     chown -R "${SATURN_USER}:${SATURN_USER}" "${SATURN_HOME}/saturn"
 
-    log_success "Directory structure created at ${SATURN_DATA}"
+    log_success "Directory structure created:"
+    for env in "${ENVIRONMENTS[@]}"; do
+        echo "    ${SATURN_DATA}/${env}/"
+    done
+    echo "    ${SATURN_DATA}/shared/"
 }
 
 # =============================================================================
-# Docker Network
+# Docker Networks (Multi-Environment)
 # =============================================================================
-create_docker_network() {
-    if docker network inspect saturn &>/dev/null; then
-        log_info "Docker network 'saturn' already exists"
+create_docker_networks() {
+    # Shared proxy network
+    if docker network inspect saturn-proxy &>/dev/null; then
+        log_info "Docker network 'saturn-proxy' already exists"
     else
-        log_info "Creating Docker network 'saturn'..."
-        docker network create saturn
-        log_success "Docker network 'saturn' created"
+        log_info "Creating Docker network 'saturn-proxy'..."
+        docker network create saturn-proxy
+        log_success "Docker network 'saturn-proxy' created"
     fi
+
+    # Per-environment isolated networks
+    for env in "${ENVIRONMENTS[@]}"; do
+        local net="saturn-${env}"
+        if docker network inspect "$net" &>/dev/null; then
+            log_info "Docker network '${net}' already exists"
+        else
+            log_info "Creating Docker network '${net}'..."
+            docker network create "$net"
+            log_success "Docker network '${net}' created"
+        fi
+    done
 }
 
 # =============================================================================
@@ -183,18 +211,15 @@ setup_firewall() {
     # Allow SSH
     ufw allow ssh
 
-    # Allow HTTP/HTTPS
+    # Allow HTTP/HTTPS (Caddy handles all traffic)
     ufw allow 80/tcp
     ufw allow 443/tcp
-
-    # Allow Saturn ports (adjust based on your needs)
-    ufw allow 8000:8010/tcp  # Saturn app ports for multiple environments
-    ufw allow 6001/tcp       # Soketi WebSocket
+    ufw allow 443/udp   # HTTP/3
 
     # Enable firewall
     ufw --force enable
 
-    log_success "Firewall configured"
+    log_success "Firewall configured (ports: 22, 80, 443)"
 }
 
 # =============================================================================
@@ -250,7 +275,7 @@ setup_swap() {
 }
 
 # =============================================================================
-# SSH Hardening (optional)
+# SSH Hardening
 # =============================================================================
 harden_ssh() {
     log_info "Hardening SSH configuration..."
@@ -258,7 +283,7 @@ harden_ssh() {
     # Backup original config
     cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
 
-    # Apply hardening (but keep password auth for now - user should configure keys manually)
+    # Apply hardening
     sed -i 's/#PermitRootLogin yes/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
     sed -i 's/#MaxAuthTries 6/MaxAuthTries 3/' /etc/ssh/sshd_config
 
@@ -271,7 +296,8 @@ harden_ssh() {
 # Generate Deploy Key
 # =============================================================================
 generate_deploy_key() {
-    DEPLOY_KEY_PATH="${SATURN_DATA}/ssh/deploy_key"
+    # Shared deploy key for all environments
+    DEPLOY_KEY_PATH="${SATURN_DATA}/shared/deploy_key"
 
     if [[ -f "${DEPLOY_KEY_PATH}" ]]; then
         log_info "Deploy key already exists"
@@ -300,27 +326,32 @@ print_summary() {
     echo -e "${GREEN}Saturn Platform Server Setup Complete!${NC}"
     echo "============================================================================="
     echo ""
-    echo "Created directories:"
-    echo "  - ${SATURN_DATA}/source    - Application source code"
-    echo "  - ${SATURN_DATA}/ssh       - SSH keys"
-    echo "  - ${SATURN_DATA}/applications - Application data"
-    echo "  - ${SATURN_DATA}/databases - Database files"
-    echo "  - ${SATURN_DATA}/backups   - Backup files"
+    echo "Environments:"
+    for env in "${ENVIRONMENTS[@]}"; do
+        echo "  - ${SATURN_DATA}/${env}/   (source, ssh, applications, databases, backups)"
+    done
+    echo "  - ${SATURN_DATA}/shared/   (proxy config, deploy key)"
+    echo ""
+    echo "Docker networks:"
+    echo "  - saturn-proxy       (shared, connects Caddy to all environments)"
+    echo "  - saturn-dev         (isolated dev network)"
+    echo "  - saturn-staging     (isolated staging network)"
+    echo "  - saturn-production  (isolated production network)"
     echo ""
     echo "User: ${SATURN_USER}"
-    echo "Docker network: saturn"
+    echo ""
+    echo "Firewall ports:"
+    echo "  - 22 (SSH)"
+    echo "  - 80, 443 (HTTP/HTTPS via Caddy)"
     echo ""
     echo "Next steps:"
-    echo "  1. Add the deploy key to your GitHub repository"
-    echo "  2. Clone your repository to ${SATURN_DATA}/source"
-    echo "  3. Copy .env.example to .env and configure"
-    echo "  4. Run: docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d"
-    echo ""
-    echo "Firewall ports opened:"
-    echo "  - 22 (SSH)"
-    echo "  - 80, 443 (HTTP/HTTPS)"
-    echo "  - 8000-8010 (Saturn environments)"
-    echo "  - 6001 (WebSocket)"
+    echo "  1. Add DNS records: dev.saturn.ac, uat.saturn.ac, saturn.ac → this server"
+    echo "  2. Configure .env for each environment:"
+    echo "       cp deploy/environments/dev/.env.example ${SATURN_DATA}/dev/source/.env"
+    echo "       cp deploy/environments/staging/.env.example ${SATURN_DATA}/staging/source/.env"
+    echo "       cp deploy/environments/production/.env.example ${SATURN_DATA}/production/source/.env"
+    echo "  3. Start Caddy proxy:  bash deploy/scripts/setup-proxy.sh"
+    echo "  4. Deploy:  SATURN_ENV=dev ./deploy/scripts/deploy.sh"
     echo ""
 }
 
@@ -330,7 +361,7 @@ print_summary() {
 main() {
     echo ""
     echo "============================================================================="
-    echo "Saturn Platform - Server Setup Script"
+    echo "Saturn Platform - Server Setup Script (Multi-Environment)"
     echo "============================================================================="
     echo ""
 
@@ -342,7 +373,7 @@ main() {
     install_docker
     create_saturn_user
     create_directories
-    create_docker_network
+    create_docker_networks
     setup_swap
     setup_firewall
     setup_fail2ban
