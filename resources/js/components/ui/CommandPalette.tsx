@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
+import { useSearch } from '@/hooks/useSearch';
+import type { RecentResource } from '@/hooks/useRecentResources';
 import {
     Search,
     FolderKanban,
@@ -16,6 +18,8 @@ import {
     ClipboardCheck,
     ArrowRightLeft,
     GitBranch,
+    Clock,
+    Loader2,
 } from 'lucide-react';
 
 interface CommandItem {
@@ -25,13 +29,12 @@ interface CommandItem {
     icon: React.ReactNode;
     href?: string;
     action?: () => void;
-    group: 'navigation' | 'actions' | 'settings';
+    group: string;
 }
 
 const commands: CommandItem[] = [
     // Navigation
     { id: 'dashboard', name: 'Dashboard', icon: <FolderKanban className="h-4 w-4" />, href: '/dashboard', group: 'navigation' },
-    { id: 'projects', name: 'Projects', icon: <FolderKanban className="h-4 w-4" />, href: '/projects', group: 'navigation' },
     { id: 'servers', name: 'Servers', icon: <Server className="h-4 w-4" />, href: '/servers', group: 'navigation' },
     { id: 'applications', name: 'Applications', icon: <Layers className="h-4 w-4" />, href: '/applications', group: 'navigation' },
     { id: 'services', name: 'Services', icon: <Box className="h-4 w-4" />, href: '/services', group: 'navigation' },
@@ -39,7 +42,7 @@ const commands: CommandItem[] = [
     { id: 'activity', name: 'Activity', icon: <Activity className="h-4 w-4" />, href: '/activity', group: 'navigation' },
     { id: 'approvals', name: 'Approvals', description: 'Pending deployment, migration, and transfer approvals', icon: <ClipboardCheck className="h-4 w-4" />, href: '/approvals', group: 'navigation' },
     { id: 'transfers', name: 'Transfer History', description: 'View resource transfer history', icon: <ArrowRightLeft className="h-4 w-4" />, href: '/transfers', group: 'navigation' },
-    { id: 'migrations', name: 'Migrations', description: 'Environment migrations (dev → uat → prod)', icon: <GitBranch className="h-4 w-4" />, href: '/migrations', group: 'navigation' },
+    { id: 'migrations', name: 'Migrations', description: 'Environment migrations (dev \u2192 uat \u2192 prod)', icon: <GitBranch className="h-4 w-4" />, href: '/migrations', group: 'navigation' },
 
     // Actions
     { id: 'new-project', name: 'New Project', description: 'Create a new project', icon: <Plus className="h-4 w-4" />, href: '/projects/create', group: 'actions' },
@@ -52,35 +55,77 @@ const commands: CommandItem[] = [
     { id: 'team', name: 'Team', icon: <Users className="h-4 w-4" />, href: '/settings/team', group: 'settings' },
 ];
 
+const RESOURCE_ICONS: Record<string, React.ReactNode> = {
+    project: <FolderKanban className="h-4 w-4" />,
+    server: <Server className="h-4 w-4" />,
+    application: <Layers className="h-4 w-4" />,
+    database: <Database className="h-4 w-4" />,
+    service: <Box className="h-4 w-4" />,
+};
+
 const groupLabels: Record<string, string> = {
+    recent: 'Recent',
+    resources: 'Resources',
     navigation: 'Navigate',
     actions: 'Actions',
     settings: 'Settings',
 };
 
-const groupOrder: Array<CommandItem['group']> = ['navigation', 'actions', 'settings'];
+const groupOrder = ['recent', 'resources', 'navigation', 'actions', 'settings'];
 
 interface CommandPaletteProps {
     open: boolean;
     onClose: () => void;
+    recentItems?: RecentResource[];
 }
 
-export function CommandPalette({ open, onClose }: CommandPaletteProps) {
+export function CommandPalette({ open, onClose, recentItems = [] }: CommandPaletteProps) {
     const [query, setQuery] = React.useState('');
     const [selectedIndex, setSelectedIndex] = React.useState(0);
     const inputRef = React.useRef<HTMLInputElement>(null);
     const listRef = React.useRef<HTMLDivElement>(null);
+    const { results: searchResults, isLoading: isSearching } = useSearch(open ? query : '');
 
+    // Build recent items as CommandItems
+    const recentCommandItems: CommandItem[] = React.useMemo(() => {
+        if (query !== '' || recentItems.length === 0) return [];
+        return recentItems.map((item) => ({
+            id: `recent-${item.type}-${item.uuid}`,
+            name: item.name,
+            description: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+            icon: <Clock className="h-4 w-4" />,
+            href: item.href,
+            group: 'recent',
+        }));
+    }, [query, recentItems]);
+
+    // Build search results as CommandItems
+    const searchCommandItems: CommandItem[] = React.useMemo(() => {
+        if (query.length < 2 || searchResults.length === 0) return [];
+        return searchResults.map((item) => ({
+            id: `search-${item.type}-${item.uuid}`,
+            name: item.name,
+            description: item.description || (item.type.charAt(0).toUpperCase() + item.type.slice(1)),
+            icon: RESOURCE_ICONS[item.type] || <Box className="h-4 w-4" />,
+            href: item.href,
+            group: 'resources',
+        }));
+    }, [query, searchResults]);
+
+    // Filter static commands by query
     const filteredCommands = query === ''
         ? commands
         : commands.filter((command) =>
             command.name.toLowerCase().includes(query.toLowerCase()) ||
-            command.description?.toLowerCase().includes(query.toLowerCase())
+            command.description?.toLowerCase().includes(query.toLowerCase()),
         );
+
+    // Combine all items into groups
+    const allItems = [...recentCommandItems, ...searchCommandItems, ...filteredCommands];
 
     // Build grouped commands maintaining order
     const groupedCommands = groupOrder.reduce((acc, group) => {
-        const items = filteredCommands.filter((c) => c.group === group);
+        const items = allItems.filter((c) => c.group === group);
         if (items.length > 0) {
             acc.push({ group, items });
         }
@@ -107,6 +152,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         setSelectedIndex(0);
     }, [query]);
 
+    // Reset selected index when search results change
+    React.useEffect(() => {
+        setSelectedIndex(0);
+    }, [searchResults]);
+
     // Focus input when opened, reset state
     React.useEffect(() => {
         if (open) {
@@ -124,7 +174,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         if (listRef.current) {
             const el = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
             if (el) {
-                el.scrollIntoView({ block: 'nearest' });
+                el.scrollIntoView?.({ block: 'nearest' });
             }
         }
     }, [selectedIndex]);
@@ -152,6 +202,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     if (!open) return null;
 
     let globalIndex = 0;
+    const hasQuery = query.length >= 2;
+    const noResults = hasQuery && !isSearching && searchCommandItems.length === 0 && filteredCommands.length === 0;
 
     return (
         <>
@@ -169,12 +221,16 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 >
                     {/* Search Input */}
                     <div className="flex items-center gap-3 border-b border-border px-5 py-1">
-                        <Search className="h-5 w-5 text-foreground-muted" />
+                        {isSearching ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
+                        ) : (
+                            <Search className="h-5 w-5 text-foreground-muted" />
+                        )}
                         <input
                             ref={inputRef}
                             type="text"
                             className="h-12 w-full bg-transparent text-foreground placeholder-foreground-muted focus:outline-none"
-                            placeholder="Search commands..."
+                            placeholder="Search commands and resources..."
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -186,9 +242,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
                     {/* Results */}
                     <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
-                        {flatItems.length === 0 && query !== '' ? (
+                        {noResults ? (
                             <div className="px-4 py-10 text-center text-foreground-muted">
-                                No commands found for &ldquo;{query}&rdquo;
+                                No results found for &ldquo;{query}&rdquo;
                             </div>
                         ) : (
                             groupedCommands.map(({ group, items }) => {
@@ -208,7 +264,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                                                     onMouseEnter={() => setSelectedIndex(itemIndex)}
                                                     className={cn(
                                                         'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-100',
-                                                        itemIndex === selectedIndex ? 'bg-background-tertiary' : ''
+                                                        itemIndex === selectedIndex ? 'bg-background-tertiary' : '',
                                                     )}
                                                 >
                                                     <span className="text-foreground-muted">{command.icon}</span>
@@ -235,11 +291,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                     <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-foreground-muted">
                         <div className="flex items-center gap-5">
                             <span className="flex items-center gap-2">
-                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">↑↓</kbd>
+                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&uarr;&darr;</kbd>
                                 <span>navigate</span>
                             </span>
                             <span className="flex items-center gap-2">
-                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">↵</kbd>
+                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&crarr;</kbd>
                                 <span>select</span>
                             </span>
                         </div>

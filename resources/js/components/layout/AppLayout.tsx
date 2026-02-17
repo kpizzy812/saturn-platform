@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Header } from './Header';
 import { FlashMessages } from './FlashMessages';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
 import { PageTransition } from '@/components/animation';
+import { useRecentResources, type RecentResource } from '@/hooks/useRecentResources';
 import { ChevronRight } from 'lucide-react';
 
 export interface Breadcrumb {
@@ -54,8 +55,45 @@ function Breadcrumbs({ items }: { items: Breadcrumb[] }) {
     );
 }
 
+const RESOURCE_PATTERNS: Array<{
+    pattern: RegExp;
+    type: RecentResource['type'];
+    propKey: string;
+}> = [
+    { pattern: /^\/projects\/([a-z0-9-]+)$/, type: 'project', propKey: 'project' },
+    { pattern: /^\/servers\/([a-z0-9-]+)$/, type: 'server', propKey: 'server' },
+    { pattern: /^\/applications\/([a-z0-9-]+)$/, type: 'application', propKey: 'application' },
+    { pattern: /^\/databases\/([a-z0-9-]+)$/, type: 'database', propKey: 'database' },
+    { pattern: /^\/services\/([a-z0-9-]+)$/, type: 'service', propKey: 'service' },
+];
+
 export function AppLayout({ children, title, showNewProject = true, breadcrumbs }: AppLayoutProps) {
     const commandPalette = useCommandPalette();
+    const { recentItems, addRecent } = useRecentResources();
+    const page = usePage();
+    const url = page.url;
+
+    // Track resource visits
+    React.useEffect(() => {
+        const pathname = url.split('?')[0];
+        for (const { pattern, type, propKey } of RESOURCE_PATTERNS) {
+            const match = pathname.match(pattern);
+            if (match) {
+                const resource = (page.props as Record<string, unknown>)[propKey] as
+                    | { name?: string; uuid?: string }
+                    | undefined;
+                if (resource?.name && resource?.uuid) {
+                    addRecent({
+                        type,
+                        name: resource.name,
+                        uuid: resource.uuid,
+                        href: pathname,
+                    });
+                }
+                break;
+            }
+        }
+    }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <>
@@ -68,7 +106,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
                     <PageTransition>{children}</PageTransition>
                 </main>
             </div>
-            <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} />
+            <CommandPalette open={commandPalette.isOpen} onClose={commandPalette.close} recentItems={recentItems} />
         </>
     );
 }

@@ -1118,3 +1118,89 @@ Route::get('/web-api/environments/{uuid}/statuses', function (string $uuid) {
         'deploying' => $activeDeployments,
     ]);
 })->name('web-api.environment.statuses');
+
+// Global resource search for Command Palette
+Route::get('/web-api/search', function (Request $request) {
+    $query = trim((string) $request->query('q', ''));
+
+    if (mb_strlen($query) < 2) {
+        return response()->json(['results' => []]);
+    }
+
+    $results = collect();
+    $pattern = '%'.str_replace(['%', '_'], ['\%', '\_'], $query).'%';
+
+    // Projects
+    $results = $results->concat(
+        \App\Models\Project::ownedByCurrentTeam()
+            ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern))
+            ->limit(5)
+            ->get()
+            ->map(fn ($p) => ['type' => 'project', 'uuid' => $p->uuid, 'name' => $p->name, 'description' => $p->description, 'href' => "/projects/{$p->uuid}"])
+    );
+
+    // Servers
+    $results = $results->concat(
+        \App\Models\Server::ownedByCurrentTeam()
+            ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern)->orWhere('ip', 'ILIKE', $pattern))
+            ->limit(5)
+            ->get()
+            ->map(fn ($s) => ['type' => 'server', 'uuid' => $s->uuid, 'name' => $s->name, 'description' => $s->description ?? $s->ip, 'href' => "/servers/{$s->uuid}"])
+    );
+
+    // Applications
+    $results = $results->concat(
+        \App\Models\Application::ownedByCurrentTeam()
+            ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern)->orWhere('fqdn', 'ILIKE', $pattern))
+            ->limit(5)
+            ->get()
+            ->map(fn ($a) => ['type' => 'application', 'uuid' => $a->uuid, 'name' => $a->name, 'description' => $a->description ?? $a->fqdn, 'href' => "/applications/{$a->uuid}"])
+    );
+
+    // Services
+    $results = $results->concat(
+        \App\Models\Service::ownedByCurrentTeam()
+            ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern))
+            ->limit(5)
+            ->get()
+            ->map(fn ($s) => ['type' => 'service', 'uuid' => $s->uuid, 'name' => $s->name, 'description' => $s->description, 'href' => "/services/{$s->uuid}"])
+    );
+
+    // Databases (all types)
+    $databaseModels = [
+        \App\Models\StandalonePostgresql::class,
+        \App\Models\StandaloneMysql::class,
+        \App\Models\StandaloneMongodb::class,
+        \App\Models\StandaloneRedis::class,
+        \App\Models\StandaloneMariadb::class,
+        \App\Models\StandaloneKeydb::class,
+        \App\Models\StandaloneDragonfly::class,
+        \App\Models\StandaloneClickhouse::class,
+    ];
+
+    foreach ($databaseModels as $model) {
+        $results = $results->concat(
+            $model::ownedByCurrentTeam()
+                ->where(fn ($q) => $q->where('name', 'ILIKE', $pattern)->orWhere('description', 'ILIKE', $pattern))
+                ->limit(3)
+                ->get()
+                ->map(fn ($db) => ['type' => 'database', 'uuid' => $db->uuid, 'name' => $db->name, 'description' => $db->description, 'href' => "/databases/{$db->uuid}"])
+        );
+    }
+
+    // Sort: exact match first, then prefix, then substring
+    $lowerQuery = mb_strtolower($query);
+    $sorted = $results->sortBy(function ($item) use ($lowerQuery) {
+        $name = mb_strtolower($item['name']);
+        if ($name === $lowerQuery) {
+            return 0;
+        }
+        if (str_starts_with($name, $lowerQuery)) {
+            return 1;
+        }
+
+        return 2;
+    })->take(15)->values();
+
+    return response()->json(['results' => $sorted]);
+})->middleware('throttle:60,1')->name('web-api.search');
