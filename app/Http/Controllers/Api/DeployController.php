@@ -249,8 +249,8 @@ class DeployController extends Controller
                 'status' => \App\Enums\ApplicationDeploymentStatus::CANCELLED_BY_USER->value,
             ]);
 
-            // Get the server
-            $server = Server::find($build_server_id);
+            // Get the server (scoped to team to prevent cross-tenant access)
+            $server = Server::where('id', $build_server_id)->where('team_id', $teamId)->first();
 
             if ($server) {
                 // Add cancellation log entry

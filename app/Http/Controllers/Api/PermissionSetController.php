@@ -583,6 +583,12 @@ class PermissionSetController extends Controller
             return response()->json(['message' => 'User not found.'], 404);
         }
 
+        // Verify user is a member of the current team
+        $team = auth()->user()->currentTeam();
+        if (! $team->members->contains($user)) {
+            return response()->json(['message' => 'User is not a member of this team.'], 404);
+        }
+
         // Remove assignment
         $this->permissionService->removePermissionSetAssignment($user, 'team', $teamId);
 
