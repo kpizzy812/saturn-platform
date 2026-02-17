@@ -26,11 +26,6 @@ func NewCancelCommand() *cobra.Command {
 				return fmt.Errorf("failed to get API client: %w", err)
 			}
 
-			// Check minimum version requirement
-			if err := cli.CheckMinimumVersion(ctx, client, "4.0.0-beta.436"); err != nil {
-				return err
-			}
-
 			force, err := cmd.Flags().GetBool("force")
 			if err != nil {
 				return fmt.Errorf("failed to parse force flag: %w", err)

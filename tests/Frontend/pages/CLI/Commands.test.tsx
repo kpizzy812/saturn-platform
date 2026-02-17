@@ -134,4 +134,28 @@ describe('CLI/Commands', () => {
         const badges = screen.getAllByText(/\d+/);
         expect(badges.length).toBeGreaterThan(0);
     });
+
+    it('renders rollback commands in applications category', () => {
+        render(<CLICommands />);
+
+        expect(screen.getByText(/list rollback events for an application/i)).toBeInTheDocument();
+        expect(screen.getByText(/rollback to a previous deployment/i)).toBeInTheDocument();
+    });
+
+    it('renders deploy tag and PR commands in deployments category', () => {
+        render(<CLICommands />);
+
+        expect(screen.getByText(/deploy all resources by tag name/i)).toBeInTheDocument();
+        expect(screen.getByText(/deploy a pr preview for an application/i)).toBeInTheDocument();
+    });
+
+    it('filters to rollback commands when searching', async () => {
+        const { user } = render(<CLICommands />);
+
+        const searchInput = screen.getByPlaceholderText(/search commands/i);
+        await user.type(searchInput, 'rollback');
+
+        expect(screen.getByText(/list rollback events for an application/i)).toBeInTheDocument();
+        expect(screen.getByText(/rollback to a previous deployment/i)).toBeInTheDocument();
+    });
 });

@@ -177,6 +177,71 @@ func (s *DeploymentService) GetLogsByApplicationWithFormat(ctx context.Context, 
 	return s.GetLogsByDeploymentWithFormat(ctx, latestDeployment.UUID, showHidden, format)
 }
 
+// GetRollbackEvents retrieves rollback events for an application
+func (s *DeploymentService) GetRollbackEvents(ctx context.Context, appUUID string, take int) ([]models.RollbackEvent, error) {
+	endpoint := fmt.Sprintf("applications/%s/rollback-events", appUUID)
+	if take > 0 {
+		endpoint += fmt.Sprintf("?take=%d", take)
+	}
+
+	var events []models.RollbackEvent
+	err := s.client.Get(ctx, endpoint, &events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rollback events for application %s: %w", appUUID, err)
+	}
+	return events, nil
+}
+
+// ExecuteRollback triggers a rollback to a specific deployment
+func (s *DeploymentService) ExecuteRollback(ctx context.Context, appUUID, deploymentUUID string) (*models.RollbackResponse, error) {
+	var response models.RollbackResponse
+	err := s.client.Post(ctx, fmt.Sprintf("applications/%s/rollback/%s", appUUID, deploymentUUID), nil, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute rollback for application %s to deployment %s: %w", appUUID, deploymentUUID, err)
+	}
+	return &response, nil
+}
+
+// DeployByTag triggers a deployment by tag name
+func (s *DeploymentService) DeployByTag(ctx context.Context, tag string, force bool) (*DeployResponse, error) {
+	endpoint := fmt.Sprintf("deploy?tag=%s", tag)
+	if force {
+		endpoint += "&force=true"
+	}
+
+	var response DeployResponse
+	err := s.client.Get(ctx, endpoint, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy by tag %s: %w", tag, err)
+	}
+	return &response, nil
+}
+
+// DeployByPR triggers a PR preview deployment
+func (s *DeploymentService) DeployByPR(ctx context.Context, uuid string, prID int, force bool) (*DeployResponse, error) {
+	endpoint := fmt.Sprintf("deploy?uuid=%s&pr=%d", uuid, prID)
+	if force {
+		endpoint += "&force=true"
+	}
+
+	var response DeployResponse
+	err := s.client.Get(ctx, endpoint, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy PR #%d for application %s: %w", prID, uuid, err)
+	}
+	return &response, nil
+}
+
+// GetDeploymentLogs retrieves logs for a specific deployment via dedicated endpoint
+func (s *DeploymentService) GetDeploymentLogs(ctx context.Context, deploymentUUID string) (*models.DeploymentLogsResponse, error) {
+	var response models.DeploymentLogsResponse
+	err := s.client.Get(ctx, fmt.Sprintf("deployments/%s/logs", deploymentUUID), &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get logs for deployment %s: %w", deploymentUUID, err)
+	}
+	return &response, nil
+}
+
 // GetLogsByDeployment retrieves logs for a specific deployment by UUID
 func (s *DeploymentService) GetLogsByDeployment(ctx context.Context, deploymentUUID string) (string, error) {
 	return s.GetLogsByDeploymentWithOptions(ctx, deploymentUUID, false)

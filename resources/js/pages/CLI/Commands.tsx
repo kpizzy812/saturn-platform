@@ -95,6 +95,32 @@ const commands: CLICommand[] = [
             { command: 'saturn app env sync abc-123 --file .env.production', description: 'Sync from .env file' },
         ],
     },
+    {
+        name: 'app rollback list',
+        description: 'List rollback events for an application',
+        usage: 'saturn app rollback list <app-uuid> [--take <n>]',
+        category: 'Applications',
+        options: [
+            { flag: '--take <n>', description: 'Number of rollback events to retrieve' },
+        ],
+        examples: [
+            { command: 'saturn app rollback list abc-123', description: 'List all rollback events' },
+            { command: 'saturn app rollback list abc-123 --take 5', description: 'List last 5 rollback events' },
+        ],
+    },
+    {
+        name: 'app rollback execute',
+        description: 'Rollback to a previous deployment',
+        usage: 'saturn app rollback execute <app-uuid> <deployment-uuid>',
+        category: 'Applications',
+        options: [
+            { flag: '-f, --force', description: 'Skip confirmation prompt' },
+        ],
+        examples: [
+            { command: 'saturn app rollback execute abc-123 dep-456', description: 'Rollback to specific deployment' },
+            { command: 'saturn app rollback execute abc-123 dep-456 --force', description: 'Rollback without confirmation' },
+        ],
+    },
     // Deployments
     {
         name: 'deploy uuid',
@@ -125,6 +151,32 @@ const commands: CLICommand[] = [
         description: 'Cancel a running deployment',
         usage: 'saturn deploy cancel <deployment-uuid>',
         category: 'Deployments',
+    },
+    {
+        name: 'deploy tag',
+        description: 'Deploy all resources by tag name',
+        usage: 'saturn deploy tag <tag-name>',
+        category: 'Deployments',
+        options: [
+            { flag: '--force', description: 'Force deployment' },
+        ],
+        examples: [
+            { command: 'saturn deploy tag v1.0.0', description: 'Deploy all resources tagged v1.0.0' },
+            { command: 'saturn deploy tag production --force', description: 'Force deploy by tag' },
+        ],
+    },
+    {
+        name: 'deploy pr',
+        description: 'Deploy a PR preview for an application',
+        usage: 'saturn deploy pr <app-uuid> <pr-id>',
+        category: 'Deployments',
+        options: [
+            { flag: '--force', description: 'Force deployment' },
+        ],
+        examples: [
+            { command: 'saturn deploy pr abc-123 42', description: 'Deploy PR #42 preview' },
+            { command: 'saturn deploy pr abc-123 42 --force', description: 'Force deploy PR preview' },
+        ],
     },
     // Services
     {

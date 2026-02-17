@@ -16,6 +16,8 @@ func NewDeploymentCommand() *cobra.Command {
 	cmd.AddCommand(NewListCommand())
 	cmd.AddCommand(NewGetCommand())
 	cmd.AddCommand(NewCancelCommand())
+	cmd.AddCommand(NewTagCommand())
+	cmd.AddCommand(NewPRCommand())
 
 	return cmd
 }

@@ -10,6 +10,7 @@ type Deployment struct {
 	Status          string  `json:"status"`
 	Commit          *string `json:"commit,omitempty"`
 	CommitMessage   *string `json:"commit_message,omitempty" table:"-"`
+	Rollback        *bool   `json:"rollback,omitempty" table:"-"`
 	// Additional fields from API that we want to ignore
 	DeploymentURL *string `json:"deployment_url,omitempty" table:"-"`
 	FinishedAt    *string `json:"finished_at,omitempty" table:"-"`
@@ -22,4 +23,11 @@ type Deployment struct {
 type DeployResponse struct {
 	Message        string `json:"message"`
 	DeploymentUUID string `json:"deployment_uuid,omitempty"`
+}
+
+// DeploymentLogsResponse represents the response from the deployment logs endpoint
+type DeploymentLogsResponse struct {
+	DeploymentUUID string `json:"deployment_uuid"`
+	Status         string `json:"status"`
+	Logs           string `json:"logs"`
 }
