@@ -54,6 +54,10 @@ require __DIR__.'/web/legacy.php';
 // File upload/download routes
 require __DIR__.'/web/uploads.php';
 
+// CLI install script redirects (public, no auth required)
+Route::redirect('/install.sh', 'https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.sh');
+Route::redirect('/install.ps1', 'https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.ps1');
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes

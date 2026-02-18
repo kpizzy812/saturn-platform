@@ -12,26 +12,28 @@ interface InstallCommand {
     description: string;
 }
 
-const installCommands: InstallCommand[] = [
-    {
-        os: 'macOS',
-        command: 'curl -fsSL https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.sh | sh',
-        icon: Terminal,
-        description: 'Install via shell script',
-    },
-    {
-        os: 'Linux',
-        command: 'curl -fsSL https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.sh | sh',
-        icon: Terminal,
-        description: 'Install via shell script',
-    },
-    {
-        os: 'Windows',
-        command: 'iwr https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.ps1 -useb | iex',
-        icon: Terminal,
-        description: 'Install via PowerShell',
-    },
-];
+function getInstallCommands(origin: string): InstallCommand[] {
+    return [
+        {
+            os: 'macOS',
+            command: `curl -fsSL ${origin}/install.sh | sh`,
+            icon: Terminal,
+            description: 'Install via shell script',
+        },
+        {
+            os: 'Linux',
+            command: `curl -fsSL ${origin}/install.sh | sh`,
+            icon: Terminal,
+            description: 'Install via shell script',
+        },
+        {
+            os: 'Windows',
+            command: `iwr ${origin}/install.ps1 -useb | iex`,
+            icon: Terminal,
+            description: 'Install via PowerShell',
+        },
+    ];
+}
 
 const cliTabs = [
     { id: 'setup', label: 'Setup', href: '/cli/setup' },
@@ -43,6 +45,7 @@ export default function CLISetup() {
     const [apiToken, setApiToken] = React.useState('');
     const { addToast } = useToast();
 
+    const installCommands = getInstallCommands(window.location.origin);
     const selectedCommand = installCommands.find(cmd => cmd.os === selectedOS);
 
     const handleCopy = (text: string, label: string) => {
@@ -143,24 +146,19 @@ export default function CLISetup() {
                             </div>
                         )}
 
-                        {/* Alternative Installation Methods */}
+                        {/* Alternative: Download from GitHub */}
                         <div className="mt-6 rounded-lg border border-border bg-background p-4">
-                            <p className="mb-2 text-sm font-medium text-foreground">
-                                Alternative: Install via Go
-                            </p>
-                            <div className="relative">
-                                <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
-                                    <code className="text-sm text-foreground-muted">
-                                        go install github.com/kpizzy812/saturn-cli/saturn@latest
-                                    </code>
-                                </pre>
-                                <button
-                                    onClick={() => handleCopy('go install github.com/kpizzy812/saturn-cli/saturn@latest', 'Go install command')}
-                                    className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+                            <p className="text-sm text-foreground-muted">
+                                Or download binaries directly from{' '}
+                                <a
+                                    href="https://github.com/kpizzy812/saturn-cli/releases/latest"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-medium text-primary hover:underline"
                                 >
-                                    <Copy className="h-3 w-3" />
-                                </button>
-                            </div>
+                                    GitHub Releases
+                                </a>
+                            </p>
                         </div>
                     </CardContent>
                 </Card>

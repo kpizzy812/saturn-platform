@@ -73,11 +73,12 @@ describe('CLI/Setup', () => {
         expect(screen.getByText(/install via powershell/i)).toBeInTheDocument();
     });
 
-    it('renders Go alternative installation', () => {
+    it('renders GitHub Releases link', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText(/alternative: install via go/i)).toBeInTheDocument();
-        expect(screen.getByText(/go install github\.com\/kpizzy812\/saturn-cli\/saturn@latest/)).toBeInTheDocument();
+        const releasesLink = screen.getByRole('link', { name: /github releases/i });
+        expect(releasesLink).toBeInTheDocument();
+        expect(releasesLink).toHaveAttribute('href', 'https://github.com/kpizzy812/saturn-cli/releases/latest');
     });
 
     it('renders verify installation section', () => {
