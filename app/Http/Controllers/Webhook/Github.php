@@ -555,9 +555,11 @@ class Github extends Controller
                     ->with('error', 'Invalid GitHub callback — missing parameters.');
             }
 
-            $github_app = GithubApp::where('uuid', $state)->first();
+            $github_app = GithubApp::where('uuid', $state)
+                ->where('team_id', currentTeam()->id)
+                ->first();
             if (! $github_app) {
-                \Log::error('GitHub App redirect: GithubApp not found', ['state' => $state]);
+                \Log::error('GitHub App redirect: GithubApp not found or unauthorized', ['state' => $state]);
 
                 return redirect()->route('sources.github.index')
                     ->with('error', 'GitHub App record not found. Please try creating again.');
@@ -639,17 +641,21 @@ class Github extends Controller
                     ->with('error', 'Invalid GitHub install callback — missing installation_id.');
             }
 
-            // Find GithubApp by UUID if source is provided
+            // Find GithubApp by UUID if source is provided (team-scoped)
             $github_app = null;
+            $teamId = currentTeam()->id;
             if ($source) {
-                $github_app = GithubApp::where('uuid', $source)->first();
+                $github_app = GithubApp::where('uuid', $source)
+                    ->where('team_id', $teamId)
+                    ->first();
             }
 
-            // Fallback: find by checking which app owns this installation via GitHub API
+            // Fallback: find by checking which app owns this installation via GitHub API (team-scoped)
             if (! $github_app) {
                 $candidates = GithubApp::whereNotNull('app_id')
                     ->whereNull('installation_id')
                     ->whereNotNull('private_key_id')
+                    ->where('team_id', $teamId)
                     ->get();
 
                 foreach ($candidates as $candidate) {

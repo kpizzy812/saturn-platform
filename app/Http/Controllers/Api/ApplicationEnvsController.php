@@ -236,7 +236,7 @@ class ApplicationEnvsController extends Controller
         $this->authorize('manageEnvironment', $application);
 
         $validator = customApiValidator($request->all(), [
-            'key' => 'string|required',
+            'key' => ['string', 'required', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
             'value' => 'string|nullable',
             'is_preview' => 'boolean',
             'is_literal' => 'boolean',
@@ -457,7 +457,7 @@ class ApplicationEnvsController extends Controller
         $returnedEnvs = collect();
         foreach ($bulk_data as $item) {
             $validator = customApiValidator($item, [
-                'key' => 'string|required',
+                'key' => ['string', 'required', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
                 'value' => 'string|nullable',
                 'is_preview' => 'boolean',
                 'is_literal' => 'boolean',
@@ -657,7 +657,7 @@ class ApplicationEnvsController extends Controller
         $this->authorize('manageEnvironment', $application);
 
         $validator = customApiValidator($request->all(), [
-            'key' => 'string|required',
+            'key' => ['string', 'required', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
             'value' => 'string|nullable',
             'is_preview' => 'boolean',
             'is_literal' => 'boolean',

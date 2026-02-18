@@ -397,8 +397,8 @@ Route::group([
             return response()->json(['message' => 'Database is not running.'], 400);
         }
 
-        $lines = $request->query('lines', 100) ?: 100;
-        $logs = getContainerLogs($server, $containerName, (int) $lines);
+        $lines = min((int) ($request->query('lines', 100) ?: 100), 10000);
+        $logs = getContainerLogs($server, $containerName, $lines);
 
         return response()->json([
             'database_uuid' => $database->uuid,
@@ -469,7 +469,7 @@ Route::group([
             return response()->json(['message' => 'Server not found for service.'], 400);
         }
 
-        $lines = $request->query('lines', 100) ?: 100;
+        $lines = min((int) ($request->query('lines', 100) ?: 100), 10000);
         $containerName = $request->query('container');
         $logs = [];
 
