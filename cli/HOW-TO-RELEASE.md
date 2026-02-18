@@ -1,10 +1,10 @@
-# How to Release Coolify CLI
+# How to Release Saturn CLI
 
-This guide explains the release process for the Coolify CLI.
+This guide explains the release process for the Saturn CLI.
 
 ## Prerequisites
 
-- Write access to the `coollabsio/coolify-cli` repository
+- Write access to the `saturn-platform/saturn-cli` repository
 - All changes merged to the target branch (`v4.x`)
 - All tests passing (`go test ./internal/...`)
 
@@ -12,7 +12,7 @@ This guide explains the release process for the Coolify CLI.
 
 ### 1. Create a GitHub Release
 
-1. Go to https://github.com/coollabsio/coolify-cli/releases/new
+1. Go to https://github.com/saturn-platform/saturn-cli/releases/new
 2. Click "Choose a tag" and create a new tag:
    - **Tag name**: `v1.x.x` (must start with `v`, e.g., `v1.2.3`)
    - **Target**: `v4.x` (or your target branch)
@@ -47,9 +47,9 @@ Once you publish the release:
 3. Goreleaser injects the version from the tag into the binaries
 4. Binaries are automatically uploaded to the release
 5. The release becomes available at:
-   - GitHub: `https://github.com/coollabsio/coolify-cli/releases/tag/v1.x.x`
-   - Install script: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash`
-   - `go install`: `go install github.com/coollabsio/coolify-cli/coolify@v1.x.x`
+   - GitHub: `https://github.com/saturn-platform/saturn-cli/releases/tag/v1.x.x`
+   - Install script: `curl -fsSL https://cdn.coollabs.io/saturn/install.sh | bash`
+   - `go install`: `go install github.com/saturn-platform/saturn-cli/saturn@v1.x.x`
 
 ### 3. Verify the Release
 
@@ -58,21 +58,21 @@ After the workflow completes (usually 2-5 minutes):
 1. Check the release page has all platform binaries
 2. Test the install script:
    ```bash
-   curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
-   coolify version
+   curl -fsSL https://cdn.coollabs.io/saturn/install.sh | bash
+   saturn version
    ```
 3. Test the auto-update functionality:
    ```bash
    # If you have an older version installed
-   coolify update
-   coolify version  # Should show the new version
+   saturn update
+   saturn version  # Should show the new version
    ```
 4. Verify the version matches your release
 
 ## Troubleshooting
 
 ### Build Failed
-- Check the GitHub Actions logs at https://github.com/coollabsio/coolify-cli/actions
+- Check the GitHub Actions logs at https://github.com/saturn-platform/saturn-cli/actions
 - Common issues:
   - Syntax errors in Go code
   - Test failures
@@ -103,21 +103,21 @@ After creating a release:
 - [ ] GitHub Actions workflow completed successfully
 - [ ] All platform binaries are present on the release page
 - [ ] Install script downloads the new version
-- [ ] `coolify version` returns the correct version
+- [ ] `saturn version` returns the correct version
 
 ## Configuration Files
 
 The release process uses these configuration files:
 
-- `.goreleaser.yml` - GoReleaser configuration (build matrix, archives, etc.) - points to `/coolify` as entry point
+- `.goreleaser.yml` - GoReleaser configuration (build matrix, archives, etc.) - points to `/saturn` as entry point
 - `.github/workflows/release-cli.yml` - GitHub Actions workflow
 - `scripts/install.sh` - User-facing install script
 - `internal/version/checker.go` - Contains `GetVersion()` function that returns the current version
-- `coolify/main.go` - Binary entry point for `go install` support
+- `saturn/main.go` - Binary entry point for `go install` support
 
 ## Notes
 
 - The CLI has auto-update checking built-in (checks every 10 minutes)
-- Users can manually update with `coolify update`
+- Users can manually update with `saturn update`
 - Install script supports version pinning: `bash install.sh v1.2.3`
 - Releases are immutable - if you need to fix something, create a new patch version

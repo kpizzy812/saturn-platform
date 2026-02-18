@@ -67,6 +67,8 @@ const commands: CommandItem[] = [
     // Settings
     { id: 'settings', name: 'Settings', icon: <Settings className="h-4 w-4" />, href: '/settings', group: 'settings' },
     { id: 'team', name: 'Team', icon: <Users className="h-4 w-4" />, href: '/settings/team', group: 'settings' },
+    { id: 'cli-setup', name: 'CLI Setup', description: 'Install and configure Saturn CLI', icon: <Terminal className="h-4 w-4" />, href: '/cli/setup', group: 'settings' },
+    { id: 'cli-commands', name: 'CLI Commands', description: 'CLI command reference', icon: <Terminal className="h-4 w-4" />, href: '/cli/commands', group: 'settings' },
 ];
 
 const RESOURCE_ICONS: Record<string, React.ReactNode> = {

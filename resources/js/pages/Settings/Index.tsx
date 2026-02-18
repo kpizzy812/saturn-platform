@@ -2,7 +2,7 @@ import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, FileText, Bell } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Bell, Terminal } from 'lucide-react';
 
 interface SettingSection {
     id: string;
@@ -19,6 +19,7 @@ const settingSections: SettingSection[] = [
     { id: 'notifications', label: 'Notifications', icon: Bell, href: '/settings/notifications' },
     { id: 'workspace', label: 'Workspace', icon: Building2, href: '/settings/workspace' },
     { id: 'audit-log', label: 'Audit Log', icon: FileText, href: '/settings/audit-log' },
+    { id: 'cli', label: 'CLI', icon: Terminal, href: '/cli/setup' },
     // { id: 'security', label: 'Security', icon: Shield, href: '/settings/security' }, // TODO: Implement security features (sessions, IP allowlist, etc.)
 ];
 
