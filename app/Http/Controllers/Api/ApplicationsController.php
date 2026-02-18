@@ -254,29 +254,33 @@ class ApplicationsController extends Controller
             return response()->json(['message' => 'Application not found.'], 404);
         }
 
-        $containers = getCurrentApplicationContainerStatus($application->destination->server, $application->id);
+        try {
+            $containers = getCurrentApplicationContainerStatus($application->destination->server, $application->id);
 
-        if ($containers->count() == 0) {
+            if ($containers->count() == 0) {
+                return response()->json([
+                    'message' => 'Application is not running.',
+                ], 400);
+            }
+
+            $container = $containers->first();
+
+            $status = getContainerStatus($application->destination->server, $container['Names']);
+            if ($status !== 'running') {
+                return response()->json([
+                    'message' => 'Application is not running.',
+                ], 400);
+            }
+
+            $lines = $request->query->get('lines', 100) ?: 100;
+            $logs = getContainerLogs($application->destination->server, $container['ID'], $lines);
+
             return response()->json([
-                'message' => 'Application is not running.',
-            ], 400);
+                'logs' => $logs,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
         }
-
-        $container = $containers->first();
-
-        $status = getContainerStatus($application->destination->server, $container['Names']);
-        if ($status !== 'running') {
-            return response()->json([
-                'message' => 'Application is not running.',
-            ], 400);
-        }
-
-        $lines = $request->query->get('lines', 100) ?: 100;
-        $logs = getContainerLogs($application->destination->server, $container['ID'], $lines);
-
-        return response()->json([
-            'logs' => $logs,
-        ]);
     }
 
     #[OA\Delete(

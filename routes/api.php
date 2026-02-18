@@ -397,23 +397,27 @@ Route::group([
             return response()->json(['message' => 'Server not found for database.'], 400);
         }
 
-        // Check if database is running
-        $containerName = $database->uuid;
-        $status = getContainerStatus($server, $containerName);
+        try {
+            // Check if database is running
+            $containerName = $database->uuid;
+            $status = getContainerStatus($server, $containerName);
 
-        if ($status !== 'running') {
-            return response()->json(['message' => 'Database is not running.'], 400);
+            if ($status !== 'running') {
+                return response()->json(['message' => 'Database is not running.'], 400);
+            }
+
+            $lines = min((int) ($request->query('lines', 100) ?: 100), 10000);
+            $logs = getContainerLogs($server, $containerName, $lines);
+
+            return response()->json([
+                'database_uuid' => $database->uuid,
+                'container_name' => $containerName,
+                'status' => $status,
+                'logs' => $logs,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
         }
-
-        $lines = min((int) ($request->query('lines', 100) ?: 100), 10000);
-        $logs = getContainerLogs($server, $containerName, $lines);
-
-        return response()->json([
-            'database_uuid' => $database->uuid,
-            'container_name' => $containerName,
-            'status' => $status,
-            'logs' => $logs,
-        ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
 
     // Database action routes
@@ -481,60 +485,64 @@ Route::group([
         $containerName = $request->query('container');
         $logs = [];
 
-        // Get all applications and databases in this service
-        $applications = $service->applications()->get();
-        $databases = $service->databases()->get();
+        try {
+            // Get all applications and databases in this service
+            $applications = $service->applications()->get();
+            $databases = $service->databases()->get();
 
-        foreach ($applications as $app) {
-            $appContainerName = $app->name.'-'.$service->uuid;
+            foreach ($applications as $app) {
+                $appContainerName = $app->name.'-'.$service->uuid;
 
-            // If specific container requested, skip others
-            if ($containerName && $appContainerName !== $containerName) {
-                continue;
+                // If specific container requested, skip others
+                if ($containerName && $appContainerName !== $containerName) {
+                    continue;
+                }
+
+                $status = getContainerStatus($server, $appContainerName);
+                if ($status === 'running') {
+                    $logs[$appContainerName] = [
+                        'type' => 'application',
+                        'name' => $app->name,
+                        'status' => $status,
+                        'logs' => getContainerLogs($server, $appContainerName, (int) $lines),
+                    ];
+                } else {
+                    $logs[$appContainerName] = [
+                        'type' => 'application',
+                        'name' => $app->name,
+                        'status' => $status,
+                        'logs' => null,
+                    ];
+                }
             }
 
-            $status = getContainerStatus($server, $appContainerName);
-            if ($status === 'running') {
-                $logs[$appContainerName] = [
-                    'type' => 'application',
-                    'name' => $app->name,
-                    'status' => $status,
-                    'logs' => getContainerLogs($server, $appContainerName, (int) $lines),
-                ];
-            } else {
-                $logs[$appContainerName] = [
-                    'type' => 'application',
-                    'name' => $app->name,
-                    'status' => $status,
-                    'logs' => null,
-                ];
-            }
-        }
+            foreach ($databases as $db) {
+                $dbContainerName = $db->name.'-'.$service->uuid;
 
-        foreach ($databases as $db) {
-            $dbContainerName = $db->name.'-'.$service->uuid;
+                // If specific container requested, skip others
+                if ($containerName && $dbContainerName !== $containerName) {
+                    continue;
+                }
 
-            // If specific container requested, skip others
-            if ($containerName && $dbContainerName !== $containerName) {
-                continue;
+                $status = getContainerStatus($server, $dbContainerName);
+                if ($status === 'running') {
+                    $logs[$dbContainerName] = [
+                        'type' => 'database',
+                        'name' => $db->name,
+                        'status' => $status,
+                        'logs' => getContainerLogs($server, $dbContainerName, (int) $lines),
+                    ];
+                } else {
+                    $logs[$dbContainerName] = [
+                        'type' => 'database',
+                        'name' => $db->name,
+                        'status' => $status,
+                        'logs' => null,
+                    ];
+                }
             }
-
-            $status = getContainerStatus($server, $dbContainerName);
-            if ($status === 'running') {
-                $logs[$dbContainerName] = [
-                    'type' => 'database',
-                    'name' => $db->name,
-                    'status' => $status,
-                    'logs' => getContainerLogs($server, $dbContainerName, (int) $lines),
-                ];
-            } else {
-                $logs[$dbContainerName] = [
-                    'type' => 'database',
-                    'name' => $db->name,
-                    'status' => $status,
-                    'logs' => null,
-                ];
-            }
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
         }
 
         return response()->json([

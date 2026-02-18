@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import ObservabilityLogs from '../Logs';
 
@@ -122,5 +123,67 @@ describe('ObservabilityLogs', () => {
     it('shows empty resources message when no resources', () => {
         render(<ObservabilityLogs resources={[]} />);
         expect(screen.getByText('No resources found')).toBeInTheDocument();
+    });
+
+    it('fetches and displays application logs (string format)', async () => {
+        const user = userEvent.setup();
+        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ logs: '2024-01-01T10:00:00Z Starting server\n2024-01-01T10:00:01Z Server ready' }),
+        });
+
+        render(<ObservabilityLogs resources={sampleResources} />);
+
+        const resourceSelect = screen.getAllByRole('combobox')[1]; // [0] is Download select
+        await user.selectOptions(resourceSelect, 'app-1');
+
+        await waitFor(() => {
+            expect(screen.getByText(/Starting server/)).toBeInTheDocument();
+        });
+    });
+
+    it('fetches and displays service logs (containers format)', async () => {
+        const user = userEvent.setup();
+        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+                service_uuid: 'svc-1',
+                containers: {
+                    'backend-svc-1': {
+                        type: 'application',
+                        name: 'backend',
+                        status: 'running',
+                        logs: '2024-01-01T10:00:00Z Container started\n2024-01-01T10:00:01Z Listening on port 3000',
+                    },
+                },
+            }),
+        });
+
+        render(<ObservabilityLogs resources={sampleResources} />);
+
+        const resourceSelect = screen.getAllByRole('combobox')[1];
+        await user.selectOptions(resourceSelect, 'svc-1');
+
+        await waitFor(() => {
+            expect(screen.getByText(/Container started/)).toBeInTheDocument();
+        });
+    });
+
+    it('displays error message on fetch failure', async () => {
+        const user = userEvent.setup();
+        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            json: async () => ({ message: 'Failed to connect to server' }),
+        });
+
+        render(<ObservabilityLogs resources={sampleResources} />);
+
+        const resourceSelect = screen.getAllByRole('combobox')[1];
+        await user.selectOptions(resourceSelect, 'app-1');
+
+        await waitFor(() => {
+            expect(screen.getByText('Failed to Load Logs')).toBeInTheDocument();
+        });
     });
 });
