@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AlertsController;
 use App\Http\Controllers\Api\ApplicationActionsController;
 use App\Http\Controllers\Api\ApplicationCreateController;
 use App\Http\Controllers\Api\ApplicationDeploymentsController;
@@ -101,6 +102,13 @@ Route::group([
     Route::put('/notification-channels/telegram', [NotificationChannelsController::class, 'updateTelegram'])->middleware(['api.ability:write']);
     Route::put('/notification-channels/webhook', [NotificationChannelsController::class, 'updateWebhook'])->middleware(['api.ability:write']);
     Route::put('/notification-channels/pushover', [NotificationChannelsController::class, 'updatePushover'])->middleware(['api.ability:write']);
+
+    // Alerts
+    Route::get('/alerts', [AlertsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/alerts', [AlertsController::class, 'store'])->middleware(['api.ability:write']);
+    Route::get('/alerts/{uuid}', [AlertsController::class, 'show'])->middleware(['api.ability:read']);
+    Route::put('/alerts/{uuid}', [AlertsController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/alerts/{uuid}', [AlertsController::class, 'destroy'])->middleware(['api.ability:write']);
 
     // Deployment Approvals
     Route::get('/deployment-approvals', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'index'])->middleware(['api.ability:read']);
