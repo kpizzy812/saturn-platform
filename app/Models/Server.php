@@ -469,21 +469,17 @@ class Server extends BaseModel
 
     public function setupDynamicProxyConfiguration()
     {
+        // In multi-environment deployments (SATURN_ENV is set), the static
+        // deploy/proxy/saturn.yaml manages all Traefik routing centrally.
+        // Skip dynamic generation to prevent overwriting shared config.
+        if (config('constants.saturn.env')) {
+            return;
+        }
+
         $settings = instanceSettings();
         $dynamic_config_path = $this->proxyPath().'/dynamic';
         if ($this->proxyType() === ProxyTypes::TRAEFIK->value) {
-            // Multi-environment: each env writes its own file (saturn-{env}.yaml)
-            // to avoid overwriting routes for other environments.
-            $saturnEnv = config('constants.saturn.env', '');
-            $envSuffix = $saturnEnv ? "-{$saturnEnv}" : '';
-            $file = "$dynamic_config_path/saturn{$envSuffix}.yaml";
-
-            // Clean up legacy single-file config if per-env config exists
-            if ($saturnEnv) {
-                instant_remote_process([
-                    "rm -f $dynamic_config_path/saturn.yaml",
-                ], $this);
-            }
+            $file = "$dynamic_config_path/saturn.yaml";
 
             if (empty($settings->fqdn) || (isCloud() && $this->id !== 0) || ! $this->checkIsLocalhost()) {
                 instant_remote_process([
@@ -493,11 +489,6 @@ class Server extends BaseModel
                 $url = Url::fromString($settings->fqdn);
                 $host = $url->getHost();
                 $schema = $url->getScheme();
-
-                // Container names include env suffix (e.g., saturn-dev, saturn-realtime-dev)
-                $appContainer = $saturnEnv ? "saturn-{$saturnEnv}" : 'saturn';
-                $realtimeContainer = $saturnEnv ? "saturn-realtime-{$saturnEnv}" : 'saturn-realtime';
-                $routerPrefix = $saturnEnv ?: 'saturn';
 
                 $traefik_dynamic_conf = [
                     'http' => [
@@ -512,55 +503,55 @@ class Server extends BaseModel
                             ],
                         ],
                         'routers' => [
-                            "{$routerPrefix}-http" => [
+                            'saturn-http' => [
                                 'middlewares' => [
                                     0 => 'gzip',
                                 ],
                                 'entryPoints' => [
                                     0 => 'http',
                                 ],
-                                'service' => "{$routerPrefix}-app",
+                                'service' => 'saturn-app',
                                 'rule' => "Host(`{$host}`)",
                             ],
-                            "{$routerPrefix}-realtime-ws" => [
+                            'saturn-realtime-ws' => [
                                 'entryPoints' => [
                                     0 => 'http',
                                 ],
-                                'service' => "{$routerPrefix}-realtime",
+                                'service' => 'saturn-realtime',
                                 'rule' => "Host(`{$host}`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)",
                             ],
-                            "{$routerPrefix}-terminal-ws" => [
+                            'saturn-terminal-ws' => [
                                 'entryPoints' => [
                                     0 => 'http',
                                 ],
-                                'service' => "{$routerPrefix}-terminal",
+                                'service' => 'saturn-terminal',
                                 'rule' => "Host(`{$host}`) && PathPrefix(`/terminal/ws`)",
                             ],
                         ],
                         'services' => [
-                            "{$routerPrefix}-app" => [
+                            'saturn-app' => [
                                 'loadBalancer' => [
                                     'servers' => [
                                         0 => [
-                                            'url' => "http://{$appContainer}:8080",
+                                            'url' => 'http://saturn:8080',
                                         ],
                                     ],
                                 ],
                             ],
-                            "{$routerPrefix}-realtime" => [
+                            'saturn-realtime' => [
                                 'loadBalancer' => [
                                     'servers' => [
                                         0 => [
-                                            'url' => "http://{$realtimeContainer}:6001",
+                                            'url' => 'http://saturn-realtime:6001',
                                         ],
                                     ],
                                 ],
                             ],
-                            "{$routerPrefix}-terminal" => [
+                            'saturn-terminal' => [
                                 'loadBalancer' => [
                                     'servers' => [
                                         0 => [
-                                            'url' => "http://{$realtimeContainer}:6002",
+                                            'url' => 'http://saturn-realtime:6002',
                                         ],
                                     ],
                                 ],
@@ -570,35 +561,35 @@ class Server extends BaseModel
                 ];
 
                 if ($schema === 'https') {
-                    $traefik_dynamic_conf['http']['routers']["{$routerPrefix}-http"]['middlewares'] = [
+                    $traefik_dynamic_conf['http']['routers']['saturn-http']['middlewares'] = [
                         0 => 'redirect-to-https',
                     ];
 
-                    $traefik_dynamic_conf['http']['routers']["{$routerPrefix}-https"] = [
+                    $traefik_dynamic_conf['http']['routers']['saturn-https'] = [
                         'entryPoints' => [
                             0 => 'https',
                         ],
-                        'service' => "{$routerPrefix}-app",
+                        'service' => 'saturn-app',
                         'rule' => "Host(`{$host}`)",
                         'tls' => [
                             'certresolver' => 'letsencrypt',
                         ],
                     ];
-                    $traefik_dynamic_conf['http']['routers']["{$routerPrefix}-realtime-wss"] = [
+                    $traefik_dynamic_conf['http']['routers']['saturn-realtime-wss'] = [
                         'entryPoints' => [
                             0 => 'https',
                         ],
-                        'service' => "{$routerPrefix}-realtime",
+                        'service' => 'saturn-realtime',
                         'rule' => "Host(`{$host}`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)",
                         'tls' => [
                             'certresolver' => 'letsencrypt',
                         ],
                     ];
-                    $traefik_dynamic_conf['http']['routers']["{$routerPrefix}-terminal-wss"] = [
+                    $traefik_dynamic_conf['http']['routers']['saturn-terminal-wss'] = [
                         'entryPoints' => [
                             0 => 'https',
                         ],
-                        'service' => "{$routerPrefix}-terminal",
+                        'service' => 'saturn-terminal',
                         'rule' => "Host(`{$host}`) && PathPrefix(`/terminal/ws`)",
                         'tls' => [
                             'certresolver' => 'letsencrypt',
@@ -606,9 +597,8 @@ class Server extends BaseModel
                     ];
                 }
                 $yaml = Yaml::dump($traefik_dynamic_conf, 12, 2);
-                $envLabel = $saturnEnv ?: 'default';
                 $yaml =
-                    "# This file is automatically generated by Saturn Platform ({$envLabel}).\n".
+                    "# This file is automatically generated by Saturn Platform.\n".
                     "# Do not edit it manually (only if you know what are you doing).\n\n".
                     $yaml;
 
