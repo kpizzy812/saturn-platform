@@ -49,8 +49,8 @@ describe('CLI/Setup', () => {
     it('displays macOS installation command by default', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText(/curl -fsSL.*install\.sh \| sh/)).toBeInTheDocument();
-        expect(screen.getByText(/install via shell script/i)).toBeInTheDocument();
+        expect(screen.getByText('brew install kpizzy812/saturn/saturn-cli')).toBeInTheDocument();
+        expect(screen.getByText(/install via homebrew/i)).toBeInTheDocument();
     });
 
     it('switches to linux installation command', async () => {
@@ -151,7 +151,7 @@ describe('CLI/Setup', () => {
     it('displays macOS install command in code block', () => {
         render(<CLISetup />);
 
-        const codeElements = screen.getAllByText(/curl -fsSL.*install\.sh/);
+        const codeElements = screen.getAllByText(/brew install kpizzy812\/saturn\/saturn-cli/);
         expect(codeElements.length).toBeGreaterThan(0);
     });
 });

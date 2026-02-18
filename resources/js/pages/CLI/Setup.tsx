@@ -16,9 +16,9 @@ function getInstallCommands(origin: string): InstallCommand[] {
     return [
         {
             os: 'macOS',
-            command: `curl -fsSL ${origin}/install.sh | sh`,
+            command: 'brew install kpizzy812/saturn/saturn-cli',
             icon: Terminal,
-            description: 'Install via shell script',
+            description: 'Install via Homebrew',
         },
         {
             os: 'Linux',
