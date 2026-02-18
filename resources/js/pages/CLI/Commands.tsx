@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link } from '@inertiajs/react';
-import { SettingsLayout } from '@/pages/Settings/Index';
+import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Badge, useToast } from '@/components/ui';
 import { Terminal, Copy, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -336,8 +336,16 @@ export default function CLICommands() {
     };
 
     return (
-        <SettingsLayout activeSection="cli">
-            <div className="space-y-6">
+        <AppLayout title="CLI Commands">
+            <div className="mx-auto max-w-5xl space-y-6">
+                {/* Header */}
+                <div className="space-y-2">
+                    <h1 className="text-2xl font-semibold text-foreground">CLI Command Reference</h1>
+                    <p className="text-sm text-foreground-muted">
+                        Complete guide to all Saturn CLI commands
+                    </p>
+                </div>
+
                 {/* CLI Tab Navigation */}
                 <div className="flex items-center gap-1 border-b border-border">
                     {cliTabs.map((tab) => (
@@ -561,6 +569,6 @@ export default function CLICommands() {
                     )
                 ))}
             </div>
-        </SettingsLayout>
+        </AppLayout>
     );
 }

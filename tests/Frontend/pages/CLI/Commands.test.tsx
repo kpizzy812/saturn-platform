@@ -7,10 +7,11 @@ describe('CLI/Commands', () => {
         vi.clearAllMocks();
     });
 
-    it('renders settings heading and tab navigation', () => {
+    it('renders page heading and tab navigation', () => {
         render(<CLICommands />);
 
-        expect(screen.getByRole('heading', { level: 1, name: /settings/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: /cli command reference/i })).toBeInTheDocument();
+        expect(screen.getByText(/complete guide to all saturn cli commands/i)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /^setup$/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /^commands$/i })).toBeInTheDocument();
     });

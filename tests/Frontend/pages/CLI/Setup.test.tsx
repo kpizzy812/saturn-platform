@@ -7,10 +7,11 @@ describe('CLI/Setup', () => {
         vi.clearAllMocks();
     });
 
-    it('renders settings heading and tab navigation', () => {
+    it('renders page heading and tab navigation', () => {
         render(<CLISetup />);
 
-        expect(screen.getByRole('heading', { level: 1, name: /settings/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: /saturn cli/i })).toBeInTheDocument();
+        expect(screen.getByText(/install and configure the saturn command-line interface/i)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /^setup$/i })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /^commands$/i })).toBeInTheDocument();
     });
