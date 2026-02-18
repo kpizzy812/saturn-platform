@@ -15,19 +15,19 @@ interface InstallCommand {
 const installCommands: InstallCommand[] = [
     {
         os: 'macOS',
-        command: 'brew install saturn-cli',
+        command: 'curl -fsSL https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.sh | sh',
         icon: Terminal,
-        description: 'Install via Homebrew',
+        description: 'Install via shell script',
     },
     {
         os: 'Linux',
-        command: 'curl -fsSL https://get.saturn.app/install.sh | sh',
+        command: 'curl -fsSL https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.sh | sh',
         icon: Terminal,
         description: 'Install via shell script',
     },
     {
         os: 'Windows',
-        command: 'iwr https://get.saturn.app/install.ps1 -useb | iex',
+        command: 'iwr https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.ps1 -useb | iex',
         icon: Terminal,
         description: 'Install via PowerShell',
     },
@@ -151,11 +151,11 @@ export default function CLISetup() {
                             <div className="relative">
                                 <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
                                     <code className="text-sm text-foreground-muted">
-                                        go install github.com/saturn-platform/saturn-cli/saturn@latest
+                                        go install github.com/kpizzy812/saturn-cli/saturn@latest
                                     </code>
                                 </pre>
                                 <button
-                                    onClick={() => handleCopy('go install github.com/saturn-platform/saturn-cli/saturn@latest', 'Go install command')}
+                                    onClick={() => handleCopy('go install github.com/kpizzy812/saturn-cli/saturn@latest', 'Go install command')}
                                     className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
                                 >
                                     <Copy className="h-3 w-3" />

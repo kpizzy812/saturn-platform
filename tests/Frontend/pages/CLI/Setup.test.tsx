@@ -49,8 +49,8 @@ describe('CLI/Setup', () => {
     it('displays macOS installation command by default', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText('brew install saturn-cli')).toBeInTheDocument();
-        expect(screen.getByText(/install via homebrew/i)).toBeInTheDocument();
+        expect(screen.getByText(/curl -fsSL.*install\.sh \| sh/)).toBeInTheDocument();
+        expect(screen.getByText(/install via shell script/i)).toBeInTheDocument();
     });
 
     it('switches to linux installation command', async () => {
@@ -59,7 +59,7 @@ describe('CLI/Setup', () => {
         const linuxButton = screen.getByRole('button', { name: 'Linux' });
         await user.click(linuxButton);
 
-        expect(screen.getByText(/curl -fsSL https:\/\/get\.saturn\.app\/install\.sh \| sh/)).toBeInTheDocument();
+        expect(screen.getByText(/curl -fsSL.*install\.sh \| sh/)).toBeInTheDocument();
         expect(screen.getByText(/install via shell script/i)).toBeInTheDocument();
     });
 
@@ -69,7 +69,7 @@ describe('CLI/Setup', () => {
         const windowsButton = screen.getByRole('button', { name: 'Windows' });
         await user.click(windowsButton);
 
-        expect(screen.getByText(/iwr https:\/\/get\.saturn\.app\/install\.ps1 -useb \| iex/)).toBeInTheDocument();
+        expect(screen.getByText(/iwr.*install\.ps1 -useb \| iex/)).toBeInTheDocument();
         expect(screen.getByText(/install via powershell/i)).toBeInTheDocument();
     });
 
@@ -77,7 +77,7 @@ describe('CLI/Setup', () => {
         render(<CLISetup />);
 
         expect(screen.getByText(/alternative: install via go/i)).toBeInTheDocument();
-        expect(screen.getByText(/go install github\.com\/saturn-platform\/saturn-cli\/saturn@latest/)).toBeInTheDocument();
+        expect(screen.getByText(/go install github\.com\/kpizzy812\/saturn-cli\/saturn@latest/)).toBeInTheDocument();
     });
 
     it('renders verify installation section', () => {
@@ -147,10 +147,10 @@ describe('CLI/Setup', () => {
         expect(tokenLink).toHaveAttribute('href', '/settings/tokens');
     });
 
-    it('displays expected version in expected output', () => {
+    it('displays macOS install command in code block', () => {
         render(<CLISetup />);
 
-        const codeElements = screen.getAllByText('brew install saturn-cli');
+        const codeElements = screen.getAllByText(/curl -fsSL.*install\.sh/);
         expect(codeElements.length).toBeGreaterThan(0);
     });
 });
