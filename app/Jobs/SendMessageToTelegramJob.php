@@ -22,6 +22,8 @@ class SendMessageToTelegramJob implements ShouldBeEncrypted, ShouldQueue
      */
     public $tries = 5;
 
+    public $backoff = 10;
+
     /**
      * The maximum number of unhandled exceptions to allow before failing.
      */
