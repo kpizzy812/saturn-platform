@@ -219,8 +219,8 @@ function NavGroupSection({
 
 function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; onMobileClose: () => void }) {
     const { url, props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null; is_root_user?: boolean } | undefined;
-    const systemNotifications = (props as any).systemNotifications as { unreadCount: number } | undefined;
+    const user = props.auth;
+    const systemNotifications = props.systemNotifications;
 
     // Initialize expanded groups: all expanded by default, or use stored state
     const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {

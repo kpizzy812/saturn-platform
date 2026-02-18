@@ -2,6 +2,7 @@ import { AppLayout } from '@/components/layout';
 import { Button, Input, Textarea, Checkbox } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Link, router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { useState, FormEvent } from 'react';
 import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -59,7 +60,7 @@ export default function TemplateSubmit() {
             docker_compose: dockerCompose,
             category,
             environment_variables: envVars,
-        } as any, {
+        } as unknown as RouterPayload, {
             onSuccess: () => {
                 addToast('success', 'Template submitted successfully for review');
             },

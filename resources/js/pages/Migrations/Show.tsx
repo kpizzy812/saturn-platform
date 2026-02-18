@@ -105,7 +105,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
     const sourceName = migration.source?.name || 'Unknown';
     const sourceEnvName = migration.source_environment?.name || 'Source';
     const targetEnvName = migration.target_environment?.name || 'Target';
-    const projectName = (migration.source_environment as any)?.project?.name;
+    const projectName = migration.source_environment?.project?.name;
 
     const [actionError, setActionError] = useState<string | null>(null);
 
@@ -164,7 +164,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
         <AppLayout
             title={`Migration - ${sourceName}`}
             breadcrumbs={[
-                ...(projectName ? [{ label: projectName, href: `/projects/${(migration.source_environment as any)?.project?.uuid}` }] : []),
+                ...(projectName ? [{ label: projectName, href: `/projects/${migration.source_environment?.project?.uuid}` }] : []),
                 { label: 'Migration' },
                 { label: sourceName },
             ]}
@@ -173,7 +173,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
                 {/* Back button */}
                 {projectName && (
                     <Link
-                        href={`/projects/${(migration.source_environment as any)?.project?.uuid}`}
+                        href={`/projects/${migration.source_environment?.project?.uuid}`}
                         className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground mb-4"
                     >
                         <ArrowLeft className="h-4 w-4" />

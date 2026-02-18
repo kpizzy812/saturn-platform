@@ -101,8 +101,8 @@ export function EnvironmentMigrateModal({
     const isTargetProduction = React.useMemo(() => {
         if (!selectedEnvironmentId || !targets?.target_environments) return false;
         const targetEnv = targets.target_environments.find(
-            (e: any) => e.id === parseInt(selectedEnvironmentId, 10)
-        ) as any;
+            (e) => e.id === parseInt(selectedEnvironmentId, 10)
+        );
         return targetEnv?.type === 'production';
     }, [selectedEnvironmentId, targets]);
 
@@ -515,7 +515,7 @@ export function EnvironmentMigrateModal({
                             label="Target Environment"
                             value={selectedEnvironmentId}
                             onChange={(e) => setSelectedEnvironmentId(e.target.value)}
-                            options={(targets.target_environments as any).map((env: { id: number; name: string; type: string }) => ({
+                            options={targets.target_environments.map((env) => ({
                                 value: env.id.toString(),
                                 label: `${env.name} (${env.type})`,
                             }))}

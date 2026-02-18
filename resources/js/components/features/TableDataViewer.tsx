@@ -240,17 +240,18 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
         fetchData();
     };
 
-    const handleRowSelect = (rowIndex: number, e: React.MouseEvent) => {
+    const handleRowSelect = (rowIndex: number, e: React.MouseEvent | React.ChangeEvent) => {
         const newSelected = new Set(selectedRows);
+        const nativeEvent = e.nativeEvent as KeyboardEvent;
 
-        if (e.shiftKey && lastSelectedRow !== null) {
+        if (nativeEvent.shiftKey && lastSelectedRow !== null) {
             // Shift+Click - Select range
             const start = Math.min(lastSelectedRow, rowIndex);
             const end = Math.max(lastSelectedRow, rowIndex);
             for (let i = start; i <= end; i++) {
                 newSelected.add(i);
             }
-        } else if (e.metaKey || e.ctrlKey) {
+        } else if (nativeEvent.metaKey || nativeEvent.ctrlKey) {
             // Cmd/Ctrl+Click - Toggle selection
             if (newSelected.has(rowIndex)) {
                 newSelected.delete(rowIndex);
@@ -903,7 +904,7 @@ export function TableDataViewer({ databaseUuid, tableName }: TableDataViewerProp
                                         <input
                                             type="checkbox"
                                             checked={isSelected}
-                                            onChange={(e) => handleRowSelect(rowIdx, e as any)}
+                                            onChange={(e) => handleRowSelect(rowIdx, e)}
                                             className="h-4 w-4 rounded border-border"
                                         />
                                     </td>

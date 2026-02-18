@@ -172,7 +172,7 @@ export function useLogStream(options: UseLogStreamOptions): UseLogStreamReturn {
     } = options;
 
     const page = usePage();
-    const teamId = (page.props as any).team?.id;
+    const teamId = page.props.team?.id;
 
     const [logs, setLogs] = React.useState<LogEntry[]>([]);
     const [availableContainers, setAvailableContainers] = React.useState<string[]>([]);

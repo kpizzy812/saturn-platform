@@ -147,9 +147,8 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
     } = options;
 
     const page = usePage();
-    const pageProps = page.props as any;
-    const teamId = pageProps.team?.id;
-    const userId = pageProps.auth?.id;
+    const teamId = page.props.team?.id;
+    const userId = page.props.auth?.id;
 
     const [isConnected, setIsConnected] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);

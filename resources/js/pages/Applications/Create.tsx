@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, BranchSelector } from '@/components/ui';
 import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook } from 'lucide-react';
@@ -237,7 +238,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
         setIsSubmitting(true);
 
-        router.post('/applications', formData as any, {
+        router.post('/applications', formData as unknown as RouterPayload, {
             onError: (errors) => {
                 setErrors(errors as Record<string, string>);
                 setIsSubmitting(false);

@@ -6,22 +6,15 @@ import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
 import { TeamSwitcher } from '@/components/ui/TeamSwitcher';
 import { useTheme } from '@/components/ui/ThemeProvider';
-import type { Notification } from '@/types';
-
 interface HeaderProps {
     showNewProject?: boolean;
     onCommandPalette?: () => void;
 }
 
-interface NotificationsData {
-    unreadCount: number;
-    recent: Notification[];
-}
-
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null } | undefined;
-    const notificationsData = (props as any).notifications as NotificationsData | undefined;
+    const user = props.auth;
+    const notificationsData = props.notifications;
     const { isDark, toggleTheme } = useTheme();
 
     // Detect OS for keyboard shortcut display

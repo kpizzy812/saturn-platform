@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -350,14 +351,14 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
 export default function AdminOAuthSettings({ providers }: Props) {
     const handleSave = (id: number, data: Partial<OAuthProvider>) => {
         // Filter out placeholder secrets
-        const payload: Record<string, unknown> = { ...data };
+        const payload: RouterPayload = { ...data };
         if (payload.client_secret === SECRET_PLACEHOLDER) {
             delete payload.client_secret;
         }
 
         router.post(
             `/admin/settings/oauth/${id}`,
-            payload as any,
+            payload,
             { preserveScroll: true }
         );
     };

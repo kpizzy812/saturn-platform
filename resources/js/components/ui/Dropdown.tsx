@@ -73,12 +73,12 @@ export function DropdownContent({
     mobileFullWidth,
     className,
 }: DropdownContentProps) {
-    const anchorPosition = align === 'left' ? 'bottom start' : align === 'center' ? 'bottom' : 'bottom end';
+    const anchorPosition = align === 'left' ? 'bottom start' as const : align === 'center' ? 'bottom' as const : 'bottom end' as const;
 
     return (
         <MenuItems
             portal
-            anchor={{ to: anchorPosition as any, gap: sideOffset, padding: 12 }}
+            anchor={{ to: anchorPosition, gap: sideOffset, padding: 12 }}
             transition
             className={cn(
                 // Base styles with high z-index for portal

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
-import { Link, useForm } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Bell, Mail, Webhook as WebhookIcon, Smartphone, Settings, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import { Discord } from '@/components/icons/Discord';
 import { Slack } from '@/components/icons/Slack';
@@ -86,12 +86,13 @@ export default function NotificationsIndex({ channels }: Props) {
         },
     ];
 
-    const { post, processing } = useForm({});
+    const [processing, setProcessing] = React.useState(false);
 
     const handleQuickToggle = (channelId: string, currentlyEnabled: boolean) => {
-        post(`/settings/notifications/${channelId}/toggle`, {
-            data: { enabled: !currentlyEnabled },
-        } as any);
+        setProcessing(true);
+        router.post(`/settings/notifications/${channelId}/toggle`, { enabled: !currentlyEnabled }, {
+            onFinish: () => setProcessing(false),
+        });
     };
 
     const enabledCount = notificationChannels.filter(c => c.enabled).length;
