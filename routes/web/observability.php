@@ -26,17 +26,20 @@ Route::get('/observability', function () {
     $prev24h = $now->copy()->subHours(48);
 
     // --- Metrics Overview (4 cards with sparklines) ---
+    // Only use checks that have actual metric data (not null from unreachable servers)
     $healthChecks24h = \App\Models\ServerHealthCheck::whereIn('server_id', $serverIds)
         ->where('created_at', '>=', $last24h)
+        ->whereNotNull('cpu_usage_percent')
         ->select('cpu_usage_percent', 'memory_usage_percent', 'disk_usage_percent', 'created_at')
         ->get();
 
     $healthChecksPrev24h = \App\Models\ServerHealthCheck::whereIn('server_id', $serverIds)
         ->whereBetween('created_at', [$prev24h, $last24h])
+        ->whereNotNull('cpu_usage_percent')
         ->select('cpu_usage_percent', 'memory_usage_percent', 'disk_usage_percent')
         ->get();
 
-    // Build sparkline data (24 hourly points)
+    // Build sparkline data (24 hourly points) — null when no data for that hour
     $buildSparkline = function (string $field) use ($healthChecks24h, $now) {
         $points = [];
         for ($i = 23; $i >= 0; $i--) {
@@ -44,22 +47,34 @@ Route::get('/observability', function () {
             $hourEnd = $now->copy()->subHours($i);
             $hourData = $healthChecks24h->filter(
                 fn ($c) => $c->created_at >= $hourStart && $c->created_at < $hourEnd
-            );
-            $points[] = $hourData->count() > 0 ? round($hourData->avg($field), 1) : 0;
+            )->whereNotNull($field);
+            $points[] = $hourData->count() > 0 ? round($hourData->avg($field), 1) : null;
         }
 
         return $points;
     };
 
     $calcMetric = function (string $field) use ($healthChecks24h, $healthChecksPrev24h, $buildSparkline) {
-        $current = $healthChecks24h->count() > 0 ? round($healthChecks24h->avg($field), 1) : 0;
-        $previous = $healthChecksPrev24h->count() > 0 ? round($healthChecksPrev24h->avg($field), 1) : 0;
-        $diff = $current - $previous;
-        $change = $diff != 0 ? ($diff > 0 ? '+' : '').round($diff, 1).'%' : '';
-        $trend = $diff > 0.5 ? 'up' : ($diff < -0.5 ? 'down' : 'neutral');
+        $currentData = $healthChecks24h->whereNotNull($field);
+        $previousData = $healthChecksPrev24h->whereNotNull($field);
+
+        $hasCurrentData = $currentData->count() > 0;
+        $hasPreviousData = $previousData->count() > 0;
+
+        $current = $hasCurrentData ? round($currentData->avg($field), 1) : null;
+        $previous = $hasPreviousData ? round($previousData->avg($field), 1) : null;
+
+        // Only show change if both periods have data
+        $change = '';
+        $trend = 'neutral';
+        if ($current !== null && $previous !== null) {
+            $diff = $current - $previous;
+            $change = $diff != 0 ? ($diff > 0 ? '+' : '').round($diff, 1).'%' : '';
+            $trend = $diff > 0.5 ? 'up' : ($diff < -0.5 ? 'down' : 'neutral');
+        }
 
         return [
-            'value' => $current.'%',
+            'value' => $current !== null ? $current.'%' : 'N/A',
             'change' => $change,
             'trend' => $trend,
             'data' => $buildSparkline($field),
@@ -94,22 +109,27 @@ Route::get('/observability', function () {
     $serviceHealth = $servers->map(function ($server) use ($latestChecks, $last24h) {
         $latestCheck = $latestChecks->get($server->id);
 
-        // Calculate uptime % from health checks in last 24h
+        // Calculate uptime % — count healthy + degraded as "up" (only truly down/unreachable are downtime)
         $totalChecks = \App\Models\ServerHealthCheck::where('server_id', $server->id)
             ->where('created_at', '>=', $last24h)
             ->count();
-        $healthyChecks = \App\Models\ServerHealthCheck::where('server_id', $server->id)
+        $upChecks = \App\Models\ServerHealthCheck::where('server_id', $server->id)
             ->where('created_at', '>=', $last24h)
-            ->where('status', 'healthy')
+            ->whereIn('status', ['healthy', 'degraded'])
             ->count();
 
-        $uptime = $totalChecks > 0 ? round(($healthyChecks / $totalChecks) * 100, 1) : 0;
-        $errorRate = $totalChecks > 0 ? round(((1 - $healthyChecks / $totalChecks) * 100), 1) : 0;
+        $uptime = $totalChecks > 0 ? round(($upChecks / $totalChecks) * 100, 1) : 0;
+        $errorRate = $totalChecks > 0 ? round((1 - $upChecks / $totalChecks) * 100, 1) : 0;
 
+        // Map status — preserve "unreachable" as distinct from "down"
         $status = 'down';
         if ($latestCheck) {
-            $status = $latestCheck->status === 'healthy' ? 'healthy'
-                : ($latestCheck->status === 'degraded' ? 'degraded' : 'down');
+            $status = match ($latestCheck->status) {
+                'healthy' => 'healthy',
+                'degraded' => 'degraded',
+                'unreachable' => 'unreachable',
+                default => 'down',
+            };
         } elseif (data_get($server, 'settings.is_reachable')) {
             $status = data_get($server, 'settings.is_usable') ? 'healthy' : 'degraded';
         }

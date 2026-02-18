@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { AppLayout } from '@/components/layout';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, Badge, Button } from '@/components/ui';
 import { Sparkline } from '@/components/ui/Chart';
 import {
@@ -19,12 +19,14 @@ import {
     Rocket,
     Clock,
     CheckCheck,
+    RefreshCw,
+    WifiOff,
 } from 'lucide-react';
 
 interface ServiceHealth {
     id: string;
     name: string;
-    status: 'healthy' | 'degraded' | 'down';
+    status: 'healthy' | 'degraded' | 'down' | 'unreachable';
     uptime: number;
     responseTime: number;
     errorRate: number;
@@ -43,7 +45,7 @@ interface MetricOverview {
     value: string;
     change: string;
     trend: 'up' | 'down' | 'neutral';
-    data: number[];
+    data: (number | null)[];
 }
 
 interface DeploymentStats {
@@ -75,9 +77,9 @@ interface Props {
 function MetricCard({ metric }: { metric: MetricOverview }) {
     const Icon = metricIconMap[metric.label] || Activity;
     const isResource = isResourceMetric(metric.label);
+    const isNA = metric.value === 'N/A';
 
     // For resource metrics: up is bad (red), down is good (green)
-    // For other metrics: neutral styling
     const trendColor = isResource
         ? metric.trend === 'up'
             ? 'text-danger'
@@ -96,22 +98,29 @@ function MetricCard({ metric }: { metric: MetricOverview }) {
             : 'rgb(52, 211, 153)'
         : 'rgb(99, 102, 241)';
 
+    // Filter out null values for sparkline rendering
+    const sparklineData = metric.data.filter((v): v is number => v !== null);
+    const hasSparklineData = sparklineData.length > 0 && sparklineData.some((v) => v > 0);
+
     return (
         <Card>
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <Icon className="h-5 w-5 text-primary" />
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isNA ? 'bg-foreground-muted/10' : 'bg-primary/10'}`}>
+                            <Icon className={`h-5 w-5 ${isNA ? 'text-foreground-muted' : 'text-primary'}`} />
                         </div>
                         <div>
                             <p className="text-sm text-foreground-muted">{metric.label}</p>
-                            <p className="text-2xl font-semibold text-foreground">{metric.value}</p>
+                            <p className={`text-2xl font-semibold ${isNA ? 'text-foreground-muted' : 'text-foreground'}`}>{metric.value}</p>
                         </div>
                     </div>
                     {metric.change && <span className={`text-sm font-medium ${trendColor}`}>{metric.change}</span>}
                 </div>
-                {metric.data.length > 0 && <Sparkline data={metric.data} color={sparklineColor} />}
+                {hasSparklineData && <Sparkline data={sparklineData} color={sparklineColor} />}
+                {isNA && (
+                    <p className="text-xs text-foreground-subtle">No data available — server may be unreachable</p>
+                )}
             </CardContent>
         </Card>
     );
@@ -213,6 +222,12 @@ function ServiceHealthCard({ service }: { service: ServiceHealth }) {
             bg: 'bg-warning/10',
             badge: 'warning' as const,
         },
+        unreachable: {
+            icon: WifiOff,
+            color: 'text-warning',
+            bg: 'bg-warning/10',
+            badge: 'warning' as const,
+        },
         down: {
             icon: XCircle,
             color: 'text-danger',
@@ -221,7 +236,7 @@ function ServiceHealthCard({ service }: { service: ServiceHealth }) {
         },
     };
 
-    const config = statusConfig[service.status];
+    const config = statusConfig[service.status] || statusConfig.down;
     const StatusIcon = config.icon;
 
     return (
@@ -298,6 +313,23 @@ export default function ObservabilityIndex({
     recentAlerts = [],
     deploymentStats,
 }: Props) {
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+    const handleRefresh = React.useCallback(() => {
+        setIsRefreshing(true);
+        router.reload({
+            onFinish: () => setIsRefreshing(false),
+        });
+    }, []);
+
+    // Auto-refresh every 60 seconds
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <AppLayout title="Observability" breadcrumbs={[{ label: 'Observability' }]}>
             <div className="space-y-6">
@@ -308,9 +340,9 @@ export default function ObservabilityIndex({
                         <p className="text-foreground-muted">Monitor your infrastructure health and performance</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button variant="secondary">
-                            <Activity className="mr-2 h-4 w-4" />
-                            Live Mode
+                        <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            {isRefreshing ? 'Refreshing...' : 'Refresh'}
                         </Button>
                     </div>
                 </div>
@@ -358,13 +390,13 @@ export default function ObservabilityIndex({
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                    {/* Recent Alerts */}
+                    {/* Recent Issues */}
                     <div>
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-foreground">Recent Alerts</h2>
+                            <h2 className="text-lg font-semibold text-foreground">Recent Issues</h2>
                             <Link href="/observability/alerts">
                                 <Button variant="ghost" size="sm">
-                                    View All
+                                    Manage Alerts
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </Link>
@@ -372,7 +404,7 @@ export default function ObservabilityIndex({
                         {recentAlerts.length === 0 ? (
                             <Card className="p-12 text-center">
                                 <CheckCircle className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <h3 className="mt-4 text-lg font-medium text-foreground">No recent alerts</h3>
+                                <h3 className="mt-4 text-lg font-medium text-foreground">No recent issues</h3>
                                 <p className="mt-2 text-foreground-muted">All systems operating normally</p>
                             </Card>
                         ) : (
