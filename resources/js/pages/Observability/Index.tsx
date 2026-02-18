@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
 import { Card, CardContent, Badge, Button } from '@/components/ui';
@@ -37,8 +38,14 @@ interface MetricOverview {
     change: string;
     trend: 'up' | 'down' | 'neutral';
     data: number[];
-    icon: any;
 }
+
+const metricIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    'Servers': Server,
+    'Applications': Activity,
+    'Services': Zap,
+    'Active Deployments': TrendingUp,
+};
 
 interface Props {
     metricsOverview?: MetricOverview[];
@@ -47,7 +54,7 @@ interface Props {
 }
 
 function MetricCard({ metric }: { metric: MetricOverview }) {
-    const Icon = metric.icon;
+    const Icon = metricIconMap[metric.label] || Activity;
     const trendColor =
         metric.trend === 'up'
             ? 'text-success'
@@ -70,7 +77,9 @@ function MetricCard({ metric }: { metric: MetricOverview }) {
                     </div>
                     <span className={`text-sm font-medium ${trendColor}`}>{metric.change}</span>
                 </div>
-                <Sparkline data={metric.data} color={metric.trend === 'up' ? 'rgb(52, 211, 153)' : 'rgb(99, 102, 241)'} />
+                {metric.data.length > 0 && (
+                    <Sparkline data={metric.data} color={metric.trend === 'up' ? 'rgb(52, 211, 153)' : 'rgb(99, 102, 241)'} />
+                )}
             </CardContent>
         </Card>
     );

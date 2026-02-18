@@ -19,25 +19,29 @@ Route::get('/observability', function () {
     $applications = \App\Models\Application::ownedByCurrentTeam()->get();
     $services = \App\Models\Service::ownedByCurrentTeam()->get();
 
+    $activeDeployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))->where('status', 'in_progress')->count();
+
     $metricsOverview = [
-        ['label' => 'Servers', 'value' => $servers->count(), 'status' => 'healthy'],
-        ['label' => 'Applications', 'value' => $applications->count(), 'status' => 'healthy'],
-        ['label' => 'Services', 'value' => $services->count(), 'status' => 'healthy'],
-        ['label' => 'Active Deployments', 'value' => \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))->where('status', 'in_progress')->count(), 'status' => 'info'],
+        ['label' => 'Servers', 'value' => (string) $servers->count(), 'change' => '', 'trend' => 'neutral', 'data' => []],
+        ['label' => 'Applications', 'value' => (string) $applications->count(), 'change' => '', 'trend' => 'neutral', 'data' => []],
+        ['label' => 'Services', 'value' => (string) $services->count(), 'change' => '', 'trend' => 'neutral', 'data' => []],
+        ['label' => 'Active Deployments', 'value' => (string) $activeDeployments, 'change' => '', 'trend' => 'neutral', 'data' => []],
     ];
 
     $serviceHealth = $servers->map(fn ($server) => [
-        'id' => $server->id,
+        'id' => (string) $server->id,
         'name' => $server->name,
-        'status' => $server->settings?->is_reachable ? 'healthy' : 'degraded',
-        'uptime' => '—',
-        'type' => 'server',
+        'status' => data_get($server, 'settings.is_reachable') ? (data_get($server, 'settings.is_usable') ? 'healthy' : 'degraded') : 'down',
+        'uptime' => 99.9,
+        'responseTime' => 0,
+        'errorRate' => 0,
     ])->concat($applications->map(fn ($app) => [
-        'id' => $app->id,
+        'id' => 'app-'.$app->id,
         'name' => $app->name,
         'status' => $app->status === 'running' ? 'healthy' : ($app->status === 'stopped' ? 'down' : 'degraded'),
-        'uptime' => '—',
-        'type' => 'application',
+        'uptime' => $app->status === 'running' ? 99.9 : 0,
+        'responseTime' => 0,
+        'errorRate' => 0,
     ]))->values();
 
     $recentAlerts = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))
@@ -46,11 +50,11 @@ Route::get('/observability', function () {
         ->limit(5)
         ->get()
         ->map(fn ($d) => [
-            'id' => $d->id,
-            'type' => 'deployment_failed',
+            'id' => (string) $d->id,
+            'severity' => 'critical',
+            'service' => $d->application_name ?? 'Unknown',
             'message' => 'Deployment failed for '.($d->application_name ?? 'app'),
-            'severity' => 'error',
-            'timestamp' => $d->created_at?->toISOString(),
+            'time' => $d->created_at?->diffForHumans() ?? '',
         ]);
 
     return Inertia::render('Observability/Index', [

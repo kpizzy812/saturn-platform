@@ -33,6 +33,17 @@ interface DeploymentEvent {
     status: 'queued' | 'in_progress' | 'finished' | 'failed' | 'cancelled';
 }
 
+interface TransferStatusEvent {
+    transferId: number;
+    uuid: string;
+    status: string;
+    progress: number;
+    currentStep: string | null;
+    transferredBytes: number | null;
+    totalBytes: number | null;
+    errorMessage: string | null;
+}
+
 /**
  * Callback types for status updates
  */
@@ -84,6 +95,11 @@ interface UseRealtimeStatusOptions {
      * Deployment finished callback
      */
     onDeploymentFinished?: StatusUpdateCallback<DeploymentEvent>;
+
+    /**
+     * Resource transfer status change callback
+     */
+    onTransferStatusChange?: StatusUpdateCallback<TransferStatusEvent>;
 }
 
 interface UseRealtimeStatusReturn {
@@ -144,6 +160,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
         onServerStatusChange,
         onDeploymentCreated,
         onDeploymentFinished,
+        onTransferStatusChange,
     } = options;
 
     const page = usePage();
@@ -229,6 +246,13 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
                 });
             }
 
+            // Resource transfer status changes
+            if (onTransferStatusChange) {
+                teamChannel.listen('ResourceTransferStatusChanged', (e: TransferStatusEvent) => {
+                    onTransferStatusChange(e);
+                });
+            }
+
             setIsConnected(true);
             setError(null);
             setReconnectAttempts(0);
@@ -252,6 +276,7 @@ export function useRealtimeStatus(options: UseRealtimeStatusOptions = {}): UseRe
         onServerStatusChange,
         onDeploymentCreated,
         onDeploymentFinished,
+        onTransferStatusChange,
         onConnectionChange,
     ]);
 
