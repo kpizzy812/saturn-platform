@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -16,51 +17,198 @@ use Inertia\Inertia;
 Route::get('/observability', function () {
     $team = auth()->user()->currentTeam();
     $servers = $team->servers;
+    $serverIds = $servers->pluck('id');
     $applications = \App\Models\Application::ownedByCurrentTeam()->get();
-    $services = \App\Models\Service::ownedByCurrentTeam()->get();
+    $applicationIds = $applications->pluck('id');
 
-    $activeDeployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))->where('status', 'in_progress')->count();
+    $now = now();
+    $last24h = $now->copy()->subHours(24);
+    $prev24h = $now->copy()->subHours(48);
+
+    // --- Metrics Overview (4 cards with sparklines) ---
+    $healthChecks24h = \App\Models\ServerHealthCheck::whereIn('server_id', $serverIds)
+        ->where('created_at', '>=', $last24h)
+        ->select('cpu_usage_percent', 'memory_usage_percent', 'disk_usage_percent', 'created_at')
+        ->get();
+
+    $healthChecksPrev24h = \App\Models\ServerHealthCheck::whereIn('server_id', $serverIds)
+        ->whereBetween('created_at', [$prev24h, $last24h])
+        ->select('cpu_usage_percent', 'memory_usage_percent', 'disk_usage_percent')
+        ->get();
+
+    // Build sparkline data (24 hourly points)
+    $buildSparkline = function (string $field) use ($healthChecks24h, $now) {
+        $points = [];
+        for ($i = 23; $i >= 0; $i--) {
+            $hourStart = $now->copy()->subHours($i + 1);
+            $hourEnd = $now->copy()->subHours($i);
+            $hourData = $healthChecks24h->filter(
+                fn ($c) => $c->created_at >= $hourStart && $c->created_at < $hourEnd
+            );
+            $points[] = $hourData->count() > 0 ? round($hourData->avg($field), 1) : 0;
+        }
+
+        return $points;
+    };
+
+    $calcMetric = function (string $field) use ($healthChecks24h, $healthChecksPrev24h, $buildSparkline) {
+        $current = $healthChecks24h->count() > 0 ? round($healthChecks24h->avg($field), 1) : 0;
+        $previous = $healthChecksPrev24h->count() > 0 ? round($healthChecksPrev24h->avg($field), 1) : 0;
+        $diff = $current - $previous;
+        $change = $diff != 0 ? ($diff > 0 ? '+' : '').round($diff, 1).'%' : '';
+        $trend = $diff > 0.5 ? 'up' : ($diff < -0.5 ? 'down' : 'neutral');
+
+        return [
+            'value' => $current.'%',
+            'change' => $change,
+            'trend' => $trend,
+            'data' => $buildSparkline($field),
+        ];
+    };
+
+    $cpuMetric = $calcMetric('cpu_usage_percent');
+    $memMetric = $calcMetric('memory_usage_percent');
+    $diskMetric = $calcMetric('disk_usage_percent');
+
+    $activeDeployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+        ->where('status', 'in_progress')
+        ->count();
 
     $metricsOverview = [
-        ['label' => 'Servers', 'value' => (string) $servers->count(), 'change' => '', 'trend' => 'neutral', 'data' => []],
-        ['label' => 'Applications', 'value' => (string) $applications->count(), 'change' => '', 'trend' => 'neutral', 'data' => []],
-        ['label' => 'Services', 'value' => (string) $services->count(), 'change' => '', 'trend' => 'neutral', 'data' => []],
+        ['label' => 'Avg CPU', ...$cpuMetric],
+        ['label' => 'Avg Memory', ...$memMetric],
+        ['label' => 'Avg Disk', ...$diskMetric],
         ['label' => 'Active Deployments', 'value' => (string) $activeDeployments, 'change' => '', 'trend' => 'neutral', 'data' => []],
     ];
 
-    $serviceHealth = $servers->map(fn ($server) => [
-        'id' => (string) $server->id,
-        'name' => $server->name,
-        'status' => data_get($server, 'settings.is_reachable') ? (data_get($server, 'settings.is_usable') ? 'healthy' : 'degraded') : 'down',
-        'uptime' => 99.9,
-        'responseTime' => 0,
-        'errorRate' => 0,
-    ])->concat($applications->map(fn ($app) => [
-        'id' => 'app-'.$app->id,
-        'name' => $app->name,
-        'status' => $app->status === 'running' ? 'healthy' : ($app->status === 'stopped' ? 'down' : 'degraded'),
-        'uptime' => $app->status === 'running' ? 99.9 : 0,
-        'responseTime' => 0,
-        'errorRate' => 0,
-    ]))->values();
+    // --- Service Health (real data from ServerHealthCheck) ---
+    $latestCheckIds = \App\Models\ServerHealthCheck::whereIn('server_id', $serverIds)
+        ->select(DB::raw('MAX(id) as id'))
+        ->groupBy('server_id')
+        ->pluck('id');
 
-    $recentAlerts = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applications->pluck('id'))
+    $latestChecks = \App\Models\ServerHealthCheck::whereIn('id', $latestCheckIds)
+        ->get()
+        ->keyBy('server_id');
+
+    $serviceHealth = $servers->map(function ($server) use ($latestChecks, $last24h) {
+        $latestCheck = $latestChecks->get($server->id);
+
+        // Calculate uptime % from health checks in last 24h
+        $totalChecks = \App\Models\ServerHealthCheck::where('server_id', $server->id)
+            ->where('created_at', '>=', $last24h)
+            ->count();
+        $healthyChecks = \App\Models\ServerHealthCheck::where('server_id', $server->id)
+            ->where('created_at', '>=', $last24h)
+            ->where('status', 'healthy')
+            ->count();
+
+        $uptime = $totalChecks > 0 ? round(($healthyChecks / $totalChecks) * 100, 1) : 0;
+        $errorRate = $totalChecks > 0 ? round(((1 - $healthyChecks / $totalChecks) * 100), 1) : 0;
+
+        $status = 'down';
+        if ($latestCheck) {
+            $status = $latestCheck->status === 'healthy' ? 'healthy'
+                : ($latestCheck->status === 'degraded' ? 'degraded' : 'down');
+        } elseif (data_get($server, 'settings.is_reachable')) {
+            $status = data_get($server, 'settings.is_usable') ? 'healthy' : 'degraded';
+        }
+
+        return [
+            'id' => (string) $server->id,
+            'name' => $server->name,
+            'status' => $status,
+            'uptime' => $uptime,
+            'responseTime' => $latestCheck ? $latestCheck->response_time_ms : 0,
+            'errorRate' => $errorRate,
+        ];
+    })->values();
+
+    // --- Deployment Stats ---
+    $deploysToday = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+        ->where('created_at', '>=', $now->copy()->startOfDay())
+        ->count();
+    $deploysWeek = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+        ->where('created_at', '>=', $now->copy()->subDays(7))
+        ->count();
+    $deploysSuccessWeek = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+        ->where('created_at', '>=', $now->copy()->subDays(7))
+        ->where('status', 'finished')
+        ->count();
+    $deploysFailedWeek = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+        ->where('created_at', '>=', $now->copy()->subDays(7))
+        ->where('status', 'failed')
+        ->count();
+    $successRate = $deploysWeek > 0 ? round(($deploysSuccessWeek / $deploysWeek) * 100, 1) : 100;
+    $avgDuration = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
+        ->where('created_at', '>=', $now->copy()->subDays(7))
+        ->where('status', 'finished')
+        ->whereNotNull('finished_at')
+        ->whereNotNull('started_at')
+        ->selectRaw('AVG(EXTRACT(EPOCH FROM (finished_at - started_at))) as avg_seconds')
+        ->value('avg_seconds');
+
+    $deploymentStats = [
+        'today' => $deploysToday,
+        'week' => $deploysWeek,
+        'successRate' => $successRate,
+        'avgDuration' => $avgDuration ? round((float) $avgDuration) : 0,
+        'success' => $deploysSuccessWeek,
+        'failed' => $deploysFailedWeek,
+    ];
+
+    // --- Recent Alerts (AlertHistory + failed deploys merged) ---
+    $alertHistoryItems = \App\Models\AlertHistory::whereIn('alert_id',
+        \App\Models\Alert::where('team_id', $team->id)->pluck('id')
+    )->with('alert:id,name')
+        ->orderByDesc('triggered_at')
+        ->limit(5)
+        ->get();
+
+    $alertHistories = collect();
+    foreach ($alertHistoryItems as $h) {
+        /** @var \App\Models\Alert|null $alertModel */
+        $alertModel = $h->alert;
+        $alertName = $alertModel ? $alertModel->name : 'Unknown Alert';
+        $alertHistories->push([
+            'id' => 'alert-'.$h->id,
+            'severity' => $h->status === 'triggered' ? 'warning' : 'info',
+            'service' => $alertName,
+            'message' => ($h->status === 'triggered' ? 'Alert triggered' : 'Alert resolved').': '.$alertName,
+            'time' => $h->triggered_at->diffForHumans(),
+            'timestamp' => $h->triggered_at->timestamp,
+        ]);
+    }
+
+    /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $failedDeploys */
+    $failedDeploys = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
         ->where('status', 'failed')
         ->orderByDesc('created_at')
         ->limit(5)
         ->get()
-        ->map(fn ($d) => [
-            'id' => (string) $d->id,
-            'severity' => 'critical',
-            'service' => $d->application_name ?? 'Unknown',
-            'message' => 'Deployment failed for '.($d->application_name ?? 'app'),
-            'time' => $d->created_at?->diffForHumans() ?? '',
-        ]);
+        ->map(function ($d) {
+            /** @var \App\Models\ApplicationDeploymentQueue $d */
+            return [
+                'id' => 'deploy-'.$d->id,
+                'severity' => 'critical',
+                'service' => $d->application_name ?? 'Unknown',
+                'message' => 'Deployment failed for '.($d->application_name ?? 'app'),
+                'time' => $d->created_at ? $d->created_at->diffForHumans() : '',
+                'timestamp' => $d->created_at ? $d->created_at->timestamp : 0,
+            ];
+        });
+
+    $recentAlerts = $alertHistories->merge($failedDeploys)
+        ->sortByDesc(fn (array $a) => $a['timestamp'] ?? 0)
+        ->take(5)
+        ->values()
+        ->map(fn (array $a) => collect($a)->except('timestamp')->all());
 
     return Inertia::render('Observability/Index', [
         'metricsOverview' => $metricsOverview,
         'services' => $serviceHealth,
         'recentAlerts' => $recentAlerts,
+        'deploymentStats' => $deploymentStats,
     ]);
 })->name('observability.index');
 
@@ -114,7 +262,7 @@ Route::get('/observability/logs', function () {
     foreach ($databaseModels as $model) {
         $dbs = $model::whereHas('environment.project.team', function ($query) use ($team) {
             $query->where('id', $team->id);
-        })->select('uuid', 'name', 'status')->get()->map(fn ($db) => [
+        })->select(['uuid', 'name', 'status'])->get()->map(fn ($db) => [
             'uuid' => $db->uuid,
             'name' => $db->name,
             'type' => 'database',
@@ -188,21 +336,27 @@ Route::get('/observability/alerts', function () {
         'created_at' => $alert->created_at?->toISOString(),
     ]);
 
-    $history = \App\Models\AlertHistory::whereIn('alert_id',
+    $historyItems = \App\Models\AlertHistory::whereIn('alert_id',
         \App\Models\Alert::ownedByCurrentTeam()->pluck('id')
     )->with('alert:id,name')
         ->orderByDesc('triggered_at')
         ->limit(50)
-        ->get()
-        ->map(fn ($h) => [
+        ->get();
+
+    $history = collect();
+    foreach ($historyItems as $h) {
+        /** @var \App\Models\Alert|null $alertModel */
+        $alertModel = $h->alert;
+        $history->push([
             'id' => $h->id,
             'alert_id' => $h->alert_id,
-            'alert_name' => $h->alert?->name ?? 'Unknown',
-            'triggered_at' => $h->triggered_at?->toISOString(),
+            'alert_name' => $alertModel ? $alertModel->name : 'Unknown',
+            'triggered_at' => $h->triggered_at->toISOString(),
             'resolved_at' => $h->resolved_at?->toISOString(),
             'value' => $h->value,
             'status' => $h->status,
         ]);
+    }
 
     return Inertia::render('Observability/Alerts', [
         'alerts' => $alerts,
@@ -221,11 +375,10 @@ Route::post('/observability/alerts', function (Request $request) {
         'channels' => 'nullable|array',
     ]);
 
-    \App\Models\Alert::create([
-        ...$validated,
-        'team_id' => currentTeam()->id,
-        'enabled' => true,
-    ]);
+    $alert = new \App\Models\Alert($validated);
+    $alert->team_id = currentTeam()->id;
+    $alert->enabled = true;
+    $alert->save();
 
     return redirect()->back()->with('success', 'Alert created successfully');
 })->name('observability.alerts.store');

@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int $id
+ * @property string $uuid
+ * @property int $team_id
+ * @property string $name
+ * @property string $metric
+ * @property string $condition
+ * @property float $threshold
+ * @property int $duration
+ * @property bool $enabled
+ * @property array|null $channels
+ * @property int $triggered_count
+ * @property \Carbon\Carbon|null $last_triggered_at
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class Alert extends BaseModel
 {
     use Auditable, LogsActivity;
@@ -19,12 +35,12 @@ class Alert extends BaseModel
     protected $fillable = [
         'uuid',
         'name',
-        'type',
+        'metric',
+        'condition',
         'enabled',
         'channels',
         'threshold',
         'duration',
-        'message_template',
     ];
 
     protected function casts(): array
@@ -42,7 +58,7 @@ class Alert extends BaseModel
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'type', 'threshold', 'enabled', 'channels'])
+            ->logOnly(['name', 'metric', 'condition', 'threshold', 'enabled', 'channels'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

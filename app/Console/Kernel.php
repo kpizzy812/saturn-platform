@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\AlertEvaluationJob;
 use App\Jobs\BackupRestoreTestManagerJob;
 use App\Jobs\CheckForUpdatesJob;
 use App\Jobs\CheckHelperImageJob;
@@ -60,6 +61,9 @@ class Kernel extends ConsoleKernel
             // Database Metrics Collection (every 5 minutes)
             $this->scheduleInstance->job(new DatabaseMetricsManagerJob)->everyFiveMinutes()->onOneServer();
 
+            // Alert Evaluation (every 5 minutes)
+            $this->scheduleInstance->job(new AlertEvaluationJob)->everyFiveMinutes()->onOneServer();
+
             // Scheduled Jobs (Backups & Tasks)
             $this->scheduleInstance->job(new ScheduledJobManager)->everyMinute()->onOneServer();
 
@@ -96,6 +100,9 @@ class Kernel extends ConsoleKernel
 
             $this->scheduleInstance->command('cleanup:database --yes')->daily();
             $this->scheduleInstance->command('uploads:clear')->everyTwoMinutes();
+
+            // Alert Evaluation (every 5 minutes)
+            $this->scheduleInstance->job(new AlertEvaluationJob)->everyFiveMinutes()->timezone($this->instanceTimezone)->onOneServer();
 
             // Cleanup orphaned PR preview containers daily
             $this->scheduleInstance->job(new CleanupOrphanedPreviewContainersJob)->daily()->onOneServer();

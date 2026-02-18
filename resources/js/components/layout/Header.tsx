@@ -1,6 +1,6 @@
 
 import { Link, usePage, router } from '@inertiajs/react';
-import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command } from 'lucide-react';
+import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command, BarChart3 } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
@@ -66,6 +66,15 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                         <span>New</span>
                     </Link>
                 )}
+
+                {/* Observability */}
+                <Link
+                    href="/observability"
+                    className="rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground"
+                    title="Observability"
+                >
+                    <BarChart3 className="h-5 w-5" />
+                </Link>
 
                 {/* Theme Toggle */}
                 <button

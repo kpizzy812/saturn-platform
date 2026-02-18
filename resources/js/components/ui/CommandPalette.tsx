@@ -20,6 +20,7 @@ import {
     ClipboardCheck,
     ArrowRightLeft,
     GitBranch,
+    BarChart3,
     Clock,
     Loader2,
     Star,
@@ -57,6 +58,7 @@ const commands: CommandItem[] = [
     { id: 'approvals', name: 'Approvals', description: 'Pending deployment, migration, and transfer approvals', icon: <ClipboardCheck className="h-4 w-4" />, href: '/approvals', group: 'navigation' },
     { id: 'transfers', name: 'Transfer History', description: 'View resource transfer history', icon: <ArrowRightLeft className="h-4 w-4" />, href: '/transfers', group: 'navigation' },
     { id: 'migrations', name: 'Migrations', description: 'Environment migrations (dev \u2192 uat \u2192 prod)', icon: <GitBranch className="h-4 w-4" />, href: '/migrations', group: 'navigation' },
+    { id: 'observability', name: 'Observability', description: 'Monitoring and alerts', icon: <BarChart3 className="h-4 w-4" />, href: '/observability', group: 'navigation' },
 
     // Actions
     { id: 'new-project', name: 'New Project', description: 'Create a new project', icon: <Plus className="h-4 w-4" />, href: '/projects/create', group: 'actions' },
