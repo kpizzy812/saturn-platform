@@ -472,7 +472,9 @@ class Server extends BaseModel
         // In multi-environment deployments (SATURN_ENV is set), the static
         // deploy/proxy/saturn.yaml manages all Traefik routing centrally.
         // Skip dynamic generation to prevent overwriting shared config.
-        if (config('constants.saturn.env')) {
+        // Use getenv() as fallback since config:cache may have been built
+        // before SATURN_ENV was added to .env, making config() return null.
+        if (config('constants.saturn.env') || getenv('SATURN_ENV')) {
             return;
         }
 
