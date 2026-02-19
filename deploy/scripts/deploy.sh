@@ -262,6 +262,20 @@ clear_caches() {
     log_success "Caches rebuilt"
 }
 
+restore_proxy_config() {
+    log_step "Restoring multi-environment Traefik config..."
+
+    local proxy_config="${PROJECT_ROOT}/deploy/proxy/saturn.yaml"
+    local target_path="/data/saturn/proxy/dynamic/saturn.yaml"
+
+    if [[ -f "$proxy_config" ]]; then
+        cp "$proxy_config" "$target_path"
+        log_success "Traefik config restored to ${target_path}"
+    else
+        log_warn "Proxy config not found at ${proxy_config}, skipping"
+    fi
+}
+
 health_check() {
     log_step "Health check..."
 
@@ -344,6 +358,7 @@ deploy() {
     run_seeders
     fix_ssh_permissions  # Re-fix after seeders (may create new key files)
     clear_caches
+    restore_proxy_config  # Restore multi-env Traefik config (old images may overwrite it)
     cleanup_old_backups
 
     if health_check; then
