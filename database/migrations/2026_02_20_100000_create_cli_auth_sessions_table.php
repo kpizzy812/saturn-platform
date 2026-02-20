@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('status', 20)->default('pending');
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedBigInteger('team_id')->nullable();
-            $table->string('token_plain')->nullable();
+            $table->text('token_plain')->nullable();
             $table->string('ip_address', 45);
             $table->string('user_agent')->nullable();
             $table->timestamp('expires_at');
