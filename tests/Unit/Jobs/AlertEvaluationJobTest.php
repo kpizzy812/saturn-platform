@@ -6,7 +6,6 @@ use App\Jobs\AlertEvaluationJob;
 use App\Models\Alert;
 use App\Models\AlertHistory;
 use App\Models\Server;
-use App\Models\ServerHealthCheck;
 use App\Models\Team;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
@@ -101,7 +100,7 @@ test('checkCondition returns false for unknown operator', function () {
 });
 
 // ---------------------------------------------------------------------------
-// evaluateAlert tests
+// evaluateAlert tests — mock getAvgMetric instead of overloading ServerHealthCheck
 // ---------------------------------------------------------------------------
 
 test('no crash when team has no servers', function () {
@@ -159,17 +158,11 @@ test('alert triggers when metric exceeds threshold', function () {
         return isset($data['last_triggered_at']);
     }))->once();
 
-    $healthCheckQuery = Mockery::mock();
-    $healthCheckQuery->shouldReceive('whereIn')->with('server_id', Mockery::any())->andReturnSelf();
-    $healthCheckQuery->shouldReceive('where')->with('created_at', '>=', Mockery::any())->andReturnSelf();
-    $healthCheckQuery->shouldReceive('whereNotNull')->with('cpu_usage_percent')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('avg')->with('cpu_usage_percent')->andReturn(92.5);
+    $job = Mockery::mock(AlertEvaluationJob::class)->makePartial();
+    $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('getAvgMetric')->andReturn(92.5);
 
-    Mockery::mock('overload:'.ServerHealthCheck::class)
-        ->shouldReceive('whereIn')->andReturn($healthCheckQuery);
-
-    $job = new AlertEvaluationJob;
-    $method = new \ReflectionMethod($job, 'evaluateAlert');
+    $method = new \ReflectionMethod(AlertEvaluationJob::class, 'evaluateAlert');
     $method->invoke($job, $alert);
 });
 
@@ -181,17 +174,11 @@ test('alert does NOT trigger when metric is below threshold', function () {
     $alert = buildAlertMock(['id' => 2, 'metric' => 'cpu', 'condition' => '>', 'threshold' => 80.0]);
     $alert->shouldReceive('getAttribute')->with('team')->andReturn($team);
 
-    $healthCheckQuery = Mockery::mock();
-    $healthCheckQuery->shouldReceive('whereIn')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('where')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('whereNotNull')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('avg')->andReturn(45.0);
+    $job = Mockery::mock(AlertEvaluationJob::class)->makePartial();
+    $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('getAvgMetric')->andReturn(45.0);
 
-    Mockery::mock('overload:'.ServerHealthCheck::class)
-        ->shouldReceive('whereIn')->andReturn($healthCheckQuery);
-
-    $job = new AlertEvaluationJob;
-    $method = new \ReflectionMethod($job, 'evaluateAlert');
+    $method = new \ReflectionMethod(AlertEvaluationJob::class, 'evaluateAlert');
     $method->invoke($job, $alert);
 });
 
@@ -204,17 +191,11 @@ test('deduplication prevents double fire within cache window', function () {
     $alert = buildAlertMock(['id' => 3, 'metric' => 'cpu', 'condition' => '>', 'threshold' => 80.0]);
     $alert->shouldReceive('getAttribute')->with('team')->andReturn($team);
 
-    $healthCheckQuery = Mockery::mock();
-    $healthCheckQuery->shouldReceive('whereIn')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('where')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('whereNotNull')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('avg')->andReturn(95.0);
+    $job = Mockery::mock(AlertEvaluationJob::class)->makePartial();
+    $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('getAvgMetric')->andReturn(95.0);
 
-    Mockery::mock('overload:'.ServerHealthCheck::class)
-        ->shouldReceive('whereIn')->andReturn($healthCheckQuery);
-
-    $job = new AlertEvaluationJob;
-    $method = new \ReflectionMethod($job, 'evaluateAlert');
+    $method = new \ReflectionMethod(AlertEvaluationJob::class, 'evaluateAlert');
     $method->invoke($job, $alert);
 });
 
@@ -240,17 +221,11 @@ test('alert resolves when metric drops below threshold', function () {
 
     $alert->shouldReceive('histories')->andReturn($historyRelation);
 
-    $healthCheckQuery = Mockery::mock();
-    $healthCheckQuery->shouldReceive('whereIn')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('where')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('whereNotNull')->andReturnSelf();
-    $healthCheckQuery->shouldReceive('avg')->andReturn(50.0);
+    $job = Mockery::mock(AlertEvaluationJob::class)->makePartial();
+    $job->shouldAllowMockingProtectedMethods();
+    $job->shouldReceive('getAvgMetric')->andReturn(50.0);
 
-    Mockery::mock('overload:'.ServerHealthCheck::class)
-        ->shouldReceive('whereIn')->andReturn($healthCheckQuery);
-
-    $job = new AlertEvaluationJob;
-    $method = new \ReflectionMethod($job, 'evaluateAlert');
+    $method = new \ReflectionMethod(AlertEvaluationJob::class, 'evaluateAlert');
     $method->invoke($job, $alert);
 });
 
@@ -260,4 +235,24 @@ test('job has correct configuration', function () {
     expect($job->tries)->toBe(1);
     expect($job->timeout)->toBe(60);
     expect($job)->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+});
+
+// ---------------------------------------------------------------------------
+// failed() callback
+// ---------------------------------------------------------------------------
+
+test('job has a public failed() method', function () {
+    $reflection = new \ReflectionClass(AlertEvaluationJob::class);
+
+    expect($reflection->hasMethod('failed'))->toBeTrue();
+    expect($reflection->getMethod('failed')->isPublic())->toBeTrue();
+});
+
+test('failed() logs error with exception message', function () {
+    Log::shouldReceive('error')->once()->with('AlertEvaluationJob permanently failed', Mockery::on(function ($context) {
+        return str_contains($context['error'], 'DB connection lost');
+    }));
+
+    $job = new AlertEvaluationJob;
+    $job->failed(new \RuntimeException('DB connection lost'));
 });

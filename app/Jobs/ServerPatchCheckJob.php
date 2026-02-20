@@ -31,6 +31,15 @@ class ServerPatchCheckJob implements ShouldBeEncrypted, ShouldQueue
 
     public function __construct(public Server $server) {}
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerPatchCheckJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     public function handle(): void
     {
         try {

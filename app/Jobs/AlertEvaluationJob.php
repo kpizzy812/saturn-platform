@@ -30,6 +30,13 @@ class AlertEvaluationJob implements ShouldQueue
         'response_time' => 'response_time_ms',
     ];
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('AlertEvaluationJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     public function handle(): void
     {
         $alerts = Alert::where('enabled', true)->with('team.servers')->get();
@@ -60,10 +67,7 @@ class AlertEvaluationJob implements ShouldQueue
         $duration = max(1, (int) $alert->duration);
         $since = now()->subMinutes($duration);
 
-        $avgValue = ServerHealthCheck::whereIn('server_id', $serverIds)
-            ->where('created_at', '>=', $since)
-            ->whereNotNull($column)
-            ->avg($column);
+        $avgValue = $this->getAvgMetric($serverIds, $column, $since);
 
         if ($avgValue === null) {
             return;
@@ -117,6 +121,14 @@ class AlertEvaluationJob implements ShouldQueue
                 Log::info("Alert resolved: {$alert->name} ({$alert->metric} back to normal: {$avgValue})");
             }
         }
+    }
+
+    protected function getAvgMetric($serverIds, string $column, $since): ?float
+    {
+        return ServerHealthCheck::whereIn('server_id', $serverIds)
+            ->where('created_at', '>=', $since)
+            ->whereNotNull($column)
+            ->avg($column);
     }
 
     private function checkCondition(float $value, string $condition, float $threshold): bool

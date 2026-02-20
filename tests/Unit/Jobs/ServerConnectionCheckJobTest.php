@@ -502,6 +502,49 @@ it('disableSshMux source uses ConfigurationRepository from the service container
         ->toContain('disableSshMux');
 });
 
+// ===========================================================================
+// 15. failed() callback — logs permanent failure and marks server unreachable
+// ===========================================================================
+
+it('has a public failed() method', function () {
+    $reflection = new ReflectionClass(ServerConnectionCheckJob::class);
+
+    expect($reflection->hasMethod('failed'))->toBeTrue();
+    expect($reflection->getMethod('failed')->isPublic())->toBeTrue();
+});
+
+it('failed() logs error with server context', function () {
+    Log::shouldReceive('error')->once()->with('ServerConnectionCheckJob permanently failed', Mockery::on(function ($context) {
+        return $context['server_id'] === 1
+            && $context['server_name'] === 'test-server'
+            && str_contains($context['error'], 'SSH timeout');
+    }));
+
+    $server = makeServerMock();
+    $job = new ServerConnectionCheckJob($server);
+
+    $job->failed(new \RuntimeException('SSH timeout'));
+});
+
+it('failed() marks server as unreachable', function () {
+    Log::shouldReceive('error')->once();
+
+    $settings = Mockery::mock(\App\Models\ServerSetting::class)->makePartial();
+    $settings->shouldReceive('update')->once()->with([
+        'is_reachable' => false,
+        'is_usable' => false,
+    ])->andReturn(true);
+
+    $server = Mockery::mock(Server::class)->makePartial();
+    $server->id = 1;
+    $server->uuid = 'test-uuid';
+    $server->name = 'test-server';
+    $server->shouldReceive('getAttribute')->with('settings')->andReturn($settings);
+
+    $job = new ServerConnectionCheckJob($server);
+    $job->failed(new \RuntimeException('test'));
+});
+
 it('handle source calls disableSshMux only when disableMux property is true', function () {
     $source = file_get_contents(app_path('Jobs/ServerConnectionCheckJob.php'));
 

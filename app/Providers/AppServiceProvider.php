@@ -29,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configurePasswords();
         $this->configureSanctumModel();
         $this->configureGitHubHttp();
+        $this->configureHttpDefaults();
         $this->ensureStorageLink();
         $this->configureInfrastructureOverrides();
         $this->configureSanctumStatefulDomains();
@@ -211,6 +212,14 @@ class AppServiceProvider extends ServiceProvider
             $stateful[] = $host;
             config(['sanctum.stateful' => $stateful]);
         }
+    }
+
+    private function configureHttpDefaults(): void
+    {
+        Http::globalOptions([
+            'timeout' => 30,
+            'connect_timeout' => 10,
+        ]);
     }
 
     private function configureGitHubHttp(): void

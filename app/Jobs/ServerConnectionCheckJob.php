@@ -38,6 +38,24 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
         $configRepository->disableSshMux();
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerConnectionCheckJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+
+        try {
+            $this->server->settings->update([
+                'is_reachable' => false,
+                'is_usable' => false,
+            ]);
+        } catch (\Throwable $e) {
+            // Don't mask the original failure
+        }
+    }
+
     public function handle()
     {
         $startTime = microtime(true);

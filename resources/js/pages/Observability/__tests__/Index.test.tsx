@@ -131,7 +131,7 @@ describe('ObservabilityIndex', () => {
 
     it('renders no alerts message when empty', () => {
         render(<ObservabilityIndex recentAlerts={[]} />);
-        expect(screen.getByText('No recent alerts')).toBeInTheDocument();
+        expect(screen.getByText('No recent issues')).toBeInTheDocument();
     });
 
     it('renders quick access links', () => {
