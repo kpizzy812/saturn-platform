@@ -320,7 +320,7 @@ class ServersController extends Controller
 
             return response()->json(serializeApiResponse($domains));
         }
-        $projects = Project::where('team_id', $teamId)->get();
+        $projects = Project::where('team_id', $teamId)->with(['applications.destination.server', 'services.applications'])->get();
         $domains = collect();
         $applications = $projects->pluck('applications')->flatten();
         $settings = instanceSettings();

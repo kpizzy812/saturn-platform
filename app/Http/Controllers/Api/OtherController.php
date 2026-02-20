@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 use OpenApi\Attributes as OA;
 
 class OtherController extends Controller
@@ -184,6 +186,46 @@ class OtherController extends Controller
     )]
     public function healthcheck(Request $request)
     {
-        return 'OK';
+        $checks = [];
+        $healthy = true;
+
+        // Check PostgreSQL
+        try {
+            DB::connection()->getPdo();
+            $checks['database'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['database'] = 'failing';
+            $healthy = false;
+        }
+
+        // Check Redis
+        try {
+            Redis::ping();
+            $checks['redis'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['redis'] = 'failing';
+            $healthy = false;
+        }
+
+        // Check Queue (pending/failed jobs count)
+        try {
+            $failedCount = DB::table('failed_jobs')->count();
+            $pendingCount = DB::table('jobs')->count();
+            $checks['queue'] = [
+                'status' => 'ok',
+                'pending' => $pendingCount,
+                'failed' => $failedCount,
+            ];
+        } catch (\Throwable $e) {
+            $checks['queue'] = ['status' => 'failing'];
+            $healthy = false;
+        }
+
+        $status = $healthy ? 200 : 503;
+
+        return response()->json([
+            'status' => $healthy ? 'healthy' : 'degraded',
+            'checks' => $checks,
+        ], $status);
     }
 }
