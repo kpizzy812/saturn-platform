@@ -42,6 +42,7 @@ class InfrastructureProvisioner
         string $serverUuid,
         array $gitConfig,
         ?string $monorepoGroupId = null,
+        array $appOverrides = [],
     ): ProvisioningResult {
         // Generate group ID for monorepo apps
         $groupId = $monorepoGroupId ?? ($analysis->monorepo->isMonorepo ? (string) Str::uuid() : null);
@@ -60,7 +61,7 @@ class InfrastructureProvisioner
         $destinationUuid = $destination->uuid;
 
         try {
-            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId) {
+            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId, $appOverrides) {
                 // 1. Create databases first
                 $createdDatabases = $this->createDatabases(
                     $analysis->databases,
@@ -76,7 +77,8 @@ class InfrastructureProvisioner
                     $server,
                     $destination,
                     $gitConfig,
-                    $groupId
+                    $groupId,
+                    $appOverrides
                 );
 
                 // 3. Link databases to applications (ResourceLink with auto_inject)
@@ -87,6 +89,9 @@ class InfrastructureProvisioner
 
                 // 5. Create environment variables from .env.example
                 $this->createEnvVariables($createdApps, $analysis->envVariables);
+
+                // 6. Apply user-provided env variable overrides
+                $this->applyEnvVarOverrides($createdApps, $appOverrides);
 
                 return new ProvisioningResult(
                     applications: $createdApps,
@@ -216,17 +221,20 @@ class InfrastructureProvisioner
         StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
+        array $appOverrides = [],
     ): array {
         $created = [];
 
         foreach ($detectedApps as $app) {
+            $overrides = $appOverrides[$app->name] ?? [];
             $created[$app->name] = $this->createApplication(
                 $app,
                 $environment,
                 $server,
                 $destination,
                 $gitConfig,
-                $groupId
+                $groupId,
+                $overrides
             );
         }
 
@@ -240,6 +248,7 @@ class InfrastructureProvisioner
         StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
+        array $overrides = [],
     ): Application {
         $application = new Application;
         $application->uuid = (string) Str::uuid();
@@ -262,12 +271,13 @@ class InfrastructureProvisioner
         // Build configuration
         $application->build_pack = $app->buildPack;
 
-        // For Dockerfile buildpack in monorepo: use repo root as build context
-        // Monorepo Dockerfiles reference root-level files (lockfiles, shared packages)
-        if ($groupId && $app->buildPack === 'dockerfile' && $app->path !== '.') {
-            $application->base_directory = '';
-            $application->dockerfile_location = '/'.ltrim($app->path, '/').'/Dockerfile';
+        // Apply base_directory: user override takes priority
+        if (! empty($overrides['base_directory'])) {
+            $baseDir = $overrides['base_directory'];
+            $application->base_directory = $baseDir === '/' ? '' : $baseDir;
         } else {
+            // Always use app subdirectory as base_directory (build context)
+            // Dockerfile is expected relative to this directory
             $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
         }
 
@@ -448,6 +458,33 @@ class InfrastructureProvisioner
                     'is_buildtime' => false,
                 ]
             );
+        }
+    }
+
+    /**
+     * Apply user-provided environment variable overrides
+     */
+    private function applyEnvVarOverrides(array $createdApps, array $appOverrides): void
+    {
+        foreach ($appOverrides as $appName => $overrides) {
+            $application = $createdApps[$appName] ?? null;
+            if (! $application || empty($overrides['env_vars'])) {
+                continue;
+            }
+
+            foreach ($overrides['env_vars'] as $envVar) {
+                if (empty($envVar['key']) || ! isset($envVar['value'])) {
+                    continue;
+                }
+
+                $application->environment_variables()->updateOrCreate(
+                    ['key' => $envVar['key']],
+                    [
+                        'value' => $envVar['value'],
+                        'is_buildtime' => false,
+                    ]
+                );
+            }
         }
     }
 

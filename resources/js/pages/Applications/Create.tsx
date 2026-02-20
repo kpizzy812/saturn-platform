@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { router } from '@inertiajs/react';
 import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
@@ -69,6 +69,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const formRef = useRef<HTMLFormElement>(null);
 
     // Git branches fetching
     const {
@@ -155,7 +156,6 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
             });
             if (response.ok) {
                 const newEnvironment = await response.json();
-                // Update the project in projectList with new environment
                 setProjectList(prev => prev.map(p => {
                     if (p.uuid === formData.project_uuid) {
                         return {
@@ -190,36 +190,21 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     };
 
     const handleMonorepoComplete = (result: { applications: Array<{ uuid: string; name: string }>; monorepo_group_id: string | null }) => {
-        // Redirect to project page where all created apps are visible
         if (formData.project_uuid) {
             router.visit(`/projects/${formData.project_uuid}`);
         } else if (result.applications.length === 1) {
-            // Single app - go directly to it
             router.visit(`/applications/${result.applications[0].uuid}`);
         } else {
             router.visit('/applications');
         }
     };
 
-    const handleStartAnalysis = () => {
-        if (!formData.git_repository) {
-            setErrors({ git_repository: 'Repository URL is required for analysis' });
-            return;
-        }
-        if (!formData.project_uuid || !formData.environment_uuid) {
-            setErrors({ project_uuid: 'Please select project and environment first' });
-            return;
-        }
-        setUseMonorepoAnalyzer(true);
-        setStep('analyze');
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Basic validation
+    const validateForm = (mode: 'deploy' | 'analyze'): Record<string, string> => {
         const newErrors: Record<string, string> = {};
-        if (!formData.name) newErrors.name = 'Application name is required';
+
+        if (mode === 'deploy') {
+            if (!formData.name) newErrors.name = 'Application name is required';
+        }
         if (!formData.source_type) newErrors.source_type = 'Source type is required';
         if (formData.source_type !== 'docker' && !formData.git_repository) {
             newErrors.git_repository = 'Repository URL is required';
@@ -229,18 +214,45 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         }
         if (!formData.project_uuid) newErrors.project_uuid = 'Project is required';
         if (!formData.environment_uuid) newErrors.environment_uuid = 'Environment is required';
-        // server_uuid is optional - 'auto' or empty triggers smart selection
 
+        return newErrors;
+    };
+
+    const scrollToFirstError = () => {
+        requestAnimationFrame(() => {
+            const firstError = formRef.current?.querySelector('[data-error="true"]');
+            firstError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    };
+
+    const handleStartAnalysis = () => {
+        const newErrors = validateForm('analyze');
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
+            scrollToFirstError();
+            return;
+        }
+        setErrors({});
+        setUseMonorepoAnalyzer(true);
+        setStep('analyze');
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const newErrors = validateForm('deploy');
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            scrollToFirstError();
             return;
         }
 
         setIsSubmitting(true);
+        setErrors({});
 
         router.post('/applications', formData as unknown as RouterPayload, {
-            onError: (errors) => {
-                setErrors(errors as Record<string, string>);
+            onError: (serverErrors) => {
+                setErrors(serverErrors as Record<string, string>);
                 setIsSubmitting(false);
             },
         });
@@ -268,15 +280,13 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                     <StepIndicator number={2} label="Configure" active={step === 2 || step === 3 || step === 'analyze'} completed={step === 3 || step === 'analyze'} />
                     <ChevronRight className="h-4 w-4 text-foreground-subtle" />
                     {useMonorepoAnalyzer ? (
-                        <>
-                            <StepIndicator number={3} label="Analyze" active={step === 'analyze'} completed={false} />
-                        </>
+                        <StepIndicator number={3} label="Analyze" active={step === 'analyze'} completed={false} />
                     ) : (
                         <StepIndicator number={3} label="Deploy" active={step === 3} completed={false} />
                     )}
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form ref={formRef} onSubmit={handleSubmit}>
                     {/* Step 1: Git Provider Selection */}
                     {step === 1 && (
                         <div className="space-y-4">
@@ -317,19 +327,19 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                             <CardContent className="space-y-6">
                                 {/* Basic Info */}
                                 <div className="space-y-4">
-                                    <div>
+                                    <div data-error={!!errors.name || undefined}>
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Application Name *
                                         </label>
                                         <Input
                                             value={formData.name}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({ ...prev, name: e.target.value }));
+                                                if (errors.name) setErrors(prev => { const { name: _, ...rest } = prev; return rest; });
+                                            }}
                                             placeholder="my-awesome-app"
                                             error={errors.name}
                                         />
-                                        {errors.name && (
-                                            <p className="mt-1 text-sm text-destructive">{errors.name}</p>
-                                        )}
                                     </div>
 
                                     <div>
@@ -348,19 +358,19 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 {/* Source Configuration */}
                                 {formData.source_type !== 'docker' ? (
                                     <div className="space-y-4">
-                                        <div>
+                                        <div data-error={!!errors.git_repository || undefined}>
                                             <label className="block text-sm font-medium text-foreground mb-2">
                                                 Repository URL *
                                             </label>
                                             <Input
                                                 value={formData.git_repository}
-                                                onChange={(e) => setFormData(prev => ({ ...prev, git_repository: e.target.value }))}
+                                                onChange={(e) => {
+                                                    setFormData(prev => ({ ...prev, git_repository: e.target.value }));
+                                                    if (errors.git_repository) setErrors(prev => { const { git_repository: _, ...rest } = prev; return rest; });
+                                                }}
                                                 placeholder="https://github.com/user/repo"
                                                 error={errors.git_repository}
                                             />
-                                            {errors.git_repository && (
-                                                <p className="mt-1 text-sm text-destructive">{errors.git_repository}</p>
-                                            )}
                                         </div>
 
                                         <div>
@@ -437,25 +447,25 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                         </div>
                                     </div>
                                 ) : (
-                                    <div>
+                                    <div data-error={!!errors.docker_image || undefined}>
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Docker Image *
                                         </label>
                                         <Input
                                             value={formData.docker_image || ''}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, docker_image: e.target.value }))}
+                                            onChange={(e) => {
+                                                setFormData(prev => ({ ...prev, docker_image: e.target.value }));
+                                                if (errors.docker_image) setErrors(prev => { const { docker_image: _, ...rest } = prev; return rest; });
+                                            }}
                                             placeholder="nginx:latest"
                                             error={errors.docker_image}
                                         />
-                                        {errors.docker_image && (
-                                            <p className="mt-1 text-sm text-destructive">{errors.docker_image}</p>
-                                        )}
                                     </div>
                                 )}
 
                                 {/* Deployment Configuration */}
                                 <div className="space-y-4">
-                                    <div>
+                                    <div data-error={!!errors.project_uuid || undefined}>
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Project *
                                         </label>
@@ -501,7 +511,9 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                             project_uuid: newProjectUuid,
                                                             environment_uuid: newProject?.environments[0]?.uuid || '',
                                                         }));
+                                                        if (errors.project_uuid) setErrors(prev => { const { project_uuid: _, ...rest } = prev; return rest; });
                                                     }}
+                                                    error={errors.project_uuid}
                                                 >
                                                     {projectList.map(project => (
                                                         <option key={project.uuid} value={project.uuid}>
@@ -520,7 +532,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                         )}
                                     </div>
 
-                                    <div>
+                                    <div data-error={!!errors.environment_uuid || undefined}>
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Environment *
                                         </label>
@@ -568,8 +580,12 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                             <div className="space-y-2">
                                                 <Select
                                                     value={formData.environment_uuid}
-                                                    onChange={(e) => setFormData(prev => ({ ...prev, environment_uuid: e.target.value }))}
+                                                    onChange={(e) => {
+                                                        setFormData(prev => ({ ...prev, environment_uuid: e.target.value }));
+                                                        if (errors.environment_uuid) setErrors(prev => { const { environment_uuid: _, ...rest } = prev; return rest; });
+                                                    }}
                                                     disabled={!formData.project_uuid}
+                                                    error={errors.environment_uuid}
                                                 >
                                                     {environments.map(env => (
                                                         <option key={env.uuid} value={env.uuid}>
@@ -647,7 +663,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 {/* Actions */}
                                 <div className="flex flex-col gap-4 pt-4 border-t border-border">
                                     {/* Smart Deploy Option */}
-                                    {formData.source_type !== 'docker' && formData.git_repository && (
+                                    {formData.source_type !== 'docker' && (
                                         <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
                                             <div className="flex items-start gap-3">
                                                 <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
@@ -690,7 +706,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                         </Card>
                     )}
 
-                    {/* Step: Analyze (Monorepo) */}
+                    {/* Step: Analyze (Monorepo) — auto-starts analysis */}
                     {step === 'analyze' && (
                         <div className="space-y-4">
                             <Button
@@ -701,7 +717,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     setStep(2);
                                 }}
                             >
-                                ← Back to Configuration
+                                &larr; Back to Configuration
                             </Button>
                             <MonorepoAnalyzer
                                 gitRepository={formData.git_repository}
@@ -709,6 +725,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 environmentUuid={formData.environment_uuid}
                                 destinationUuid={formData.server_uuid}
                                 onComplete={handleMonorepoComplete}
+                                autoStart
                             />
                         </div>
                     )}
@@ -791,9 +808,9 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     </Button>
                                     <Button
                                         type="submit"
-                                        disabled={isSubmitting}
+                                        loading={isSubmitting}
                                     >
-                                        {isSubmitting ? 'Creating...' : 'Create & Deploy'}
+                                        Create & Deploy
                                     </Button>
                                 </div>
                             </CardContent>

@@ -107,6 +107,10 @@ class GitAnalyzerController extends Controller
             'applications' => ['required', 'array', 'min:1'],
             'applications.*.name' => ['required', 'string'],
             'applications.*.enabled' => ['required', 'boolean'],
+            'applications.*.base_directory' => ['nullable', 'string', 'max:255'],
+            'applications.*.env_vars' => ['nullable', 'array'],
+            'applications.*.env_vars.*.key' => ['required', 'string', 'max:255'],
+            'applications.*.env_vars.*.value' => ['required', 'string', 'max:10000'],
             'databases' => ['nullable', 'array'],
             'databases.*.type' => ['required', 'string', 'in:postgresql,mysql,mongodb,redis,clickhouse'],
             'databases.*.enabled' => ['required', 'boolean'],
@@ -143,6 +147,15 @@ class GitAnalyzerController extends Controller
             $analysis = $this->analyzer->analyze($tempPath);
             $analysis = $this->filterAnalysis($analysis, $validated);
 
+            // Build per-app overrides from user input
+            $appOverrides = collect($validated['applications'])
+                ->keyBy('name')
+                ->map(fn ($a) => array_filter([
+                    'base_directory' => $a['base_directory'] ?? null,
+                    'env_vars' => $a['env_vars'] ?? null,
+                ]))
+                ->toArray();
+
             $result = $this->provisioner->provision(
                 $analysis,
                 $environment,
@@ -153,7 +166,8 @@ class GitAnalyzerController extends Controller
                     'private_key_id' => $validated['private_key_id'] ?? null,
                     'source_id' => $validated['source_id'] ?? null,
                     'source_type' => $sourceType,
-                ]
+                ],
+                appOverrides: $appOverrides,
             );
 
             // Queue deployments

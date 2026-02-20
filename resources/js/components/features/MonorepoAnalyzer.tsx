@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Badge } from '@/components/ui/Badge';
@@ -114,6 +115,7 @@ interface Props {
     environmentUuid: string;
     destinationUuid: string;
     onComplete: (result: ProvisionResult) => void;
+    autoStart?: boolean;
 }
 
 const frameworkIcons: Record<string, string> = {
@@ -155,13 +157,24 @@ export function MonorepoAnalyzer({
     environmentUuid,
     destinationUuid,
     onComplete,
+    autoStart = false,
 }: Props) {
     const [analyzing, setAnalyzing] = useState(false);
     const [provisioning, setProvisioning] = useState(false);
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
     const [selectedApps, setSelectedApps] = useState<Record<string, boolean>>({});
     const [selectedDbs, setSelectedDbs] = useState<Record<string, boolean>>({});
+    const [appConfigs, setAppConfigs] = useState<Record<string, { base_directory: string; env_vars: Array<{ key: string; value: string }> }>>({});
     const [error, setError] = useState<string | null>(null);
+    const autoStarted = useRef(false);
+
+    useEffect(() => {
+        if (autoStart && !autoStarted.current && !analyzing && !analysis) {
+            autoStarted.current = true;
+            analyzeRepository();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoStart]);
 
     const analyzeRepository = async () => {
         setAnalyzing(true);
@@ -184,10 +197,20 @@ export function MonorepoAnalyzer({
 
             // Pre-select all apps and databases
             const apps: Record<string, boolean> = {};
+            const configs: Record<string, { base_directory: string; env_vars: Array<{ key: string; value: string }> }> = {};
             result.applications.forEach(app => {
                 apps[app.name] = true;
+                // Build env vars from detected env_variables for this app
+                const appEnvVars = result.env_variables
+                    .filter(v => v.for_app === app.name && v.category !== 'database' && v.category !== 'cache')
+                    .map(v => ({ key: v.key, value: '' }));
+                configs[app.name] = {
+                    base_directory: app.path === '.' ? '/' : '/' + app.path.replace(/^\//, ''),
+                    env_vars: appEnvVars,
+                };
             });
             setSelectedApps(apps);
+            setAppConfigs(configs);
 
             const dbs: Record<string, boolean> = {};
             result.databases.forEach(db => {
@@ -220,6 +243,8 @@ export function MonorepoAnalyzer({
                 applications: analysis.applications.map(app => ({
                     name: app.name,
                     enabled: selectedApps[app.name] ?? false,
+                    base_directory: appConfigs[app.name]?.base_directory ?? app.path,
+                    env_vars: (appConfigs[app.name]?.env_vars ?? []).filter(v => v.key && v.value),
                 })),
                 databases: analysis.databases.map(db => ({
                     type: db.type,
@@ -518,6 +543,91 @@ export function MonorepoAnalyzer({
                                                         ))}
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {/* Editable Config */}
+                                        {selectedApps[app.name] && appConfigs[app.name] && (
+                                            <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
+                                                {/* Base Directory */}
+                                                <div className="flex items-center gap-2">
+                                                    <label className="text-sm text-foreground-muted whitespace-nowrap w-24">Base Dir</label>
+                                                    <Input
+                                                        value={appConfigs[app.name].base_directory}
+                                                        onChange={(e) => setAppConfigs(prev => ({
+                                                            ...prev,
+                                                            [app.name]: { ...prev[app.name], base_directory: e.target.value },
+                                                        }))}
+                                                        placeholder="/"
+                                                        className="h-8 text-sm"
+                                                    />
+                                                </div>
+
+                                                {/* Environment Variables */}
+                                                {appConfigs[app.name].env_vars.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm text-foreground-muted">Environment Variables</label>
+                                                        {appConfigs[app.name].env_vars.map((envVar, idx) => (
+                                                            <div key={idx} className="flex items-center gap-2">
+                                                                <Input
+                                                                    value={envVar.key}
+                                                                    onChange={(e) => {
+                                                                        const newVars = [...appConfigs[app.name].env_vars];
+                                                                        newVars[idx] = { ...newVars[idx], key: e.target.value };
+                                                                        setAppConfigs(prev => ({
+                                                                            ...prev,
+                                                                            [app.name]: { ...prev[app.name], env_vars: newVars },
+                                                                        }));
+                                                                    }}
+                                                                    placeholder="KEY"
+                                                                    className="h-8 text-sm font-mono w-1/3"
+                                                                />
+                                                                <span className="text-foreground-muted">=</span>
+                                                                <Input
+                                                                    value={envVar.value}
+                                                                    onChange={(e) => {
+                                                                        const newVars = [...appConfigs[app.name].env_vars];
+                                                                        newVars[idx] = { ...newVars[idx], value: e.target.value };
+                                                                        setAppConfigs(prev => ({
+                                                                            ...prev,
+                                                                            [app.name]: { ...prev[app.name], env_vars: newVars },
+                                                                        }));
+                                                                    }}
+                                                                    placeholder="value"
+                                                                    className="h-8 text-sm font-mono flex-1"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newVars = appConfigs[app.name].env_vars.filter((_, i) => i !== idx);
+                                                                        setAppConfigs(prev => ({
+                                                                            ...prev,
+                                                                            [app.name]: { ...prev[app.name], env_vars: newVars },
+                                                                        }));
+                                                                    }}
+                                                                    className="text-foreground-muted hover:text-danger text-sm px-1"
+                                                                >
+                                                                    &times;
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setAppConfigs(prev => ({
+                                                            ...prev,
+                                                            [app.name]: {
+                                                                ...prev[app.name],
+                                                                env_vars: [...prev[app.name].env_vars, { key: '', value: '' }],
+                                                            },
+                                                        }));
+                                                    }}
+                                                    className="text-xs text-primary hover:underline"
+                                                >
+                                                    + Add env variable
+                                                </button>
                                             </div>
                                         )}
                                     </div>
