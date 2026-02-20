@@ -1,6 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Button, Badge, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
+import { Modal, ModalFooter } from '@/components/ui/Modal';
 import {
     ArrowRight,
     Clock,
@@ -19,6 +20,7 @@ import {
     Database,
     Wifi,
     WifiOff,
+    AlertTriangle,
 } from 'lucide-react';
 import { useMigrationProgress } from '@/hooks/useMigrationProgress';
 import type { EnvironmentMigration, EnvironmentMigrationStatus } from '@/types';
@@ -108,6 +110,10 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
     const projectName = migration.source_environment?.project?.name;
 
     const [actionError, setActionError] = useState<string | null>(null);
+    const [showRollbackModal, setShowRollbackModal] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [isRollingBack, setIsRollingBack] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     const fetchAction = async (url: string, body?: object) => {
         setActionError(null);
@@ -129,10 +135,11 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
         }
     };
 
-    const handleRollback = () => {
-        if (confirm('Are you sure you want to rollback this migration? This will restore the previous configuration.')) {
-            fetchAction(`/api/v1/migrations/${migration.uuid}/rollback`);
-        }
+    const handleRollback = async () => {
+        setIsRollingBack(true);
+        await fetchAction(`/api/v1/migrations/${migration.uuid}/rollback`);
+        setIsRollingBack(false);
+        setShowRollbackModal(false);
     };
 
     const handleApprove = () => {
@@ -146,10 +153,11 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
         }
     };
 
-    const handleCancel = () => {
-        if (confirm('Are you sure you want to cancel this migration?')) {
-            fetchAction(`/api/v1/migrations/${migration.uuid}/cancel`);
-        }
+    const handleCancel = async () => {
+        setIsCancelling(true);
+        await fetchAction(`/api/v1/migrations/${migration.uuid}/cancel`);
+        setIsCancelling(false);
+        setShowCancelModal(false);
     };
 
     // Auto-scroll logs to bottom
@@ -219,10 +227,10 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
                             <Button variant="danger" onClick={handleReject}>Reject</Button>
                         )}
                         {(migration.status === 'pending' || migration.status === 'approved') && (
-                            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowCancelModal(true)}>Cancel</Button>
                         )}
                         {canRollback && (
-                            <Button variant="danger" onClick={handleRollback}>
+                            <Button variant="danger" onClick={() => setShowRollbackModal(true)}>
                                 <RotateCcw className="h-4 w-4 mr-1" />
                                 Rollback
                             </Button>
@@ -481,6 +489,63 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
                     )}
                 </Card>
             </div>
+
+            {/* Rollback Confirmation Modal */}
+            <Modal
+                isOpen={showRollbackModal}
+                onClose={() => setShowRollbackModal(false)}
+                title="Confirm Rollback"
+                size="md"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-4">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+                        <div className="space-y-1">
+                            <p className="font-medium text-foreground">This will revert the migration</p>
+                            <p className="text-sm text-foreground-muted">
+                                The resource configuration will be restored to its state before the migration.
+                                This action cannot be undone.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="rounded-lg border border-border p-3 space-y-2">
+                        <DetailRow label="Resource" value={sourceName} />
+                        <DetailRow label="Migration" value={`${sourceEnvName} → ${targetEnvName}`} />
+                        <DetailRow label="Completed" value={migration.completed_at ? format(new Date(migration.completed_at), 'PPp') : '—'} />
+                    </div>
+                </div>
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowRollbackModal(false)} disabled={isRollingBack}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={handleRollback} loading={isRollingBack} disabled={isRollingBack}>
+                        <RotateCcw className="mr-1 h-4 w-4" />
+                        {isRollingBack ? 'Rolling back...' : 'Confirm Rollback'}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* Cancel Confirmation Modal */}
+            <Modal
+                isOpen={showCancelModal}
+                onClose={() => setShowCancelModal(false)}
+                title="Cancel Migration"
+                size="md"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-foreground-muted">
+                        Are you sure you want to cancel this migration? The resource "{sourceName}" will remain unchanged.
+                    </p>
+                </div>
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowCancelModal(false)} disabled={isCancelling}>
+                        Keep Migration
+                    </Button>
+                    <Button variant="danger" onClick={handleCancel} loading={isCancelling} disabled={isCancelling}>
+                        {isCancelling ? 'Cancelling...' : 'Cancel Migration'}
+                    </Button>
+                </ModalFooter>
+            </Modal>
         </AppLayout>
     );
 }

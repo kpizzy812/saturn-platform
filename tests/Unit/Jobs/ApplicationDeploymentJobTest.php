@@ -57,7 +57,6 @@ test('backoff returns [30, 60, 120]', function () {
 
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $prop = $reflection->getProperty('application_deployment_queue_id');
-    $prop->setAccessible(true);
     $prop->setValue($job, 0);
 
     expect($job->backoff())->toBe([30, 60, 120]);
@@ -75,11 +74,9 @@ test('tags returns queue tag containing the deployment queue id', function () {
 
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $prop = $reflection->getProperty('application_deployment_queue_id');
-    $prop->setAccessible(true);
     $prop->setValue($job, $queueId);
 
     $queueProp = $reflection->getProperty('application_deployment_queue');
-    $queueProp->setAccessible(true);
     $queueProp->setValue($job, null);
 
     $tags = $job->tags();
@@ -97,11 +94,9 @@ test('tags format matches expected pattern', function () {
 
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $prop = $reflection->getProperty('application_deployment_queue_id');
-    $prop->setAccessible(true);
     $prop->setValue($job, $queueId);
 
     $queueProp = $reflection->getProperty('application_deployment_queue');
-    $queueProp->setAccessible(true);
     $queueProp->setValue($job, null);
 
     $tags = $job->tags();
@@ -137,15 +132,12 @@ function makeJobForNormalize(string $baseDirectory): array
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
 
     $appProp = $reflection->getProperty('application');
-    $appProp->setAccessible(true);
     $appProp->setValue($job, $mockApp);
 
     $queueProp = $reflection->getProperty('application_deployment_queue');
-    $queueProp->setAccessible(true);
     $queueProp->setValue($job, $mockQueue);
 
     $method = $reflection->getMethod('normalizeDockerfileLocation');
-    $method->setAccessible(true);
 
     return [$job, $method];
 }
@@ -216,7 +208,6 @@ function makeJobForFromLines(): array
 
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
     $method = $reflection->getMethod('findFromInstructionLines');
-    $method->setAccessible(true);
 
     return [$job, $method];
 }
@@ -350,15 +341,12 @@ function makeJobForHealthcheck(array $attrs): array
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
 
     $appProp = $reflection->getProperty('application');
-    $appProp->setAccessible(true);
     $appProp->setValue($job, $mockApp);
 
     $fullUrlProp = $reflection->getProperty('full_healthcheck_url');
-    $fullUrlProp->setAccessible(true);
     $fullUrlProp->setValue($job, null);
 
     $methodRef = $reflection->getMethod('generate_healthcheck_commands');
-    $methodRef->setAccessible(true);
 
     return [$job, $methodRef, $reflection];
 }
@@ -488,7 +476,6 @@ test('generate_healthcheck_commands sets full_healthcheck_url property', functio
     $method->invoke($job);
 
     $fullUrlProp = $reflection->getProperty('full_healthcheck_url');
-    $fullUrlProp->setAccessible(true);
 
     expect($fullUrlProp->getValue($job))->toBe('GET: https://localhost:8000/ready');
 });

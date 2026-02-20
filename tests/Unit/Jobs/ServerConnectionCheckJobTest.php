@@ -282,7 +282,6 @@ it('checkDockerAvailability returns [true, version] for valid Docker JSON via lo
     $job = new ServerConnectionCheckJob($server, disableMux: false);
 
     $method = new ReflectionMethod(ServerConnectionCheckJob::class, 'checkDockerAvailability');
-    $method->setAccessible(true);
 
     // Simulate parsing valid Docker JSON directly — we test the parse logic
     $jsonOutput = json_encode(['Server' => ['Version' => '24.0.5']]);

@@ -4,7 +4,7 @@ import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme, BrandIcon } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import, RotateCcw } from 'lucide-react';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import, RotateCcw, GitCompare } from 'lucide-react';
 import type { Project, Environment, Application, StandaloneDatabase, Service } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
@@ -1544,6 +1544,19 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                 <RotateCcw className={`h-4 w-4 md:mr-2 ${isRestartingAll ? 'animate-spin' : ''}`} />
                                 <span className="hidden md:inline">{isRestartingAll ? 'Restarting...' : 'Restart All'}</span>
                             </Button>
+                            {/* Compare Environments Button */}
+                            {project.environments && project.environments.length >= 2 && (
+                                <Link href={`/projects/${project.uuid}/env-diff`}>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="hidden shadow-lg md:flex"
+                                    >
+                                        <GitCompare className="mr-2 h-4 w-4" />
+                                        Env Diff
+                                    </Button>
+                                </Link>
+                            )}
                             {/* Migrate Environment Button - hidden on mobile */}
                             {selectedEnv && selectedEnv.type !== 'production' && (
                                 <Button

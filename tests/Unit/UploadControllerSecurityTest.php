@@ -32,7 +32,6 @@ class UploadControllerSecurityTest extends TestCase
     {
         $reflection = new ReflectionClass($this->controller);
         $method = $reflection->getMethod('validateUploadedFile');
-        $method->setAccessible(true);
 
         return $method->invoke($this->controller, $file);
     }

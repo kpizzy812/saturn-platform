@@ -4,6 +4,7 @@ import { Modal } from '@/components/ui';
 import { MigrateConfigureStep } from './MigrateConfigureStep';
 import { MigrateConfirmStep } from './MigrateConfirmStep';
 import { MigrateProgressStep } from './MigrateProgressStep';
+import { PromotionChainIndicator } from './PromotionChainIndicator';
 import type {
     EnvironmentMigration,
     EnvironmentMigrationOptions,
@@ -162,6 +163,25 @@ export function MigrateModal({
             description={getStepDescription()}
             size="lg"
         >
+            {/* Promotion Chain Indicator */}
+            {targets && selectedEnvironmentId && (
+                <PromotionChainIndicator
+                    sourceEnvironment={{
+                        name: targets.source.environment,
+                        type: targets.source.environment_type,
+                    }}
+                    targetEnvironment={{
+                        id: selectedEnvironmentId,
+                        name: targets.target_environments.find((e) => e.id === selectedEnvironmentId)?.name || '',
+                        type: targets.target_environments.find((e) => e.id === selectedEnvironmentId)?.type,
+                    }}
+                    allEnvironments={[
+                        { name: targets.source.environment, type: targets.source.environment_type },
+                        ...targets.target_environments.map((e) => ({ id: e.id, name: e.name, type: e.type })),
+                    ]}
+                />
+            )}
+
             {step === 'configure' && (
                 <MigrateConfigureStep
                     sourceType={sourceType}

@@ -84,6 +84,10 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         'workspace_locale',
         'workspace_date_format',
         'default_project_id',
+        'max_servers',
+        'max_applications',
+        'max_databases',
+        'max_projects',
     ];
 
     protected $casts = [

@@ -179,7 +179,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getDatabaseType');
-        $method->setAccessible(true);
 
         $this->assertEquals('standalone-postgresql', $method->invoke($job));
     }
@@ -191,7 +190,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getDatabaseType');
-        $method->setAccessible(true);
 
         $this->assertEquals('standalone-mysql', $method->invoke($job));
     }
@@ -203,7 +201,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getDatabaseType');
-        $method->setAccessible(true);
 
         $this->assertEquals('standalone-mariadb', $method->invoke($job));
     }
@@ -215,7 +212,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getDatabaseType');
-        $method->setAccessible(true);
 
         $this->assertEquals('standalone-mongodb', $method->invoke($job));
     }
@@ -228,7 +224,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getDatabaseType');
-        $method->setAccessible(true);
 
         $result = $method->invoke($job);
 
@@ -243,7 +238,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getDatabaseType');
-        $method->setAccessible(true);
 
         $result = $method->invoke($job);
 
@@ -262,7 +256,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getContainerName');
-        $method->setAccessible(true);
 
         $this->assertEquals('abc-123-uuid', $method->invoke($job));
     }
@@ -275,7 +268,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getContainerName');
-        $method->setAccessible(true);
 
         $this->assertEquals('mysql-uuid-456', $method->invoke($job));
     }
@@ -288,7 +280,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getContainerName');
-        $method->setAccessible(true);
 
         $this->assertEquals('mariadb-uuid-789', $method->invoke($job));
     }
@@ -305,7 +296,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getContainerName');
-        $method->setAccessible(true);
 
         $result = $method->invoke($job);
 
@@ -324,7 +314,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob(database: $database);
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'getContainerName');
-        $method->setAccessible(true);
 
         // Format must be: {name}-{service.uuid}
         $this->assertEquals('postgres-svc-uuid', $method->invoke($job));
@@ -339,7 +328,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob();
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'addToErrorOutput');
-        $method->setAccessible(true);
 
         $method->invoke($job, 'First error');
 
@@ -351,7 +339,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob();
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'addToErrorOutput');
-        $method->setAccessible(true);
 
         $method->invoke($job, 'First error');
         $method->invoke($job, 'Second error');
@@ -364,7 +351,6 @@ class DatabaseRestoreJobTest extends TestCase
         $job = $this->makeJob();
 
         $method = new ReflectionMethod(DatabaseRestoreJob::class, 'addToErrorOutput');
-        $method->setAccessible(true);
 
         $method->invoke($job, 'Error one');
         $method->invoke($job, 'Error two');

@@ -2,6 +2,7 @@
 import { ArrowRight, Check, X, AlertTriangle } from 'lucide-react';
 import { Button, Alert } from '@/components/ui';
 import type { EnvironmentMigrationOptions } from '@/types';
+import { PreflightCheckPanel } from './PreflightCheckPanel';
 
 interface MigrateConfirmStepProps {
     sourceType: 'application' | 'service' | 'database';
@@ -12,6 +13,8 @@ interface MigrateConfirmStepProps {
     options: EnvironmentMigrationOptions;
     isSubmitting: boolean;
     error: string | null;
+    preflightData?: any;
+    preflightLoading?: boolean;
     onConfirm: () => void;
     onBack: () => void;
     onCancel: () => void;
@@ -26,6 +29,8 @@ export function MigrateConfirmStep({
     options,
     isSubmitting,
     error,
+    preflightData,
+    preflightLoading,
     onConfirm,
     onBack,
     onCancel,
@@ -91,6 +96,11 @@ export function MigrateConfirmStep({
                     Environment variables are NOT copied - they remain environment-specific.
                 </p>
             </div>
+
+            {/* Pre-flight check results */}
+            {(preflightData || preflightLoading) && (
+                <PreflightCheckPanel data={preflightData} loading={preflightLoading} />
+            )}
 
             {/* Production warning */}
             {targetIsProduction && (

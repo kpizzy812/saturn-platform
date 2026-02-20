@@ -300,7 +300,6 @@ it('archives permission requires admin rank (4) in hardcoded fallback', function
 
     // Use reflection to test the private getHardcodedRolePermission method
     $method = new \ReflectionMethod($permService, 'getHardcodedRolePermission');
-    $method->setAccessible(true);
 
     // Admin (rank 4) should have archives permission
     expect($method->invoke($permService, 'admin', 'team.archives'))->toBeTrue();

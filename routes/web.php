@@ -105,6 +105,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Migrations
     require __DIR__.'/web/migrations.php';
 
+    // Env Diff (cross-environment variable comparison)
+    require __DIR__.'/web/env-diff.php';
+
     // Domains and SSL
     require __DIR__.'/web/domains.php';
 
