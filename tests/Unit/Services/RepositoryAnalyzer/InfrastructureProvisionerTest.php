@@ -3,6 +3,8 @@
 namespace Tests\Unit\Services\RepositoryAnalyzer;
 
 use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
+use App\Services\RepositoryAnalyzer\InfrastructureProvisioner;
+use Psr\Log\NullLogger;
 use Tests\TestCase;
 
 /**
@@ -181,5 +183,103 @@ class InfrastructureProvisionerTest extends TestCase
         $result = $this->resolveBuildContext($app, groupId: 'some-group-uuid', overrides: ['base_directory' => '/']);
 
         $this->assertEquals('', $result['base_directory'], 'User override of "/" should normalize to empty string (repo root)');
+    }
+
+    // ── Internal App Links: URL Resolution ─────────────────────────
+
+    private function getProvisioner(): InfrastructureProvisioner
+    {
+        return new InfrastructureProvisioner(new NullLogger);
+    }
+
+    private function callPrivateMethod(object $object, string $method, array $args = []): mixed
+    {
+        $ref = new \ReflectionMethod($object, $method);
+
+        return $ref->invoke($object, ...$args);
+    }
+
+    public function test_client_side_env_var_detection(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        // Client-side prefixes should be detected
+        $this->assertTrue($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['NEXT_PUBLIC_API_URL']));
+        $this->assertTrue($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['VITE_API_URL']));
+        $this->assertTrue($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['REACT_APP_API_URL']));
+        $this->assertTrue($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['NUXT_PUBLIC_API_URL']));
+
+        // Server-side vars should NOT be detected as client-side
+        $this->assertFalse($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['API_URL']));
+        $this->assertFalse($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['DATABASE_URL']));
+        $this->assertFalse($this->callPrivateMethod($provisioner, 'isClientSideEnvVar', ['BACKEND_URL']));
+    }
+
+    public function test_adapt_env_var_for_nextjs_framework(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'nextjs']);
+        $this->assertEquals('NEXT_PUBLIC_API_URL', $result);
+    }
+
+    public function test_adapt_env_var_for_nuxt_framework(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'nuxt']);
+        $this->assertEquals('NUXT_PUBLIC_API_URL', $result);
+    }
+
+    public function test_adapt_env_var_for_vite_framework(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'vite-react']);
+        $this->assertEquals('VITE_API_URL', $result);
+    }
+
+    public function test_adapt_env_var_for_vue_framework(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'vue']);
+        $this->assertEquals('VITE_API_URL', $result);
+    }
+
+    public function test_adapt_env_var_for_react_cra_framework(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'react']);
+        $this->assertEquals('REACT_APP_API_URL', $result);
+    }
+
+    public function test_adapt_env_var_preserves_existing_client_prefix(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        // Already has VITE_ prefix — should not double-prefix
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['VITE_API_URL', 'nextjs']);
+        $this->assertEquals('VITE_API_URL', $result);
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['NEXT_PUBLIC_API_URL', 'vue']);
+        $this->assertEquals('NEXT_PUBLIC_API_URL', $result);
+    }
+
+    public function test_adapt_env_var_for_unknown_framework_keeps_original(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'expressjs']);
+        $this->assertEquals('API_URL', $result, 'Backend framework should not add client-side prefix');
+    }
+
+    public function test_adapt_env_var_for_svelte_framework(): void
+    {
+        $provisioner = $this->getProvisioner();
+
+        $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'sveltekit']);
+        $this->assertEquals('VITE_API_URL', $result);
     }
 }

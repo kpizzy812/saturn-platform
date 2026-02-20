@@ -580,7 +580,7 @@ export function MonorepoAnalyzer({
                                                                         }));
                                                                     }}
                                                                     placeholder="KEY"
-                                                                    className="h-8 text-sm font-mono w-1/3"
+                                                                    className="h-8 text-sm font-mono w-2/5"
                                                                 />
                                                                 <span className="text-foreground-muted">=</span>
                                                                 <Input

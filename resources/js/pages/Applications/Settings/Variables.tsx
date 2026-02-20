@@ -266,8 +266,8 @@ export default function ApplicationVariables({ application, variables: propVaria
                     <div className="space-y-4">
                         {/* Header Row */}
                         <div className="grid grid-cols-12 gap-4 pb-3 border-b border-border">
-                            <div className="col-span-4 text-sm font-medium text-foreground-muted">Key</div>
-                            <div className="col-span-5 text-sm font-medium text-foreground-muted">Value</div>
+                            <div className="col-span-5 text-sm font-medium text-foreground-muted">Key</div>
+                            <div className="col-span-4 text-sm font-medium text-foreground-muted">Value</div>
                             <div className="col-span-2 text-sm font-medium text-foreground-muted">Options</div>
                             <div className="col-span-1"></div>
                         </div>
@@ -284,7 +284,7 @@ export default function ApplicationVariables({ application, variables: propVaria
                         {/* Variables */}
                         {variables.map((variable) => (
                             <div key={variable.id} className="grid grid-cols-12 gap-4 items-start">
-                                <div className="col-span-4">
+                                <div className="col-span-5">
                                     <Input
                                         value={variable.key}
                                         onChange={(e) => handleUpdateVariable(variable.id, 'key', e.target.value)}
@@ -304,7 +304,7 @@ export default function ApplicationVariables({ application, variables: propVaria
                                         )}
                                     </div>
                                 </div>
-                                <div className="col-span-5">
+                                <div className="col-span-4">
                                     <div className="relative">
                                         <Input
                                             type={revealedVars.has(variable.id) ? 'text' : 'password'}
