@@ -216,10 +216,45 @@ export default function CLISetup() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
+                        <div className="space-y-6">
+                            {/* Recommended: Browser login */}
                             <div>
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Badge variant="success">Recommended</Badge>
+                                    <p className="text-sm font-medium text-foreground">
+                                        Browser-based login
+                                    </p>
+                                </div>
                                 <p className="mb-3 text-sm text-foreground-muted">
-                                    Add your Saturn instance with an API token
+                                    Opens your browser to authorize the CLI. No need to manually copy tokens.
+                                </p>
+                                <div className="relative">
+                                    <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-4 pr-12">
+                                        <code className="text-sm text-foreground">
+                                            saturn login {window.location.origin}
+                                        </code>
+                                    </pre>
+                                    <button
+                                        onClick={() => handleCopy(`saturn login ${window.location.origin}`, 'Login command')}
+                                        className="absolute right-3 top-3 rounded-md p-2 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                <p className="mt-2 text-xs text-foreground-subtle">
+                                    A confirmation code will appear in your terminal. Verify it matches in the browser, then approve.
+                                </p>
+                            </div>
+
+                            <div className="border-t border-border pt-6">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <p className="text-sm font-medium text-foreground">
+                                        Manual token setup
+                                    </p>
+                                    <Badge variant="default">CI/CD</Badge>
+                                </div>
+                                <p className="mb-3 text-sm text-foreground-muted">
+                                    For CI/CD pipelines or headless environments where browser auth is not available.
                                 </p>
                                 <Input
                                     label="API Token"
@@ -242,12 +277,9 @@ export default function CLISetup() {
                                         <Copy className="h-4 w-4" />
                                     </button>
                                 </div>
-                                <p className="mt-2 text-xs text-foreground-subtle">
-                                    This saves the connection to ~/.config/saturn/config.json
-                                </p>
                             </div>
 
-                            <div>
+                            <div className="border-t border-border pt-4">
                                 <p className="mb-3 text-sm text-foreground-muted">
                                     Verify the connection
                                 </p>

@@ -15,10 +15,22 @@ interface CLICommand {
 }
 
 const commands: CLICommand[] = [
+    // Auth
+    {
+        name: 'login',
+        description: 'Authenticate with a Saturn instance via browser',
+        usage: 'saturn login [url]',
+        category: 'Auth',
+        examples: [
+            { command: 'saturn login https://saturn.ac', description: 'Login to production' },
+            { command: 'saturn login https://dev.saturn.ac', description: 'Login to dev environment' },
+            { command: 'saturn login', description: 'Login using default instance URL' },
+        ],
+    },
     // Context
     {
         name: 'context add',
-        description: 'Add a new Saturn instance connection',
+        description: 'Add a new Saturn instance connection (for CI/CD or manual setup)',
         usage: 'saturn context add <name> <url> <token>',
         category: 'Context',
         examples: [
@@ -129,8 +141,15 @@ const commands: CLICommand[] = [
         description: 'Deploy a resource by UUID',
         usage: 'saturn deploy uuid <uuid>',
         category: 'Deployments',
+        options: [
+            { flag: '-w, --wait', description: 'Wait for deployment to complete before exiting' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
+            { flag: '--poll-interval <seconds>', description: 'Poll interval in seconds when using --wait (default 3)' },
+        ],
         examples: [
             { command: 'saturn deploy uuid abc-123-def', description: 'Deploy specific resource' },
+            { command: 'saturn deploy uuid abc-123-def --wait', description: 'Deploy and wait for completion' },
+            { command: 'saturn deploy uuid abc-123-def --wait --timeout 300', description: 'Deploy with 5min timeout' },
         ],
     },
     {
@@ -138,8 +157,13 @@ const commands: CLICommand[] = [
         description: 'Deploy multiple resources at once',
         usage: 'saturn deploy batch <uuid1>,<uuid2>,...',
         category: 'Deployments',
+        options: [
+            { flag: '-w, --wait', description: 'Wait for all deployments to complete' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
+        ],
         examples: [
             { command: 'saturn deploy batch app1,app2,app3', description: 'Deploy multiple apps' },
+            { command: 'saturn deploy batch app1,app2 --wait', description: 'Deploy and wait for all to complete' },
         ],
     },
     {
@@ -161,10 +185,13 @@ const commands: CLICommand[] = [
         category: 'Deployments',
         options: [
             { flag: '--force', description: 'Force deployment' },
+            { flag: '-w, --wait', description: 'Wait for all deployments to complete' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
         ],
         examples: [
             { command: 'saturn deploy tag v1.0.0', description: 'Deploy all resources tagged v1.0.0' },
             { command: 'saturn deploy tag production --force', description: 'Force deploy by tag' },
+            { command: 'saturn deploy tag v1.0.0 --wait', description: 'Deploy by tag and wait for completion' },
         ],
     },
     {
@@ -174,10 +201,13 @@ const commands: CLICommand[] = [
         category: 'Deployments',
         options: [
             { flag: '--force', description: 'Force deployment' },
+            { flag: '-w, --wait', description: 'Wait for deployment to complete' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
         ],
         examples: [
             { command: 'saturn deploy pr abc-123 42', description: 'Deploy PR #42 preview' },
             { command: 'saturn deploy pr abc-123 42 --force', description: 'Force deploy PR preview' },
+            { command: 'saturn deploy pr abc-123 42 --wait', description: 'Deploy PR and wait for completion' },
         ],
     },
     // Services
@@ -390,12 +420,12 @@ export default function CLICommands() {
                     <CardContent>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="rounded-lg border border-border bg-background p-3">
-                                <code className="text-sm font-medium text-foreground">saturn context add</code>
-                                <p className="mt-1 text-xs text-foreground-muted">Connect to Saturn instance</p>
+                                <code className="text-sm font-medium text-foreground">saturn login &lt;url&gt;</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Authenticate via browser</p>
                             </div>
                             <div className="rounded-lg border border-border bg-background p-3">
-                                <code className="text-sm font-medium text-foreground">saturn deploy uuid &lt;uuid&gt;</code>
-                                <p className="mt-1 text-xs text-foreground-muted">Deploy a resource</p>
+                                <code className="text-sm font-medium text-foreground">saturn deploy uuid &lt;uuid&gt; --wait</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Deploy and wait for completion</p>
                             </div>
                             <div className="rounded-lg border border-border bg-background p-3">
                                 <code className="text-sm font-medium text-foreground">saturn app list</code>

@@ -120,7 +120,7 @@ class CliAuthController extends Controller
     /**
      * Approve CLI auth session (web, requires auth + CSRF).
      */
-    public function approve(Request $request): JsonResponse
+    public function approve(Request $request): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'code' => 'required|string|size:9',
@@ -133,9 +133,7 @@ class CliAuthController extends Controller
             ->first();
 
         if (! $session) {
-            return response()->json([
-                'message' => 'Authorization request expired or invalid.',
-            ], 422);
+            return redirect()->back()->withErrors(['code' => 'Authorization request expired or invalid.']);
         }
 
         /** @var \App\Models\User $user */
@@ -144,9 +142,7 @@ class CliAuthController extends Controller
         // Verify user belongs to the selected team
         $teamId = (int) $request->input('team_id');
         if (! $user->teams()->where('teams.id', $teamId)->exists()) {
-            return response()->json([
-                'message' => 'You are not a member of this team.',
-            ], 403);
+            return redirect()->back()->withErrors(['team_id' => 'You are not a member of this team.']);
         }
 
         // Create Sanctum token for CLI
@@ -161,15 +157,13 @@ class CliAuthController extends Controller
             'token_plain' => $newAccessToken->plainTextToken,
         ]);
 
-        return response()->json([
-            'message' => 'CLI authorized successfully.',
-        ]);
+        return redirect()->back();
     }
 
     /**
      * Deny CLI auth session (web, requires auth + CSRF).
      */
-    public function deny(Request $request): JsonResponse
+    public function deny(Request $request): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
             'code' => 'required|string|size:9',
@@ -181,15 +175,11 @@ class CliAuthController extends Controller
             ->first();
 
         if (! $session) {
-            return response()->json([
-                'message' => 'Authorization request expired or invalid.',
-            ], 422);
+            return redirect()->back()->withErrors(['code' => 'Authorization request expired or invalid.']);
         }
 
         $session->update(['status' => 'denied']);
 
-        return response()->json([
-            'message' => 'CLI authorization denied.',
-        ]);
+        return redirect()->back();
     }
 }
