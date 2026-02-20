@@ -5,10 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/saturn-platform/saturn-cli/internal/api"
 	"github.com/saturn-platform/saturn-cli/internal/models"
 )
+
+// Terminal deployment statuses — deployment is done when status matches one of these
+var terminalStatuses = map[string]bool{
+	"finished":          true,
+	"failed":            true,
+	"cancelled-by-user": true,
+	"timed-out":         true,
+}
+
+// IsTerminalStatus checks if a deployment status is terminal (done)
+func IsTerminalStatus(status string) bool {
+	return terminalStatuses[status]
+}
+
+// WaitResult contains the final state of a waited deployment
+type WaitResult struct {
+	DeploymentUUID string
+	Status         string
+	Finished       bool
+}
+
+// StatusCallback is called on each poll with the current deployment status
+type StatusCallback func(deploymentUUID, status string)
 
 // DeploymentService handles deployment-related operations
 type DeploymentService struct {
@@ -250,6 +274,80 @@ func (s *DeploymentService) GetLogsByDeployment(ctx context.Context, deploymentU
 // GetLogsByDeploymentWithOptions retrieves logs for a specific deployment by UUID with formatting options
 func (s *DeploymentService) GetLogsByDeploymentWithOptions(ctx context.Context, deploymentUUID string, showHidden bool) (string, error) {
 	return s.GetLogsByDeploymentWithFormat(ctx, deploymentUUID, showHidden, "table")
+}
+
+// WaitForCompletion polls a deployment until it reaches a terminal status or the context is cancelled.
+// It calls onStatus on each poll with the current status. Returns the final WaitResult.
+func (s *DeploymentService) WaitForCompletion(ctx context.Context, deploymentUUID string, pollInterval time.Duration, onStatus StatusCallback) (*WaitResult, error) {
+	if pollInterval <= 0 {
+		pollInterval = 3 * time.Second
+	}
+
+	for {
+		deployment, err := s.Get(ctx, deploymentUUID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to poll deployment %s: %w", deploymentUUID, err)
+		}
+
+		if onStatus != nil {
+			onStatus(deploymentUUID, deployment.Status)
+		}
+
+		if IsTerminalStatus(deployment.Status) {
+			return &WaitResult{
+				DeploymentUUID: deploymentUUID,
+				Status:         deployment.Status,
+				Finished:       deployment.Status == "finished",
+			}, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return &WaitResult{
+				DeploymentUUID: deploymentUUID,
+				Status:         deployment.Status,
+				Finished:       false,
+			}, ctx.Err()
+		case <-time.After(pollInterval):
+			// continue polling
+		}
+	}
+}
+
+// WaitForMultiple waits for multiple deployments concurrently.
+// Returns a slice of WaitResults in the same order as the input UUIDs.
+func (s *DeploymentService) WaitForMultiple(ctx context.Context, uuids []string, pollInterval time.Duration, onStatus StatusCallback) ([]WaitResult, error) {
+	type indexedResult struct {
+		index  int
+		result WaitResult
+		err    error
+	}
+
+	ch := make(chan indexedResult, len(uuids))
+
+	for i, uuid := range uuids {
+		go func(idx int, uid string) {
+			res, err := s.WaitForCompletion(ctx, uid, pollInterval, onStatus)
+			if res != nil {
+				ch <- indexedResult{index: idx, result: *res, err: err}
+			} else {
+				ch <- indexedResult{index: idx, result: WaitResult{DeploymentUUID: uid}, err: err}
+			}
+		}(i, uuid)
+	}
+
+	results := make([]WaitResult, len(uuids))
+	var firstErr error
+
+	for range uuids {
+		ir := <-ch
+		results[ir.index] = ir.result
+		if ir.err != nil && firstErr == nil {
+			firstErr = ir.err
+		}
+	}
+
+	return results, firstErr
 }
 
 // GetLogsByDeploymentWithFormat retrieves logs with format control (json/pretty/table)

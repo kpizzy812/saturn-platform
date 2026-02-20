@@ -43,6 +43,9 @@ class InstanceSettings extends Model
         'sentinel_token',
         'is_wire_navigate_enabled',
         'is_registration_enabled',
+        'is_status_page_enabled',
+        'status_page_title',
+        'status_page_description',
         'is_dns_validation_enabled',
         'is_ai_code_review_enabled',
         'is_ai_error_analysis_enabled',
@@ -156,6 +159,9 @@ class InstanceSettings extends Model
         'update_check_frequency' => 'string',
         'sentinel_token' => 'encrypted',
         'is_wire_navigate_enabled' => 'boolean',
+
+        // Status Page
+        'is_status_page_enabled' => 'boolean',
 
         // AI features
         'is_ai_code_review_enabled' => 'boolean',

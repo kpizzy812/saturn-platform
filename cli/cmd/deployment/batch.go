@@ -78,10 +78,11 @@ Example: saturn deploy batch app1,app2,app3`,
 			}
 
 			results := make([]result, 0, len(names))
+			var allDeploymentUUIDs []string
 
 			for _, name := range names {
 				uuid := nameToUUID[name]
-				fmt.Printf("Deploying %s...\n", name)
+				fmt.Fprintf(cmd.OutOrStdout(), "Deploying %s...\n", name)
 
 				res, err := deploySvc.Deploy(ctx, uuid, force)
 				if err != nil {
@@ -91,7 +92,7 @@ Example: saturn deploy batch app1,app2,app3`,
 						Success: false,
 						Error:   err.Error(),
 					})
-					fmt.Printf("  ❌ Failed: %v\n", err)
+					fmt.Fprintf(cmd.ErrOrStderr(), "  Failed: %v\n", err)
 				} else {
 					// Get first deployment message from the array
 					message := ""
@@ -104,7 +105,8 @@ Example: saturn deploy batch app1,app2,app3`,
 						Success: true,
 						Message: message,
 					})
-					fmt.Printf("  ✅ Success: %s\n", message)
+					fmt.Fprintf(cmd.OutOrStdout(), "  Success: %s\n", message)
+					allDeploymentUUIDs = append(allDeploymentUUIDs, CollectDeploymentUUIDs(res)...)
 				}
 			}
 
@@ -116,16 +118,18 @@ Example: saturn deploy batch app1,app2,app3`,
 				}
 			}
 
-			fmt.Printf("\nBatch deployment complete: %d/%d succeeded\n", successCount, len(results))
+			fmt.Fprintf(cmd.OutOrStdout(), "\nBatch deployment complete: %d/%d succeeded\n", successCount, len(results))
 
 			if successCount < len(results) {
 				return fmt.Errorf("some deployments failed")
 			}
 
-			return nil
+			// Handle --wait flag for all successful deployments
+			return HandleWait(cmd, deploySvc, allDeploymentUUIDs)
 		},
 	}
 
 	cmd.Flags().Bool("force", false, "Force deployment")
+	AddWaitFlags(cmd)
 	return cmd
 }

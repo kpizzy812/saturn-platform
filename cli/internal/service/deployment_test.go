@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/saturn-platform/saturn-cli/internal/api"
+	"github.com/saturn-platform/saturn-cli/internal/models"
 )
 
 func TestDeploymentService_Deploy(t *testing.T) {
@@ -715,4 +718,160 @@ func TestDeploymentService_GetDeploymentLogs_Error(t *testing.T) {
 
 	_, err := svc.GetDeploymentLogs(context.Background(), "nonexistent")
 	require.Error(t, err)
+}
+
+func TestDeploymentService_WaitForCompletion_FinishedImmediately(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(models.Deployment{
+			UUID:   "dep-123",
+			Status: "finished",
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient(server.URL, "test-token")
+	svc := NewDeploymentService(client)
+
+	result, err := svc.WaitForCompletion(context.Background(), "dep-123", 100*time.Millisecond, nil)
+	require.NoError(t, err)
+	assert.True(t, result.Finished)
+	assert.Equal(t, "finished", result.Status)
+	assert.Equal(t, "dep-123", result.DeploymentUUID)
+}
+
+func TestDeploymentService_WaitForCompletion_PollingUntilDone(t *testing.T) {
+	var callCount int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		n := atomic.AddInt32(&callCount, 1)
+
+		status := "in_progress"
+		if n >= 3 {
+			status = "finished"
+		}
+
+		_ = json.NewEncoder(w).Encode(models.Deployment{
+			UUID:   "dep-456",
+			Status: status,
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient(server.URL, "test-token")
+	svc := NewDeploymentService(client)
+
+	var statuses []string
+	onStatus := func(uuid, status string) {
+		statuses = append(statuses, status)
+	}
+
+	result, err := svc.WaitForCompletion(context.Background(), "dep-456", 50*time.Millisecond, onStatus)
+	require.NoError(t, err)
+	assert.True(t, result.Finished)
+	assert.Equal(t, "finished", result.Status)
+	assert.GreaterOrEqual(t, len(statuses), 3)
+	assert.Equal(t, "in_progress", statuses[0])
+	assert.Equal(t, "finished", statuses[len(statuses)-1])
+}
+
+func TestDeploymentService_WaitForCompletion_Failed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(models.Deployment{
+			UUID:   "dep-fail",
+			Status: "failed",
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient(server.URL, "test-token")
+	svc := NewDeploymentService(client)
+
+	result, err := svc.WaitForCompletion(context.Background(), "dep-fail", 50*time.Millisecond, nil)
+	require.NoError(t, err)
+	assert.False(t, result.Finished)
+	assert.Equal(t, "failed", result.Status)
+}
+
+func TestDeploymentService_WaitForCompletion_ContextCancelled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(models.Deployment{
+			UUID:   "dep-hang",
+			Status: "in_progress",
+		})
+	}))
+	defer server.Close()
+
+	client := api.NewClient(server.URL, "test-token")
+	svc := NewDeploymentService(client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	result, err := svc.WaitForCompletion(ctx, "dep-hang", 50*time.Millisecond, nil)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.False(t, result.Finished)
+	assert.Equal(t, "in_progress", result.Status)
+}
+
+func TestDeploymentService_WaitForMultiple(t *testing.T) {
+	var callCount1 int32
+	var callCount2 int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.URL.Path == "/api/v1/deployments/dep-a" {
+			n := atomic.AddInt32(&callCount1, 1)
+			status := "in_progress"
+			if n >= 2 {
+				status = "finished"
+			}
+			_ = json.NewEncoder(w).Encode(models.Deployment{UUID: "dep-a", Status: status})
+			return
+		}
+
+		if r.URL.Path == "/api/v1/deployments/dep-b" {
+			n := atomic.AddInt32(&callCount2, 1)
+			status := "in_progress"
+			if n >= 3 {
+				status = "failed"
+			}
+			_ = json.NewEncoder(w).Encode(models.Deployment{UUID: "dep-b", Status: status})
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := api.NewClient(server.URL, "test-token")
+	svc := NewDeploymentService(client)
+
+	results, err := svc.WaitForMultiple(context.Background(), []string{"dep-a", "dep-b"}, 50*time.Millisecond, nil)
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+
+	// Results are indexed in same order as input
+	assert.Equal(t, "dep-a", results[0].DeploymentUUID)
+	assert.True(t, results[0].Finished)
+	assert.Equal(t, "finished", results[0].Status)
+
+	assert.Equal(t, "dep-b", results[1].DeploymentUUID)
+	assert.False(t, results[1].Finished)
+	assert.Equal(t, "failed", results[1].Status)
+}
+
+func TestIsTerminalStatus(t *testing.T) {
+	assert.True(t, IsTerminalStatus("finished"))
+	assert.True(t, IsTerminalStatus("failed"))
+	assert.True(t, IsTerminalStatus("cancelled-by-user"))
+	assert.True(t, IsTerminalStatus("timed-out"))
+	assert.False(t, IsTerminalStatus("in_progress"))
+	assert.False(t, IsTerminalStatus("queued"))
+	assert.False(t, IsTerminalStatus(""))
 }

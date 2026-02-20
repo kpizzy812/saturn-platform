@@ -44,6 +44,7 @@ import {
     Moon,
     Sun,
     ArrowLeft,
+    Globe,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -130,6 +131,7 @@ const adminNavGroups: NavGroup[] = [
             { label: 'Docker Cleanups', href: '/admin/docker-cleanups', icon: <Container className="h-4 w-4" /> },
             { label: 'SSL Certificates', href: '/admin/ssl-certificates', icon: <Lock className="h-4 w-4" /> },
             { label: 'Transfers', href: '/admin/transfers', icon: <ArrowRightLeft className="h-4 w-4" /> },
+            { label: 'Status Page', href: '/admin/status-page', icon: <Globe className="h-4 w-4" /> },
         ],
     },
 ];
