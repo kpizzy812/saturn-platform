@@ -22,31 +22,34 @@ Route::prefix('status-page')->group(function () {
         $settings = InstanceSettings::get();
 
         // Get all available resources for selection
-        $teams = \App\Models\Team::all();
         $availableResources = collect();
 
-        foreach ($teams as $team) {
-            $apps = Application::where('team_id', $team->id)->select('id', 'uuid', 'name', 'status')->get();
-            foreach ($apps as $app) {
-                $availableResources->push([
-                    'id' => $app->id,
-                    'type' => 'App\\Models\\Application',
-                    'name' => $app->name,
-                    'teamName' => $team->name,
-                    'status' => $app->status ?? 'unknown',
-                ]);
-            }
+        $apps = Application::with('environment.project.team')
+            ->select('id', 'uuid', 'name', 'status', 'environment_id')
+            ->get();
+        foreach ($apps as $app) {
+            $team = $app->environment?->project?->team;
+            $availableResources->push([
+                'id' => $app->id,
+                'type' => 'App\\Models\\Application',
+                'name' => $app->name,
+                'teamName' => $team?->name ?? 'Unknown',
+                'status' => $app->status ?? 'unknown',
+            ]);
+        }
 
-            $services = Service::where('team_id', $team->id)->select('id', 'uuid', 'name', 'status')->get();
-            foreach ($services as $svc) {
-                $availableResources->push([
-                    'id' => $svc->id,
-                    'type' => 'App\\Models\\Service',
-                    'name' => $svc->name,
-                    'teamName' => $team->name,
-                    'status' => $svc->status ?? 'unknown',
-                ]);
-            }
+        $services = Service::with('environment.project.team')
+            ->select('id', 'uuid', 'name', 'status', 'environment_id')
+            ->get();
+        foreach ($services as $svc) {
+            $team = $svc->environment?->project?->team;
+            $availableResources->push([
+                'id' => $svc->id,
+                'type' => 'App\\Models\\Service',
+                'name' => $svc->name,
+                'teamName' => $team?->name ?? 'Unknown',
+                'status' => $svc->status ?? 'unknown',
+            ]);
         }
 
         $configuredResources = StatusPageResource::orderBy('display_order')->get()->map(fn ($r) => [
