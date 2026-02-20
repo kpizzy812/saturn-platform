@@ -1296,9 +1296,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
 
-        // Update container status to reflect the failed deployment state
+        // Update container status after Docker state has stabilized.
+        // Delay prevents false "exited" status when old container is still running
+        // after a failed re-deploy (the new container was just removed above).
         try {
-            GetContainersStatus::dispatch($this->server);
+            GetContainersStatus::dispatch($this->server)->delay(now()->addSeconds(10));
         } catch (\Throwable $e) {
             Log::warning('Failed to dispatch GetContainersStatus on failed deployment: '.$e->getMessage());
         }
