@@ -38,8 +38,9 @@ Route::prefix('status-page')->group(function () {
             ]);
         }
 
+        // Service.status is computed via accessor (no DB column), so don't select it
         $services = Service::with('environment.project.team')
-            ->select('id', 'uuid', 'name', 'status', 'environment_id')
+            ->select('id', 'uuid', 'name', 'environment_id')
             ->get();
         foreach ($services as $svc) {
             $team = $svc->environment?->project?->team;
@@ -48,7 +49,7 @@ Route::prefix('status-page')->group(function () {
                 'type' => 'App\\Models\\Service',
                 'name' => $svc->name,
                 'teamName' => $team?->name ?? 'Unknown',
-                'status' => $svc->status ?? 'unknown',
+                'status' => 'unknown',
             ]);
         }
 
