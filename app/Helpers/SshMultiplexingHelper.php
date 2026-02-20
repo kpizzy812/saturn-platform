@@ -221,11 +221,30 @@ class SshMultiplexingHelper
     private static function validateSshKey(PrivateKey $privateKey): void
     {
         $keyLocation = $privateKey->getKeyLocation();
-        $checkKeyCommand = "ls $keyLocation 2>/dev/null";
-        $keyCheckProcess = Process::run($checkKeyCommand);
 
-        if ($keyCheckProcess->exitCode() !== 0) {
+        // Check file exists, has content, and has correct permissions
+        if (! file_exists($keyLocation) || filesize($keyLocation) === 0) {
             $privateKey->storeInFileSystem();
+
+            return;
+        }
+
+        // Verify file content starts with a valid SSH key header
+        $content = @file_get_contents($keyLocation);
+        if ($content === false || ! str_starts_with(trim($content), '-----BEGIN ')) {
+            Log::warning('SSH key file has invalid content, re-writing', [
+                'key_id' => $privateKey->id,
+                'location' => $keyLocation,
+            ]);
+            $privateKey->storeInFileSystem();
+
+            return;
+        }
+
+        // Ensure permissions are 0600
+        $perms = fileperms($keyLocation) & 0777;
+        if ($perms !== 0600) {
+            @chmod($keyLocation, 0600);
         }
     }
 
