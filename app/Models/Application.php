@@ -243,6 +243,8 @@ class Application extends BaseModel
         'monorepo_group_id',
         'auto_inject_database_url',
         'private_key_id',
+        'status',
+        'last_online_at',
         'restart_count',
         'last_restart_at',
         'last_restart_type',
