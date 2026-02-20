@@ -237,14 +237,14 @@ class PermissionService
 
         // Platform admins have all permissions
         if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
-            return Permission::all()
+            return $this->getCachedPermissions()
                 ->pluck('key')
                 ->mapWithKeys(fn ($key) => [$key => true])
                 ->toArray();
         }
 
         $permissions = [];
-        $allPermissions = Permission::all();
+        $allPermissions = $this->getCachedPermissions();
 
         foreach ($allPermissions as $permission) {
             $permissions[$permission->key] = $this->userHasPermission($user, $permission->key, $project);
@@ -267,7 +267,7 @@ class PermissionService
         }
 
         $permissions = [];
-        $allPermissions = Permission::orderBy('sort_order')->get();
+        $allPermissions = $this->getCachedPermissions()->sortBy('sort_order');
 
         foreach ($allPermissions as $permission) {
             $category = $permission->category;
@@ -510,5 +510,15 @@ class PermissionService
         }
 
         return true;
+    }
+
+    /**
+     * Get all permissions with caching to avoid repeated DB queries.
+     */
+    private function getCachedPermissions(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Cache::remember('permissions:all', 300, function () {
+            return Permission::all();
+        });
     }
 }

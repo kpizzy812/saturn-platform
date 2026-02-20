@@ -81,10 +81,8 @@ class ApplicationsController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $projects = Project::where('team_id', $teamId)->get();
-        $applications = collect();
-        $applications->push($projects->pluck('applications')->flatten());
-        $applications = $applications->flatten();
+        $projects = Project::where('team_id', $teamId)->with('applications')->get();
+        $applications = $projects->pluck('applications')->flatten();
         $applications = $applications->map(function ($application) {
             return $this->removeSensitiveData($application);
         });
@@ -578,7 +576,7 @@ class ApplicationsController extends Controller
             'description' => 'string|nullable',
             'static_image' => 'string',
             'watch_paths' => 'string|nullable',
-            'docker_compose_location' => 'string',
+            'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
             'docker_compose_domains' => 'array|nullable',
             'docker_compose_custom_start_command' => 'string|nullable',

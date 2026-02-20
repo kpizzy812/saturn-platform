@@ -21,7 +21,7 @@ class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
      */
     public $tries = 5;
 
-    public $backoff = 10;
+    public $backoff = [10, 30, 60];
 
     /**
      * The maximum number of unhandled exceptions to allow before failing.
@@ -58,7 +58,11 @@ class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
             ]);
         }
 
-        $response = Http::post($this->webhookUrl, $this->payload);
+        $response = Http::timeout(10)->post($this->webhookUrl, $this->payload);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Webhook notification failed with status '.$response->status());
+        }
 
         if (isDev()) {
             ray('Webhook response', [

@@ -20,6 +20,8 @@ class ServerPatchCheckJob implements ShouldBeEncrypted, ShouldQueue
 
     public $tries = 3;
 
+    public $backoff = [10, 30, 60];
+
     public $timeout = 600;
 
     public function middleware(): array

@@ -81,7 +81,7 @@ class ServersController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $servers = ModelsServer::whereTeamId($teamId)->select('id', 'name', 'uuid', 'ip', 'user', 'port', 'description')->get()->load(['settings'])->map(function ($server) {
+        $servers = ModelsServer::whereTeamId($teamId)->select('id', 'name', 'uuid', 'ip', 'user', 'port', 'description')->with('settings')->get()->map(function ($server) {
             $server['is_reachable'] = $server->settings->is_reachable;
             $server['is_usable'] = $server->settings->is_usable;
 

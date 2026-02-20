@@ -161,25 +161,29 @@ class CleanupInstanceStuffsJobTest extends TestCase
      * This test documents the current (unscoped) behavior so the regression
      * is caught the moment the fix is introduced.
      */
-    public function test_cleanup_invitation_link_uses_all_without_scoping(): void
+    public function test_cleanup_invitation_link_uses_cursor_instead_of_all(): void
     {
         $source = file_get_contents(app_path('Jobs/CleanupInstanceStuffsJob.php'));
 
-        // Confirm the problematic ::all() call is still present
+        // FIX APPLIED: TeamInvitation::all() replaced with cursor() to prevent OOM
         $this->assertStringContainsString(
+            'TeamInvitation::cursor()',
+            $source,
+            'CleanupInstanceStuffsJob should use cursor() instead of ::all() to prevent OOM.'
+        );
+        $this->assertStringNotContainsString(
             'TeamInvitation::all()',
             $source,
-            'V2 AUDIT: TeamInvitation::all() should be replaced with a scoped/lazy query. '.
-            'Update this assertion once the fix is applied.'
+            'TeamInvitation::all() should no longer be used — use cursor() instead.'
         );
     }
 
-    public function test_cleanup_invitation_link_calls_is_valid_on_each_item(): void
+    public function test_cleanup_invitation_link_calls_is_valid_on_each_invitation(): void
     {
         $source = file_get_contents(app_path('Jobs/CleanupInstanceStuffsJob.php'));
 
         // Verify the foreach + isValid() iteration pattern is present
-        $this->assertStringContainsString('$item->isValid()', $source);
+        $this->assertStringContainsString('$invitation->isValid()', $source);
     }
 
     // -------------------------------------------------------------------------

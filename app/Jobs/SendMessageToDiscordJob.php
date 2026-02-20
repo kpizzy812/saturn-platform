@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SendMessageToDiscordJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -22,7 +23,7 @@ class SendMessageToDiscordJob implements ShouldBeEncrypted, ShouldQueue
      */
     public $tries = 5;
 
-    public $backoff = 10;
+    public $backoff = [10, 30, 60];
 
     /**
      * The maximum number of unhandled exceptions to allow before failing.
@@ -41,6 +42,17 @@ class SendMessageToDiscordJob implements ShouldBeEncrypted, ShouldQueue
      */
     public function handle(): void
     {
-        Http::post($this->webhookUrl, $this->message->toPayload());
+        try {
+            $response = Http::timeout(10)->post($this->webhookUrl, $this->message->toPayload());
+
+            if ($response->failed()) {
+                throw new \RuntimeException('Discord notification failed with status '.$response->status());
+            }
+        } catch (\Exception $e) {
+            Log::warning('SendMessageToDiscordJob failed', [
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 }

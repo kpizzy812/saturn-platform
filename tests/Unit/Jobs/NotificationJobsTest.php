@@ -19,7 +19,7 @@ it('discord job has correct tries, backoff, and maxExceptions', function () {
     $defaults = $reflection->getDefaultProperties();
 
     expect($defaults['tries'])->toBe(5)
-        ->and($defaults['backoff'])->toBe(10)
+        ->and($defaults['backoff'])->toBe([10, 30, 60])
         ->and($defaults['maxExceptions'])->toBe(5);
 });
 
@@ -87,12 +87,12 @@ it('discord job sends exactly one HTTP request per handle call', function () {
 // SendMessageToSlackJob
 // ---------------------------------------------------------------------------
 
-it('slack job implements ShouldQueue but NOT ShouldBeEncrypted', function () {
+it('slack job implements ShouldQueue and ShouldBeEncrypted', function () {
     $message = new SlackMessage('Alert', 'Something happened');
     $job = new SendMessageToSlackJob($message, 'https://hooks.slack.test/services/T/B/X');
 
     expect($job)->toBeInstanceOf(ShouldQueue::class)
-        ->and($job)->not->toBeInstanceOf(ShouldBeEncrypted::class);
+        ->and($job)->toBeInstanceOf(ShouldBeEncrypted::class);
 });
 
 it('slack job is dispatched to the high queue', function () {

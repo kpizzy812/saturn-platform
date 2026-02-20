@@ -47,7 +47,7 @@ class CreatePrivateGhAppApplication
             'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
             'github_app_uuid' => 'string|required',
             'watch_paths' => 'string|nullable',
-            'docker_compose_location' => 'string',
+            'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
         ];
         $validationRules = array_merge(sharedDataApplications(), $validationRules);
