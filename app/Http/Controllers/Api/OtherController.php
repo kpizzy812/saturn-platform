@@ -200,7 +200,7 @@ class OtherController extends Controller
 
         // Check Redis
         try {
-            Redis::ping();
+            Redis::connection()->ping();
             $checks['redis'] = 'ok';
         } catch (\Throwable $e) {
             $checks['redis'] = 'failing';
@@ -210,10 +210,8 @@ class OtherController extends Controller
         // Check Queue (pending/failed jobs count)
         try {
             $failedCount = DB::table('failed_jobs')->count();
-            $pendingCount = DB::table('jobs')->count();
             $checks['queue'] = [
                 'status' => 'ok',
-                'pending' => $pendingCount,
                 'failed' => $failedCount,
             ];
         } catch (\Throwable $e) {
@@ -221,11 +219,11 @@ class OtherController extends Controller
             $healthy = false;
         }
 
-        $status = $healthy ? 200 : 503;
-
+        // Always return 200 for Docker/deploy liveness probes.
+        // Monitoring tools should check the 'status' field in the response body.
         return response()->json([
             'status' => $healthy ? 'healthy' : 'degraded',
             'checks' => $checks,
-        ], $status);
+        ]);
     }
 }
