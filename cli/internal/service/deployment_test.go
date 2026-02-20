@@ -97,6 +97,7 @@ func TestDeploymentService_ListByApplication(t *testing.T) {
 					{
 						"id": 1,
 						"deployment_uuid": "dep-123",
+						"application_id": 10,
 						"application_name": "my-app",
 						"server_name": "server-1",
 						"status": "finished",
@@ -105,6 +106,7 @@ func TestDeploymentService_ListByApplication(t *testing.T) {
 					{
 						"id": 2,
 						"deployment_uuid": "dep-456",
+						"application_id": 10,
 						"application_name": "my-app",
 						"server_name": "server-1",
 						"status": "in_progress",

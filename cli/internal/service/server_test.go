@@ -68,10 +68,8 @@ func TestServerService_GetResources(t *testing.T) {
 		assert.Equal(t, "/api/v1/servers/test-uuid/resources", r.URL.Path)
 		assert.Equal(t, "GET", r.Method)
 
-		resources := models.Resources{
-			Resources: []models.Resource{
-				{UUID: "res-1", Name: "resource-1", Type: "application"},
-			},
+		resources := []models.Resource{
+			{UUID: "res-1", Name: "resource-1", Type: "application"},
 		}
 		_ = json.NewEncoder(w).Encode(resources)
 	}))
@@ -83,8 +81,8 @@ func TestServerService_GetResources(t *testing.T) {
 	result, err := svc.GetResources(context.Background(), "test-uuid")
 
 	require.NoError(t, err)
-	assert.Len(t, result.Resources, 1)
-	assert.Equal(t, "res-1", result.Resources[0].UUID)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "res-1", result[0].UUID)
 }
 
 func TestServerService_Create(t *testing.T) {

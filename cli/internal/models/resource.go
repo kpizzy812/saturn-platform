@@ -16,7 +16,3 @@ const (
 	ResourceStatusError   = "error"
 )
 
-// Resources wraps a list of resources
-type Resources struct {
-	Resources []Resource `json:"resources"`
-}

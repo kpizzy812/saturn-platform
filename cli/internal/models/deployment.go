@@ -4,7 +4,7 @@ package models
 type Deployment struct {
 	ID              int     `json:"id" table:"-"`
 	UUID            string  `json:"deployment_uuid"`
-	ApplicationID   *string `json:"application_id,omitempty" table:"-"`
+	ApplicationID   *int64  `json:"application_id,omitempty" table:"-"`
 	ApplicationName *string `json:"application_name,omitempty"`
 	ServerName      *string `json:"server_name,omitempty"`
 	Status          string  `json:"status"`
