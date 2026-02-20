@@ -42,6 +42,17 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('VolumeCloneJob permanently failed', [
+            'source_volume' => $this->sourceVolume,
+            'target_volume' => $this->targetVolume,
+            'source_server_id' => $this->sourceServer->id,
+            'target_server_id' => $this->targetServer?->id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     protected function cloneLocalVolume()
     {
         // Security: Escape volume names to prevent command injection

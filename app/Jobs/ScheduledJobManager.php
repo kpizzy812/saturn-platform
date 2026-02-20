@@ -95,6 +95,13 @@ class ScheduledJobManager implements ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ScheduledJobManager permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function processScheduledBackups(): void
     {
         $backups = ScheduledDatabaseBackup::with(['database'])

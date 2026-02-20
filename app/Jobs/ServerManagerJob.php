@@ -62,6 +62,13 @@ class ServerManagerJob implements ShouldQueue
         $this->processScheduledTasks($servers);
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerManagerJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function getServers(): Collection
     {
         $allServers = Server::where('ip', '!=', '1.2.3.4');

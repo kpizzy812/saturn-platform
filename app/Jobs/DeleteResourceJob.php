@@ -116,6 +116,15 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('DeleteResourceJob permanently failed', [
+            'resource_type' => get_class($this->resource),
+            'resource_id' => $this->resource->id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function deleteApplicationPreview()
     {
         $application = $this->resource->application;

@@ -90,6 +90,14 @@ class BackupVerificationJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('BackupVerificationJob permanently failed', [
+            'execution_id' => $this->execution->id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function verifyLocalBackup(Server $server): void
     {
         $filename = $this->execution->filename;

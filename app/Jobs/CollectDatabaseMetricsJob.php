@@ -20,6 +20,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Laravel\Horizon\Contracts\Silenced;
 
 class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silenced
@@ -35,6 +36,15 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
     public function middleware(): array
     {
         return [(new WithoutOverlapping('collect-db-metrics-'.$this->server->uuid))->expireAfter(60)->dontRelease()];
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CollectDatabaseMetricsJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     public function handle(): void
