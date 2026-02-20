@@ -293,6 +293,28 @@ class User extends Authenticatable implements SendsEmail
         return new NewAccessToken($token, $token->getKey().'|'.$plainTextToken);
     }
 
+    /**
+     * Create a Sanctum token for CLI auth (bypasses session-based team).
+     */
+    public function createTokenForCli(string $name, int $teamId, array $abilities = ['*']): NewAccessToken
+    {
+        $plainTextToken = sprintf(
+            '%s%s%s',
+            config('sanctum.token_prefix', ''),
+            $tokenEntropy = Str::random(40),
+            hash('crc32b', $tokenEntropy)
+        );
+
+        $token = $this->tokens()->create([
+            'name' => $name,
+            'token' => hash('sha256', $plainTextToken),
+            'abilities' => $abilities,
+            'team_id' => $teamId,
+        ]);
+
+        return new NewAccessToken($token, $token->getKey().'|'.$plainTextToken);
+    }
+
     /** @return BelongsToMany<Team, $this, TeamUser, 'pivot'> */
     public function teams(): BelongsToMany
     {

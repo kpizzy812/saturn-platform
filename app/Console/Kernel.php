@@ -45,6 +45,7 @@ class Kernel extends ConsoleKernel
 
         // $this->scheduleInstance->job(new CleanupStaleMultiplexedConnections)->hourly();
         $this->scheduleInstance->command('cleanup:redis')->weekly();
+        $this->scheduleInstance->command('model:prune', ['--model' => \App\Models\CliAuthSession::class])->hourly();
 
         if (isDev()) {
             // Instance Jobs

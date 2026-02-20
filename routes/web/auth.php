@@ -153,6 +153,16 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
     })->name('auth.decline-invite');
 });
 
+// CLI Device Auth (requires authentication)
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/cli/auth', [\App\Http\Controllers\Api\CliAuthController::class, 'showApprovalPage'])
+        ->name('cli.auth');
+    Route::post('/cli/auth/approve', [\App\Http\Controllers\Api\CliAuthController::class, 'approve'])
+        ->name('cli.auth.approve');
+    Route::post('/cli/auth/deny', [\App\Http\Controllers\Api\CliAuthController::class, 'deny'])
+        ->name('cli.auth.deny');
+});
+
 // Authenticated auth routes (2FA, OAuth connect)
 Route::middleware(['web', 'auth', 'verified'])->prefix('auth')->group(function () {
     Route::get('/two-factor/setup', function () {

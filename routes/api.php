@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ApplicationCreateController;
 use App\Http\Controllers\Api\ApplicationDeploymentsController;
 use App\Http\Controllers\Api\ApplicationEnvsController;
 use App\Http\Controllers\Api\ApplicationsController;
+use App\Http\Controllers\Api\CliAuthController;
 use App\Http\Controllers\Api\CloudProviderTokensController;
 use App\Http\Controllers\Api\CodeReviewController;
 use App\Http\Controllers\Api\DatabaseActionsController;
@@ -49,6 +50,12 @@ Route::group([
 });
 
 Route::post('/feedback', [OtherController::class, 'feedback']);
+
+// CLI Device Auth Flow (public, no auth required)
+Route::prefix('v1/cli/auth')->middleware('throttle:10,1')->group(function () {
+    Route::post('/init', [CliAuthController::class, 'init']);
+    Route::get('/check', [CliAuthController::class, 'check']);
+});
 
 Route::group([
     'middleware' => ['auth:sanctum', 'api.ability:write'],
