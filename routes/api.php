@@ -43,6 +43,7 @@ use App\Models\Server;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', [OtherController::class, 'healthcheck']);
+Route::get('/healthcheck', [OtherController::class, 'healthcheck']);
 Route::group([
     'prefix' => 'v1',
 ], function () {
