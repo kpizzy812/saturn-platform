@@ -10,7 +10,10 @@
         "test:coverage": "vitest run --coverage",
         "test:frontend": "vitest --config vitest.config.ts",
         "lint": "eslint resources/js",
-        "lint:fix": "eslint resources/js --fix"
+        "lint:fix": "eslint resources/js --fix",
+        "panel": "cd panel && npm run dev",
+        "panel:build": "cd panel && npm run build",
+        "panel:test": "cd panel && npm test"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.2",
