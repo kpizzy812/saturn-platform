@@ -286,13 +286,13 @@ trait HandlesNixpacksBuildpack
 
         $nixpacks_command = "nixpacks plan -f json {$this->env_nixpacks_args}{$extraEnv}";
         if ($this->application->build_command) {
-            $nixpacks_command .= " --build-cmd \"{$this->application->build_command}\"";
+            $nixpacks_command .= ' --build-cmd '.escapeshellarg($this->application->build_command);
         }
         if ($this->application->start_command) {
-            $nixpacks_command .= " --start-cmd \"{$this->application->start_command}\"";
+            $nixpacks_command .= ' --start-cmd '.escapeshellarg($this->application->start_command);
         }
         if ($this->application->install_command) {
-            $nixpacks_command .= " --install-cmd \"{$this->application->install_command}\"";
+            $nixpacks_command .= ' --install-cmd '.escapeshellarg($this->application->install_command);
         }
         $nixpacks_command .= " {$this->workdir}";
 
@@ -308,13 +308,13 @@ trait HandlesNixpacksBuildpack
         if ($this->pull_request_id === 0) {
             foreach ($this->application->nixpacks_environment_variables as $env) {
                 if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $this->env_nixpacks_args->push("--env {$env->key}={$env->real_value}");
+                    $this->env_nixpacks_args->push('--env '.escapeshellarg("{$env->key}={$env->real_value}"));
                 }
             }
         } else {
             foreach ($this->application->nixpacks_environment_variables_preview as $env) {
                 if (! is_null($env->real_value) && $env->real_value !== '') {
-                    $this->env_nixpacks_args->push("--env {$env->key}={$env->real_value}");
+                    $this->env_nixpacks_args->push('--env '.escapeshellarg("{$env->key}={$env->real_value}"));
                 }
             }
         }
@@ -324,7 +324,7 @@ trait HandlesNixpacksBuildpack
         $saturn_envs->each(function ($value, $key) {
             // Only add environment variables with non-null and non-empty values
             if (! is_null($value) && $value !== '') {
-                $this->env_nixpacks_args->push("--env {$key}={$value}");
+                $this->env_nixpacks_args->push('--env '.escapeshellarg("{$key}={$value}"));
             }
         });
 

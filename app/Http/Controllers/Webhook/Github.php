@@ -88,6 +88,15 @@ class Github extends Controller
             foreach ($applicationsByServer as $serverId => $serverApplications) {
                 foreach ($serverApplications as $application) {
                     $webhook_secret = data_get($application, 'manual_webhook_secret_github');
+                    if (empty($webhook_secret)) {
+                        $return_payloads->push([
+                            'application' => $application->name,
+                            'status' => 'failed',
+                            'message' => 'Webhook secret not configured.',
+                        ]);
+
+                        continue;
+                    }
                     $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
                     // Security: Always validate signature - never skip in dev mode
                     if (! hash_equals($x_hub_signature_256, $hmac)) {

@@ -19,6 +19,10 @@ class ServerManagerJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
+    public $timeout = 120;
+
     /**
      * The time when this job execution started.
      */

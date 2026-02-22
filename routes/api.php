@@ -306,7 +306,7 @@ Route::group([
     Route::get('/servers/{uuid}/validate', [ServersController::class, 'validate_server'])->middleware(['api.ability:read']);
     Route::get('/servers/{uuid}/sentinel/metrics', [SentinelMetricsController::class, 'metrics'])->middleware(['api.ability:read']);
 
-    Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:read', 'throttle:api-write']);
+    Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:write', 'throttle:api-write']);
     Route::patch('/servers/{uuid}', [ServersController::class, 'update_server'])->middleware(['api.ability:write', 'throttle:api-write']);
     Route::delete('/servers/{uuid}', [ServersController::class, 'delete_server'])->middleware(['api.ability:write', 'throttle:api-write']);
     Route::post('/servers/{uuid}/reboot', [ServersController::class, 'reboot_server'])->middleware(['api.ability:write', 'throttle:api-write']);

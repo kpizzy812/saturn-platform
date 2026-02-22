@@ -6,6 +6,7 @@ use App\Models\Subscription;
 use App\Models\Team;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class StripeProcessJob implements ShouldQueue
@@ -17,6 +18,8 @@ class StripeProcessJob implements ShouldQueue
     public $webhook;
 
     public $tries = 3;
+
+    public $timeout = 30;
 
     public function __construct(public $event)
     {
@@ -355,5 +358,14 @@ class StripeProcessJob implements ShouldQueue
         } catch (\Exception $e) {
             send_internal_notification('StripeProcessJob error: '.$e->getMessage());
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('StripeProcessJob permanently failed', [
+            'type' => $this->type,
+            'error' => $exception->getMessage(),
+        ]);
+        send_internal_notification('StripeProcessJob permanently failed: '.$exception->getMessage());
     }
 }
