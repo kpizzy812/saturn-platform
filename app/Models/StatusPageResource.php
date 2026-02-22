@@ -51,14 +51,23 @@ class StatusPageResource extends Model
 
     /**
      * Normalize internal status to public-facing status.
+     * Handles compound statuses like "running:healthy" or "running(healthy)".
      */
     public static function normalizeStatus(string $status): string
     {
-        return match ($status) {
+        $baseStatus = $status;
+        if (str_contains($status, ':')) {
+            $baseStatus = explode(':', $status)[0];
+        } elseif (str_contains($status, '(')) {
+            $baseStatus = explode('(', $status)[0];
+        }
+        $baseStatus = trim($baseStatus);
+
+        return match ($baseStatus) {
             'running', 'healthy' => 'operational',
             'degraded' => 'degraded',
             'exited', 'stopped', 'down', 'unreachable', 'failed' => 'major_outage',
-            'restarting', 'in_progress' => 'maintenance',
+            'restarting', 'in_progress', 'starting' => 'maintenance',
             default => 'unknown',
         };
     }

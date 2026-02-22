@@ -46,6 +46,7 @@ class InstanceSettings extends Model
         'is_status_page_enabled',
         'status_page_title',
         'status_page_description',
+        'status_page_mode',
         'is_dns_validation_enabled',
         'is_ai_code_review_enabled',
         'is_ai_error_analysis_enabled',
@@ -162,6 +163,7 @@ class InstanceSettings extends Model
 
         // Status Page
         'is_status_page_enabled' => 'boolean',
+        'status_page_mode' => 'string',
 
         // AI features
         'is_ai_code_review_enabled' => 'boolean',

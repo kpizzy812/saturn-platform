@@ -16,6 +16,7 @@ use App\Jobs\RegenerateSslCertJob;
 use App\Jobs\ResourceMonitoringManagerJob;
 use App\Jobs\ScheduledJobManager;
 use App\Jobs\ServerManagerJob;
+use App\Jobs\StatusPageSnapshotJob;
 use App\Jobs\UpdateSaturnJob;
 use App\Models\InstanceSettings;
 use Illuminate\Console\Scheduling\Schedule;
@@ -100,6 +101,7 @@ class Kernel extends ConsoleKernel
             $this->scheduleInstance->job(new CheckTraefikVersionJob)->weekly()->sundays()->at('00:00')->timezone($this->instanceTimezone)->onOneServer();
 
             $this->scheduleInstance->command('cleanup:database --yes')->daily();
+            $this->scheduleInstance->job(new StatusPageSnapshotJob)->dailyAt('00:15')->timezone($this->instanceTimezone)->onOneServer();
             $this->scheduleInstance->command('uploads:clear')->everyTwoMinutes();
 
             // Alert Evaluation (every 5 minutes)

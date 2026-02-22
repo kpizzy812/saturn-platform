@@ -104,5 +104,13 @@ class CleanupDatabase extends Command
         if ($this->option('yes')) {
             $health_checks->delete();
         }
+
+        // Cleanup status_page_daily_snapshots table (keep only 100 days)
+        $snapshots = DB::table('status_page_daily_snapshots')->where('snapshot_date', '<', now()->subDays(100));
+        $count = $snapshots->count();
+        echo "Delete $count entries from status_page_daily_snapshots.\n";
+        if ($this->option('yes')) {
+            $snapshots->delete();
+        }
     }
 }
