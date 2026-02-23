@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
 import { ArrowLeft, Plus, HardDrive, Network, CheckCircle } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     server: ServerType;
@@ -77,48 +78,52 @@ export default function ServerDestinationsIndex({ server, destinations = [] }: P
 
             {/* Destinations List */}
             {destinations.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {destinations.map((destination) => (
-                        <Link key={destination.uuid} href={`/servers/${server.uuid}/destinations/${destination.uuid}`}>
-                            <Card className="cursor-pointer transition-all hover:border-primary/50">
-                                <CardContent className="p-5">
-                                    <div className="mb-3 flex items-start justify-between">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                                            <HardDrive className="h-5 w-5 text-primary" />
+                <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {destinations.map((destination, i) => (
+                        <StaggerItem key={destination.uuid} index={i}>
+                            <Link href={`/servers/${server.uuid}/destinations/${destination.uuid}`}>
+                                <Card className="cursor-pointer transition-all hover:border-primary/50">
+                                    <CardContent className="p-5">
+                                        <div className="mb-3 flex items-start justify-between">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                                <HardDrive className="h-5 w-5 text-primary" />
+                                            </div>
+                                            {destination.is_default && (
+                                                <Badge variant="success" size="sm">Default</Badge>
+                                            )}
                                         </div>
-                                        {destination.is_default && (
-                                            <Badge variant="success" size="sm">Default</Badge>
-                                        )}
-                                    </div>
-                                    <h3 className="font-semibold text-foreground">{destination.name}</h3>
-                                    <p className="mt-1 text-sm text-foreground-muted">Network: {destination.network}</p>
-                                    <div className="mt-3 flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4 text-success" />
-                                        <span className="text-xs text-foreground-muted">Active</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
+                                        <h3 className="font-semibold text-foreground">{destination.name}</h3>
+                                        <p className="mt-1 text-sm text-foreground-muted">Network: {destination.network}</p>
+                                        <div className="mt-3 flex items-center gap-2">
+                                            <CheckCircle className="h-4 w-4 text-success" />
+                                            <span className="text-xs text-foreground-muted">Active</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             ) : (
-                <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
-                            <HardDrive className="h-8 w-8 text-foreground-subtle" />
-                        </div>
-                        <h3 className="mt-4 font-medium text-foreground">No destinations yet</h3>
-                        <p className="mt-1 text-sm text-foreground-muted">
-                            Create your first destination to start deploying applications
-                        </p>
-                        <Link href={`/servers/${server.uuid}/destinations/create`} className="mt-4">
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Create Destination
-                            </Button>
-                        </Link>
-                    </CardContent>
-                </Card>
+                <FadeIn>
+                    <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
+                                <HardDrive className="h-8 w-8 animate-pulse-soft text-foreground-subtle" />
+                            </div>
+                            <h3 className="mt-4 font-medium text-foreground">No destinations yet</h3>
+                            <p className="mt-1 text-sm text-foreground-muted">
+                                Create your first destination to start deploying applications
+                            </p>
+                            <Link href={`/servers/${server.uuid}/destinations/create`} className="mt-4">
+                                <Button>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Destination
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+                </FadeIn>
             )}
         </AppLayout>
     );

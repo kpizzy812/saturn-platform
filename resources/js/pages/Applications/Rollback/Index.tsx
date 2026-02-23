@@ -10,6 +10,7 @@ import {
 import type { Application } from '@/types';
 import { RollbackTimeline, type TimelineDeployment } from '@/components/features/RollbackTimeline';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 type DeploymentStatus = 'finished' | 'failed' | 'in_progress' | 'queued' | 'cancelled' | 'rolled_back';
 
@@ -277,46 +278,45 @@ export default function ApplicationRollbackIndex({
                                 <History className="h-4 w-4 text-foreground-muted" />
                                 <h3 className="font-medium text-foreground">Recent Rollback Events</h3>
                             </div>
-                            <div className="space-y-3">
-                                {rollbackEvents.map((event) => (
-                                    <div
-                                        key={event.id}
-                                        className="rounded-lg border border-border bg-background-secondary p-4"
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant={EVENT_STATUS_VARIANT[event.status] || 'default'}>
-                                                        {event.status}
-                                                    </Badge>
-                                                    <Badge variant={event.trigger_type === 'automatic' ? 'info' : 'default'}>
-                                                        {event.trigger_type}
-                                                    </Badge>
-                                                    <span className="text-sm text-foreground">
-                                                        {REASON_LABELS[event.trigger_reason] || event.trigger_reason.replace(/_/g, ' ')}
-                                                    </span>
+                            <StaggerList className="space-y-3">
+                                {rollbackEvents.map((event, i) => (
+                                    <StaggerItem key={event.id} index={i}>
+                                        <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant={EVENT_STATUS_VARIANT[event.status] || 'default'}>
+                                                            {event.status}
+                                                        </Badge>
+                                                        <Badge variant={event.trigger_type === 'automatic' ? 'info' : 'default'}>
+                                                            {event.trigger_type}
+                                                        </Badge>
+                                                        <span className="text-sm text-foreground">
+                                                            {REASON_LABELS[event.trigger_reason] || event.trigger_reason.replace(/_/g, ' ')}
+                                                        </span>
+                                                    </div>
+                                                    {event.from_commit && event.to_commit && (
+                                                        <p className="text-xs text-foreground-muted">
+                                                            <code className="rounded bg-background-tertiary px-1 py-0.5">{event.from_commit.substring(0, 7)}</code>
+                                                            {' → '}
+                                                            <code className="rounded bg-background-tertiary px-1 py-0.5">{event.to_commit.substring(0, 7)}</code>
+                                                        </p>
+                                                    )}
+                                                    {event.error_message && (
+                                                        <p className="text-xs text-danger">{event.error_message}</p>
+                                                    )}
                                                 </div>
-                                                {event.from_commit && event.to_commit && (
-                                                    <p className="text-xs text-foreground-muted">
-                                                        <code className="rounded bg-background-tertiary px-1 py-0.5">{event.from_commit.substring(0, 7)}</code>
-                                                        {' → '}
-                                                        <code className="rounded bg-background-tertiary px-1 py-0.5">{event.to_commit.substring(0, 7)}</code>
-                                                    </p>
-                                                )}
-                                                {event.error_message && (
-                                                    <p className="text-xs text-danger">{event.error_message}</p>
-                                                )}
-                                            </div>
-                                            <div className="text-right text-xs text-foreground-muted">
-                                                {event.triggered_by_user && (
-                                                    <div className="mb-1">by {event.triggered_by_user.name}</div>
-                                                )}
-                                                <div>{formatTimeAgo(event.triggered_at)}</div>
+                                                <div className="text-right text-xs text-foreground-muted">
+                                                    {event.triggered_by_user && (
+                                                        <div className="mb-1">by {event.triggered_by_user.name}</div>
+                                                    )}
+                                                    <div>{formatTimeAgo(event.triggered_at)}</div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </StaggerItem>
                                 ))}
-                            </div>
+                            </StaggerList>
                         </CardContent>
                     </Card>
                 )}
@@ -391,99 +391,103 @@ export default function ApplicationRollbackIndex({
 
                 {/* Deployments List */}
                 {filteredDeployments.length === 0 ? (
-                    <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-12">
-                            <AlertCircle className="h-12 w-12 text-foreground-subtle" />
-                            <h3 className="mt-4 font-medium text-foreground">
-                                {hasActiveFilters ? 'No matching deployments' : 'No deployments found'}
-                            </h3>
-                            <p className="mt-1 text-sm text-foreground-muted">
-                                {hasActiveFilters
-                                    ? 'Try adjusting your filters'
-                                    : 'No deployments available for this application'}
-                            </p>
-                            {hasActiveFilters && (
-                                <Button variant="secondary" size="sm" className="mt-4" onClick={clearFilters}>
-                                    Clear filters
-                                </Button>
-                            )}
-                        </CardContent>
-                    </Card>
+                    <FadeIn>
+                        <Card>
+                            <CardContent className="flex flex-col items-center justify-center py-12">
+                                <AlertCircle className="h-12 w-12 animate-pulse-soft text-foreground-subtle" />
+                                <h3 className="mt-4 font-medium text-foreground">
+                                    {hasActiveFilters ? 'No matching deployments' : 'No deployments found'}
+                                </h3>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    {hasActiveFilters
+                                        ? 'Try adjusting your filters'
+                                        : 'No deployments available for this application'}
+                                </p>
+                                {hasActiveFilters && (
+                                    <Button variant="secondary" size="sm" className="mt-4" onClick={clearFilters}>
+                                        Clear filters
+                                    </Button>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </FadeIn>
                 ) : (
-                    <div className="space-y-2">
-                        {filteredDeployments.map((deployment, _index) => {
+                    <StaggerList className="space-y-2">
+                        {filteredDeployments.map((deployment, i) => {
                             const isCurrentActive = deployment.id === currentDeployment?.id;
                             const commitShort = deployment.commit?.substring(0, 7) || 'unknown';
                             const message = deployment.commit_message || 'No commit message';
                             const canRollback = !isCurrentActive && deployment.status === 'finished';
 
                             return (
-                                <Card key={deployment.id}>
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start gap-4">
-                                            <div className="mt-1">{getStatusIcon(deployment.status)}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <div className="flex items-center gap-2">
-                                                                <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
-                                                                <code className="text-sm font-medium text-foreground">
-                                                                    {commitShort}
-                                                                </code>
+                                <StaggerItem key={deployment.id} index={i}>
+                                    <Card>
+                                        <CardContent className="p-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="mt-1">{getStatusIcon(deployment.status)}</div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <div className="flex items-center gap-2">
+                                                                    <GitCommit className="h-3.5 w-3.5 text-foreground-muted" />
+                                                                    <code className="text-sm font-medium text-foreground">
+                                                                        {commitShort}
+                                                                    </code>
+                                                                </div>
+                                                                {isCurrentActive && (
+                                                                    <Badge variant="success">Active</Badge>
+                                                                )}
+                                                                <Badge variant={getStatusVariant(deployment.status)} className="capitalize">
+                                                                    {deployment.status.replace('_', ' ')}
+                                                                </Badge>
+                                                                {deployment.rollback && (
+                                                                    <Badge variant="warning">Rollback</Badge>
+                                                                )}
+                                                                {deployment.trigger === 'push' && (
+                                                                    <Badge variant="default" className="text-xs">Push</Badge>
+                                                                )}
                                                             </div>
-                                                            {isCurrentActive && (
-                                                                <Badge variant="success">Active</Badge>
-                                                            )}
-                                                            <Badge variant={getStatusVariant(deployment.status)} className="capitalize">
-                                                                {deployment.status.replace('_', ' ')}
-                                                            </Badge>
-                                                            {deployment.rollback && (
-                                                                <Badge variant="warning">Rollback</Badge>
-                                                            )}
-                                                            {deployment.trigger === 'push' && (
-                                                                <Badge variant="default" className="text-xs">Push</Badge>
+                                                            <p className="mt-1 text-sm text-foreground line-clamp-1">{message}</p>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                                            <Link href={`${appBasePath}/deployment/${deployment.deployment_uuid}`}>
+                                                                <Button variant="ghost" size="sm">
+                                                                    <Eye className="mr-1 h-3 w-3" />
+                                                                    View
+                                                                </Button>
+                                                            </Link>
+                                                            {canRollback && (
+                                                                <Button
+                                                                    variant="secondary"
+                                                                    size="sm"
+                                                                    onClick={() => handleRollbackClick(deployment)}
+                                                                >
+                                                                    <RotateCw className="mr-1 h-3 w-3" />
+                                                                    Rollback
+                                                                </Button>
                                                             )}
                                                         </div>
-                                                        <p className="mt-1 text-sm text-foreground line-clamp-1">{message}</p>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                                        <Link href={`${appBasePath}/deployment/${deployment.deployment_uuid}`}>
-                                                            <Button variant="ghost" size="sm">
-                                                                <Eye className="mr-1 h-3 w-3" />
-                                                                View
-                                                            </Button>
-                                                        </Link>
-                                                        {canRollback && (
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                onClick={() => handleRollbackClick(deployment)}
-                                                            >
-                                                                <RotateCw className="mr-1 h-3 w-3" />
-                                                                Rollback
-                                                            </Button>
+                                                    <div className="mt-3 flex items-center gap-4 text-xs text-foreground-muted flex-wrap">
+                                                        <div className="flex items-center gap-1">
+                                                            <Clock className="h-3 w-3" />
+                                                            <span>{formatTimeAgo(deployment.created_at)}</span>
+                                                        </div>
+                                                        {deployment.duration && (
+                                                            <span>Duration: {formatDuration(deployment.duration)}</span>
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                <div className="mt-3 flex items-center gap-4 text-xs text-foreground-muted flex-wrap">
-                                                    <div className="flex items-center gap-1">
-                                                        <Clock className="h-3 w-3" />
-                                                        <span>{formatTimeAgo(deployment.created_at)}</span>
-                                                    </div>
-                                                    {deployment.duration && (
-                                                        <span>Duration: {formatDuration(deployment.duration)}</span>
-                                                    )}
-                                                </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                        </CardContent>
+                                    </Card>
+                                </StaggerItem>
                             );
                         })}
-                    </div>
+                    </StaggerList>
                 )}
             </div>
 
