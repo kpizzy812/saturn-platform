@@ -123,11 +123,43 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
             return redirect('/dashboard')->with('info', 'You are already a member of this team.');
         }
 
-        // Add user to team
-        $team->members()->attach($user->id, [
+        // Add user to team with invitation settings
+        $pivotData = [
             'role' => $invitation->role ?? 'member',
             'invited_by' => $invitation->invited_by,
-        ]);
+            'allowed_projects' => $invitation->allowed_projects,
+        ];
+
+        // If a permission set was specified, assign it directly
+        if ($invitation->permission_set_id) {
+            $pivotData['permission_set_id'] = $invitation->permission_set_id;
+        }
+
+        $team->members()->attach($user->id, $pivotData);
+
+        // If custom permissions were stored, create a personal permission set
+        /** @var array<int, array{permission_id: int, environment_restrictions: array<string, bool>}>|null $customPerms */
+        $customPerms = $invitation->custom_permissions;
+        if (! empty($customPerms)) {
+            $personalSet = \App\Models\PermissionSet::create([
+                'name' => "Personal - {$user->name}",
+                'slug' => 'personal-'.$user->id.'-'.time(),
+                'description' => 'Custom permissions assigned during invitation',
+                'team_id' => $team->id,
+                'is_system' => false,
+            ]);
+
+            foreach ($customPerms as $perm) {
+                $personalSet->permissions()->attach($perm['permission_id'], [
+                    'environment_restrictions' => json_encode($perm['environment_restrictions']),
+                ]);
+            }
+
+            // Update the pivot to use the personal set
+            $team->members()->updateExistingPivot($user->id, [
+                'permission_set_id' => $personalSet->id,
+            ]);
+        }
 
         // Delete the invitation
         $invitation->delete();

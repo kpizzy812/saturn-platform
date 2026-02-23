@@ -4,6 +4,7 @@ import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Badge, Modal, ModalFooter, Select } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
+import { InviteTeamMemberModal } from '@/components/team/InviteTeamMemberModal';
 import { KickMemberModal } from '@/components/team/KickMemberModal';
 import { QuickPermissionsModal } from '@/components/team/QuickPermissionsModal';
 import { useToast } from '@/components/ui/Toast';
@@ -113,10 +114,7 @@ export default function TeamSettings({
     const [showProjectsModal, setShowProjectsModal] = React.useState(false);
     const [showPermissionsModal, setShowPermissionsModal] = React.useState(false);
     const [selectedMember, setSelectedMember] = React.useState<TeamMember | null>(null);
-    const [inviteEmail, setInviteEmail] = React.useState('');
-    const [inviteRole, setInviteRole] = React.useState<'admin' | 'developer' | 'member' | 'viewer'>('member');
     const [newRole, setNewRole] = React.useState<TeamMember['role']>('member');
-    const [isInviting, setIsInviting] = React.useState(false);
     const [isChangingRole, setIsChangingRole] = React.useState(false);
     const [copiedLinkId, setCopiedLinkId] = React.useState<number | null>(null);
     const [processingInviteId, setProcessingInviteId] = React.useState<number | null>(null);
@@ -141,26 +139,6 @@ export default function TeamSettings({
         }
         setCopiedLinkId(invitation.id);
         setTimeout(() => setCopiedLinkId(null), 2000);
-    };
-
-    const handleInviteMember = (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsInviting(true);
-
-        router.post('/settings/team/invite', {
-            email: inviteEmail,
-            role: inviteRole,
-        }, {
-            onSuccess: () => {
-                setInviteEmail('');
-                setInviteRole('member');
-                setShowInviteModal(false);
-                router.reload();
-            },
-            onFinish: () => {
-                setIsInviting(false);
-            },
-        });
     };
 
     const handleChangeRole = () => {
@@ -717,45 +695,16 @@ export default function TeamSettings({
             </div>
 
             {/* Invite Member Modal */}
-            <Modal
+            <InviteTeamMemberModal
                 isOpen={showInviteModal}
                 onClose={() => setShowInviteModal(false)}
-                title="Invite Team Member"
-                description="Send an invitation to join your team"
-            >
-                <form onSubmit={handleInviteMember}>
-                    <div className="space-y-4">
-                        <Input
-                            label="Email Address"
-                            type="email"
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            placeholder="colleague@example.com"
-                            required
-                        />
-
-                        <Select
-                            label="Role"
-                            value={inviteRole}
-                            onChange={(e) => setInviteRole(e.target.value as 'admin' | 'developer' | 'member' | 'viewer')}
-                        >
-                            <option value="admin">Admin - Full access except billing</option>
-                            <option value="developer">Developer - Deploy and manage resources</option>
-                            <option value="member">Member - Can view and deploy</option>
-                            <option value="viewer">Viewer - Read-only access</option>
-                        </Select>
-                    </div>
-
-                    <ModalFooter>
-                        <Button type="button" variant="secondary" onClick={() => setShowInviteModal(false)}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" loading={isInviting}>
-                            Send Invitation
-                        </Button>
-                    </ModalFooter>
-                </form>
-            </Modal>
+                onSuccess={() => {
+                    toast({
+                        title: 'Invitation sent',
+                        description: 'The invitation has been sent successfully.',
+                    });
+                }}
+            />
 
             {/* Change Role Modal */}
             <Modal

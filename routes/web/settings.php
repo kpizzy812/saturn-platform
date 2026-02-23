@@ -1486,10 +1486,73 @@ Route::delete('/settings/team/archives/{id}', function (string $id) {
     return redirect('/settings/team/archives')->with('success', 'Archive deleted successfully.');
 })->name('settings.team.archive.delete');
 
+// Get data needed for enhanced invite modal (projects, permission sets, permissions, environments)
+Route::get('/settings/team/invite/data', function () {
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    if (! $currentUser->isAdmin()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $projects = $team->projects()->select('id', 'name')->orderBy('name')->get()
+        ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name]);
+
+    $permissionSets = \App\Models\PermissionSet::forTeam($team->id)
+        ->withCount('permissions')
+        ->orderBy('is_system', 'desc')
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($set) => [
+            'id' => $set->id,
+            'name' => $set->name,
+            'slug' => $set->slug,
+            'description' => $set->description,
+            'is_system' => $set->is_system,
+            'color' => $set->color,
+            'icon' => $set->icon,
+            'permissions_count' => $set->permissions_count,
+        ]);
+
+    $allPermissions = \App\Models\Permission::orderBy('sort_order')
+        ->get()
+        ->groupBy('category')
+        ->map(fn ($group) => $group->map(fn ($p) => [
+            'id' => $p->id,
+            'key' => $p->key,
+            'name' => $p->name,
+            'description' => $p->description,
+            'resource' => $p->resource,
+            'action' => $p->action,
+            'is_sensitive' => $p->is_sensitive,
+        ])->values()->all());
+
+    $environments = \App\Models\Environment::whereHas('project', function ($query) use ($team) {
+        $query->where('team_id', $team->id);
+    })
+        ->select('id', 'name')
+        ->distinct('name')
+        ->get()
+        ->map(fn ($e) => ['id' => $e->id, 'name' => $e->name]);
+
+    return response()->json([
+        'projects' => $projects,
+        'permissionSets' => $permissionSets,
+        'allPermissions' => $allPermissions,
+        'environments' => $environments,
+    ]);
+})->name('settings.team.invite.data');
+
 Route::post('/settings/team/invite', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
         'role' => 'required|string|in:owner,admin,developer,member,viewer',
+        'allowed_projects' => 'nullable|array',
+        'allowed_projects.*' => 'integer',
+        'permission_set_id' => 'nullable|integer|exists:permission_sets,id',
+        'custom_permissions' => 'nullable|array',
+        'custom_permissions.*.permission_id' => 'required_with:custom_permissions|integer|exists:permissions,id',
+        'custom_permissions.*.environment_restrictions' => 'nullable|array',
     ]);
 
     $email = strtolower($request->email);
@@ -1510,6 +1573,16 @@ Route::post('/settings/team/invite', function (Request $request) {
         return redirect()->back()->with('error', 'An invitation has already been sent to this email');
     }
 
+    // Validate allowed_projects belong to this team
+    if ($request->has('allowed_projects') && is_array($request->allowed_projects)) {
+        $teamProjectIds = $team->projects()->pluck('id')->all();
+        foreach ($request->allowed_projects as $projectId) {
+            if (! in_array((int) $projectId, $teamProjectIds, true)) {
+                return redirect()->back()->with('error', 'Invalid project selected');
+            }
+        }
+    }
+
     // Create the invitation
     $uuid = (string) \Illuminate\Support\Str::uuid();
     $link = url("/invitations/{$uuid}");
@@ -1521,6 +1594,10 @@ Route::post('/settings/team/invite', function (Request $request) {
         'role' => $role,
         'link' => $link,
         'via' => 'link',
+        'invited_by' => auth()->id(),
+        'allowed_projects' => $request->allowed_projects,
+        'permission_set_id' => $request->permission_set_id,
+        'custom_permissions' => $request->custom_permissions,
     ]);
 
     // Try to send email notification if email settings are configured
