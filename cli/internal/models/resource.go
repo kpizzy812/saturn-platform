@@ -21,4 +21,3 @@ const (
 	ResourceStatusStopped = "stopped"
 	ResourceStatusError   = "error"
 )
-

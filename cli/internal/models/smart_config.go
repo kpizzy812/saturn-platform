@@ -34,11 +34,11 @@ type SmartDeployComponent struct {
 
 // SmartDeployResult holds the outcome of deploying a single component
 type SmartDeployResult struct {
-	Name            string `json:"name"`
-	ResourceName    string `json:"resource_name"`
-	ResourceUUID    string `json:"resource_uuid"`
-	Success         bool   `json:"success"`
-	Message         string `json:"message"`
+	Name            string   `json:"name"`
+	ResourceName    string   `json:"resource_name"`
+	ResourceUUID    string   `json:"resource_uuid"`
+	Success         bool     `json:"success"`
+	Message         string   `json:"message"`
 	DeploymentUUIDs []string `json:"deployment_uuids,omitempty"`
-	Error           string `json:"error,omitempty"`
+	Error           string   `json:"error,omitempty"`
 }
