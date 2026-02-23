@@ -27,9 +27,7 @@ class CloudProviderTokenPolicy
      */
     public function view(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        $team = currentTeam();
-
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return $user->teams->contains('id', $cloudProviderToken->team_id);
     }
 
     /**
@@ -47,9 +45,11 @@ class CloudProviderTokenPolicy
      */
     public function update(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        $team = currentTeam();
+        if (! $user->teams->contains('id', $cloudProviderToken->team_id)) {
+            return false;
+        }
 
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return $this->authService->canManageIntegrations($user, $cloudProviderToken->team_id);
     }
 
     /**
@@ -57,9 +57,11 @@ class CloudProviderTokenPolicy
      */
     public function delete(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        $team = currentTeam();
+        if (! $user->teams->contains('id', $cloudProviderToken->team_id)) {
+            return false;
+        }
 
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return $this->authService->canManageIntegrations($user, $cloudProviderToken->team_id);
     }
 
     /**
@@ -67,9 +69,7 @@ class CloudProviderTokenPolicy
      */
     public function restore(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        $team = currentTeam();
-
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return false;
     }
 
     /**
@@ -77,8 +77,6 @@ class CloudProviderTokenPolicy
      */
     public function forceDelete(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        $team = currentTeam();
-
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return false;
     }
 }

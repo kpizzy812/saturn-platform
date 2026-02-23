@@ -27,9 +27,7 @@ class CloudInitScriptPolicy
      */
     public function view(User $user, CloudInitScript $cloudInitScript): bool
     {
-        $team = currentTeam();
-
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return $user->teams->contains('id', $cloudInitScript->team_id);
     }
 
     /**
@@ -47,9 +45,11 @@ class CloudInitScriptPolicy
      */
     public function update(User $user, CloudInitScript $cloudInitScript): bool
     {
-        $team = currentTeam();
+        if (! $user->teams->contains('id', $cloudInitScript->team_id)) {
+            return false;
+        }
 
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return $this->authService->canManageIntegrations($user, $cloudInitScript->team_id);
     }
 
     /**
@@ -57,9 +57,11 @@ class CloudInitScriptPolicy
      */
     public function delete(User $user, CloudInitScript $cloudInitScript): bool
     {
-        $team = currentTeam();
+        if (! $user->teams->contains('id', $cloudInitScript->team_id)) {
+            return false;
+        }
 
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return $this->authService->canManageIntegrations($user, $cloudInitScript->team_id);
     }
 
     /**
@@ -67,9 +69,7 @@ class CloudInitScriptPolicy
      */
     public function restore(User $user, CloudInitScript $cloudInitScript): bool
     {
-        $team = currentTeam();
-
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return false;
     }
 
     /**
@@ -77,8 +77,6 @@ class CloudInitScriptPolicy
      */
     public function forceDelete(User $user, CloudInitScript $cloudInitScript): bool
     {
-        $team = currentTeam();
-
-        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
+        return false;
     }
 }
