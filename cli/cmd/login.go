@@ -23,7 +23,7 @@ After authorization, the token is saved automatically.`,
   saturn login https://saturn.ac
   saturn login https://dev.saturn.ac`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			return runLogin(args)
 		},
 	}

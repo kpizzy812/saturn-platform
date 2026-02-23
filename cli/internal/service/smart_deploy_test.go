@@ -203,7 +203,7 @@ components:
       - api
       - web
 `
-		err := os.WriteFile(filepath.Join(dir, ".saturn.yml"), []byte(configContent), 0644)
+		err := os.WriteFile(filepath.Join(dir, ".saturn.yml"), []byte(configContent), 0600)
 		require.NoError(t, err)
 
 		cfg, err := LoadConfig(dir)
@@ -227,7 +227,7 @@ components:
 
 	t.Run("invalid YAML", func(t *testing.T) {
 		dir := t.TempDir()
-		err := os.WriteFile(filepath.Join(dir, ".saturn.yml"), []byte("{{invalid"), 0644)
+		err := os.WriteFile(filepath.Join(dir, ".saturn.yml"), []byte("{{invalid"), 0600)
 		require.NoError(t, err)
 
 		cfg, err := LoadConfig(dir)
@@ -237,7 +237,7 @@ components:
 
 	t.Run("wrong version", func(t *testing.T) {
 		dir := t.TempDir()
-		err := os.WriteFile(filepath.Join(dir, ".saturn.yml"), []byte("version: 99\n"), 0644)
+		err := os.WriteFile(filepath.Join(dir, ".saturn.yml"), []byte("version: 99\n"), 0600)
 		require.NoError(t, err)
 
 		cfg, err := LoadConfig(dir)
@@ -339,7 +339,7 @@ func TestBuildDeployPlan_DirectMatch(t *testing.T) {
 		{UUID: "uuid-web", Name: "my-web"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resources)
 	}))
@@ -382,7 +382,7 @@ func TestBuildDeployPlan_TriggerChain(t *testing.T) {
 		{UUID: "uuid-web", Name: "my-web"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resources)
 	}))
@@ -429,7 +429,7 @@ func TestBuildDeployPlan_TriggerChain(t *testing.T) {
 }
 
 func TestBuildDeployPlan_NoMatch(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode([]models.Resource{})
 	}))
@@ -466,7 +466,7 @@ func TestAutoDetect(t *testing.T) {
 		{UUID: "uuid-4", Name: "no-git"},
 	}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resources)
 	}))
@@ -536,7 +536,7 @@ func TestExecuteSmartDeploy(t *testing.T) {
 }
 
 func TestExecuteSmartDeploy_MissingUUID(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()

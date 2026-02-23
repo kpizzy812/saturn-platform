@@ -763,7 +763,7 @@ func TestDeploymentService_WaitForCompletion_PollingUntilDone(t *testing.T) {
 	svc := NewDeploymentService(client)
 
 	var statuses []string
-	onStatus := func(uuid, status string) {
+	onStatus := func(_, status string) {
 		statuses = append(statuses, status)
 	}
 
