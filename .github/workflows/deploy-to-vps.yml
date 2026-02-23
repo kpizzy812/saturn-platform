@@ -99,12 +99,10 @@ jobs:
           echo "Domain:      ${{ steps.env.outputs.domain }}"
 
   # =============================================================================
-  # Job 2: Run tests and static analysis (temporarily disabled)
+  # Job 2: Run tests and static analysis
   # =============================================================================
   test:
-    if: false
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -156,7 +154,7 @@ jobs:
   # Job 3: Build and push Docker image
   # =============================================================================
   build:
-    needs: [prepare]
+    needs: [prepare, test]
     if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-24.04
     permissions:

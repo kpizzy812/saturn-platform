@@ -63,12 +63,13 @@ class PostgresMetricsService
      */
     public function getExtensions(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
         // Get installed extensions
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT e.extname, e.extversion, 'installed' as status, c.comment FROM pg_extension e LEFT JOIN pg_available_extensions c ON e.extname = c.name ORDER BY e.extname;\" 2>/dev/null || echo ''";
+        $sql = escapeshellarg("SELECT e.extname, e.extversion, 'installed' as status, c.comment FROM pg_extension e LEFT JOIN pg_available_extensions c ON e.extname = c.name ORDER BY e.extname;");
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $extensions = [];
@@ -87,7 +88,8 @@ class PostgresMetricsService
         }
 
         // Get available but not installed extensions
-        $availableCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT name, default_version, comment FROM pg_available_extensions WHERE installed_version IS NULL ORDER BY name LIMIT 20;\" 2>/dev/null || echo ''";
+        $availableSql = escapeshellarg('SELECT name, default_version, comment FROM pg_available_extensions WHERE installed_version IS NULL ORDER BY name LIMIT 20;');
+        $availableCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$availableSql} 2>/dev/null || echo ''";
         $availableResult = trim(instant_remote_process([$availableCommand], $server, false) ?? '');
 
         if ($availableResult) {
@@ -112,12 +114,13 @@ class PostgresMetricsService
      */
     public function toggleExtension(mixed $server, mixed $database, string $extensionName, bool $enable): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
         $sql = $enable ? "CREATE EXTENSION IF NOT EXISTS \"{$extensionName}\"" : "DROP EXTENSION IF EXISTS \"{$extensionName}\"";
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$sql};\" 2>&1";
+        $escapedSql = escapeshellarg("{$sql};");
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c {$escapedSql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         // Check for error in result
@@ -136,11 +139,12 @@ class PostgresMetricsService
      */
     public function getUsers(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT r.rolname, CASE WHEN r.rolsuper THEN 'Superuser' WHEN r.rolcreaterole THEN 'Admin' ELSE 'Standard' END as role_type, (SELECT count(*) FROM pg_stat_activity WHERE usename = r.rolname AND state = 'active') as connections FROM pg_roles r WHERE r.rolcanlogin = true ORDER BY r.rolname;\" 2>/dev/null || echo ''";
+        $sql = escapeshellarg("SELECT r.rolname, CASE WHEN r.rolsuper THEN 'Superuser' WHEN r.rolcreaterole THEN 'Admin' ELSE 'Standard' END as role_type, (SELECT count(*) FROM pg_stat_activity WHERE usename = r.rolname AND state = 'active') as connections FROM pg_roles r WHERE r.rolcanlogin = true ORDER BY r.rolname;");
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $users = [];
@@ -253,11 +257,12 @@ class PostgresMetricsService
      */
     public function getActiveConnections(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT pid, usename, datname, state, COALESCE(query, '<IDLE>'), COALESCE(EXTRACT(EPOCH FROM (now() - query_start))::text, '0'), COALESCE(client_addr::text, 'local') FROM pg_stat_activity WHERE pid <> pg_backend_pid() ORDER BY query_start DESC NULLS LAST LIMIT 50;\" 2>/dev/null || echo ''";
+        $sql = escapeshellarg("SELECT pid, usename, datname, state, COALESCE(query, '<IDLE>'), COALESCE(EXTRACT(EPOCH FROM (now() - query_start))::text, '0'), COALESCE(client_addr::text, 'local') FROM pg_stat_activity WHERE pid <> pg_backend_pid() ORDER BY query_start DESC NULLS LAST LIMIT 50;");
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $connections = [];
@@ -289,11 +294,12 @@ class PostgresMetricsService
      */
     public function killConnection(mixed $server, mixed $database, int $pid): bool
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_terminate_backend({$pid});\" 2>&1";
+        $sql = escapeshellarg("SELECT pg_terminate_backend({$pid});");
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c {$sql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         return stripos($result, 't') !== false;
@@ -332,11 +338,12 @@ class PostgresMetricsService
      */
     public function getTables(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"SELECT schemaname || '.' || relname, n_live_tup, pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname)) FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 100;\" 2>/dev/null || echo ''";
+        $sql = escapeshellarg("SELECT schemaname || '.' || relname, n_live_tup, pg_size_pretty(pg_total_relation_size(schemaname || '.' || relname)) FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 100;");
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $tables = [];
@@ -361,9 +368,9 @@ class PostgresMetricsService
      */
     public function getColumns(mixed $server, mixed $database, string $tableName): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
         // Escape table name for schema.table format
         $escapedTable = str_contains($tableName, '.') ? $tableName : "public.{$tableName}";
@@ -385,7 +392,8 @@ class PostgresMetricsService
         WHERE table_schema = '{$schema}' AND table_name = '{$table}'
         ORDER BY ordinal_position";
 
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"{$query}\" 2>/dev/null || echo ''";
+        $escapedQuery = escapeshellarg($query);
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c {$escapedQuery} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $columns = [];
@@ -412,9 +420,9 @@ class PostgresMetricsService
      */
     public function getData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir, string $filters = ''): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
         $offset = ($page - 1) * $perPage;
 
         // Get columns first
@@ -484,32 +492,51 @@ class PostgresMetricsService
     }
 
     /**
+     * Validate column name against injection: only alphanumeric and underscore allowed.
+     */
+    private function isValidColumnName(string $column): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column);
+    }
+
+    /**
      * Update PostgreSQL row.
      */
     public function updateRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
+        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
 
-        // Build SET clause
+        // Build SET clause — validate column names to prevent SQL injection
         $setClauses = [];
         foreach ($updates as $column => $value) {
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
+            }
             $escapedValue = str_replace("'", "''", (string) $value);
             $setClauses[] = "\"{$column}\" = '{$escapedValue}'";
         }
-        $setClause = implode(', ', $setClauses);
+        if (empty($setClauses)) {
+            return false;
+        }
 
-        // Build WHERE clause from primary key
+        // Build WHERE clause — validate column names to prevent SQL injection
         $whereClauses = [];
         foreach ($primaryKey as $column => $value) {
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
+            }
             $escapedValue = str_replace("'", "''", (string) $value);
             $whereClauses[] = "\"{$column}\" = '{$escapedValue}'";
         }
-        $whereClause = implode(' AND ', $whereClauses);
+        if (empty($whereClauses)) {
+            return false;
+        }
 
-        $query = "UPDATE {$tableName} SET {$setClause} WHERE {$whereClause}";
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$query}\" 2>&1";
+        $query = "UPDATE {$safeTableName} SET ".implode(', ', $setClauses).' WHERE '.implode(' AND ', $whereClauses);
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c ".escapeshellarg($query).' 2>&1';
         $result = instant_remote_process([$command], $server, false);
 
         return str_contains($result ?? '', 'UPDATE');
@@ -520,20 +547,26 @@ class PostgresMetricsService
      */
     public function deleteRow(mixed $server, mixed $database, string $tableName, array $primaryKey): bool
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
+        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
 
-        // Build WHERE clause from primary key
+        // Build WHERE clause — validate column names to prevent SQL injection
         $whereClauses = [];
         foreach ($primaryKey as $column => $value) {
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
+            }
             $escapedValue = str_replace("'", "''", (string) $value);
             $whereClauses[] = "\"{$column}\" = '{$escapedValue}'";
         }
-        $whereClause = implode(' AND ', $whereClauses);
+        if (empty($whereClauses)) {
+            return false;
+        }
 
-        $query = "DELETE FROM {$tableName} WHERE {$whereClause}";
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$query}\" 2>&1";
+        $query = "DELETE FROM {$safeTableName} WHERE ".implode(' AND ', $whereClauses);
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c ".escapeshellarg($query).' 2>&1';
         $result = instant_remote_process([$command], $server, false);
 
         return str_contains($result ?? '', 'DELETE');
@@ -544,26 +577,32 @@ class PostgresMetricsService
      */
     public function createRow(mixed $server, mixed $database, string $tableName, array $data): bool
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
+        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
 
-        // Build columns and values
-        $columns = array_keys($data);
-        $values = array_map(function ($value) {
-            if ($value === null) {
-                return 'NULL';
+        // Build columns and values — validate column names to prevent SQL injection
+        $safeColumns = [];
+        $values = [];
+        foreach ($data as $column => $value) {
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $safeColumns[] = "\"{$column}\"";
+            if ($value === null) {
+                $values[] = 'NULL';
+            } else {
+                $escapedValue = str_replace("'", "''", (string) $value);
+                $values[] = "'{$escapedValue}'";
+            }
+        }
+        if (empty($safeColumns)) {
+            return false;
+        }
 
-            return "'{$escapedValue}'";
-        }, array_values($data));
-
-        $columnsClause = '"'.implode('", "', $columns).'"';
-        $valuesClause = implode(', ', $values);
-
-        $query = "INSERT INTO {$tableName} ({$columnsClause}) VALUES ({$valuesClause})";
-        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c \"{$query}\" 2>&1";
+        $query = "INSERT INTO {$safeTableName} (".implode(', ', $safeColumns).') VALUES ('.implode(', ', $values).')';
+        $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c ".escapeshellarg($query).' 2>&1';
         $result = instant_remote_process([$command], $server, false);
 
         return str_contains($result ?? '', 'INSERT');

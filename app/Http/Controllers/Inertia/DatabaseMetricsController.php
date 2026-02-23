@@ -487,7 +487,7 @@ class DatabaseMetricsController extends Controller
             'region' => 'required|string',
             'access_key' => 'required|string',
             'secret_key' => 'required|string',
-            'endpoint' => 'nullable|string',
+            'endpoint' => 'nullable|url',
         ]);
 
         try {
@@ -500,6 +500,15 @@ class DatabaseMetricsController extends Controller
             ];
 
             if ($endpoint = $request->input('endpoint')) {
+                // SSRF protection: block private/reserved IP ranges
+                $parsed = parse_url($endpoint);
+                $host = $parsed['host'] ?? '';
+                $resolvedIp = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
+
+                if (filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                    return $this->errorResponse('Invalid endpoint: private or reserved addresses are not allowed');
+                }
+
                 $config['endpoint'] = $endpoint;
                 $config['use_path_style_endpoint'] = true;
             }
