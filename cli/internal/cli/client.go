@@ -60,11 +60,6 @@ func GetAPIClient(cmd *cobra.Command) (*api.Client, error) {
 		// Save token to config so subsequent commands don't need to re-auth
 		if saveErr := SaveAuthToConfig(fqdn, token); saveErr != nil {
 			fmt.Printf("Warning: authenticated but failed to save token: %v\n", saveErr)
-		} else {
-			// Reload config so the in-memory instance is up to date
-			if reloaded, reloadErr := config.Load(); reloadErr == nil {
-				cfg = reloaded
-			}
 		}
 
 		fmt.Printf("\nAuthenticated as %s (team: %s)\n\n", result.UserName, result.TeamName)
