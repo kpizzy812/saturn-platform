@@ -118,6 +118,9 @@ COPY --chown=www-data:www-data artisan artisan
 COPY --chown=www-data:www-data openapi.yaml ./openapi.yaml
 COPY --chown=www-data:www-data changelogs/ ./changelogs/
 
+# Clear cached service providers that may reference dev-only packages (e.g. laravel-ray)
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+
 RUN composer dump-autoload
 
 # Configure Nginx and S6 overlay
