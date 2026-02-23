@@ -299,44 +299,194 @@ Route::get('/observability/logs', function () {
 })->name('observability.logs');
 
 Route::get('/observability/traces', function () {
-    // Use Spatie Activity Log as traces source
-    $activities = \Spatie\Activitylog\Models\Activity::where(function ($q) {
-        $q->whereIn('subject_type', [
-            \App\Models\Application::class,
-            \App\Models\Service::class,
-            \App\Models\Server::class,
-        ]);
-    })
-        ->orderByDesc('created_at')
-        ->limit(50)
-        ->get();
+    $team = auth()->user()->currentTeam();
+    $operations = collect();
 
-    $traces = $activities->map(function ($activity) {
-        $properties = $activity->properties->toArray();
-        $duration = $properties['duration'] ?? rand(10, 500);
+    // 1. Deployments — team-scoped via Application::ownedByCurrentTeam()
+    $teamApplicationIds = \App\Models\Application::ownedByCurrentTeam()->pluck('id');
 
-        return [
-            'id' => (string) $activity->id,
-            'name' => $activity->description ?? $activity->event ?? 'Unknown',
-            'duration' => is_numeric($duration) ? (int) $duration : 0,
-            'timestamp' => $activity->created_at?->toISOString(),
-            'status' => ($properties['status'] ?? null) === 'failed' ? 'error' : 'success',
-            'services' => [class_basename($activity->subject_type ?? 'Unknown')],
-            'spans' => [
-                [
-                    'id' => (string) $activity->id.'-main',
-                    'name' => $activity->description ?? 'main',
-                    'service' => class_basename($activity->subject_type ?? 'Unknown'),
-                    'duration' => is_numeric($duration) ? (int) $duration : 0,
-                    'startTime' => 0,
-                    'status' => ($properties['status'] ?? null) === 'failed' ? 'error' : 'success',
+    if ($teamApplicationIds->isNotEmpty()) {
+        $deployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $teamApplicationIds)
+            ->with(['application', 'logEntries'])
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        foreach ($deployments as $deployment) {
+            $app = $deployment->application;
+            $appName = $app->name ?? 'Unknown';
+
+            // Real duration from started_at/finished_at
+            $duration = null;
+            if ($deployment->started_at && $deployment->finished_at) {
+                $duration = (int) $deployment->started_at->diffInSeconds($deployment->finished_at);
+            }
+
+            // Map status
+            $status = match ($deployment->status) {
+                'finished' => 'success',
+                'failed' => 'error',
+                'in_progress' => 'in_progress',
+                default => 'queued',
+            };
+
+            // Determine trigger source
+            $triggeredBy = 'manual';
+            if ($deployment->is_webhook) {
+                $triggeredBy = 'webhook';
+            } elseif ($deployment->is_api) {
+                $triggeredBy = 'api';
+            }
+
+            // Get user who triggered
+            $deploymentUser = $deployment->user;
+            $user = $deploymentUser ? [
+                'name' => $deploymentUser->getAttribute('name') ?? 'System',
+                'email' => $deploymentUser->getAttribute('email') ?? 'system@saturn.local',
+            ] : ['name' => 'System', 'email' => 'system@saturn.local'];
+
+            // Build stages from log entries grouped by stage
+            $stages = [];
+            $logEntries = $deployment->logEntries;
+            if ($logEntries->isNotEmpty()) {
+                $grouped = $logEntries->groupBy('stage');
+                $stageOrder = ['prepare', 'clone', 'build', 'push', 'deploy', 'healthcheck'];
+                $stageNames = [
+                    'prepare' => 'Prepare',
+                    'clone' => 'Clone',
+                    'build' => 'Build',
+                    'push' => 'Push',
+                    'deploy' => 'Deploy',
+                    'healthcheck' => 'Health Check',
+                ];
+
+                foreach ($stageOrder as $stageName) {
+                    $entries = $grouped->get($stageName);
+                    if (! $entries) {
+                        continue;
+                    }
+
+                    $first = $entries->first();
+                    $last = $entries->last();
+                    $stageDuration = null;
+                    if ($first && $last) {
+                        $stageDuration = (int) $first->created_at->diffInSeconds($last->created_at);
+                    }
+
+                    $hasError = $entries->contains(fn ($e) => $e->type === 'stderr');
+                    $stageStatus = $hasError ? 'failed' : 'completed';
+
+                    // If deployment is still running and this is the last stage with entries
+                    if ($deployment->status === 'in_progress') {
+                        $lastStageWithEntries = $grouped->keys()->intersect($stageOrder)->last();
+                        if ($stageName === $lastStageWithEntries) {
+                            $stageStatus = 'running';
+                        }
+                    }
+
+                    $stages[] = [
+                        'id' => $stageName,
+                        'name' => $stageNames[$stageName],
+                        'status' => $stageStatus,
+                        'duration' => $stageDuration,
+                    ];
+                }
+            }
+
+            $operations->push([
+                'id' => 'deploy-'.$deployment->id,
+                'type' => 'deployment',
+                'name' => 'Deployed '.$appName,
+                'status' => $status,
+                'duration' => $duration,
+                'timestamp' => $deployment->created_at->toIso8601String(),
+                'resource' => [
+                    'type' => 'application',
+                    'name' => $appName,
+                    'id' => (string) ($app->uuid ?? ''),
                 ],
-            ],
-        ];
-    });
+                'user' => $user,
+                'commit' => $deployment->commit ? substr($deployment->commit, 0, 7) : null,
+                'triggeredBy' => $triggeredBy,
+                'stages' => $stages,
+                'changes' => null,
+            ]);
+        }
+    }
+
+    // 2. Config changes — team-scoped via causer_id in team members
+    $memberIds = $team->members()->pluck('users.id')->toArray();
+
+    if (! empty($memberIds)) {
+        $spatieActivities = \Spatie\Activitylog\Models\Activity::query()
+            ->where('causer_type', 'App\\Models\\User')
+            ->whereIn('causer_id', $memberIds)
+            ->with(['causer', 'subject'])
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        foreach ($spatieActivities as $activity) {
+            $causer = $activity->causer;
+            $subject = $activity->subject;
+            $properties = $activity->properties->toArray();
+
+            $resourceType = 'unknown';
+            $resourceName = 'Unknown';
+            $resourceId = '';
+
+            if ($subject) {
+                $className = class_basename($subject);
+                $resourceType = match (true) {
+                    str_contains($className, 'Application') => 'application',
+                    str_contains($className, 'Service') => 'service',
+                    str_contains($className, 'Standalone') || str_contains($className, 'Database') => 'database',
+                    str_contains($className, 'Server') => 'server',
+                    str_contains($className, 'Project') => 'project',
+                    default => strtolower($className),
+                };
+                $resourceName = $subject->getAttribute('name') ?? $subject->getAttribute('uuid') ?? class_basename($subject);
+                $resourceId = (string) ($subject->getAttribute('uuid') ?? $subject->getAttribute('id') ?? '');
+            }
+
+            $event = $activity->event ?? 'updated';
+            $name = ucfirst($event).' '.$resourceName;
+
+            $operations->push([
+                'id' => 'activity-'.$activity->id,
+                'type' => 'config_change',
+                'name' => $name,
+                'status' => 'success',
+                'duration' => null,
+                'timestamp' => $activity->created_at->toIso8601String(),
+                'resource' => [
+                    'type' => $resourceType,
+                    'name' => $resourceName,
+                    'id' => $resourceId,
+                ],
+                'user' => [
+                    'name' => $causer?->getAttribute('name') ?? 'System',
+                    'email' => $causer?->getAttribute('email') ?? 'system@saturn.local',
+                ],
+                'commit' => null,
+                'triggeredBy' => null,
+                'stages' => null,
+                'changes' => [
+                    'old' => $properties['old'] ?? null,
+                    'attributes' => $properties['attributes'] ?? null,
+                ],
+            ]);
+        }
+    }
+
+    // Sort by timestamp descending, limit to 50
+    $operations = $operations
+        ->sortByDesc('timestamp')
+        ->take(50)
+        ->values();
 
     return Inertia::render('Observability/Traces', [
-        'traces' => $traces,
+        'operations' => $operations,
     ]);
 })->name('observability.traces');
 

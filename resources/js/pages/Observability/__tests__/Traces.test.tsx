@@ -23,78 +23,79 @@ vi.mock('@/components/layout', () => ({
 vi.mock('@/components/ui', () => ({
     Card: ({ children, className }: any) => <div className={className} data-testid="card">{children}</div>,
     CardHeader: ({ children }: any) => <div>{children}</div>,
-    CardTitle: ({ children }: any) => <h3>{children}</h3>,
+    CardTitle: ({ children, className }: any) => <h3 className={className}>{children}</h3>,
     CardContent: ({ children }: any) => <div>{children}</div>,
     Badge: ({ children, variant }: any) => <span data-variant={variant}>{children}</span>,
 }));
 
 vi.mock('@/lib/utils', () => ({
-    formatRelativeTime: (ts: string) => '5 minutes ago',
+    formatRelativeTime: () => '5 minutes ago',
 }));
 
-const sampleTraces = [
+vi.mock('@/components/features/DeploymentGraph', () => ({
+    DeploymentGraph: ({ stages, compact }: any) => (
+        <div data-testid="deployment-graph" data-compact={compact}>
+            {stages.map((s: any) => (
+                <span key={s.id} data-stage-id={s.id}>{s.name}</span>
+            ))}
+        </div>
+    ),
+}));
+
+const sampleOperations = [
     {
-        id: 'trace-1',
-        name: 'Deploy Application',
-        duration: 250,
-        timestamp: '2026-02-18T12:00:00Z',
+        id: 'deploy-1',
+        type: 'deployment' as const,
+        name: 'Deployed my-app',
         status: 'success' as const,
-        services: ['Application', 'Server'],
-        spans: [
-            {
-                id: 'span-1',
-                name: 'git clone',
-                service: 'Application',
-                duration: 150,
-                startTime: 0,
-                status: 'success' as const,
-            },
-            {
-                id: 'span-2',
-                name: 'docker build',
-                service: 'Server',
-                duration: 100,
-                startTime: 150,
-                status: 'success' as const,
-            },
+        duration: 45,
+        timestamp: '2026-02-23T12:00:00Z',
+        resource: { type: 'application', name: 'my-app', id: 'uuid-1' },
+        user: { name: 'Admin', email: 'admin@saturn.ac' },
+        commit: 'abc1234',
+        triggeredBy: 'manual',
+        stages: [
+            { id: 'prepare', name: 'Prepare', status: 'completed', duration: 3 },
+            { id: 'clone', name: 'Clone', status: 'completed', duration: 5 },
+            { id: 'build', name: 'Build', status: 'completed', duration: 25 },
+            { id: 'deploy', name: 'Deploy', status: 'completed', duration: 12 },
         ],
+        changes: null,
     },
     {
-        id: 'trace-2',
-        name: 'Database Backup',
-        duration: 80,
-        timestamp: '2026-02-18T11:00:00Z',
+        id: 'deploy-2',
+        type: 'deployment' as const,
+        name: 'Deployed api-server',
         status: 'error' as const,
-        services: ['Server'],
-        spans: [
-            {
-                id: 'span-3',
-                name: 'pg_dump',
-                service: 'Server',
-                duration: 80,
-                startTime: 0,
-                status: 'error' as const,
-                tags: { error: 'Connection refused' },
-            },
+        duration: 120,
+        timestamp: '2026-02-23T11:00:00Z',
+        resource: { type: 'application', name: 'api-server', id: 'uuid-2' },
+        user: { name: 'Developer', email: 'dev@saturn.ac' },
+        commit: 'def5678',
+        triggeredBy: 'webhook',
+        stages: [
+            { id: 'prepare', name: 'Prepare', status: 'completed', duration: 2 },
+            { id: 'clone', name: 'Clone', status: 'completed', duration: 4 },
+            { id: 'build', name: 'Build', status: 'failed', duration: 114 },
         ],
+        changes: null,
     },
     {
-        id: 'trace-3',
-        name: 'Fast Operation',
-        duration: 50,
-        timestamp: '2026-02-18T10:00:00Z',
+        id: 'activity-10',
+        type: 'config_change' as const,
+        name: 'Updated my-app',
         status: 'success' as const,
-        services: ['Application'],
-        spans: [
-            {
-                id: 'span-4',
-                name: 'health check',
-                service: 'Application',
-                duration: 50,
-                startTime: 0,
-                status: 'success' as const,
-            },
-        ],
+        duration: null,
+        timestamp: '2026-02-23T10:00:00Z',
+        resource: { type: 'application', name: 'my-app', id: 'uuid-1' },
+        user: { name: 'Admin', email: 'admin@saturn.ac' },
+        commit: null,
+        triggeredBy: null,
+        stages: null,
+        changes: {
+            old: { ports_exposes: '3000' },
+            attributes: { ports_exposes: '3000,8080' },
+        },
     },
 ];
 
@@ -102,129 +103,162 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-describe('ObservabilityTraces', () => {
+describe('ObservabilityTraces (Operations)', () => {
     it('renders page title and description', () => {
         render(<ObservabilityTraces />);
-        expect(screen.getByText('Distributed Tracing')).toBeInTheDocument();
-        expect(screen.getByText('Track requests across your microservices')).toBeInTheDocument();
+        expect(screen.getByText('Operations')).toBeInTheDocument();
+        expect(screen.getByText('Deployment history and resource changes')).toBeInTheDocument();
     });
 
-    it('renders trace list when traces provided', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        expect(screen.getByText('Deploy Application')).toBeInTheDocument();
-        expect(screen.getByText('Database Backup')).toBeInTheDocument();
-        expect(screen.getByText('Fast Operation')).toBeInTheDocument();
+    it('renders operation list when operations provided', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByText('Deployed my-app')).toBeInTheDocument();
+        expect(screen.getByText('Deployed api-server')).toBeInTheDocument();
+        expect(screen.getByText('Updated my-app')).toBeInTheDocument();
     });
 
-    it('renders status badges for each trace', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        const successBadges = screen.getAllByText('success');
-        const errorBadges = screen.getAllByText('error');
-        expect(successBadges.length).toBe(2);
-        expect(errorBadges.length).toBe(1);
+    it('renders status badges for each operation', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        // Badge text includes "Success" in list items + dropdown option
+        const successBadges = screen.getAllByText('Success');
+        const errorBadges = screen.getAllByText('Error');
+        expect(successBadges.length).toBe(3); // deploy-1 badge + activity-10 badge + dropdown option
+        expect(errorBadges.length).toBe(2); // deploy-2 badge + dropdown option
     });
 
-    it('shows duration for each trace', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        expect(screen.getByText('250ms')).toBeInTheDocument();
-        expect(screen.getByText('80ms')).toBeInTheDocument();
-        expect(screen.getByText('50ms')).toBeInTheDocument();
+    it('shows duration for deployments', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByText('45s')).toBeInTheDocument();
+        expect(screen.getByText('2m')).toBeInTheDocument();
     });
 
-    it('shows span count for each trace', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        expect(screen.getByText('2 spans')).toBeInTheDocument();
-        expect(screen.getAllByText('1 spans').length).toBe(2);
+    it('shows commit hash for deployments', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByText('abc1234')).toBeInTheDocument();
+        expect(screen.getByText('def5678')).toBeInTheDocument();
     });
 
-    it('shows service tags for each trace', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        const applicationTags = screen.getAllByText('Application');
-        const serverTags = screen.getAllByText('Server');
-        expect(applicationTags.length).toBeGreaterThanOrEqual(2);
-        expect(serverTags.length).toBeGreaterThanOrEqual(1);
+    it('shows user name for each operation', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getAllByText('Admin').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByText('Developer')).toBeInTheDocument();
     });
 
-    it('shows "No trace selected" initially', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        expect(screen.getByText('No trace selected')).toBeInTheDocument();
-        expect(screen.getByText('Select a trace from the list to view details')).toBeInTheDocument();
+    it('shows resource name chips', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        const myAppChips = screen.getAllByText('my-app');
+        expect(myAppChips.length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByText('api-server')).toBeInTheDocument();
     });
 
-    it('shows trace detail when a trace is clicked', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        fireEvent.click(screen.getByText('Deploy Application'));
-        // Waterfall View should appear
-        expect(screen.getByText('Waterfall View')).toBeInTheDocument();
-        expect(screen.getByText('Service Dependencies')).toBeInTheDocument();
-        expect(screen.getByText('Trace ID')).toBeInTheDocument();
+    it('shows "No operation selected" initially', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByText('No operation selected')).toBeInTheDocument();
+        expect(screen.getByText('Select an operation from the list to view details')).toBeInTheDocument();
+    });
+
+    it('shows deployment detail with DeploymentGraph when deployment clicked', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        fireEvent.click(screen.getByText('Deployed my-app'));
+        expect(screen.getByTestId('deployment-graph')).toBeInTheDocument();
+        expect(screen.getByText('Deployment Stages')).toBeInTheDocument();
+        expect(screen.getByText('Duration')).toBeInTheDocument();
+        expect(screen.getByText('manual')).toBeInTheDocument();
+    });
+
+    it('shows config change detail with diff when config change clicked', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        fireEvent.click(screen.getByText('Updated my-app'));
+        expect(screen.getByText('Config Change')).toBeInTheDocument();
+        expect(screen.getByText('Changes')).toBeInTheDocument();
+        expect(screen.getByText('ports_exposes')).toBeInTheDocument();
+        expect(screen.getByText('3000')).toBeInTheDocument();
+        expect(screen.getByText('3000,8080')).toBeInTheDocument();
     });
 
     it('renders search input', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        expect(screen.getByPlaceholderText('Search traces...')).toBeInTheDocument();
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByPlaceholderText('Search operations...')).toBeInTheDocument();
     });
 
-    it('filters traces by search query', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        const searchInput = screen.getByPlaceholderText('Search traces...');
-        fireEvent.change(searchInput, { target: { value: 'Database' } });
-        expect(screen.getByText('Database Backup')).toBeInTheDocument();
-        expect(screen.queryByText('Deploy Application')).not.toBeInTheDocument();
+    it('filters operations by search query', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        const searchInput = screen.getByPlaceholderText('Search operations...');
+        fireEvent.change(searchInput, { target: { value: 'api-server' } });
+        expect(screen.getByText('Deployed api-server')).toBeInTheDocument();
+        expect(screen.queryByText('Deployed my-app')).not.toBeInTheDocument();
+    });
+
+    it('renders type filter dropdown', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByText('All Types')).toBeInTheDocument();
+        expect(screen.getByText('Deployments')).toBeInTheDocument();
+        expect(screen.getByText('Config Changes')).toBeInTheDocument();
+    });
+
+    it('filters operations by type - deployments only', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        const typeSelect = screen.getByDisplayValue('All Types');
+        fireEvent.change(typeSelect, { target: { value: 'deployment' } });
+        expect(screen.getByText('Deployed my-app')).toBeInTheDocument();
+        expect(screen.getByText('Deployed api-server')).toBeInTheDocument();
+        expect(screen.queryByText('Updated my-app')).not.toBeInTheDocument();
+    });
+
+    it('filters operations by type - config changes only', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        const typeSelect = screen.getByDisplayValue('All Types');
+        fireEvent.change(typeSelect, { target: { value: 'config_change' } });
+        expect(screen.getByText('Updated my-app')).toBeInTheDocument();
+        expect(screen.queryByText('Deployed my-app')).not.toBeInTheDocument();
     });
 
     it('renders status filter dropdown', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
+        render(<ObservabilityTraces operations={sampleOperations} />);
         expect(screen.getByText('All Statuses')).toBeInTheDocument();
-        expect(screen.getByText('Success')).toBeInTheDocument();
-        expect(screen.getByText('Error')).toBeInTheDocument();
     });
 
-    it('filters traces by status', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
+    it('filters operations by status - error only', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
         const statusSelect = screen.getByDisplayValue('All Statuses');
         fireEvent.change(statusSelect, { target: { value: 'error' } });
-        expect(screen.getByText('Database Backup')).toBeInTheDocument();
-        expect(screen.queryByText('Deploy Application')).not.toBeInTheDocument();
+        expect(screen.getByText('Deployed api-server')).toBeInTheDocument();
+        expect(screen.queryByText('Deployed my-app')).not.toBeInTheDocument();
     });
 
-    it('renders duration filter dropdown', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        expect(screen.getByText('All Durations')).toBeInTheDocument();
+    it('renders empty state when no operations', () => {
+        render(<ObservabilityTraces operations={[]} />);
+        expect(screen.getByText('Recent Operations')).toBeInTheDocument();
+        expect(screen.getByText('No operations found')).toBeInTheDocument();
     });
 
-    it('filters traces by duration - slow', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        const durationSelect = screen.getByDisplayValue('All Durations');
-        fireEvent.change(durationSelect, { target: { value: 'slow' } });
-        expect(screen.getByText('Deploy Application')).toBeInTheDocument();
-        expect(screen.queryByText('Fast Operation')).not.toBeInTheDocument();
+    it('renders empty state when no operations provided (undefined)', () => {
+        render(<ObservabilityTraces />);
+        expect(screen.getByText('Recent Operations')).toBeInTheDocument();
     });
 
-    it('filters traces by duration - fast', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        const durationSelect = screen.getByDisplayValue('All Durations');
-        fireEvent.change(durationSelect, { target: { value: 'fast' } });
-        expect(screen.getByText('Database Backup')).toBeInTheDocument();
-        expect(screen.getByText('Fast Operation')).toBeInTheDocument();
-        expect(screen.queryByText('Deploy Application')).not.toBeInTheDocument();
+    it('shows stages in deployment graph', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        fireEvent.click(screen.getByText('Deployed my-app'));
+        const graph = screen.getByTestId('deployment-graph');
+        expect(graph).toBeInTheDocument();
+        expect(screen.getByText('Prepare')).toBeInTheDocument();
+        expect(screen.getByText('Clone')).toBeInTheDocument();
+        expect(screen.getByText('Build')).toBeInTheDocument();
+        expect(screen.getByText('Deploy')).toBeInTheDocument();
     });
 
-    it('renders empty state when no traces', () => {
-        render(<ObservabilityTraces traces={[]} />);
-        expect(screen.getByText('Recent Traces')).toBeInTheDocument();
+    it('highlights selected operation', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        const firstOp = screen.getByText('Deployed my-app').closest('[class*="cursor-pointer"]');
+        expect(firstOp).not.toBeNull();
+        fireEvent.click(firstOp!);
+        // After click, the border-primary class should be applied
+        expect(firstOp?.className).toContain('border-primary');
     });
 
-    it('shows waterfall view with span details when trace selected', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        fireEvent.click(screen.getByText('Deploy Application'));
-        expect(screen.getByText('git clone')).toBeInTheDocument();
-        expect(screen.getByText('docker build')).toBeInTheDocument();
-    });
-
-    it('shows error tags in span detail', () => {
-        render(<ObservabilityTraces traces={sampleTraces} />);
-        fireEvent.click(screen.getByText('Database Backup'));
-        expect(screen.getByText(/Connection refused/)).toBeInTheDocument();
+    it('shows operation count in header', () => {
+        render(<ObservabilityTraces operations={sampleOperations} />);
+        expect(screen.getByText('(3)')).toBeInTheDocument();
     });
 });
