@@ -75,10 +75,10 @@ class ServicesController extends Controller
             return invalidTokenResponse();
         }
         $projects = Project::where('team_id', $teamId)->with('services')->get();
-        $services = $projects->pluck('services')->flatten();
+        $services = $projects->pluck('services')->flatten()->take(500);
         $services = $services->map(fn ($service) => $this->removeSensitiveData($service));
 
-        return response()->json($services);
+        return response()->json($services->values());
     }
 
     #[OA\Post(

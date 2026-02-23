@@ -526,7 +526,7 @@ class SyncBunny extends Command
         fclose($fileStream);
         $this->info('Uploading: '.$fileName);
 
-        return Http::baseUrl('https://storage.bunnycdn.com')->withHeaders($headers)->withBody($file)->throw()->put($storagePath);
+        return Http::baseUrl('https://storage.bunnycdn.com')->timeout(60)->withHeaders($headers)->withBody($file)->throw()->put($storagePath);
     }
 
     /**
@@ -540,7 +540,7 @@ class SyncBunny extends Command
         ];
         $this->info('Purging: '.$url);
 
-        return Http::withHeaders($headers)->get('https://api.bunny.net/purge', [
+        return Http::timeout(15)->withHeaders($headers)->get('https://api.bunny.net/purge', [
             'url' => $url,
             'async' => false,
         ]);

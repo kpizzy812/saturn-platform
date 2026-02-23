@@ -56,7 +56,7 @@ class ResourcesController extends Controller
         foreach ($dbRelations as $relation) {
             $resources->push($projects->pluck($relation)->flatten());
         }
-        $resources = $resources->flatten();
+        $resources = $resources->flatten()->take(500);
         $resources = $resources->map(function ($resource) {
             $payload = $resource->toArray();
             $payload['status'] = $resource->status;

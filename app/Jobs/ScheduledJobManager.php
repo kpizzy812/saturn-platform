@@ -5,10 +5,20 @@ namespace App\Jobs;
 use App\Models\ScheduledDatabaseBackup;
 use App\Models\ScheduledTask;
 use App\Models\Server;
+use App\Models\ServiceDatabase;
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
+use App\Models\StandaloneMariadb;
+use App\Models\StandaloneMongodb;
+use App\Models\StandaloneMysql;
+use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
 use App\Models\Team;
 use Cron\CronExpression;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -108,9 +118,20 @@ class ScheduledJobManager implements ShouldQueue
 
     private function processScheduledBackups(): void
     {
-        $backups = ScheduledDatabaseBackup::with(['database'])
-            ->where('enabled', true)
-            ->get();
+        $dbRelations = ['destination.server.settings', 'destination.server.team'];
+        $backups = ScheduledDatabaseBackup::with(['database' => function (MorphTo $morphTo) use ($dbRelations) {
+            $morphTo->morphWith([
+                StandalonePostgresql::class => $dbRelations,
+                StandaloneMysql::class => $dbRelations,
+                StandaloneMariadb::class => $dbRelations,
+                StandaloneMongodb::class => $dbRelations,
+                StandaloneRedis::class => $dbRelations,
+                StandaloneKeydb::class => $dbRelations,
+                StandaloneDragonfly::class => $dbRelations,
+                StandaloneClickhouse::class => $dbRelations,
+                ServiceDatabase::class => ['service.destination.server.settings', 'service.destination.server.team'],
+            ]);
+        }])->where('enabled', true)->get();
 
         foreach ($backups as $backup) {
             try {
@@ -145,9 +166,12 @@ class ScheduledJobManager implements ShouldQueue
 
     private function processScheduledTasks(): void
     {
-        $tasks = ScheduledTask::with(['service', 'application'])
-            ->where('enabled', true)
-            ->get();
+        $tasks = ScheduledTask::with([
+            'service.destination.server.settings',
+            'service.destination.server.team',
+            'application.destination.server.settings',
+            'application.destination.server.team',
+        ])->where('enabled', true)->get();
 
         foreach ($tasks as $task) {
             try {
@@ -296,12 +320,12 @@ class ScheduledJobManager implements ShouldQueue
 
     private function getServersForCleanup(): Collection
     {
-        $query = Server::with('settings')
+        $query = Server::with(['settings', 'team'])
             ->where('ip', '!=', '1.2.3.4');
 
         if (isCloud()) {
             $servers = $query->whereRelation('team.subscription', 'stripe_invoice_paid', true)->get();
-            $own = Team::find(0)->servers()->with('settings')->get();
+            $own = Team::find(0)->servers()->with(['settings', 'team'])->get();
 
             return $servers->merge($own);
         }

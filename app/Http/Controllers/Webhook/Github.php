@@ -670,7 +670,7 @@ class Github extends Controller
                 foreach ($candidates as $candidate) {
                     try {
                         $jwt = generateGithubJwt($candidate);
-                        $response = Http::withHeaders([
+                        $response = Http::timeout(15)->withHeaders([
                             'Authorization' => "Bearer $jwt",
                             'Accept' => 'application/vnd.github+json',
                         ])->get("{$candidate->api_url}/app/installations/{$installation_id}");

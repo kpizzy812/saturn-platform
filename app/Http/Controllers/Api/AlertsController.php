@@ -23,6 +23,7 @@ class AlertsController extends Controller
 
         $alerts = Alert::where('team_id', $teamId)
             ->orderBy('created_at', 'desc')
+            ->limit(100)
             ->get()
             ->map(fn (Alert $alert) => [
                 'id' => $alert->id,

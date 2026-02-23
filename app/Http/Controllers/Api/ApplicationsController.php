@@ -104,7 +104,7 @@ class ApplicationsController extends Controller
             ]);
         }
 
-        return response()->json($applications);
+        return response()->json($applications->take(500)->values());
     }
 
     #[OA\Get(
