@@ -97,9 +97,9 @@ class Handler extends ExceptionHandler
                 return;
             }
             // Skip DB-dependent reporting when no database is configured
-            // (e.g. during Docker build). Using env() instead of a DB query
+            // (e.g. during Docker build). Using config() instead of a DB query
             // avoids nested fatal errors in PHP's shutdown handler.
-            if (! env('DB_HOST')) {
+            if (! config('database.connections.pgsql.host')) {
                 return;
             }
             try {

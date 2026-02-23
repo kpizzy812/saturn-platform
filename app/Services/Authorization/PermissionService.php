@@ -515,8 +515,12 @@ class PermissionService
     /**
      * Get all permissions with caching to avoid repeated DB queries.
      */
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Permission>
+     */
     private function getCachedPermissions(): \Illuminate\Database\Eloquent\Collection
     {
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Permission> */
         return Cache::remember('permissions:all', 300, function () {
             return Permission::all();
         });
