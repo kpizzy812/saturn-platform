@@ -154,10 +154,12 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                                     Manage API tokens for programmatic access
                                 </CardDescription>
                             </div>
-                            <Button onClick={() => setShowCreateModal(true)}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Create Token
-                            </Button>
+                            {canManageTokens && (
+                                <Button onClick={() => setShowCreateModal(true)}>
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create Token
+                                </Button>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -171,10 +173,12 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                                     <p className="mt-1 text-sm text-foreground-muted">
                                         Create your first API token to get started
                                     </p>
-                                    <Button className="mt-4 group" onClick={() => setShowCreateModal(true)}>
-                                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
-                                        Create Token
-                                    </Button>
+                                    {canManageTokens && (
+                                        <Button className="mt-4 group" onClick={() => setShowCreateModal(true)}>
+                                            <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                                            Create Token
+                                        </Button>
+                                    )}
                                 </div>
                             </FadeIn>
                         ) : (
@@ -216,18 +220,20 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setTokenToRevoke(token);
-                                                    setShowRevokeModal(true);
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-danger" />
-                                            </Button>
-                                        </div>
+                                        {canManageTokens && (
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setTokenToRevoke(token);
+                                                        setShowRevokeModal(true);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4 text-danger" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                     </StaggerItem>
                                 ))}

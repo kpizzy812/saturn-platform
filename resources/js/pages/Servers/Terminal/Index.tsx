@@ -4,7 +4,8 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { Terminal } from '@/components/features/Terminal';
-import { ArrowLeft, Server, Terminal as TerminalIcon, Maximize2, Minimize2, RefreshCw, Settings } from 'lucide-react';
+import { ArrowLeft, Server, Terminal as TerminalIcon, Maximize2, Minimize2, RefreshCw, Settings, ShieldX } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { Server as ServerType } from '@/types';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ServerTerminal({ server }: Props) {
+    const { can } = usePermissions();
     const [isConnected, setIsConnected] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [terminalKey, setTerminalKey] = useState(0);
@@ -58,6 +60,23 @@ export default function ServerTerminal({ server }: Props) {
                 Back to Server
             </Link>
 
+            {/* Permission Check */}
+            {!can('applications.terminal') ? (
+                <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-16">
+                        <ShieldX className="h-12 w-12 text-foreground-subtle" />
+                        <h3 className="mt-4 font-medium text-foreground">Access Denied</h3>
+                        <p className="mt-1 text-sm text-foreground-muted">
+                            You don't have permission to access the terminal. Contact your team admin.
+                        </p>
+                        <Link href={`/servers/${server.uuid}`} className="mt-4 inline-block">
+                            <Button variant="secondary" size="sm">
+                                Back to Server
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            ) : (<>
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -197,6 +216,7 @@ export default function ServerTerminal({ server }: Props) {
                     </div>
                 </CardContent>
             </Card>
+            </>)}
         </AppLayout>
     );
 }

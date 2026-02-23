@@ -336,7 +336,9 @@ describe('Tokens Settings Page', () => {
             const tokenNameInput = screen.getByLabelText('Token Name') as HTMLInputElement;
             await user.type(tokenNameInput, 'Test Token');
 
-            expect(tokenNameInput.value).toBe('Test Token');
+            await waitFor(() => {
+                expect(tokenNameInput.value).toBe('Test Token');
+            });
         }
     });
 });

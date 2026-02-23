@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { useApplicationMetrics } from '@/hooks/useApplicationMetrics';
+import { usePermissions } from '@/hooks/usePermissions';
 import { getStatusLabel, getStatusVariant } from '@/lib/statusUtils';
 import { CloneModal } from '@/components/transfer';
 import type { Application, Deployment, Environment, Project } from '@/types';
@@ -54,6 +55,7 @@ interface Props {
 }
 
 export default function ApplicationShow({ application: initialApplication }: Props) {
+    const { can } = usePermissions();
     const [application, setApplication] = useState<ApplicationWithRelations>(initialApplication);
     const [showEnvVars, setShowEnvVars] = useState(false);
     const [envVars, setEnvVars] = useState<Array<{ id: number; key: string; value: string; is_buildtime: boolean }>>([]);
@@ -213,14 +215,16 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAction('deploy')}
-                        >
-                            <Rocket className="mr-2 h-4 w-4" />
-                            Deploy
-                        </Button>
+                        {can('applications.deploy') && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAction('deploy')}
+                            >
+                                <Rocket className="mr-2 h-4 w-4" />
+                                Deploy
+                            </Button>
+                        )}
                         <Dropdown>
                             <DropdownTrigger>
                                 <Button variant="outline" size="sm">
@@ -232,10 +236,12 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                     <RotateCw className="h-4 w-4" />
                                     Restart
                                 </DropdownItem>
-                                <DropdownItem onClick={handleForceRebuild}>
-                                    <Rocket className="h-4 w-4" />
-                                    Force Rebuild
-                                </DropdownItem>
+                                {can('applications.deploy') && (
+                                    <DropdownItem onClick={handleForceRebuild}>
+                                        <Rocket className="h-4 w-4" />
+                                        Force Rebuild
+                                    </DropdownItem>
+                                )}
                                 <DropdownItem onClick={() => router.visit(`/applications/${application.uuid}/rollback`)}>
                                     <History className="h-4 w-4" />
                                     Rollback
@@ -262,10 +268,12 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                     <Settings className="h-4 w-4" />
                                     Settings
                                 </DropdownItem>
-                                <DropdownItem onClick={() => router.visit(`/applications/${application.uuid}/terminal`)}>
-                                    <Terminal className="h-4 w-4" />
-                                    Terminal
-                                </DropdownItem>
+                                {can('applications.terminal') && (
+                                    <DropdownItem onClick={() => router.visit(`/applications/${application.uuid}/terminal`)}>
+                                        <Terminal className="h-4 w-4" />
+                                        Terminal
+                                    </DropdownItem>
+                                )}
                                 <DropdownItem onClick={() => router.visit(`/applications/${application.uuid}/logs`)}>
                                     <FileText className="h-4 w-4" />
                                     Logs
@@ -356,11 +364,13 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                 <CardTitle>Quick Actions</CardTitle>
                             </CardHeader>
                             <CardContent className="grid gap-3 sm:grid-cols-2">
-                                <ActionButton
-                                    icon={<Terminal className="h-5 w-5" />}
-                                    label="Terminal"
-                                    onClick={() => router.visit(`/applications/${application.uuid}/terminal`)}
-                                />
+                                {can('applications.terminal') && (
+                                    <ActionButton
+                                        icon={<Terminal className="h-5 w-5" />}
+                                        label="Terminal"
+                                        onClick={() => router.visit(`/applications/${application.uuid}/terminal`)}
+                                    />
+                                )}
                                 <ActionButton
                                     icon={<FileText className="h-5 w-5" />}
                                     label="View Logs"
@@ -434,19 +444,21 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                             <CardHeader>
                                 <div className="flex items-center justify-between">
                                     <CardTitle>Environment Variables</CardTitle>
-                                    <button
-                                        onClick={handleToggleEnvVars}
-                                        className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                        title={showEnvVars ? 'Hide variables' : 'Show variables'}
-                                    >
-                                        {envVarsLoading ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : showEnvVars ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
-                                            <Eye className="h-4 w-4" />
-                                        )}
-                                    </button>
+                                    {can('applications.env_vars') && (
+                                        <button
+                                            onClick={handleToggleEnvVars}
+                                            className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                            title={showEnvVars ? 'Hide variables' : 'Show variables'}
+                                        >
+                                            {envVarsLoading ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : showEnvVars ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             </CardHeader>
                             <CardContent>

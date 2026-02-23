@@ -2,6 +2,7 @@ import * as React from 'react';
 import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { Link, router } from '@inertiajs/react';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Bell, Mail, Webhook as WebhookIcon, Smartphone, Settings, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import { StaggerList, StaggerItem } from '@/components/animation';
 import { Discord } from '@/components/icons/Discord';
@@ -86,6 +87,9 @@ export default function NotificationsIndex({ channels }: Props) {
             href: '/settings/notifications/pushover',
         },
     ];
+
+    const { can } = usePermissions();
+    const canConfigureNotifications = can('settings.notifications');
 
     const [processing, setProcessing] = React.useState(false);
 
@@ -176,7 +180,7 @@ export default function NotificationsIndex({ channels }: Props) {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {channel.configured && (
+                                            {channel.configured && canConfigureNotifications && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

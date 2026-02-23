@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input } from '@/components/ui';
 import { Progress } from '@/components/ui/Progress';
 import { Plus, HardDrive, Grid3x3, List, Search, Filter } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import type { Volume } from '@/types';
 
 interface Props {
@@ -59,8 +60,8 @@ export default function VolumesIndex({ volumes }: Props) {
                     <p className="text-foreground-muted">Persistent storage for your services</p>
                 </div>
                 <Link href="/volumes/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         Create Volume
                     </Button>
                 </Link>
@@ -146,17 +147,21 @@ export default function VolumesIndex({ volumes }: Props) {
             {filteredVolumes.length === 0 ? (
                 <EmptyState hasSearch={searchQuery.length > 0} />
             ) : viewMode === 'grid' ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredVolumes.map((volume) => (
-                        <VolumeCard key={volume.id} volume={volume} />
+                <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredVolumes.map((volume, i) => (
+                        <StaggerItem key={volume.id} index={i}>
+                            <VolumeCard volume={volume} />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             ) : (
-                <div className="space-y-2">
-                    {filteredVolumes.map((volume) => (
-                        <VolumeListItem key={volume.id} volume={volume} />
+                <StaggerList className="space-y-2">
+                    {filteredVolumes.map((volume, i) => (
+                        <StaggerItem key={volume.id} index={i}>
+                            <VolumeListItem volume={volume} />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
         </AppLayout>
     );
@@ -280,31 +285,35 @@ function StorageClassBadge({ storageClass }: { storageClass: Volume['storage_cla
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
     if (hasSearch) {
         return (
-            <Card className="p-12 text-center">
-                <HardDrive className="mx-auto h-12 w-12 text-foreground-muted" />
-                <h3 className="mt-4 text-lg font-medium text-foreground">No volumes found</h3>
-                <p className="mt-2 text-foreground-muted">
-                    Try adjusting your search query or filters
-                </p>
-            </Card>
+            <FadeIn>
+                <Card className="p-12 text-center">
+                    <HardDrive className="mx-auto h-12 w-12 text-foreground-muted animate-pulse-soft" />
+                    <h3 className="mt-4 text-lg font-medium text-foreground">No volumes found</h3>
+                    <p className="mt-2 text-foreground-muted">
+                        Try adjusting your search query or filters
+                    </p>
+                </Card>
+            </FadeIn>
         );
     }
 
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <HardDrive className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No volumes yet</h3>
-            <p className="mt-2 text-foreground-muted">
-                Create your first volume to provide persistent storage for your services.
-            </p>
-            <Link href="/volumes/create" className="mt-6 inline-block">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Volume
-                </Button>
-            </Link>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <HardDrive className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No volumes yet</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Create your first volume to provide persistent storage for your services.
+                </p>
+                <Link href="/volumes/create" className="mt-6 inline-block">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Volume
+                    </Button>
+                </Link>
+            </Card>
+        </FadeIn>
     );
 }

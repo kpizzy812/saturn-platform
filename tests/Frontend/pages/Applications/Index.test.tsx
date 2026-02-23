@@ -217,6 +217,7 @@ describe('Applications Index Page', () => {
                 <button onClick={onClick} data-danger={danger}>{children}</button>
             ),
             DropdownDivider: () => <hr />,
+            useDropdown: () => ({ isOpen: false }),
         }));
 
         const { router } = await import('@inertiajs/react');

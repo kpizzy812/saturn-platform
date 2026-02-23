@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, Button, Badge, Input, Select } from '@/components/ui';
 import { Plus, Globe, Shield, ExternalLink, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import type { Domain } from '@/types';
 
 interface Props {
@@ -39,8 +40,8 @@ export default function DomainsIndex({ domains = [] }: Props) {
                     <p className="text-foreground-muted">Manage custom domains and SSL certificates</p>
                 </div>
                 <Link href="/domains/add">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         Add Domain
                     </Button>
                 </Link>
@@ -80,11 +81,13 @@ export default function DomainsIndex({ domains = [] }: Props) {
             {filteredDomains.length === 0 ? (
                 domains.length === 0 ? <EmptyState /> : <NoResultsState />
             ) : (
-                <div className="space-y-3">
-                    {filteredDomains.map((domain) => (
-                        <DomainCard key={domain.id} domain={domain} />
+                <StaggerList className="space-y-3">
+                    {filteredDomains.map((domain, i) => (
+                        <StaggerItem key={domain.id} index={i}>
+                            <DomainCard domain={domain} />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
         </AppLayout>
     );
@@ -184,34 +187,38 @@ function SSLStatusBadge({ status }: { status: Domain['ssl_status'] }) {
 
 function EmptyState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Globe className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No domains yet</h3>
-            <p className="mt-2 text-foreground-muted">
-                Add a custom domain to your services and configure SSL certificates.
-            </p>
-            <Link href="/domains/add" className="mt-6 inline-block">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Domain
-                </Button>
-            </Link>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Globe className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No domains yet</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Add a custom domain to your services and configure SSL certificates.
+                </p>
+                <Link href="/domains/add" className="mt-6 inline-block">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Domain
+                    </Button>
+                </Link>
+            </Card>
+        </FadeIn>
     );
 }
 
 function NoResultsState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Globe className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No domains found</h3>
-            <p className="mt-2 text-foreground-muted">
-                Try adjusting your search query or filters.
-            </p>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Globe className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No domains found</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Try adjusting your search query or filters.
+                </p>
+            </Card>
+        </FadeIn>
     );
 }

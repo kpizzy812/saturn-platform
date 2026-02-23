@@ -3,6 +3,7 @@ import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge } from '@/components/ui';
 import { useForm } from '@inertiajs/react';
 import { Send, CheckCircle2 } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface DiscordNotificationSettings {
     discord_enabled: boolean;
@@ -48,6 +49,8 @@ const eventOptions = [
 
 export default function DiscordNotifications({ settings, lastTestAt, lastTestStatus }: Props) {
     const { data, setData, post, processing, errors, isDirty } = useForm(settings);
+    const { can } = usePermissions();
+    const canConfigureNotifications = can('settings.notifications');
     const [isTesting, setIsTesting] = React.useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -174,7 +177,7 @@ export default function DiscordNotifications({ settings, lastTestAt, lastTestSta
                                         variant="secondary"
                                         onClick={handleTest}
                                         loading={isTesting}
-                                        disabled={!data.discord_webhook_url || processing}
+                                        disabled={!data.discord_webhook_url || processing || !canConfigureNotifications}
                                     >
                                         <Send className="mr-2 h-4 w-4" />
                                         Send Test Notification
@@ -195,7 +198,7 @@ export default function DiscordNotifications({ settings, lastTestAt, lastTestSta
                                 <Button
                                     type="submit"
                                     loading={processing}
-                                    disabled={!isDirty}
+                                    disabled={!isDirty || !canConfigureNotifications}
                                 >
                                     Save Settings
                                 </Button>

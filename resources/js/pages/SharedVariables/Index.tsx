@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input } from '@/components/ui';
 import { Plus, Search, Lock, Unlock, Building2, FolderKanban, Layers } from 'lucide-react';
 import { useState } from 'react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface SharedVariable {
     id: number;
@@ -118,6 +119,7 @@ export default function SharedVariablesIndex({ variables = [], team: _team }: Pr
                 <Card>
                     <CardContent className="p-0">
                         {filteredVariables.length === 0 ? (
+                            <FadeIn>
                             <div className="p-8 text-center text-foreground-muted">
                                 <Layers className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                 <p>No variables found</p>
@@ -125,10 +127,12 @@ export default function SharedVariablesIndex({ variables = [], team: _team }: Pr
                                     Create your first variable
                                 </Link>
                             </div>
+                            </FadeIn>
                         ) : (
-                            <div className="divide-y divide-border">
-                                {filteredVariables.map(variable => (
-                                    <div key={variable.id} className="p-4 hover:bg-background-secondary transition-colors">
+                            <StaggerList className="divide-y divide-border">
+                                {filteredVariables.map((variable, i) => (
+                                    <StaggerItem key={variable.id} index={i}>
+                                    <div className="p-4 hover:bg-background-secondary transition-colors">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 {variable.is_secret ? (
@@ -162,8 +166,9 @@ export default function SharedVariablesIndex({ variables = [], team: _team }: Pr
                                             </div>
                                         </div>
                                     </div>
+                                    </StaggerItem>
                                 ))}
-                            </div>
+                            </StaggerList>
                         )}
                     </CardContent>
                 </Card>

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, Input } from '@/components/ui';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import type { Deployment, DeploymentStatus } from '@/types';
@@ -196,15 +197,16 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
                 <EmptyState searchQuery={searchQuery} filterStatus={filterStatus} />
             ) : (
                 <>
-                    <div className="space-y-3">
-                        {filteredDeployments.map((deployment) => (
-                            <DeploymentCard
-                                key={deployment.id}
-                                deployment={deployment}
-                                getTriggerBadgeColor={getTriggerBadgeColor}
-                            />
+                    <StaggerList className="space-y-3">
+                        {filteredDeployments.map((deployment, i) => (
+                            <StaggerItem key={deployment.id} index={i}>
+                                <DeploymentCard
+                                    deployment={deployment}
+                                    getTriggerBadgeColor={getTriggerBadgeColor}
+                                />
+                            </StaggerItem>
                         ))}
-                    </div>
+                    </StaggerList>
 
                     {/* Pagination */}
                     {totalPages > 1 && (
@@ -391,10 +393,11 @@ function FilterButton({
 
 function EmptyState({ searchQuery, filterStatus }: { searchQuery: string; filterStatus: DeploymentStatus | 'all' }) {
     return (
+        <FadeIn>
         <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                    <Play className="h-8 w-8 text-foreground-muted" />
+                    <Play className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
                 </div>
                 <h3 className="mt-4 text-lg font-medium text-foreground">No deployments found</h3>
                 <p className="mt-2 text-center text-sm text-foreground-muted">
@@ -406,5 +409,6 @@ function EmptyState({ searchQuery, filterStatus }: { searchQuery: string; filter
                 </p>
             </CardContent>
         </Card>
+        </FadeIn>
     );
 }
