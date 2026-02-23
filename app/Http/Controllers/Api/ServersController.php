@@ -504,6 +504,8 @@ class ServersController extends Controller
             return invalidTokenResponse();
         }
 
+        $this->authorize('create', ModelsServer::class);
+
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
@@ -710,6 +712,9 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('update', $server);
+
         if ($request->proxy_type) {
             $validProxyTypes = collect(ProxyTypes::cases())->map(function ($proxyType) {
                 return str($proxyType->value)->lower();
@@ -804,6 +809,9 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('delete', $server);
+
         if ($server->definedResources()->count() > 0) {
             return response()->json(['message' => 'Server has resources, so you need to delete them before.'], 400);
         }
@@ -882,6 +890,9 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('update', $server);
+
         ValidateServer::dispatch($server);
 
         return response()->json(['message' => 'Validation started.'], 201);
@@ -936,6 +947,8 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('update', $server);
 
         if (! $server->isFunctional()) {
             return response()->json(['message' => 'Server is not reachable.'], 400);

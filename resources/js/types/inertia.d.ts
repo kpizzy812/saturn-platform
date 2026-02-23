@@ -27,6 +27,7 @@ export interface AuthUser {
         isMember: boolean;
         isDeveloper: boolean;
         isViewer: boolean;
+        granular: Record<string, boolean>;
     };
 }
 

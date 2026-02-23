@@ -7,6 +7,7 @@ use App\Models\InstanceSettings;
 use App\Models\TeamInvitation;
 use App\Notifications\Test;
 use App\Notifications\TransactionalEmails\InvitationLink;
+use App\Services\Authorization\PermissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -518,8 +519,8 @@ class SettingsController extends Controller
         $team = currentTeam();
         $currentUser = auth()->user();
 
-        // Check if the current user is an admin or owner
-        if (! $currentUser->isAdmin()) {
+        // Check via PermissionService
+        if (! app(PermissionService::class)->userHasPermission($currentUser, 'team.manage_members')) {
             return redirect()->back()->withErrors(['role' => 'You do not have permission to update member roles']);
         }
 
@@ -548,8 +549,8 @@ class SettingsController extends Controller
         $team = currentTeam();
         $currentUser = auth()->user();
 
-        // Check if the current user is an admin or owner
-        if (! $currentUser->isAdmin()) {
+        // Check via PermissionService
+        if (! app(PermissionService::class)->userHasPermission($currentUser, 'team.manage_members')) {
             return redirect()->back()->withErrors(['member' => 'You do not have permission to remove members']);
         }
 
@@ -582,6 +583,10 @@ class SettingsController extends Controller
      */
     public function inviteMember(Request $request): RedirectResponse
     {
+        if (! app(PermissionService::class)->userHasPermission(auth()->user(), 'team.invite')) {
+            return redirect()->back()->withErrors(['member' => 'You do not have permission to invite members']);
+        }
+
         $request->validate([
             'email' => 'required|email',
             'role' => 'required|string|in:owner,admin,member',
@@ -688,8 +693,8 @@ class SettingsController extends Controller
         $team = currentTeam();
         $user = auth()->user();
 
-        // Check if the user is an admin or owner
-        if (! $user->isAdmin()) {
+        // Check via PermissionService
+        if (! app(PermissionService::class)->userHasPermission($user, 'settings.update')) {
             return redirect()->back()->withErrors(['workspace' => 'You do not have permission to update workspace settings']);
         }
 

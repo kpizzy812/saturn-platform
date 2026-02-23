@@ -291,6 +291,8 @@ Route::get('/servers/{uuid}/metrics', function (string $uuid) {
 Route::get('/servers/{uuid}/terminal', function (string $uuid) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
+    Gate::authorize('canAccessTerminal');
+
     return Inertia::render('Servers/Terminal/Index', [
         'server' => $server,
     ]);

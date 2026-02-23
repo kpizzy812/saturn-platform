@@ -4,15 +4,22 @@ namespace App\Policies;
 
 use App\Models\CloudProviderToken;
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 
 class CloudProviderTokenPolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -20,7 +27,9 @@ class CloudProviderTokenPolicy
      */
     public function view(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -28,7 +37,9 @@ class CloudProviderTokenPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -36,7 +47,9 @@ class CloudProviderTokenPolicy
      */
     public function update(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -44,7 +57,9 @@ class CloudProviderTokenPolicy
      */
     public function delete(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -52,7 +67,9 @@ class CloudProviderTokenPolicy
      */
     public function restore(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -60,6 +77,8 @@ class CloudProviderTokenPolicy
      */
     public function forceDelete(User $user, CloudProviderToken $cloudProviderToken): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 }
