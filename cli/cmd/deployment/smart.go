@@ -96,7 +96,7 @@ func runSmart(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Get changed files
-	files, err := service.GetChangedFiles(base)
+	files, err := service.GetChangedFiles(cmd.Context(), base)
 	if err != nil {
 		return err
 	}

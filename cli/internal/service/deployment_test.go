@@ -721,7 +721,7 @@ func TestDeploymentService_GetDeploymentLogs_Error(t *testing.T) {
 }
 
 func TestDeploymentService_WaitForCompletion_FinishedImmediately(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(models.Deployment{
 			UUID:   "dep-123",
@@ -743,7 +743,7 @@ func TestDeploymentService_WaitForCompletion_FinishedImmediately(t *testing.T) {
 func TestDeploymentService_WaitForCompletion_PollingUntilDone(t *testing.T) {
 	var callCount int32
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		n := atomic.AddInt32(&callCount, 1)
 
@@ -777,7 +777,7 @@ func TestDeploymentService_WaitForCompletion_PollingUntilDone(t *testing.T) {
 }
 
 func TestDeploymentService_WaitForCompletion_Failed(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(models.Deployment{
 			UUID:   "dep-fail",
@@ -796,7 +796,7 @@ func TestDeploymentService_WaitForCompletion_Failed(t *testing.T) {
 }
 
 func TestDeploymentService_WaitForCompletion_ContextCancelled(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(models.Deployment{
 			UUID:   "dep-hang",

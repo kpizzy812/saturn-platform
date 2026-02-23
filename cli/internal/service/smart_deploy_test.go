@@ -416,10 +416,11 @@ func TestBuildDeployPlan_TriggerChain(t *testing.T) {
 	directCount := 0
 	triggeredCount := 0
 	for _, c := range plan.Components {
-		if c.Reason == "direct" {
+		switch c.Reason {
+		case "direct":
 			directCount++
 			assert.Equal(t, "shared", c.Name)
-		} else if c.Reason == "triggered" {
+		case "triggered":
 			triggeredCount++
 			assert.Equal(t, "shared", c.TriggerBy)
 		}

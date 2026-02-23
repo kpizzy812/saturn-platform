@@ -45,7 +45,7 @@ func TestNewSmartCommand_FlagDefaults(t *testing.T) {
 	// Check defaults
 	base, err := cmd.Flags().GetString("base")
 	require.NoError(t, err)
-	assert.Equal(t, "", base)
+	assert.Empty(t, base)
 
 	yes, err := cmd.Flags().GetBool("yes")
 	require.NoError(t, err)
