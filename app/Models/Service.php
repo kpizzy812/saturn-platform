@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
@@ -1534,7 +1535,7 @@ class Service extends BaseModel
                 $envs->push('SERVICE_NAME_'.str($serviceName)->replace('-', '_')->replace('.', '_')->upper().'='.$serviceName);
             }
         } catch (\Exception $e) {
-            ray($e->getMessage());
+            Log::warning('Service error: '.$e->getMessage());
         }
 
         $envs_from_saturn = $this->environment_variables()->get();

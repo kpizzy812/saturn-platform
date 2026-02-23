@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\StripeProcessJob;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class Stripe extends Controller
 {
@@ -24,7 +25,7 @@ class Stripe extends Controller
             return response('Webhook received. Cool cool cool cool cool.', 200);
         } catch (Exception $e) {
             // Security: Don't expose exception details - log for debugging instead
-            ray($e);
+            Log::error('Stripe webhook failed', ['error' => $e->getMessage()]);
 
             return response('Webhook processing failed.', 400);
         }

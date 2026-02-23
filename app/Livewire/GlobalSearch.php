@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
 /**
@@ -80,7 +81,7 @@ class GlobalSearch extends Component
             Cache::forget(self::CACHE_PREFIX.$teamId);
         } catch (\Throwable $e) {
             // Silently fail - cache clearing should not break application flow
-            ray('GlobalSearch::clearTeamCache failed: '.$e->getMessage());
+            Log::warning('GlobalSearch::clearTeamCache failed: '.$e->getMessage());
         }
     }
 
@@ -112,7 +113,7 @@ class GlobalSearch extends Component
             Cache::put(self::CACHE_PREFIX.$teamId, $results, $ttl);
         } catch (\Throwable $e) {
             // Silently fail
-            ray('GlobalSearch::setTeamCache failed: '.$e->getMessage());
+            Log::warning('GlobalSearch::setTeamCache failed: '.$e->getMessage());
         }
     }
 

@@ -60,7 +60,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $this->collectMetricsForDatabase($database);
             } catch (\Exception $e) {
                 // Log error but continue with other databases
-                ray('Failed to collect metrics for database: '.$database->uuid, $e->getMessage());
+                Log::warning('Failed to collect metrics for database: '.$database->uuid, ['error' => $e->getMessage()]);
             }
         }
     }

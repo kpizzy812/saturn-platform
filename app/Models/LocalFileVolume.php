@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Events\FileStorageChanged;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -351,7 +352,7 @@ class LocalFileVolume extends BaseModel
 
             return false;
         } catch (\Throwable $e) {
-            ray($e->getMessage(), 'Error checking read-only volume');
+            Log::warning('Error checking read-only volume', ['error' => $e->getMessage()]);
 
             return false;
         }
