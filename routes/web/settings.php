@@ -1155,19 +1155,20 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
         'email' => $m->email,
     ]);
 
-    // Filter top_resources to only existing ones for transfer UI
-    $memberResources = [];
-    $topResources = $archive->contribution_summary['top_resources'] ?? [];
-    foreach ($topResources as $resource) {
-        try {
-            $type = $resource['full_type'] ?? null;
-            if ($type && class_exists($type) && $type::find($resource['id'])) {
-                $memberResources[] = $resource;
-            }
-        } catch (\Exception $e) {
-            // Skip non-existing resources
-        }
-    }
+    // Get full resource data via action
+    $memberResources = app(\App\Actions\Team\GetArchiveMemberResourcesAction::class)
+        ->execute($team->id, $archive->user_id);
+
+    // Environments for move dropdown (grouped by project)
+    $environments = \App\Models\Environment::ownedByCurrentTeam()
+        ->with('project')
+        ->get()
+        ->map(fn ($env) => [
+            'id' => $env->id,
+            'name' => $env->name,
+            'project_name' => $env->project?->name ?? 'Unknown',
+            'project_id' => $env->project?->id,
+        ]);
 
     return Inertia::render('Settings/Team/ArchiveDetail', [
         'archive' => [
@@ -1188,6 +1189,7 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
         'transfers' => $transfers,
         'teamMembers' => $teamMembers,
         'memberResources' => $memberResources,
+        'environments' => $environments,
     ]);
 })->name('settings.team.archive.detail');
 
@@ -1361,7 +1363,7 @@ Route::post('/settings/team/archives/{id}/transfer', function (string $id, Reque
             'to_team_id' => $team->id,
             'from_user_id' => $archive->user_id,
             'to_user_id' => $transfer['to_user_id'],
-            'initiated_by' => $user->id,
+            'initiated_by' => auth()->id(),
             'reason' => "Post-kick transfer for {$transfer['resource_name']}",
             'resource_snapshot' => [
                 'name' => $transfer['resource_name'],
@@ -1391,6 +1393,72 @@ Route::post('/settings/team/archives/{id}/transfer', function (string $id, Reque
         'transferred' => count($newTransferIds),
     ]);
 })->name('settings.team.archive.transfer');
+
+// Move resources to different environment
+Route::post('/settings/team/archives/{id}/resources/move', function (string $id, Request $request) {
+    $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
+
+    $request->validate([
+        'resources' => 'required|array|min:1|max:50',
+        'resources.*.resource_type' => 'required|string',
+        'resources.*.resource_id' => 'required|integer|min:1',
+        'target_environment_id' => 'required|integer|min:1',
+    ]);
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+    $action = app(\App\Actions\Team\GetArchiveMemberResourcesAction::class);
+    $moved = $action->moveResources($team->id, $request->input('resources'), $request->input('target_environment_id'));
+
+    $targetEnv = \App\Models\Environment::find($request->input('target_environment_id'));
+
+    \App\Models\AuditLog::log(
+        'archive_resources_moved',
+        $archive,
+        "Moved {$moved} resource(s) to environment ".($targetEnv?->name ?? 'unknown'),
+        [
+            'archive_id' => $archive->id,
+            'target_environment_id' => $request->input('target_environment_id'),
+            'moved_count' => $moved,
+        ]
+    );
+
+    return response()->json(['success' => true, 'moved' => $moved]);
+})->middleware('throttle:30,1')->name('settings.team.archive.resources.move');
+
+// Delete resources from archive
+Route::post('/settings/team/archives/{id}/resources/delete', function (string $id, Request $request) {
+    $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
+
+    $request->validate([
+        'resources' => 'required|array|min:1|max:50',
+        'resources.*.resource_type' => 'required|string',
+        'resources.*.resource_id' => 'required|integer|min:1',
+    ]);
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+    $action = app(\App\Actions\Team\GetArchiveMemberResourcesAction::class);
+    $deleted = $action->deleteResources($team->id, $request->input('resources'));
+
+    \App\Models\AuditLog::log(
+        'archive_resources_deleted',
+        $archive,
+        "Queued deletion of {$deleted} resource(s) from archived member {$archive->member_name}",
+        [
+            'archive_id' => $archive->id,
+            'deleted_count' => $deleted,
+        ]
+    );
+
+    return response()->json(['success' => true, 'deleted' => $deleted]);
+})->middleware('throttle:10,1')->name('settings.team.archive.resources.delete');
 
 // Archive delete (soft delete — data preserved for audit)
 Route::delete('/settings/team/archives/{id}', function (string $id) {
