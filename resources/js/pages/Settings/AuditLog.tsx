@@ -3,6 +3,7 @@ import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Input, Select, Badge, Spinner } from '@/components/ui';
 import { FileText, Filter, User, GitBranch, Settings, Trash2, Key, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface AuditLogEntry {
     id: string;
@@ -356,14 +357,17 @@ export default function AuditLogSettings() {
                                 </Button>
                             </div>
                         ) : logs.length === 0 ? (
-                            <div className="p-8 text-center">
-                                <FileText className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <p className="mt-4 text-sm text-foreground-muted">No audit log entries found</p>
-                            </div>
+                            <FadeIn>
+                                <div className="p-8 text-center">
+                                    <FileText className="mx-auto h-12 w-12 text-foreground-muted animate-pulse-soft" />
+                                    <p className="mt-4 text-sm text-foreground-muted">No audit log entries found</p>
+                                </div>
+                            </FadeIn>
                         ) : (
-                            <div className="divide-y divide-border">
-                                {logs.map((log) => (
-                                    <div key={log.id} className="p-4 transition-colors hover:bg-background-secondary">
+                            <StaggerList className="divide-y divide-border">
+                                {logs.map((log, i) => (
+                                    <StaggerItem key={log.id} index={i}>
+                                    <div className="p-4 transition-colors hover:bg-background-secondary">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="flex flex-1 items-start gap-3">
                                                 <div className={`mt-0.5 ${getActionColor(log.action)}`}>
@@ -394,8 +398,9 @@ export default function AuditLogSettings() {
                                             </div>
                                         </div>
                                     </div>
+                                    </StaggerItem>
                                 ))}
-                            </div>
+                            </StaggerList>
                         )}
                     </CardContent>
                 </Card>

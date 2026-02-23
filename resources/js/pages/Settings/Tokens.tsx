@@ -3,6 +3,8 @@ import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, Badge, useToast } from '@/components/ui';
 import { router } from '@inertiajs/react';
 import { Key, Copy, Trash2, Plus } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface ApiToken {
     id: number;
@@ -18,6 +20,8 @@ interface Props {
 }
 
 export default function TokensSettings({ tokens: initialTokens }: Props) {
+    const { can } = usePermissions();
+    const canManageTokens = can('settings.tokens');
     const [tokens, setTokens] = React.useState<ApiToken[]>(initialTokens);
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [showRevokeModal, setShowRevokeModal] = React.useState(false);
@@ -158,24 +162,26 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                     </CardHeader>
                     <CardContent>
                         {tokens.length === 0 ? (
-                            <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
-                                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-background-tertiary">
-                                    <Key className="h-6 w-6 text-foreground-muted" />
+                            <FadeIn>
+                                <div className="rounded-lg border-2 border-dashed border-border p-8 text-center">
+                                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-background-tertiary">
+                                        <Key className="h-6 w-6 text-foreground-muted animate-pulse-soft" />
+                                    </div>
+                                    <h3 className="mt-4 text-sm font-medium text-foreground">No API tokens</h3>
+                                    <p className="mt-1 text-sm text-foreground-muted">
+                                        Create your first API token to get started
+                                    </p>
+                                    <Button className="mt-4 group" onClick={() => setShowCreateModal(true)}>
+                                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                                        Create Token
+                                    </Button>
                                 </div>
-                                <h3 className="mt-4 text-sm font-medium text-foreground">No API tokens</h3>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    Create your first API token to get started
-                                </p>
-                                <Button className="mt-4" onClick={() => setShowCreateModal(true)}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create Token
-                                </Button>
-                            </div>
+                            </FadeIn>
                         ) : (
-                            <div className="space-y-3">
-                                {tokens.map((token) => (
+                            <StaggerList className="space-y-3">
+                                {tokens.map((token, i) => (
+                                    <StaggerItem key={token.id} index={i}>
                                     <div
-                                        key={token.id}
                                         className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
                                     >
                                         <div className="flex-1">
@@ -223,8 +229,9 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                                             </Button>
                                         </div>
                                     </div>
+                                    </StaggerItem>
                                 ))}
-                            </div>
+                            </StaggerList>
                         )}
                     </CardContent>
                 </Card>

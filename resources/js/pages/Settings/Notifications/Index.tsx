@@ -3,6 +3,7 @@ import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { Link, router } from '@inertiajs/react';
 import { Bell, Mail, Webhook as WebhookIcon, Smartphone, Settings, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
+import { StaggerList, StaggerItem } from '@/components/animation';
 import { Discord } from '@/components/icons/Discord';
 import { Slack } from '@/components/icons/Slack';
 import { Telegram } from '@/components/icons/Telegram';
@@ -135,12 +136,12 @@ export default function NotificationsIndex({ channels }: Props) {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            {notificationChannels.map((channel) => {
+                        <StaggerList className="space-y-3">
+                            {notificationChannels.map((channel, i) => {
                                 const Icon = channel.icon;
                                 return (
+                                    <StaggerItem key={channel.id} index={i}>
                                     <div
-                                        key={channel.id}
                                         className="group flex items-center justify-between rounded-lg border border-border bg-background p-4 transition-all hover:border-border/80 hover:bg-background-secondary"
                                     >
                                         <div className="flex items-center gap-4">
@@ -197,9 +198,10 @@ export default function NotificationsIndex({ channels }: Props) {
                                             </Link>
                                         </div>
                                     </div>
+                                    </StaggerItem>
                                 );
                             })}
-                        </div>
+                        </StaggerList>
                     </CardContent>
                 </Card>
 
