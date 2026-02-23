@@ -5,6 +5,9 @@ interface SaturnBackgroundProps {
 export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) {
     const isProminent = variant === 'prominent';
 
+    const size = isProminent ? '110vmin' : '85vmin';
+    const maxW = isProminent ? '1400px' : '1100px';
+
     return (
         <div
             aria-hidden="true"
@@ -14,46 +17,76 @@ export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) 
             <div
                 className="absolute will-change-transform"
                 style={{
-                    bottom: isProminent ? '5%' : '10%',
-                    right: isProminent ? '0%' : '-2%',
-                    width: isProminent ? '80vmin' : '60vmin',
-                    height: isProminent ? '80vmin' : '60vmin',
-                    background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.08) 40%, transparent 70%)',
+                    bottom: '-5%',
+                    right: '-5%',
+                    width: isProminent ? '90vmin' : '70vmin',
+                    height: isProminent ? '90vmin' : '70vmin',
+                    background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.06) 40%, transparent 70%)',
                     filter: 'blur(60px)',
                 }}
             />
-            {/* Planet — dark theme */}
-            <img
-                src="/svgs/saturn.png"
-                alt=""
-                draggable={false}
-                className="saturn-bg-float absolute hidden will-change-transform dark:block"
+
+            {/* Planet — dark theme: diagonal gradient blur via mask */}
+            <div
+                className="absolute hidden dark:block"
                 style={{
-                    bottom: isProminent ? '10%' : '15%',
-                    right: isProminent ? '-3%' : '-3%',
-                    width: isProminent ? '55vmin' : '40vmin',
-                    maxWidth: isProminent ? '650px' : '450px',
-                    opacity: isProminent ? 0.2 : 0.12,
-                    filter: isProminent ? 'blur(1px) saturate(0.8)' : 'blur(1.5px) saturate(0.7)',
+                    bottom: '-8%',
+                    right: '-10%',
+                    width: size,
+                    maxWidth: maxW,
+                    aspectRatio: '1',
                 }}
-            />
-            {/* Planet — light theme */}
-            <img
-                src="/svgs/saturn.png"
-                alt=""
-                draggable={false}
-                className="saturn-bg-float absolute block will-change-transform dark:hidden"
+            >
+                {/* Sharp half (bottom-right) */}
+                <img
+                    src="/svgs/saturn.png"
+                    alt=""
+                    draggable={false}
+                    className="saturn-bg-float absolute inset-0 h-full w-full object-contain will-change-transform"
+                    style={{
+                        opacity: isProminent ? 0.15 : 0.09,
+                        filter: 'saturate(0.7)',
+                        maskImage: 'linear-gradient(135deg, transparent 30%, black 70%)',
+                        WebkitMaskImage: 'linear-gradient(135deg, transparent 30%, black 70%)',
+                    }}
+                />
+                {/* Blurred half (top-left) */}
+                <img
+                    src="/svgs/saturn.png"
+                    alt=""
+                    draggable={false}
+                    className="saturn-bg-float absolute inset-0 h-full w-full object-contain will-change-transform"
+                    style={{
+                        opacity: isProminent ? 0.15 : 0.09,
+                        filter: 'blur(8px) saturate(0.5)',
+                        maskImage: 'linear-gradient(135deg, black 30%, transparent 70%)',
+                        WebkitMaskImage: 'linear-gradient(135deg, black 30%, transparent 70%)',
+                    }}
+                />
+            </div>
+
+            {/* Planet — light theme: larger, more detail, subtle tint */}
+            <div
+                className="absolute block dark:hidden"
                 style={{
-                    bottom: isProminent ? '10%' : '15%',
-                    right: isProminent ? '-3%' : '-3%',
-                    width: isProminent ? '55vmin' : '40vmin',
-                    maxWidth: isProminent ? '650px' : '450px',
-                    opacity: isProminent ? 0.12 : 0.07,
-                    filter: isProminent
-                        ? 'blur(1px) saturate(0.6) brightness(0.7)'
-                        : 'blur(2px) saturate(0.5) brightness(0.6)',
+                    bottom: '-8%',
+                    right: '-10%',
+                    width: size,
+                    maxWidth: maxW,
+                    aspectRatio: '1',
                 }}
-            />
+            >
+                <img
+                    src="/svgs/saturn.png"
+                    alt=""
+                    draggable={false}
+                    className="saturn-bg-float absolute inset-0 h-full w-full object-contain will-change-transform"
+                    style={{
+                        opacity: isProminent ? 0.08 : 0.05,
+                        filter: 'saturate(0.4) brightness(0.5) contrast(1.1)',
+                    }}
+                />
+            </div>
         </div>
     );
 }
