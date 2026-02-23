@@ -124,9 +124,6 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
       - name: Create CI .env
         run: |
           php -r "file_put_contents('.env', implode(\"\n\", [
@@ -143,6 +140,9 @@ jobs:
             'PUSHER_PORT=6001',
             'PUSHER_SCHEME=http',
           ]));"
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run Pint (code style)
         run: ./vendor/bin/pint --test
