@@ -74,6 +74,17 @@ class DatabaseMetricsController extends Controller
         return $this->databaseResolver->findByUuid($uuid);
     }
 
+    /**
+     * Authorize the current user against a database policy ability.
+     */
+    private function authorizeDatabase(string $uuid, string $ability): void
+    {
+        [$database] = $this->databaseResolver->findByUuid($uuid);
+        if ($database) {
+            $this->authorize($ability, $database);
+        }
+    }
+
     public function getExtensions(string $uuid): JsonResponse
     {
         return $this->withDatabase($uuid, fn ($db, $server) => $this->availableResponse([
@@ -143,6 +154,8 @@ class DatabaseMetricsController extends Controller
 
     public function executeQuery(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['query' => 'required|string|max:10000']);
         $query = trim($request->input('query'));
 
@@ -246,6 +259,8 @@ class DatabaseMetricsController extends Controller
 
     public function redisFlush(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $flushType = $request->input('type', 'db');
         if (! in_array($flushType, ['db', 'all'])) {
             return $this->errorResponse('Invalid flush type');
@@ -262,6 +277,8 @@ class DatabaseMetricsController extends Controller
 
     public function postgresMaintenace(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $operation = $request->input('operation', 'vacuum');
         if (! in_array($operation, ['vacuum', 'analyze'])) {
             return $this->errorResponse('Invalid operation');
@@ -299,6 +316,8 @@ class DatabaseMetricsController extends Controller
 
     public function toggleExtension(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'update');
+
         $extensionName = $request->input('extension');
         if (! $extensionName || ! preg_match('/^[a-z_][a-z0-9_]*$/i', $extensionName)) {
             return $this->errorResponse('Invalid extension name');
@@ -322,6 +341,8 @@ class DatabaseMetricsController extends Controller
 
     public function killConnection(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['pid' => 'required|integer']);
         $pid = (int) $request->input('pid');
 
@@ -340,6 +361,8 @@ class DatabaseMetricsController extends Controller
 
     public function createUser(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate([
             'username' => ['required', 'string', 'max:63', 'regex:/^[a-zA-Z_][a-zA-Z0-9_]*$/'],
             'password' => 'required|string|min:8',
@@ -354,6 +377,8 @@ class DatabaseMetricsController extends Controller
 
     public function deleteUser(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['username' => 'required|string']);
         $username = $request->input('username');
 
@@ -378,6 +403,8 @@ class DatabaseMetricsController extends Controller
 
     public function createMongoIndex(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'update');
+
         $request->validate(['collection' => 'required|string|max:255', 'fields' => 'required|string', 'unique' => 'boolean']);
 
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
@@ -405,6 +432,8 @@ class DatabaseMetricsController extends Controller
 
     public function deleteRedisKey(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['key' => 'required|string|max:1024']);
 
         return $this->withDatabase($uuid, fn ($db, $server) => response()->json(
@@ -423,6 +452,8 @@ class DatabaseMetricsController extends Controller
 
     public function setRedisKeyValue(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate([
             'key' => 'required|string|max:1024',
             'type' => 'required|string|in:string,list,set,zset,hash',
@@ -483,6 +514,8 @@ class DatabaseMetricsController extends Controller
 
     public function regeneratePassword(string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         return $this->withDatabase($uuid, function ($db, $server, $type) {
             $passwordField = match ($type) {
                 'postgresql' => 'postgres_password',
@@ -574,6 +607,8 @@ class DatabaseMetricsController extends Controller
 
     public function updateTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         if (! $this->validateTableName($tableName)) {
             return $this->errorResponse('Invalid table name.', 400);
         }
@@ -594,6 +629,8 @@ class DatabaseMetricsController extends Controller
 
     public function deleteTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         if (! $this->validateTableName($tableName)) {
             return $this->errorResponse('Invalid table name.', 400);
         }
@@ -614,6 +651,8 @@ class DatabaseMetricsController extends Controller
 
     public function createTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         if (! $this->validateTableName($tableName)) {
             return $this->errorResponse('Invalid table name.', 400);
         }

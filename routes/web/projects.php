@@ -10,6 +10,7 @@
 use App\Models\Environment;
 use App\Services\Authorization\ProjectAuthorizationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -73,6 +74,8 @@ Route::get('/projects/create/empty', function () {
     // Create empty project directly
     // Note: Default environments (development, uat, production) are created
     // automatically in Project::booted() - no need to create them here
+    Gate::authorize('create', \App\Models\Project::class);
+
     $project = \App\Models\Project::create([
         'name' => 'New Project',
         'description' => null,
@@ -89,6 +92,8 @@ Route::get('/projects/create/function', function () {
 })->name('projects.create.function');
 
 Route::post('/projects', function (Request $request) {
+    Gate::authorize('create', \App\Models\Project::class);
+
     $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
@@ -368,6 +373,8 @@ Route::patch('/projects/{uuid}', function (Request $request, string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $request->validate([
         'name' => 'sometimes|required|string|max:255',
         'description' => 'nullable|string',
@@ -382,19 +389,22 @@ Route::patch('/projects/{uuid}', function (Request $request, string $uuid) {
 Route::delete('/projects/{uuid}', function (string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
-        ->with([
-            'environments.applications',
-            'environments.services',
-            'environments.postgresqls',
-            'environments.redis',
-            'environments.mongodbs',
-            'environments.mysqls',
-            'environments.mariadbs',
-            'environments.keydbs',
-            'environments.dragonflies',
-            'environments.clickhouses',
-        ])
         ->firstOrFail();
+
+    Gate::authorize('delete', $project);
+
+    $project->load([
+        'environments.applications',
+        'environments.services',
+        'environments.postgresqls',
+        'environments.redis',
+        'environments.mongodbs',
+        'environments.mysqls',
+        'environments.mariadbs',
+        'environments.keydbs',
+        'environments.dragonflies',
+        'environments.clickhouses',
+    ]);
 
     // Delete all resources in all environments
     foreach ($project->environments as $environment) {
@@ -566,6 +576,8 @@ Route::post('/projects/{uuid}/shared-variables', function (Request $request, str
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $team = currentTeam();
 
     if (\App\Models\SharedEnvironmentVariable::where('key', $request->key)
@@ -603,6 +615,8 @@ Route::patch('/projects/{uuid}/shared-variables/{variable_id}', function (Reques
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $variable = \App\Models\SharedEnvironmentVariable::where('id', $variable_id)
         ->where('project_id', $project->id)
         ->firstOrFail();
@@ -621,6 +635,8 @@ Route::delete('/projects/{uuid}/shared-variables/{variable_id}', function (strin
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $variable = \App\Models\SharedEnvironmentVariable::where('id', $variable_id)
         ->where('project_id', $project->id)
@@ -655,6 +671,8 @@ Route::post('/projects/{uuid}/clone', function (Request $request, string $uuid) 
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $request->validate([
         'name' => 'required|string|max:255',
         'clone_shared_vars' => 'boolean',
@@ -680,6 +698,8 @@ Route::post('/projects/{uuid}/transfer', function (Request $request, string $uui
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $request->validate([
         'target_team_id' => 'required|integer|exists:teams,id',
@@ -722,6 +742,8 @@ Route::post('/projects/{uuid}/archive', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     if ($project->is_archived) {
         return response()->json(['message' => 'Project is already archived'], 422);
     }
@@ -741,6 +763,8 @@ Route::post('/projects/{uuid}/unarchive', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     if (! $project->is_archived) {
         return response()->json(['message' => 'Project is not archived'], 422);
     }
@@ -759,6 +783,8 @@ Route::post('/projects/{uuid}/tags', function (Request $request, string $uuid) {
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $request->validate([
         'tag_id' => 'nullable|integer|exists:tags,id',
@@ -798,6 +824,8 @@ Route::delete('/projects/{uuid}/tags/{tagId}', function (string $uuid, int $tagI
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $project->tags()->detach($tagId);
 
     return response()->json(['message' => 'Tag removed']);
@@ -808,6 +836,8 @@ Route::patch('/projects/{uuid}/notification-overrides', function (Request $reque
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $request->validate([
         'deployment_success' => 'nullable|boolean',
@@ -838,6 +868,8 @@ Route::patch('/projects/{uuid}/settings/quotas', function (Request $request, str
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $request->validate([
         'max_applications' => 'nullable|integer|min:0',
         'max_services' => 'nullable|integer|min:0',
@@ -857,6 +889,8 @@ Route::patch('/projects/{uuid}/settings/deployment-defaults', function (Request 
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $request->validate([
         'default_build_pack' => 'nullable|string|in:nixpacks,dockerfile,dockerimage,dockercompose,static',
@@ -879,6 +913,8 @@ Route::patch('/projects/{uuid}/settings/environment-branches', function (Request
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $request->validate([
         'branches' => 'required|array',
@@ -905,6 +941,8 @@ Route::patch('/projects/{uuid}/settings/default-server', function (Request $requ
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     // Verify server belongs to the team
     if ($request->default_server_id) {

@@ -10,6 +10,7 @@
 use App\Actions\Service\RestartService;
 use App\Actions\Service\StopService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -57,6 +58,8 @@ Route::get('/services/create', function () {
 })->name('services.create');
 
 Route::post('/services', function (Request $request) {
+    Gate::authorize('create', \App\Models\Service::class);
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string',
@@ -429,6 +432,8 @@ Route::post('/_internal/services/{uuid}/redeploy', function (string $uuid, Reque
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('deploy', $service);
+
     $pullLatest = $request->boolean('pull_latest', true);
 
     RestartService::dispatch($service, $pullLatest);
@@ -590,6 +595,8 @@ Route::post('/services/{uuid}/restart', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('deploy', $service);
+
     RestartService::dispatch($service, false);
 
     return redirect()->back()->with('success', 'Service restart initiated');
@@ -600,6 +607,8 @@ Route::post('/services/{uuid}/stop', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('stop', $service);
+
     StopService::dispatch($service);
 
     return redirect()->back()->with('success', 'Service stopped');
@@ -609,6 +618,8 @@ Route::delete('/services/{uuid}', function (string $uuid, Request $request) {
     $service = \App\Models\Service::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('delete', $service);
 
     $teamId = $service->environment->project->team->id;
 

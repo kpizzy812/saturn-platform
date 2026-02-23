@@ -521,6 +521,10 @@ Route::delete('/settings/security/sessions/all', function () {
 })->name('settings.security.sessions.revoke-all');
 
 Route::post('/settings/security/ip-allowlist', function (Request $request) {
+    if (! isInstanceAdmin()) {
+        abort(403, 'Only instance administrators can manage the IP allowlist.');
+    }
+
     $request->validate([
         'ip_address' => 'required|ip',
         'description' => 'nullable|string|max:255',
@@ -549,6 +553,10 @@ Route::post('/settings/security/ip-allowlist', function (Request $request) {
 })->name('settings.security.ip-allowlist.store');
 
 Route::delete('/settings/security/ip-allowlist/{id}', function (string $id) {
+    if (! isInstanceAdmin()) {
+        abort(403, 'Only instance administrators can manage the IP allowlist.');
+    }
+
     $settings = \App\Models\InstanceSettings::get();
     $allowedIps = $settings->allowed_ips ? json_decode($settings->allowed_ips, true) : [];
 
