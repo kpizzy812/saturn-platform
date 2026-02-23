@@ -459,7 +459,7 @@ class MongoMetricsService
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
-        return str_contains($result ?? '', 'modifiedCount') && ! str_contains($result ?? '', 'error');
+        return str_contains((string) $result, 'modifiedCount') && ! str_contains((string) $result, 'error');
     }
 
     /**
@@ -492,7 +492,7 @@ class MongoMetricsService
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
-        return str_contains($result ?? '', 'deletedCount') && ! str_contains($result ?? '', 'error');
+        return str_contains((string) $result, 'deletedCount') && ! str_contains((string) $result, 'error');
     }
 
     /**
@@ -522,7 +522,7 @@ class MongoMetricsService
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
-        return str_contains($result ?? '', 'insertedId') && ! str_contains($result ?? '', 'error');
+        return str_contains((string) $result, 'insertedId') && ! str_contains((string) $result, 'error');
     }
 
     /**
