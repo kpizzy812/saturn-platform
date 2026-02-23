@@ -133,8 +133,8 @@ func runSmart(cmd *cobra.Command, _ []string) error {
 	if !yes {
 		fmt.Fprint(cmd.OutOrStdout(), "\nProceed with deployment? [y/N] ")
 		var answer string
-		_, scanErr := fmt.Fscanln(cmd.InOrStdin(), &answer)
-		if scanErr != nil || !strings.HasPrefix(strings.ToLower(answer), "y") {
+		fmt.Fscanln(cmd.InOrStdin(), &answer) //nolint:errcheck // stdin read error = no input = abort
+		if !strings.HasPrefix(strings.ToLower(answer), "y") {
 			fmt.Fprintln(cmd.OutOrStdout(), "Aborted")
 			return nil
 		}
