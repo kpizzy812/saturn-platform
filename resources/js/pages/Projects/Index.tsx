@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Badge, Button, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, FolderKanban, MoreVertical, Settings, Trash2, Box, Database, Layers, Clock } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import type { Project } from '@/types';
 
 interface Props {
@@ -23,8 +24,8 @@ export default function ProjectsIndex({ projects = [] }: Props) {
                     <p className="text-foreground-muted">Manage your applications and services</p>
                 </div>
                 <Link href="/projects/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         New Project
                     </Button>
                 </Link>
@@ -34,11 +35,13 @@ export default function ProjectsIndex({ projects = [] }: Props) {
             {projects.length === 0 ? (
                 <EmptyState />
             ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {projects.map((project) => (
-                        <ProjectCard key={project.id} project={project} />
+                <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {projects.map((project, i) => (
+                        <StaggerItem key={project.id} index={i}>
+                            <ProjectCard project={project} />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
             </div>
         </AppLayout>
@@ -142,7 +145,7 @@ function ProjectCard({ project }: { project: Project }) {
             <div className="relative flex items-start justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
-                        <FolderKanban className="h-5 w-5 text-primary" />
+                        <FolderKanban className="h-5 w-5 text-primary transition-transform duration-200 group-hover:scale-110 group-hover:animate-wiggle" />
                     </div>
                     <div>
                         <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{project.name}</h3>
@@ -223,20 +226,22 @@ function ProjectCard({ project }: { project: Project }) {
 
 function EmptyState() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
-                <FolderKanban className="h-8 w-8 text-foreground-muted" />
+        <FadeIn>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                    <FolderKanban className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
+                <p className="mt-1 text-sm text-foreground-muted">
+                    Create your first project to start deploying applications.
+                </p>
+                <Link href="/projects/create" className="mt-6">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Project
+                    </Button>
+                </Link>
             </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
-            <p className="mt-1 text-sm text-foreground-muted">
-                Create your first project to start deploying applications.
-            </p>
-            <Link href="/projects/create" className="mt-6">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Project
-                </Button>
-            </Link>
-        </div>
+        </FadeIn>
     );
 }

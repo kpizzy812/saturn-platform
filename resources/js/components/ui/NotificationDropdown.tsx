@@ -134,7 +134,7 @@ export function NotificationDropdown({ unreadCount, notifications }: Notificatio
                 <button className="group relative rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground">
                     <Bell className="h-5 w-5 group-hover:animate-wiggle" />
                     {unreadCount > 0 && (
-                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                        <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white animate-pulse-soft">
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}

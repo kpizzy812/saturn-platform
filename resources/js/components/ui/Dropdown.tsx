@@ -185,8 +185,8 @@ export function DropdownItem({
                 >
                     {icon && (
                         <span className={cn(
-                            'flex-shrink-0',
-                            active ? 'opacity-100' : 'opacity-60'
+                            'flex-shrink-0 transition-transform duration-150',
+                            active ? 'opacity-100 scale-110' : 'opacity-60'
                         )}>
                             {icon}
                         </span>

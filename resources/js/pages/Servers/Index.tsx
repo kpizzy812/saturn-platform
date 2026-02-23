@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, Server, MoreVertical, CheckCircle, XCircle, Settings, Trash2, RefreshCw, Terminal } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Server as ServerType } from '@/types';
 
@@ -62,8 +63,8 @@ export default function ServersIndex({ servers = [] }: Props) {
                     <p className="text-foreground-muted">Manage your connected servers</p>
                 </div>
                 <Link href="/servers/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         Add Server
                     </Button>
                 </Link>
@@ -73,21 +74,22 @@ export default function ServersIndex({ servers = [] }: Props) {
             {servers.length === 0 ? (
                 <EmptyState />
             ) : (
-                <div className="space-y-4">
-                    {servers.map((server) => {
+                <StaggerList className="space-y-4">
+                    {servers.map((server, i) => {
                         const status = getServerStatus(server);
                         return (
-                            <ServerCard
-                                key={server.id}
-                                server={{
-                                    ...server,
-                                    is_reachable: status.isReachable,
-                                    is_usable: status.isUsable,
-                                }}
-                            />
+                            <StaggerItem key={server.id} index={i}>
+                                <ServerCard
+                                    server={{
+                                        ...server,
+                                        is_reachable: status.isReachable,
+                                        is_usable: status.isUsable,
+                                    }}
+                                />
+                            </StaggerItem>
                         );
                     })}
-                </div>
+                </StaggerList>
             )}
             </div>
         </AppLayout>
@@ -112,7 +114,7 @@ function ServerCard({ server }: { server: ServerType }) {
     };
 
     return (
-        <Link href={`/servers/${server.uuid}`}>
+        <Link href={`/servers/${server.uuid}`} className="group">
             <Card className="transition-colors hover:border-primary/50">
                 <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -121,7 +123,7 @@ function ServerCard({ server }: { server: ServerType }) {
                             <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${
                                 isOnline ? 'bg-primary/10' : 'bg-danger/10'
                             }`}>
-                                <Server className={`h-6 w-6 ${
+                                <Server className={`h-6 w-6 transition-transform duration-200 group-hover:animate-wiggle ${
                                     isOnline ? 'text-primary' : 'text-danger'
                                 }`} />
                             </div>
@@ -224,20 +226,22 @@ function ServerCard({ server }: { server: ServerType }) {
 
 function EmptyState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Server className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No servers connected</h3>
-            <p className="mt-2 text-foreground-muted">
-                Add your first server to start deploying applications.
-            </p>
-            <Link href="/servers/create" className="mt-6 inline-block">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Server
-                </Button>
-            </Link>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Server className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No servers connected</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Add your first server to start deploying applications.
+                </p>
+                <Link href="/servers/create" className="mt-6 inline-block">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Server
+                    </Button>
+                </Link>
+            </Card>
+        </FadeIn>
     );
 }

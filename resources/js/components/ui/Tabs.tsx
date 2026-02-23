@@ -56,8 +56,12 @@ export function Tabs({ tabs, defaultIndex = 0, onChange }: LegacyTabsProps) {
                 ))}
                 {/* Animated indicator */}
                 <div
-                    className="absolute bottom-0 h-0.5 bg-primary transition-all duration-200 ease-in-out"
-                    style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+                    className="absolute bottom-0 h-0.5 bg-primary transition-all duration-300"
+                    style={{
+                        left: indicatorStyle.left,
+                        width: indicatorStyle.width,
+                        transitionTimingFunction: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+                    }}
                 />
             </TabList>
             <TabPanels className="mt-4">
