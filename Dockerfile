@@ -1,5 +1,5 @@
 # Railway Production Dockerfile for Saturn Platform
-FROM php:8.4-fpm-alpine AS base
+FROM php:8.5-fpm-alpine AS base
 
 # Install system dependencies
 RUN apk add --no-cache \
