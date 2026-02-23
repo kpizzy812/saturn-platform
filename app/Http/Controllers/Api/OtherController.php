@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Other\FeedbackRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -147,13 +148,9 @@ class OtherController extends Controller
         return response()->json(['message' => 'API disabled.'], 200);
     }
 
-    public function feedback(Request $request)
+    public function feedback(FeedbackRequest $request)
     {
-        $request->validate([
-            'content' => 'required|string|max:2000',
-        ]);
-
-        $content = $request->input('content');
+        $content = $request->validated('content');
         $webhook_url = config('constants.webhooks.feedback_discord_webhook');
         if ($webhook_url) {
             try {

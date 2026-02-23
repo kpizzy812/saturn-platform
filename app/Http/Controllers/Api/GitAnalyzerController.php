@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Database\StartDatabase;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\GitAnalyzer\AnalyzeGitRequest;
+use App\Http\Requests\Api\GitAnalyzer\ProvisionGitRequest;
 use App\Models\Environment;
 use App\Models\GithubApp;
 use App\Models\GitlabApp;
@@ -13,7 +15,6 @@ use App\Services\RepositoryAnalyzer\Exceptions\RepositoryAnalysisException;
 use App\Services\RepositoryAnalyzer\InfrastructureProvisioner;
 use App\Services\RepositoryAnalyzer\RepositoryAnalyzer;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -36,15 +37,9 @@ class GitAnalyzerController extends Controller
      *
      * Analyze a git repository to detect applications and dependencies.
      */
-    public function analyze(Request $request): JsonResponse
+    public function analyze(AnalyzeGitRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'git_repository' => ['required', 'string', 'regex:/^(https?:\/\/|git@)/'],
-            'git_branch' => ['nullable', 'string', 'max:255'],
-            'private_key_id' => ['nullable', 'integer', 'exists:private_keys,id'],
-            'source_id' => ['nullable', 'integer'],
-            'source_type' => ['nullable', 'string', 'in:github,gitlab,bitbucket'],
-        ]);
+        $validated = $request->validated();
 
         // Validate repository URL format
         try {
@@ -94,27 +89,9 @@ class GitAnalyzerController extends Controller
      *
      * Create infrastructure based on analysis result.
      */
-    public function provision(Request $request): JsonResponse
+    public function provision(ProvisionGitRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'environment_uuid' => ['required', 'string', 'exists:environments,uuid'],
-            'destination_uuid' => ['required', 'string'],
-            'git_repository' => ['required', 'string', 'regex:/^(https?:\/\/|git@)/'],
-            'git_branch' => ['nullable', 'string', 'max:255'],
-            'private_key_id' => ['nullable', 'integer', 'exists:private_keys,id'],
-            'source_id' => ['nullable', 'integer'],
-            'source_type' => ['nullable', 'string', 'in:github,gitlab,bitbucket'],
-            'applications' => ['required', 'array', 'min:1'],
-            'applications.*.name' => ['required', 'string'],
-            'applications.*.enabled' => ['required', 'boolean'],
-            'applications.*.base_directory' => ['nullable', 'string', 'max:255'],
-            'applications.*.env_vars' => ['nullable', 'array'],
-            'applications.*.env_vars.*.key' => ['required', 'string', 'max:255'],
-            'applications.*.env_vars.*.value' => ['required', 'string', 'max:10000'],
-            'databases' => ['nullable', 'array'],
-            'databases.*.type' => ['required', 'string', 'in:postgresql,mysql,mongodb,redis,clickhouse'],
-            'databases.*.enabled' => ['required', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         // Validate repository URL format
         try {

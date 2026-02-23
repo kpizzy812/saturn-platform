@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\CliAuth\ApproveCliAuthRequest;
+use App\Http\Requests\Api\CliAuth\CheckCliAuthRequest;
+use App\Http\Requests\Api\CliAuth\DenyCliAuthRequest;
 use App\Models\CliAuthSession;
 use App\Models\Team;
 use Illuminate\Http\JsonResponse;
@@ -42,11 +45,8 @@ class CliAuthController extends Controller
     /**
      * Check CLI auth session status (public, no auth).
      */
-    public function check(Request $request): JsonResponse
+    public function check(CheckCliAuthRequest $request): JsonResponse
     {
-        $request->validate([
-            'secret' => 'required|string|size:40',
-        ]);
 
         $session = CliAuthSession::where('secret', $request->query('secret'))->first();
 
@@ -120,12 +120,8 @@ class CliAuthController extends Controller
     /**
      * Approve CLI auth session (web, requires auth + CSRF).
      */
-    public function approve(Request $request): \Illuminate\Http\RedirectResponse
+    public function approve(ApproveCliAuthRequest $request): \Illuminate\Http\RedirectResponse
     {
-        $request->validate([
-            'code' => 'required|string|size:9',
-            'team_id' => 'required|integer|exists:teams,id',
-        ]);
 
         $session = CliAuthSession::where('code', $request->input('code'))
             ->pending()
@@ -163,11 +159,8 @@ class CliAuthController extends Controller
     /**
      * Deny CLI auth session (web, requires auth + CSRF).
      */
-    public function deny(Request $request): \Illuminate\Http\RedirectResponse
+    public function deny(DenyCliAuthRequest $request): \Illuminate\Http\RedirectResponse
     {
-        $request->validate([
-            'code' => 'required|string|size:9',
-        ]);
 
         $session = CliAuthSession::where('code', $request->input('code'))
             ->pending()

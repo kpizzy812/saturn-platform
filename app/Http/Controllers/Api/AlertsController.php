@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Alert\StoreAlertRequest;
+use App\Http\Requests\Api\Alert\UpdateAlertRequest;
 use App\Models\Alert;
 use App\Models\AlertHistory;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class AlertsController extends Controller
 {
@@ -96,29 +96,14 @@ class AlertsController extends Controller
     /**
      * Create a new alert
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreAlertRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'metric' => 'required|string|in:cpu,memory,disk,error_rate,response_time',
-            'condition' => 'required|string|in:>,<,=',
-            'threshold' => 'required|numeric|min:0',
-            'duration' => 'required|integer|min:1|max:1440',
-            'enabled' => 'sometimes|boolean',
-            'channels' => 'nullable|array',
-            'channels.*' => 'string|in:email,slack,discord,telegram,pagerduty,webhook',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $alert = new Alert($validator->validated());
+        $alert = new Alert($request->validated());
         $alert->team_id = $teamId;
         if (! $request->has('enabled')) {
             $alert->enabled = true;
@@ -144,7 +129,7 @@ class AlertsController extends Controller
     /**
      * Update an existing alert
      */
-    public function update(Request $request, string $uuid): JsonResponse
+    public function update(UpdateAlertRequest $request, string $uuid): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -159,22 +144,7 @@ class AlertsController extends Controller
             return response()->json(['message' => 'Alert not found.'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'metric' => 'sometimes|string|in:cpu,memory,disk,error_rate,response_time',
-            'condition' => 'sometimes|string|in:>,<,=',
-            'threshold' => 'sometimes|numeric|min:0',
-            'duration' => 'sometimes|integer|min:1|max:1440',
-            'enabled' => 'sometimes|boolean',
-            'channels' => 'nullable|array',
-            'channels.*' => 'string|in:email,slack,discord,telegram,pagerduty,webhook',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $alert->update($validator->validated());
+        $alert->update($request->validated());
 
         return response()->json([
             'message' => 'Alert updated successfully.',

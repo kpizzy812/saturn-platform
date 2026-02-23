@@ -1,109 +1,57 @@
 <?php
 
-use App\Http\Controllers\Api\CliAuthController;
+use App\Http\Requests\Api\CliAuth\ApproveCliAuthRequest;
+use App\Http\Requests\Api\CliAuth\CheckCliAuthRequest;
+use App\Http\Requests\Api\CliAuth\DenyCliAuthRequest;
 use App\Models\CliAuthSession;
-use App\Models\User;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 test('check validates secret is required', function () {
-    $controller = new CliAuthController;
+    $rules = (new CheckCliAuthRequest)->rules();
+    $validator = Validator::make([], $rules);
 
-    $request = Request::create('/api/v1/cli/auth/check', 'GET');
-
-    try {
-        $controller->check($request);
-        test()->fail('Expected validation exception');
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        expect($e->errors())->toHaveKey('secret');
-    }
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('secret'))->toBeTrue();
 });
 
 test('check validates secret must be exactly 40 characters', function () {
-    $controller = new CliAuthController;
+    $rules = (new CheckCliAuthRequest)->rules();
+    $validator = Validator::make(['secret' => 'tooshort'], $rules);
 
-    $request = Request::create('/api/v1/cli/auth/check?secret=tooshort', 'GET');
-
-    try {
-        $controller->check($request);
-        test()->fail('Expected validation exception');
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        expect($e->errors())->toHaveKey('secret');
-    }
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('secret'))->toBeTrue();
 });
 
 test('approve validates code must be 9 characters', function () {
-    $controller = new CliAuthController;
+    $rules = (new ApproveCliAuthRequest)->rules();
+    $validator = Validator::make(['code' => 'bad'], $rules);
 
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->id = 1;
-
-    // Code is too short — validation should reject before any DB query
-    $request = Request::create('/cli/auth/approve', 'POST', [
-        'code' => 'bad',
-    ]);
-    $request->setUserResolver(fn () => $user);
-
-    try {
-        $controller->approve($request);
-        test()->fail('Expected validation exception');
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        expect($e->errors())->toHaveKey('code');
-    }
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('code'))->toBeTrue();
 });
 
 test('approve validates team_id is required', function () {
-    $controller = new CliAuthController;
+    $rules = (new ApproveCliAuthRequest)->rules();
+    $validator = Validator::make(['code' => 'ABCD-EFGH'], $rules);
 
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->id = 1;
-
-    $request = Request::create('/cli/auth/approve', 'POST', [
-        'code' => 'ABCD-EFGH',
-    ]);
-    $request->setUserResolver(fn () => $user);
-
-    try {
-        $controller->approve($request);
-        test()->fail('Expected validation exception');
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        expect($e->errors())->toHaveKey('team_id');
-    }
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('team_id'))->toBeTrue();
 });
 
 test('deny validates code must be 9 characters', function () {
-    $controller = new CliAuthController;
+    $rules = (new DenyCliAuthRequest)->rules();
+    $validator = Validator::make(['code' => 'bad'], $rules);
 
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->id = 1;
-
-    $request = Request::create('/cli/auth/deny', 'POST', [
-        'code' => 'bad',
-    ]);
-    $request->setUserResolver(fn () => $user);
-
-    try {
-        $controller->deny($request);
-        test()->fail('Expected validation exception');
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        expect($e->errors())->toHaveKey('code');
-    }
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('code'))->toBeTrue();
 });
 
 test('deny validates code is required', function () {
-    $controller = new CliAuthController;
+    $rules = (new DenyCliAuthRequest)->rules();
+    $validator = Validator::make([], $rules);
 
-    $user = Mockery::mock(User::class)->makePartial();
-    $user->id = 1;
-
-    $request = Request::create('/cli/auth/deny', 'POST', []);
-    $request->setUserResolver(fn () => $user);
-
-    try {
-        $controller->deny($request);
-        test()->fail('Expected validation exception');
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        expect($e->errors())->toHaveKey('code');
-    }
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('code'))->toBeTrue();
 });
 
 test('CliAuthSession model has correct fillable fields for security', function () {
