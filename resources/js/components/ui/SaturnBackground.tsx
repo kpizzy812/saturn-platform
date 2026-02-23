@@ -65,7 +65,7 @@ export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) 
                 />
             </div>
 
-            {/* Planet — light theme: larger, more detail, subtle tint */}
+            {/* Planet — light theme: natural colors, no desaturation */}
             <div
                 className="absolute block dark:hidden"
                 style={{
@@ -82,8 +82,7 @@ export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) 
                     draggable={false}
                     className="saturn-bg-float absolute inset-0 h-full w-full object-contain will-change-transform"
                     style={{
-                        opacity: isProminent ? 0.08 : 0.05,
-                        filter: 'saturate(0.4) brightness(0.5) contrast(1.1)',
+                        opacity: isProminent ? 0.14 : 0.1,
                     }}
                 />
             </div>
