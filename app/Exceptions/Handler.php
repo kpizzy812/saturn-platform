@@ -96,7 +96,12 @@ class Handler extends ExceptionHandler
             if ($e instanceof RuntimeException) {
                 return;
             }
-            $this->settings = instanceSettings();
+            try {
+                $this->settings = instanceSettings();
+            } catch (\Throwable) {
+                // No database connection (e.g. during Docker build)
+                return;
+            }
             if ($this->settings->do_not_track) {
                 return;
             }
