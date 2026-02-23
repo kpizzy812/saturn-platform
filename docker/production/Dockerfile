@@ -121,7 +121,9 @@ COPY --chown=www-data:www-data changelogs/ ./changelogs/
 # Clear cached service providers that may reference dev-only packages (e.g. laravel-ray)
 RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
 
-RUN composer dump-autoload
+# --no-scripts prevents package:discover from running (it boots Laravel which
+# fails without a database connection). Package discovery runs at container start.
+RUN composer dump-autoload --no-scripts
 
 # Configure Nginx and S6 overlay
 COPY docker/production/etc/nginx/conf.d/custom.conf /etc/nginx/conf.d/custom.conf

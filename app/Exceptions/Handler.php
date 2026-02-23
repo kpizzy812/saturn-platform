@@ -96,10 +96,15 @@ class Handler extends ExceptionHandler
             if ($e instanceof RuntimeException) {
                 return;
             }
+            // Skip DB-dependent reporting when no database is configured
+            // (e.g. during Docker build). Using env() instead of a DB query
+            // avoids nested fatal errors in PHP's shutdown handler.
+            if (! env('DB_HOST')) {
+                return;
+            }
             try {
                 $this->settings = instanceSettings();
             } catch (\Throwable) {
-                // No database connection (e.g. during Docker build)
                 return;
             }
             if ($this->settings->do_not_track) {
