@@ -21,6 +21,10 @@ class ScheduledJobManager implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 1;
+
+    public int $timeout = 120;
+
     /**
      * The time when this job execution started.
      * Used to ensure all scheduled items are evaluated against the same point in time.

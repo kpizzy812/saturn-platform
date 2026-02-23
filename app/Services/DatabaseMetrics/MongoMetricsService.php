@@ -337,11 +337,20 @@ class MongoMetricsService
         // Get columns first
         $columns = $this->getColumns($server, $database, $collectionName);
 
-        // Build search query (text search across all fields)
+        // Validate collection name to prevent NoSQL injection
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $collectionName)) {
+            return ['rows' => [], 'total' => 0, 'columns' => $columns];
+        }
+
+        // Build search query (text search across all fields, sanitized)
         $searchQuery = '{}';
         if ($search !== '') {
-            $escapedSearch = str_replace("'", "\\'", $search);
-            $searchQuery = '{$or: ['.implode(',', array_map(fn ($col) => "{{$col['name']}: /.*{$escapedSearch}.*/i}}", $columns)).']}';
+            // Strip chars that could break out of regex context or inject JS
+            $escapedSearch = preg_replace('/[\/\\\\.*+?|()\\[\\]{}^$;`"\']/', '', $search);
+            if ($escapedSearch !== '') {
+                $safeColumns = array_filter($columns, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $col['name']));
+                $searchQuery = '{$or: ['.implode(',', array_map(fn ($col) => "{{$col['name']}: /.*{$escapedSearch}.*/i}}", $safeColumns)).']}';
+            }
         }
 
         // Build sort query

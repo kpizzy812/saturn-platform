@@ -373,27 +373,27 @@ class MysqlMetricsService
         $columns = $this->getColumns($server, $database, $tableName);
         $columnNames = array_map(fn ($c) => $c['name'], $columns);
 
-        // Escape table name to prevent SQL injection
+        // Validate and escape table name to prevent SQL injection
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName)) {
+            return ['rows' => [], 'total' => 0, 'columns' => $columns];
+        }
         $escapedTableName = str_replace('`', '``', $tableName);
 
         // Build WHERE clause
         $whereConditions = [];
 
-        // Add search condition if provided
+        // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
-            $escapedSearch = str_replace("'", "''", $search);
-            $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $columnNames);
-            $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
+            $escapedSearch = str_replace(["'", '"', '\\', ';', '--'], '', $search);
+            $escapedSearch = str_replace("'", "''", $escapedSearch);
+            $safeColumns = array_filter($columnNames, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col));
+            $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $safeColumns);
+            if (! empty($searchConditions)) {
+                $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
+            }
         }
 
-        // Add filter conditions if provided (convert PostgreSQL syntax to MySQL)
-        if ($filters !== '') {
-            // Convert PostgreSQL ILIKE to MySQL LIKE
-            $mysqlFilters = str_replace('ILIKE', 'LIKE', $filters);
-            // Convert double quotes to backticks for column names
-            $mysqlFilters = preg_replace('/"([^"]+)"/', '`$1`', $mysqlFilters);
-            $whereConditions[] = "({$mysqlFilters})";
-        }
+        // Raw $filters removed — was a SQL injection vector (V5 audit SEC-CRIT-2)
 
         $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 

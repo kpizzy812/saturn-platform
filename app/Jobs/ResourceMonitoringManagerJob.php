@@ -17,6 +17,10 @@ class ResourceMonitoringManagerJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 1;
+
+    public int $timeout = 60;
+
     public function __construct()
     {
         $this->onQueue('high');

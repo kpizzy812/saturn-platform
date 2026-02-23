@@ -509,8 +509,20 @@ class DatabaseMetricsController extends Controller
         }, errorPrefix: 'Failed to regenerate password');
     }
 
+    /**
+     * Validate table/collection name to prevent SQL/NoSQL injection.
+     */
+    private function validateTableName(string $tableName): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName);
+    }
+
     public function getTableColumns(string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         return $this->withDatabase($uuid, fn ($db, $server, $type) => $this->successResponse([
             'columns' => match ($type) {
                 'postgresql' => $this->postgresService->getColumns($server, $db, $tableName),
@@ -523,12 +535,21 @@ class DatabaseMetricsController extends Controller
 
     public function getTableData(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(100, max(10, (int) $request->input('per_page', 50)));
         $search = $request->input('search', '') ?? '';
         $orderBy = $request->input('order_by', '') ?? '';
         $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
-        $filters = $request->input('filters', '') ?? '';
+
+        // Sanitize search: strip SQL/NoSQL special chars
+        $search = preg_replace("/[;'\"\\\\%_\x00]/", '', $search);
+
+        // Remove raw $filters entirely — it was passed directly into SQL, creating injection risk
+        $filters = '';
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($tableName, $page, $perPage, $search, $orderBy, $orderDir, $filters) {
             $result = match ($type) {
@@ -553,6 +574,10 @@ class DatabaseMetricsController extends Controller
 
     public function updateTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $request->validate(['primary_key' => 'required|array', 'updates' => 'required|array']);
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($request, $tableName) {
@@ -569,6 +594,10 @@ class DatabaseMetricsController extends Controller
 
     public function deleteTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $request->validate(['primary_key' => 'required|array']);
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($request, $tableName) {
@@ -585,6 +614,10 @@ class DatabaseMetricsController extends Controller
 
     public function createTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $request->validate(['data' => 'required|array']);
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($request, $tableName) {

@@ -42,15 +42,18 @@ use App\Jobs\PushServerUpdateJob;
 use App\Models\Server;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/health', [OtherController::class, 'healthcheck']);
-Route::get('/healthcheck', [OtherController::class, 'healthcheck']);
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/health', [OtherController::class, 'healthcheck']);
+    Route::get('/healthcheck', [OtherController::class, 'healthcheck']);
+});
 Route::group([
     'prefix' => 'v1',
+    'middleware' => 'throttle:60,1',
 ], function () {
     Route::get('/health', [OtherController::class, 'healthcheck']);
 });
 
-Route::post('/feedback', [OtherController::class, 'feedback']);
+Route::post('/feedback', [OtherController::class, 'feedback'])->middleware('throttle:5,1');
 
 // CLI Device Auth Flow (public, no auth required)
 Route::prefix('v1/cli/auth')->middleware('throttle:10,1')->group(function () {

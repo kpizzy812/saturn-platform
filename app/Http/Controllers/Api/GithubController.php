@@ -205,6 +205,31 @@ class GithubController extends Controller
             'is_system_wide',
         ];
 
+        // Validate URLs against SSRF — only allow known Git hosting providers
+        $allowedHosts = ['github.com', 'api.github.com', 'gitlab.com', 'bitbucket.org', 'gitea.com', 'codeberg.org'];
+        foreach (['api_url', 'html_url'] as $urlField) {
+            $urlValue = $request->input($urlField, '');
+            if ($urlValue) {
+                $host = parse_url($urlValue, PHP_URL_HOST);
+                $isAllowed = false;
+                foreach ($allowedHosts as $allowedHost) {
+                    if ($host === $allowedHost || str_ends_with($host, '.'.$allowedHost)) {
+                        $isAllowed = true;
+                        break;
+                    }
+                }
+                // Allow self-hosted instances (non-private IPs)
+                if (! $isAllowed && $host) {
+                    $ip = gethostbyname($host);
+                    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                        return response()->json([
+                            'message' => "The {$urlField} points to a private or reserved IP range, which is not allowed.",
+                        ], 422);
+                    }
+                }
+            }
+        }
+
         $validator = customApiValidator($request->all(), [
             'name' => 'required|string|max:255',
             'organization' => 'nullable|string|max:255',

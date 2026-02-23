@@ -424,16 +424,18 @@ class PostgresMetricsService
         // Build WHERE clause
         $whereConditions = [];
 
-        // Add search condition if provided
+        // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
-            $searchConditions = array_map(fn ($col) => "CAST(\"{$col}\" AS TEXT) ILIKE '%{$search}%'", $columnNames);
-            $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
+            $escapedSearch = str_replace(["'", '"', '\\', ';', '--'], '', $search);
+            $escapedSearch = str_replace("'", "''", $escapedSearch);
+            $safeColumns = array_filter($columnNames, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col));
+            $searchConditions = array_map(fn ($col) => "CAST(\"{$col}\" AS TEXT) ILIKE '%{$escapedSearch}%'", $safeColumns);
+            if (! empty($searchConditions)) {
+                $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
+            }
         }
 
-        // Add filter conditions if provided
-        if ($filters !== '') {
-            $whereConditions[] = "({$filters})";
-        }
+        // Raw $filters removed — was a SQL injection vector (V5 audit SEC-CRIT-1)
 
         $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 
@@ -443,13 +445,20 @@ class PostgresMetricsService
             $orderClause = "ORDER BY \"{$orderBy}\" {$orderDir}";
         }
 
+        // Validate table name to prevent SQL injection
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName)) {
+            return ['rows' => [], 'total' => 0, 'columns' => $columns];
+        }
+
+        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
+
         // Get total count
-        $countQuery = "SELECT COUNT(*) FROM {$tableName} {$whereClause}";
+        $countQuery = "SELECT COUNT(*) FROM {$safeTableName} {$whereClause}";
         $countCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -c \"{$countQuery}\" 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
         // Get data
-        $dataQuery = "SELECT * FROM {$tableName} {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
+        $dataQuery = "SELECT * FROM {$safeTableName} {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
         $dataCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"{$dataQuery}\" 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
 

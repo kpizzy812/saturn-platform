@@ -149,12 +149,20 @@ class OtherController extends Controller
 
     public function feedback(Request $request)
     {
+        $request->validate([
+            'content' => 'required|string|max:2000',
+        ]);
+
         $content = $request->input('content');
         $webhook_url = config('constants.webhooks.feedback_discord_webhook');
         if ($webhook_url) {
-            Http::post($webhook_url, [
-                'content' => $content,
-            ]);
+            try {
+                Http::timeout(10)->post($webhook_url, [
+                    'content' => $content,
+                ]);
+            } catch (\Throwable $e) {
+                // Don't fail the request if Discord is down
+            }
         }
 
         return response()->json(['message' => 'Feedback sent.'], 200);
