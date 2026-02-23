@@ -536,6 +536,11 @@ Route::get('/observability/alerts', function () {
 
 // Alert CRUD routes
 Route::post('/observability/alerts', function (Request $request) {
+    // Only admins+ can create alerts
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to create alerts.');
+    }
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'metric' => 'required|string|in:cpu,memory,disk,error_rate,response_time',
@@ -554,6 +559,10 @@ Route::post('/observability/alerts', function (Request $request) {
 })->name('observability.alerts.store');
 
 Route::put('/observability/alerts/{id}', function (Request $request, int $id) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to update alerts.');
+    }
+
     $alert = \App\Models\Alert::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
 
     $validated = $request->validate([
@@ -572,6 +581,10 @@ Route::put('/observability/alerts/{id}', function (Request $request, int $id) {
 })->name('observability.alerts.update');
 
 Route::delete('/observability/alerts/{id}', function (string $id) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to delete alerts.');
+    }
+
     $alert = \App\Models\Alert::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
     $alert->delete();
 

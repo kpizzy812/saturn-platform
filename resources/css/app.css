@@ -391,6 +391,15 @@
     50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
 }
 
+/* Subtle icon wiggle */
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-10deg); }
+    40% { transform: rotate(8deg); }
+    60% { transform: rotate(-6deg); }
+    80% { transform: rotate(4deg); }
+}
+
 @layer utilities {
     /* Status indicator utilities */
     .status-online {
@@ -437,6 +446,10 @@
 
     .animate-glow-pulse {
         animation: glowPulse 2s ease-in-out infinite;
+    }
+
+    .group:hover .group-hover\:animate-wiggle {
+        animation: wiggle 0.4s ease-in-out;
     }
 
     .animate-building-border {

@@ -3,7 +3,6 @@ import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { useSearch } from '@/hooks/useSearch';
 import { usePaletteBrowse, type BrowseItem } from '@/hooks/usePaletteBrowse';
-import type { RecentResource } from '@/hooks/useRecentResources';
 import type { FavoriteItem } from '@/hooks/useFavorites';
 import {
     Search,
@@ -21,7 +20,6 @@ import {
     ArrowRightLeft,
     GitBranch,
     BarChart3,
-    Clock,
     Loader2,
     Star,
     ChevronRight,
@@ -87,14 +85,13 @@ const RESOURCE_ICONS: Record<string, React.ReactNode> = {
 
 const groupLabels: Record<string, string> = {
     favorites: 'Favorites',
-    recent: 'Recent',
     resources: 'Resources',
     navigation: 'Navigate',
     actions: 'Actions',
     settings: 'Settings',
 };
 
-const groupOrder = ['favorites', 'recent', 'resources', 'navigation', 'actions', 'settings'];
+const groupOrder = ['favorites', 'resources', 'navigation', 'actions', 'settings'];
 
 function browseItemToCommand(item: BrowseItem): CommandItem {
     const metaType = item.meta?.type;
@@ -124,13 +121,6 @@ function getResourceInfo(command: CommandItem): { type: string; id: string; name
     if (command.resourceType && command.resourceId) {
         return { type: command.resourceType, id: command.resourceId, name: command.name, href: command.href || '' };
     }
-    // For recent items: id format is "recent-{type}-{uuid}"
-    if (command.id.startsWith('recent-')) {
-        const parts = command.id.split('-');
-        if (parts.length >= 3) {
-            return { type: parts[1], id: parts.slice(2).join('-'), name: command.name, href: command.href || '' };
-        }
-    }
     // For search results: id format is "search-{type}-{uuid}"
     if (command.id.startsWith('search-')) {
         const parts = command.id.split('-');
@@ -144,13 +134,12 @@ function getResourceInfo(command: CommandItem): { type: string; id: string; name
 interface CommandPaletteProps {
     open: boolean;
     onClose: () => void;
-    recentItems?: RecentResource[];
     favorites?: FavoriteItem[];
     onToggleFavorite?: (item: FavoriteItem) => void;
     isFavorite?: (type: string, id: string) => boolean;
 }
 
-export function CommandPalette({ open, onClose, recentItems = [], favorites = [], onToggleFavorite, isFavorite }: CommandPaletteProps) {
+export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite, isFavorite }: CommandPaletteProps) {
     const [query, setQuery] = React.useState('');
     const [selectedIndex, setSelectedIndex] = React.useState(0);
     const [stack, setStack] = React.useState<DrillDownLevel[]>([]);
@@ -182,21 +171,6 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
             resourceId: item.id,
         }));
     }, [query, favorites, isInDrillDown]);
-
-    // Build recent items as CommandItems
-    const recentCommandItems: CommandItem[] = React.useMemo(() => {
-        if (query !== '' || isInDrillDown || recentItems.length === 0) return [];
-        return recentItems.map((item) => ({
-            id: `recent-${item.type}-${item.uuid}`,
-            name: item.name,
-            description: item.type.charAt(0).toUpperCase() + item.type.slice(1),
-            icon: <Clock className="h-4 w-4" />,
-            href: item.href,
-            group: 'recent',
-            resourceType: item.type,
-            resourceId: item.uuid,
-        }));
-    }, [query, recentItems, isInDrillDown]);
 
     // Build search results as CommandItems
     const searchCommandItems: CommandItem[] = React.useMemo(() => {
@@ -238,7 +212,7 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
     // Combine all items into groups
     const allItems = isInDrillDown
         ? drillDownCommandItems
-        : [...favoriteCommandItems, ...recentCommandItems, ...searchCommandItems, ...filteredCommands];
+        : [...favoriteCommandItems, ...searchCommandItems, ...filteredCommands];
 
     // Build grouped commands maintaining order
     const groupedCommands = isInDrillDown
