@@ -3,6 +3,7 @@ import { Head, Link } from '@inertiajs/react';
 import { Header } from './Header';
 import { FlashMessages } from './FlashMessages';
 import { CommandPalette, useCommandPalette } from '@/components/ui/CommandPalette';
+import { SaturnBackground } from '@/components/ui/SaturnBackground';
 import { PageTransition } from '@/components/animation';
 import { useFavorites } from '@/hooks/useFavorites';
 import { ChevronRight } from 'lucide-react';
@@ -63,7 +64,8 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
         <>
             <Head title={title ? `${title} | Saturn` : 'Saturn'} />
             <FlashMessages />
-            <div className="flex h-screen flex-col bg-background">
+            <SaturnBackground variant="subtle" />
+            <div className="relative z-10 flex h-screen flex-col">
                 <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
                 {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
                 <main className="flex-1 overflow-auto px-6 py-8">
