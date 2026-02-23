@@ -207,8 +207,7 @@ function NewProjectCard() {
     return (
         <Link
             href="/projects/create"
-            className="group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 bg-gradient-to-br from-background-secondary/30 to-transparent p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/10"
-            style={{ minHeight: '118px' }}
+            className="group relative flex h-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 bg-gradient-to-br from-background-secondary/30 to-transparent p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/10"
         >
             {/* Animated gradient background */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
