@@ -813,7 +813,7 @@ func TestDeploymentService_WaitForCompletion_ContextCancelled(t *testing.T) {
 
 	result, err := svc.WaitForCompletion(ctx, "dep-hang", 50*time.Millisecond, nil)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.False(t, result.Finished)
 	assert.Equal(t, "in_progress", result.Status)
 }
