@@ -1535,11 +1535,21 @@ Route::get('/settings/team/invite/data', function () {
         ->get()
         ->map(fn ($e) => ['id' => $e->id, 'name' => $e->name]);
 
+    // Build role → permission IDs mapping from system permission sets
+    $rolePermissions = [];
+    foreach (['admin', 'developer', 'member', 'viewer'] as $roleSlug) {
+        $systemSet = \App\Models\PermissionSet::getSystemSetForTeam($team->id, $roleSlug);
+        $rolePermissions[$roleSlug] = $systemSet
+            ? $systemSet->permissions()->pluck('permissions.id')->toArray()
+            : [];
+    }
+
     return response()->json([
         'projects' => $projects,
         'permissionSets' => $permissionSets,
         'allPermissions' => $allPermissions,
         'environments' => $environments,
+        'rolePermissions' => $rolePermissions,
     ]);
 })->name('settings.team.invite.data');
 
@@ -1807,7 +1817,7 @@ Route::post('/settings/notifications/discord', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->discordNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Discord notification settings saved successfully');
 })->name('settings.notifications.discord.update');
@@ -1823,7 +1833,7 @@ Route::post('/settings/notifications/slack', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->slackNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Slack notification settings saved successfully');
 })->name('settings.notifications.slack.update');
@@ -1839,7 +1849,7 @@ Route::post('/settings/notifications/telegram', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->telegramNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Telegram notification settings saved successfully');
 })->name('settings.notifications.telegram.update');
@@ -1855,7 +1865,7 @@ Route::post('/settings/notifications/email', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->emailNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Email notification settings saved successfully');
 })->name('settings.notifications.email.update');
@@ -1871,7 +1881,7 @@ Route::post('/settings/notifications/webhook', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->webhookNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Webhook notification settings saved successfully');
 })->name('settings.notifications.webhook.update');
@@ -1887,7 +1897,7 @@ Route::post('/settings/notifications/pushover', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->pushoverNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Pushover notification settings saved successfully');
 })->name('settings.notifications.pushover.update');

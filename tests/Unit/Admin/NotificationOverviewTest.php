@@ -59,10 +59,10 @@ it('telegram has 14 event flags', function () {
     expect(count($flags))->toBe(14);
 });
 
-it('email has 11 event flags', function () {
+it('email has 15 event flags', function () {
     $model = new EmailNotificationSettings;
     $flags = array_filter($model->getFillable(), fn ($f) => str_ends_with($f, '_email_notifications'));
-    expect(count($flags))->toBe(11);
+    expect(count($flags))->toBe(15);
 });
 
 it('pushover has 14 event flags', function () {

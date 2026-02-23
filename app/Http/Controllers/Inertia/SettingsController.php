@@ -750,7 +750,7 @@ class SettingsController extends Controller
         $team = auth()->user()->currentTeam();
         $settings = $team->discordNotificationSettings;
 
-        $settings->update($request->all());
+        $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
         return redirect()->back()->with('success', 'Discord notification settings saved successfully');
     }
@@ -774,7 +774,7 @@ class SettingsController extends Controller
         $team = auth()->user()->currentTeam();
         $settings = $team->slackNotificationSettings;
 
-        $settings->update($request->all());
+        $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
         return redirect()->back()->with('success', 'Slack notification settings saved successfully');
     }
@@ -798,7 +798,7 @@ class SettingsController extends Controller
         $team = auth()->user()->currentTeam();
         $settings = $team->telegramNotificationSettings;
 
-        $settings->update($request->all());
+        $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
         return redirect()->back()->with('success', 'Telegram notification settings saved successfully');
     }
@@ -822,7 +822,7 @@ class SettingsController extends Controller
         $team = auth()->user()->currentTeam();
         $settings = $team->emailNotificationSettings;
 
-        $settings->update($request->all());
+        $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
         return redirect()->back()->with('success', 'Email notification settings saved successfully');
     }
@@ -846,7 +846,7 @@ class SettingsController extends Controller
         $team = auth()->user()->currentTeam();
         $settings = $team->webhookNotificationSettings;
 
-        $settings->update($request->all());
+        $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
         return redirect()->back()->with('success', 'Webhook notification settings saved successfully');
     }
@@ -870,7 +870,7 @@ class SettingsController extends Controller
         $team = auth()->user()->currentTeam();
         $settings = $team->pushoverNotificationSettings;
 
-        $settings->update($request->all());
+        $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
         return redirect()->back()->with('success', 'Pushover notification settings saved successfully');
     }
