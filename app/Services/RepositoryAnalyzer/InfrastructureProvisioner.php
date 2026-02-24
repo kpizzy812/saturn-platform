@@ -275,6 +275,10 @@ class InfrastructureProvisioner
         // Build configuration
         $application->build_pack = $app->buildPack;
 
+        // Application type: user override takes priority, then detected mode
+        $applicationType = $overrides['application_type'] ?? $app->applicationMode;
+        $application->application_type = $applicationType;
+
         // Apply base_directory: user override takes priority
         if (! empty($overrides['base_directory'])) {
             $baseDir = $overrides['base_directory'];
@@ -285,7 +289,14 @@ class InfrastructureProvisioner
             $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
         }
 
-        $application->ports_exposes = (string) $app->defaultPort;
+        // Workers don't need ports; web/both apps use detected port or default to 80
+        if ($applicationType === 'worker') {
+            $application->ports_exposes = null;
+        } else {
+            $application->ports_exposes = $app->defaultPort > 0
+                ? (string) $app->defaultPort
+                : '80';
+        }
 
         // Apply CI config commands (install, build, start)
         if ($app->installCommand) {
@@ -310,34 +321,40 @@ class InfrastructureProvisioner
             }
         }
 
-        // Health check configuration — universal defaults that work for any app
-        // Dockerfile apps need longer start_period (migrations, compilation, etc.)
-        $isDockerfile = $app->buildPack === 'dockerfile' || $app->dockerfileInfo !== null;
-        $application->health_check_interval = 10;
-        $application->health_check_timeout = 5;
-        $application->health_check_retries = 10;
-        $application->health_check_start_period = $isDockerfile ? 30 : 15;
+        // Health check configuration
+        if ($applicationType === 'worker') {
+            // Workers don't serve HTTP — disable health check, use container stability check
+            $application->health_check_enabled = false;
+        } else {
+            // Universal defaults that work for any web app
+            // Dockerfile apps need longer start_period (migrations, compilation, etc.)
+            $isDockerfile = $app->buildPack === 'dockerfile' || $app->dockerfileInfo !== null;
+            $application->health_check_interval = 10;
+            $application->health_check_timeout = 5;
+            $application->health_check_retries = 10;
+            $application->health_check_start_period = $isDockerfile ? 30 : 15;
 
-        if ($app->healthCheck) {
-            $application->health_check_enabled = true;
-            $application->health_check_path = $app->healthCheck->path;
-            $application->health_check_method = $app->healthCheck->method ?? 'GET';
+            if ($app->healthCheck) {
+                $application->health_check_enabled = true;
+                $application->health_check_path = $app->healthCheck->path;
+                $application->health_check_method = $app->healthCheck->method ?? 'GET';
 
-            // Use detected values if more generous than defaults
-            if ($app->healthCheck->intervalSeconds > 0) {
-                $application->health_check_interval = $app->healthCheck->intervalSeconds;
-            }
-            if ($app->healthCheck->timeoutSeconds > 0) {
-                $application->health_check_timeout = $app->healthCheck->timeoutSeconds;
-            }
-            if ($app->healthCheck->retries > 0) {
-                $application->health_check_retries = max($app->healthCheck->retries, 10);
-            }
-            if ($app->healthCheck->startPeriodSeconds > 0) {
-                $application->health_check_start_period = max(
-                    $app->healthCheck->startPeriodSeconds,
-                    $application->health_check_start_period
-                );
+                // Use detected values if more generous than defaults
+                if ($app->healthCheck->intervalSeconds > 0) {
+                    $application->health_check_interval = $app->healthCheck->intervalSeconds;
+                }
+                if ($app->healthCheck->timeoutSeconds > 0) {
+                    $application->health_check_timeout = $app->healthCheck->timeoutSeconds;
+                }
+                if ($app->healthCheck->retries > 0) {
+                    $application->health_check_retries = max($app->healthCheck->retries, 10);
+                }
+                if ($app->healthCheck->startPeriodSeconds > 0) {
+                    $application->health_check_start_period = max(
+                        $app->healthCheck->startPeriodSeconds,
+                        $application->health_check_start_period
+                    );
+                }
             }
         }
 
@@ -346,10 +363,15 @@ class InfrastructureProvisioner
             $application->monorepo_group_id = $groupId;
         }
 
-        // Generate FQDN from project name + short ID (e.g. "pix11-a1b2c3.saturn.ac")
-        $projectName = $environment->project?->name;
-        $slug = generateSubdomainFromName($application->name, $server, $projectName);
-        $application->fqdn = generateFqdn($server, $slug);
+        // Workers don't need a domain — no HTTP traffic to route
+        if ($applicationType === 'worker') {
+            $application->fqdn = null;
+        } else {
+            // Generate FQDN from project name + short ID (e.g. "pix11-a1b2c3.saturn.ac")
+            $projectName = $environment->project?->name;
+            $slug = generateSubdomainFromName($application->name, $server, $projectName);
+            $application->fqdn = generateFqdn($server, $slug);
+        }
 
         $application->save();
 

@@ -22,6 +22,7 @@ readonly class DetectedApp
         public ?string $nodeVersion = null,
         public ?string $pythonVersion = null,
         public ?DockerfileInfo $dockerfileInfo = null,
+        public string $applicationMode = 'web',  // web, worker, both
     ) {}
 
     /**
@@ -44,6 +45,7 @@ readonly class DetectedApp
             nodeVersion: $this->nodeVersion,
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
         );
     }
 
@@ -67,6 +69,7 @@ readonly class DetectedApp
             nodeVersion: $ci->nodeVersion ?? $this->nodeVersion,
             pythonVersion: $ci->pythonVersion ?? $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
         );
     }
 
@@ -90,6 +93,7 @@ readonly class DetectedApp
             nodeVersion: $this->nodeVersion,
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
         );
     }
 
@@ -113,6 +117,31 @@ readonly class DetectedApp
             nodeVersion: $dockerfileInfo->getNodeVersion() ?? $this->nodeVersion,
             pythonVersion: $dockerfileInfo->getPythonVersion() ?? $this->pythonVersion,
             dockerfileInfo: $dockerfileInfo,
+            applicationMode: $this->applicationMode,
+        );
+    }
+
+    /**
+     * Create a new instance with application mode
+     */
+    public function withApplicationMode(string $mode): self
+    {
+        return new self(
+            name: $this->name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $this->nodeVersion,
+            pythonVersion: $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $mode,
         );
     }
 
@@ -138,6 +167,7 @@ readonly class DetectedApp
             'node_version' => $this->nodeVersion,
             'python_version' => $this->pythonVersion,
             'dockerfile_info' => $this->dockerfileInfo?->toArray(),
+            'application_mode' => $this->applicationMode,
         ];
     }
 

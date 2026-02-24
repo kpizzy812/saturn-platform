@@ -318,13 +318,18 @@ class AppDetector
                 }
             }
 
+            $port = $this->extractPortFromDockerfile($appPath.'/Dockerfile');
+            // No EXPOSE in Dockerfile = likely a worker process (bot, queue consumer, etc.)
+            $applicationMode = $port === 0 ? 'worker' : 'web';
+
             return new DetectedApp(
                 name: $this->inferAppName($appPath, $relativePath),
                 path: $relativePath,
                 framework: $detectedFramework,
                 buildPack: 'dockerfile',
-                defaultPort: $this->extractPortFromDockerfile($appPath.'/Dockerfile'),
+                defaultPort: $port,
                 type: $detectedType,
+                applicationMode: $applicationMode,
             );
         }
 
@@ -377,14 +382,16 @@ class AppDetector
         // Check for docker-compose.yml
         if (file_exists($appPath.'/docker-compose.yml') || file_exists($appPath.'/docker-compose.yaml')) {
             $relativePath = $this->getRelativePath($appPath, $repoPath);
+            $composePort = $this->extractPortFromDockerCompose($appPath);
 
             return new DetectedApp(
                 name: $this->inferAppName($appPath, $relativePath),
                 path: $relativePath,
                 framework: 'docker-compose',
                 buildPack: 'docker-compose',
-                defaultPort: 80,
+                defaultPort: $composePort,
                 type: 'unknown',
+                applicationMode: $composePort === 0 ? 'worker' : 'web',
             );
         }
 
@@ -739,7 +746,55 @@ class AppDetector
             }
         }
 
-        return 3000; // Default fallback
+        return 0; // No EXPOSE found — likely a worker process
+    }
+
+    /**
+     * Extract the first exposed port from docker-compose.yml services
+     *
+     * Returns 0 if no ports are exposed (worker-mode).
+     */
+    private function extractPortFromDockerCompose(string $appPath): int
+    {
+        $composePath = file_exists($appPath.'/docker-compose.yml')
+            ? $appPath.'/docker-compose.yml'
+            : $appPath.'/docker-compose.yaml';
+
+        $content = file_get_contents($composePath);
+        if ($content === false) {
+            return 0;
+        }
+
+        // Look for ports: definitions like "8080:80", "3000:3000", "80"
+        if (preg_match_all('/ports:\s*\n((?:\s+-\s*.+\n?)+)/m', $content, $portBlocks)) {
+            foreach ($portBlocks[1] as $block) {
+                // Match port mappings: "8080:80", "3000", "80:80/tcp"
+                if (preg_match_all('/["\']?(\d+)(?::(\d+))?(?:\/\w+)?["\']?/', $block, $ports)) {
+                    foreach ($ports[2] as $i => $containerPort) {
+                        $port = ! empty($containerPort) ? (int) $containerPort : (int) $ports[1][$i];
+                        if ($port > 0 && $port <= 65535) {
+                            return $port;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Look for EXPOSE in any Dockerfile referenced by docker-compose
+        if (preg_match_all('/build:\s*(?:\.|\w|\/)+/', $content, $builds)) {
+            foreach ($builds[0] as $build) {
+                $buildContext = trim(str_replace('build:', '', $build));
+                $dockerfilePath = $appPath.'/'.$buildContext.'/Dockerfile';
+                if (file_exists($dockerfilePath)) {
+                    $port = $this->extractPortFromDockerfile($dockerfilePath);
+                    if ($port > 0) {
+                        return $port;
+                    }
+                }
+            }
+        }
+
+        return 0; // No ports found — likely a worker
     }
 
     private function extractPortFromProcfile(string $procfilePath): int

@@ -36,7 +36,7 @@ use Visus\Cuid2\Cuid2;
  * @property string $uuid
  * @property string $name
  * @property string|null $fqdn
- * @property string $ports_exposes
+ * @property string|null $ports_exposes
  * @property string|null $ports_mappings
  * @property string|null $git_repository
  * @property string|null $git_branch

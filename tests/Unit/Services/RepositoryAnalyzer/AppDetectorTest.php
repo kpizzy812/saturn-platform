@@ -185,4 +185,117 @@ class AppDetectorTest extends TestCase
         $this->assertEquals('go-fiber', $apps[0]->framework);
         $this->assertEquals(3000, $apps[0]->defaultPort);
     }
+
+    // ── Worker Mode Detection ──────────────────────────────────────
+
+    public function test_dockerfile_without_expose_is_worker(): void
+    {
+        file_put_contents($this->tempDir.'/Dockerfile', "FROM python:3.12\nCOPY . .\nCMD [\"python\", \"bot.py\"]");
+
+        $apps = $this->detector->detectSingleApp($this->tempDir);
+
+        $this->assertCount(1, $apps);
+        $this->assertEquals('dockerfile', $apps[0]->buildPack);
+        $this->assertEquals(0, $apps[0]->defaultPort);
+        $this->assertEquals('worker', $apps[0]->applicationMode);
+    }
+
+    public function test_dockerfile_with_expose_is_web(): void
+    {
+        file_put_contents($this->tempDir.'/Dockerfile', "FROM node:20\nEXPOSE 3000\nCMD [\"node\", \"server.js\"]");
+
+        $apps = $this->detector->detectSingleApp($this->tempDir);
+
+        $this->assertCount(1, $apps);
+        $this->assertEquals(3000, $apps[0]->defaultPort);
+        $this->assertEquals('web', $apps[0]->applicationMode);
+    }
+
+    public function test_docker_compose_without_ports_is_worker(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+version: '3.8'
+services:
+  bot:
+    build: .
+    environment:
+      - BOT_TOKEN=xxx
+  redis:
+    image: redis:7
+YAML);
+
+        $apps = $this->detector->detectSingleApp($this->tempDir);
+
+        $this->assertCount(1, $apps);
+        $this->assertEquals('docker-compose', $apps[0]->buildPack);
+        $this->assertEquals(0, $apps[0]->defaultPort);
+        $this->assertEquals('worker', $apps[0]->applicationMode);
+    }
+
+    public function test_docker_compose_with_ports_is_web(): void
+    {
+        file_put_contents($this->tempDir.'/docker-compose.yml', <<<'YAML'
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+  redis:
+    image: redis:7
+YAML);
+
+        $apps = $this->detector->detectSingleApp($this->tempDir);
+
+        $this->assertCount(1, $apps);
+        $this->assertEquals('docker-compose', $apps[0]->buildPack);
+        $this->assertEquals(80, $apps[0]->defaultPort);
+        $this->assertEquals('web', $apps[0]->applicationMode);
+    }
+
+    public function test_framework_apps_default_to_web_mode(): void
+    {
+        file_put_contents($this->tempDir.'/package.json', json_encode([
+            'dependencies' => ['@nestjs/core' => '^10.0.0'],
+        ]));
+
+        $apps = $this->detector->detectSingleApp($this->tempDir);
+
+        $this->assertCount(1, $apps);
+        $this->assertEquals('web', $apps[0]->applicationMode);
+    }
+
+    public function test_detected_app_to_array_includes_application_mode(): void
+    {
+        $app = new \App\Services\RepositoryAnalyzer\DTOs\DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'dockerfile',
+            buildPack: 'dockerfile',
+            defaultPort: 0,
+            applicationMode: 'worker',
+        );
+
+        $array = $app->toArray();
+
+        $this->assertArrayHasKey('application_mode', $array);
+        $this->assertEquals('worker', $array['application_mode']);
+    }
+
+    public function test_detected_app_with_application_mode(): void
+    {
+        $app = new \App\Services\RepositoryAnalyzer\DTOs\DetectedApp(
+            name: 'api',
+            path: '.',
+            framework: 'nestjs',
+            buildPack: 'nixpacks',
+            defaultPort: 3000,
+        );
+
+        $this->assertEquals('web', $app->applicationMode);
+
+        $worker = $app->withApplicationMode('worker');
+        $this->assertEquals('worker', $worker->applicationMode);
+        $this->assertEquals('api', $worker->name); // Other fields preserved
+    }
 }

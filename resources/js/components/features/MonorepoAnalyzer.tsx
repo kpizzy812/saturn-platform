@@ -14,6 +14,8 @@ interface DetectedHealthCheck {
     timeout: number;
 }
 
+type ApplicationMode = 'web' | 'worker' | 'both';
+
 interface DetectedApp {
     name: string;
     path: string;
@@ -28,6 +30,7 @@ interface DetectedApp {
     node_version?: string;
     python_version?: string;
     dockerfile_info?: DockerfileInfo;
+    application_mode?: ApplicationMode;
 }
 
 interface DetectedDatabase {
@@ -167,7 +170,7 @@ export function MonorepoAnalyzer({
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
     const [selectedApps, setSelectedApps] = useState<Record<string, boolean>>({});
     const [selectedDbs, setSelectedDbs] = useState<Record<string, boolean>>({});
-    const [appConfigs, setAppConfigs] = useState<Record<string, { base_directory: string; env_vars: Array<{ key: string; value: string }> }>>({});
+    const [appConfigs, setAppConfigs] = useState<Record<string, { base_directory: string; application_type: ApplicationMode; env_vars: Array<{ key: string; value: string }> }>>({});
     const [error, setError] = useState<string | null>(null);
     const autoStarted = useRef(false);
 
@@ -201,7 +204,7 @@ export function MonorepoAnalyzer({
 
             // Pre-select all apps and databases
             const apps: Record<string, boolean> = {};
-            const configs: Record<string, { base_directory: string; env_vars: Array<{ key: string; value: string }> }> = {};
+            const configs: Record<string, { base_directory: string; application_type: ApplicationMode; env_vars: Array<{ key: string; value: string }> }> = {};
             result.applications.forEach(app => {
                 apps[app.name] = true;
                 // Build env vars from detected env_variables for this app
@@ -210,6 +213,7 @@ export function MonorepoAnalyzer({
                     .map(v => ({ key: v.key, value: '' }));
                 configs[app.name] = {
                     base_directory: app.path === '.' ? '/' : '/' + app.path.replace(/^\//, ''),
+                    application_type: app.application_mode || 'web',
                     env_vars: appEnvVars,
                 };
             });
@@ -249,6 +253,7 @@ export function MonorepoAnalyzer({
                     name: app.name,
                     enabled: selectedApps[app.name] ?? false,
                     base_directory: appConfigs[app.name]?.base_directory ?? app.path,
+                    application_type: appConfigs[app.name]?.application_type ?? app.application_mode ?? 'web',
                     env_vars: (appConfigs[app.name]?.env_vars ?? []).filter(v => v.key && v.value),
                 })),
                 databases: analysis.databases.map(db => ({
@@ -287,6 +292,17 @@ export function MonorepoAnalyzer({
                 return <Badge variant="outline" size="sm" className="ml-2">Frontend</Badge>;
             case 'fullstack':
                 return <Badge variant="primary" size="sm" className="ml-2">Full-stack</Badge>;
+            default:
+                return null;
+        }
+    };
+
+    const getAppModeBadge = (mode: ApplicationMode) => {
+        switch (mode) {
+            case 'worker':
+                return <Badge variant="warning" size="sm" className="ml-2">Worker</Badge>;
+            case 'both':
+                return <Badge variant="primary" size="sm" className="ml-2">Web + Worker</Badge>;
             default:
                 return null;
         }
@@ -441,6 +457,7 @@ export function MonorepoAnalyzer({
                                                 <div className="font-medium flex items-center">
                                                     {app.name}
                                                     {getAppTypeBadge(app.type)}
+                                                    {getAppModeBadge(appConfigs[app.name]?.application_type ?? app.application_mode ?? 'web')}
                                                     {appDep && appDep.deploy_order !== undefined && (
                                                         <Badge variant="outline" size="sm" className="ml-2">
                                                             Deploy #{appDep.deploy_order + 1}
@@ -448,7 +465,13 @@ export function MonorepoAnalyzer({
                                                     )}
                                                 </div>
                                                 <div className="text-sm text-foreground-muted">
-                                                    {app.path} • {app.framework} • Port {app.default_port}
+                                                    {app.path} • {app.framework}
+                                                    {(appConfigs[app.name]?.application_type ?? app.application_mode) !== 'worker' && (
+                                                        <> • Port {app.default_port || 80}</>
+                                                    )}
+                                                    {(appConfigs[app.name]?.application_type ?? app.application_mode) === 'worker' && (
+                                                        <> • No HTTP port</>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -559,6 +582,23 @@ export function MonorepoAnalyzer({
                                         {/* Editable Config */}
                                         {selectedApps[app.name] && appConfigs[app.name] && (
                                             <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
+                                                {/* Application Type */}
+                                                <div className="flex items-center gap-2">
+                                                    <label className="text-sm text-foreground-muted whitespace-nowrap w-24">App Type</label>
+                                                    <select
+                                                        value={appConfigs[app.name].application_type}
+                                                        onChange={(e) => setAppConfigs(prev => ({
+                                                            ...prev,
+                                                            [app.name]: { ...prev[app.name], application_type: e.target.value as ApplicationMode },
+                                                        }))}
+                                                        className="h-8 text-sm bg-background-secondary border border-white/[0.06] rounded px-2 py-1"
+                                                    >
+                                                        <option value="web">Web (HTTP)</option>
+                                                        <option value="worker">Worker (no HTTP)</option>
+                                                        <option value="both">Web + Worker</option>
+                                                    </select>
+                                                </div>
+
                                                 {/* Base Directory */}
                                                 <div className="flex items-center gap-2">
                                                     <label className="text-sm text-foreground-muted whitespace-nowrap w-24">Base Dir</label>

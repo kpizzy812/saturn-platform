@@ -26,6 +26,7 @@ class ProvisionGitRequest extends FormRequest
             'applications.*.name' => ['required', 'string'],
             'applications.*.enabled' => ['required', 'boolean'],
             'applications.*.base_directory' => ['nullable', 'string', 'max:255'],
+            'applications.*.application_type' => ['nullable', 'string', 'in:web,worker,both'],
             'applications.*.env_vars' => ['nullable', 'array'],
             'applications.*.env_vars.*.key' => ['required', 'string', 'max:255'],
             'applications.*.env_vars.*.value' => ['required', 'string', 'max:10000'],

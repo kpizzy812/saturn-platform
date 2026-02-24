@@ -129,6 +129,7 @@ class GitAnalyzerController extends Controller
                 ->keyBy('name')
                 ->map(fn ($a) => array_filter([
                     'base_directory' => $a['base_directory'] ?? null,
+                    'application_type' => $a['application_type'] ?? null,
                     'env_vars' => $a['env_vars'] ?? null,
                 ]))
                 ->toArray();
