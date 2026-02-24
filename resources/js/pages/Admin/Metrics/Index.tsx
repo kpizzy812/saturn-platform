@@ -2,7 +2,7 @@ import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Button, Select } from '@/components/ui';
+import { Button } from '@/components/ui';
 import {
     TrendingUp,
     TrendingDown,

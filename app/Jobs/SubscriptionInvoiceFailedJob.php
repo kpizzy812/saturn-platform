@@ -69,6 +69,7 @@ class SubscriptionInvoiceFailedJob implements ShouldBeEncrypted, ShouldQueue
                         }
                     }
                 } catch (\Exception $e) {
+                    Log::warning('Stripe API check failed during invoice failure handling', ['team_id' => $this->team->id, 'error' => $e->getMessage()]);
                 }
             }
 

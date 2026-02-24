@@ -17,6 +17,7 @@ use App\Services\RepositoryAnalyzer\DTOs\AnalysisResult;
 use App\Services\RepositoryAnalyzer\DTOs\AppDependency;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase;
+use App\Services\RepositoryAnalyzer\DTOs\DetectedPersistentVolume;
 use App\Services\RepositoryAnalyzer\Exceptions\ProvisioningException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -92,6 +93,9 @@ class InfrastructureProvisioner
 
                 // 6. Apply user-provided env variable overrides
                 $this->applyEnvVarOverrides($createdApps, $appOverrides);
+
+                // 7. Create persistent volumes for file-based databases (SQLite)
+                $this->createPersistentVolumes($createdApps, $analysis->persistentVolumes);
 
                 return new ProvisioningResult(
                     applications: $createdApps,
@@ -556,6 +560,50 @@ class InfrastructureProvisioner
                     ]
                 );
             }
+        }
+    }
+
+    /**
+     * Create persistent volumes for file-based databases (e.g., SQLite)
+     *
+     * Unlike PostgreSQL/MySQL which run as separate containers, SQLite stores
+     * data in a file inside the app container. Without a persistent volume,
+     * this file is lost on every redeployment. This method auto-creates the
+     * volume and sets the appropriate environment variable.
+     *
+     * @param  Application[]  $createdApps
+     * @param  DetectedPersistentVolume[]  $persistentVolumes
+     */
+    private function createPersistentVolumes(array $createdApps, array $persistentVolumes): void
+    {
+        foreach ($persistentVolumes as $volume) {
+            $application = $createdApps[$volume->forApp] ?? null;
+            if (! $application) {
+                continue;
+            }
+
+            // Create persistent volume mount
+            $application->persistentStorages()->create([
+                'name' => $volume->name,
+                'mount_path' => $volume->mountPath,
+            ]);
+
+            // Set env var so the app knows where to store the database file
+            if ($volume->envVarName && $volume->envVarValue) {
+                $application->environment_variables()->updateOrCreate(
+                    ['key' => $volume->envVarName],
+                    [
+                        'value' => $volume->envVarValue,
+                        'is_buildtime' => false,
+                    ]
+                );
+            }
+
+            $this->logger->info('Auto-created persistent volume for SQLite', [
+                'app' => $volume->forApp,
+                'mount_path' => $volume->mountPath,
+                'reason' => $volume->reason,
+            ]);
         }
     }
 

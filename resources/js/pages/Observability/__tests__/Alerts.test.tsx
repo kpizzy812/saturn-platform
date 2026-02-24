@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ObservabilityAlerts from '../Alerts';
 
@@ -186,9 +186,6 @@ describe('ObservabilityAlerts', () => {
     it('opens edit modal with pre-filled data', () => {
         render(<ObservabilityAlerts alerts={sampleAlerts} />);
         // Click edit button (Edit icon button)
-        const editButtons = screen.getAllByRole('button').filter(btn =>
-            btn.querySelector('svg')
-        );
         // Find the Edit button specifically
         const editButton = screen.getAllByRole('button')[4]; // after header button, stats, toggle, this is edit
         fireEvent.click(editButton);

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\RateLimitException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class HetznerService
 {
@@ -129,14 +130,14 @@ class HetznerService
 
     public function createServer(array $params): array
     {
-        ray('Hetzner createServer request', [
+        Log::debug('Hetzner createServer request', [
             'endpoint' => '/servers',
             'params' => $params,
         ]);
 
         $response = $this->request('post', '/servers', $params);
 
-        ray('Hetzner createServer response', [
+        Log::debug('Hetzner createServer response', [
             'response' => $response,
         ]);
 

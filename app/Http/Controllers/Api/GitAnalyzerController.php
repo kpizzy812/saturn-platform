@@ -174,6 +174,12 @@ class GitAnalyzerController extends Controller
                         'name' => $d->name,
                         'type' => $d->database_type ?? $d->type ?? 'unknown',
                     ])->values(),
+                    'persistent_volumes' => collect($analysis->persistentVolumes)->map(fn ($v) => [
+                        'name' => $v->name,
+                        'mount_path' => $v->mountPath,
+                        'reason' => $v->reason,
+                        'for_app' => $v->forApp,
+                    ])->values(),
                     'monorepo_group_id' => $result->monorepoGroupId,
                 ],
             ]);
@@ -259,6 +265,7 @@ class GitAnalyzerController extends Controller
      * Clone repository to temporary directory
      *
      * Uses Laravel Process for better timeout handling and security.
+     * For private repos, authenticates via GitHub App installation token.
      *
      * @throws \RuntimeException
      */
@@ -266,9 +273,34 @@ class GitAnalyzerController extends Controller
     {
         $tempPath = sys_get_temp_dir().'/saturn-repo-'.Str::uuid();
 
-        // Build clone command with proper escaping
         $branch = $config['git_branch'] ?? 'main';
         $repository = $config['git_repository'];
+
+        // If github_app_id provided, get installation token for authenticated clone
+        if (! empty($config['github_app_id'])) {
+            $githubApp = GithubApp::where('id', $config['github_app_id'])
+                ->where(function ($query) {
+                    $query->where('team_id', currentTeam()->id)
+                        ->orWhere('is_system_wide', true);
+                })
+                ->first();
+
+            if ($githubApp && $githubApp->installation_id) {
+                try {
+                    $token = generateGithubInstallationToken($githubApp);
+                    // Replace https://github.com/owner/repo with token-authenticated URL
+                    $repository = preg_replace(
+                        '#^https://github\.com/#',
+                        "https://x-access-token:{$token}@github.com/",
+                        $repository
+                    );
+                } catch (\Throwable $e) {
+                    throw new \RuntimeException(
+                        'Failed to authenticate with GitHub App: '.$e->getMessage()
+                    );
+                }
+            }
+        }
 
         // Use Laravel Process facade for timeout support
         $result = Process::timeout(self::CLONE_TIMEOUT)
@@ -344,6 +376,12 @@ class GitAnalyzerController extends Controller
             fn ($dep) => in_array($dep->appName, $enabledApps, true)
         );
 
+        // Filter persistent volumes to only include enabled apps
+        $filteredVolumes = array_filter(
+            $analysis->persistentVolumes,
+            fn ($vol) => in_array($vol->forApp, $enabledApps, true)
+        );
+
         // Return new AnalysisResult with filtered data
         return new AnalysisResult(
             monorepo: $analysis->monorepo,
@@ -354,6 +392,7 @@ class GitAnalyzerController extends Controller
             appDependencies: array_values($filteredAppDeps),
             dockerComposeServices: $analysis->dockerComposeServices,
             ciConfig: $analysis->ciConfig,
+            persistentVolumes: array_values($filteredVolumes),
         );
     }
 }

@@ -8,7 +8,7 @@ import { SaturnLogo } from '@/components/ui/SaturnLogo';
 import { TeamSwitcher } from '@/components/ui/TeamSwitcher';
 import { useTheme } from '@/components/ui/ThemeProvider';
 
-const UserMenuButton = React.forwardRef<HTMLButtonElement, { user: { name?: string; email?: string; avatar?: string } | undefined }>(
+const UserMenuButton = React.forwardRef<HTMLButtonElement, { user: { name?: string; email?: string; avatar?: string | null } | null | undefined }>(
     function UserMenuButton({ user, ...props }, ref) {
         const { isOpen } = useDropdown();
         return (

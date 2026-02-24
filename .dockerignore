@@ -16,6 +16,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/bootstrap/cache/*.php
 /.npm
 /.bash_history
 /_data

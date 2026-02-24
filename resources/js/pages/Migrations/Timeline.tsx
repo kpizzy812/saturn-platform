@@ -3,7 +3,7 @@ import { Button, Badge } from '@/components/ui';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { ArrowLeft, ArrowRight, Clock, CheckCircle, XCircle, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import type { EnvironmentMigration, EnvironmentMigrationStatus } from '@/types';
+import type { EnvironmentMigration } from '@/types';
 
 interface EnvInfo {
     id: number;

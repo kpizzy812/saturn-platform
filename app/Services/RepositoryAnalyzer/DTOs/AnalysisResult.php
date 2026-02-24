@@ -14,6 +14,7 @@ class AnalysisResult
      * @param  DetectedEnvVariable[]  $envVariables
      * @param  AppDependency[]  $appDependencies
      * @param  DockerComposeService[]  $dockerComposeServices
+     * @param  DetectedPersistentVolume[]  $persistentVolumes
      */
     public function __construct(
         public MonorepoInfo $monorepo,
@@ -24,6 +25,7 @@ class AnalysisResult
         public array $appDependencies = [],
         public array $dockerComposeServices = [],
         public ?CIConfig $ciConfig = null,
+        public array $persistentVolumes = [],
     ) {}
 
     public function toArray(): array
@@ -65,6 +67,7 @@ class AnalysisResult
                 'node_version' => $this->ciConfig->nodeVersion,
                 'detected_from' => $this->ciConfig->detectedFrom,
             ] : null,
+            'persistent_volumes' => array_map(fn ($v) => $v->toArray(), $this->persistentVolumes),
         ];
     }
 }

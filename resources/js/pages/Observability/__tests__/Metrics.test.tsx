@@ -52,7 +52,7 @@ const sampleServers = [
 
 beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ metrics: {}, historicalData: {} }),
     });

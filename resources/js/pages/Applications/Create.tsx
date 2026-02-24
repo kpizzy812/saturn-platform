@@ -115,12 +115,12 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         fetchBranches,
     } = useGitBranches({ debounceMs: 600 });
 
-    // Fetch branches when repository URL changes
+    // Fetch branches when repository URL changes (only in manual mode)
     useEffect(() => {
-        if (formData.git_repository && formData.source_type !== 'docker') {
+        if (formData.git_repository && formData.source_type !== 'docker' && repoMode === 'manual') {
             fetchBranches(formData.git_repository);
         }
-    }, [formData.git_repository, formData.source_type, fetchBranches]);
+    }, [formData.git_repository, formData.source_type, repoMode, fetchBranches]);
 
     // Set default branch when branches are loaded
     useEffect(() => {
@@ -1036,6 +1036,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                             <MonorepoAnalyzer
                                 gitRepository={formData.git_repository}
                                 gitBranch={formData.git_branch}
+                                githubAppId={repoMode === 'picker' ? selectedGithubApp?.id : undefined}
                                 environmentUuid={formData.environment_uuid}
                                 destinationUuid={formData.server_uuid}
                                 onComplete={handleMonorepoComplete}
