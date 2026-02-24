@@ -61,6 +61,13 @@ class RepositoryAnalyzer
             $dockerComposeResult = $this->dockerComposeAnalyzer->analyze($repoPath);
             $dockerComposeServices = $dockerComposeResult['services'];
 
+            $this->logger->info('[RepositoryAnalyzer] Docker-compose analysis', [
+                'services_count' => count($dockerComposeServices),
+                'databases_count' => count($dockerComposeResult['databases']),
+                'external_services_count' => count($dockerComposeResult['externalServices']),
+                'service_names' => array_map(fn ($s) => $s->name, $dockerComposeServices),
+            ]);
+
             // Step 4: Detect CI/CD configuration (repo-level)
             $ciConfig = $this->ciConfigDetector->detect($repoPath);
 

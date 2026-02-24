@@ -159,7 +159,12 @@ class DockerComposeAnalyzer
                 'databases' => $databases,
                 'externalServices' => $externalServices,
             ];
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('[DockerComposeAnalyzer] Failed to parse compose file', [
+                'file' => $filePath,
+                'error' => $e->getMessage(),
+            ]);
+
             return ['services' => [], 'databases' => [], 'externalServices' => []];
         }
     }

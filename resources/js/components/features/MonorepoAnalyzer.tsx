@@ -268,10 +268,14 @@ export function MonorepoAnalyzer({
             setAppConfigs(configs);
             setExpandedApps(expanded);
 
-            // Only pre-select standalone databases (not compose-included)
+            // Pre-select databases: if no app uses docker-compose build pack,
+            // compose-included DBs should also be pre-selected (user needs managed DBs)
+            const hasAnyDockerComposeApp = result.applications.some(
+                a => a.build_pack === 'docker-compose'
+            );
             const dbs: Record<string, boolean> = {};
             result.databases.forEach(db => {
-                dbs[db.type] = !isComposeIncludedDb(db);
+                dbs[db.type] = hasAnyDockerComposeApp ? !isComposeIncludedDb(db) : true;
             });
             setSelectedDbs(dbs);
         } catch (err: unknown) {
@@ -340,9 +344,25 @@ export function MonorepoAnalyzer({
     const selectedDbCount = Object.values(selectedDbs).filter(Boolean).length;
     const hasSelectedApps = selectedAppCount > 0;
 
-    // Separate compose-included DBs from standalone DBs
-    const composeIncludedDbs = analysis?.databases.filter(isComposeIncludedDb) ?? [];
-    const standaloneDbs = analysis?.databases.filter(db => !isComposeIncludedDb(db)) ?? [];
+    // If any app uses docker-compose build pack, compose DBs are managed by compose itself.
+    // Otherwise, ALL databases should be shown as standalone (user needs managed instances).
+    const hasDockerComposeApp = analysis?.applications.some(
+        app => app.build_pack === 'docker-compose' && selectedApps[app.name]
+    ) ?? false;
+    const composeIncludedDbs = hasDockerComposeApp
+        ? analysis?.databases.filter(isComposeIncludedDb) ?? []
+        : [];
+    const standaloneDbs = hasDockerComposeApp
+        ? analysis?.databases.filter(db => !isComposeIncludedDb(db)) ?? []
+        : analysis?.databases ?? [];
+
+    // Non-database compose services that aren't the main app (e.g. hummingbot).
+    // Filter out services that use `build:` (these are the app itself, already detected via Dockerfile).
+    const extraComposeServices = (analysis?.docker_compose_services ?? []).filter(
+        s => !s.is_database
+            && !s.image.startsWith('build:')
+            && !analysis?.applications.some(a => a.name === s.name)
+    );
 
     // ── Analyze screen ──────────────────────────────────────────────
 
@@ -719,6 +739,45 @@ export function MonorepoAnalyzer({
                                 </div>
                             ))}
                         </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Additional Compose Services (not DB, not main app — e.g. hummingbot) */}
+            {!hasDockerComposeApp && extraComposeServices.length > 0 && (
+                <Card className="border-warning/30">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-warning">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            Additional Compose Services
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {extraComposeServices.map(service => (
+                                <div
+                                    key={service.name}
+                                    className="flex items-center gap-2 p-2 bg-background-secondary rounded text-sm"
+                                >
+                                    <span>📦</span>
+                                    <div className="min-w-0">
+                                        <span className="font-medium">{service.name}</span>
+                                        <span className="text-foreground-muted ml-2 text-xs">{service.image}</span>
+                                        {service.ports.length > 0 && (
+                                            <span className="text-foreground-muted ml-2 text-xs">({service.ports.join(', ')})</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <p className="text-xs text-foreground-muted mt-2">
+                            These services were found in docker-compose.yml but won't be deployed automatically.
+                            Deploy them separately or use external providers.
+                        </p>
                     </CardContent>
                 </Card>
             )}
