@@ -151,10 +151,10 @@ jobs:
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
   # =============================================================================
-  # Job 3: Build and push Docker image
+  # Job 3: Build and push Docker image (runs parallel with test)
   # =============================================================================
   build:
-    needs: [prepare, test]
+    needs: [prepare]
     if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-24.04
     permissions:
@@ -198,11 +198,11 @@ jobs:
             CLOUDFLARED_VERSION=2025.7.0
 
   # =============================================================================
-  # Job 4: Deploy to VPS
+  # Job 4: Deploy to VPS (requires both test + build to succeed)
   # =============================================================================
   deploy:
-    needs: [prepare, build]
-    if: always() && (needs.build.result == 'success' || inputs.skip_build)
+    needs: [prepare, test, build]
+    if: always() && needs.test.result == 'success' && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
     environment: ${{ needs.prepare.outputs.environment }}
     steps:
