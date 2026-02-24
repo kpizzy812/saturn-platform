@@ -44,6 +44,7 @@ class InfrastructureProvisioner
         array $gitConfig,
         ?string $monorepoGroupId = null,
         array $appOverrides = [],
+        array $dbOverrides = [],
     ): ProvisioningResult {
         // Generate group ID for monorepo apps
         $groupId = $monorepoGroupId ?? ($analysis->monorepo->isMonorepo ? (string) Str::uuid() : null);
@@ -62,7 +63,7 @@ class InfrastructureProvisioner
         $destinationUuid = $destination->uuid;
 
         try {
-            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId, $appOverrides) {
+            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId, $appOverrides, $dbOverrides) {
                 // 1. Create databases first
                 $createdDatabases = $this->createDatabases(
                     $analysis->databases,
@@ -83,7 +84,7 @@ class InfrastructureProvisioner
                 );
 
                 // 3. Link databases to applications (ResourceLink with auto_inject)
-                $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment);
+                $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment, $dbOverrides);
 
                 // 4. Create internal URLs between apps (e.g., API_URL for frontend → backend)
                 $this->createInternalAppLinks($createdApps, $analysis->appDependencies, $analysis->applications);
@@ -275,6 +276,11 @@ class InfrastructureProvisioner
         // Build configuration
         $application->build_pack = $app->buildPack;
 
+        // Custom Dockerfile location (for compose-derived apps like hummingbot/Dockerfile.custom)
+        if ($app->dockerfileLocation) {
+            $application->dockerfile_location = $app->dockerfileLocation;
+        }
+
         // Application type: user override takes priority, then detected mode
         $applicationType = $overrides['application_type'] ?? $app->applicationMode;
         $application->application_type = $applicationType;
@@ -385,13 +391,17 @@ class InfrastructureProvisioner
         array $createdApps,
         array $createdDatabases,
         array $detectedDatabases,
-        Environment $environment
+        Environment $environment,
+        array $dbOverrides = [],
     ): void {
         foreach ($detectedDatabases as $dbInfo) {
             $database = $createdDatabases[$dbInfo->type] ?? null;
             if (! $database) {
                 continue;
             }
+
+            // Custom env var name from user (e.g. "REDIS" instead of "REDIS_URL")
+            $injectAs = $dbOverrides[$dbInfo->type]['inject_as'] ?? null;
 
             foreach ($dbInfo->consumers as $appName) {
                 $application = $createdApps[$appName] ?? null;
@@ -406,7 +416,7 @@ class InfrastructureProvisioner
                     'target_type' => get_class($database),
                     'target_id' => $database->id,
                     'auto_inject' => true,
-                    'inject_as' => null, // Use default (DATABASE_URL, REDIS_URL, etc.)
+                    'inject_as' => $injectAs,
                     'use_external_url' => false,
                 ]);
             }

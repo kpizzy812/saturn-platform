@@ -33,6 +33,7 @@ class ProvisionGitRequest extends FormRequest
             'databases' => ['nullable', 'array'],
             'databases.*.type' => ['required', 'string', 'in:postgresql,mysql,mongodb,redis,clickhouse'],
             'databases.*.enabled' => ['required', 'boolean'],
+            'databases.*.inject_as' => ['nullable', 'string', 'max:100', 'regex:/^[A-Z][A-Z0-9_]*$/'],
         ];
     }
 }

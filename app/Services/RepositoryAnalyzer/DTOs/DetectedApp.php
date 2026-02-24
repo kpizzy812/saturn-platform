@@ -23,6 +23,7 @@ readonly class DetectedApp
         public ?string $pythonVersion = null,
         public ?DockerfileInfo $dockerfileInfo = null,
         public string $applicationMode = 'web',  // web, worker, both
+        public ?string $dockerfileLocation = null, // Custom Dockerfile path (e.g. "/hummingbot_custom/Dockerfile.custom")
     ) {}
 
     /**
@@ -46,6 +47,7 @@ readonly class DetectedApp
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
             applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -70,6 +72,7 @@ readonly class DetectedApp
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
             applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -94,6 +97,7 @@ readonly class DetectedApp
             pythonVersion: $ci->pythonVersion ?? $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
             applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -118,6 +122,7 @@ readonly class DetectedApp
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
             applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -142,6 +147,7 @@ readonly class DetectedApp
             pythonVersion: $dockerfileInfo->getPythonVersion() ?? $this->pythonVersion,
             dockerfileInfo: $dockerfileInfo,
             applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -166,6 +172,7 @@ readonly class DetectedApp
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
             applicationMode: $mode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -192,6 +199,7 @@ readonly class DetectedApp
             'python_version' => $this->pythonVersion,
             'dockerfile_info' => $this->dockerfileInfo?->toArray(),
             'application_mode' => $this->applicationMode,
+            'dockerfile_location' => $this->dockerfileLocation,
         ];
     }
 

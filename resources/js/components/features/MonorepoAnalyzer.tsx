@@ -57,6 +57,7 @@ interface DetectedApp {
     python_version?: string;
     dockerfile_info?: DockerfileInfo;
     application_mode?: ApplicationMode;
+    dockerfile_location?: string | null;
 }
 
 interface DetectedDatabase {
@@ -290,6 +291,7 @@ export function MonorepoAnalyzer({
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
     const [selectedApps, setSelectedApps] = useState<Record<string, boolean>>({});
     const [selectedDbs, setSelectedDbs] = useState<Record<string, boolean>>({});
+    const [dbEnvVarNames, setDbEnvVarNames] = useState<Record<string, string>>({}); // db type → custom env var name
     const [appConfigs, setAppConfigs] = useState<Record<string, AppConfig>>({});
     const [error, setError] = useState<string | null>(null);
     const [expandedApps, setExpandedApps] = useState<Record<string, boolean>>({});
@@ -360,6 +362,13 @@ export function MonorepoAnalyzer({
                 dbs[db.type] = hasAnyDockerComposeApp ? !isComposeIncludedDb(db) : true;
             });
             setSelectedDbs(dbs);
+
+            // Initialize env var names from analysis
+            const envNames: Record<string, string> = {};
+            result.databases.forEach(db => {
+                envNames[db.type] = db.env_var_name;
+            });
+            setDbEnvVarNames(envNames);
         } catch (err: unknown) {
             const axiosError = err as { response?: { data?: { error?: string } }; message?: string };
             const message = axiosError.response?.data?.error || axiosError.message || 'Failed to analyze repository';
@@ -393,6 +402,7 @@ export function MonorepoAnalyzer({
             databases: analysis.databases.map(db => ({
                 type: db.type,
                 enabled: selectedDbs[db.type] ?? false,
+                inject_as: dbEnvVarNames[db.type] !== db.env_var_name ? dbEnvVarNames[db.type] : undefined,
             })),
         };
 
@@ -825,7 +835,16 @@ export function MonorepoAnalyzer({
                                                 )}
                                             </div>
                                         </div>
-                                        <Badge variant="outline" size="sm" icon={<Code2 className="h-3 w-3" />}>{db.env_var_name}</Badge>
+                                        <div className="flex items-center gap-1.5">
+                                            <Code2 className="h-3 w-3 text-foreground-muted flex-shrink-0" />
+                                            <input
+                                                type="text"
+                                                value={dbEnvVarNames[db.type] ?? db.env_var_name}
+                                                onChange={(e) => setDbEnvVarNames(prev => ({ ...prev, [db.type]: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '') }))}
+                                                className="h-6 px-1.5 text-xs font-mono bg-transparent border border-white/[0.06] rounded w-32 text-right hover:border-white/[0.15] focus:border-primary focus:outline-none"
+                                                title="Environment variable name for this database"
+                                            />
+                                        </div>
                                     </div>
                                 );
                             })}

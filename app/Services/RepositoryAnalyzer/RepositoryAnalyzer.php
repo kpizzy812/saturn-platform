@@ -123,9 +123,84 @@ class RepositoryAnalyzer
                 $enrichedApps[] = $app;
             }
 
+            // Step 5b: Promote compose build-context services to applications
+            // (e.g. hummingbot with its own Dockerfile in a subdirectory)
+            foreach ($dockerComposeServices as $service) {
+                if (! str_starts_with($service->image, 'build:')) {
+                    continue;
+                }
+
+                // Parse build spec: "build:." or "build:./hummingbot_custom/Dockerfile.custom"
+                $buildSpec = substr($service->image, strlen('build:'));
+                $context = '.';
+                $dockerfile = 'Dockerfile';
+
+                if (str_contains($buildSpec, '/')) {
+                    $parts = explode('/', rtrim($buildSpec, '/'));
+                    $lastPart = end($parts);
+                    if (stripos($lastPart, 'dockerfile') !== false || stripos($lastPart, 'Dockerfile') !== false) {
+                        $dockerfile = $lastPart;
+                        $context = implode('/', array_slice($parts, 0, -1)) ?: '.';
+                    } else {
+                        $context = $buildSpec;
+                    }
+                } else {
+                    $context = $buildSpec;
+                }
+
+                // Normalize context path
+                $context = rtrim(ltrim($context, './'), '/');
+                $fullContextPath = $context ? $repoPath.'/'.$context : $repoPath;
+
+                // Skip if this build context already matches a detected app
+                $alreadyDetected = false;
+                foreach ($enrichedApps as $existingApp) {
+                    $existingPath = $existingApp->path === '.' ? '' : $existingApp->path;
+                    if ($existingPath === $context) {
+                        $alreadyDetected = true;
+                        break;
+                    }
+                }
+
+                if ($alreadyDetected) {
+                    continue;
+                }
+
+                // Analyze the Dockerfile for port/health/info
+                $dockerfilePath = $fullContextPath.'/'.$dockerfile;
+                $dockerfileInfo = file_exists($dockerfilePath)
+                    ? $this->dockerfileAnalyzer->analyzeFile($dockerfilePath)
+                    : null;
+                $port = $dockerfileInfo?->getPrimaryPort() ?? 0;
+
+                // Build dockerfile_location relative to repo root
+                $dockerfileLocation = ($context ? '/'.$context : '').'/'.$dockerfile;
+
+                $newApp = new DTOs\DetectedApp(
+                    name: $service->name,
+                    path: $context ?: '.',
+                    framework: 'dockerfile',
+                    buildPack: 'dockerfile',
+                    defaultPort: $port,
+                    type: 'unknown',
+                    dockerfileInfo: $dockerfileInfo,
+                    applicationMode: $port === 0 ? 'worker' : 'web',
+                    dockerfileLocation: $dockerfile !== 'Dockerfile' ? $dockerfileLocation : null,
+                );
+
+                $enrichedApps[] = $newApp;
+
+                $this->logger->info('[RepositoryAnalyzer] Promoted compose service to app', [
+                    'service' => $service->name,
+                    'context' => $context,
+                    'dockerfile' => $dockerfile,
+                    'port' => $port,
+                ]);
+            }
+
             // Step 6: Detect app dependencies and deploy order (for monorepos)
             $appDependencies = [];
-            if ($monorepoInfo->isMonorepo && count($enrichedApps) > 1) {
+            if (count($enrichedApps) > 1) {
                 $appDependencies = $this->appDependencyDetector->analyze($repoPath, $enrichedApps);
             }
 

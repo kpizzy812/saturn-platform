@@ -153,6 +153,15 @@ class GitAnalyzerController extends Controller
                 ]))
                 ->toArray();
 
+            // Build per-database overrides (custom env var names)
+            $dbOverrides = collect($validated['databases'] ?? [])
+                ->keyBy('type')
+                ->map(fn ($d) => array_filter([
+                    'inject_as' => $d['inject_as'] ?? null,
+                ]))
+                ->filter(fn ($d) => ! empty($d))
+                ->toArray();
+
             $result = $this->provisioner->provision(
                 $analysis,
                 $environment,
@@ -165,6 +174,7 @@ class GitAnalyzerController extends Controller
                     'source_type' => $sourceType,
                 ],
                 appOverrides: $appOverrides,
+                dbOverrides: $dbOverrides,
             );
 
             // Queue deployments
