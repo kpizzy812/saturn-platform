@@ -13,7 +13,55 @@ export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) 
             aria-hidden="true"
             className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
         >
-            {/* Glow */}
+            {/* Stars layer — dark theme only */}
+            <div className="saturn-stars absolute inset-0 hidden dark:block" />
+            <div className="saturn-stars-sm absolute inset-0 hidden dark:block" />
+
+            {/* Nebula blobs — soft purple/violet glows */}
+            <div
+                className="absolute hidden dark:block"
+                style={{
+                    top: '8%',
+                    left: '12%',
+                    width: isProminent ? '45vw' : '35vw',
+                    height: isProminent ? '45vw' : '35vw',
+                    maxWidth: '700px',
+                    maxHeight: '700px',
+                    background: 'radial-gradient(ellipse at center, rgba(139,92,246,0.08) 0%, rgba(99,102,241,0.03) 40%, transparent 70%)',
+                    filter: 'blur(80px)',
+                    animation: 'nebulaFloat 30s ease-in-out infinite',
+                }}
+            />
+            <div
+                className="absolute hidden dark:block"
+                style={{
+                    top: '55%',
+                    right: '20%',
+                    width: isProminent ? '40vw' : '28vw',
+                    height: isProminent ? '40vw' : '28vw',
+                    maxWidth: '600px',
+                    maxHeight: '600px',
+                    background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.06) 0%, rgba(139,92,246,0.02) 45%, transparent 70%)',
+                    filter: 'blur(70px)',
+                    animation: 'nebulaFloat 25s ease-in-out infinite reverse',
+                }}
+            />
+            <div
+                className="absolute hidden dark:block"
+                style={{
+                    top: '30%',
+                    left: '55%',
+                    width: isProminent ? '30vw' : '22vw',
+                    height: isProminent ? '30vw' : '22vw',
+                    maxWidth: '500px',
+                    maxHeight: '500px',
+                    background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.05) 0%, rgba(168,85,247,0.02) 50%, transparent 70%)',
+                    filter: 'blur(60px)',
+                    animation: 'nebulaFloat 35s ease-in-out infinite 5s',
+                }}
+            />
+
+            {/* Primary glow — bottom right */}
             <div
                 className="absolute will-change-transform"
                 style={{
