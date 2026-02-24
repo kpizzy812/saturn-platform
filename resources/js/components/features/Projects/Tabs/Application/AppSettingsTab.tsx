@@ -140,7 +140,9 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 setWatchPaths(data.watch_paths || '');
                 setGitBranch(data.git_branch || '');
                 if (data.git_repository) {
-                    fetchBranches(data.git_repository);
+                    // Use GitHub App token for private repos when available
+                    const appId = data.source_info?.type === 'github_app' ? data.source_info.id : null;
+                    fetchBranches(data.git_repository, appId);
                 }
                 setAutoDeployEnabled(data.is_auto_deploy_enabled ?? false);
             } else {
