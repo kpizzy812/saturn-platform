@@ -486,6 +486,29 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 {/* Source Configuration */}
                                 {formData.source_type !== 'docker' ? (
                                     <div className="space-y-4">
+                                        {/* Connect GitHub App prompt */}
+                                        {formData.source_type === 'github' && githubApps.length === 0 && (
+                                            <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
+                                                <div className="flex items-start gap-3">
+                                                    <Github className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-medium text-foreground">Connect GitHub for private repos & auto-deploy</p>
+                                                        <p className="text-sm text-foreground-muted mt-1">
+                                                            Connect a GitHub App to browse your repositories, deploy private repos, and enable automatic deploys on push.
+                                                        </p>
+                                                        <a
+                                                            href="/sources/github/create"
+                                                            className="inline-flex items-center gap-1.5 mt-3 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                                                        >
+                                                            <Github className="h-4 w-4" />
+                                                            Connect GitHub App
+                                                            <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Mode toggle: picker vs manual */}
                                         {formData.source_type === 'github' && githubApps.length > 0 && (
                                             <div className="flex gap-2">
