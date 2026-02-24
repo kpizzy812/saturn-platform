@@ -326,12 +326,15 @@ class DependencyAnalyzer
             }
         }
 
-        // Scan JS/TS files
-        $jsFiles = array_merge(
-            glob($appPath.'/*.{js,ts,mjs,mts}', GLOB_BRACE) ?: [],
-            glob($appPath.'/src/*.{js,ts,mjs,mts}', GLOB_BRACE) ?: [],
-            glob($appPath.'/config/*.{js,ts}', GLOB_BRACE) ?: [],
-        );
+        // Scan JS/TS files (avoid GLOB_BRACE — unavailable on Alpine/musl)
+        $jsDirs = [$appPath, $appPath.'/src', $appPath.'/config'];
+        $jsExts = ['js', 'ts', 'mjs', 'mts'];
+        $jsFiles = [];
+        foreach ($jsDirs as $dir) {
+            foreach ($jsExts as $ext) {
+                $jsFiles = array_merge($jsFiles, glob($dir.'/*.'.$ext) ?: []);
+            }
+        }
         foreach ($jsFiles as $file) {
             if (! $this->isReadableFile($file)) {
                 continue;
