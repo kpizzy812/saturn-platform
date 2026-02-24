@@ -16,6 +16,7 @@ use App\Services\Authorization\MigrationAuthorizationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -324,7 +325,7 @@ class MigrateResourceAction
                 $approver->notify(new MigrationApprovalRequired($migration));
             } catch (\Throwable $e) {
                 // Log but don't fail the migration request
-                ray('Failed to notify approver', [
+                Log::warning('Failed to notify approver', [
                     'approver' => $approver->id,
                     'error' => $e->getMessage(),
                 ]);

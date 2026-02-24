@@ -77,7 +77,6 @@ describe('ResourceLink::getSmartAppEnvKey', function () {
         // Use reflection to set the target relation
         $reflection = new ReflectionClass($link);
         $property = $reflection->getProperty('relations');
-        $property->setAccessible(true);
         $property->setValue($link, ['target' => $app]);
 
         expect($link->getSmartAppEnvKey())->toBe('MY_BACKEND_URL');
@@ -93,7 +92,6 @@ describe('ResourceLink::getSmartAppEnvKey', function () {
 
         $reflection = new ReflectionClass($link);
         $property = $reflection->getProperty('relations');
-        $property->setAccessible(true);
         $property->setValue($link, ['target' => $app]);
 
         expect($link->getSmartAppEnvKey())->toBe('MY_APP_SERVICE_URL');

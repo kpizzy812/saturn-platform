@@ -137,10 +137,30 @@ export default function ObservabilityLogs({ resources = [] }: Props) {
             }
 
             const data = await response.json();
-            const rawLogs: string[] = data.logs || [];
+
+            // Normalize logs from different API response formats
+            let rawLines: string[] = [];
+            if (selectedResourceData.type === 'service') {
+                // Services API returns { containers: { name: { type, name, status, logs: "string"|null } } }
+                const containers = (data.containers || {}) as Record<string, { logs?: string | null; name?: string }>;
+                for (const [containerName, containerData] of Object.entries(containers)) {
+                    if (containerData.logs) {
+                        const lines = containerData.logs.split('\n').filter(Boolean);
+                        rawLines.push(...lines.map(line => `[${containerData.name || containerName}] ${line}`));
+                    }
+                }
+            } else {
+                // Applications/Databases API returns { logs: "string" }
+                const logsValue = data.logs || '';
+                if (typeof logsValue === 'string') {
+                    rawLines = logsValue.split('\n').filter(Boolean);
+                } else if (Array.isArray(logsValue)) {
+                    rawLines = logsValue;
+                }
+            }
 
             // Parse logs into structured format
-            const parsedLogs: LogEntry[] = rawLogs.map((line, index) => {
+            const parsedLogs: LogEntry[] = rawLines.map((line, index) => {
                 const { timestamp, message } = parseTimestamp(line);
                 return {
                     id: `log-${index}-${Date.now()}`,

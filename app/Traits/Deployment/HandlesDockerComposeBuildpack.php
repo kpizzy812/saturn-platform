@@ -203,7 +203,7 @@ trait HandlesDockerComposeBuildpack
             $networkId = "{$this->application->uuid}-{$this->pull_request_id}";
         }
         if ($this->server->isSwarm()) {
-            // TODO
+            throw new \RuntimeException('Docker Swarm is not supported for Docker Compose deployments.');
         } else {
             $this->execute_remote_command([
                 "docker network inspect '{$networkId}' >/dev/null 2>&1 || docker network create --attachable '{$networkId}' >/dev/null || true",

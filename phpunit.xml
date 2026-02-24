@@ -11,6 +11,7 @@
   <coverage/>
   <php>
     <ini name="memory_limit" value="4G"/>
+    <ini name="error_reporting" value="24575"/>
     <env name="APP_ENV" value="testing"/>
     <env name="BCRYPT_ROUNDS" value="4"/>
     <env name="CACHE_DRIVER" value="array"/>

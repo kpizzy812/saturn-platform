@@ -5,10 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/saturn-platform/saturn-cli/internal/api"
 	"github.com/saturn-platform/saturn-cli/internal/models"
 )
+
+// Terminal deployment statuses — deployment is done when status matches one of these
+var terminalStatuses = map[string]bool{
+	"finished":          true,
+	"failed":            true,
+	"cancelled-by-user": true,
+	"timed-out":         true,
+}
+
+// IsTerminalStatus checks if a deployment status is terminal (done)
+func IsTerminalStatus(status string) bool {
+	return terminalStatuses[status]
+}
+
+// WaitResult contains the final state of a waited deployment
+type WaitResult struct {
+	DeploymentUUID string
+	Status         string
+	Finished       bool
+}
+
+// StatusCallback is called on each poll with the current deployment status
+type StatusCallback func(deploymentUUID, status string)
 
 // DeploymentService handles deployment-related operations
 type DeploymentService struct {
@@ -177,6 +201,71 @@ func (s *DeploymentService) GetLogsByApplicationWithFormat(ctx context.Context, 
 	return s.GetLogsByDeploymentWithFormat(ctx, latestDeployment.UUID, showHidden, format)
 }
 
+// GetRollbackEvents retrieves rollback events for an application
+func (s *DeploymentService) GetRollbackEvents(ctx context.Context, appUUID string, take int) ([]models.RollbackEvent, error) {
+	endpoint := fmt.Sprintf("applications/%s/rollback-events", appUUID)
+	if take > 0 {
+		endpoint += fmt.Sprintf("?take=%d", take)
+	}
+
+	var events []models.RollbackEvent
+	err := s.client.Get(ctx, endpoint, &events)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rollback events for application %s: %w", appUUID, err)
+	}
+	return events, nil
+}
+
+// ExecuteRollback triggers a rollback to a specific deployment
+func (s *DeploymentService) ExecuteRollback(ctx context.Context, appUUID, deploymentUUID string) (*models.RollbackResponse, error) {
+	var response models.RollbackResponse
+	err := s.client.Post(ctx, fmt.Sprintf("applications/%s/rollback/%s", appUUID, deploymentUUID), nil, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute rollback for application %s to deployment %s: %w", appUUID, deploymentUUID, err)
+	}
+	return &response, nil
+}
+
+// DeployByTag triggers a deployment by tag name
+func (s *DeploymentService) DeployByTag(ctx context.Context, tag string, force bool) (*DeployResponse, error) {
+	endpoint := fmt.Sprintf("deploy?tag=%s", tag)
+	if force {
+		endpoint += "&force=true"
+	}
+
+	var response DeployResponse
+	err := s.client.Get(ctx, endpoint, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy by tag %s: %w", tag, err)
+	}
+	return &response, nil
+}
+
+// DeployByPR triggers a PR preview deployment
+func (s *DeploymentService) DeployByPR(ctx context.Context, uuid string, prID int, force bool) (*DeployResponse, error) {
+	endpoint := fmt.Sprintf("deploy?uuid=%s&pr=%d", uuid, prID)
+	if force {
+		endpoint += "&force=true"
+	}
+
+	var response DeployResponse
+	err := s.client.Get(ctx, endpoint, &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy PR #%d for application %s: %w", prID, uuid, err)
+	}
+	return &response, nil
+}
+
+// GetDeploymentLogs retrieves logs for a specific deployment via dedicated endpoint
+func (s *DeploymentService) GetDeploymentLogs(ctx context.Context, deploymentUUID string) (*models.DeploymentLogsResponse, error) {
+	var response models.DeploymentLogsResponse
+	err := s.client.Get(ctx, fmt.Sprintf("deployments/%s/logs", deploymentUUID), &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get logs for deployment %s: %w", deploymentUUID, err)
+	}
+	return &response, nil
+}
+
 // GetLogsByDeployment retrieves logs for a specific deployment by UUID
 func (s *DeploymentService) GetLogsByDeployment(ctx context.Context, deploymentUUID string) (string, error) {
 	return s.GetLogsByDeploymentWithOptions(ctx, deploymentUUID, false)
@@ -185,6 +274,80 @@ func (s *DeploymentService) GetLogsByDeployment(ctx context.Context, deploymentU
 // GetLogsByDeploymentWithOptions retrieves logs for a specific deployment by UUID with formatting options
 func (s *DeploymentService) GetLogsByDeploymentWithOptions(ctx context.Context, deploymentUUID string, showHidden bool) (string, error) {
 	return s.GetLogsByDeploymentWithFormat(ctx, deploymentUUID, showHidden, "table")
+}
+
+// WaitForCompletion polls a deployment until it reaches a terminal status or the context is cancelled.
+// It calls onStatus on each poll with the current status. Returns the final WaitResult.
+func (s *DeploymentService) WaitForCompletion(ctx context.Context, deploymentUUID string, pollInterval time.Duration, onStatus StatusCallback) (*WaitResult, error) {
+	if pollInterval <= 0 {
+		pollInterval = 3 * time.Second
+	}
+
+	for {
+		deployment, err := s.Get(ctx, deploymentUUID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to poll deployment %s: %w", deploymentUUID, err)
+		}
+
+		if onStatus != nil {
+			onStatus(deploymentUUID, deployment.Status)
+		}
+
+		if IsTerminalStatus(deployment.Status) {
+			return &WaitResult{
+				DeploymentUUID: deploymentUUID,
+				Status:         deployment.Status,
+				Finished:       deployment.Status == "finished",
+			}, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return &WaitResult{
+				DeploymentUUID: deploymentUUID,
+				Status:         deployment.Status,
+				Finished:       false,
+			}, ctx.Err()
+		case <-time.After(pollInterval):
+			// continue polling
+		}
+	}
+}
+
+// WaitForMultiple waits for multiple deployments concurrently.
+// Returns a slice of WaitResults in the same order as the input UUIDs.
+func (s *DeploymentService) WaitForMultiple(ctx context.Context, uuids []string, pollInterval time.Duration, onStatus StatusCallback) ([]WaitResult, error) {
+	type indexedResult struct {
+		index  int
+		result WaitResult
+		err    error
+	}
+
+	ch := make(chan indexedResult, len(uuids))
+
+	for i, uuid := range uuids {
+		go func(idx int, uid string) {
+			res, err := s.WaitForCompletion(ctx, uid, pollInterval, onStatus)
+			if res != nil {
+				ch <- indexedResult{index: idx, result: *res, err: err}
+			} else {
+				ch <- indexedResult{index: idx, result: WaitResult{DeploymentUUID: uid}, err: err}
+			}
+		}(i, uuid)
+	}
+
+	results := make([]WaitResult, len(uuids))
+	var firstErr error
+
+	for range uuids {
+		ir := <-ch
+		results[ir.index] = ir.result
+		if ir.err != nil && firstErr == nil {
+			firstErr = ir.err
+		}
+	}
+
+	return results, firstErr
 }
 
 // GetLogsByDeploymentWithFormat retrieves logs with format control (json/pretty/table)

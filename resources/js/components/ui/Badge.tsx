@@ -99,7 +99,11 @@ export const StatusBadge = React.forwardRef<HTMLSpanElement, StatusBadgeProps>(
                 )}
                 {...props}
             >
-                <span className={cn('h-2 w-2 rounded-full', config.dotClass)} />
+                <span className={cn(
+                    'h-2 w-2 rounded-full',
+                    config.dotClass,
+                    status.includes('running') && 'animate-pulse-soft',
+                )} />
                 {config.label}
             </span>
         );

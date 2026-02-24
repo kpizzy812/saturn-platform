@@ -282,3 +282,125 @@ it('allows platform admin to access sensitive data', function () {
 
     expect($this->service->canAccessSensitiveData($user, 1))->toBeTrue();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Convenience Methods Tests (Phase 3)
+|--------------------------------------------------------------------------
+*/
+
+it('allows user to manage notifications when has permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'settings.notifications')
+        ->once()
+        ->andReturn(true);
+
+    expect($this->service->canManageNotifications($user, 1))->toBeTrue();
+});
+
+it('denies user from managing notifications without permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'settings.notifications')
+        ->once()
+        ->andReturn(false);
+
+    expect($this->service->canManageNotifications($user, 1))->toBeFalse();
+});
+
+it('allows user to manage integrations when has permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'settings.integrations')
+        ->once()
+        ->andReturn(true);
+
+    expect($this->service->canManageIntegrations($user, 1))->toBeTrue();
+});
+
+it('allows user to manage tokens when has permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'settings.tokens')
+        ->once()
+        ->andReturn(true);
+
+    expect($this->service->canManageTokens($user, 1))->toBeTrue();
+});
+
+it('allows user to manage team members when has permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'team.manage_members')
+        ->once()
+        ->andReturn(true);
+
+    expect($this->service->canManageTeamMembers($user, 1))->toBeTrue();
+});
+
+it('allows user to invite members when has permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'team.invite')
+        ->once()
+        ->andReturn(true);
+
+    expect($this->service->canInviteMembers($user, 1))->toBeTrue();
+});
+
+it('allows user to access terminal when has permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'applications.terminal')
+        ->once()
+        ->andReturn(true);
+
+    expect($this->service->canAccessTerminal($user, 1))->toBeTrue();
+});
+
+it('denies user terminal access without permission', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $this->permissionService->shouldReceive('userHasPermission')
+        ->with($user, 'applications.terminal')
+        ->once()
+        ->andReturn(false);
+
+    expect($this->service->canAccessTerminal($user, 1))->toBeFalse();
+});
+
+it('allows platform admin to manage all convenience operations', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+
+    expect($this->service->canManageNotifications($user, 1))->toBeTrue();
+    expect($this->service->canManageIntegrations($user, 1))->toBeTrue();
+    expect($this->service->canManageTokens($user, 1))->toBeTrue();
+    expect($this->service->canManageTeamMembers($user, 1))->toBeTrue();
+    expect($this->service->canInviteMembers($user, 1))->toBeTrue();
+    expect($this->service->canAccessTerminal($user, 1))->toBeTrue();
+});

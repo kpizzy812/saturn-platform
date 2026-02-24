@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Notifications\Migration\MigrationRolledBack;
 use App\Services\Authorization\MigrationAuthorizationService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -460,7 +461,7 @@ class RollbackMigrationAction
             }
         } catch (\Throwable $e) {
             // Log but don't fail
-            ray('Failed to notify about rollback', $e->getMessage());
+            Log::warning('Failed to notify about rollback', ['error' => $e->getMessage()]);
         }
     }
 }

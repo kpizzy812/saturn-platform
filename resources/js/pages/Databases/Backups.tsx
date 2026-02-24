@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, Save, Loader2, Play } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 import { getStatusIcon, getStatusVariant, getStatusLabel } from '@/lib/statusUtils';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     database: StandaloneDatabase;
@@ -281,40 +282,43 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                 <h2 className="text-lg font-medium text-foreground">Backup History</h2>
 
                 {backups.length === 0 ? (
-                    <Card>
-                        <CardContent className="p-12 text-center">
-                            <HardDrive className="mx-auto h-12 w-12 text-foreground-subtle" />
-                            <h3 className="mt-4 font-medium text-foreground">No backups yet</h3>
-                            <p className="mt-1 text-sm text-foreground-muted">
-                                Run a backup now or enable automatic backups above
-                            </p>
-                            <Button onClick={handleCreateBackup} disabled={isCreating} className="mt-6">
-                                {isCreating ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Creating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create Backup
-                                    </>
-                                )}
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <FadeIn>
+                        <Card>
+                            <CardContent className="p-12 text-center">
+                                <HardDrive className="mx-auto h-12 w-12 animate-pulse-soft text-foreground-subtle" />
+                                <h3 className="mt-4 font-medium text-foreground">No backups yet</h3>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    Run a backup now or enable automatic backups above
+                                </p>
+                                <Button onClick={handleCreateBackup} disabled={isCreating} className="mt-6">
+                                    {isCreating ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Create Backup
+                                        </>
+                                    )}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </FadeIn>
                 ) : (
-                    <div className="space-y-2">
-                        {backups.map((backup) => (
-                            <BackupCard
-                                key={backup.id}
-                                backup={backup}
-                                onRestore={() => handleRestore(backup.id)}
-                                onDownload={() => handleDownload(backup.id)}
-                                onDelete={() => handleDelete(backup.id)}
-                            />
+                    <StaggerList className="space-y-2">
+                        {backups.map((backup, i) => (
+                            <StaggerItem key={backup.id} index={i}>
+                                <BackupCard
+                                    backup={backup}
+                                    onRestore={() => handleRestore(backup.id)}
+                                    onDownload={() => handleDownload(backup.id)}
+                                    onDelete={() => handleDelete(backup.id)}
+                                />
+                            </StaggerItem>
                         ))}
-                    </div>
+                    </StaggerList>
                 )}
             </div>
         </AppLayout>

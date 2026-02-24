@@ -32,10 +32,10 @@ func (s *ServerService) Get(ctx context.Context, uuid string) (*models.Server, e
 }
 
 // GetResources returns resources for a server
-func (s *ServerService) GetResources(ctx context.Context, uuid string) (*models.Resources, error) {
-	var resources models.Resources
+func (s *ServerService) GetResources(ctx context.Context, uuid string) ([]models.Resource, error) {
+	var resources []models.Resource
 	err := s.client.Get(ctx, "servers/"+uuid+"/resources", &resources)
-	return &resources, err
+	return resources, err
 }
 
 // GetDomains returns domains for a server

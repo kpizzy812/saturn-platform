@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
 import type { ActivityLog, ActivityAction } from '@/types';
+import { StaggerList, StaggerItem } from '@/components/animation';
 import {
     Activity,
     Rocket,
@@ -266,15 +267,16 @@ export default function ActivityTimelinePage({ activities: propActivities, proje
                 <>
                     <Card>
                         <CardContent className="p-0">
-                            <div className="divide-y divide-border">
+                            <StaggerList className="divide-y divide-border">
                                 {filteredActivities.map((activity, index) => (
-                                    <ActivityTimelineItem
-                                        key={activity.id}
-                                        activity={activity}
-                                        isLast={index === filteredActivities.length - 1}
-                                    />
+                                    <StaggerItem key={activity.id} index={index}>
+                                        <ActivityTimelineItem
+                                            activity={activity}
+                                            isLast={index === filteredActivities.length - 1}
+                                        />
+                                    </StaggerItem>
                                 ))}
-                            </div>
+                            </StaggerList>
                         </CardContent>
                     </Card>
 

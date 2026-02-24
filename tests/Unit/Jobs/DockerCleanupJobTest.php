@@ -99,4 +99,34 @@ class DockerCleanupJobTest extends TestCase
         $this->assertNull($job->usageBefore);
         $this->assertNull($job->execution_log);
     }
+
+    public function test_job_has_failed_method(): void
+    {
+        $reflection = new \ReflectionClass(DockerCleanupJob::class);
+
+        $this->assertTrue($reflection->hasMethod('failed'));
+        $this->assertTrue($reflection->getMethod('failed')->isPublic());
+    }
+
+    public function test_failed_callback_logs_error_with_server_context(): void
+    {
+        \Illuminate\Support\Facades\Log::shouldReceive('error')->once()->with(
+            'DockerCleanupJob permanently failed',
+            Mockery::on(function ($context) {
+                return $context['server_id'] === 1
+                    && $context['server_name'] === 'test-server'
+                    && str_contains($context['error'], 'Disk full');
+            })
+        );
+
+        $server = Mockery::mock(Server::class)->makePartial();
+        $server->id = 1;
+        $server->name = 'test-server';
+
+        $job = new DockerCleanupJob($server);
+        $job->failed(new \RuntimeException('Disk full'));
+
+        // Verify Mockery expectations are counted as assertions
+        $this->addToAssertionCount(Mockery::getContainer()->mockery_getExpectationCount());
+    }
 }

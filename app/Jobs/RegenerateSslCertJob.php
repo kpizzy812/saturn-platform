@@ -75,4 +75,12 @@ class RegenerateSslCertJob implements ShouldQueue
             $this->team?->notify(new SslExpirationNotification($regenerated));
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('RegenerateSslCertJob permanently failed', [
+            'server_id' => $this->server_id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

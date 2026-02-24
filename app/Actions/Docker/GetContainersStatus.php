@@ -4,10 +4,12 @@ namespace App\Actions\Docker;
 
 use App\Actions\Database\StartDatabaseProxy;
 use App\Actions\Shared\ComplexStatusCheck;
+use App\Enums\ApplicationDeploymentStatus;
 use App\Events\ApplicationStatusChanged;
 use App\Events\DatabaseStatusChanged;
 use App\Events\ServiceChecked;
 use App\Events\ServiceStatusChanged;
+use App\Models\ApplicationDeploymentQueue;
 use App\Models\ApplicationPreview;
 use App\Models\Server;
 use App\Models\ServiceDatabase;
@@ -376,6 +378,16 @@ class GetContainersStatus
                 continue;
             }
 
+            // Skip marking as "exited" if the app has an active or recently failed deployment.
+            // When a re-deploy fails, the old container may still be running but the new one was removed.
+            // Without this check, the status is incorrectly set to "exited" during the brief window
+            // between the failed deployment cleanup and the next status check finding the old container.
+            if ($this->hasActiveOrRecentDeployment($applicationId)) {
+                Log::debug("Skipping exited status for app {$applicationId} — active or recent deployment detected");
+
+                continue;
+            }
+
             // If container was recently restarting (crash loop), keep it as degraded for a grace period
             // This prevents false "exited" status during the brief moment between container removal and recreation
             $recentlyRestarted = $application->restart_count > 0 &&
@@ -621,5 +633,33 @@ class GetContainersStatus
                 }
             }
         }
+    }
+
+    /**
+     * Check if an application has an in-progress or recently failed/finished deployment.
+     *
+     * This prevents false "exited" status when:
+     * - A re-deploy fails but the old container is still running
+     * - A deployment just finished and Docker state hasn't fully propagated
+     * - A deployment is currently in progress (container may be starting up)
+     */
+    private function hasActiveOrRecentDeployment(int $applicationId): bool
+    {
+        return ApplicationDeploymentQueue::where('application_id', $applicationId)
+            ->where(function ($query) {
+                // Active deployments (queued or in progress)
+                $query->whereIn('status', [
+                    ApplicationDeploymentStatus::IN_PROGRESS->value,
+                    ApplicationDeploymentStatus::QUEUED->value,
+                ])
+                // Or recently completed/failed (within last 2 minutes)
+                    ->orWhere(function ($q) {
+                        $q->whereIn('status', [
+                            ApplicationDeploymentStatus::FAILED->value,
+                            ApplicationDeploymentStatus::FINISHED->value,
+                        ])->where('updated_at', '>=', now()->subSeconds(120));
+                    });
+            })
+            ->exists();
     }
 }

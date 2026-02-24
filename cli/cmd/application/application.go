@@ -27,6 +27,7 @@ func NewAppCommand() *cobra.Command {
 	cmd.AddCommand(NewRestartCommand())
 	cmd.AddCommand(NewLogsCommand())
 	cmd.AddCommand(NewDeploymentsCommand())
+	cmd.AddCommand(NewRollbackCommand())
 
 	// Add env subcommand with its children
 	envCmd := &cobra.Command{

@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Plus, Container, MoreVertical, Settings, Trash2, Power, RotateCw, FileCode } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import type { Service } from '@/types';
 
 interface Props {
@@ -48,8 +49,8 @@ export default function ServicesIndex({ services: initialServices = [] }: Props)
                     <p className="text-foreground-muted">Manage your Docker Compose services</p>
                 </div>
                 <Link href="/services/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         New Service
                     </Button>
                 </Link>
@@ -59,11 +60,13 @@ export default function ServicesIndex({ services: initialServices = [] }: Props)
             {services.length === 0 ? (
                 <EmptyState />
             ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {services.map((service) => (
-                        <ServiceCard key={service.id} service={service} onDelete={handleDeleteService} />
+                <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {services.map((service, i) => (
+                        <StaggerItem key={service.id} index={i}>
+                            <ServiceCard service={service} onDelete={handleDeleteService} />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
             </div>
         </AppLayout>
@@ -185,20 +188,22 @@ function ServiceCard({ service, onDelete }: { service: Service; onDelete: (uuid:
 
 function EmptyState() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
-                <Container className="h-8 w-8 text-foreground-muted" />
+        <FadeIn>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                    <Container className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No services yet</h3>
+                <p className="mt-1 text-sm text-foreground-muted">
+                    Create your first Docker Compose service to deploy multi-container applications.
+                </p>
+                <Link href="/services/create" className="mt-6">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Service
+                    </Button>
+                </Link>
             </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No services yet</h3>
-            <p className="mt-1 text-sm text-foreground-muted">
-                Create your first Docker Compose service to deploy multi-container applications.
-            </p>
-            <Link href="/services/create" className="mt-6">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Service
-                </Button>
-            </Link>
-        </div>
+        </FadeIn>
     );
 }

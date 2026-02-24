@@ -66,6 +66,10 @@ Route::get('/volumes/create', function () {
 })->name('volumes.create');
 
 Route::post('/volumes', function (Request $request) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin', 'developer'])) {
+        abort(403, 'You do not have permission to create volumes.');
+    }
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'mount_path' => 'required|string',

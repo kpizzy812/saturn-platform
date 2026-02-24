@@ -38,6 +38,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     public $tries = 2;
 
+    public $backoff = [30, 60];
+
     public $maxExceptions = 1;
 
     public ?Team $team = null;

@@ -44,6 +44,7 @@ import {
     Moon,
     Sun,
     ArrowLeft,
+    Globe,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -130,6 +131,7 @@ const adminNavGroups: NavGroup[] = [
             { label: 'Docker Cleanups', href: '/admin/docker-cleanups', icon: <Container className="h-4 w-4" /> },
             { label: 'SSL Certificates', href: '/admin/ssl-certificates', icon: <Lock className="h-4 w-4" /> },
             { label: 'Transfers', href: '/admin/transfers', icon: <ArrowRightLeft className="h-4 w-4" /> },
+            { label: 'Status Page', href: '/admin/status-page', icon: <Globe className="h-4 w-4" /> },
         ],
     },
 ];
@@ -219,8 +221,8 @@ function NavGroupSection({
 
 function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; onMobileClose: () => void }) {
     const { url, props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null; is_root_user?: boolean } | undefined;
-    const systemNotifications = (props as any).systemNotifications as { unreadCount: number } | undefined;
+    const user = props.auth;
+    const systemNotifications = props.systemNotifications;
 
     // Initialize expanded groups: all expanded by default, or use stored state
     const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {

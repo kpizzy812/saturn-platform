@@ -42,6 +42,7 @@ class InfrastructureProvisioner
         string $serverUuid,
         array $gitConfig,
         ?string $monorepoGroupId = null,
+        array $appOverrides = [],
     ): ProvisioningResult {
         // Generate group ID for monorepo apps
         $groupId = $monorepoGroupId ?? ($analysis->monorepo->isMonorepo ? (string) Str::uuid() : null);
@@ -60,7 +61,7 @@ class InfrastructureProvisioner
         $destinationUuid = $destination->uuid;
 
         try {
-            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId) {
+            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId, $appOverrides) {
                 // 1. Create databases first
                 $createdDatabases = $this->createDatabases(
                     $analysis->databases,
@@ -76,17 +77,21 @@ class InfrastructureProvisioner
                     $server,
                     $destination,
                     $gitConfig,
-                    $groupId
+                    $groupId,
+                    $appOverrides
                 );
 
                 // 3. Link databases to applications (ResourceLink with auto_inject)
                 $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment);
 
                 // 4. Create internal URLs between apps (e.g., API_URL for frontend → backend)
-                $this->createInternalAppLinks($createdApps, $analysis->appDependencies);
+                $this->createInternalAppLinks($createdApps, $analysis->appDependencies, $analysis->applications);
 
                 // 5. Create environment variables from .env.example
                 $this->createEnvVariables($createdApps, $analysis->envVariables);
+
+                // 6. Apply user-provided env variable overrides
+                $this->applyEnvVarOverrides($createdApps, $appOverrides);
 
                 return new ProvisioningResult(
                     applications: $createdApps,
@@ -216,17 +221,20 @@ class InfrastructureProvisioner
         StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
+        array $appOverrides = [],
     ): array {
         $created = [];
 
         foreach ($detectedApps as $app) {
+            $overrides = $appOverrides[$app->name] ?? [];
             $created[$app->name] = $this->createApplication(
                 $app,
                 $environment,
                 $server,
                 $destination,
                 $gitConfig,
-                $groupId
+                $groupId,
+                $overrides
             );
         }
 
@@ -240,6 +248,7 @@ class InfrastructureProvisioner
         StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
+        array $overrides = [],
     ): Application {
         $application = new Application;
         $application->uuid = (string) Str::uuid();
@@ -262,12 +271,13 @@ class InfrastructureProvisioner
         // Build configuration
         $application->build_pack = $app->buildPack;
 
-        // For Dockerfile buildpack in monorepo: use repo root as build context
-        // Monorepo Dockerfiles reference root-level files (lockfiles, shared packages)
-        if ($groupId && $app->buildPack === 'dockerfile' && $app->path !== '.') {
-            $application->base_directory = '';
-            $application->dockerfile_location = '/'.ltrim($app->path, '/').'/Dockerfile';
+        // Apply base_directory: user override takes priority
+        if (! empty($overrides['base_directory'])) {
+            $baseDir = $overrides['base_directory'];
+            $application->base_directory = $baseDir === '/' ? '' : $baseDir;
         } else {
+            // Always use app subdirectory as base_directory (build context)
+            // Dockerfile is expected relative to this directory
             $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
         }
 
@@ -378,19 +388,44 @@ class InfrastructureProvisioner
     }
 
     /**
+     * Env var prefixes that are exposed to client-side JavaScript (browser).
+     * These MUST use public FQDN, not Docker internal URLs.
+     */
+    private const CLIENT_SIDE_ENV_PREFIXES = [
+        'NEXT_PUBLIC_',
+        'VITE_',
+        'REACT_APP_',
+        'NUXT_PUBLIC_',
+    ];
+
+    /**
      * Create internal URL environment variables between apps
      *
-     * For example, if frontend depends on backend, creates API_URL=http://backend:port
+     * For frontend apps (browser-side): uses public FQDN of the target backend
+     * For backend-to-backend: uses Docker internal DNS (container-name:port)
      *
      * @param  AppDependency[]  $appDependencies
+     * @param  DetectedApp[]  $detectedApps
      */
-    private function createInternalAppLinks(array $createdApps, array $appDependencies): void
+    private function createInternalAppLinks(array $createdApps, array $appDependencies, array $detectedApps): void
     {
+        // Build a type map from detected apps
+        $appTypeMap = [];
+        $appFrameworkMap = [];
+        foreach ($detectedApps as $detected) {
+            $appTypeMap[$detected->name] = $detected->type;
+            $appFrameworkMap[$detected->name] = $detected->framework;
+        }
+
         foreach ($appDependencies as $dependency) {
             $sourceApp = $createdApps[$dependency->appName] ?? null;
             if (! $sourceApp || empty($dependency->internalUrls)) {
                 continue;
             }
+
+            $sourceType = $appTypeMap[$dependency->appName] ?? 'unknown';
+            $sourceFramework = $appFrameworkMap[$dependency->appName] ?? '';
+            $isFrontend = $sourceType === 'frontend';
 
             foreach ($dependency->internalUrls as $envVarName => $targetAppName) {
                 $targetApp = $createdApps[$targetAppName] ?? null;
@@ -398,28 +433,74 @@ class InfrastructureProvisioner
                     continue;
                 }
 
-                // Build internal URL using docker network DNS
-                // Format: http://container-name:port
-                $containerName = $targetApp->uuid;
-                $port = $targetApp->ports_exposes ?? 3000;
+                // Determine if this env var is consumed by client-side JavaScript
+                $isClientSideVar = $this->isClientSideEnvVar($envVarName);
 
-                // Use first exposed port if multiple
-                if (str_contains((string) $port, ',')) {
-                    $port = explode(',', (string) $port)[0];
+                if ($isFrontend || $isClientSideVar) {
+                    // Frontend apps or client-side env vars: use public FQDN
+                    $url = $targetApp->fqdn;
+
+                    // Adapt env var name for the framework's client-side prefix
+                    $envVarName = $this->adaptEnvVarForFramework($envVarName, $sourceFramework);
+                } else {
+                    // Backend-to-backend: use Docker internal DNS
+                    $containerName = $targetApp->uuid;
+                    $port = $targetApp->ports_exposes ?? 3000;
+
+                    if (str_contains((string) $port, ',')) {
+                        $port = explode(',', (string) $port)[0];
+                    }
+
+                    $url = "http://{$containerName}:{$port}";
                 }
 
-                $internalUrl = "http://{$containerName}:{$port}";
-
-                // Create environment variable
                 $sourceApp->environment_variables()->updateOrCreate(
                     ['key' => $envVarName],
                     [
-                        'value' => $internalUrl,
-                        'is_buildtime' => false,
+                        'value' => $url,
+                        'is_buildtime' => $isFrontend || $isClientSideVar,
                     ]
                 );
             }
         }
+    }
+
+    /**
+     * Check if env var name is a client-side variable (exposed to browser)
+     */
+    private function isClientSideEnvVar(string $varName): bool
+    {
+        foreach (self::CLIENT_SIDE_ENV_PREFIXES as $prefix) {
+            if (str_starts_with($varName, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Adapt env var name to use the correct framework-specific client-side prefix
+     *
+     * For example, API_URL → NEXT_PUBLIC_API_URL for Next.js frontend
+     */
+    private function adaptEnvVarForFramework(string $envVarName, string $framework): string
+    {
+        // If already has a client-side prefix, keep it
+        if ($this->isClientSideEnvVar($envVarName)) {
+            return $envVarName;
+        }
+
+        // Add framework-specific prefix for client-side access
+        return match (true) {
+            str_contains($framework, 'next') => 'NEXT_PUBLIC_'.$envVarName,
+            str_contains($framework, 'nuxt') => 'NUXT_PUBLIC_'.$envVarName,
+            str_contains($framework, 'vite'),
+            str_contains($framework, 'vue'),
+            str_contains($framework, 'svelte') => 'VITE_'.$envVarName,
+            str_contains($framework, 'react') => 'REACT_APP_'.$envVarName,
+            default => $envVarName,
+        };
     }
 
     private function createEnvVariables(array $createdApps, array $envVariables): void
@@ -448,6 +529,33 @@ class InfrastructureProvisioner
                     'is_buildtime' => false,
                 ]
             );
+        }
+    }
+
+    /**
+     * Apply user-provided environment variable overrides
+     */
+    private function applyEnvVarOverrides(array $createdApps, array $appOverrides): void
+    {
+        foreach ($appOverrides as $appName => $overrides) {
+            $application = $createdApps[$appName] ?? null;
+            if (! $application || empty($overrides['env_vars'])) {
+                continue;
+            }
+
+            foreach ($overrides['env_vars'] as $envVar) {
+                if (empty($envVar['key']) || ! isset($envVar['value'])) {
+                    continue;
+                }
+
+                $application->environment_variables()->updateOrCreate(
+                    ['key' => $envVar['key']],
+                    [
+                        'value' => $envVar['value'],
+                        'is_buildtime' => false,
+                    ]
+                );
+            }
         }
     }
 

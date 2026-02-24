@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Events\FileStorageChanged;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -171,15 +172,21 @@ class LocalFileVolume extends BaseModel
             $server = $resourceModel->getAttribute('destination')->server;
         }
         $commands = collect([]);
+        // SECURITY: Escape all paths before any command construction to prevent injection
+        $escapedWorkdir = escapeshellarg($workdir);
         if ($this->is_directory) {
-            $commands->push("mkdir -p $this->fs_path > /dev/null 2>&1 || true");
-            $commands->push("mkdir -p $workdir > /dev/null 2>&1 || true");
-            $commands->push("cd $workdir");
+            validateShellSafePath($this->fs_path, 'storage directory path');
+            $escapedFsPath = escapeshellarg($this->fs_path);
+            $commands->push("mkdir -p {$escapedFsPath} > /dev/null 2>&1 || true");
+            $commands->push("mkdir -p {$escapedWorkdir} > /dev/null 2>&1 || true");
+            $commands->push("cd {$escapedWorkdir}");
         }
         if (str($this->fs_path)->startsWith('.') || str($this->fs_path)->startsWith('/') || str($this->fs_path)->startsWith('~')) {
             $parent_dir = str($this->fs_path)->beforeLast('/');
             if ($parent_dir != '') {
-                $commands->push("mkdir -p $parent_dir > /dev/null 2>&1 || true");
+                validateShellSafePath($parent_dir, 'storage parent directory');
+                $escapedParentDir = escapeshellarg($parent_dir);
+                $commands->push("mkdir -p {$escapedParentDir} > /dev/null 2>&1 || true");
             }
         }
         $path = data_get_str($this, 'fs_path');
@@ -225,10 +232,16 @@ class LocalFileVolume extends BaseModel
             }
             $commands->push("chmod +x {$escapedPath}");
             if ($chown) {
-                $commands->push("chown $chown {$escapedPath}");
+                if (! preg_match('/^[a-zA-Z0-9_.\-]+(:[a-zA-Z0-9_.\-]+)?$/', $chown)) {
+                    throw new \Exception('Invalid chown value: only alphanumeric, dash, dot, underscore and colon are allowed.');
+                }
+                $commands->push('chown '.escapeshellarg($chown)." {$escapedPath}");
             }
             if ($chmod) {
-                $commands->push("chmod $chmod {$escapedPath}");
+                if (! preg_match('/^[0-7]{3,4}$/', $chmod)) {
+                    throw new \Exception('Invalid chmod value: only octal notation (e.g. 644, 0755) is allowed.');
+                }
+                $commands->push("chmod {$chmod} {$escapedPath}");
             }
         } elseif ($isDir === 'NOK' && $this->is_directory) {
             $commands->push("mkdir -p {$escapedPath} > /dev/null 2>&1 || true");
@@ -339,7 +352,7 @@ class LocalFileVolume extends BaseModel
 
             return false;
         } catch (\Throwable $e) {
-            ray($e->getMessage(), 'Error checking read-only volume');
+            Log::warning('Error checking read-only volume', ['error' => $e->getMessage()]);
 
             return false;
         }

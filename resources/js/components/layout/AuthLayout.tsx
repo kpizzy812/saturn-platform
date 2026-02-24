@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Head } from '@inertiajs/react';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
+import { SaturnBackground } from '@/components/ui/SaturnBackground';
 import { FlashMessages } from './FlashMessages';
 
 interface AuthLayoutProps {
@@ -14,7 +15,8 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         <>
             <Head title={`${title} | Saturn`} />
             <FlashMessages />
-            <div className="flex min-h-screen items-center justify-center bg-background p-4">
+            <SaturnBackground variant="prominent" />
+            <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     {/* Logo */}
                     <div className="mb-8 flex flex-col items-center">

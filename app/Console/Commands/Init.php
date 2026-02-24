@@ -265,7 +265,7 @@ class Init extends Command
         $id = config('app.id');
         $version = config('constants.saturn.version');
         try {
-            Http::get("https://example.com/v4/alive?appId=$id&version=$version");
+            Http::timeout(10)->get("https://example.com/v4/alive?appId=$id&version=$version");
         } catch (\Throwable $e) {
             echo "Error in sending live signal: {$e->getMessage()}\n";
         }

@@ -55,7 +55,7 @@ class CreatePublicApplication
             'git_branch' => ['string', 'required', new \App\Rules\ValidGitBranch],
             'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
             'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
-            'docker_compose_location' => 'string',
+            'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
             'docker_compose_domains' => 'array|nullable',
         ];

@@ -29,6 +29,10 @@ Route::get('/integrations/webhooks', function () {
 })->name('integrations.webhooks');
 
 Route::post('/integrations/webhooks', function (Request $request) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to create webhooks.');
+    }
+
     $team = auth()->user()->currentTeam();
 
     $validated = $request->validate([
@@ -43,6 +47,10 @@ Route::post('/integrations/webhooks', function (Request $request) {
 })->name('integrations.webhooks.store');
 
 Route::put('/integrations/webhooks/{uuid}', function (Request $request, string $uuid) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to update webhooks.');
+    }
+
     $team = auth()->user()->currentTeam();
     $webhook = $team->webhooks()->where('uuid', $uuid)->firstOrFail();
 
@@ -59,6 +67,10 @@ Route::put('/integrations/webhooks/{uuid}', function (Request $request, string $
 })->name('integrations.webhooks.update');
 
 Route::delete('/integrations/webhooks/{uuid}', function (string $uuid) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to delete webhooks.');
+    }
+
     $team = auth()->user()->currentTeam();
     $webhook = $team->webhooks()->where('uuid', $uuid)->firstOrFail();
 
@@ -68,6 +80,10 @@ Route::delete('/integrations/webhooks/{uuid}', function (string $uuid) {
 })->name('integrations.webhooks.destroy');
 
 Route::post('/integrations/webhooks/{uuid}/toggle', function (string $uuid) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to toggle webhooks.');
+    }
+
     $team = auth()->user()->currentTeam();
     $webhook = $team->webhooks()->where('uuid', $uuid)->firstOrFail();
 
@@ -79,6 +95,10 @@ Route::post('/integrations/webhooks/{uuid}/toggle', function (string $uuid) {
 })->name('integrations.webhooks.toggle');
 
 Route::post('/integrations/webhooks/{uuid}/test', function (string $uuid) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to test webhooks.');
+    }
+
     $team = auth()->user()->currentTeam();
     $webhook = $team->webhooks()->where('uuid', $uuid)->firstOrFail();
 
@@ -99,6 +119,10 @@ Route::post('/integrations/webhooks/{uuid}/test', function (string $uuid) {
 })->name('integrations.webhooks.test');
 
 Route::post('/integrations/webhooks/{uuid}/deliveries/{deliveryUuid}/retry', function (string $uuid, string $deliveryUuid) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to retry webhook deliveries.');
+    }
+
     $team = auth()->user()->currentTeam();
     $webhook = $team->webhooks()->where('uuid', $uuid)->firstOrFail();
     $delivery = $webhook->deliveries()->where('uuid', $deliveryUuid)->firstOrFail();

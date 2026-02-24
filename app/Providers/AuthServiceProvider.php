@@ -67,6 +67,11 @@ class AuthServiceProvider extends ServiceProvider
 
         // AI Chat policy
         \App\Models\AiChatSession::class => \App\Policies\AiChatPolicy::class,
+
+        // Cloud & Storage policies
+        \App\Models\CloudProviderToken::class => \App\Policies\CloudProviderTokenPolicy::class,
+        \App\Models\CloudInitScript::class => \App\Policies\CloudInitScriptPolicy::class,
+        \App\Models\S3Storage::class => \App\Policies\S3StoragePolicy::class,
     ];
 
     /**
@@ -77,9 +82,12 @@ class AuthServiceProvider extends ServiceProvider
         // Register gates for resource creation policy
         Gate::define('createAnyResource', [ResourceCreatePolicy::class, 'createAny']);
 
-        // Register gate for terminal access
+        // Register gate for terminal access (uses PermissionService)
         Gate::define('canAccessTerminal', function ($user) {
-            return $user->isAdmin() || $user->isOwner();
+            $authService = app(\App\Services\Authorization\ResourceAuthorizationService::class);
+            $team = currentTeam();
+
+            return $team ? $authService->canAccessTerminal($user, $team->id) : false;
         });
     }
 }

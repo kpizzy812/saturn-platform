@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
-import type { FormDataConvertible } from '@inertiajs/core';
+import type { RouterPayload } from '@/types/inertia';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -240,7 +240,7 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
         setIsSaving(true);
         router.post(
             '/admin/settings',
-            { settings: formData } as unknown as Record<string, FormDataConvertible>,
+            { settings: formData } as unknown as RouterPayload,
             {
                 preserveScroll: true,
                 onFinish: () => setIsSaving(false),
@@ -285,7 +285,7 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
             if (!file) return;
             const formPayload = new FormData();
             formPayload.append('file', file);
-            router.post('/admin/settings/import', formPayload as any, {
+            router.post('/admin/settings/import', formPayload, {
                 preserveScroll: true,
                 forceFormData: true,
             });

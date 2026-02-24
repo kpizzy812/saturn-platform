@@ -1,4 +1,15 @@
-import type { User, Team } from './models';
+import type { User, Team, Notification } from './models';
+
+// Notifications data shared by HandleInertiaRequests middleware
+export interface SharedNotifications {
+    unreadCount: number;
+    recent: Notification[];
+}
+
+// System notifications data (superadmin only)
+export interface SharedSystemNotifications {
+    unreadCount: number;
+}
 
 // Auth user data shared by HandleInertiaRequests middleware
 export interface AuthUser {
@@ -16,6 +27,7 @@ export interface AuthUser {
         isMember: boolean;
         isDeveloper: boolean;
         isViewer: boolean;
+        granular: Record<string, boolean>;
     };
 }
 
@@ -34,6 +46,12 @@ export interface SharedTeamItem {
     role: string;
 }
 
+// Helper type to cast typed objects to Inertia router-compatible payload.
+// Inertia's router.post/put/patch expects Record<string, FormDataConvertible>,
+// but TypeScript interfaces don't satisfy index signatures.
+// Usage: router.post('/path', data as RouterPayload)
+export type RouterPayload = Record<string, import('@inertiajs/core').FormDataConvertible>;
+
 // Use InertiaConfig augmentation for shared page props (Inertia v2 approach)
 declare module '@inertiajs/core' {
     export interface InertiaConfig {
@@ -47,6 +65,8 @@ declare module '@inertiajs/core' {
                 warning?: string;
                 info?: string;
             };
+            notifications: SharedNotifications;
+            systemNotifications: SharedSystemNotifications | null;
             appName: string;
             aiChatEnabled: boolean;
             [key: string]: unknown;

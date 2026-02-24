@@ -57,11 +57,13 @@ describe('Dashboard Page', () => {
         expect(newProjectButtons.length).toBeGreaterThan(0);
     });
 
-    it('shows service counts on project cards', () => {
+    it('shows resource counts on project cards', () => {
         render(<Dashboard projects={mockProjects} />);
-        // Service count and label are in separate elements
-        expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getAllByText('services').length).toBeGreaterThan(0);
+        // Resource counts shown as "N resources" text
+        expect(screen.getByText('3 resources')).toBeInTheDocument();
+        expect(screen.getAllByText('2 resources').length).toBeGreaterThan(0);
+        expect(screen.getByText('4 resources')).toBeInTheDocument();
+        expect(screen.getByText('1 resource')).toBeInTheDocument();
     });
 
     it('shows empty state when no projects', () => {

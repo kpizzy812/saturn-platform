@@ -294,7 +294,7 @@ describe('Domains Index Page', () => {
 
         it('displays domains in grid layout', () => {
             const { container } = render(<DomainsIndex domains={mockDomains} />);
-            const domainCards = container.querySelectorAll('.space-y-3 > a');
+            const domainCards = container.querySelectorAll('.space-y-3 a[href]');
             expect(domainCards.length).toBe(mockDomains.length);
         });
 

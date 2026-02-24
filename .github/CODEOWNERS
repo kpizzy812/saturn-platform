@@ -1,0 +1,27 @@
+# Saturn Platform - Code Ownership
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Default owner for everything
+* @kpizzy812
+
+# Backend (Laravel)
+/app/                    @kpizzy812
+/config/                 @kpizzy812
+/database/               @kpizzy812
+/routes/                 @kpizzy812
+/tests/                  @kpizzy812
+
+# Frontend (React/Inertia)
+/resources/js/           @kpizzy812
+
+# Infrastructure & Deployment
+/deploy/                 @kpizzy812
+/docker-compose*.yml     @kpizzy812
+/Dockerfile              @kpizzy812
+/.github/workflows/      @kpizzy812
+
+# CLI (Go)
+/cli/                    @kpizzy812
+
+# TUI Panel (Ink)
+/panel/                  @kpizzy812

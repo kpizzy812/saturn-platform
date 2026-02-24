@@ -47,7 +47,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(true);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -63,7 +63,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -73,7 +73,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'member';
         $teamMembership->pivot->allowed_projects = null; // null = all projects
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -90,12 +90,12 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -112,7 +112,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -122,7 +122,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'owner';
         $teamMembership->pivot->allowed_projects = []; // Even with empty allowed_projects, owner should see all
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -139,7 +139,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -149,7 +149,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'admin';
         $teamMembership->pivot->allowed_projects = []; // Even with empty allowed_projects, admin should see all
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -166,7 +166,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -176,7 +176,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'member';
         $teamMembership->pivot->allowed_projects = null; // null = all projects allowed
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -193,7 +193,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -203,7 +203,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'member';
         $teamMembership->pivot->allowed_projects = [1, 5, 10]; // Project 1 is in the list
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -220,7 +220,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 99)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -230,7 +230,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'member';
         $teamMembership->pivot->allowed_projects = [1, 5, 10]; // Project 99 is NOT in the list
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -247,7 +247,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 1)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -257,7 +257,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'member';
         $teamMembership->pivot->allowed_projects = []; // Empty array = no access
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -274,7 +274,7 @@ describe('canViewProject', function () {
         $user->shouldReceive('isPlatformAdmin')->andReturn(false);
         $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-        $projectMemberships = m::mock();
+        $projectMemberships = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $projectMemberships->shouldReceive('where')->with('project_id', 5)->andReturnSelf();
         $projectMemberships->shouldReceive('exists')->andReturn(false);
         $user->shouldReceive('projectMemberships')->andReturn($projectMemberships);
@@ -284,7 +284,7 @@ describe('canViewProject', function () {
         $teamMembership->pivot->role = 'viewer';
         $teamMembership->pivot->allowed_projects = [5, 10];
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -340,7 +340,7 @@ describe('canManageProject', function () {
 
         $user->shouldReceive('roleInProject')->with($project)->andReturn('developer');
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -362,7 +362,7 @@ describe('canManageProject', function () {
         $teamMembership->pivot = new \stdClass;
         $teamMembership->pivot->role = 'admin';
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn($teamMembership);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -403,7 +403,7 @@ describe('canDeleteProject', function () {
 
         $user->shouldReceive('roleInProject')->with($project)->andReturn('admin');
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -420,7 +420,7 @@ describe('hasMinimumRole', function () {
         $user = m::mock(User::class)->makePartial();
         $user->shouldReceive('roleInProject')->with($project)->andReturn('developer');
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 1)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -435,7 +435,7 @@ describe('hasMinimumRole', function () {
         $user = m::mock(User::class)->makePartial();
         $user->shouldReceive('roleInProject')->with($project)->andReturn('admin');
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 1)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -450,7 +450,7 @@ describe('hasMinimumRole', function () {
         $user = m::mock(User::class)->makePartial();
         $user->shouldReceive('roleInProject')->with($project)->andReturn('viewer');
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 1)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -465,7 +465,7 @@ describe('hasMinimumRole', function () {
         $user = m::mock(User::class)->makePartial();
         $user->shouldReceive('roleInProject')->with($project)->andReturn(null);
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 1)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);
@@ -514,7 +514,7 @@ describe('canApproveDeployment', function () {
 
         $user->shouldReceive('roleInProject')->with($project)->andReturn('developer');
 
-        $teams = m::mock();
+        $teams = m::mock(\Illuminate\Database\Eloquent\Relations\BelongsToMany::class);
         $teams->shouldReceive('where')->with('team_id', 10)->andReturnSelf();
         $teams->shouldReceive('first')->andReturn(null);
         $user->shouldReceive('teams')->andReturn($teams);

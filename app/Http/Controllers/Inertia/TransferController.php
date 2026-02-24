@@ -135,6 +135,8 @@ class TransferController extends Controller
             return response()->json(['message' => 'Source application not found'], 404);
         }
 
+        $this->authorize('update', $sourceApplication);
+
         // Check for duplicate in-progress transfer
         $existingTransfer = ResourceTransfer::where('source_type', $sourceApplication->getMorphClass())
             ->where('source_id', $sourceApplication->id)
@@ -220,6 +222,8 @@ class TransferController extends Controller
             return response()->json(['message' => 'Source service not found'], 404);
         }
 
+        $this->authorize('update', $sourceService);
+
         // Check for duplicate in-progress transfer
         $existingTransfer = ResourceTransfer::where('source_type', $sourceService->getMorphClass())
             ->where('source_id', $sourceService->id)
@@ -303,6 +307,8 @@ class TransferController extends Controller
             return response()->json(['message' => 'Source database not found'], 404);
         }
 
+        $this->authorize('manage', $sourceDatabase);
+
         // Create transfer
         $action = new CreateTransferAction;
         $result = $action->execute(
@@ -352,6 +358,8 @@ class TransferController extends Controller
         if (! $database) {
             return response()->json(['error' => 'Database not found'], 404);
         }
+
+        $this->authorize('view', $database);
 
         $action = new GetDatabaseStructureAction;
         $result = $action->execute($database);

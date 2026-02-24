@@ -119,6 +119,21 @@ Route::post('/teams/{teamId}/members/{userId}/role', function (int $teamId, int 
     return back()->with('success', 'Role updated successfully');
 })->name('admin.teams.members.role');
 
+Route::patch('/teams/{id}/quotas', function (\Illuminate\Http\Request $request, int $id) {
+    $team = \App\Models\Team::findOrFail($id);
+
+    $request->validate([
+        'max_servers' => 'nullable|integer|min:0',
+        'max_applications' => 'nullable|integer|min:0',
+        'max_databases' => 'nullable|integer|min:0',
+        'max_projects' => 'nullable|integer|min:0',
+    ]);
+
+    $team->update($request->only(['max_servers', 'max_applications', 'max_databases', 'max_projects']));
+
+    return back()->with('success', 'Team quotas updated');
+})->name('admin.teams.quotas');
+
 Route::delete('/teams/{id}', function (int $id) {
     $team = \App\Models\Team::findOrFail($id);
 

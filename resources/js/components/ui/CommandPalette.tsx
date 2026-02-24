@@ -3,8 +3,7 @@ import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { useSearch } from '@/hooks/useSearch';
 import { usePaletteBrowse, type BrowseItem } from '@/hooks/usePaletteBrowse';
-import type { RecentResource } from '@/hooks/useRecentResources';
-import type { FavoriteResource } from '@/hooks/useResourceFrequency';
+import type { FavoriteItem } from '@/hooks/useFavorites';
 import {
     Search,
     FolderKanban,
@@ -20,7 +19,7 @@ import {
     ClipboardCheck,
     ArrowRightLeft,
     GitBranch,
-    Clock,
+    BarChart3,
     Loader2,
     Star,
     ChevronRight,
@@ -38,6 +37,10 @@ export interface CommandItem {
     has_children?: boolean;
     child_type?: string;
     parent_uuid?: string;
+    /** Resource type for favorite matching (e.g. 'project', 'server') */
+    resourceType?: string;
+    /** Resource ID for favorite matching */
+    resourceId?: string;
 }
 
 interface DrillDownLevel {
@@ -56,7 +59,8 @@ const commands: CommandItem[] = [
     { id: 'activity', name: 'Activity', icon: <Activity className="h-4 w-4" />, href: '/activity', group: 'navigation' },
     { id: 'approvals', name: 'Approvals', description: 'Pending deployment, migration, and transfer approvals', icon: <ClipboardCheck className="h-4 w-4" />, href: '/approvals', group: 'navigation' },
     { id: 'transfers', name: 'Transfer History', description: 'View resource transfer history', icon: <ArrowRightLeft className="h-4 w-4" />, href: '/transfers', group: 'navigation' },
-    { id: 'migrations', name: 'Migrations', description: 'Environment migrations (dev \u2192 uat \u2192 prod)', icon: <GitBranch className="h-4 w-4" />, href: '/migrations', group: 'navigation' },
+    { id: 'migrations', name: 'Migrations', description: 'Environment migrations (dev → uat → prod)', icon: <GitBranch className="h-4 w-4" />, href: '/migrations', group: 'navigation' },
+    { id: 'observability', name: 'Observability', description: 'Monitoring and alerts', icon: <BarChart3 className="h-4 w-4" />, href: '/observability', group: 'navigation' },
 
     // Actions
     { id: 'new-project', name: 'New Project', description: 'Create a new project', icon: <Plus className="h-4 w-4" />, href: '/projects/create', group: 'actions' },
@@ -67,6 +71,8 @@ const commands: CommandItem[] = [
     // Settings
     { id: 'settings', name: 'Settings', icon: <Settings className="h-4 w-4" />, href: '/settings', group: 'settings' },
     { id: 'team', name: 'Team', icon: <Users className="h-4 w-4" />, href: '/settings/team', group: 'settings' },
+    { id: 'cli-setup', name: 'CLI Setup', description: 'Install and configure Saturn CLI', icon: <Terminal className="h-4 w-4" />, href: '/cli/setup', group: 'settings' },
+    { id: 'cli-commands', name: 'CLI Commands', description: 'CLI command reference', icon: <Terminal className="h-4 w-4" />, href: '/cli/commands', group: 'settings' },
 ];
 
 const RESOURCE_ICONS: Record<string, React.ReactNode> = {
@@ -79,14 +85,13 @@ const RESOURCE_ICONS: Record<string, React.ReactNode> = {
 
 const groupLabels: Record<string, string> = {
     favorites: 'Favorites',
-    recent: 'Recent',
     resources: 'Resources',
     navigation: 'Navigate',
     actions: 'Actions',
     settings: 'Settings',
 };
 
-const groupOrder = ['favorites', 'recent', 'resources', 'navigation', 'actions', 'settings'];
+const groupOrder = ['favorites', 'resources', 'navigation', 'actions', 'settings'];
 
 function browseItemToCommand(item: BrowseItem): CommandItem {
     const metaType = item.meta?.type;
@@ -106,17 +111,35 @@ function browseItemToCommand(item: BrowseItem): CommandItem {
         has_children: item.has_children,
         child_type: item.child_type || undefined,
         parent_uuid: item.id,
+        resourceType: metaType || undefined,
+        resourceId: item.id,
     };
+}
+
+/** Extract resource type and id from a CommandItem for favorite matching */
+function getResourceInfo(command: CommandItem): { type: string; id: string; name: string; href: string } | null {
+    if (command.resourceType && command.resourceId) {
+        return { type: command.resourceType, id: command.resourceId, name: command.name, href: command.href || '' };
+    }
+    // For search results: id format is "search-{type}-{uuid}"
+    if (command.id.startsWith('search-')) {
+        const parts = command.id.split('-');
+        if (parts.length >= 3) {
+            return { type: parts[1], id: parts.slice(2).join('-'), name: command.name, href: command.href || '' };
+        }
+    }
+    return null;
 }
 
 interface CommandPaletteProps {
     open: boolean;
     onClose: () => void;
-    recentItems?: RecentResource[];
-    favorites?: FavoriteResource[];
+    favorites?: FavoriteItem[];
+    onToggleFavorite?: (item: FavoriteItem) => void;
+    isFavorite?: (type: string, id: string) => boolean;
 }
 
-export function CommandPalette({ open, onClose, recentItems = [], favorites = [] }: CommandPaletteProps) {
+export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite, isFavorite }: CommandPaletteProps) {
     const [query, setQuery] = React.useState('');
     const [selectedIndex, setSelectedIndex] = React.useState(0);
     const [stack, setStack] = React.useState<DrillDownLevel[]>([]);
@@ -134,31 +157,20 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
         fetchBrowse(current.type, current.parentUuid);
     }, [open, stack, fetchBrowse]);
 
-    // Build favorite items
+    // Build favorite items from explicit favorites
     const favoriteCommandItems: CommandItem[] = React.useMemo(() => {
         if (query !== '' || isInDrillDown || favorites.length === 0) return [];
         return favorites.map((item) => ({
             id: `fav-${item.type}-${item.id}`,
             name: item.name,
-            icon: <Star className="h-4 w-4" />,
+            icon: RESOURCE_ICONS[item.type] || <Star className="h-4 w-4" />,
             href: item.href,
             group: 'favorites',
             description: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+            resourceType: item.type,
+            resourceId: item.id,
         }));
     }, [query, favorites, isInDrillDown]);
-
-    // Build recent items as CommandItems
-    const recentCommandItems: CommandItem[] = React.useMemo(() => {
-        if (query !== '' || isInDrillDown || recentItems.length === 0) return [];
-        return recentItems.map((item) => ({
-            id: `recent-${item.type}-${item.uuid}`,
-            name: item.name,
-            description: item.type.charAt(0).toUpperCase() + item.type.slice(1),
-            icon: <Clock className="h-4 w-4" />,
-            href: item.href,
-            group: 'recent',
-        }));
-    }, [query, recentItems, isInDrillDown]);
 
     // Build search results as CommandItems
     const searchCommandItems: CommandItem[] = React.useMemo(() => {
@@ -175,6 +187,8 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
                 icon: RESOURCE_ICONS[item.type] || <Box className="h-4 w-4" />,
                 href: item.href,
                 group: 'resources',
+                resourceType: item.type,
+                resourceId: item.uuid,
             };
         });
     }, [query, searchResults]);
@@ -198,7 +212,7 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
     // Combine all items into groups
     const allItems = isInDrillDown
         ? drillDownCommandItems
-        : [...favoriteCommandItems, ...recentCommandItems, ...searchCommandItems, ...filteredCommands];
+        : [...favoriteCommandItems, ...searchCommandItems, ...filteredCommands];
 
     // Build grouped commands maintaining order
     const groupedCommands = isInDrillDown
@@ -245,6 +259,14 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
         setSelectedIndex(0);
         setStack([]);
     }, [onClose]);
+
+    const handleToggleFavorite = React.useCallback((command: CommandItem) => {
+        if (!onToggleFavorite) return;
+        const info = getResourceInfo(command);
+        if (info) {
+            onToggleFavorite(info);
+        }
+    }, [onToggleFavorite]);
 
     // Reset selected index when query changes
     React.useEffect(() => {
@@ -303,6 +325,12 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
             const selected = flatItems[selectedIndex];
             if (selected) {
                 executeCommand(selected);
+            }
+        } else if (e.key === 'f' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            const selected = flatItems[selectedIndex];
+            if (selected) {
+                handleToggleFavorite(selected);
             }
         } else if (e.key === 'Escape') {
             e.preventDefault();
@@ -411,6 +439,10 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
                                         )}
                                         {items.map((command, idx) => {
                                             const itemIndex = startIndex + idx;
+                                            const resInfo = getResourceInfo(command);
+                                            const starred = resInfo && isFavorite ? isFavorite(resInfo.type, resInfo.id) : false;
+                                            const canStar = !!resInfo && !!onToggleFavorite;
+
                                             return (
                                                 <button
                                                     key={command.id}
@@ -418,7 +450,7 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
                                                     onClick={() => executeCommand(command)}
                                                     onMouseEnter={() => setSelectedIndex(itemIndex)}
                                                     className={cn(
-                                                        'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-100',
+                                                        'group/item flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-100',
                                                         itemIndex === selectedIndex ? 'bg-background-tertiary' : '',
                                                     )}
                                                 >
@@ -438,6 +470,20 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
                                                             </div>
                                                         )}
                                                     </div>
+                                                    {canStar && (
+                                                        <Star
+                                                            className={cn(
+                                                                'h-4 w-4 shrink-0 transition-colors',
+                                                                starred
+                                                                    ? 'fill-yellow-400 text-yellow-400'
+                                                                    : 'text-transparent group-hover/item:text-foreground-subtle',
+                                                            )}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleToggleFavorite(command);
+                                                            }}
+                                                        />
+                                                    )}
                                                     {command.has_children && (
                                                         <ChevronRight
                                                             className="h-4 w-4 shrink-0 text-foreground-subtle"
@@ -468,6 +514,10 @@ export function CommandPalette({ open, onClose, recentItems = [], favorites = []
                             <span className="flex items-center gap-2">
                                 <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&crarr;</kbd>
                                 <span>select</span>
+                            </span>
+                            <span className="flex items-center gap-2">
+                                <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&#8984;F</kbd>
+                                <span>favorite</span>
                             </span>
                             <span className="flex items-center gap-2">
                                 <kbd className="rounded-md bg-background-tertiary px-2 py-1 font-medium">&rarr;</kbd>

@@ -65,6 +65,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
      */
     public $tries = 3;
 
+    public $maxExceptions = 1;
+
+    public $backoff = [30, 60, 120];
+
     public $timeout = 3600;
 
     public static int $batch_counter = 0;
@@ -1294,9 +1298,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             }
         }
 
-        // Update container status to reflect the failed deployment state
+        // Update container status after Docker state has stabilized.
+        // Delay prevents false "exited" status when old container is still running
+        // after a failed re-deploy (the new container was just removed above).
         try {
-            GetContainersStatus::dispatch($this->server);
+            GetContainersStatus::dispatch($this->server)->delay(now()->addSeconds(10));
         } catch (\Throwable $e) {
             Log::warning('Failed to dispatch GetContainersStatus on failed deployment: '.$e->getMessage());
         }

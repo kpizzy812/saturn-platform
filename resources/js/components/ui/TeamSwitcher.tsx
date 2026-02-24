@@ -2,7 +2,6 @@ import * as React from 'react';
 import { router, usePage } from '@inertiajs/react';
 import { Check, ChevronsUpDown, Building2, User } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import type { SharedTeam, SharedTeamItem } from '@/types/inertia';
 
 interface TeamSwitcherProps {
     className?: string;
@@ -10,8 +9,8 @@ interface TeamSwitcherProps {
 
 export function TeamSwitcher({ className }: TeamSwitcherProps) {
     const { props } = usePage();
-    const currentTeam = (props as any).team as SharedTeam | null;
-    const teams = ((props as any).teams || []) as SharedTeamItem[];
+    const currentTeam = props.team;
+    const teams = props.teams || [];
     const [isLoading, setIsLoading] = React.useState(false);
 
     // Don't render if user has only one team

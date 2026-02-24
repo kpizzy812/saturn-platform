@@ -4,58 +4,62 @@ namespace App\Policies;
 
 use App\Models\EnvironmentVariable;
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 
 class EnvironmentVariablePolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
+    /**
+     * Resolve the permission key based on the resourceable type.
+     */
+    private function resolvePermissionKey(EnvironmentVariable $environmentVariable): ?string
+    {
+        $resource = $environmentVariable->resourceable;
+        if (! $resource) {
+            return null;
+        }
+
+        $type = $resource->type ?? get_class($resource);
+
+        return match (true) {
+            str_contains($type, 'application') || $resource instanceof \App\Models\Application => 'applications.env_vars',
+            str_contains($type, 'service') || $resource instanceof \App\Models\Service => 'services.env_vars',
+            default => 'databases.env_vars',
+        };
+    }
+
+    /**
+     * Get the team ID from the environment variable's resource.
+     */
+    private function getTeamId(EnvironmentVariable $environmentVariable): ?int
+    {
+        $resource = $environmentVariable->resourceable;
+        if (! $resource) {
+            return null;
+        }
+
+        $team = method_exists($resource, 'team') ? $resource->team() : null;
+        if ($team instanceof \Illuminate\Database\Eloquent\Relations\Relation) {
+            $team = $team->first();
+        }
+
+        return $team?->id;
+    }
+
     /**
      * Check if user belongs to the team that owns the environment variable's resource.
      */
     private function belongsToResourceTeam(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        // Load the resourceable (Application, Service, or Database)
-        $resource = $environmentVariable->resourceable;
-
-        if (! $resource) {
+        $teamId = $this->getTeamId($environmentVariable);
+        if ($teamId === null) {
             return false;
         }
 
-        // Get the team that owns the resource
-        $team = method_exists($resource, 'team') ? $resource->team() : null;
-
-        if (! $team) {
-            return false;
-        }
-
-        // Check if user belongs to this team
-        return $user->teams->contains('id', $team->id);
-    }
-
-    /**
-     * Check if user has admin/owner role in the resource's team.
-     */
-    private function isAdminInResourceTeam(User $user, EnvironmentVariable $environmentVariable): bool
-    {
-        $resource = $environmentVariable->resourceable;
-
-        if (! $resource) {
-            return false;
-        }
-
-        $team = method_exists($resource, 'team') ? $resource->team() : null;
-
-        if (! $team) {
-            return false;
-        }
-
-        // Check if user is admin or owner in this team
-        $membership = $user->teams->find($team->id);
-        if (! $membership) {
-            return false;
-        }
-
-        $role = $membership->pivot->role ?? 'member';
-
-        return in_array($role, ['admin', 'owner']);
+        return $user->teams->contains('id', $teamId);
     }
 
     /**
@@ -63,7 +67,6 @@ class EnvironmentVariablePolicy
      */
     public function viewAny(User $user): bool
     {
-        // Anyone can list, filtering happens at query level
         return true;
     }
 
@@ -72,7 +75,18 @@ class EnvironmentVariablePolicy
      */
     public function view(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        return $this->belongsToResourceTeam($user, $environmentVariable);
+        if (! $this->belongsToResourceTeam($user, $environmentVariable)) {
+            return false;
+        }
+
+        $permissionKey = $this->resolvePermissionKey($environmentVariable);
+        if (! $permissionKey) {
+            return false;
+        }
+
+        $teamId = $this->getTeamId($environmentVariable);
+
+        return $this->authService->hasPermission($user, $permissionKey, $teamId);
     }
 
     /**
@@ -89,7 +103,18 @@ class EnvironmentVariablePolicy
      */
     public function update(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        return $this->belongsToResourceTeam($user, $environmentVariable);
+        if (! $this->belongsToResourceTeam($user, $environmentVariable)) {
+            return false;
+        }
+
+        $permissionKey = $this->resolvePermissionKey($environmentVariable);
+        if (! $permissionKey) {
+            return false;
+        }
+
+        $teamId = $this->getTeamId($environmentVariable);
+
+        return $this->authService->hasPermission($user, $permissionKey, $teamId);
     }
 
     /**
@@ -97,7 +122,18 @@ class EnvironmentVariablePolicy
      */
     public function delete(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        return $this->belongsToResourceTeam($user, $environmentVariable);
+        if (! $this->belongsToResourceTeam($user, $environmentVariable)) {
+            return false;
+        }
+
+        $permissionKey = $this->resolvePermissionKey($environmentVariable);
+        if (! $permissionKey) {
+            return false;
+        }
+
+        $teamId = $this->getTeamId($environmentVariable);
+
+        return $this->authService->hasPermission($user, $permissionKey, $teamId);
     }
 
     /**
@@ -105,7 +141,7 @@ class EnvironmentVariablePolicy
      */
     public function restore(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        return $this->isAdminInResourceTeam($user, $environmentVariable);
+        return $this->update($user, $environmentVariable);
     }
 
     /**
@@ -113,7 +149,7 @@ class EnvironmentVariablePolicy
      */
     public function forceDelete(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        return $this->isAdminInResourceTeam($user, $environmentVariable);
+        return $this->delete($user, $environmentVariable);
     }
 
     /**
@@ -121,6 +157,6 @@ class EnvironmentVariablePolicy
      */
     public function manageEnvironment(User $user, EnvironmentVariable $environmentVariable): bool
     {
-        return $this->belongsToResourceTeam($user, $environmentVariable);
+        return $this->update($user, $environmentVariable);
     }
 }

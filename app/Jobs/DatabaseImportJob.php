@@ -185,6 +185,14 @@ class DatabaseImportJob implements ShouldBeEncrypted, ShouldQueue
         $this->broadcastProgress($import, 'in_progress', 90, 'Restore completed, finalizing...');
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('DatabaseImportJob permanently failed', [
+            'import_id' => $this->importId,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function broadcastProgress(
         DatabaseImport $import,
         string $status,

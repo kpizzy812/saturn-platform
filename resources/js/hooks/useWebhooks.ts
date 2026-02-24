@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 
 export interface WebhookDelivery {
     id: number;
@@ -119,7 +120,7 @@ export function useWebhooks({
                 prev.map((w) => (w.uuid === uuid ? { ...w, ...data } : w))
             );
 
-            router.put(`/integrations/webhooks/${uuid}`, data as any, {
+            router.put(`/integrations/webhooks/${uuid}`, data as unknown as RouterPayload, {
                 preserveScroll: true,
                 onSuccess: () => resolve(),
                 onError: () => {

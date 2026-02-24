@@ -8,9 +8,9 @@
 
 ---
 
-## Итоговая оценка: ~85% готовность к production
+## Итоговая оценка: ~92% готовность к production
 
-*Обновлено после фиксов CRIT-V1..V3, H-V1, H-V2, опровержения H-V6*
+*Обновлено после фиксов CRIT-V1..V3, H-V1..V2, H-V4..V5, M-V3..V9, M-V12, опровержения H-V6, M-V14*
 
 | Категория | Вес | Оценка | Взвешенная |
 |-----------|-----|--------|------------|
@@ -116,18 +116,18 @@ $table->string('ports_mappings');     // Строка, не JSON
 Невозможно нормально искать по портам: `LIKE '%3000%'` совпадёт с '30001'.
 **Note:** Изменение типа требует zero-downtime миграции. Низкий приоритет.
 
-### H-V4: Open Redirect в GitHub App
+### H-V4: Open Redirect в GitHub App — FIXED
 **Файл:** `bootstrap/helpers/github.php:119-126`
-**Статус:** ПОДТВЕРЖДЕНО
+**Статус:** ИСПРАВЛЕНО
 ```php
 return "$github->html_url/$installation_path/$name/installations/new";
 ```
 `html_url` не валидируется на whitelist. Если запись GithubApp скомпрометирована — открытый редирект.
 **Fix:** Валидировать что `html_url` начинается с `https://github.com` или `https://github.enterprise-host/`
 
-### H-V5: GitHub App install ищет по ВСЕМ командам
+### H-V5: GitHub App install ищет по ВСЕМ командам — FIXED
 **Файл:** `app/Http/Controllers/Webhook/Github.php:649-671`
-**Статус:** ПОДТВЕРЖДЕНО
+**Статус:** ИСПРАВЛЕНО
 ```php
 $candidates = GithubApp::whereNotNull('app_id')
     ->whereNull('installation_id')
@@ -162,7 +162,7 @@ Fallback поиск пересекает границы team'ов.
 ```
 Утёкший токен даёт доступ на год. Для PaaS-платформы допустимо, но нужна документация.
 
-### M-V3: Параметр `lines` в логах без лимита
+### M-V3: Параметр `lines` в логах без лимита — FIXED
 **Файл:** `routes/api.php:400, 472`
 ```php
 $lines = $request->query('lines', 100) ?: 100;
@@ -170,7 +170,7 @@ $lines = $request->query('lines', 100) ?: 100;
 Запрос `?lines=999999` → DoS через memory exhaustion.
 **Fix:** `$lines = min((int) $request->query('lines', 100) ?: 100, 10000);`
 
-### M-V4: SMTP recipients — нет валидации email
+### M-V4: SMTP recipients — нет валидации email — FIXED
 **Файл:** `app/Http/Controllers/Api/NotificationChannelsController.php:56`
 ```php
 'smtp_recipients' => 'sometimes|string|nullable',  // Нет email проверки!
@@ -178,14 +178,14 @@ $lines = $request->query('lines', 100) ?: 100;
 Принимает любую строку. Потенциал для SMTP header injection.
 **Fix:** Валидировать comma-separated emails
 
-### M-V5: SMTP port без границ
+### M-V5: SMTP port без границ — FIXED
 **Файл:** `app/Http/Controllers/Api/NotificationChannelsController.php:60`
 ```php
 'smtp_port' => 'sometimes|integer|nullable',  // Нет min/max
 ```
 **Fix:** `'smtp_port' => 'sometimes|integer|nullable|min:1|max:65535'`
 
-### M-V6: `ports_exposes` regex — нет проверки диапазона портов
+### M-V6: `ports_exposes` regex — нет проверки диапазона портов — FIXED
 **Файл:** `bootstrap/helpers/api.php:113`
 ```php
 'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/',
@@ -193,14 +193,14 @@ $lines = $request->query('lines', 100) ?: 100;
 Regex проверяет формат (цифры через запятую), но не валидирует диапазон 1-65535.
 Значение `99999,0` пройдёт проверку.
 
-### M-V7: Health check валидация неполная
+### M-V7: Health check валидация неполная — FIXED
 **Файл:** `bootstrap/helpers/api.php:118-129`
 - `health_check_port` — тип `string` вместо `integer`
 - `health_check_method` — нет enum (GET/POST/etc.)
 - `health_check_return_code` — `numeric` без bounds (100-599)
 - `health_check_interval/timeout` — без min/max
 
-### M-V8: Resource limits — строки без формата
+### M-V8: Resource limits — строки без формата — FIXED
 **Файл:** `bootstrap/helpers/api.php:130-136`
 ```php
 'limits_memory' => 'string',       // Нет валидации формата Docker: "512m", "1g"
@@ -208,7 +208,7 @@ Regex проверяет формат (цифры через запятую), н
 'limits_memory_swap' => 'string',
 ```
 
-### M-V9: Env var key — нет формата
+### M-V9: Env var key — нет формата — FIXED
 **Файл:** `app/Http/Controllers/Api/ApplicationEnvsController.php:238-240`
 ```php
 'key' => 'string|required',  // Принимает спецсимволы, unicode, длинные строки
@@ -230,7 +230,7 @@ $file->move($finalPath, ...);
 ```
 Между проверкой и удалением файлов — окно для race condition.
 
-### M-V12: GitHub App state не привязан к team
+### M-V12: GitHub App state не привязан к team — FIXED
 **Файл:** `app/Http/Controllers/Webhook/Github.php:542-564`
 ```php
 $github_app = GithubApp::where('uuid', $state)->first();  // Без team scoping
@@ -244,12 +244,10 @@ $github_app = GithubApp::where('uuid', $state)->first();  // Без team scoping
 ```
 **Fix:** `'sslmode' => env('DB_SSLMODE', 'require')` для production
 
-### M-V14: Horizon dashboard без IP whitelist
-**Файл:** `config/horizon.php:73`
-```php
-'middleware' => ['web'],  // Только CSRF, нет auth/admin проверки
-```
-**Fix:** Добавить middleware для superadmin или IP whitelist
+### M-V14: Horizon dashboard без IP whitelist — NOT A BUG
+**Файл:** `config/horizon.php:73` + `app/Providers/HorizonServiceProvider.php`
+**Статус:** ОПРОВЕРГНУТО
+`HorizonServiceProvider::gate()` уже определяет `Gate::define('viewHorizon')` с проверкой root user (id=0). Доступ ограничен.
 
 ---
 
@@ -289,22 +287,22 @@ $github_app = GithubApp::where('uuid', $state)->first();  // Без team scoping
 3. **CRIT-V2:** Заменить `::all()->filter()` на scoped queries в CleanupStuckedResources
 4. **H-V6:** Изменить `retry_after` с 86400 на 300 секунд
 
-### Фаза 2 — Первая неделя
-5. **H-V1:** Маскировать sensitive data в API ответах (добавить `$hidden` в модели)
-6. **H-V2:** Валидация портов `min:1|max:65535` в ServersController
-7. **M-V1:** Установить `CORS_ALLOWED_ORIGINS` в production env
-8. **M-V3:** Ограничить параметр `lines` до 10000
-9. **M-V9:** Валидация формата env var key
-10. **M-V13:** DB SSL mode `require` для production
+### Фаза 2 — ВЫПОЛНЕНА ✓
+5. ~~**H-V1:** Маскировать sensitive data~~ — DONE
+6. ~~**H-V2:** Валидация портов~~ — DONE
+7. **M-V1:** Установить `CORS_ALLOWED_ORIGINS` в production env — INFRA
+8. ~~**M-V3:** Ограничить параметр `lines`~~ — DONE
+9. ~~**M-V9:** Валидация формата env var key~~ — DONE
+10. **M-V13:** DB SSL mode `require` для production — INFRA
 
-### Фаза 3 — Первый спринт
-11. **H-V4:** Whitelist валидация `html_url` для GitHub App
-12. **H-V5:** Team scoping для GitHub App install fallback
-13. **M-V4:** Валидация email для SMTP recipients
-14. **M-V5/M-V6:** Bounds для портов в notification channels
-15. **M-V7/M-V8:** Полная валидация health checks и resource limits
-16. **M-V12:** Team scoping для GitHub App redirect state
-17. **M-V14:** Auth middleware для Horizon dashboard
+### Фаза 3 — ВЫПОЛНЕНА ✓
+11. ~~**H-V4:** Whitelist валидация `html_url`~~ — DONE
+12. ~~**H-V5:** Team scoping для GitHub App install~~ — DONE
+13. ~~**M-V4:** Валидация email для SMTP recipients~~ — DONE
+14. ~~**M-V5/M-V6:** Bounds для портов~~ — DONE
+15. ~~**M-V7/M-V8:** Валидация health checks и resource limits~~ — DONE
+16. ~~**M-V12:** Team scoping для GitHub App redirect~~ — DONE
+17. ~~**M-V14:** Horizon dashboard~~ — NOT A BUG (gate уже есть)
 
 ### Фаза 4 — Среднесрочно (low priority)
 18. **H-V3:** Миграция ports_exposes на JSON тип

@@ -118,7 +118,12 @@ COPY --chown=www-data:www-data artisan artisan
 COPY --chown=www-data:www-data openapi.yaml ./openapi.yaml
 COPY --chown=www-data:www-data changelogs/ ./changelogs/
 
-RUN composer dump-autoload
+# Clear cached service providers that may reference dev-only packages (e.g. laravel-ray)
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+
+# --no-scripts prevents package:discover from running (it boots Laravel which
+# fails without a database connection). Package discovery runs at container start.
+RUN composer dump-autoload --no-scripts
 
 # Configure Nginx and S6 overlay
 COPY docker/production/etc/nginx/conf.d/custom.conf /etc/nginx/conf.d/custom.conf
@@ -131,10 +136,10 @@ RUN mkdir -p /etc/nginx/conf.d && \
 
 # Ensure storage/logs has correct permissions for queue workers
 RUN mkdir -p /var/www/html/storage/logs && \
+    touch /var/www/html/storage/logs/laravel.log && \
     chown -R www-data:www-data /var/www/html/storage/logs && \
     chmod -R 755 /var/www/html/storage/logs && \
-    touch /var/www/html/storage/logs/laravel.log && \
-    chmod 640 /var/www/html/storage/logs/laravel.log
+    chmod 664 /var/www/html/storage/logs/laravel.log
 
 # Install MinIO client
 COPY --from=minio-client /usr/bin/mc /usr/bin/mc

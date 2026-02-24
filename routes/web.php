@@ -54,6 +54,13 @@ require __DIR__.'/web/legacy.php';
 // File upload/download routes
 require __DIR__.'/web/uploads.php';
 
+// CLI install script redirects (public, no auth required)
+Route::redirect('/install.sh', 'https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.sh');
+Route::redirect('/install.ps1', 'https://raw.githubusercontent.com/kpizzy812/saturn-cli/main/scripts/install.ps1');
+
+// Public Status Page (no auth required)
+Route::get('/status', [\App\Http\Controllers\StatusPageController::class, 'index'])->name('status-page');
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -80,6 +87,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Deployments
     require __DIR__.'/web/deployments.php';
 
+    // Platform Health Dashboard
+    require __DIR__.'/web/platform-health.php';
+
     // Observability (metrics, logs, traces, alerts)
     require __DIR__.'/web/observability.php';
 
@@ -94,6 +104,9 @@ Route::middleware(['web', 'auth', 'verified'])->group(function () {
 
     // Migrations
     require __DIR__.'/web/migrations.php';
+
+    // Env Diff (cross-environment variable comparison)
+    require __DIR__.'/web/env-diff.php';
 
     // Domains and SSL
     require __DIR__.'/web/domains.php';

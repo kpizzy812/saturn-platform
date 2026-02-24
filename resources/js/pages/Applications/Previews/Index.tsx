@@ -5,6 +5,7 @@ import { Card, CardContent, Button, Input } from '@/components/ui';
 import { PreviewCard } from '@/components/features/PreviewCard';
 import { GitPullRequest, Settings, Search, Filter } from 'lucide-react';
 import type { PreviewDeployment, PreviewDeploymentStatus, Application } from '@/types';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     application: Application;
@@ -135,15 +136,16 @@ export default function PreviewsIndex({ application, previews: propPreviews, pro
                     applicationUuid={application.uuid}
                 />
             ) : (
-                <div className="grid gap-4">
-                    {filteredPreviews.map((preview) => (
-                        <PreviewCard
-                            key={preview.id}
-                            preview={preview}
-                            applicationUuid={application.uuid}
-                        />
+                <StaggerList className="grid gap-4">
+                    {filteredPreviews.map((preview, i) => (
+                        <StaggerItem key={preview.id} index={i}>
+                            <PreviewCard
+                                preview={preview}
+                                applicationUuid={application.uuid}
+                            />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
         </AppLayout>
     );
@@ -182,28 +184,30 @@ function EmptyState({
     applicationUuid: string;
 }) {
     return (
-        <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                    <GitPullRequest className="h-8 w-8 text-foreground-muted" />
-                </div>
-                <h3 className="mt-4 text-lg font-medium text-foreground">No preview deployments found</h3>
-                <p className="mt-2 text-center text-sm text-foreground-muted">
-                    {searchQuery
-                        ? 'Try adjusting your search query or filters'
-                        : filterStatus !== 'all'
-                        ? `No ${filterStatus} preview deployments found`
-                        : 'No preview deployments have been created yet'}
-                </p>
-                {!searchQuery && filterStatus === 'all' && (
-                    <Link href={`/applications/${applicationUuid}/previews/settings`}>
-                        <Button variant="primary" className="mt-4">
-                            <Settings className="mr-2 h-4 w-4" />
-                            Configure Preview Deployments
-                        </Button>
-                    </Link>
-                )}
-            </CardContent>
-        </Card>
+        <FadeIn>
+            <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                        <GitPullRequest className="h-8 w-8 animate-pulse-soft text-foreground-muted" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-medium text-foreground">No preview deployments found</h3>
+                    <p className="mt-2 text-center text-sm text-foreground-muted">
+                        {searchQuery
+                            ? 'Try adjusting your search query or filters'
+                            : filterStatus !== 'all'
+                            ? `No ${filterStatus} preview deployments found`
+                            : 'No preview deployments have been created yet'}
+                    </p>
+                    {!searchQuery && filterStatus === 'all' && (
+                        <Link href={`/applications/${applicationUuid}/previews/settings`}>
+                            <Button variant="primary" className="mt-4">
+                                <Settings className="mr-2 h-4 w-4" />
+                                Configure Preview Deployments
+                            </Button>
+                        </Link>
+                    )}
+                </CardContent>
+            </Card>
+        </FadeIn>
     );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
 import { Settings, Save, ShieldCheck, Globe, Zap } from 'lucide-react';
@@ -26,13 +27,13 @@ export default function ProxySettingsPage({ server, settings: initialSettings }:
     const [newHeaderKey, setNewHeaderKey] = useState('');
     const [newHeaderValue, setNewHeaderValue] = useState('');
 
-    const handleChange = (key: keyof ProxySettings, value: any) => {
+    const handleChange = (key: keyof ProxySettings, value: ProxySettings[keyof ProxySettings]) => {
         setSettings((prev) => ({ ...prev, [key]: value }));
         setIsDirty(true);
     };
 
     const handleSave = () => {
-        router.post(`/servers/${server.uuid}/proxy/settings`, settings as any, {
+        router.post(`/servers/${server.uuid}/proxy/settings`, settings as unknown as RouterPayload, {
             onSuccess: () => {
                 setIsDirty(false);
             },

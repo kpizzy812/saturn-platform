@@ -365,6 +365,88 @@ class ResourceAuthorizationService
     }
 
     // ==========================================
+    // NOTIFICATIONS, INTEGRATIONS, TOKENS
+    // ==========================================
+
+    /**
+     * Check if user can manage notification settings.
+     * Permission: settings.notifications
+     */
+    public function canManageNotifications(User $user, int $teamId): bool
+    {
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission($user, 'settings.notifications', $teamId);
+    }
+
+    /**
+     * Check if user can manage integrations (cloud providers, S3, cloud-init).
+     * Permission: settings.integrations
+     */
+    public function canManageIntegrations(User $user, int $teamId): bool
+    {
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission($user, 'settings.integrations', $teamId);
+    }
+
+    /**
+     * Check if user can manage API tokens.
+     * Permission: settings.tokens
+     */
+    public function canManageTokens(User $user, int $teamId): bool
+    {
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission($user, 'settings.tokens', $teamId);
+    }
+
+    /**
+     * Check if user can manage team members (change roles, remove members).
+     * Permission: team.manage_members
+     */
+    public function canManageTeamMembers(User $user, int $teamId): bool
+    {
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission($user, 'team.manage_members', $teamId);
+    }
+
+    /**
+     * Check if user can invite new members to the team.
+     * Permission: team.invite
+     */
+    public function canInviteMembers(User $user, int $teamId): bool
+    {
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission($user, 'team.invite', $teamId);
+    }
+
+    /**
+     * Check if user can access server terminal.
+     * Permission: applications.terminal
+     */
+    public function canAccessTerminal(User $user, int $teamId): bool
+    {
+        if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->hasPermission($user, 'applications.terminal', $teamId);
+    }
+
+    // ==========================================
     // SENSITIVE DATA ACCESS
     // ==========================================
 

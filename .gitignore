@@ -45,6 +45,8 @@ CHANGELOG.md
 .env.development
 coverage/
 --cache-directory
+panel/dist/
+panel/node_modules/
 
 # AI tooling (local dev only)
 .ai/

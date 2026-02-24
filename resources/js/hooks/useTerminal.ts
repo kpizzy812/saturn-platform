@@ -134,7 +134,7 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
     } = options;
 
     const page = usePage();
-    const teamId = (page.props as any).team?.id;
+    const teamId = page.props.team?.id;
 
     const [isConnected, setIsConnected] = React.useState(false);
     const [isConnecting, setIsConnecting] = React.useState(false);

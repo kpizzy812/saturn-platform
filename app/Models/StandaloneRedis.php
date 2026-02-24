@@ -66,6 +66,7 @@ class StandaloneRedis extends BaseModel
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
     protected $casts = [
+        'redis_password' => 'encrypted',
         'restart_count' => 'integer',
         'last_restart_at' => 'datetime',
         'last_restart_type' => 'string',

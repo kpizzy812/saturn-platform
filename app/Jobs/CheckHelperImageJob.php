@@ -14,7 +14,11 @@ class CheckHelperImageJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $timeout = 1000;
+    public $timeout = 120;
+
+    public int $tries = 2;
+
+    public array $backoff = [10, 30];
 
     public function __construct() {}
 

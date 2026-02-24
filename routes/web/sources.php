@@ -91,6 +91,10 @@ Route::prefix('sources')->group(function () {
 
         // Create a placeholder GithubApp for the manifest flow
         Route::post('/', function (Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to create GitHub Apps.');
+            }
+
             $validated = $request->validate([
                 'is_public' => 'sometimes|boolean',
                 'name' => 'sometimes|string|max:255',
@@ -149,6 +153,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.show');
 
         Route::put('/{id}', function (string $id, Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to update GitHub Apps.');
+            }
+
             $query = \App\Models\GithubApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -164,6 +172,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.update');
 
         Route::post('/{id}/sync', function (string $id) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to sync GitHub Apps.');
+            }
+
             $query = \App\Models\GithubApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -218,6 +230,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.sync');
 
         Route::delete('/{id}', function (string $id) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to delete GitHub Apps.');
+            }
+
             $query = \App\Models\GithubApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -254,6 +270,10 @@ Route::prefix('sources')->group(function () {
         Route::get('/create', fn () => Inertia::render('Sources/GitLab/Create'))->name('sources.gitlab.create');
 
         Route::post('/', function (Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to create GitLab connections.');
+            }
+
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'api_url' => 'required|url',
@@ -308,6 +328,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.gitlab.show');
 
         Route::put('/{id}', function (string $id, Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to update GitLab connections.');
+            }
+
             $query = \App\Models\GitlabApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -324,6 +348,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.gitlab.update');
 
         Route::delete('/{id}', function (string $id) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to delete GitLab connections.');
+            }
+
             $query = \App\Models\GitlabApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)

@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Models\Team;
 use App\Notifications\Server\HetznerDeletionFailed;
 use App\Services\HetznerService;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 class DeleteServer
@@ -26,19 +27,19 @@ class DeleteServer
             );
         }
 
-        ray($server ? 'Deleting server from Saturn Platform' : 'Server already deleted from Saturn Platform, skipping Saturn Platform deletion');
+        Log::info($server ? 'Deleting server from Saturn Platform' : 'Server already deleted from Saturn Platform, skipping Saturn Platform deletion');
 
         // If server is already deleted from Saturn Platform, skip this part
         if (! $server) {
             return; // Server already force deleted from Saturn Platform
         }
 
-        ray('force deleting server from Saturn Platform', ['server_id' => $server->id]);
+        Log::info('Force deleting server from Saturn Platform', ['server_id' => $server->id]);
 
         try {
             $server->forceDelete();
         } catch (\Throwable $e) {
-            ray('Failed to force delete server from Saturn Platform', [
+            Log::warning('Failed to force delete server from Saturn Platform', [
                 'error' => $e->getMessage(),
                 'server_id' => $server->id,
             ]);
@@ -66,7 +67,7 @@ class DeleteServer
             }
 
             if (! $token) {
-                ray('No Hetzner token found for team, skipping Hetzner deletion', [
+                Log::warning('No Hetzner token found for team, skipping Hetzner deletion', [
                     'team_id' => $teamId,
                     'hetzner_server_id' => $hetznerServerId,
                 ]);
@@ -77,12 +78,12 @@ class DeleteServer
             $hetznerService = new HetznerService($token->token);
             $hetznerService->deleteServer($hetznerServerId);
 
-            ray('Deleted server from Hetzner', [
+            Log::info('Deleted server from Hetzner', [
                 'hetzner_server_id' => $hetznerServerId,
                 'team_id' => $teamId,
             ]);
         } catch (\Throwable $e) {
-            ray('Failed to delete server from Hetzner', [
+            Log::warning('Failed to delete server from Hetzner', [
                 'error' => $e->getMessage(),
                 'hetzner_server_id' => $hetznerServerId,
                 'team_id' => $teamId,

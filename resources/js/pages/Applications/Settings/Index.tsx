@@ -54,11 +54,11 @@ export default function ApplicationSettingsPage({ application, applicationSettin
     // Generate webhook URL based on git source
     const webhookUrl = React.useMemo(() => {
         const baseUrl = window.location.origin;
-        const source = (application as any).source?.type || 'github';
+        const source = application.source?.type || 'github';
         return `${baseUrl}/webhooks/source/${source}/events/manual`;
-    }, [(application as any).source?.type]);
+    }, [application.source?.type]);
 
-    const webhookSecret = (application as any).manual_webhook_secret_github || (application as any).manual_webhook_secret_gitlab || '';
+    const webhookSecret = application.manual_webhook_secret_github || application.manual_webhook_secret_gitlab || '';
 
     const copyToClipboard = (text: string, field: string) => {
         navigator.clipboard.writeText(text);

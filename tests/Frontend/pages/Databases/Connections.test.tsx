@@ -244,7 +244,9 @@ describe('Database Connections Page', () => {
             const showPasswordButton = screen.getByTitle('Show password');
             await user.click(showPasswordButton);
 
-            expect(screen.getByText('secretpassword')).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText('secretpassword')).toBeInTheDocument();
+            });
         });
     });
 
@@ -272,8 +274,10 @@ describe('Database Connections Page', () => {
             const checkbox = screen.getByRole('checkbox');
             await user.click(checkbox);
 
-            expect(screen.getByText('Pool Size')).toBeInTheDocument();
-            expect(screen.getByText('Max Connections')).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText('Pool Size')).toBeInTheDocument();
+                expect(screen.getByText('Max Connections')).toBeInTheDocument();
+            });
         });
 
         it('should save settings when save button is clicked', async () => {
@@ -287,15 +291,17 @@ describe('Database Connections Page', () => {
             const saveButton = screen.getByText('Save Settings');
             await user.click(saveButton);
 
-            expect(router.patch).toHaveBeenCalledWith(
-                '/databases/test-db-uuid',
-                expect.objectContaining({
-                    connection_pool_enabled: false,
-                    connection_pool_size: 20,
-                    connection_pool_max: 100,
-                }),
-                expect.any(Object)
-            );
+            await waitFor(() => {
+                expect(router.patch).toHaveBeenCalledWith(
+                    '/databases/test-db-uuid',
+                    expect.objectContaining({
+                        connection_pool_enabled: false,
+                        connection_pool_size: 20,
+                        connection_pool_max: 100,
+                    }),
+                    expect.any(Object)
+                );
+            });
         });
     });
 

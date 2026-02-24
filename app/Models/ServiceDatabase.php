@@ -31,7 +31,7 @@ class ServiceDatabase extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, status (system-managed), last_online_at (system-managed)
+     * Excludes: id (auto-increment)
      */
     protected $fillable = [
         'uuid',
@@ -40,6 +40,8 @@ class ServiceDatabase extends BaseModel
         'image',
         'custom_type',
         'service_id',
+        'status',
+        'last_online_at',
         'is_public',
         'public_port',
         'is_log_drain_enabled',

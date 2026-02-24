@@ -3,16 +3,20 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class ApiTokenPolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any API tokens.
      */
     public function viewAny(User $user): bool
     {
-        // Users can view their own API tokens
         return true;
     }
 
@@ -21,7 +25,6 @@ class ApiTokenPolicy
      */
     public function view(User $user, PersonalAccessToken $token): bool
     {
-        // Users can only view their own tokens
         return $user->id === $token->tokenable_id && $token->tokenable_type === User::class;
     }
 
@@ -30,7 +33,6 @@ class ApiTokenPolicy
      */
     public function create(User $user): bool
     {
-        // All authenticated users can create their own API tokens
         return true;
     }
 
@@ -39,7 +41,6 @@ class ApiTokenPolicy
      */
     public function update(User $user, PersonalAccessToken $token): bool
     {
-        // Users can only update their own tokens
         return $user->id === $token->tokenable_id && $token->tokenable_type === User::class;
     }
 
@@ -48,7 +49,6 @@ class ApiTokenPolicy
      */
     public function delete(User $user, PersonalAccessToken $token): bool
     {
-        // Users can only delete their own tokens
         return $user->id === $token->tokenable_id && $token->tokenable_type === User::class;
     }
 
@@ -57,7 +57,6 @@ class ApiTokenPolicy
      */
     public function manage(User $user): bool
     {
-        // All authenticated users can manage their own API tokens
         return true;
     }
 
@@ -66,8 +65,9 @@ class ApiTokenPolicy
      */
     public function useRootPermissions(User $user): bool
     {
-        // Only admins and owners can use root permissions
-        return $user->isAdmin() || $user->isOwner();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageTokens($user, $team->id) : false;
     }
 
     /**
@@ -75,7 +75,8 @@ class ApiTokenPolicy
      */
     public function useWritePermissions(User $user): bool
     {
-        // Only admins and owners can use write permissions
-        return $user->isAdmin() || $user->isOwner();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageTokens($user, $team->id) : false;
     }
 }

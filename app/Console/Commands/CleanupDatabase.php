@@ -64,5 +64,53 @@ class CleanupDatabase extends Command
         if ($this->option('yes')) {
             $scheduled_task_executions->delete();
         }
+
+        // Cleanup deployment_log_entries for old deployments
+        $deployment_log_entries = DB::table('deployment_log_entries')->where('created_at', '<', now()->subDays($keep_days));
+        $count = $deployment_log_entries->count();
+        echo "Delete $count entries from deployment_log_entries.\n";
+        if ($this->option('yes')) {
+            $deployment_log_entries->delete();
+        }
+
+        // Cleanup audit_logs table
+        $audit_logs = DB::table('audit_logs')->where('created_at', '<', now()->subDays($keep_days));
+        $count = $audit_logs->count();
+        echo "Delete $count entries from audit_logs.\n";
+        if ($this->option('yes')) {
+            $audit_logs->delete();
+        }
+
+        // Cleanup login_history table
+        $login_history = DB::table('login_history')->where('logged_at', '<', now()->subDays($keep_days));
+        $count = $login_history->count();
+        echo "Delete $count entries from login_history.\n";
+        if ($this->option('yes')) {
+            $login_history->delete();
+        }
+
+        // Cleanup scheduled_database_backup_executions table
+        $backup_executions = DB::table('scheduled_database_backup_executions')->where('created_at', '<', now()->subDays($keep_days));
+        $count = $backup_executions->count();
+        echo "Delete $count entries from scheduled_database_backup_executions.\n";
+        if ($this->option('yes')) {
+            $backup_executions->delete();
+        }
+
+        // Cleanup server_health_checks table (keep only 30 days of monitoring data)
+        $health_checks = DB::table('server_health_checks')->where('created_at', '<', now()->subDays(30));
+        $count = $health_checks->count();
+        echo "Delete $count entries from server_health_checks.\n";
+        if ($this->option('yes')) {
+            $health_checks->delete();
+        }
+
+        // Cleanup status_page_daily_snapshots table (keep only 100 days)
+        $snapshots = DB::table('status_page_daily_snapshots')->where('snapshot_date', '<', now()->subDays(100));
+        $count = $snapshots->count();
+        echo "Delete $count entries from status_page_daily_snapshots.\n";
+        if ($this->option('yes')) {
+            $snapshots->delete();
+        }
     }
 }

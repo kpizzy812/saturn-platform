@@ -18,6 +18,7 @@ import {
     Info,
 } from 'lucide-react';
 import { BrandIcon } from '@/components/ui/BrandIcon';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { StandaloneDatabase, DatabaseType } from '@/types';
 
 interface Props {
@@ -47,6 +48,8 @@ const databaseTypeConfig: Record<DatabaseType, { color: string; bgColor: string;
 };
 
 export default function DatabaseConnections({ database }: Props) {
+    const { can } = usePermissions();
+    const canViewCredentials = can('databases.credentials');
     const config = databaseTypeConfig[database.database_type] || databaseTypeConfig.postgresql;
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -69,13 +72,13 @@ export default function DatabaseConnections({ database }: Props) {
         password: conn?.password || '',
     };
 
-    // Use real URLs from backend if available
-    const internalUrl = database.internal_db_url;
-    const externalUrl = database.external_db_url;
+    // Use real URLs from backend if available; mask if user lacks credential permission
+    const internalUrl = canViewCredentials ? database.internal_db_url : database.internal_db_url?.replace(/\/\/[^@]+@/, '//***:***@');
+    const externalUrl = canViewCredentials ? database.external_db_url : database.external_db_url?.replace(/\/\/[^@]+@/, '//***:***@');
 
     // Fallback connection string if external_db_url not provided
     const connectionString = externalUrl ||
-        `${database.database_type}://${connectionDetails.username}:${connectionDetails.password}@${connectionDetails.host}:${connectionDetails.publicPort || connectionDetails.port}/${connectionDetails.database}`;
+        `${database.database_type}://${connectionDetails.username}:${canViewCredentials ? connectionDetails.password : '***'}@${connectionDetails.host}:${connectionDetails.publicPort || connectionDetails.port}/${connectionDetails.database}`;
 
     // Fetch active connections from backend
     const [activeConnections, setActiveConnections] = useState<ActiveConnection[]>([]);
@@ -413,22 +416,26 @@ export default function DatabaseConnections({ database }: Props) {
                             </label>
                             <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
                                 <code className="flex-1 font-mono text-sm text-foreground">
-                                    {showPassword ? connectionDetails.password : '••••••••••••••••••••'}
+                                    {canViewCredentials && showPassword ? connectionDetails.password : '••••••••••••••••••••'}
                                 </code>
-                                <button
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
-                                    title={showPassword ? 'Hide password' : 'Show password'}
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                                <button
-                                    onClick={() => copyToClipboard(connectionDetails.password, 'password')}
-                                    className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
-                                    title="Copy password"
-                                >
-                                    <Copy className="h-4 w-4" />
-                                </button>
+                                {canViewCredentials && (
+                                    <>
+                                        <button
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                            title={showPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                        <button
+                                            onClick={() => copyToClipboard(connectionDetails.password, 'password')}
+                                            className="rounded p-1 text-foreground-muted hover:bg-background-tertiary hover:text-foreground"
+                                            title="Copy password"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                             {copiedField === 'password' && (
                                 <p className="mt-2 text-sm text-green-500">Copied to clipboard!</p>

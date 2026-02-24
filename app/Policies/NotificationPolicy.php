@@ -3,22 +3,27 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 use Illuminate\Database\Eloquent\Model;
 
 class NotificationPolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view the notification settings.
      */
     public function view(User $user, Model $notificationSettings): bool
     {
-        // Check if the notification settings belong to the user's current team
-        if (! $notificationSettings->getAttribute('team')) {
+        $team = $notificationSettings->getAttribute('team');
+        if (! $team) {
             return false;
         }
 
-        // return $user->teams()->where('teams.id', $notificationSettings->getAttribute('team')->id)->exists();
-        return true;
+        // Any team member can view notification settings
+        return $user->teams->contains('id', $team->id);
     }
 
     /**
@@ -26,14 +31,12 @@ class NotificationPolicy
      */
     public function update(User $user, Model $notificationSettings): bool
     {
-        // Check if the notification settings belong to the user's current team
-        if (! $notificationSettings->getAttribute('team')) {
+        $team = $notificationSettings->getAttribute('team');
+        if (! $team) {
             return false;
         }
 
-        // Only owners and admins can update notification settings
-        //  return $user->isAdmin() || $user->isOwner();
-        return true;
+        return $this->authService->canManageNotifications($user, $team->id);
     }
 
     /**
@@ -41,8 +44,7 @@ class NotificationPolicy
      */
     public function manage(User $user, Model $notificationSettings): bool
     {
-        // return $this->update($user, $notificationSettings);
-        return true;
+        return $this->update($user, $notificationSettings);
     }
 
     /**
@@ -50,7 +52,6 @@ class NotificationPolicy
      */
     public function sendTest(User $user, Model $notificationSettings): bool
     {
-        // return $this->update($user, $notificationSettings);
-        return true;
+        return $this->update($user, $notificationSettings);
     }
 }

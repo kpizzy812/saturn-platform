@@ -12,12 +12,20 @@ class MongoMetricsService
     use FormatHelpers;
 
     /**
+     * Validate field/key name against NoSQL injection: only alphanumeric, underscore, dot allowed.
+     */
+    private function isValidFieldName(string $name): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $name);
+    }
+
+    /**
      * Collect MongoDB metrics via SSH.
      */
     public function collectMetrics(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
         $metrics = [
             'collections' => null,
@@ -28,7 +36,7 @@ class MongoMetricsService
 
         try {
             // Get database stats
-            $statsCommand = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.stats())\" {$dbName} 2>/dev/null || echo '{}'";
+            $statsCommand = "docker exec {$containerName} mongosh --quiet --eval ".escapeshellarg('JSON.stringify(db.stats())')." {$dbName} 2>/dev/null || echo '{}'";
             $statsJson = trim(instant_remote_process([$statsCommand], $server, false) ?? '{}');
             $stats = json_decode($statsJson, true);
 
@@ -55,8 +63,8 @@ class MongoMetricsService
      */
     public function getCollections(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
         // Get collections with stats
         $command = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.getCollectionInfos().map(c => { const stats = db.getCollection(c.name).stats(); return { name: c.name, documentCount: stats.count || 0, size: stats.size || 0, avgObjSize: stats.avgObjSize || 0 }; }))\" {$dbName} 2>/dev/null || echo '[]'";
@@ -84,8 +92,8 @@ class MongoMetricsService
      */
     public function getIndexes(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
         // Get indexes for all collections
         $command = "docker exec {$containerName} mongosh --quiet --eval \"
@@ -163,7 +171,7 @@ class MongoMetricsService
      */
     public function getReplicaSetStatus(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
 
         // Check replica set status
         $command = "docker exec {$containerName} mongosh --quiet --eval \"
@@ -192,7 +200,7 @@ class MongoMetricsService
      */
     public function getStorageSettings(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
 
         $settings = [
             'storageEngine' => 'WiredTiger',
@@ -237,10 +245,11 @@ class MongoMetricsService
      */
     public function getUsers(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
-        $command = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.getUsers().users.map(u => ({user: u.user, roles: u.roles.map(r => r.role).join(', ')})))\" {$dbName} 2>/dev/null || echo '[]'";
+        $eval = escapeshellarg("JSON.stringify(db.getUsers().users.map(u => ({user: u.user, roles: u.roles.map(r => r.role).join(', ')})))");
+        $command = "docker exec {$containerName} mongosh --quiet --eval {$eval} {$dbName} 2>/dev/null || echo '[]'";
         $result = trim(instant_remote_process([$command], $server, false) ?? '[]');
 
         $users = [];
@@ -263,10 +272,11 @@ class MongoMetricsService
      */
     public function getTables(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
-        $command = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.getCollectionInfos().map(c => { const stats = db.getCollection(c.name).stats(); return { name: c.name, count: stats.count || 0, size: stats.size || 0 }; }))\" {$dbName} 2>/dev/null || echo '[]'";
+        $eval = escapeshellarg('JSON.stringify(db.getCollectionInfos().map(c => { const stats = db.getCollection(c.name).stats(); return { name: c.name, count: stats.count || 0, size: stats.size || 0 }; }))');
+        $command = "docker exec {$containerName} mongosh --quiet --eval {$eval} {$dbName} 2>/dev/null || echo '[]'";
         $result = trim(instant_remote_process([$command], $server, false) ?? '[]');
 
         $tables = [];
@@ -289,13 +299,19 @@ class MongoMetricsService
      */
     public function getColumns(mixed $server, mixed $database, string $collectionName): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mongo_initdb_root_password ?? '';
-        $username = $database->mongo_initdb_root_username ?? 'root';
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
+        $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
+
+        // Validate collection name to prevent NoSQL injection
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $collectionName)) {
+            return [['name' => '_id', 'type' => 'ObjectId', 'nullable' => false, 'default' => null, 'is_primary' => true]];
+        }
 
         // Get unique fields from first 100 documents to infer schema
-        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.findOne()\" 2>/dev/null || echo '{}'";
+        $eval = escapeshellarg("db.{$collectionName}.findOne()");
+        $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>/dev/null || echo '{}'";
         $result = trim(instant_remote_process([$command], $server, false) ?? '{}');
 
         // Parse JSON to extract field names
@@ -328,31 +344,42 @@ class MongoMetricsService
      */
     public function getData(mixed $server, mixed $database, string $collectionName, int $page, int $perPage, string $search, string $orderBy, string $orderDir, string $filters = ''): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mongo_initdb_root_password ?? '';
-        $username = $database->mongo_initdb_root_username ?? 'root';
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
+        $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
         $skip = ($page - 1) * $perPage;
 
         // Get columns first
         $columns = $this->getColumns($server, $database, $collectionName);
 
-        // Build search query (text search across all fields)
+        // Validate collection name to prevent NoSQL injection
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $collectionName)) {
+            return ['rows' => [], 'total' => 0, 'columns' => $columns];
+        }
+
+        // Build search query (text search across all fields, sanitized)
         $searchQuery = '{}';
         if ($search !== '') {
-            $escapedSearch = str_replace("'", "\\'", $search);
-            $searchQuery = '{$or: ['.implode(',', array_map(fn ($col) => "{{$col['name']}: /.*{$escapedSearch}.*/i}}", $columns)).']}';
+            // Strip chars that could break out of regex context or inject JS
+            $escapedSearch = preg_replace('/[\/\\\\.*+?|()\\[\\]{}^$;`"\']/', '', $search);
+            if ($escapedSearch !== '') {
+                $safeColumns = array_filter($columns, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $col['name']));
+                $searchQuery = '{$or: ['.implode(',', array_map(fn ($col) => "{{$col['name']}: /.*{$escapedSearch}.*/i}}", $safeColumns)).']}';
+            }
         }
 
         // Build sort query
         $sortQuery = $orderBy !== '' ? "{{$orderBy}: ".($orderDir === 'asc' ? '1' : '-1').'}' : '{}';
 
         // Get total count
-        $countCommand = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.countDocuments({$searchQuery})\" 2>/dev/null || echo '0'";
+        $countEval = escapeshellarg("db.{$collectionName}.countDocuments({$searchQuery})");
+        $countCommand = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$countEval} 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
         // Get data
-        $dataCommand = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"JSON.stringify(db.{$collectionName}.find({$searchQuery}).sort({$sortQuery}).skip({$skip}).limit({$perPage}).toArray())\" 2>/dev/null || echo '[]'";
+        $dataEval = escapeshellarg("JSON.stringify(db.{$collectionName}.find({$searchQuery}).sort({$sortQuery}).skip({$skip}).limit({$perPage}).toArray())");
+        $dataCommand = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$dataEval} 2>/dev/null || echo '[]'";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '[]');
 
         $rows = [];
@@ -393,38 +420,46 @@ class MongoMetricsService
      */
     public function updateRow(mixed $server, mixed $database, string $collectionName, array $primaryKey, array $updates): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mongo_initdb_root_password ?? '';
-        $username = $database->mongo_initdb_root_username ?? 'root';
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
+        $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
-        // Build filter (usually by _id)
+        // Build filter — validate key names to prevent NoSQL injection
         $filterParts = [];
         foreach ($primaryKey as $key => $value) {
             if ($key === '_id') {
-                $filterParts[] = "_id: ObjectId('{$value}')";
-            } else {
-                $escapedValue = str_replace("'", "\\'", (string) $value);
-                $filterParts[] = "{$key}: '{$escapedValue}'";
+                // ObjectId must be a 24-char hex string
+                if (preg_match('/^[a-f0-9]{24}$/i', (string) $value)) {
+                    $filterParts[] = "_id: ObjectId('{$value}')";
+                }
+            } elseif ($this->isValidFieldName((string) $key)) {
+                $escapedValue = json_encode((string) $value);
+                $filterParts[] = "{$key}: {$escapedValue}";
             }
         }
-        $filter = '{'.implode(', ', $filterParts).'}';
+        if (empty($filterParts)) {
+            return false;
+        }
 
-        // Build update
+        // Build update — validate key names to prevent NoSQL injection
         $updateParts = [];
         foreach ($updates as $key => $value) {
-            if ($key === '_id') {
-                continue; // Skip _id updates
+            if ($key === '_id' || ! $this->isValidFieldName((string) $key)) {
+                continue;
             }
-            $escapedValue = str_replace("'", "\\'", (string) $value);
-            $updateParts[] = "{$key}: '{$escapedValue}'";
+            $escapedValue = json_encode((string) $value);
+            $updateParts[] = "{$key}: {$escapedValue}";
         }
-        $update = '{\$set: {'.implode(', ', $updateParts).'}}';
+        if (empty($updateParts)) {
+            return false;
+        }
 
-        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.updateOne({$filter}, {$update})\" 2>&1";
+        $eval = escapeshellarg("db.{$collectionName}.updateOne({".implode(', ', $filterParts).'}, {$set: {'.implode(', ', $updateParts).'}})');
+        $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
-        return str_contains($result, 'modifiedCount') && ! str_contains($result, 'error');
+        return str_contains((string) $result, 'modifiedCount') && ! str_contains((string) $result, 'error');
     }
 
     /**
@@ -432,27 +467,32 @@ class MongoMetricsService
      */
     public function deleteRow(mixed $server, mixed $database, string $collectionName, array $primaryKey): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mongo_initdb_root_password ?? '';
-        $username = $database->mongo_initdb_root_username ?? 'root';
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
+        $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
-        // Build filter (usually by _id)
+        // Build filter — validate key names to prevent NoSQL injection
         $filterParts = [];
         foreach ($primaryKey as $key => $value) {
             if ($key === '_id') {
-                $filterParts[] = "_id: ObjectId('{$value}')";
-            } else {
-                $escapedValue = str_replace("'", "\\'", (string) $value);
-                $filterParts[] = "{$key}: '{$escapedValue}'";
+                if (preg_match('/^[a-f0-9]{24}$/i', (string) $value)) {
+                    $filterParts[] = "_id: ObjectId('{$value}')";
+                }
+            } elseif ($this->isValidFieldName((string) $key)) {
+                $escapedValue = json_encode((string) $value);
+                $filterParts[] = "{$key}: {$escapedValue}";
             }
         }
-        $filter = '{'.implode(', ', $filterParts).'}';
+        if (empty($filterParts)) {
+            return false;
+        }
 
-        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.deleteOne({$filter})\" 2>&1";
+        $eval = escapeshellarg("db.{$collectionName}.deleteOne({".implode(', ', $filterParts).'})');
+        $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
-        return str_contains($result, 'deletedCount') && ! str_contains($result, 'error');
+        return str_contains((string) $result, 'deletedCount') && ! str_contains((string) $result, 'error');
     }
 
     /**
@@ -460,30 +500,29 @@ class MongoMetricsService
      */
     public function createRow(mixed $server, mixed $database, string $collectionName, array $data): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mongo_initdb_root_password ?? '';
-        $username = $database->mongo_initdb_root_username ?? 'root';
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
+        $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
-        // Build document
+        // Build document — validate key names to prevent NoSQL injection
         $docParts = [];
         foreach ($data as $key => $value) {
-            if ($key === '_id') {
-                continue; // Let MongoDB generate _id
+            if ($key === '_id' || ! $this->isValidFieldName((string) $key)) {
+                continue;
             }
-            if ($value === null) {
-                $docParts[] = "{$key}: null";
-            } else {
-                $escapedValue = str_replace("'", "\\'", (string) $value);
-                $docParts[] = "{$key}: '{$escapedValue}'";
-            }
+            $escapedValue = $value === null ? 'null' : json_encode((string) $value);
+            $docParts[] = "{$key}: {$escapedValue}";
         }
-        $document = '{'.implode(', ', $docParts).'}';
+        if (empty($docParts)) {
+            return false;
+        }
 
-        $command = "docker exec {$containerName} mongosh -u {$username} -p '{$password}' --authenticationDatabase admin {$dbName} --quiet --eval \"db.{$collectionName}.insertOne({$document})\" 2>&1";
+        $eval = escapeshellarg("db.{$collectionName}.insertOne({".implode(', ', $docParts).'})');
+        $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
-        return str_contains($result, 'insertedId') && ! str_contains($result, 'error');
+        return str_contains((string) $result, 'insertedId') && ! str_contains((string) $result, 'error');
     }
 
     /**

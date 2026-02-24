@@ -18,7 +18,7 @@ class ServiceApplication extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, status (system-managed), last_online_at (system-managed)
+     * Excludes: id (auto-increment)
      */
     protected $fillable = [
         'uuid',
@@ -27,6 +27,8 @@ class ServiceApplication extends BaseModel
         'image',
         'fqdn',
         'service_id',
+        'status',
+        'last_online_at',
         'is_log_drain_enabled',
         'is_stripprefix_enabled',
         'is_gzip_enabled',

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '../../../Frontend/utils/test-utils';
 import { CommandPalette } from '@/components/ui/CommandPalette';
-import type { RecentResource } from '@/hooks/useRecentResources';
 import type { FavoriteResource } from '@/hooks/useResourceFrequency';
 import { useSearch } from '@/hooks/useSearch';
 
@@ -76,29 +75,6 @@ describe('CommandPalette', () => {
         fireEvent.change(input, { target: { value: 'deploy' } });
         expect(screen.getByText('Deploy')).toBeInTheDocument();
         expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
-    });
-
-    it('should show recent items when query is empty', () => {
-        const recentItems: RecentResource[] = [
-            { type: 'server', name: 'My Server', uuid: 'srv-1', href: '/servers/srv-1', timestamp: Date.now() },
-            { type: 'application', name: 'My App', uuid: 'app-1', href: '/applications/app-1', timestamp: Date.now() - 1000 },
-        ];
-
-        render(<CommandPalette open={true} onClose={onClose} recentItems={recentItems} />);
-        expect(screen.getByText('Recent')).toBeInTheDocument();
-        expect(screen.getByText('My Server')).toBeInTheDocument();
-        expect(screen.getByText('My App')).toBeInTheDocument();
-    });
-
-    it('should not show recent items when there is a query', () => {
-        const recentItems: RecentResource[] = [
-            { type: 'server', name: 'My Server', uuid: 'srv-1', href: '/servers/srv-1', timestamp: Date.now() },
-        ];
-
-        render(<CommandPalette open={true} onClose={onClose} recentItems={recentItems} />);
-        const input = screen.getByPlaceholderText('Search commands and resources...');
-        fireEvent.change(input, { target: { value: 'settings' } });
-        expect(screen.queryByText('Recent')).not.toBeInTheDocument();
     });
 
     it('should call onClose when Escape is pressed', () => {

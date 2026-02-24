@@ -22,11 +22,9 @@ function createJobWithReflection(): array
     $reflection = new ReflectionClass(ApplicationDeploymentJob::class);
 
     $appProp = $reflection->getProperty('application');
-    $appProp->setAccessible(true);
     $appProp->setValue($job, $mockApplication);
 
     $queueProp = $reflection->getProperty('application_deployment_queue');
-    $queueProp->setAccessible(true);
     $queueProp->setValue($job, $mockQueue);
 
     return [$job, $reflection];
@@ -37,7 +35,6 @@ function createJobWithReflection(): array
 it('infers Node 20 from next@16', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -53,7 +50,6 @@ it('infers Node 20 from next@16', function () {
 it('infers Node 18 from next@15', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -68,7 +64,6 @@ it('infers Node 18 from next@15', function () {
 it('infers Node 20 from nuxt@4', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -83,7 +78,6 @@ it('infers Node 20 from nuxt@4', function () {
 it('infers Node 20 from angular@19', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -98,7 +92,6 @@ it('infers Node 20 from angular@19', function () {
 it('infers Node 18 from vite@6', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'devDependencies' => [
@@ -113,7 +106,6 @@ it('infers Node 18 from vite@6', function () {
 it('infers Node 20 from vite@7', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'devDependencies' => [
@@ -128,7 +120,6 @@ it('infers Node 20 from vite@7', function () {
 it('infers Node 18 from astro@5', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -143,7 +134,6 @@ it('infers Node 18 from astro@5', function () {
 it('infers Node 20 from nuxt@3', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -158,7 +148,6 @@ it('infers Node 20 from nuxt@3', function () {
 it('infers Node 20 from svelte@5', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -173,7 +162,6 @@ it('infers Node 20 from svelte@5', function () {
 it('returns highest required Node version when multiple frameworks present', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -191,7 +179,6 @@ it('returns highest required Node version when multiple frameworks present', fun
 it('returns null when no known frameworks found', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -207,7 +194,6 @@ it('returns null when no known frameworks found', function () {
 it('returns null for empty package.json', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $result = $method->invoke($job, []);
     expect($result)->toBeNull();
@@ -216,7 +202,6 @@ it('returns null for empty package.json', function () {
 it('handles latest and wildcard version specifiers gracefully', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('inferNodeVersionFromDependencies');
-    $method->setAccessible(true);
 
     $packageJson = [
         'dependencies' => [
@@ -234,7 +219,6 @@ it('handles latest and wildcard version specifiers gracefully', function () {
 it('extracts major version from semver string', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('extractMajorVersion');
-    $method->setAccessible(true);
 
     expect($method->invoke($job, '16.0.7'))->toBe(16);
     expect($method->invoke($job, '15.2.3'))->toBe(15);
@@ -244,7 +228,6 @@ it('extracts major version from semver string', function () {
 it('extracts major version from caret range', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('extractMajorVersion');
-    $method->setAccessible(true);
 
     expect($method->invoke($job, '^16.0.0'))->toBe(16);
     expect($method->invoke($job, '^19.0.0'))->toBe(19);
@@ -253,7 +236,6 @@ it('extracts major version from caret range', function () {
 it('extracts major version from tilde range', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('extractMajorVersion');
-    $method->setAccessible(true);
 
     expect($method->invoke($job, '~16.0.0'))->toBe(16);
 });
@@ -261,7 +243,6 @@ it('extracts major version from tilde range', function () {
 it('extracts major version from gte range', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('extractMajorVersion');
-    $method->setAccessible(true);
 
     expect($method->invoke($job, '>=16'))->toBe(16);
     expect($method->invoke($job, '>=20.9.0'))->toBe(20);
@@ -270,7 +251,6 @@ it('extracts major version from gte range', function () {
 it('returns null for non-numeric specifiers', function () {
     [$job, $reflection] = createJobWithReflection();
     $method = $reflection->getMethod('extractMajorVersion');
-    $method->setAccessible(true);
 
     expect($method->invoke($job, 'latest'))->toBeNull();
     expect($method->invoke($job, '*'))->toBeNull();

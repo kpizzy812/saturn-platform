@@ -40,7 +40,7 @@ func NewGetCommand() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed to get server resources: %w", err)
 				}
-				data = resources.Resources
+				data = resources
 			} else {
 				server, err := serverSvc.Get(ctx, uuid)
 				if err != nil {

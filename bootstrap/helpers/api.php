@@ -110,30 +110,49 @@ function sharedDataApplications()
         'install_command' => 'string|nullable',
         'build_command' => 'string|nullable',
         'start_command' => 'string|nullable',
-        'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/',
-        'ports_mappings' => 'string|regex:/^(\d+:\d+)(,\d+:\d+)*$/|nullable',
+        'ports_exposes' => ['string', 'regex:/^(\d+)(,\d+)*$/', function ($attribute, $value, $fail) {
+            foreach (explode(',', $value) as $port) {
+                $port = (int) $port;
+                if ($port < 1 || $port > 65535) {
+                    $fail("Each port in $attribute must be between 1 and 65535.");
+                }
+            }
+        }],
+        'ports_mappings' => ['string', 'regex:/^(\d+:\d+)(,\d+:\d+)*$/', 'nullable', function ($attribute, $value, $fail) {
+            if ($value === null) {
+                return;
+            }
+            foreach (explode(',', $value) as $mapping) {
+                foreach (explode(':', $mapping) as $port) {
+                    $port = (int) $port;
+                    if ($port < 1 || $port > 65535) {
+                        $fail("Each port in $attribute must be between 1 and 65535.");
+                    }
+                }
+            }
+        }],
         'custom_network_aliases' => 'string|nullable',
         'base_directory' => 'string|nullable',
         'publish_directory' => 'string|nullable',
         'health_check_enabled' => 'boolean',
-        'health_check_path' => 'string',
-        'health_check_port' => 'string|nullable',
-        'health_check_host' => 'string',
-        'health_check_method' => 'string',
-        'health_check_return_code' => 'numeric',
-        'health_check_scheme' => 'string',
-        'health_check_response_text' => 'string|nullable',
-        'health_check_interval' => 'numeric',
-        'health_check_timeout' => 'numeric',
-        'health_check_retries' => 'numeric',
-        'health_check_start_period' => 'numeric',
-        'limits_memory' => 'string',
-        'limits_memory_swap' => 'string',
-        'limits_memory_swappiness' => 'numeric',
-        'limits_memory_reservation' => 'string',
-        'limits_cpus' => 'string',
-        'limits_cpuset' => 'string|nullable',
-        'limits_cpu_shares' => 'numeric',
+        'health_check_path' => 'string|max:2048',
+        'health_check_port' => 'integer|nullable|min:1|max:65535',
+        'health_check_host' => 'string|max:255',
+        'health_check_method' => 'string|in:GET,POST,HEAD,OPTIONS',
+        'health_check_return_code' => 'integer|min:100|max:599',
+        'health_check_scheme' => 'string|in:http,https',
+        'health_check_response_text' => 'string|nullable|max:1024',
+        'health_check_interval' => 'integer|min:1|max:3600',
+        'health_check_timeout' => 'integer|min:1|max:300',
+        'health_check_retries' => 'integer|min:0|max:100',
+        'health_check_start_period' => 'integer|min:0|max:3600',
+        'limits_memory' => ['string', 'regex:/^(\d+(\.\d+)?)(b|k|m|g)$/i'],
+        'limits_memory_swap' => ['string', 'regex:/^(\d+(\.\d+)?)(b|k|m|g)$/i'],
+        'limits_memory_swappiness' => 'integer|min:0|max:100',
+        'limits_memory_reservation' => ['string', 'regex:/^(\d+(\.\d+)?)(b|k|m|g)$/i'],
+        'limits_cpus' => ['string', 'regex:/^\d+(\.\d+)?$/'],
+        'limits_cpuset' => ['string', 'nullable', 'regex:/^(\d+(-\d+)?)(,\d+(-\d+)?)*$/'],
+        'limits_cpu_shares' => 'integer|min:2|max:262144',
         'custom_labels' => 'string|nullable',
         'custom_docker_run_options' => 'string|nullable',
         'post_deployment_command' => 'string|nullable',

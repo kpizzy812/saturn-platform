@@ -16,6 +16,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class DockerCleanupJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -40,6 +41,15 @@ class DockerCleanupJob implements ShouldBeEncrypted, ShouldQueue
         public bool $deleteUnusedVolumes = false,
         public bool $deleteUnusedNetworks = false
     ) {}
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('DockerCleanupJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 
     public function handle(): void
     {

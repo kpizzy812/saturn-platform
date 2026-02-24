@@ -83,6 +83,27 @@ API документация и конфигурация
 
 ---
 
+### 🖥️ [TUI Panel](../panel/)
+Терминальная панель управления инфраструктурой Saturn
+
+**Расположение:** `panel/` (standalone package, отдельный от web frontend)
+
+**Запуск:**
+```bash
+make panel          # Launch TUI
+make panel-test     # Run 489 tests
+make panel-build    # Build distributable
+```
+
+**Что здесь:**
+- 42 исходных файла (React 18 + TypeScript + Ink 5)
+- SSH подключение к VPS (ssh2, auto-reconnect)
+- 7 экранов: Dashboard, Git, Deploy, Logs, Containers, Database, Env
+- gh CLI интеграция для GitHub (PRs, Actions)
+- Real-time log streaming, container management, deploy/rollback
+
+---
+
 ### 👨‍💻 [development/](development/)
 Документация для разработчиков
 

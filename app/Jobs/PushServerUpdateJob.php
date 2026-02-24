@@ -24,6 +24,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Laravel\Horizon\Contracts\Silenced;
 
 class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
@@ -102,6 +103,15 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
         $this->allTcpProxyUuids = collect();
         $this->allServiceApplicationIds = collect();
         $this->allServiceDatabaseIds = collect();
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('PushServerUpdateJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     public function handle()
@@ -390,8 +400,33 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
             return;
         }
 
-        // Batch update: mark all not-found applications as exited (excluding already exited ones)
-        Application::whereIn('id', $notFoundApplicationIds)
+        // Exclude apps with active or recently completed deployments.
+        // When a re-deploy fails, the old container may still be running but temporarily
+        // not visible. Without this filter, status would be incorrectly set to "exited".
+        $appsWithRecentDeployments = \App\Models\ApplicationDeploymentQueue::whereIn('application_id', $notFoundApplicationIds)
+            ->where(function ($query) {
+                $query->whereIn('status', [
+                    \App\Enums\ApplicationDeploymentStatus::IN_PROGRESS->value,
+                    \App\Enums\ApplicationDeploymentStatus::QUEUED->value,
+                ])
+                    ->orWhere(function ($q) {
+                        $q->whereIn('status', [
+                            \App\Enums\ApplicationDeploymentStatus::FAILED->value,
+                            \App\Enums\ApplicationDeploymentStatus::FINISHED->value,
+                        ])->where('updated_at', '>=', now()->subSeconds(120));
+                    });
+            })
+            ->pluck('application_id')
+            ->unique();
+
+        $safeToMarkExited = $notFoundApplicationIds->diff($appsWithRecentDeployments);
+        if ($safeToMarkExited->isEmpty()) {
+            return;
+        }
+
+        // Batch update: mark all not-found applications as exited (excluding already exited ones
+        // and those with active/recent deployments)
+        Application::whereIn('id', $safeToMarkExited)
             ->where('status', 'not like', 'exited%')
             ->update(['status' => 'exited']);
     }

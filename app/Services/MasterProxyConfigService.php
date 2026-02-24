@@ -91,10 +91,8 @@ class MasterProxyConfigService
             return;
         }
 
-        // Get all applications across all servers
-        $applications = Application::all();
-
-        foreach ($applications as $app) {
+        // Stream all applications to avoid loading everything into memory
+        foreach (Application::with('destination.server')->cursor() as $app) {
             $appServer = $app->destination?->server;
             if (! $appServer) {
                 continue;

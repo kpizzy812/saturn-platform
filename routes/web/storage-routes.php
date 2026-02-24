@@ -82,6 +82,10 @@ Route::get('/storage', function () {
 Route::get('/storage/create', fn () => Inertia::render('Storage/Create'))->name('storage.create');
 
 Route::post('/storage', function (Request $request) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to create S3 storage.');
+    }
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string|max:1000',
@@ -110,6 +114,10 @@ Route::post('/storage', function (Request $request) {
 })->name('storage.store');
 
 Route::post('/storage/test-connection', function (Request $request) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to test S3 storage connections.');
+    }
+
     $validated = $request->validate([
         'key' => 'required|string',
         'secret' => 'required|string',

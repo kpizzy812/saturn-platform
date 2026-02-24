@@ -11,10 +11,15 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ResourceMonitoringManagerJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 1;
+
+    public int $timeout = 60;
 
     public function __construct()
     {
@@ -47,6 +52,13 @@ class ResourceMonitoringManagerJob implements ShouldQueue
 
             CheckServerResourcesJob::dispatch($server);
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ResourceMonitoringManagerJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     private function getServers(): Collection

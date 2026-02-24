@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\InstanceSettings;
 use App\Models\UserNotification;
+use App\Services\Authorization\PermissionService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -63,6 +64,7 @@ class HandleInertiaRequests extends Middleware
                     'isMember' => $user->isMember(),
                     'isDeveloper' => $user->isDeveloper(),
                     'isViewer' => $user->isViewer(),
+                    'granular' => $this->getGranularPermissions($user),
                 ],
             ] : null,
             'team' => $team ? [
@@ -143,6 +145,20 @@ class HandleInertiaRequests extends Middleware
         return [
             'unreadCount' => $unreadCount,
         ];
+    }
+
+    /**
+     * Get granular permissions for the current user via PermissionService.
+     *
+     * @return array<string, bool>
+     */
+    private function getGranularPermissions($user): array
+    {
+        try {
+            return app(PermissionService::class)->getUserEffectivePermissions($user);
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     /**

@@ -46,7 +46,6 @@ function getPrivateMethod(string $class, string $methodName): ReflectionMethod
 {
     $reflection = new ReflectionClass($class);
     $method = $reflection->getMethod($methodName);
-    $method->setAccessible(true);
 
     return $method;
 }

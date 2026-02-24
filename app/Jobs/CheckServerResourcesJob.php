@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -70,7 +71,7 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
             }
 
         } catch (\Throwable $e) {
-            ray($e->getMessage());
+            Log::warning('CheckServerResourcesJob error', ['error' => $e->getMessage()]);
         }
     }
 

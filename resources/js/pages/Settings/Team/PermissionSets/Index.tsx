@@ -21,6 +21,7 @@ import {
     Lock,
 } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Permission {
     id: number;
@@ -142,12 +143,12 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
+                        <StaggerList className="space-y-3">
                             {permissionSets
                                 .filter((set) => set.is_system)
-                                .map((set) => (
+                                .map((set, i) => (
+                                    <StaggerItem key={set.id} index={i}>
                                     <div
-                                        key={set.id}
                                         className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
                                     >
                                         <div className="flex items-center gap-4">
@@ -178,8 +179,9 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                                             </Link>
                                         </div>
                                     </div>
+                                    </StaggerItem>
                                 ))}
-                        </div>
+                        </StaggerList>
                     </CardContent>
                 </Card>
 
@@ -193,25 +195,27 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                     </CardHeader>
                     <CardContent>
                         {permissionSets.filter((set) => !set.is_system).length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-center">
-                                <Lock className="h-12 w-12 text-foreground-muted mb-4" />
-                                <p className="text-foreground-muted mb-4">
-                                    No custom roles yet. Create one to define custom access levels.
-                                </p>
-                                <Link href="/settings/team/permission-sets/create">
-                                    <Button variant="secondary">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create Role
-                                    </Button>
-                                </Link>
-                            </div>
+                            <FadeIn>
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <Lock className="h-12 w-12 text-foreground-muted mb-4 animate-pulse-soft" />
+                                    <p className="text-foreground-muted mb-4">
+                                        No custom roles yet. Create one to define custom access levels.
+                                    </p>
+                                    <Link href="/settings/team/permission-sets/create">
+                                        <Button variant="secondary" className="group">
+                                            <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                                            Create Role
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </FadeIn>
                         ) : (
-                            <div className="space-y-3">
+                            <StaggerList className="space-y-3">
                                 {permissionSets
                                     .filter((set) => !set.is_system)
-                                    .map((set) => (
+                                    .map((set, i) => (
+                                        <StaggerItem key={set.id} index={i}>
                                         <div
-                                            key={set.id}
                                             className="flex items-center justify-between rounded-lg border border-border bg-background p-4"
                                         >
                                             <div className="flex items-center gap-4">
@@ -266,8 +270,9 @@ export default function PermissionSetsIndex({ permissionSets, canManageRoles }: 
                                                 </Dropdown>
                                             </div>
                                         </div>
+                                        </StaggerItem>
                                     ))}
-                            </div>
+                            </StaggerList>
                         )}
                     </CardContent>
                 </Card>

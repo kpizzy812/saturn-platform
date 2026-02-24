@@ -21,7 +21,6 @@ it('uses WithoutOverlapping middleware with expireAfter to prevent stale locks',
 
     // Check expireAfter is set (should be 90 seconds - allows for job execution buffer)
     $expiresAfterProperty = $reflection->getProperty('expiresAfter');
-    $expiresAfterProperty->setAccessible(true);
     $expiresAfter = $expiresAfterProperty->getValue($overlappingMiddleware);
 
     expect($expiresAfter)->toBe(90)
@@ -29,14 +28,12 @@ it('uses WithoutOverlapping middleware with expireAfter to prevent stale locks',
 
     // Check releaseAfter is NOT set (we use dontRelease)
     $releaseAfterProperty = $reflection->getProperty('releaseAfter');
-    $releaseAfterProperty->setAccessible(true);
     $releaseAfter = $releaseAfterProperty->getValue($overlappingMiddleware);
 
     expect($releaseAfter)->toBeNull('releaseAfter should be null when using dontRelease()');
 
     // Check the lock key
     $keyProperty = $reflection->getProperty('key');
-    $keyProperty->setAccessible(true);
     $key = $keyProperty->getValue($overlappingMiddleware);
 
     expect($key)->toBe('scheduled-job-manager');
@@ -50,7 +47,6 @@ it('prevents stale locks by ensuring expireAfter is always set', function () {
     $reflection = new ReflectionClass($overlappingMiddleware);
 
     $expiresAfterProperty = $reflection->getProperty('expiresAfter');
-    $expiresAfterProperty->setAccessible(true);
     $expiresAfter = $expiresAfterProperty->getValue($overlappingMiddleware);
 
     // Critical check: expireAfter MUST be set to prevent GitHub issue #4539

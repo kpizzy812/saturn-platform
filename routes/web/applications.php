@@ -11,6 +11,7 @@ use App\Actions\Application\StopApplication;
 use App\Jobs\DeleteResourceJob;
 use App\Services\ServerSelectionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Visus\Cuid2\Cuid2;
@@ -114,12 +115,12 @@ Route::get('/applications/create', function () {
         }
     }
 
-    // Check if team has an active GitHub App for auto-deploy
-    $hasGithubApp = \App\Models\GithubApp::where('team_id', $team->id)
+    // Get active GitHub Apps for repo picker and auto-deploy
+    $githubApps = \App\Models\GithubApp::where('team_id', $team->id)
         ->whereNotNull('app_id')
         ->whereNotNull('installation_id')
         ->where('is_public', false)
-        ->exists();
+        ->get(['id', 'uuid', 'name', 'installation_id']);
 
     return Inertia::render('Applications/Create', [
         'projects' => $projects,
@@ -128,11 +129,14 @@ Route::get('/applications/create', function () {
         'needsProject' => $projects->isEmpty(),
         'preselectedSource' => request()->query('source'),
         'wildcardDomain' => $wildcardDomain,
-        'hasGithubApp' => $hasGithubApp,
+        'hasGithubApp' => $githubApps->isNotEmpty(),
+        'githubApps' => $githubApps,
     ]);
 })->name('applications.create');
 
 Route::post('/applications', function (Request $request) {
+    Gate::authorize('create', \App\Models\Application::class);
+
     // Ensure user has a current team
     $team = currentTeam();
     if (! $team) {
@@ -389,6 +393,8 @@ Route::post('/applications/{uuid}/deploy', function (string $uuid, \Illuminate\H
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('deploy', $application);
+
     $deployment_uuid = new Cuid2;
 
     $result = queue_application_deployment(
@@ -411,6 +417,8 @@ Route::post('/applications/{uuid}/start', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('deploy', $application);
+
     $deployment_uuid = new Cuid2;
 
     $result = queue_application_deployment(
@@ -432,6 +440,8 @@ Route::post('/applications/{uuid}/stop', function (string $uuid) {
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('deploy', $application);
+
     StopApplication::dispatch($application);
 
     return redirect()->back()->with('success', 'Application stopped');
@@ -441,6 +451,8 @@ Route::post('/applications/{uuid}/restart', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('deploy', $application);
 
     $deployment_uuid = new Cuid2;
 
@@ -462,6 +474,8 @@ Route::delete('/applications/{uuid}', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('delete', $application);
 
     DeleteResourceJob::dispatch(
         resource: $application,
@@ -620,6 +634,8 @@ Route::post('/applications/{uuid}/rollback/{deploymentUuid}', function (string $
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('deploy', $application);
 
     // Find the deployment to rollback to
     $targetDeployment = \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', $deploymentUuid)
@@ -802,6 +818,8 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
     if (! $application) {
         return back()->with('error', 'Application not found.');
     }
+
+    Gate::authorize('update', $application);
 
     $validated = $request->validate([
         'name' => 'sometimes|string|max:255',

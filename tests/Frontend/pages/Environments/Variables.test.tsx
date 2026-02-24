@@ -166,7 +166,7 @@ describe('Environment Variables Page', () => {
             expect(screen.getByLabelText('Group (optional)')).toBeInTheDocument();
         });
 
-        it('adds a new variable', () => {
+        it('adds a new variable', async () => {
             render(
                 <EnvironmentVariables
                     environment={mockEnvironment}
@@ -184,7 +184,9 @@ describe('Environment Variables Page', () => {
             fireEvent.change(groupInput, { target: { value: 'General' } });
             fireEvent.click(addButton);
 
-            expect(screen.getByText('NEW_VAR')).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText('NEW_VAR')).toBeInTheDocument();
+            });
         });
 
         it('disables add button when inputs are empty', () => {
