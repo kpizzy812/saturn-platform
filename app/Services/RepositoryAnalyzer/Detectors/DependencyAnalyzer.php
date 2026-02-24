@@ -257,14 +257,14 @@ class DependencyAnalyzer
     }
 
     /**
-     * Detect environment variables from .env.example files
-     *
-     * Uses the existing EnvExampleParser service from Saturn.
+     * Detect environment variables from .env.example files,
+     * falling back to source code scanning.
      *
      * @return DetectedEnvVariable[]
      */
     private function detectEnvVariables(string $appPath, DetectedApp $app): array
     {
+        // Priority 1: .env.example / .env.sample / .env.template
         $envFiles = ['.env.example', '.env.sample', '.env.template', 'env.example'];
 
         foreach ($envFiles as $envFile) {
@@ -274,7 +274,149 @@ class DependencyAnalyzer
             }
         }
 
-        return [];
+        // Priority 2: Scan source code for env var references
+        $fromSource = $this->detectEnvVariablesFromSource($appPath, $app);
+        if (! empty($fromSource)) {
+            return $fromSource;
+        }
+
+        // Priority 3: Extract from Dockerfile ENV directives
+        return $this->detectEnvVariablesFromDockerfile($appPath, $app);
+    }
+
+    /**
+     * Scan source code files for environment variable references
+     *
+     * Detects patterns like:
+     * - Python: os.getenv("KEY"), os.environ["KEY"], os.environ.get("KEY")
+     * - JS/TS: process.env.KEY
+     * - Go: os.Getenv("KEY")
+     * - Ruby: ENV["KEY"], ENV.fetch("KEY")
+     *
+     * @return DetectedEnvVariable[]
+     */
+    private function detectEnvVariablesFromSource(string $appPath, DetectedApp $app): array
+    {
+        $envVars = [];
+
+        // Scan Python files
+        $pythonFiles = array_merge(
+            glob($appPath.'/*.py') ?: [],
+            glob($appPath.'/src/*.py') ?: [],
+            glob($appPath.'/app/*.py') ?: [],
+            glob($appPath.'/bot/*.py') ?: [],
+            glob($appPath.'/config/*.py') ?: [],
+        );
+        foreach ($pythonFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            // os.getenv("KEY"), os.environ.get("KEY")
+            if (preg_match_all('/os\.(?:getenv|environ\.get)\s*\(\s*["\']([A-Z_][A-Z0-9_]*)["\']/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+            // os.environ["KEY"]
+            if (preg_match_all('/os\.environ\s*\[\s*["\']([A-Z_][A-Z0-9_]*)["\']/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+        }
+
+        // Scan JS/TS files
+        $jsFiles = array_merge(
+            glob($appPath.'/*.{js,ts,mjs,mts}', GLOB_BRACE) ?: [],
+            glob($appPath.'/src/*.{js,ts,mjs,mts}', GLOB_BRACE) ?: [],
+            glob($appPath.'/config/*.{js,ts}', GLOB_BRACE) ?: [],
+        );
+        foreach ($jsFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            // process.env.KEY
+            if (preg_match_all('/process\.env\.([A-Z_][A-Z0-9_]*)/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+        }
+
+        // Scan Go files
+        $goFiles = array_merge(
+            glob($appPath.'/*.go') ?: [],
+            glob($appPath.'/cmd/*.go') ?: [],
+            glob($appPath.'/internal/config/*.go') ?: [],
+        );
+        foreach ($goFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            // os.Getenv("KEY")
+            if (preg_match_all('/os\.Getenv\s*\(\s*"([A-Z_][A-Z0-9_]*)"/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+        }
+
+        // Filter out common non-configurable vars
+        $ignored = ['PATH', 'HOME', 'USER', 'SHELL', 'PWD', 'TERM', 'LANG', 'LC_ALL', 'NODE_ENV', 'PYTHONPATH'];
+        $envVars = array_diff_key($envVars, array_flip($ignored));
+
+        return array_map(fn ($key) => new DetectedEnvVariable(
+            key: $key,
+            defaultValue: null,
+            isRequired: true,
+            category: $this->categorizeEnvVar($key),
+            forApp: $app->name,
+        ), array_keys($envVars));
+    }
+
+    /**
+     * Extract env variables from Dockerfile ENV directives
+     *
+     * @return DetectedEnvVariable[]
+     */
+    private function detectEnvVariablesFromDockerfile(string $appPath, DetectedApp $app): array
+    {
+        $dockerfile = $appPath.'/Dockerfile';
+        if (! $this->isReadableFile($dockerfile)) {
+            return [];
+        }
+
+        $content = file_get_contents($dockerfile);
+        $envVars = [];
+
+        // Match ENV KEY=value and ENV KEY value
+        if (preg_match_all('/^ENV\s+([A-Z_][A-Z0-9_]*)[\s=]/m', $content, $matches)) {
+            foreach ($matches[1] as $key) {
+                $envVars[$key] = true;
+            }
+        }
+
+        // Match ARG KEY (build args that might need configuration)
+        if (preg_match_all('/^ARG\s+([A-Z_][A-Z0-9_]*)(?:\s*=)?/m', $content, $matches)) {
+            foreach ($matches[1] as $key) {
+                $envVars[$key] = true;
+            }
+        }
+
+        // Filter out standard/non-configurable vars
+        $ignored = ['PATH', 'HOME', 'PYTHONUNBUFFERED', 'PYTHONDONTWRITEBYTECODE', 'DEBIAN_FRONTEND', 'TZ', 'LANG', 'LC_ALL', 'NODE_ENV'];
+        $envVars = array_diff_key($envVars, array_flip($ignored));
+
+        return array_map(fn ($key) => new DetectedEnvVariable(
+            key: $key,
+            defaultValue: null,
+            isRequired: true,
+            category: $this->categorizeEnvVar($key),
+            forApp: $app->name,
+        ), array_keys($envVars));
     }
 
     /**

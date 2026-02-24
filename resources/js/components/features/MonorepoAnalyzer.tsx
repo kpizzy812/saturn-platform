@@ -559,9 +559,14 @@ export function MonorepoAnalyzer({
                                             </div>
 
                                             {/* Environment Variables */}
+                                            {config.env_vars.length === 0 && (
+                                                <p className="text-xs text-foreground-muted">
+                                                    No .env.example found. Add environment variables your app needs below.
+                                                </p>
+                                            )}
                                             {config.env_vars.length > 0 && (
                                                 <div className="space-y-2">
-                                                    <label className="text-xs text-foreground-muted">Environment Variables</label>
+                                                    <label className="text-xs text-foreground-muted">Environment Variables (detected from source)</label>
                                                     {config.env_vars.map((envVar, idx) => (
                                                         <div key={idx} className="flex items-center gap-2">
                                                             <Input
