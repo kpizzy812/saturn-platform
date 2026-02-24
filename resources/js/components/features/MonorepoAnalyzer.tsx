@@ -528,7 +528,7 @@ export function MonorepoAnalyzer({
                                         <div className="space-y-3 border-t border-white/[0.06] pt-3">
                                             <div className="text-sm font-medium text-foreground-muted">Configuration</div>
 
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div>
                                                     <label className="text-xs text-foreground-muted block mb-1">Application Type</label>
                                                     <select
@@ -568,21 +568,35 @@ export function MonorepoAnalyzer({
                                                 <div className="space-y-2">
                                                     <label className="text-xs text-foreground-muted">Environment Variables (detected from source)</label>
                                                     {config.env_vars.map((envVar, idx) => (
-                                                        <div key={idx} className="flex items-center gap-2">
-                                                            <Input
-                                                                value={envVar.key}
-                                                                onChange={(e) => {
-                                                                    const newVars = [...config.env_vars];
-                                                                    newVars[idx] = { ...newVars[idx], key: e.target.value };
-                                                                    setAppConfigs(prev => ({
-                                                                        ...prev,
-                                                                        [app.name]: { ...prev[app.name], env_vars: newVars },
-                                                                    }));
-                                                                }}
-                                                                placeholder="KEY"
-                                                                className="h-8 text-sm font-mono w-2/5"
-                                                            />
-                                                            <span className="text-foreground-muted">=</span>
+                                                        <div key={idx} className="p-2 bg-background-secondary rounded-lg space-y-1.5">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <Input
+                                                                    value={envVar.key}
+                                                                    onChange={(e) => {
+                                                                        const newVars = [...config.env_vars];
+                                                                        newVars[idx] = { ...newVars[idx], key: e.target.value };
+                                                                        setAppConfigs(prev => ({
+                                                                            ...prev,
+                                                                            [app.name]: { ...prev[app.name], env_vars: newVars },
+                                                                        }));
+                                                                    }}
+                                                                    placeholder="KEY"
+                                                                    className="h-7 text-xs font-mono flex-1"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newVars = config.env_vars.filter((_, i) => i !== idx);
+                                                                        setAppConfigs(prev => ({
+                                                                            ...prev,
+                                                                            [app.name]: { ...prev[app.name], env_vars: newVars },
+                                                                        }));
+                                                                    }}
+                                                                    className="text-foreground-muted hover:text-danger text-sm px-1 flex-shrink-0"
+                                                                >
+                                                                    &times;
+                                                                </button>
+                                                            </div>
                                                             <Input
                                                                 value={envVar.value}
                                                                 onChange={(e) => {
@@ -594,21 +608,8 @@ export function MonorepoAnalyzer({
                                                                     }));
                                                                 }}
                                                                 placeholder="value"
-                                                                className="h-8 text-sm font-mono flex-1"
+                                                                className="h-7 text-xs font-mono w-full"
                                                             />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const newVars = config.env_vars.filter((_, i) => i !== idx);
-                                                                    setAppConfigs(prev => ({
-                                                                        ...prev,
-                                                                        [app.name]: { ...prev[app.name], env_vars: newVars },
-                                                                    }));
-                                                                }}
-                                                                className="text-foreground-muted hover:text-danger text-sm px-1"
-                                                            >
-                                                                &times;
-                                                            </button>
                                                         </div>
                                                     ))}
                                                 </div>
