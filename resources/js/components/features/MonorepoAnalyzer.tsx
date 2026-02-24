@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -28,6 +28,8 @@ import {
     Globe,
     Cpu,
     FileCode,
+    ArrowRight,
+    Share2,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -541,6 +543,142 @@ export function MonorepoAnalyzer({
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Architecture Map — visual connections between apps, databases, and services */}
+            {analysis.applications.length > 0 && (analysis.databases.length > 0 || analysis.services.length > 0 || analysis.app_dependencies.length > 0) && (
+                <Card variant="glass">
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Share2 className="h-4.5 w-4.5 text-primary" />
+                            Architecture Map
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                            {analysis.applications.map(app => {
+                                const appDbs = analysis.databases.filter(db =>
+                                    db.consumers.includes(app.name)
+                                );
+                                const appDep = analysis.app_dependencies?.find(d => d.app_name === app.name);
+                                const config = appConfigs[app.name];
+                                const isWorker = config?.application_type === 'worker';
+                                const hasConnections = appDbs.length > 0 || (appDep?.depends_on.length ?? 0) > 0;
+
+                                return (
+                                    <div key={app.name} className="flex items-center gap-2 flex-wrap">
+                                        {/* App node */}
+                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 transition-colors ${
+                                            selectedApps[app.name]
+                                                ? 'bg-primary/10 border-primary/30'
+                                                : 'bg-white/[0.03] border-white/[0.06] opacity-50'
+                                        }`}>
+                                            {getFrameworkIcon(app.framework, 'h-3.5 w-3.5')}
+                                            <span className="text-sm font-medium">{app.name}</span>
+                                            {isWorker && <Cog className="h-3 w-3 opacity-50" />}
+                                            {!isWorker && app.default_port > 0 && (
+                                                <span className="text-[10px] opacity-40">:{app.default_port}</span>
+                                            )}
+                                        </div>
+
+                                        {/* Connection arrow + target nodes */}
+                                        {hasConnections && (
+                                            <div className="flex items-center gap-0.5 shrink-0">
+                                                <div className="h-px w-5 bg-gradient-to-r from-white/20 to-white/10" />
+                                                <ArrowRight className="h-3 w-3 text-white/25" />
+                                            </div>
+                                        )}
+
+                                        {/* Database nodes */}
+                                        {appDbs.map(db => {
+                                            const colors = databaseColorConfig[db.type];
+                                            return (
+                                                <div key={db.type} className={`flex items-center gap-1.5 px-2 py-1 rounded-md border shrink-0 ${
+                                                    selectedDbs[db.type]
+                                                        ? `${colors?.bg || 'bg-white/[0.04]'} ${colors?.border || 'border-white/[0.06]'}`
+                                                        : 'bg-white/[0.03] border-white/[0.06] opacity-50'
+                                                }`}>
+                                                    <div className="h-4 w-4 flex items-center justify-center">
+                                                        {getDbLogo(db.type)}
+                                                    </div>
+                                                    <span className="text-xs capitalize">{db.type}</span>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {/* App-to-app dependency nodes */}
+                                        {appDep && appDep.depends_on.map(dep => (
+                                            <div key={dep} className="flex items-center gap-1.5 px-2 py-1 bg-white/[0.04] border border-white/[0.06] rounded-md shrink-0">
+                                                <Code2 className="h-3 w-3 text-foreground-muted" />
+                                                <span className="text-xs">{dep}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })}
+
+                            {/* External services row */}
+                            {analysis.services.length > 0 && (
+                                <div className="flex items-center gap-2 flex-wrap pt-1">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-warning/10 border border-warning/30 rounded-lg shrink-0">
+                                        <Globe className="h-3.5 w-3.5 text-warning" />
+                                        <span className="text-sm font-medium text-warning">External</span>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                        <div className="h-px w-5 bg-gradient-to-r from-warning/30 to-warning/10" />
+                                        <ArrowRight className="h-3 w-3 text-warning/30" />
+                                    </div>
+                                    {analysis.services.map(svc => (
+                                        <div key={svc.type} className="px-2 py-1 bg-warning/5 border border-warning/20 rounded-md shrink-0">
+                                            <span className="text-xs capitalize">{svc.type}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Deploy order timeline */}
+                            {(standaloneDbs.some(db => selectedDbs[db.type]) || selectedAppCount > 0) && (
+                                <div className="flex items-center gap-2 pt-3 mt-1 border-t border-white/[0.06]">
+                                    <span className="text-xs text-foreground-muted shrink-0 flex items-center gap-1">
+                                        <Rocket className="h-3 w-3" />
+                                        Deploy:
+                                    </span>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {/* Databases deploy first */}
+                                        {standaloneDbs.filter(db => selectedDbs[db.type]).map((db, idx) => (
+                                            <Fragment key={`deploy-db-${db.type}`}>
+                                                {idx > 0 && <ArrowRight className="h-3 w-3 text-white/15" />}
+                                                <Badge variant="outline" size="sm" className="capitalize">
+                                                    {db.type}
+                                                </Badge>
+                                            </Fragment>
+                                        ))}
+                                        {/* Arrow between databases and apps */}
+                                        {standaloneDbs.some(db => selectedDbs[db.type]) && selectedAppCount > 0 && (
+                                            <ArrowRight className="h-3 w-3 text-white/15" />
+                                        )}
+                                        {/* Apps in deploy order */}
+                                        {(() => {
+                                            const sortedApps = analysis.applications
+                                                .filter(a => selectedApps[a.name])
+                                                .map(a => {
+                                                    const dep = analysis.app_dependencies?.find(d => d.app_name === a.name);
+                                                    return { name: a.name, order: dep?.deploy_order ?? 999 };
+                                                })
+                                                .sort((a, b) => a.order - b.order);
+                                            return sortedApps.map((a, idx) => (
+                                                <Fragment key={`deploy-app-${a.name}`}>
+                                                    {idx > 0 && <ArrowRight className="h-3 w-3 text-white/15" />}
+                                                    <Badge variant="outline" size="sm">{a.name}</Badge>
+                                                </Fragment>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Applications */}
             {analysis.applications.map(app => {
