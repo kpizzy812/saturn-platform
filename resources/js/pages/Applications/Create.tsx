@@ -66,6 +66,7 @@ interface FormData {
     fqdn: string;
     description: string;
     docker_image?: string;
+    github_app_id?: number;
 }
 
 export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null, hasGithubApp = false, githubApps = [] }: Props) {
@@ -382,7 +383,12 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         setIsSubmitting(true);
         setErrors({});
 
-        router.post('/applications', formData as unknown as RouterPayload, {
+        const submitData = {
+            ...formData,
+            ...(repoMode === 'picker' && selectedGithubApp ? { github_app_id: selectedGithubApp.id } : {}),
+        };
+
+        router.post('/applications', submitData as unknown as RouterPayload, {
             onError: (serverErrors) => {
                 setErrors(serverErrors as Record<string, string>);
                 setIsSubmitting(false);
@@ -447,6 +453,8 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     selected={formData.source_type === 'bitbucket'}
                                 />
                             </div>
+
+                            <DeployGuide variant="full" className="mt-6" />
                         </div>
                     )}
 
@@ -1062,6 +1070,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                             <MonorepoAnalyzer
                                 gitRepository={formData.git_repository}
                                 gitBranch={formData.git_branch}
+                                sourceId={repoMode === 'picker' ? selectedGithubApp?.id : undefined}
                                 githubAppId={repoMode === 'picker' ? selectedGithubApp?.id : undefined}
                                 environmentUuid={formData.environment_uuid}
                                 destinationUuid={formData.server_uuid}

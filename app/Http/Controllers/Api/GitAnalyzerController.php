@@ -123,6 +123,13 @@ class GitAnalyzerController extends Controller
             default => null,
         };
 
+        // Resolve source_id from github_app_id when not explicitly provided
+        $sourceId = $validated['source_id'] ?? null;
+        if (! $sourceId && ! empty($validated['github_app_id'])) {
+            $sourceId = $validated['github_app_id'];
+            $sourceType = $sourceType ?? GithubApp::class;
+        }
+
         $tempPath = null;
 
         try {
@@ -154,7 +161,7 @@ class GitAnalyzerController extends Controller
                     'git_repository' => $validated['git_repository'],
                     'git_branch' => $validated['git_branch'] ?? 'main',
                     'private_key_id' => $validated['private_key_id'] ?? null,
-                    'source_id' => $validated['source_id'] ?? null,
+                    'source_id' => $sourceId,
                     'source_type' => $sourceType,
                 ],
                 appOverrides: $appOverrides,

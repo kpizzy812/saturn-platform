@@ -8,6 +8,7 @@ use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\Environment;
+use App\Models\GithubApp;
 use App\Models\Project;
 use App\Models\Server;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -98,6 +99,7 @@ class ApplicationController extends Controller
             'destination_uuid' => 'nullable|string',
             'ports_exposes' => 'nullable|string',
             'fqdn' => 'nullable|string',
+            'github_app_id' => 'nullable|integer|exists:github_apps,id',
         ]);
 
         $environment = Environment::findOrFail($validated['environment_id']);
@@ -129,6 +131,16 @@ class ApplicationController extends Controller
         $application->environment_id = $environment->id;
         $application->destination_id = $destination->id;
         $application->destination_type = $destination->getMorphClass();
+
+        // Link GitHub App source for private repository access
+        if (! empty($validated['github_app_id'])) {
+            $githubApp = GithubApp::find($validated['github_app_id']);
+            if ($githubApp) {
+                $application->source_id = $githubApp->id;
+                $application->source_type = $githubApp->getMorphClass();
+            }
+        }
+
         $application->save();
 
         return redirect()->route('applications.show', $application->uuid)
