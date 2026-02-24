@@ -11,11 +11,11 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const cardVariants = {
-    default: 'bg-white/[0.04] backdrop-blur-xl border-white/[0.08] backdrop-saturate-[1.2]',
-    glass: 'bg-white/[0.06] backdrop-blur-2xl border-white/[0.10] backdrop-saturate-150',
-    elevated: 'bg-white/[0.08] backdrop-blur-2xl border-white/[0.12] shadow-lg backdrop-saturate-150',
-    outline: 'bg-transparent backdrop-blur-sm border-white/[0.12]',
-    admin: 'bg-primary/[0.04] backdrop-blur-xl border-primary/10 backdrop-saturate-[1.2]',
+    default: 'bg-primary/[0.04] backdrop-blur-xl border-primary/[0.10] backdrop-saturate-[1.2]',
+    glass: 'bg-primary/[0.06] backdrop-blur-2xl border-primary/[0.12] backdrop-saturate-150',
+    elevated: 'bg-primary/[0.08] backdrop-blur-2xl border-primary/[0.14] shadow-lg backdrop-saturate-150',
+    outline: 'bg-transparent backdrop-blur-sm border-primary/[0.12]',
+    admin: 'bg-primary/[0.06] backdrop-blur-xl border-primary/[0.14] backdrop-saturate-[1.2]',
 };
 
 const glowVariants = {
@@ -45,13 +45,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
                     // Variant styles
                     cardVariants[resolvedVariant],
                     // Hover effects
-                    hover && resolvedVariant === 'admin' ? [
+                    hover && [
                         'hover:border-primary/20',
-                        'hover:shadow-card-hover',
-                        'hover:-translate-y-0.5',
-                        'cursor-pointer',
-                    ] : hover && [
-                        'hover:border-white/[0.12]',
                         'hover:shadow-card-hover',
                         'hover:-translate-y-0.5',
                         'cursor-pointer',
@@ -132,7 +127,7 @@ export const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
             ref={ref}
             className={cn(
                 'mt-4 flex items-center gap-3',
-                border && 'pt-4 border-t border-white/[0.06]',
+                border && 'pt-4 border-t border-primary/[0.08]',
                 className
             )}
             {...props}

@@ -45,7 +45,7 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
     const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
     return (
-        <header className="flex h-14 items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl backdrop-saturate-150 px-4">
+        <header className="flex h-14 items-center justify-between border-b border-primary/[0.08] bg-primary/[0.03] backdrop-blur-xl backdrop-saturate-150 px-4">
             {/* Left: Logo + Search */}
             <div className="flex items-center gap-4">
                 {/* Logo */}
