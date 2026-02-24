@@ -63,9 +63,16 @@ class GitAnalyzerController extends Controller
             $tempPath = $this->cloneRepository($validated);
             $result = $this->analyzer->analyze($tempPath);
 
+            // Fix temp-dir app names with actual repository name
+            $repoName = $this->extractRepoName($validated['git_repository']);
+            $result = $this->fixTempDirAppNames($result, $repoName);
+
             return response()->json([
                 'success' => true,
-                'data' => $result->toArray(),
+                'data' => array_merge($result->toArray(), [
+                    'repository_name' => $repoName,
+                    'git_branch' => $validated['git_branch'] ?? 'main',
+                ]),
             ]);
         } catch (RepositoryAnalysisException $e) {
             return response()->json([
@@ -207,6 +214,90 @@ class GitAnalyzerController extends Controller
                 $this->cleanupTempDirectory($tempPath);
             }
         }
+    }
+
+    /**
+     * Extract human-readable repository name from git URL
+     *
+     * https://github.com/owner/repo.git → repo
+     * git@github.com:owner/repo.git → repo
+     */
+    private function extractRepoName(string $gitRepository): string
+    {
+        $repo = preg_replace('/\.git$/', '', $gitRepository);
+        $repo = basename($repo);
+
+        return $repo ?: 'app';
+    }
+
+    /**
+     * Replace temp-directory app names with the actual repository name
+     *
+     * When cloning to /tmp/saturn-repo-UUID, AppDetector::inferAppName()
+     * produces UUID-based names for root-level apps. This replaces them.
+     */
+    private function fixTempDirAppNames(AnalysisResult $result, string $repoName): AnalysisResult
+    {
+        $fixedApps = [];
+        $nameMap = []; // old name → new name (for fixing consumers in databases)
+
+        foreach ($result->applications as $app) {
+            if (str_starts_with($app->name, 'saturn-repo-')) {
+                $nameMap[$app->name] = $repoName;
+                $fixedApps[] = $app->withName($repoName);
+            } else {
+                $fixedApps[] = $app;
+            }
+        }
+
+        // Also fix database consumer names
+        $fixedDatabases = [];
+        foreach ($result->databases as $db) {
+            $fixedConsumers = array_map(
+                fn ($c) => $nameMap[$c] ?? $c,
+                $db->consumers
+            );
+            if ($fixedConsumers !== $db->consumers) {
+                $fixedDatabases[] = new \App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase(
+                    type: $db->type,
+                    name: $db->name,
+                    envVarName: $db->envVarName,
+                    consumers: $fixedConsumers,
+                    detectedVia: $db->detectedVia,
+                    port: $db->port,
+                );
+            } else {
+                $fixedDatabases[] = $db;
+            }
+        }
+
+        // Fix env variable forApp references
+        $fixedEnvVars = [];
+        foreach ($result->envVariables as $env) {
+            if (isset($nameMap[$env->forApp])) {
+                $fixedEnvVars[] = new \App\Services\RepositoryAnalyzer\DTOs\DetectedEnvVariable(
+                    key: $env->key,
+                    defaultValue: $env->defaultValue,
+                    isRequired: $env->isRequired,
+                    category: $env->category,
+                    forApp: $nameMap[$env->forApp],
+                );
+            } else {
+                $fixedEnvVars[] = $env;
+            }
+        }
+
+        return new AnalysisResult(
+            monorepo: $result->monorepo,
+            applications: $fixedApps,
+            databases: $fixedDatabases,
+            services: $result->services,
+            envVariables: $fixedEnvVars,
+            appDependencies: $result->appDependencies,
+            dockerComposeServices: $result->dockerComposeServices,
+            ciConfig: $result->ciConfig,
+            persistentVolumes: $result->persistentVolumes,
+        );
     }
 
     /**

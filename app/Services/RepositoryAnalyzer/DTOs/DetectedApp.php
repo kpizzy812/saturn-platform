@@ -26,6 +26,30 @@ readonly class DetectedApp
     ) {}
 
     /**
+     * Create a new instance with a different name
+     */
+    public function withName(string $name): self
+    {
+        return new self(
+            name: $name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $this->nodeVersion,
+            pythonVersion: $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
+        );
+    }
+
+    /**
      * Create a new instance with additional properties
      */
     public function withHealthCheck(DetectedHealthCheck $healthCheck): self
