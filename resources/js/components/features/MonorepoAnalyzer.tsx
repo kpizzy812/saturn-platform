@@ -253,7 +253,11 @@ export function MonorepoAnalyzer({
                 expanded[app.name] = true; // Expand first app by default
                 const appEnvVars = result.env_variables
                     .filter(v => v.for_app === app.name && v.category !== 'database' && v.category !== 'cache')
-                    .map(v => ({ key: v.key, value: v.default_value || '', comment: v.comment || undefined }));
+                    .map(v => ({
+                        key: v.key,
+                        value: (v.is_required ? '' : v.default_value) || '',
+                        comment: v.comment || undefined,
+                    }));
                 configs[app.name] = {
                     base_directory: app.path === '.' ? '/' : '/' + app.path.replace(/^\//, ''),
                     application_type: app.application_mode || 'web',

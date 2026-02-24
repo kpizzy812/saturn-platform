@@ -264,13 +264,25 @@ class DependencyAnalyzer
      */
     private function detectEnvVariables(string $appPath, DetectedApp $app): array
     {
-        // Priority 1: .env.example / .env.sample / .env.template
-        $envFiles = ['.env.example', '.env.sample', '.env.template', 'env.example'];
+        // Priority 1: .env.example / .env.sample / .env.template in app dir and subdirs
+        $envFileNames = ['.env.example', '.env.sample', '.env.template', 'env.example'];
 
-        foreach ($envFiles as $envFile) {
+        // Search in app directory first
+        foreach ($envFileNames as $envFile) {
             $filePath = $appPath.'/'.$envFile;
             if (file_exists($filePath) && filesize($filePath) <= self::MAX_FILE_SIZE) {
                 return $this->parseEnvFile($filePath, $app);
+            }
+        }
+
+        // Search in immediate subdirectories (e.g. bot/.env.example)
+        $subdirs = glob($appPath.'/*', GLOB_ONLYDIR) ?: [];
+        foreach ($subdirs as $subdir) {
+            foreach ($envFileNames as $envFile) {
+                $filePath = $subdir.'/'.$envFile;
+                if (file_exists($filePath) && filesize($filePath) <= self::MAX_FILE_SIZE) {
+                    return $this->parseEnvFile($filePath, $app);
+                }
             }
         }
 
