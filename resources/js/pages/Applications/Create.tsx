@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, BranchSelector } from '@/components/ui';
-import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, BranchSelector, Badge } from '@/components/ui';
+import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook, Search, Loader2, CheckCircle, Link as LinkIcon } from 'lucide-react';
 import { Bitbucket } from '@/components/icons/Bitbucket';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
@@ -14,6 +14,29 @@ interface WildcardDomain {
     scheme: string;
 }
 
+interface GithubApp {
+    id: number;
+    uuid: string;
+    name: string;
+    installation_id: number | null;
+}
+
+interface GithubRepository {
+    id: number;
+    name: string;
+    full_name: string;
+    description: string | null;
+    private: boolean;
+    default_branch: string;
+    language: string | null;
+    updated_at: string;
+}
+
+interface GithubBranch {
+    name: string;
+    protected: boolean;
+}
+
 interface Props {
     projects?: Project[];
     localhost?: Server;
@@ -22,6 +45,7 @@ interface Props {
     preselectedSource?: SourceType | null;
     wildcardDomain?: WildcardDomain | null;
     hasGithubApp?: boolean;
+    githubApps?: GithubApp[];
 }
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
@@ -41,7 +65,7 @@ interface FormData {
     docker_image?: string;
 }
 
-export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null, hasGithubApp = false }: Props) {
+export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null, hasGithubApp = false, githubApps = [] }: Props) {
     const validSources: SourceType[] = ['github', 'gitlab', 'bitbucket', 'docker'];
     const initialSource = preselectedSource && validSources.includes(preselectedSource) ? preselectedSource : null;
 
@@ -54,6 +78,17 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
     const [newEnvironmentName, setNewEnvironmentName] = useState('');
     const [isCreatingEnvironment, setIsCreatingEnvironment] = useState(false);
     const [useMonorepoAnalyzer, setUseMonorepoAnalyzer] = useState(false);
+
+    // GitHub App repo picker state
+    const [repoMode, setRepoMode] = useState<'picker' | 'manual'>(githubApps.length > 0 ? 'picker' : 'manual');
+    const [selectedGithubApp, setSelectedGithubApp] = useState<GithubApp | null>(githubApps.length > 0 ? githubApps[0] : null);
+    const [ghRepos, setGhRepos] = useState<GithubRepository[]>([]);
+    const [ghBranches, setGhBranches] = useState<GithubBranch[]>([]);
+    const [selectedRepo, setSelectedRepo] = useState<GithubRepository | null>(null);
+    const [isLoadingRepos, setIsLoadingRepos] = useState(false);
+    const [isLoadingGhBranches, setIsLoadingGhBranches] = useState(false);
+    const [repoSearchQuery, setRepoSearchQuery] = useState('');
+    const [repoError, setRepoError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<FormData>({
         name: '',
@@ -93,6 +128,99 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
             setFormData(prev => ({ ...prev, git_branch: defaultBranch }));
         }
     }, [defaultBranch, branches.length]);
+
+    // Load repositories from GitHub App
+    const loadGhRepos = useCallback(async () => {
+        if (!selectedGithubApp) return;
+        setIsLoadingRepos(true);
+        setRepoError(null);
+        setGhRepos([]);
+        try {
+            const response = await fetch(`/web-api/github-apps/${selectedGithubApp.id}/repositories`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to load repositories');
+            }
+            const data = await response.json();
+            setGhRepos(data.repositories || []);
+        } catch (err) {
+            setRepoError(err instanceof Error ? err.message : 'Failed to load repositories');
+        } finally {
+            setIsLoadingRepos(false);
+        }
+    }, [selectedGithubApp]);
+
+    // Load branches for selected repo from GitHub App
+    const loadGhBranches = useCallback(async (repo: GithubRepository) => {
+        if (!selectedGithubApp || !repo) return;
+        setIsLoadingGhBranches(true);
+        setGhBranches([]);
+        try {
+            const [owner, repoName] = repo.full_name.split('/');
+            const response = await fetch(
+                `/web-api/github-apps/${selectedGithubApp.id}/repositories/${owner}/${repoName}/branches`,
+                {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                }
+            );
+            if (!response.ok) throw new Error('Failed to load branches');
+            const data = await response.json();
+            setGhBranches(data.branches || []);
+        } catch {
+            setGhBranches([]);
+        } finally {
+            setIsLoadingGhBranches(false);
+        }
+    }, [selectedGithubApp]);
+
+    // Load repos when GitHub App is selected and mode is picker
+    useEffect(() => {
+        if (repoMode === 'picker' && selectedGithubApp && formData.source_type === 'github') {
+            loadGhRepos();
+        }
+    }, [repoMode, selectedGithubApp, formData.source_type, loadGhRepos]);
+
+    // Load branches when repo is selected
+    useEffect(() => {
+        if (selectedRepo && selectedGithubApp) {
+            loadGhBranches(selectedRepo);
+        }
+    }, [selectedRepo, selectedGithubApp, loadGhBranches]);
+
+    // Handle repo selection from picker
+    const handleRepoSelect = (repo: GithubRepository) => {
+        setSelectedRepo(repo);
+        setFormData(prev => ({
+            ...prev,
+            git_repository: `https://github.com/${repo.full_name}`,
+            git_branch: repo.default_branch,
+        }));
+    };
+
+    // Handle branch selection from picker
+    const handleGhBranchSelect = (branchName: string) => {
+        setFormData(prev => ({ ...prev, git_branch: branchName }));
+    };
+
+    const filteredGhRepos = ghRepos.filter(
+        (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            repo.full_name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            repo.description?.toLowerCase().includes(repoSearchQuery.toLowerCase())
+    );
+
+    const getLanguageColor = (language: string | null) => {
+        const colors: Record<string, string> = {
+            TypeScript: 'bg-blue-500', JavaScript: 'bg-yellow-500', Python: 'bg-blue-400',
+            Ruby: 'bg-red-500', Go: 'bg-cyan-500', Rust: 'bg-orange-500',
+            PHP: 'bg-indigo-500', Java: 'bg-red-600', HTML: 'bg-orange-400', CSS: 'bg-purple-500',
+        };
+        return colors[language || ''] || 'bg-foreground-muted';
+    };
 
     const handleCreateProject = async () => {
         if (!newProjectName.trim()) {
@@ -358,76 +486,239 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 {/* Source Configuration */}
                                 {formData.source_type !== 'docker' ? (
                                     <div className="space-y-4">
-                                        <div data-error={!!errors.git_repository || undefined}>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Repository URL *
-                                            </label>
-                                            <Input
-                                                value={formData.git_repository}
-                                                onChange={(e) => {
-                                                    setFormData(prev => ({ ...prev, git_repository: e.target.value }));
-                                                    if (errors.git_repository) setErrors(prev => { const { git_repository: _, ...rest } = prev; return rest; });
-                                                }}
-                                                placeholder="https://github.com/user/repo"
-                                                error={errors.git_repository}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Branch
-                                            </label>
-                                            <BranchSelector
-                                                value={formData.git_branch}
-                                                onChange={(value) => setFormData(prev => ({ ...prev, git_branch: value }))}
-                                                branches={branches}
-                                                isLoading={isBranchesLoading}
-                                                error={branchesError}
-                                                placeholder="main"
-                                            />
-                                        </div>
-
-                                        {/* Private Repository Help */}
-                                        {branchesError && branchesError.toLowerCase().includes('private') && (
-                                            <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
-                                                <div className="flex items-start gap-3">
-                                                    <Key className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                                                    <div className="flex-1 space-y-3">
-                                                        <div>
-                                                            <p className="text-sm font-medium text-foreground">Private Repository?</p>
-                                                            <p className="text-sm text-foreground-muted mt-1">
-                                                                Connect your GitHub account to access private repositories with automatic webhooks.
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <a
-                                                                href="/sources/github/create"
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
-                                                            >
-                                                                <Github className="h-4 w-4" />
-                                                                Connect GitHub
-                                                                <ExternalLink className="h-3 w-3" />
-                                                            </a>
-                                                            <a
-                                                                href="/sources/gitlab/create"
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1.5 rounded-md bg-background-tertiary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background-secondary transition-colors border border-border"
-                                                            >
-                                                                <Gitlab className="h-4 w-4" />
-                                                                Connect GitLab
-                                                                <ExternalLink className="h-3 w-3" />
-                                                            </a>
-                                                        </div>
-                                                        <p className="text-xs text-foreground-subtle">
-                                                            Or type branch name manually above and use SSH deploy key
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                        {/* Mode toggle: picker vs manual */}
+                                        {formData.source_type === 'github' && githubApps.length > 0 && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRepoMode('picker')}
+                                                    className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                                                        repoMode === 'picker'
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border text-foreground-muted hover:border-primary/50'
+                                                    }`}
+                                                >
+                                                    <Github className="h-4 w-4" />
+                                                    My Repositories
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRepoMode('manual')}
+                                                    className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                                                        repoMode === 'manual'
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border text-foreground-muted hover:border-primary/50'
+                                                    }`}
+                                                >
+                                                    <LinkIcon className="h-4 w-4" />
+                                                    Manual URL
+                                                </button>
                                             </div>
                                         )}
+
+                                        {/* GitHub App selector (if multiple apps) */}
+                                        {repoMode === 'picker' && githubApps.length > 1 && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    GitHub App
+                                                </label>
+                                                <Select
+                                                    value={selectedGithubApp?.id.toString() || ''}
+                                                    onChange={(e) => {
+                                                        const app = githubApps.find(a => a.id === parseInt(e.target.value));
+                                                        setSelectedGithubApp(app || null);
+                                                        setSelectedRepo(null);
+                                                        setGhBranches([]);
+                                                    }}
+                                                >
+                                                    {githubApps.map((app) => (
+                                                        <option key={app.id} value={app.id}>
+                                                            {app.name}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        {/* GitHub App repo picker */}
+                                        {repoMode === 'picker' && formData.source_type === 'github' && githubApps.length > 0 ? (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Repository *
+                                                    </label>
+                                                    {repoError && (
+                                                        <div className="mb-3 rounded-lg bg-danger/10 p-3 text-danger text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <AlertCircle className="h-4 w-4 shrink-0" />
+                                                                <span>{repoError}</span>
+                                                            </div>
+                                                            <Button type="button" variant="ghost" size="sm" onClick={loadGhRepos} className="mt-2">
+                                                                Try Again
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    {isLoadingRepos ? (
+                                                        <div className="flex items-center justify-center py-8 rounded-lg border border-border bg-background-secondary">
+                                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                                            <span className="ml-3 text-sm text-foreground-muted">Loading repositories...</span>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="relative mb-3">
+                                                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
+                                                                <Input
+                                                                    placeholder="Search repositories..."
+                                                                    value={repoSearchQuery}
+                                                                    onChange={(e) => setRepoSearchQuery(e.target.value)}
+                                                                    className="pl-10"
+                                                                />
+                                                            </div>
+                                                            <div className="max-h-64 space-y-1.5 overflow-y-auto rounded-lg border border-border p-2 bg-background-secondary">
+                                                                {filteredGhRepos.length === 0 && (
+                                                                    <div className="py-6 text-center text-sm text-foreground-muted">
+                                                                        {repoSearchQuery ? 'No repositories match your search' : 'No repositories found'}
+                                                                    </div>
+                                                                )}
+                                                                {filteredGhRepos.map((repo) => (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={repo.id}
+                                                                        onClick={() => handleRepoSelect(repo)}
+                                                                        className={`w-full rounded-md border p-3 text-left transition-all hover:border-primary/50 ${
+                                                                            selectedRepo?.id === repo.id
+                                                                                ? 'border-primary bg-primary/5'
+                                                                                : 'border-transparent hover:bg-background-tertiary'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-medium text-sm text-foreground truncate">{repo.name}</span>
+                                                                                    {repo.private && <Badge variant="default" className="text-[10px] px-1.5 py-0">Private</Badge>}
+                                                                                    {repo.language && (
+                                                                                        <div className="flex items-center gap-1">
+                                                                                            <div className={`h-2 w-2 rounded-full ${getLanguageColor(repo.language)}`} />
+                                                                                            <span className="text-xs text-foreground-muted">{repo.language}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                                {repo.description && (
+                                                                                    <p className="text-xs text-foreground-muted mt-0.5 truncate">{repo.description}</p>
+                                                                                )}
+                                                                            </div>
+                                                                            {selectedRepo?.id === repo.id && (
+                                                                                <CheckCircle className="h-4 w-4 text-primary shrink-0 ml-2" />
+                                                                            )}
+                                                                        </div>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                                {/* Branch selector for picked repo */}
+                                                {selectedRepo && (
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                                            Branch
+                                                        </label>
+                                                        {isLoadingGhBranches ? (
+                                                            <div className="flex items-center gap-2 py-2">
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                <span className="text-sm text-foreground-muted">Loading branches...</span>
+                                                            </div>
+                                                        ) : (
+                                                            <Select
+                                                                value={formData.git_branch}
+                                                                onChange={(e) => handleGhBranchSelect(e.target.value)}
+                                                            >
+                                                                {ghBranches.map((branch) => (
+                                                                    <option key={branch.name} value={branch.name}>
+                                                                        {branch.name}{branch.name === selectedRepo.default_branch ? ' (default)' : ''}
+                                                                    </option>
+                                                                ))}
+                                                            </Select>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : repoMode === 'manual' || formData.source_type !== 'github' || githubApps.length === 0 ? (
+                                            <div className="space-y-4">
+                                                <div data-error={!!errors.git_repository || undefined}>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Repository URL *
+                                                    </label>
+                                                    <Input
+                                                        value={formData.git_repository}
+                                                        onChange={(e) => {
+                                                            setFormData(prev => ({ ...prev, git_repository: e.target.value }));
+                                                            if (errors.git_repository) setErrors(prev => { const { git_repository: _, ...rest } = prev; return rest; });
+                                                        }}
+                                                        placeholder="https://github.com/user/repo"
+                                                        error={errors.git_repository}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Branch
+                                                    </label>
+                                                    <BranchSelector
+                                                        value={formData.git_branch}
+                                                        onChange={(value) => setFormData(prev => ({ ...prev, git_branch: value }))}
+                                                        branches={branches}
+                                                        isLoading={isBranchesLoading}
+                                                        error={branchesError}
+                                                        placeholder="main"
+                                                    />
+                                                </div>
+
+                                                {/* Private Repository Help */}
+                                                {branchesError && branchesError.toLowerCase().includes('private') && (
+                                                    <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
+                                                        <div className="flex items-start gap-3">
+                                                            <Key className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                                                            <div className="flex-1 space-y-3">
+                                                                <div>
+                                                                    <p className="text-sm font-medium text-foreground">Private Repository?</p>
+                                                                    <p className="text-sm text-foreground-muted mt-1">
+                                                                        Connect your GitHub account to access private repositories with automatic webhooks.
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    <a
+                                                                        href="/sources/github/create"
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                                                                    >
+                                                                        <Github className="h-4 w-4" />
+                                                                        Connect GitHub
+                                                                        <ExternalLink className="h-3 w-3" />
+                                                                    </a>
+                                                                    <a
+                                                                        href="/sources/gitlab/create"
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-1.5 rounded-md bg-background-tertiary px-3 py-1.5 text-sm font-medium text-foreground hover:bg-background-secondary transition-colors border border-border"
+                                                                    >
+                                                                        <Gitlab className="h-4 w-4" />
+                                                                        Connect GitLab
+                                                                        <ExternalLink className="h-3 w-3" />
+                                                                    </a>
+                                                                </div>
+                                                                <p className="text-xs text-foreground-subtle">
+                                                                    Or type branch name manually above and use SSH deploy key
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : null}
 
                                         <div>
                                             <label className="block text-sm font-medium text-foreground mb-2">

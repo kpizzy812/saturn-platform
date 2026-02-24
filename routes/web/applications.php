@@ -115,12 +115,12 @@ Route::get('/applications/create', function () {
         }
     }
 
-    // Check if team has an active GitHub App for auto-deploy
-    $hasGithubApp = \App\Models\GithubApp::where('team_id', $team->id)
+    // Get active GitHub Apps for repo picker and auto-deploy
+    $githubApps = \App\Models\GithubApp::where('team_id', $team->id)
         ->whereNotNull('app_id')
         ->whereNotNull('installation_id')
         ->where('is_public', false)
-        ->exists();
+        ->get(['id', 'uuid', 'name', 'installation_id']);
 
     return Inertia::render('Applications/Create', [
         'projects' => $projects,
@@ -129,7 +129,8 @@ Route::get('/applications/create', function () {
         'needsProject' => $projects->isEmpty(),
         'preselectedSource' => request()->query('source'),
         'wildcardDomain' => $wildcardDomain,
-        'hasGithubApp' => $hasGithubApp,
+        'hasGithubApp' => $githubApps->isNotEmpty(),
+        'githubApps' => $githubApps,
     ]);
 })->name('applications.create');
 
