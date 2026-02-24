@@ -228,6 +228,10 @@ class RepositoryAnalyzer
             // Deduplicate databases (e.g., if both apps need PostgreSQL)
             $databases = $this->deduplicateDatabases($databases);
 
+            // Enrich database consumers from env variables
+            // If an app has REDIS_URL in .env.example, it should be a consumer of Redis
+            $databases = $this->enrichDatabaseConsumers($databases, $envVariables);
+
             return new AnalysisResult(
                 monorepo: $monorepoInfo,
                 applications: $enrichedApps,
@@ -283,6 +287,74 @@ class RepositoryAnalyzer
         $output = shell_exec('du -sm '.escapeshellarg($path).' 2>/dev/null | cut -f1');
 
         return (float) trim($output ?: '0');
+    }
+
+    /**
+     * Enrich database consumers from env variables
+     *
+     * When a database is detected via docker-compose (consumers=[]),
+     * we cross-reference app env variables to find which apps actually use it.
+     * E.g., if an app has REDIS_URL in .env.example, it consumes Redis.
+     *
+     * @param  DetectedDatabase[]  $databases
+     * @param  DTOs\DetectedEnvVariable[]  $envVariables
+     * @return DetectedDatabase[]
+     */
+    private function enrichDatabaseConsumers(array $databases, array $envVariables): array
+    {
+        // Map env var prefixes to database types
+        $envVarPatterns = [
+            'REDIS' => 'redis',
+            'POSTGRES' => 'postgresql',
+            'PG_' => 'postgresql',
+            'PGHOST' => 'postgresql',
+            'MYSQL' => 'mysql',
+            'MONGO' => 'mongodb',
+            'CLICKHOUSE' => 'clickhouse',
+        ];
+
+        // Build app → database_types map from env variables
+        $appDbMap = []; // app_name => [db_type => true]
+        foreach ($envVariables as $env) {
+            $upperKey = strtoupper($env->key);
+            foreach ($envVarPatterns as $pattern => $dbType) {
+                if (str_starts_with($upperKey, $pattern)) {
+                    $appDbMap[$env->forApp][$dbType] = true;
+
+                    break;
+                }
+            }
+            // DATABASE_URL is generic — match against any detected SQL DB
+            if ($upperKey === 'DATABASE_URL') {
+                foreach ($databases as $db) {
+                    if (in_array($db->type, ['postgresql', 'mysql'], true)) {
+                        $appDbMap[$env->forApp][$db->type] = true;
+                    }
+                }
+            }
+        }
+
+        // Enrich consumers on each database
+        return array_map(function ($db) use ($appDbMap) {
+            $newConsumers = $db->consumers;
+            foreach ($appDbMap as $appName => $dbTypes) {
+                if (isset($dbTypes[$db->type]) && ! in_array($appName, $newConsumers, true)) {
+                    $newConsumers[] = $appName;
+                }
+            }
+            if ($newConsumers !== $db->consumers) {
+                return new DetectedDatabase(
+                    type: $db->type,
+                    name: $db->name,
+                    envVarName: $db->envVarName,
+                    consumers: $newConsumers,
+                    detectedVia: $db->detectedVia,
+                    port: $db->port,
+                );
+            }
+
+            return $db;
+        }, $databases);
     }
 
     /**
