@@ -108,7 +108,7 @@ class DatabaseMetricsController extends Controller
     {
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
             $lines = min(max((int) $request->input('lines', 100), 10), 1000);
-            $containerName = $db->uuid;
+            $containerName = escapeshellarg($db->uuid);
 
             $checkCommand = "docker inspect --format='{{.State.Status}}' {$containerName} 2>&1";
             $containerStatus = trim(instant_remote_process([$checkCommand], $server, false) ?? '');
@@ -500,13 +500,18 @@ class DatabaseMetricsController extends Controller
             ];
 
             if ($endpoint = $request->input('endpoint')) {
-                // SSRF protection: block private/reserved IP ranges
+                // SSRF protection: block private/reserved/link-local IP ranges
                 $parsed = parse_url($endpoint);
                 $host = $parsed['host'] ?? '';
                 $resolvedIp = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
 
                 if (filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
                     return $this->errorResponse('Invalid endpoint: private or reserved addresses are not allowed');
+                }
+
+                // Block link-local (169.254.x.x) and shared address space (100.64.0.0/10)
+                if (str_starts_with($resolvedIp, '169.254.') || (ip2long($resolvedIp) >= ip2long('100.64.0.0') && ip2long($resolvedIp) <= ip2long('100.127.255.255'))) {
+                    return $this->errorResponse('Invalid endpoint: link-local and shared addresses are not allowed');
                 }
 
                 $config['endpoint'] = $endpoint;
@@ -545,7 +550,8 @@ class DatabaseMetricsController extends Controller
             $db->{$passwordField} = \Illuminate\Support\Str::password(32);
             $db->save();
 
-            instant_remote_process(["docker restart {$db->uuid} 2>&1"], $server, false);
+            $safeUuid = escapeshellarg($db->uuid);
+            instant_remote_process(["docker restart {$safeUuid} 2>&1"], $server, false);
 
             return $this->successResponse(message: 'Password regenerated and database restarting. Services using this database will need redeployment.');
         }, errorPrefix: 'Failed to regenerate password');

@@ -369,8 +369,10 @@ class MongoMetricsService
             }
         }
 
-        // Build sort query
-        $sortQuery = $orderBy !== '' ? "{{$orderBy}: ".($orderDir === 'asc' ? '1' : '-1').'}' : '{}';
+        // Build sort query — validate $orderBy against known column names to prevent NoSQL injection
+        $columnNames = array_column($columns, 'name');
+        $safeOrderBy = ($orderBy !== '' && in_array($orderBy, $columnNames, true)) ? $orderBy : '';
+        $sortQuery = $safeOrderBy !== '' ? "{{$safeOrderBy}: ".($orderDir === 'asc' ? '1' : '-1').'}' : '{}';
 
         // Get total count
         $countEval = escapeshellarg("db.{$collectionName}.countDocuments({$searchQuery})");

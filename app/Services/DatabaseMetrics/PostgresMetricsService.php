@@ -38,7 +38,7 @@ class PostgresMetricsService
             }
 
             // Get database size - use escaped dbName in SQL query
-            $escapedDbNameSql = addslashes($dbNameRaw);
+            $escapedDbNameSql = str_replace("'", "''", $dbNameRaw);
             $sizeCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_size_pretty(pg_database_size('{$escapedDbNameSql}'));\" 2>/dev/null || echo 'N/A'";
             $databaseSize = trim(instant_remote_process([$sizeCommand], $server, false) ?? 'N/A');
             if ($databaseSize && $databaseSize !== 'N/A') {
@@ -376,6 +376,10 @@ class PostgresMetricsService
         $escapedTable = str_contains($tableName, '.') ? $tableName : "public.{$tableName}";
         [$schema, $table] = str_contains($tableName, '.') ? explode('.', $tableName, 2) : ['public', $tableName];
 
+        // SQL-escape schema and table names to prevent injection
+        $safeSchema = str_replace("'", "''", $schema);
+        $safeTable = str_replace("'", "''", $table);
+
         $query = "SELECT
             column_name,
             data_type,
@@ -385,11 +389,11 @@ class PostgresMetricsService
              JOIN information_schema.table_constraints tc
              ON kcu.constraint_name = tc.constraint_name
              WHERE tc.constraint_type = 'PRIMARY KEY'
-             AND kcu.table_schema = '{$schema}'
-             AND kcu.table_name = '{$table}'
+             AND kcu.table_schema = '{$safeSchema}'
+             AND kcu.table_name = '{$safeTable}'
              AND kcu.column_name = c.column_name) as is_primary
         FROM information_schema.columns c
-        WHERE table_schema = '{$schema}' AND table_name = '{$table}'
+        WHERE table_schema = '{$safeSchema}' AND table_name = '{$safeTable}'
         ORDER BY ordinal_position";
 
         $escapedQuery = escapeshellarg($query);
@@ -434,8 +438,7 @@ class PostgresMetricsService
 
         // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
-            $escapedSearch = str_replace(["'", '"', '\\', ';', '--'], '', $search);
-            $escapedSearch = str_replace("'", "''", $escapedSearch);
+            $escapedSearch = str_replace(["'", '"', '\\', ';', '--', '$'], '', $search);
             $safeColumns = array_filter($columnNames, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col));
             $searchConditions = array_map(fn ($col) => "CAST(\"{$col}\" AS TEXT) ILIKE '%{$escapedSearch}%'", $safeColumns);
             if (! empty($searchConditions)) {
