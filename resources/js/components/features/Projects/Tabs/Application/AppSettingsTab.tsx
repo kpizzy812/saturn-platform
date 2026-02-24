@@ -27,6 +27,7 @@ interface ApplicationData {
     git_branch: string | null;
     git_commit_sha: string | null;
     build_pack: string | null;
+    application_type: string | null;
     base_directory: string | null;
     publish_directory: string | null;
     install_command: string | null;
@@ -89,6 +90,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
     const [healthCheckInterval, setHealthCheckInterval] = useState(30);
     const [healthCheckTimeout, setHealthCheckTimeout] = useState(10);
     const [healthCheckRetries, setHealthCheckRetries] = useState(3);
+    const [applicationType, setApplicationType] = useState('web');
     const [portsExposes, setPortsExposes] = useState('');
     const [portsMappings, setPortsMappings] = useState('');
     const [baseDirectory, setBaseDirectory] = useState('/');
@@ -127,6 +129,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 setHealthCheckInterval(data.health_check_interval ?? 30);
                 setHealthCheckTimeout(data.health_check_timeout ?? 10);
                 setHealthCheckRetries(data.health_check_retries ?? 3);
+                setApplicationType(data.application_type || 'web');
                 setPortsExposes(data.ports_exposes || '');
                 setPortsMappings(data.ports_mappings || '');
                 setBaseDirectory(data.base_directory || '/');
@@ -236,12 +239,13 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 },
                 credentials: 'include',
                 body: JSON.stringify({
-                    health_check_enabled: healthCheckEnabled,
+                    application_type: applicationType,
+                    health_check_enabled: applicationType === 'worker' ? false : healthCheckEnabled,
                     health_check_path: healthCheckPath,
                     health_check_interval: healthCheckInterval,
                     health_check_timeout: healthCheckTimeout,
                     health_check_retries: healthCheckRetries,
-                    ports_exposes: portsExposes,
+                    ports_exposes: applicationType === 'worker' ? (portsExposes || null) : portsExposes,
                     ports_mappings: portsMappings || undefined,
                     base_directory: baseDirectory,
                     publish_directory: publishDirectory || undefined,
@@ -531,7 +535,32 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                         )}
                     </div>
 
+                    {/* Application Type */}
+                    <div className="rounded-lg border border-border bg-background-secondary p-4">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-foreground-muted" />
+                            <span className="text-sm font-medium text-foreground">Application Type</span>
+                        </div>
+                        <select
+                            value={applicationType}
+                            onChange={(e) => setApplicationType(e.target.value)}
+                            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        >
+                            <option value="web">Web (HTTP service with port)</option>
+                            <option value="worker">Worker (background process, no port)</option>
+                            <option value="both">Both (web + worker)</option>
+                        </select>
+                        <p className="mt-2 text-xs text-foreground-muted">
+                            {applicationType === 'worker'
+                                ? 'Workers run without HTTP ports. No domain, proxy, or health check needed. Perfect for bots, queue workers, scrapers.'
+                                : applicationType === 'both'
+                                    ? 'Application serves HTTP and runs background processes.'
+                                    : 'Standard web application with HTTP port and domain routing.'}
+                        </p>
+                    </div>
+
                     {/* Port Configuration */}
+                    {applicationType !== 'worker' && (
                     <div className="rounded-lg border border-border bg-background-secondary p-4">
                         <div className="mb-3 flex items-center gap-2">
                             <Link2 className="h-4 w-4 text-foreground-muted" />
@@ -568,6 +597,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                             </div>
                         )}
                     </div>
+                    )}
 
                     {/* Internal Networking */}
                     <div className="rounded-lg border border-border bg-background-secondary p-4">
@@ -619,7 +649,8 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 </div>
             )}
 
-            {/* Health Check */}
+            {/* Health Check — hidden for worker type */}
+            {applicationType !== 'worker' && (
             <div>
                 <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-medium text-foreground">Health Check</h3>
@@ -677,6 +708,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     </div>
                 )}
             </div>
+            )}
 
             {/* Save Settings Button */}
             <div className="border-t border-border pt-4">

@@ -121,6 +121,7 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
     Gate::authorize('update', $application);
 
     $allowedFields = [
+        'application_type',
         'health_check_enabled', 'health_check_path', 'health_check_interval',
         'health_check_timeout', 'health_check_retries',
         'ports_exposes', 'ports_mappings',

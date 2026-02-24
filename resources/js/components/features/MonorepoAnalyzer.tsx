@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Badge } from '@/components/ui/Badge';
+import { DeployGuide } from '@/components/features/DeployGuide';
 import axios from 'axios';
 
 interface DetectedHealthCheck {
@@ -296,32 +297,37 @@ export function MonorepoAnalyzer({
     // Initial state - show analyze button
     if (!analysis) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Repository Analysis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-foreground-muted mb-4">
-                        Saturn will analyze your repository to detect applications,
-                        required databases, and configuration.
-                    </p>
+            <div className="space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Repository Analysis</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-foreground-muted mb-4">
+                            Saturn will analyze your repository to detect applications,
+                            required databases, and configuration.
+                        </p>
 
-                    {error && (
-                        <div className="flex items-center gap-2 text-danger mb-4">
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
-                            <span>{error}</span>
-                        </div>
-                    )}
+                        {error && (
+                            <div className="flex items-center gap-2 text-danger mb-4">
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                </svg>
+                                <span>{error}</span>
+                            </div>
+                        )}
 
-                    <Button onClick={analyzeRepository} loading={analyzing}>
-                        {analyzing ? 'Analyzing...' : 'Analyze Repository'}
-                    </Button>
-                </CardContent>
-            </Card>
+                        <Button onClick={analyzeRepository} loading={analyzing}>
+                            {analyzing ? 'Analyzing...' : 'Analyze Repository'}
+                        </Button>
+                    </CardContent>
+                </Card>
+                {!analyzing && (
+                    <DeployGuide variant="full" defaultOpen="repo-checklist" />
+                )}
+            </div>
         );
     }
 

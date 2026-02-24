@@ -149,6 +149,7 @@ Route::post('/applications', function (Request $request) {
         'git_repository' => 'required_unless:source_type,docker|nullable|string',
         'git_branch' => 'nullable|string',
         'build_pack' => 'required|string|in:nixpacks,dockerfile,dockercompose,dockerimage',
+        'application_type' => 'nullable|string|in:web,worker,both',
         'project_uuid' => 'required|string',
         'environment_uuid' => 'required|string',
         'server_uuid' => 'nullable|string',
@@ -210,6 +211,7 @@ Route::post('/applications', function (Request $request) {
     $application->git_repository = $validated['git_repository'] ?? null;
     $application->git_branch = $validated['git_branch'] ?? 'main';
     $application->build_pack = $validated['build_pack'];
+    $application->application_type = $validated['application_type'] ?? 'web';
     $application->environment_id = $environment->id;
     $application->destination_id = $destination->id;
     $application->destination_type = $destination->getMorphClass();
@@ -280,21 +282,31 @@ Route::post('/applications', function (Request $request) {
         $application->manual_webhook_secret_github = \Illuminate\Support\Str::random(32);
     }
 
-    // Set default ports
-    $application->ports_exposes = '80';
+    // Workers: no port, no domain, no health check
+    $isWorker = ($validated['application_type'] ?? 'web') === 'worker';
+    if ($isWorker) {
+        $application->ports_exposes = null;
+        $application->health_check_enabled = false;
+        $application->fqdn = null;
+    } else {
+        // Set default ports for web applications
+        $application->ports_exposes = '80';
+    }
 
     $application->save();
 
-    // Handle domain: expand subdomain-only input or auto-generate if empty
-    if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {
-        // User entered just a subdomain (e.g. "uranus") — expand to full URL
-        $application->fqdn = generateUrl(server: $server, random: $application->fqdn);
-        $application->save();
-    } elseif (empty($application->fqdn)) {
-        // No domain provided — auto-generate from project name
-        $slug = generateSubdomainFromName($application->name, $server, $project->name);
-        $application->fqdn = generateUrl(server: $server, random: $slug);
-        $application->save();
+    if (! $isWorker) {
+        // Handle domain: expand subdomain-only input or auto-generate if empty
+        if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {
+            // User entered just a subdomain (e.g. "uranus") — expand to full URL
+            $application->fqdn = generateUrl(server: $server, random: $application->fqdn);
+            $application->save();
+        } elseif (empty($application->fqdn)) {
+            // No domain provided — auto-generate from project name
+            $slug = generateSubdomainFromName($application->name, $server, $project->name);
+            $application->fqdn = generateUrl(server: $server, random: $slug);
+            $application->save();
+        }
     }
 
     return redirect()->route('applications.show', $application->uuid)

@@ -39,6 +39,7 @@ class CreateDockerfileApplication
         // Type-specific validation
         $validationRules = [
             'dockerfile' => 'string|required',
+            'application_type' => 'string|in:web,worker,both',
         ];
         $validationRules = array_merge(sharedDataApplications(), $validationRules);
         $validator = customApiValidator($request->all(), $validationRules);
@@ -82,7 +83,7 @@ class CreateDockerfileApplication
         removeUnnecessaryFieldsFromRequest($request);
 
         $port = get_port_from_dockerfile($request->dockerfile);
-        if (! $port) {
+        if (! $port && $request->application_type !== 'worker') {
             $port = 80;
         }
 
@@ -90,7 +91,7 @@ class CreateDockerfileApplication
         $application = new Application;
         $application->fill($request->all());
         $application->fqdn = $request->domains;
-        $application->ports_exposes = (string) $port;
+        $application->ports_exposes = $port ? (string) $port : null;
         $application->build_pack = 'dockerfile';
         $application->dockerfile = $dockerFile;
         $application->destination_id = $destination->id;

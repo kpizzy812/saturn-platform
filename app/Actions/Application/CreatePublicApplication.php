@@ -55,6 +55,7 @@ class CreatePublicApplication
             'git_branch' => ['string', 'required', new \App\Rules\ValidGitBranch],
             'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
             'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
+            'application_type' => 'string|in:web,worker,both',
             'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
             'docker_compose_domains' => 'array|nullable',
@@ -62,8 +63,15 @@ class CreatePublicApplication
 
         // ports_exposes is not required for dockercompose
         if ($request->build_pack === 'dockercompose') {
-            $validationRules['ports_exposes'] = 'string';
-            $request->offsetSet('ports_exposes', '80');
+            $validationRules['ports_exposes'] = 'string|nullable';
+            if (! $request->has('ports_exposes') || blank($request->ports_exposes)) {
+                $request->offsetSet('ports_exposes', null);
+            }
+        }
+
+        // Workers don't need ports
+        if ($request->application_type === 'worker') {
+            $validationRules['ports_exposes'] = 'string|regex:/^(\d+)(,\d+)*$/|nullable';
         }
 
         $validationRules = array_merge(sharedDataApplications(), $validationRules);

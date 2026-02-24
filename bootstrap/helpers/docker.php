@@ -686,6 +686,11 @@ function fqdnLabelsForTraefik(string $uuid, Collection $domains, bool $is_force_
 }
 function generateLabelsApplication(Application $application, ?ApplicationPreview $preview = null): array
 {
+    // Workers don't need proxy labels
+    if ($application->isWorker()) {
+        return [];
+    }
+
     $ports = $application->settings->is_static ? [80] : $application->ports_exposes_array;
     $onlyPort = null;
     if (count($ports) > 0) {
