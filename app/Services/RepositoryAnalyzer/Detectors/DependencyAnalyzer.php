@@ -7,6 +7,7 @@ use App\Services\RepositoryAnalyzer\DTOs\DependencyAnalysisResult;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedEnvVariable;
+use App\Services\RepositoryAnalyzer\DTOs\DetectedPersistentVolume;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedService;
 use JsonException;
 use Yosymfony\Toml\Toml;
@@ -73,6 +74,43 @@ class DependencyAnalyzer
         ],
     ];
 
+    /**
+     * SQLite detection rules — file-based DB, needs persistent volume instead of standalone database
+     */
+    private const SQLITE_RULES = [
+        'npm' => ['better-sqlite3', 'sql.js', 'sqlite3'],
+        'pip' => ['aiosqlite', 'databases[sqlite]'],
+        'composer' => ['ext-sqlite3'],
+        'gem' => ['sqlite3'],
+        'go' => ['github.com/mattn/go-sqlite3', 'modernc.org/sqlite', 'gorm.io/driver/sqlite'],
+        'cargo' => ['rusqlite', 'diesel'],
+    ];
+
+    /**
+     * Framework-specific SQLite mount paths and env vars
+     *
+     * When we detect SQLite for a known framework, we use the framework's
+     * conventional database directory so it works with minimal user config.
+     */
+    private const SQLITE_FRAMEWORK_DEFAULTS = [
+        'laravel' => [
+            'mount_path' => '/var/www/html/database',
+            'env_var_name' => 'DB_DATABASE',
+            'env_var_value' => '/var/www/html/database/database.sqlite',
+        ],
+        'django' => [
+            'mount_path' => '/app/data',
+            'env_var_name' => 'DATABASE_PATH',
+            'env_var_value' => '/app/data/db.sqlite3',
+        ],
+    ];
+
+    private const SQLITE_DEFAULT = [
+        'mount_path' => '/data',
+        'env_var_name' => 'DATABASE_PATH',
+        'env_var_value' => '/data/db.sqlite',
+    ];
+
     private const SERVICE_RULES = [
         's3' => [
             'npm' => ['@aws-sdk/client-s3', 'aws-sdk', 'minio'],
@@ -131,11 +169,13 @@ class DependencyAnalyzer
         $databases = $this->detectDatabases($appPath, $app);
         $services = $this->detectServices($appPath, $app);
         $envVariables = $this->detectEnvVariables($appPath, $app);
+        $persistentVolumes = $this->detectSqliteVolumes($appPath, $app);
 
         return new DependencyAnalysisResult(
             databases: $databases,
             services: $services,
             envVariables: $envVariables,
+            persistentVolumes: $persistentVolumes,
         );
     }
 
@@ -235,6 +275,93 @@ class DependencyAnalyzer
         }
 
         return [];
+    }
+
+    /**
+     * Detect SQLite usage and create persistent volume recommendation
+     *
+     * SQLite is a file-based database — unlike PostgreSQL/MySQL, it doesn't need
+     * a standalone container. Instead, it needs a persistent volume so the
+     * database file survives container redeployments.
+     *
+     * @return DetectedPersistentVolume[]
+     */
+    private function detectSqliteVolumes(string $appPath, DetectedApp $app): array
+    {
+        $dependencies = $this->extractDependencies($appPath);
+
+        foreach ($dependencies as $packageManager => $deps) {
+            if (! isset(self::SQLITE_RULES[$packageManager])) {
+                continue;
+            }
+
+            $matchedDep = $this->findMatchingDependency($deps, self::SQLITE_RULES[$packageManager]);
+            if ($matchedDep === null) {
+                continue;
+            }
+
+            // Also check for Prisma with sqlite provider
+            if ($matchedDep === 'better-sqlite3' || $packageManager === 'npm') {
+                // Accept the match as-is for npm sqlite packages
+            }
+
+            // Determine mount path based on framework
+            $defaults = self::SQLITE_FRAMEWORK_DEFAULTS[$app->framework] ?? self::SQLITE_DEFAULT;
+
+            return [
+                new DetectedPersistentVolume(
+                    name: 'sqlite-data',
+                    mountPath: $defaults['mount_path'],
+                    reason: "SQLite database detected ({$matchedDep})",
+                    forApp: $app->name,
+                    envVarName: $defaults['env_var_name'],
+                    envVarValue: $defaults['env_var_value'],
+                ),
+            ];
+        }
+
+        // Also check for Prisma with sqlite datasource in schema.prisma
+        if ($this->detectPrismaSqlite($appPath)) {
+            $defaults = self::SQLITE_DEFAULT;
+
+            return [
+                new DetectedPersistentVolume(
+                    name: 'sqlite-data',
+                    mountPath: $defaults['mount_path'],
+                    reason: 'SQLite database detected (prisma:sqlite)',
+                    forApp: $app->name,
+                    envVarName: $defaults['env_var_name'],
+                    envVarValue: $defaults['env_var_value'],
+                ),
+            ];
+        }
+
+        return [];
+    }
+
+    /**
+     * Check if Prisma schema uses sqlite as datasource provider
+     */
+    private function detectPrismaSqlite(string $appPath): bool
+    {
+        $schemaLocations = [
+            $appPath.'/prisma/schema.prisma',
+            $appPath.'/schema.prisma',
+        ];
+
+        foreach ($schemaLocations as $schemaPath) {
+            if (! $this->isReadableFile($schemaPath)) {
+                continue;
+            }
+
+            $content = file_get_contents($schemaPath);
+            // Match: provider = "sqlite"
+            if (preg_match('/provider\s*=\s*"sqlite"/i', $content)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

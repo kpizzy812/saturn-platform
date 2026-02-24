@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Users, Server, Box, Database, Rocket, TrendingUp } from 'lucide-react';

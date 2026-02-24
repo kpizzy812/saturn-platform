@@ -50,7 +50,7 @@ const sampleResources = [
 
 beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
 });
 
 describe('ObservabilityLogs', () => {
@@ -127,7 +127,7 @@ describe('ObservabilityLogs', () => {
 
     it('fetches and displays application logs (string format)', async () => {
         const user = userEvent.setup();
-        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ logs: '2024-01-01T10:00:00Z Starting server\n2024-01-01T10:00:01Z Server ready' }),
         });
@@ -144,7 +144,7 @@ describe('ObservabilityLogs', () => {
 
     it('fetches and displays service logs (containers format)', async () => {
         const user = userEvent.setup();
-        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             ok: true,
             json: async () => ({
                 service_uuid: 'svc-1',
@@ -171,7 +171,7 @@ describe('ObservabilityLogs', () => {
 
     it('displays error message on fetch failure', async () => {
         const user = userEvent.setup();
-        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
             ok: false,
             status: 500,
             json: async () => ({ message: 'Failed to connect to server' }),

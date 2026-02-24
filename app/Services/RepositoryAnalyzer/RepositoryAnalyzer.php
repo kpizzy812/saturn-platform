@@ -68,6 +68,7 @@ class RepositoryAnalyzer
             $databases = [];
             $services = [];
             $envVariables = [];
+            $persistentVolumes = [];
             $enrichedApps = [];
 
             foreach ($apps as $app) {
@@ -78,6 +79,7 @@ class RepositoryAnalyzer
                 $databases = array_merge($databases, $deps->databases);
                 $services = array_merge($services, $deps->services);
                 $envVariables = array_merge($envVariables, $deps->envVariables);
+                $persistentVolumes = array_merge($persistentVolumes, $deps->persistentVolumes);
 
                 // Analyze Dockerfile if present
                 $dockerfileInfo = $this->dockerfileAnalyzer->analyze($appPath);
@@ -140,6 +142,7 @@ class RepositoryAnalyzer
                 appDependencies: $appDependencies,
                 dockerComposeServices: $dockerComposeServices,
                 ciConfig: $ciConfig,
+                persistentVolumes: $persistentVolumes,
             );
         } catch (JsonException|YamlException $e) {
             $this->logger->warning('Failed to parse config file', [

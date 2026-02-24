@@ -275,7 +275,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             $this->server->update(['hetzner_server_status' => $status]);
             $this->server->hetzner_server_status = $status;
             if ($status === 'off') {
-                ray('Server is powered off, marking as unreachable');
+                Log::info('Server is powered off, marking as unreachable', ['server_id' => $this->server->id]);
                 throw new \Exception('Server is powered off');
             }
         }

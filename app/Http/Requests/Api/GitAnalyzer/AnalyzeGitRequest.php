@@ -19,6 +19,7 @@ class AnalyzeGitRequest extends FormRequest
             'private_key_id' => ['nullable', 'integer', 'exists:private_keys,id'],
             'source_id' => ['nullable', 'integer'],
             'source_type' => ['nullable', 'string', 'in:github,gitlab,bitbucket'],
+            'github_app_id' => ['nullable', 'integer'],
         ];
     }
 }

@@ -495,7 +495,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
                 isOpen={showRollbackModal}
                 onClose={() => setShowRollbackModal(false)}
                 title="Confirm Rollback"
-                size="md"
+                size="default"
             >
                 <div className="space-y-4">
                     <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-4">
@@ -530,7 +530,7 @@ export default function MigrationShow({ migration: initialMigration, canApprove 
                 isOpen={showCancelModal}
                 onClose={() => setShowCancelModal(false)}
                 title="Cancel Migration"
-                size="md"
+                size="default"
             >
                 <div className="space-y-4">
                     <p className="text-sm text-foreground-muted">

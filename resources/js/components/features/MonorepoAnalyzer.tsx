@@ -112,6 +112,7 @@ interface Props {
     gitBranch?: string;
     privateKeyId?: number;
     sourceId?: number;
+    githubAppId?: number;
     environmentUuid: string;
     destinationUuid: string;
     onComplete: (result: ProvisionResult) => void;
@@ -154,6 +155,7 @@ export function MonorepoAnalyzer({
     gitBranch,
     privateKeyId,
     sourceId,
+    githubAppId,
     environmentUuid,
     destinationUuid,
     onComplete,
@@ -186,6 +188,7 @@ export function MonorepoAnalyzer({
                 git_branch: gitBranch,
                 private_key_id: privateKeyId,
                 source_id: sourceId,
+                github_app_id: githubAppId,
             });
 
             if (!response.data.success) {
@@ -240,6 +243,7 @@ export function MonorepoAnalyzer({
                 git_branch: gitBranch,
                 private_key_id: privateKeyId,
                 source_id: sourceId,
+                github_app_id: githubAppId,
                 applications: analysis.applications.map(app => ({
                     name: app.name,
                     enabled: selectedApps[app.name] ?? false,
