@@ -83,7 +83,7 @@ describe('EnvDiff', () => {
             },
         };
 
-        global.fetch = vi.fn().mockResolvedValueOnce({
+        globalThis.fetch = vi.fn().mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve(mockResult),
         });
@@ -109,7 +109,7 @@ describe('EnvDiff', () => {
     });
 
     it('shows error on fetch failure', async () => {
-        global.fetch = vi.fn().mockResolvedValueOnce({
+        globalThis.fetch = vi.fn().mockResolvedValueOnce({
             ok: false,
             json: () => Promise.resolve({ message: 'Environments not found' }),
         });
@@ -157,7 +157,7 @@ describe('EnvDiff', () => {
             },
         };
 
-        global.fetch = vi.fn().mockResolvedValueOnce({
+        globalThis.fetch = vi.fn().mockResolvedValueOnce({
             ok: true,
             json: () => Promise.resolve(mockResult),
         });

@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
@@ -397,7 +398,7 @@ class Application extends BaseModel
                         app(\App\Services\MasterProxyConfigService::class)->syncRemoteRoute($application);
                     }
                 } catch (\Throwable $e) {
-                    // Don't break FQDN update if proxy sync fails
+                    Log::warning('Failed to sync proxy route on FQDN update', ['application_id' => $application->id, 'error' => $e->getMessage()]);
                 }
 
                 try {
@@ -405,7 +406,7 @@ class Application extends BaseModel
                         \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                     }
                 } catch (\Throwable $e) {
-                    // Don't break FQDN update if Cloudflare sync fails
+                    Log::warning('Failed to dispatch Cloudflare sync on FQDN update', ['application_id' => $application->id, 'error' => $e->getMessage()]);
                 }
             }
         });
@@ -414,7 +415,7 @@ class Application extends BaseModel
             try {
                 app(\App\Services\MasterProxyConfigService::class)->removeRemoteRoute($application);
             } catch (\Throwable $e) {
-                // Don't block deletion if proxy cleanup fails
+                Log::warning('Failed to remove proxy route on application deletion', ['application_id' => $application->id, 'error' => $e->getMessage()]);
             }
 
             // Sync Cloudflare routes after FQDN removal
@@ -423,7 +424,7 @@ class Application extends BaseModel
                     \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                 }
             } catch (\Throwable $e) {
-                // Don't block deletion if Cloudflare cleanup fails
+                Log::warning('Failed to dispatch Cloudflare sync on application deletion', ['application_id' => $application->id, 'error' => $e->getMessage()]);
             }
 
             $application->update(['fqdn' => null]);

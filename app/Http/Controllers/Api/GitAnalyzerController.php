@@ -174,6 +174,12 @@ class GitAnalyzerController extends Controller
                         'name' => $d->name,
                         'type' => $d->database_type ?? $d->type ?? 'unknown',
                     ])->values(),
+                    'persistent_volumes' => collect($analysis->persistentVolumes)->map(fn ($v) => [
+                        'name' => $v->name,
+                        'mount_path' => $v->mountPath,
+                        'reason' => $v->reason,
+                        'for_app' => $v->forApp,
+                    ])->values(),
                     'monorepo_group_id' => $result->monorepoGroupId,
                 ],
             ]);
@@ -370,6 +376,12 @@ class GitAnalyzerController extends Controller
             fn ($dep) => in_array($dep->appName, $enabledApps, true)
         );
 
+        // Filter persistent volumes to only include enabled apps
+        $filteredVolumes = array_filter(
+            $analysis->persistentVolumes,
+            fn ($vol) => in_array($vol->forApp, $enabledApps, true)
+        );
+
         // Return new AnalysisResult with filtered data
         return new AnalysisResult(
             monorepo: $analysis->monorepo,
@@ -380,6 +392,7 @@ class GitAnalyzerController extends Controller
             appDependencies: array_values($filteredAppDeps),
             dockerComposeServices: $analysis->dockerComposeServices,
             ciConfig: $analysis->ciConfig,
+            persistentVolumes: array_values($filteredVolumes),
         );
     }
 }

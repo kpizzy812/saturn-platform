@@ -59,6 +59,7 @@ interface InviteData {
     permissionSets: PermissionSetOption[];
     allPermissions: Record<string, PermissionItem[]>;
     environments: EnvironmentItem[];
+    rolePermissions: Record<string, number[]>;
 }
 
 interface Props {
@@ -470,7 +471,13 @@ export function InviteTeamMemberModal({ isOpen, onClose, onSuccess }: Props) {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => setPermissionMode('custom')}
+                                                onClick={() => {
+                                                    // Pre-fill with role's default permissions when switching to custom
+                                                    if (permissionMode !== 'custom' && inviteData?.rolePermissions?.[role]) {
+                                                        setSelectedPermissions(new Set(inviteData.rolePermissions[role]));
+                                                    }
+                                                    setPermissionMode('custom');
+                                                }}
                                                 className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${
                                                     permissionMode === 'custom'
                                                         ? 'bg-background text-foreground shadow-sm'

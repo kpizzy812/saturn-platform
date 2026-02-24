@@ -75,11 +75,11 @@ class ServerManagerJob implements ShouldQueue
 
     private function getServers(): Collection
     {
-        $allServers = Server::where('ip', '!=', '1.2.3.4');
+        $allServers = Server::where('ip', '!=', '1.2.3.4')->with('settings');
 
         if (isCloud()) {
             $servers = $allServers->whereRelation('team.subscription', 'stripe_invoice_paid', true)->get();
-            $own = Team::find(0)->servers;
+            $own = Team::find(0)->servers()->with('settings')->get();
 
             return $servers->merge($own);
         } else {

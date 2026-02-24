@@ -26,9 +26,12 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
     {
         $muxFiles = Storage::disk('ssh-mux')->files();
 
+        // Preload all servers to avoid N+1 queries in the loop
+        $servers = Server::select('uuid', 'ip', 'user')->get()->keyBy('uuid');
+
         foreach ($muxFiles as $muxFile) {
             $serverUuid = $this->extractServerUuidFromMuxFile($muxFile);
-            $server = Server::where('uuid', $serverUuid)->first();
+            $server = $servers->get($serverUuid);
 
             if (! $server) {
                 $this->removeMultiplexFile($muxFile);

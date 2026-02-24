@@ -21,6 +21,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -49,7 +50,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
 
             // Check if auto-provisioning is enabled
             if (! $settings->auto_provision_enabled) {
-                ray('Auto-provisioning is disabled');
+                Log::debug('Auto-provisioning is disabled');
 
                 return;
             }
@@ -57,7 +58,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
             // Check daily limit
             $provisionedToday = AutoProvisioningEvent::countProvisionedToday();
             if ($provisionedToday >= $settings->auto_provision_max_servers_per_day) {
-                ray('Daily auto-provisioning limit reached', [
+                Log::debug('Daily auto-provisioning limit reached', [
                     'limit' => $settings->auto_provision_max_servers_per_day,
                     'provisioned_today' => $provisionedToday,
                 ]);
@@ -67,7 +68,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
 
             // Check if there's already an active provisioning in progress
             if (AutoProvisioningEvent::hasActiveProvisioning()) {
-                ray('Another auto-provisioning is already in progress');
+                Log::debug('Another auto-provisioning is already in progress');
 
                 return;
             }
@@ -75,7 +76,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
             // Check cooldown
             $cooldownKey = "auto-provision-cooldown-{$this->triggerServer->uuid}";
             if (Cache::has($cooldownKey)) {
-                ray('Auto-provisioning cooldown active for server', ['server' => $this->triggerServer->name]);
+                Log::debug('Auto-provisioning cooldown active for server', ['server' => $this->triggerServer->name]);
 
                 return;
             }
@@ -85,7 +86,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
             $token = $this->getCloudProviderToken($provider);
 
             if (! $token) {
-                ray('No cloud provider token found for auto-provisioning', ['provider' => $provider]);
+                Log::debug('No cloud provider token found for auto-provisioning', ['provider' => $provider]);
 
                 return;
             }
@@ -93,7 +94,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
             // Get private key (use trigger server's key or first available)
             $privateKey = $this->getPrivateKey();
             if (! $privateKey) {
-                ray('No private key found for auto-provisioning');
+                Log::debug('No private key found for auto-provisioning');
 
                 return;
             }
@@ -139,14 +140,14 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
                 $this->triggerMetrics
             ));
 
-            ray('Auto-provisioning completed successfully', [
+            Log::info('Auto-provisioning completed successfully', [
                 'new_server' => $server->name,
                 'trigger_server' => $this->triggerServer->name,
                 'trigger_reason' => $this->triggerReason,
             ]);
 
         } catch (RateLimitException $e) {
-            ray('Rate limit exceeded during auto-provisioning', ['retry_after' => $e->retryAfter]);
+            Log::warning('Rate limit exceeded during auto-provisioning', ['retry_after' => $e->retryAfter]);
 
             // Re-dispatch with delay
             if ($e->retryAfter) {
@@ -154,7 +155,7 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
                     ->delay(now()->addSeconds($e->retryAfter));
             }
         } catch (\Throwable $e) {
-            ray('Auto-provisioning failed', ['error' => $e->getMessage()]);
+            Log::error('Auto-provisioning failed', ['error' => $e->getMessage()]);
 
             // Mark event as failed if exists
             if (isset($event)) {

@@ -1,6 +1,4 @@
-import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { DollarSign, Zap, Brain, TrendingUp } from 'lucide-react';
 
 interface GlobalStats {

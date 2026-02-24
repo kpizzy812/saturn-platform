@@ -219,4 +219,251 @@ REQS);
         $this->assertCount(1, $result->databases);
         $this->assertEquals('redis', $result->databases[0]->type);
     }
+
+    // ── SQLite Auto-Detection ─────────────────────────────────────
+
+    public function test_detects_sqlite_from_better_sqlite3(): void
+    {
+        file_put_contents($this->tempDir.'/package.json', json_encode([
+            'dependencies' => ['better-sqlite3' => '^9.0.0', 'express' => '^4.0.0'],
+        ]));
+
+        $result = $this->analyzer->analyze($this->tempDir, $this->createApp());
+
+        $this->assertEmpty($result->databases, 'SQLite should NOT create a standalone database');
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertEquals('sqlite-data', $result->persistentVolumes[0]->name);
+        $this->assertEquals('/data', $result->persistentVolumes[0]->mountPath);
+        $this->assertEquals('DATABASE_PATH', $result->persistentVolumes[0]->envVarName);
+        $this->assertEquals('/data/db.sqlite', $result->persistentVolumes[0]->envVarValue);
+        $this->assertStringContains('better-sqlite3', $result->persistentVolumes[0]->reason);
+    }
+
+    public function test_detects_sqlite_from_sqlite3_npm(): void
+    {
+        file_put_contents($this->tempDir.'/package.json', json_encode([
+            'dependencies' => ['sqlite3' => '^5.0.0'],
+        ]));
+
+        $result = $this->analyzer->analyze($this->tempDir, $this->createApp());
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertEquals('/data', $result->persistentVolumes[0]->mountPath);
+    }
+
+    public function test_detects_sqlite_from_python_aiosqlite(): void
+    {
+        file_put_contents($this->tempDir.'/requirements.txt', <<<'REQS'
+fastapi==0.100.0
+aiosqlite==0.19.0
+REQS);
+
+        $app = new DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'fastapi',
+            buildPack: 'nixpacks',
+            defaultPort: 8000,
+        );
+
+        $result = $this->analyzer->analyze($this->tempDir, $app);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertEquals('sqlite-data', $result->persistentVolumes[0]->name);
+        $this->assertStringContains('aiosqlite', $result->persistentVolumes[0]->reason);
+    }
+
+    public function test_detects_sqlite_from_go_driver(): void
+    {
+        file_put_contents($this->tempDir.'/go.mod', <<<'GO'
+module github.com/user/bot
+
+go 1.21
+
+require (
+    github.com/mattn/go-sqlite3 v1.14.0
+)
+GO);
+
+        $app = new DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'go',
+            buildPack: 'nixpacks',
+            defaultPort: 8080,
+        );
+
+        $result = $this->analyzer->analyze($this->tempDir, $app);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertStringContains('go-sqlite3', $result->persistentVolumes[0]->reason);
+    }
+
+    public function test_detects_sqlite_from_prisma_schema(): void
+    {
+        file_put_contents($this->tempDir.'/package.json', json_encode([
+            'dependencies' => ['@prisma/client' => '^5.0.0'],
+            'devDependencies' => ['prisma' => '^5.0.0'],
+        ]));
+
+        mkdir($this->tempDir.'/prisma');
+        file_put_contents($this->tempDir.'/prisma/schema.prisma', <<<'PRISMA'
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+}
+PRISMA);
+
+        $result = $this->analyzer->analyze($this->tempDir, $this->createApp());
+
+        // Prisma with sqlite should create persistent volume, not standalone postgres
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertStringContains('prisma:sqlite', $result->persistentVolumes[0]->reason);
+    }
+
+    public function test_sqlite_uses_laravel_specific_paths(): void
+    {
+        file_put_contents($this->tempDir.'/composer.json', json_encode([
+            'require' => [
+                'laravel/framework' => '^11.0',
+                'ext-sqlite3' => '*',
+            ],
+        ]));
+
+        $app = new DetectedApp(
+            name: 'app',
+            path: '.',
+            framework: 'laravel',
+            buildPack: 'nixpacks',
+            defaultPort: 8000,
+        );
+
+        $result = $this->analyzer->analyze($this->tempDir, $app);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertEquals('/var/www/html/database', $result->persistentVolumes[0]->mountPath);
+        $this->assertEquals('DB_DATABASE', $result->persistentVolumes[0]->envVarName);
+        $this->assertEquals('/var/www/html/database/database.sqlite', $result->persistentVolumes[0]->envVarValue);
+    }
+
+    public function test_sqlite_uses_django_specific_paths(): void
+    {
+        file_put_contents($this->tempDir.'/requirements.txt', <<<'REQS'
+Django==4.2.0
+aiosqlite==0.19.0
+REQS);
+
+        $app = new DetectedApp(
+            name: 'web',
+            path: '.',
+            framework: 'django',
+            buildPack: 'nixpacks',
+            defaultPort: 8000,
+        );
+
+        $result = $this->analyzer->analyze($this->tempDir, $app);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertEquals('/app/data', $result->persistentVolumes[0]->mountPath);
+        $this->assertEquals('DATABASE_PATH', $result->persistentVolumes[0]->envVarName);
+        $this->assertEquals('/app/data/db.sqlite3', $result->persistentVolumes[0]->envVarValue);
+    }
+
+    public function test_sqlite_and_redis_detected_together(): void
+    {
+        file_put_contents($this->tempDir.'/package.json', json_encode([
+            'dependencies' => [
+                'better-sqlite3' => '^9.0.0',
+                'ioredis' => '^5.0.0',
+            ],
+        ]));
+
+        $result = $this->analyzer->analyze($this->tempDir, $this->createApp());
+
+        // Redis goes to databases (standalone container), SQLite goes to persistent volumes
+        $this->assertCount(1, $result->databases);
+        $this->assertEquals('redis', $result->databases[0]->type);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertEquals('sqlite-data', $result->persistentVolumes[0]->name);
+    }
+
+    public function test_no_sqlite_when_no_sqlite_deps(): void
+    {
+        file_put_contents($this->tempDir.'/package.json', json_encode([
+            'dependencies' => ['express' => '^4.0.0', 'pg' => '^8.0.0'],
+        ]));
+
+        $result = $this->analyzer->analyze($this->tempDir, $this->createApp());
+
+        $this->assertEmpty($result->persistentVolumes);
+    }
+
+    public function test_detects_sqlite_from_rust_rusqlite(): void
+    {
+        file_put_contents($this->tempDir.'/Cargo.toml', <<<'TOML'
+[package]
+name = "bot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }
+tokio = { version = "1", features = ["full"] }
+TOML);
+
+        $app = new DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'rust',
+            buildPack: 'nixpacks',
+            defaultPort: 8080,
+        );
+
+        $result = $this->analyzer->analyze($this->tempDir, $app);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertStringContains('rusqlite', $result->persistentVolumes[0]->reason);
+    }
+
+    public function test_detects_sqlite_from_ruby_gem(): void
+    {
+        file_put_contents($this->tempDir.'/Gemfile', <<<'GEM'
+source 'https://rubygems.org'
+
+gem 'sinatra'
+gem 'sqlite3'
+gem 'sequel'
+GEM);
+
+        $app = new DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'sinatra',
+            buildPack: 'nixpacks',
+            defaultPort: 4567,
+        );
+
+        $result = $this->analyzer->analyze($this->tempDir, $app);
+
+        $this->assertCount(1, $result->persistentVolumes);
+        $this->assertStringContains('sqlite3', $result->persistentVolumes[0]->reason);
+    }
+
+    /**
+     * Helper: assert string contains substring
+     */
+    private function assertStringContains(string $needle, string $haystack): void
+    {
+        $this->assertStringContainsString($needle, $haystack);
+    }
 }
