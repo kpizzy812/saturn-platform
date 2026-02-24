@@ -52,7 +52,51 @@ Route::get('/projects', function () {
 })->name('projects.index');
 
 Route::get('/projects/create', function () {
-    return Inertia::render('Projects/Create');
+    $team = currentTeam();
+    if (! $team) {
+        return redirect()->route('dashboard')->with('error', 'Please select a team first');
+    }
+
+    $authService = app(ProjectAuthorizationService::class);
+    $currentUser = auth()->user();
+
+    $projects = \App\Models\Project::ownedByCurrentTeam()
+        ->with('environments')
+        ->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        });
+
+    // Extract wildcard domain from master server for subdomain input
+    $wildcardDomain = null;
+    $masterServer = \App\Models\Server::where('id', 0)->first();
+    if ($masterServer) {
+        $wildcard = data_get($masterServer, 'settings.wildcard_domain');
+        if ($wildcard) {
+            $url = \Spatie\Url\Url::fromString($wildcard);
+            $wildcardDomain = [
+                'host' => $url->getHost(),
+                'scheme' => $url->getScheme(),
+            ];
+        }
+    }
+
+    // Get active GitHub Apps for repo picker
+    $githubApps = \App\Models\GithubApp::where('team_id', $team->id)
+        ->whereNotNull('app_id')
+        ->whereNotNull('installation_id')
+        ->where('is_public', false)
+        ->get(['id', 'uuid', 'name', 'installation_id']);
+
+    return Inertia::render('Projects/Create', [
+        'projects' => $projects,
+        'wildcardDomain' => $wildcardDomain,
+        'hasGithubApp' => $githubApps->isNotEmpty(),
+        'githubApps' => $githubApps,
+    ]);
 })->name('projects.create');
 
 // Sub-routes for project creation flow
