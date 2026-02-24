@@ -52,9 +52,11 @@ interface DetectedService {
 
 interface EnvVariable {
     key: string;
+    default_value?: string | null;
     is_required: boolean;
     category: string;
     for_app: string;
+    comment?: string | null;
 }
 
 interface AppDependency {
@@ -130,7 +132,7 @@ interface Props {
 interface AppConfig {
     base_directory: string;
     application_type: ApplicationMode;
-    env_vars: Array<{ key: string; value: string }>;
+    env_vars: Array<{ key: string; value: string; comment?: string }>;
 }
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -251,7 +253,7 @@ export function MonorepoAnalyzer({
                 expanded[app.name] = true; // Expand first app by default
                 const appEnvVars = result.env_variables
                     .filter(v => v.for_app === app.name && v.category !== 'database' && v.category !== 'cache')
-                    .map(v => ({ key: v.key, value: '' }));
+                    .map(v => ({ key: v.key, value: v.default_value || '', comment: v.comment || undefined }));
                 configs[app.name] = {
                     base_directory: app.path === '.' ? '/' : '/' + app.path.replace(/^\//, ''),
                     application_type: app.application_mode || 'web',
@@ -565,24 +567,12 @@ export function MonorepoAnalyzer({
                                                 </p>
                                             )}
                                             {config.env_vars.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <label className="text-xs text-foreground-muted">Environment Variables (detected from source)</label>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-xs text-foreground-muted">Environment Variables</label>
                                                     {config.env_vars.map((envVar, idx) => (
-                                                        <div key={idx} className="p-2 bg-background-secondary rounded-lg space-y-1.5">
+                                                        <div key={idx} className="p-2 bg-background-secondary rounded-lg space-y-1">
                                                             <div className="flex items-center justify-between gap-2">
-                                                                <Input
-                                                                    value={envVar.key}
-                                                                    onChange={(e) => {
-                                                                        const newVars = [...config.env_vars];
-                                                                        newVars[idx] = { ...newVars[idx], key: e.target.value };
-                                                                        setAppConfigs(prev => ({
-                                                                            ...prev,
-                                                                            [app.name]: { ...prev[app.name], env_vars: newVars },
-                                                                        }));
-                                                                    }}
-                                                                    placeholder="KEY"
-                                                                    className="h-7 text-xs font-mono flex-1"
-                                                                />
+                                                                <code className="text-xs font-mono text-primary break-all">{envVar.key}</code>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
@@ -597,6 +587,9 @@ export function MonorepoAnalyzer({
                                                                     &times;
                                                                 </button>
                                                             </div>
+                                                            {envVar.comment && (
+                                                                <p className="text-[11px] text-foreground-muted leading-tight">{envVar.comment}</p>
+                                                            )}
                                                             <Input
                                                                 value={envVar.value}
                                                                 onChange={(e) => {
@@ -607,7 +600,7 @@ export function MonorepoAnalyzer({
                                                                         [app.name]: { ...prev[app.name], env_vars: newVars },
                                                                     }));
                                                                 }}
-                                                                placeholder="value"
+                                                                placeholder={envVar.value ? undefined : 'Enter value...'}
                                                                 className="h-7 text-xs font-mono w-full"
                                                             />
                                                         </div>

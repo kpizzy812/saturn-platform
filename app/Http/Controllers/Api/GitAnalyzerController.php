@@ -281,6 +281,7 @@ class GitAnalyzerController extends Controller
                     isRequired: $env->isRequired,
                     category: $env->category,
                     forApp: $nameMap[$env->forApp],
+                    comment: $env->comment,
                 );
             } else {
                 $fixedEnvVars[] = $env;

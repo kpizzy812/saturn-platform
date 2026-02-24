@@ -46,6 +46,7 @@ class AnalysisResult
                 'is_required' => $e->isRequired,
                 'category' => $e->category,
                 'for_app' => $e->forApp,
+                'comment' => $e->comment,
             ], $this->envVariables),
             'app_dependencies' => array_map(fn ($d) => [
                 'app_name' => $d->appName,

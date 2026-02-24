@@ -741,6 +741,7 @@ class DependencyAnalyzer
                 isRequired: $var['is_required'],
                 category: $this->categorizeEnvVar($var['key']),
                 forApp: $app->name,
+                comment: $var['comment'] ?? null,
             );
         }
 
