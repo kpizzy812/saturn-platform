@@ -259,6 +259,7 @@ class GitAnalyzerController extends Controller
      * Clone repository to temporary directory
      *
      * Uses Laravel Process for better timeout handling and security.
+     * For private repos, authenticates via GitHub App installation token.
      *
      * @throws \RuntimeException
      */
@@ -266,9 +267,34 @@ class GitAnalyzerController extends Controller
     {
         $tempPath = sys_get_temp_dir().'/saturn-repo-'.Str::uuid();
 
-        // Build clone command with proper escaping
         $branch = $config['git_branch'] ?? 'main';
         $repository = $config['git_repository'];
+
+        // If github_app_id provided, get installation token for authenticated clone
+        if (! empty($config['github_app_id'])) {
+            $githubApp = GithubApp::where('id', $config['github_app_id'])
+                ->where(function ($query) {
+                    $query->where('team_id', currentTeam()->id)
+                        ->orWhere('is_system_wide', true);
+                })
+                ->first();
+
+            if ($githubApp && $githubApp->installation_id) {
+                try {
+                    $token = generateGithubInstallationToken($githubApp);
+                    // Replace https://github.com/owner/repo with token-authenticated URL
+                    $repository = preg_replace(
+                        '#^https://github\.com/#',
+                        "https://x-access-token:{$token}@github.com/",
+                        $repository
+                    );
+                } catch (\Throwable $e) {
+                    throw new \RuntimeException(
+                        'Failed to authenticate with GitHub App: '.$e->getMessage()
+                    );
+                }
+            }
+        }
 
         // Use Laravel Process facade for timeout support
         $result = Process::timeout(self::CLONE_TIMEOUT)
