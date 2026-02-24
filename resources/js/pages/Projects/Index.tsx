@@ -201,10 +201,10 @@ function ProjectCard({ project }: { project: Project }) {
                                 key={seg.label}
                                 href={targetUrl}
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors hover:bg-white/10"
+                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-all duration-200 hover:bg-white/10 hover:scale-105"
                             >
-                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
-                                <span className="text-xs text-foreground-muted">
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor} transition-transform duration-200 group-hover:scale-125`} />
+                                <span className="text-xs text-foreground-muted transition-colors hover:text-foreground">
                                     {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
                                 </span>
                             </Link>
@@ -227,9 +227,9 @@ function ProjectCard({ project }: { project: Project }) {
                         key={env.id}
                         href={`${projectUrl}?env=${encodeURIComponent(env.name)}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex"
+                        className="inline-flex transition-transform duration-200 hover:scale-110"
                     >
-                        <Badge variant={getEnvBadgeVariant(env.name)} size="sm" className="transition-opacity hover:opacity-80">
+                        <Badge variant={getEnvBadgeVariant(env.name)} size="sm" className="cursor-pointer transition-all duration-200 hover:shadow-md hover:brightness-110">
                             {env.name}
                         </Badge>
                     </Link>
