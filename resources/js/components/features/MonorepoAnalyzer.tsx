@@ -289,27 +289,29 @@ export function MonorepoAnalyzer({
         setProvisioning(true);
         setError(null);
 
+        const payload = {
+            environment_uuid: environmentUuid,
+            destination_uuid: destinationUuid,
+            git_repository: gitRepository,
+            git_branch: gitBranch,
+            private_key_id: privateKeyId,
+            source_id: sourceId,
+            github_app_id: githubAppId,
+            applications: analysis.applications.map(app => ({
+                name: app.name,
+                enabled: selectedApps[app.name] ?? false,
+                base_directory: appConfigs[app.name]?.base_directory ?? app.path,
+                application_type: appConfigs[app.name]?.application_type ?? app.application_mode ?? 'web',
+                env_vars: (appConfigs[app.name]?.env_vars ?? []).filter(v => v.key && v.value),
+            })),
+            databases: analysis.databases.map(db => ({
+                type: db.type,
+                enabled: selectedDbs[db.type] ?? false,
+            })),
+        };
+
         try {
-            const response = await axios.post('/git/provision', {
-                environment_uuid: environmentUuid,
-                destination_uuid: destinationUuid,
-                git_repository: gitRepository,
-                git_branch: gitBranch,
-                private_key_id: privateKeyId,
-                source_id: sourceId,
-                github_app_id: githubAppId,
-                applications: analysis.applications.map(app => ({
-                    name: app.name,
-                    enabled: selectedApps[app.name] ?? false,
-                    base_directory: appConfigs[app.name]?.base_directory ?? app.path,
-                    application_type: appConfigs[app.name]?.application_type ?? app.application_mode ?? 'web',
-                    env_vars: (appConfigs[app.name]?.env_vars ?? []).filter(v => v.key && v.value),
-                })),
-                databases: analysis.databases.map(db => ({
-                    type: db.type,
-                    enabled: selectedDbs[db.type] ?? false,
-                })),
-            });
+            const response = await axios.post('/git/provision', payload);
 
             if (!response.data.success) {
                 throw new Error(response.data.error || 'Provisioning failed');
@@ -317,8 +319,17 @@ export function MonorepoAnalyzer({
 
             onComplete(response.data.data);
         } catch (err: unknown) {
-            const axiosError = err as { response?: { data?: { error?: string } }; message?: string };
-            const message = axiosError.response?.data?.error || axiosError.message || 'Failed to provision infrastructure';
+            const axiosError = err as { response?: { data?: { error?: string; errors?: Record<string, string[]>; message?: string } }; message?: string };
+            const respData = axiosError.response?.data;
+            // Extract Laravel validation errors
+            let message = respData?.error || respData?.message || axiosError.message || 'Failed to provision infrastructure';
+            if (respData?.errors) {
+                const validationErrors = Object.entries(respData.errors)
+                    .map(([field, msgs]) => `${field}: ${(msgs as string[]).join(', ')}`)
+                    .join('\n');
+                message = `Validation failed:\n${validationErrors}`;
+            }
+            console.error('[Saturn Provision]', { status: axiosError.response?.data, payload });
             setError(message);
         } finally {
             setProvisioning(false);
@@ -375,6 +386,13 @@ export function MonorepoAnalyzer({
 
     return (
         <div className="space-y-4">
+            {/* Global Error Banner */}
+            {error && (
+                <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm whitespace-pre-wrap">
+                    {error}
+                </div>
+            )}
+
             {/* Repository Header */}
             <Card>
                 <CardContent className="py-4">

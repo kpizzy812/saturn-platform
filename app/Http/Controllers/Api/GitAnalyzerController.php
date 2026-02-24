@@ -129,6 +129,11 @@ class GitAnalyzerController extends Controller
             $tempPath = $this->cloneRepository($validated);
 
             $analysis = $this->analyzer->analyze($tempPath);
+
+            // Fix temp-dir names before filtering (frontend sends fixed names)
+            $repoName = $this->extractRepoName($validated['git_repository']);
+            $analysis = $this->fixTempDirAppNames($analysis, $repoName);
+
             $analysis = $this->filterAnalysis($analysis, $validated);
 
             // Build per-app overrides from user input
