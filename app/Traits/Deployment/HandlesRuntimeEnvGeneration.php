@@ -131,7 +131,7 @@ trait HandlesRuntimeEnvGeneration
         }
 
         // Add PORT if not exists, use the first port as default
-        if ($this->build_pack !== 'dockercompose') {
+        if ($this->build_pack !== 'dockercompose' && ! empty($ports)) {
             if ($this->application->environment_variables->where('key', 'PORT')->isEmpty()) {
                 $envs->push("PORT={$ports[0]}");
             }
@@ -198,7 +198,7 @@ trait HandlesRuntimeEnvGeneration
             $envs->push($env->key.'='.$env->real_value);
         }
         // Add PORT if not exists, use the first port as default
-        if ($this->build_pack !== 'dockercompose') {
+        if ($this->build_pack !== 'dockercompose' && ! empty($ports)) {
             if ($this->application->environment_variables_preview->where('key', 'PORT')->isEmpty()) {
                 $envs->push("PORT={$ports[0]}");
             }
