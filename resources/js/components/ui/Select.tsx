@@ -23,7 +23,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 <select
                     id={selectId}
                     className={cn(
-                        'flex h-10 w-full rounded-md border bg-background-secondary px-3 py-2 text-sm text-foreground',
+                        'flex h-10 w-full rounded-md border bg-white/[0.03] backdrop-blur-lg px-3 py-2 text-sm text-foreground',
                         'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background',
                         'disabled:cursor-not-allowed disabled:opacity-50',
                         error ? 'border-danger' : 'border-border',

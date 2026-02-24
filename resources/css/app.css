@@ -20,9 +20,9 @@
     --color-background-tertiary: #f1f5f9;
     --color-background-elevated: #e2e8f0;
 
-    --color-glass-bg: rgba(0, 0, 0, 0.02);
+    --color-glass-bg: rgba(255, 255, 255, 0.70);
     --color-glass-border: rgba(0, 0, 0, 0.08);
-    --color-glass-highlight: rgba(0, 0, 0, 0.05);
+    --color-glass-highlight: rgba(255, 255, 255, 0.80);
 
     --color-foreground: #0f172a;
     --color-foreground-muted: #475569;
@@ -66,9 +66,9 @@
     --color-background-tertiary: #161621;
     --color-background-elevated: #1c1c2a;
 
-    --color-glass-bg: rgba(255, 255, 255, 0.03);
-    --color-glass-border: rgba(255, 255, 255, 0.06);
-    --color-glass-highlight: rgba(255, 255, 255, 0.08);
+    --color-glass-bg: rgba(255, 255, 255, 0.04);
+    --color-glass-border: rgba(255, 255, 255, 0.08);
+    --color-glass-highlight: rgba(255, 255, 255, 0.10);
 
     --color-foreground: #f8fafc;
     --color-foreground-muted: #94a3b8;
@@ -116,10 +116,10 @@
     --color-background-tertiary: #161621;           /* Modals, dropdown */
     --color-background-elevated: #1c1c2a;           /* Hover states */
 
-    /* Glassmorphism Effects */
-    --color-glass-bg: rgba(255, 255, 255, 0.03);
-    --color-glass-border: rgba(255, 255, 255, 0.06);
-    --color-glass-highlight: rgba(255, 255, 255, 0.08);
+    /* Glassmorphism Effects — tempered glass */
+    --color-glass-bg: rgba(255, 255, 255, 0.04);
+    --color-glass-border: rgba(255, 255, 255, 0.08);
+    --color-glass-highlight: rgba(255, 255, 255, 0.10);
 
     /* Text Hierarchy */
     --color-foreground: #f8fafc;                    /* Headers, important */
@@ -500,17 +500,19 @@
         animation: progressShimmer 1.5s ease-in-out infinite;
     }
 
-    /* Glassmorphism utilities */
+    /* Glassmorphism utilities — tempered glass */
     .glass {
-        background: var(--color-glass-bg);
-        backdrop-filter: blur(12px);
-        border: 1px solid var(--color-glass-border);
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(20px) saturate(1.2);
+        -webkit-backdrop-filter: blur(20px) saturate(1.2);
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .glass-strong {
-        background: var(--color-glass-highlight);
-        backdrop-filter: blur(20px);
-        border: 1px solid var(--color-glass-border);
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(32px) saturate(1.5);
+        -webkit-backdrop-filter: blur(32px) saturate(1.5);
+        border: 1px solid rgba(255, 255, 255, 0.10);
     }
 
     /* Glow utilities */
@@ -670,14 +672,14 @@ section {
 * Railway Design System Components
 */
 @layer components {
-    /* Railway-style card */
+    /* Railway-style card — glass */
     .railway-card {
-        @apply bg-background-secondary border border-border rounded-lg p-4;
+        @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-lg p-4;
     }
 
-    /* Railway-style input */
+    /* Railway-style input — glass */
     .railway-input {
-        @apply bg-background-secondary border border-border rounded-md px-3 py-2 text-foreground placeholder:text-foreground-subtle focus:border-primary focus:ring-1 focus:ring-primary;
+        @apply bg-white/[0.03] backdrop-blur-lg border border-white/[0.08] rounded-md px-3 py-2 text-foreground placeholder:text-foreground-subtle focus:border-primary focus:ring-1 focus:ring-primary;
     }
 
     /* Railway-style buttons */

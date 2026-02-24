@@ -11,11 +11,11 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const cardVariants = {
-    default: 'bg-background-secondary border-white/[0.06]',
-    glass: 'bg-white/[0.03] backdrop-blur-xl border-white/[0.06]',
-    elevated: 'bg-background-tertiary border-white/[0.08] shadow-lg',
-    outline: 'bg-transparent border-white/[0.12]',
-    admin: 'bg-primary/[0.03] backdrop-blur-xl border-primary/10',
+    default: 'bg-white/[0.04] backdrop-blur-xl border-white/[0.08] backdrop-saturate-[1.2]',
+    glass: 'bg-white/[0.06] backdrop-blur-2xl border-white/[0.10] backdrop-saturate-150',
+    elevated: 'bg-white/[0.08] backdrop-blur-2xl border-white/[0.12] shadow-lg backdrop-saturate-150',
+    outline: 'bg-transparent backdrop-blur-sm border-white/[0.12]',
+    admin: 'bg-primary/[0.04] backdrop-blur-xl border-primary/10 backdrop-saturate-[1.2]',
 };
 
 const glowVariants = {

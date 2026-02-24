@@ -363,7 +363,7 @@ export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite
             {/* Palette */}
             <div className="fixed inset-0 z-50 overflow-y-auto pt-[20vh]" onClick={onClose}>
                 <div
-                    className="mx-auto max-w-xl overflow-hidden rounded-xl border border-border bg-background-secondary shadow-2xl shadow-black/40"
+                    className="mx-auto max-w-xl overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.05] backdrop-blur-2xl backdrop-saturate-150 shadow-2xl shadow-black/40"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Search Input */}

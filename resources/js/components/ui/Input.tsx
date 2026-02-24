@@ -36,8 +36,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                         className={cn(
                             // Base styles
                             'flex h-10 w-full rounded-lg px-3 py-2 text-sm',
-                            // Colors
-                            'bg-background text-foreground',
+                            // Colors — glass
+                            'bg-white/[0.03] backdrop-blur-lg text-foreground',
                             'placeholder:text-foreground-subtle',
                             // Border
                             'border transition-all duration-200',
@@ -46,7 +46,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                                 : 'border-white/[0.08] focus:border-primary/50',
                             // Focus states
                             'focus:outline-none focus:ring-2 focus:ring-primary/20',
-                            'focus:bg-background-secondary',
+                            'focus:bg-white/[0.06]',
                             // Hover
                             'hover:border-white/[0.12]',
                             // Disabled
@@ -109,8 +109,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                     className={cn(
                         // Base styles
                         'flex min-h-[100px] w-full rounded-lg px-3 py-2 text-sm',
-                        // Colors
-                        'bg-background text-foreground',
+                        // Colors — glass
+                        'bg-white/[0.03] backdrop-blur-lg text-foreground',
                         'placeholder:text-foreground-subtle',
                         // Border
                         'border transition-all duration-200',
@@ -119,7 +119,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                             : 'border-white/[0.08] focus:border-primary/50',
                         // Focus states
                         'focus:outline-none focus:ring-2 focus:ring-primary/20',
-                        'focus:bg-background-secondary',
+                        'focus:bg-white/[0.06]',
                         // Hover
                         'hover:border-white/[0.12]',
                         // Disabled

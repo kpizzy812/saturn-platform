@@ -5,6 +5,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Badge } from '@/components/ui/Badge';
 import { DeployGuide } from '@/components/features/DeployGuide';
+import { BrandIcon } from '@/components/ui/BrandIcon';
+import { getDbLogo, getDbBgColor } from '@/components/features/Projects/DatabaseLogos';
+import {
+    Github,
+    GitBranch,
+    ChevronDown,
+    Package,
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    Plus,
+    X,
+    Heart,
+    Layers,
+    Server,
+    Code2,
+    Cog,
+    RefreshCw,
+    Rocket,
+    Database,
+    Globe,
+    Cpu,
+    FileCode,
+} from 'lucide-react';
 import axios from 'axios';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -172,12 +196,70 @@ const frameworkLabels: Record<string, string> = {
     procfile: 'Procfile',
 };
 
-const databaseIcons: Record<string, string> = {
-    postgresql: '🐘',
-    mysql: '🐬',
-    mongodb: '🍃',
-    redis: '🔴',
-    clickhouse: '🏠',
+// Framework → brand icon name (for frameworks that have SVGs in /svgs/)
+const frameworkBrandIcons: Record<string, string> = {
+    dockerfile: 'docker',
+    'docker-compose': 'docker',
+};
+
+// Framework → lucide icon (fallback for frameworks without brand SVGs)
+function getFrameworkIcon(framework: string, className = 'h-3.5 w-3.5') {
+    const brandName = frameworkBrandIcons[framework];
+    if (brandName) {
+        return <BrandIcon name={brandName} className={className} />;
+    }
+    // Lucide fallback icons by category
+    switch (framework) {
+        case 'nextjs':
+        case 'nuxt':
+        case 'sveltekit':
+        case 'remix':
+        case 'astro':
+        case 'vite-react':
+        case 'vite-vue':
+        case 'vite-svelte':
+        case 'create-react-app':
+            return <Globe className={className} />;
+        case 'nestjs':
+        case 'express':
+        case 'fastify':
+        case 'hono':
+        case 'fastapi':
+        case 'django':
+        case 'flask':
+        case 'rails':
+        case 'laravel':
+        case 'symfony':
+        case 'phoenix':
+        case 'spring-boot':
+            return <Server className={className} />;
+        case 'go':
+        case 'go-fiber':
+        case 'go-gin':
+        case 'go-echo':
+        case 'rust':
+        case 'rust-axum':
+        case 'rust-actix':
+            return <Cpu className={className} />;
+        case 'nixpacks':
+            return <Layers className={className} />;
+        case 'procfile':
+            return <FileCode className={className} />;
+        default:
+            return <Code2 className={className} />;
+    }
+}
+
+// Database type → color config for styled cards
+const databaseColorConfig: Record<string, { border: string; bg: string; glow: string }> = {
+    postgresql: { border: 'border-blue-500/30', bg: 'bg-blue-500/5', glow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.1)]' },
+    mysql: { border: 'border-orange-500/30', bg: 'bg-orange-500/5', glow: 'hover:shadow-[0_0_20px_rgba(249,115,22,0.1)]' },
+    mariadb: { border: 'border-amber-500/30', bg: 'bg-amber-500/5', glow: 'hover:shadow-[0_0_20px_rgba(245,158,11,0.1)]' },
+    mongodb: { border: 'border-green-500/30', bg: 'bg-green-500/5', glow: 'hover:shadow-[0_0_20px_rgba(34,197,94,0.1)]' },
+    redis: { border: 'border-red-500/30', bg: 'bg-red-500/5', glow: 'hover:shadow-[0_0_20px_rgba(239,68,68,0.1)]' },
+    keydb: { border: 'border-rose-500/30', bg: 'bg-rose-500/5', glow: 'hover:shadow-[0_0_20px_rgba(244,63,94,0.1)]' },
+    dragonfly: { border: 'border-purple-500/30', bg: 'bg-purple-500/5', glow: 'hover:shadow-[0_0_20px_rgba(168,85,247,0.1)]' },
+    clickhouse: { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.1)]' },
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -379,11 +461,7 @@ export function MonorepoAnalyzer({
 
                         {error && (
                             <div className="flex items-center gap-2 text-danger mb-4">
-                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
+                                <AlertCircle className="h-4 w-4" />
                                 <span>{error}</span>
                             </div>
                         )}
@@ -412,22 +490,42 @@ export function MonorepoAnalyzer({
             )}
 
             {/* Repository Header */}
-            <Card>
-                <CardContent className="py-4">
+            <Card variant="glass" className="group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <CardContent className="py-5 relative">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-lg font-semibold">{repoName}</h2>
-                            <div className="flex items-center gap-2 mt-1 text-sm text-foreground-muted">
-                                <span>Branch: {branch}</span>
-                                {analysis.is_monorepo && (
-                                    <>
-                                        <span>•</span>
-                                        <Badge variant="secondary" size="sm">Monorepo ({analysis.monorepo_type})</Badge>
-                                    </>
-                                )}
+                        <div className="flex items-center gap-3.5">
+                            <div className="relative flex-shrink-0">
+                                <div className="h-10 w-10 rounded-full bg-foreground flex items-center justify-center ring-2 ring-white/10 group-hover:ring-primary/30 transition-all duration-300">
+                                    <Github className="h-5.5 w-5.5 text-background" />
+                                </div>
+                                <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-success border-2 border-background-secondary" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-semibold group-hover:text-primary transition-colors duration-300">{repoName}</h2>
+                                <div className="flex items-center gap-2 mt-1 text-sm text-foreground-muted">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <GitBranch className="h-3.5 w-3.5" />
+                                        {branch}
+                                    </span>
+                                    {analysis.is_monorepo && (
+                                        <>
+                                            <span className="text-white/20">|</span>
+                                            <Badge variant="primary" size="sm" icon={<Layers className="h-3 w-3" />}>
+                                                Monorepo ({analysis.monorepo_type})
+                                            </Badge>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => setAnalysis(null)}>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAnalysis(null)}
+                            className="group/btn"
+                        >
+                            <RefreshCw className="h-3.5 w-3.5 mr-1.5 group-hover/btn:rotate-180 transition-transform duration-500" />
                             Re-analyze
                         </Button>
                     </div>
@@ -441,74 +539,83 @@ export function MonorepoAnalyzer({
                 const isWorker = config?.application_type === 'worker';
                 const isExpanded = expandedApps[app.name] ?? false;
                 const isDockerCompose = app.build_pack === 'docker-compose';
+                const isSelected = selectedApps[app.name] ?? false;
 
                 return (
-                    <Card key={app.name}>
+                    <Card key={app.name} variant="glass" className={`group/app transition-all duration-300 ${isSelected ? 'border-primary/20 shadow-[0_0_20px_rgba(var(--color-primary-rgb,99,102,241),0.08)]' : 'hover:border-white/[0.12]'}`}>
                         <CardContent className="py-4">
                             {/* App Header */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Checkbox
-                                        checked={selectedApps[app.name] ?? false}
+                                        checked={isSelected}
                                         onCheckedChange={(checked) =>
                                             setSelectedApps(prev => ({ ...prev, [app.name]: checked }))
                                         }
                                     />
-                                    <div>
-                                        <div className="font-medium flex items-center gap-2 flex-wrap">
-                                            {app.name}
-                                            <Badge variant="outline" size="sm">
-                                                {frameworkLabels[app.framework] || app.framework}
-                                            </Badge>
-                                            {config?.application_type === 'worker' && (
-                                                <Badge variant="warning" size="sm">Worker</Badge>
-                                            )}
-                                            {config?.application_type === 'both' && (
-                                                <Badge variant="primary" size="sm">Web + Worker</Badge>
-                                            )}
-                                            {app.type !== 'unknown' && (
-                                                <Badge variant="secondary" size="sm" className="capitalize">{app.type}</Badge>
-                                            )}
-                                            {appDep && appDep.deploy_order !== undefined && (
-                                                <Badge variant="outline" size="sm">
-                                                    Deploy #{appDep.deploy_order + 1}
-                                                </Badge>
-                                            )}
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="h-8 w-8 rounded-lg bg-white/[0.06] flex items-center justify-center group-hover/app:bg-white/[0.1] transition-colors duration-200">
+                                            {getFrameworkIcon(app.framework, 'h-4 w-4')}
                                         </div>
-                                        <div className="text-sm text-foreground-muted mt-0.5">
-                                            {isWorker
-                                                ? 'No HTTP port — runs as background process'
-                                                : `Port ${app.default_port || 80}`
-                                            }
-                                            {app.path !== '.' && <> • {app.path}</>}
+                                        <div>
+                                            <div className="font-medium flex items-center gap-2 flex-wrap">
+                                                {app.name}
+                                                <Badge variant="outline" size="sm" icon={getFrameworkIcon(app.framework, 'h-3 w-3')}>
+                                                    {frameworkLabels[app.framework] || app.framework}
+                                                </Badge>
+                                                {config?.application_type === 'worker' && (
+                                                    <Badge variant="warning" size="sm" icon={<Cog className="h-3 w-3" />}>Worker</Badge>
+                                                )}
+                                                {config?.application_type === 'both' && (
+                                                    <Badge variant="primary" size="sm" icon={<Layers className="h-3 w-3" />}>Web + Worker</Badge>
+                                                )}
+                                                {app.type !== 'unknown' && (
+                                                    <Badge variant="secondary" size="sm" className="capitalize">{app.type}</Badge>
+                                                )}
+                                                {appDep && appDep.deploy_order !== undefined && (
+                                                    <Badge variant="outline" size="sm" icon={<Rocket className="h-3 w-3" />}>
+                                                        Deploy #{appDep.deploy_order + 1}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <div className="text-sm text-foreground-muted mt-0.5 flex items-center gap-1.5">
+                                                {isWorker
+                                                    ? <><Cog className="h-3 w-3 animate-[spin_3s_linear_infinite]" /> No HTTP port — runs as background process</>
+                                                    : <><Globe className="h-3 w-3" /> Port {app.default_port || 80}</>
+                                                }
+                                                {app.path !== '.' && <> <span className="text-white/20">|</span> {app.path}</>}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setExpandedApps(prev => ({ ...prev, [app.name]: !isExpanded }))}
-                                    className="text-foreground-muted hover:text-foreground p-1"
+                                    className="text-foreground-muted hover:text-foreground p-1.5 rounded-lg hover:bg-white/[0.06] transition-all duration-200"
                                 >
-                                    <svg className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polyline points="6 9 12 15 18 9" />
-                                    </svg>
+                                    <ChevronDown className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                                 </button>
                             </div>
 
                             {/* Expanded Details */}
                             {isExpanded && (
-                                <div className="mt-4 space-y-4 border-t border-white/[0.06] pt-4">
+                                <div className="mt-4 space-y-4 border-t border-white/[0.06] pt-4 animate-[fadeIn_0.2s_ease-out]">
                                     {/* Docker Compose Services (inline) */}
                                     {isDockerCompose && analysis.docker_compose_services.length > 0 && (
                                         <div>
-                                            <div className="text-sm font-medium text-foreground-muted mb-2">Compose Services</div>
+                                            <div className="text-sm font-medium text-foreground-muted mb-2 flex items-center gap-1.5">
+                                                <Layers className="h-3.5 w-3.5" />
+                                                Compose Services
+                                            </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {analysis.docker_compose_services.map(service => (
                                                     <div
                                                         key={service.name}
-                                                        className="flex items-center gap-2 p-2 bg-background-secondary rounded text-sm"
+                                                        className="flex items-center gap-2.5 p-2.5 bg-white/[0.04] backdrop-blur-sm rounded-lg text-sm hover:bg-white/[0.08] transition-colors duration-200 group/svc"
                                                     >
-                                                        <span>{service.is_database ? '💾' : '📦'}</span>
+                                                        <div className="h-7 w-7 rounded-md bg-white/[0.06] flex items-center justify-center flex-shrink-0 group-hover/svc:bg-white/[0.1] transition-colors duration-200">
+                                                            {service.is_database ? <Database className="h-3.5 w-3.5 text-blue-400" /> : <Package className="h-3.5 w-3.5 text-foreground-muted" />}
+                                                        </div>
                                                         <div className="min-w-0">
                                                             <span className="font-medium">{service.name}</span>
                                                             <span className="text-foreground-muted ml-2 truncate text-xs">{service.image}</span>
@@ -529,14 +636,23 @@ export function MonorepoAnalyzer({
 
                                     {/* Dockerfile Info */}
                                     {!isDockerCompose && app.dockerfile_info && (
-                                        <div className="space-y-1">
-                                            <div className="text-sm font-medium text-foreground-muted">Dockerfile</div>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm pl-2">
+                                        <div className="space-y-1.5">
+                                            <div className="text-sm font-medium text-foreground-muted flex items-center gap-1.5">
+                                                <BrandIcon name="docker" className="h-3.5 w-3.5" />
+                                                Dockerfile
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm pl-2">
                                                 {app.dockerfile_info.base_image && (
-                                                    <div><span className="text-foreground-muted">Base:</span> <code className="text-xs bg-background-secondary px-1 rounded">{app.dockerfile_info.base_image}</code></div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-foreground-muted">Base:</span>
+                                                        <code className="text-xs bg-white/[0.06] px-1.5 py-0.5 rounded-md font-mono">{app.dockerfile_info.base_image}</code>
+                                                    </div>
                                                 )}
                                                 {app.dockerfile_info.cmd && (
-                                                    <div><span className="text-foreground-muted">CMD:</span> <code className="text-xs bg-background-secondary px-1 rounded">{app.dockerfile_info.cmd}</code></div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-foreground-muted">CMD:</span>
+                                                        <code className="text-xs bg-white/[0.06] px-1.5 py-0.5 rounded-md font-mono">{app.dockerfile_info.cmd}</code>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -545,11 +661,9 @@ export function MonorepoAnalyzer({
                                     {/* Health Check */}
                                     {app.health_check && !isWorker && (
                                         <div className="flex items-center gap-2 text-sm">
-                                            <svg className="h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                                            </svg>
+                                            <Heart className="h-4 w-4 text-success animate-pulse" />
                                             <span className="text-foreground-muted">Health:</span>
-                                            <code className="text-xs bg-background-secondary px-2 py-0.5 rounded">
+                                            <code className="text-xs bg-white/[0.06] px-2 py-0.5 rounded-md font-mono">
                                                 {app.health_check.method} {app.health_check.path}
                                             </code>
                                         </div>
@@ -579,7 +693,7 @@ export function MonorepoAnalyzer({
                                                             ...prev,
                                                             [app.name]: { ...prev[app.name], application_type: e.target.value as ApplicationMode },
                                                         }))}
-                                                        className="w-full h-8 text-sm bg-background-secondary border border-white/[0.06] rounded px-2"
+                                                        className="w-full h-8 text-sm bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] rounded-lg px-2 hover:border-white/[0.12] transition-colors duration-200"
                                                     >
                                                         <option value="web">Web (HTTP)</option>
                                                         <option value="worker">Worker (no HTTP)</option>
@@ -610,7 +724,7 @@ export function MonorepoAnalyzer({
                                                 <div className="space-y-1.5">
                                                     <label className="text-xs text-foreground-muted">Environment Variables</label>
                                                     {config.env_vars.map((envVar, idx) => (
-                                                        <div key={idx} className="p-2 bg-background-secondary rounded-lg space-y-1">
+                                                        <div key={idx} className="p-2.5 bg-white/[0.04] backdrop-blur-sm rounded-lg space-y-1 border border-white/[0.04] hover:border-white/[0.08] transition-colors duration-200">
                                                             <div className="flex items-center justify-between gap-2">
                                                                 <code className="text-xs font-mono text-primary break-all">{envVar.key}</code>
                                                                 <button
@@ -622,9 +736,9 @@ export function MonorepoAnalyzer({
                                                                             [app.name]: { ...prev[app.name], env_vars: newVars },
                                                                         }));
                                                                     }}
-                                                                    className="text-foreground-muted hover:text-danger text-sm px-1 flex-shrink-0"
+                                                                    className="text-foreground-muted hover:text-danger hover:bg-danger/10 rounded p-0.5 transition-colors duration-200 flex-shrink-0"
                                                                 >
-                                                                    &times;
+                                                                    <X className="h-3.5 w-3.5" />
                                                                 </button>
                                                             </div>
                                                             {envVar.comment && (
@@ -658,9 +772,10 @@ export function MonorepoAnalyzer({
                                                         },
                                                     }));
                                                 }}
-                                                className="text-xs text-primary hover:underline"
+                                                className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 hover:bg-primary/10 rounded-md px-2 py-1 transition-colors duration-200"
                                             >
-                                                + Add env variable
+                                                <Plus className="h-3 w-3" />
+                                                Add env variable
                                             </button>
                                         </div>
                                     )}
@@ -673,39 +788,50 @@ export function MonorepoAnalyzer({
 
             {/* Standalone Databases (not from compose) */}
             {standaloneDbs.length > 0 && (
-                <Card>
+                <Card variant="glass">
                     <CardHeader>
-                        <CardTitle className="text-base">Required Databases</CardTitle>
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Database className="h-4.5 w-4.5 text-primary" />
+                            Required Databases
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
-                            {standaloneDbs.map(db => (
-                                <div
-                                    key={db.type}
-                                    className="flex items-center justify-between p-3 border border-white/[0.06] rounded-lg"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <Checkbox
-                                            checked={selectedDbs[db.type] ?? false}
-                                            onCheckedChange={(checked) =>
-                                                setSelectedDbs(prev => ({ ...prev, [db.type]: checked }))
-                                            }
-                                        />
-                                        <span className="text-lg">{databaseIcons[db.type] || '💾'}</span>
-                                        <div>
-                                            <div className="font-medium capitalize">{db.type}</div>
-                                            {db.consumers.length > 0 && (
-                                                <div className="text-sm text-foreground-muted">
-                                                    Used by: {db.consumers.join(', ')}
-                                                </div>
-                                            )}
+                            {standaloneDbs.map(db => {
+                                const colors = databaseColorConfig[db.type] || { border: 'border-white/[0.06]', bg: 'bg-white/[0.02]', glow: '' };
+                                const isDbSelected = selectedDbs[db.type] ?? false;
+                                return (
+                                    <div
+                                        key={db.type}
+                                        className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-300 group/db
+                                            ${isDbSelected ? `${colors.border} ${colors.bg} ${colors.glow}` : 'border-white/[0.06] hover:border-white/[0.12]'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Checkbox
+                                                checked={isDbSelected}
+                                                onCheckedChange={(checked) =>
+                                                    setSelectedDbs(prev => ({ ...prev, [db.type]: checked }))
+                                                }
+                                            />
+                                            <div className={`h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-300 ${getDbBgColor(db.type)} group-hover/db:scale-110`}>
+                                                {getDbLogo(db.type)}
+                                            </div>
+                                            <div>
+                                                <div className="font-medium capitalize">{db.type}</div>
+                                                {db.consumers.length > 0 && (
+                                                    <div className="text-sm text-foreground-muted">
+                                                        Used by: {db.consumers.join(', ')}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
+                                        <Badge variant="outline" size="sm" icon={<Code2 className="h-3 w-3" />}>{db.env_var_name}</Badge>
                                     </div>
-                                    <Badge variant="outline" size="sm">{db.env_var_name}</Badge>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
-                        <p className="text-xs text-foreground-muted mt-2">
+                        <p className="text-xs text-foreground-muted mt-3 flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                             Saturn will create managed database instances. Connection URLs auto-injected.
                         </p>
                     </CardContent>
@@ -714,24 +840,24 @@ export function MonorepoAnalyzer({
 
             {/* External Services Warning */}
             {analysis.services.length > 0 && (
-                <Card className="border-warning/30">
+                <Card variant="glass" className="border-warning/30">
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2 text-warning">
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
+                            <AlertCircle className="h-4 w-4" />
                             External Services
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-2">
                             {analysis.services.map(service => (
-                                <div key={service.type} className="p-2 bg-background-secondary rounded text-sm">
-                                    <span className="font-medium capitalize">{service.type}</span>
-                                    <span className="text-foreground-muted ml-2">— {service.description}</span>
-                                    <div className="text-xs mt-1 text-foreground-muted">
+                                <div key={service.type} className="p-3 bg-white/[0.04] backdrop-blur-sm rounded-lg text-sm hover:bg-white/[0.08] transition-colors duration-200 group/ext">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className="h-4 w-4 text-warning flex-shrink-0" />
+                                        <span className="font-medium capitalize">{service.type}</span>
+                                        <span className="text-foreground-muted">— {service.description}</span>
+                                    </div>
+                                    <div className="text-xs mt-1.5 text-foreground-muted flex items-center gap-1.5 pl-6">
+                                        <Code2 className="h-3 w-3" />
                                         Env vars needed: {service.required_env_vars.join(', ')}
                                     </div>
                                 </div>
@@ -743,14 +869,10 @@ export function MonorepoAnalyzer({
 
             {/* Additional Compose Services (not DB, not main app — e.g. hummingbot) */}
             {!hasDockerComposeApp && extraComposeServices.length > 0 && (
-                <Card className="border-warning/30">
+                <Card variant="glass" className="border-warning/30">
                     <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2 text-warning">
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
+                            <AlertCircle className="h-4 w-4" />
                             Additional Compose Services
                         </CardTitle>
                     </CardHeader>
@@ -759,9 +881,11 @@ export function MonorepoAnalyzer({
                             {extraComposeServices.map(service => (
                                 <div
                                     key={service.name}
-                                    className="flex items-center gap-2 p-2 bg-background-secondary rounded text-sm"
+                                    className="flex items-center gap-2.5 p-3 bg-white/[0.04] backdrop-blur-sm rounded-lg text-sm hover:bg-white/[0.08] transition-colors duration-200 group/csvc"
                                 >
-                                    <span>📦</span>
+                                    <div className="h-8 w-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0 group-hover/csvc:bg-white/[0.1] transition-colors duration-200">
+                                        <Package className="h-4 w-4 text-warning" />
+                                    </div>
                                     <div className="min-w-0">
                                         <span className="font-medium">{service.name}</span>
                                         <span className="text-foreground-muted ml-2 text-xs">
@@ -774,7 +898,8 @@ export function MonorepoAnalyzer({
                                 </div>
                             ))}
                         </div>
-                        <p className="text-xs text-foreground-muted mt-2">
+                        <p className="text-xs text-foreground-muted mt-3 flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
                             These services were found in docker-compose.yml but won't be deployed automatically.
                             Deploy them separately or use external providers.
                         </p>
@@ -783,18 +908,23 @@ export function MonorepoAnalyzer({
             )}
 
             {/* Deployment Summary + Actions */}
-            <Card className="border-primary/30">
-                <CardContent className="py-4">
-                    <div className="text-sm font-medium mb-3">Deployment Summary</div>
-                    <div className="space-y-1.5 text-sm mb-4">
+            <Card variant="glass" className="border-primary/30 overflow-hidden relative group/summary">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover/summary:opacity-100 transition-opacity duration-500" />
+                <CardContent className="py-5 relative">
+                    <div className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-primary" />
+                        Deployment Summary
+                    </div>
+                    <div className="space-y-2 text-sm mb-5">
                         {analysis.applications.filter(a => selectedApps[a.name]).map(app => {
                             const cfg = appConfigs[app.name];
                             const mode = cfg?.application_type || 'web';
                             return (
-                                <div key={app.name} className="flex items-center gap-2">
-                                    <svg className="h-4 w-4 text-success flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polyline points="20 6 9 17 4 12" />
-                                    </svg>
+                                <div key={app.name} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white/[0.03] transition-colors duration-200">
+                                    <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                    <div className="h-6 w-6 rounded flex items-center justify-center bg-white/[0.06]">
+                                        {getFrameworkIcon(app.framework, 'h-3.5 w-3.5')}
+                                    </div>
                                     <span>
                                         <span className="font-medium">{app.name}</span>
                                         <span className="text-foreground-muted">
@@ -808,10 +938,11 @@ export function MonorepoAnalyzer({
                             );
                         })}
                         {standaloneDbs.filter(db => selectedDbs[db.type]).map(db => (
-                            <div key={db.type} className="flex items-center gap-2">
-                                <svg className="h-4 w-4 text-success flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="20 6 9 17 4 12" />
-                                </svg>
+                            <div key={db.type} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white/[0.03] transition-colors duration-200">
+                                <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
+                                <div className={`h-6 w-6 rounded flex items-center justify-center ${getDbBgColor(db.type)}`}>
+                                    {getDbLogo(db.type)}
+                                </div>
                                 <span>
                                     <span className="font-medium capitalize">{db.type}</span>
                                     <span className="text-foreground-muted"> — managed database</span>
@@ -819,12 +950,8 @@ export function MonorepoAnalyzer({
                             </div>
                         ))}
                         {analysis.applications.some(a => selectedApps[a.name] && (appConfigs[a.name]?.application_type ?? a.application_mode) === 'worker') && (
-                            <div className="flex items-center gap-2 text-foreground-muted">
-                                <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
+                            <div className="flex items-center gap-2.5 p-2 text-foreground-muted rounded-lg">
+                                <Clock className="h-4 w-4 flex-shrink-0" />
                                 <span>Worker apps run without domain or health check (container stability only)</span>
                             </div>
                         )}
@@ -835,7 +962,9 @@ export function MonorepoAnalyzer({
                             onClick={provisionInfrastructure}
                             loading={provisioning}
                             disabled={!hasSelectedApps}
+                            className="group/deploy"
                         >
+                            <Rocket className="h-4 w-4 mr-1.5 group-hover/deploy:-translate-y-0.5 group-hover/deploy:translate-x-0.5 transition-transform duration-300" />
                             {provisioning
                                 ? 'Deploying...'
                                 : `Deploy${selectedAppCount > 0 ? ` ${selectedAppCount} app${selectedAppCount > 1 ? 's' : ''}` : ''}${selectedDbCount > 0 ? ` + ${selectedDbCount} db${selectedDbCount > 1 ? 's' : ''}` : ''}`
@@ -845,11 +974,7 @@ export function MonorepoAnalyzer({
 
                     {error && (
                         <div className="flex items-center gap-2 text-danger mt-3">
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
+                            <AlertCircle className="h-4 w-4" />
                             <span>{error}</span>
                         </div>
                     )}
