@@ -188,6 +188,19 @@ class RepositoryAnalyzer
                     dockerfileLocation: $dockerfile !== 'Dockerfile' ? $dockerfileLocation : null,
                 );
 
+                // Run dependency analysis on promoted app (env vars, databases, services)
+                $promotedDeps = $this->dependencyAnalyzer->analyze($repoPath, $newApp);
+                $databases = array_merge($databases, $promotedDeps->databases);
+                $services = array_merge($services, $promotedDeps->services);
+                $envVariables = array_merge($envVariables, $promotedDeps->envVariables);
+                $persistentVolumes = array_merge($persistentVolumes, $promotedDeps->persistentVolumes);
+
+                // Detect health check
+                $healthCheck = $this->healthCheckDetector->detect($fullContextPath, $newApp->framework);
+                if ($healthCheck !== null) {
+                    $newApp = $newApp->withHealthCheck($healthCheck);
+                }
+
                 $enrichedApps[] = $newApp;
 
                 $this->logger->info('[RepositoryAnalyzer] Promoted compose service to app', [
