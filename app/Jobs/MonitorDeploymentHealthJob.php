@@ -91,6 +91,15 @@ class MonitorDeploymentHealthJob implements ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('MonitorDeploymentHealthJob permanently failed', [
+            'deployment_uuid' => $this->deployment->deployment_uuid,
+            'application_id' => $this->deployment->application_id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     protected function captureMetrics(Application $application): array
     {
         return [

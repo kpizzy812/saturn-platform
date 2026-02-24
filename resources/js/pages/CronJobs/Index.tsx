@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge, Input, useConfirm } from '@/components/ui';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import {
     Plus, Clock, Play, Pause, Trash2,
     CheckCircle, XCircle, AlertCircle, Calendar
@@ -133,8 +134,8 @@ export default function CronJobsIndex({ cronJobs = [] }: Props) {
                     <p className="text-foreground-muted">Schedule and manage recurring tasks</p>
                 </div>
                 <Link href="/cron-jobs/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         New Cron Job
                     </Button>
                 </Link>
@@ -195,9 +196,10 @@ export default function CronJobsIndex({ cronJobs = [] }: Props) {
             {filteredCronJobs.length === 0 ? (
                 <EmptyState searchQuery={searchQuery} />
             ) : (
-                <div className="space-y-4">
-                    {filteredCronJobs.map((job) => (
-                        <Card key={job.id} className="hover:border-border/80 transition-colors">
+                <StaggerList className="space-y-4">
+                    {filteredCronJobs.map((job, i) => (
+                        <StaggerItem key={job.id} index={i}>
+                        <Card className="hover:border-border/80 transition-colors">
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
@@ -282,8 +284,9 @@ export default function CronJobsIndex({ cronJobs = [] }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
         </AppLayout>
     );
@@ -292,20 +295,23 @@ export default function CronJobsIndex({ cronJobs = [] }: Props) {
 function EmptyState({ searchQuery }: { searchQuery: string }) {
     if (searchQuery) {
         return (
+            <FadeIn>
             <Card className="p-12 text-center">
-                <AlertCircle className="mx-auto h-12 w-12 text-foreground-muted" />
+                <AlertCircle className="mx-auto h-12 w-12 text-foreground-muted animate-pulse-soft" />
                 <h3 className="mt-4 text-lg font-medium text-foreground">No cron jobs found</h3>
                 <p className="mt-2 text-foreground-muted">
                     Try adjusting your search query or filters.
                 </p>
             </Card>
+            </FadeIn>
         );
     }
 
     return (
+        <FadeIn>
         <Card className="p-12 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Clock className="h-8 w-8 text-foreground-muted" />
+                <Clock className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">No cron jobs yet</h3>
             <p className="mt-2 text-foreground-muted">
@@ -318,5 +324,6 @@ function EmptyState({ searchQuery }: { searchQuery: string }) {
                 </Button>
             </Link>
         </Card>
+        </FadeIn>
     );
 }

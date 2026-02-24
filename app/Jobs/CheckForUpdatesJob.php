@@ -82,7 +82,7 @@ class CheckForUpdatesJob implements ShouldBeEncrypted, ShouldQueue
                 }
             }
         } catch (\Throwable $e) {
-            // Consider implementing a notification to administrators
+            Log::warning('CheckForUpdatesJob failed', ['error' => $e->getMessage()]);
         }
     }
 }

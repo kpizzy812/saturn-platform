@@ -31,18 +31,24 @@ foreground {
     /var/www/html/storage/logs
 }
 foreground {
-    chmod
-    -R
-    777
-    /var/www/html/storage/logs
-}
-foreground {
     touch
     /var/www/html/storage/logs/laravel.log
 }
 foreground {
+    chown
+    -R
+    www-data:www-data
+    /var/www/html/storage/logs
+}
+foreground {
     chmod
-    666
+    -R
+    755
+    /var/www/html/storage/logs
+}
+foreground {
+    chmod
+    664
     /var/www/html/storage/logs/laravel.log
 }
 foreground {

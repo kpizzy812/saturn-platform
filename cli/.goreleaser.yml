@@ -37,3 +37,19 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+
+brews:
+  - ids:
+      - saturn-archive
+    repository:
+      owner: kpizzy812
+      name: homebrew-saturn
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/kpizzy812/saturn-cli"
+    description: "Command-line interface for Saturn Platform"
+    license: "Apache-2.0"
+    install: |
+      bin.install "saturn"
+    test: |
+      assert_match "saturn version", shell_output("#{bin}/saturn version")

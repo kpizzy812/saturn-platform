@@ -317,7 +317,6 @@ test('approve dispatches ResourceTransferJob for Database sources', function () 
 test('validatePath accepts safe table names', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -333,7 +332,6 @@ test('validatePath accepts safe table names', function () {
 test('validatePath rejects SQL injection attempts with semicolon', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -344,7 +342,6 @@ test('validatePath rejects SQL injection attempts with semicolon', function () {
 test('validatePath rejects SQL injection with command substitution', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -358,7 +355,6 @@ test('validatePath rejects SQL injection with command substitution', function ()
 test('validatePath rejects paths with pipe operator', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -369,7 +365,6 @@ test('validatePath rejects paths with pipe operator', function () {
 test('validatePath rejects paths with redirection operators', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -383,7 +378,6 @@ test('validatePath rejects paths with redirection operators', function () {
 test('validatePath rejects paths with ampersand', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -394,7 +388,6 @@ test('validatePath rejects paths with ampersand', function () {
 test('validatePath rejects paths with newlines', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\PostgresqlTransferStrategy::class)->makePartial();
 
@@ -405,7 +398,6 @@ test('validatePath rejects paths with newlines', function () {
 test('validatePath rejects JavaScript injection in MongoDB collection names', function () {
     $reflection = new ReflectionClass(\App\Services\Transfer\Strategies\AbstractTransferStrategy::class);
     $method = $reflection->getMethod('validatePath');
-    $method->setAccessible(true);
 
     $strategy = Mockery::mock(\App\Services\Transfer\Strategies\MongodbTransferStrategy::class)->makePartial();
 

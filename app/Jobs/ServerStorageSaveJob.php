@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ServerStorageSaveJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -22,5 +23,13 @@ class ServerStorageSaveJob implements ShouldBeEncrypted, ShouldQueue
     public function handle()
     {
         $this->localFileVolume->saveStorageOnServer();
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerStorageSaveJob permanently failed', [
+            'local_file_volume_id' => $this->localFileVolume->id,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

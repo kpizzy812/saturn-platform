@@ -69,7 +69,7 @@ func CreateDefault() error {
 	// Add default cloud instance
 	cfg.Instances = append(cfg.Instances, Instance{
 		Name:    "cloud",
-		FQDN:    "https://saturn.app",
+		FQDN:    "https://saturn.ac",
 		Token:   "",
 		Default: true,
 	})

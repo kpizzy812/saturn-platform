@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
 import { Plus, Github, GitlabIcon as GitLab, CheckCircle2, XCircle } from 'lucide-react';
 import { Bitbucket } from '@/components/icons/Bitbucket';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface GitSource {
     id: number;
@@ -72,9 +73,10 @@ export default function SourcesIndex({ sources = [] }: Props) {
                 {sources.length > 0 && (
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold">Connected Sources</h2>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {sources.map(source => (
-                                <Card key={source.id} className="hover:border-primary/50 transition-colors">
+                        <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {sources.map((source, i) => (
+                                <StaggerItem key={source.id} index={i}>
+                                <Card className="hover:border-primary/50 transition-colors">
                                     <CardContent className="p-6">
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-center gap-4">
@@ -96,17 +98,19 @@ export default function SourcesIndex({ sources = [] }: Props) {
                                         </div>
                                     </CardContent>
                                 </Card>
+                                </StaggerItem>
                             ))}
-                        </div>
+                        </StaggerList>
                     </div>
                 )}
 
                 {/* Add New Source */}
                 <div className="space-y-4">
                     <h2 className="text-lg font-semibold">Add New Source</h2>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        {sourceTypes.map(source => (
-                            <Link key={source.type} href={source.href}>
+                    <StaggerList className="grid gap-4 md:grid-cols-3">
+                        {sourceTypes.map((source, i) => (
+                            <StaggerItem key={source.type} index={i}>
+                            <Link href={source.href}>
                                 <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
                                     <CardContent className="p-6 flex flex-col items-center text-center">
                                         <div className="mb-4">
@@ -121,8 +125,9 @@ export default function SourcesIndex({ sources = [] }: Props) {
                                     </CardContent>
                                 </Card>
                             </Link>
+                            </StaggerItem>
                         ))}
-                    </div>
+                    </StaggerList>
                 </div>
 
                 {/* Help */}

@@ -4,8 +4,8 @@ import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme, BrandIcon } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import } from 'lucide-react';
-import type { Project, Environment } from '@/types';
+import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import, RotateCcw, GitCompare } from 'lucide-react';
+import type { Project, Environment, Application, StandaloneDatabase, Service } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
 import { ContextMenu, type ContextMenuPosition, type ContextMenuNode } from '@/components/features/ContextMenu';
@@ -273,7 +273,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
     }, [selectedEnv?.uuid]);
 
     // Compute environments with real-time statuses
-    const envWithRealtimeStatuses = useMemo(() => {
+    const envWithRealtimeStatuses = useMemo<Environment | null>(() => {
         if (!selectedEnv) return null;
 
         return {
@@ -281,15 +281,15 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
             applications: selectedEnv.applications?.map((app) => ({
                 ...app,
                 status: appStatuses[app.id] ?? app.status,
-            })),
+            })) as Application[],
             databases: selectedEnv.databases?.map((db) => ({
                 ...db,
                 status: dbStatuses[db.id] ?? db.status,
-            })),
+            })) as unknown as StandaloneDatabase[],
             services: selectedEnv.services?.map((service) => ({
                 ...service,
                 status: serviceStatuses[service.id] ?? service.status,
-            })),
+            })) as Service[],
         };
     }, [selectedEnv, appStatuses, dbStatuses, serviceStatuses]);
 
@@ -548,7 +548,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     uuid: db.uuid,
                     type: 'db',
                     name: db.name,
-                    status: (db.status || 'unknown') as any,
+                    status: typeof db.status === 'string' ? db.status : db.status?.state || 'unknown',
                 };
             }
         }
@@ -1001,6 +1001,74 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         }
     }, []);
 
+    // Restart All resources in current environment
+    const [isRestartingAll, setIsRestartingAll] = useState(false);
+    const handleRestartAll = useCallback(async () => {
+        if (!selectedEnv) return;
+
+        const apps = (selectedEnv.applications || []) as Application[];
+        const dbs = (selectedEnv.databases || []) as StandaloneDatabase[];
+        const svcs = (selectedEnv.services || []) as Service[];
+        const totalCount = apps.length + dbs.length + svcs.length;
+
+        if (totalCount === 0) {
+            addToast('info', 'Nothing to restart', 'No resources in this environment.');
+            return;
+        }
+
+        const confirmed = await confirm({
+            title: 'Restart All Resources',
+            description: `This will restart all ${totalCount} resource${totalCount > 1 ? 's' : ''} in "${selectedEnv.name}" environment (${apps.length} app${apps.length !== 1 ? 's' : ''}, ${dbs.length} database${dbs.length !== 1 ? 's' : ''}, ${svcs.length} service${svcs.length !== 1 ? 's' : ''}). Are you sure?`,
+            confirmText: 'Restart All',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        setIsRestartingAll(true);
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        };
+
+        const requests: Promise<{ name: string; ok: boolean }>[] = [];
+
+        for (const app of apps) {
+            requests.push(
+                fetch(`/api/v1/applications/${app.uuid}/restart`, { method: 'POST', headers, credentials: 'include' })
+                    .then((r) => ({ name: app.name, ok: r.ok }))
+                    .catch(() => ({ name: app.name, ok: false }))
+            );
+        }
+        for (const db of dbs) {
+            requests.push(
+                fetch(`/api/v1/databases/${db.uuid}/restart`, { method: 'POST', headers, credentials: 'include' })
+                    .then((r) => ({ name: db.name, ok: r.ok }))
+                    .catch(() => ({ name: db.name, ok: false }))
+            );
+        }
+        for (const svc of svcs) {
+            requests.push(
+                fetch(`/services/${svc.uuid}/restart`, { method: 'POST', headers, credentials: 'include' })
+                    .then((r) => ({ name: svc.name, ok: r.ok }))
+                    .catch(() => ({ name: svc.name, ok: false }))
+            );
+        }
+
+        const results = await Promise.all(requests);
+        const failed = results.filter((r) => !r.ok);
+        setIsRestartingAll(false);
+
+        if (failed.length === 0) {
+            addToast('success', 'Restart All initiated', `All ${totalCount} resources are restarting.`);
+        } else {
+            addToast('warning', 'Partial restart', `${totalCount - failed.length}/${totalCount} restarted. Failed: ${failed.map((f) => f.name).join(', ')}`);
+        }
+
+        router.reload();
+    }, [selectedEnv, confirm, addToast]);
+
     // Canvas zoom controls
     const handleZoomIn = useCallback(() => {
         if (window.__projectCanvasZoomIn) {
@@ -1418,9 +1486,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         {envWithRealtimeStatuses && (
                             <ProjectCanvas
                                 key={envWithRealtimeStatuses.uuid}
-                                applications={(envWithRealtimeStatuses.applications || []) as any}
-                                databases={(envWithRealtimeStatuses.databases || []) as any}
-                                services={(envWithRealtimeStatuses.services || []) as any}
+                                applications={envWithRealtimeStatuses.applications || []}
+                                databases={envWithRealtimeStatuses.databases || []}
+                                services={envWithRealtimeStatuses.services || []}
                                 environmentUuid={envWithRealtimeStatuses.uuid}
                                 deployingApps={deployingApps}
                                 onNodeClick={handleNodeClick}
@@ -1465,8 +1533,32 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
 
                         {/* Canvas Overlay Buttons */}
                         <div className="absolute right-2 top-2 z-10 flex gap-1.5 md:right-4 md:top-4 md:gap-2">
+                            {/* Restart All Button */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="shadow-lg"
+                                onClick={handleRestartAll}
+                                disabled={isRestartingAll}
+                            >
+                                <RotateCcw className={`h-4 w-4 md:mr-2 ${isRestartingAll ? 'animate-spin' : ''}`} />
+                                <span className="hidden md:inline">{isRestartingAll ? 'Restarting...' : 'Restart All'}</span>
+                            </Button>
+                            {/* Compare Environments Button */}
+                            {project.environments && project.environments.length >= 2 && (
+                                <Link href={`/projects/${project.uuid}/env-diff`}>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="hidden shadow-lg md:flex"
+                                    >
+                                        <GitCompare className="mr-2 h-4 w-4" />
+                                        Env Diff
+                                    </Button>
+                                </Link>
+                            )}
                             {/* Migrate Environment Button - hidden on mobile */}
-                            {selectedEnv && (selectedEnv as any).type !== 'production' && (
+                            {selectedEnv && selectedEnv.type !== 'production' && (
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -1630,7 +1722,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         </div>
                                         );
                                     })}
-                                    {(envWithRealtimeStatuses?.databases as any[] || []).map((db) => {
+                                    {(envWithRealtimeStatuses?.databases || []).map((db) => {
                                         const dbStatusStr = typeof db.status === 'object' ? `${db.status.state}:${db.status.health}` : String(db.status || 'stopped');
                                         const dbState = dbStatusStr.split(':')[0];
                                         const dbHealth = dbStatusStr.split(':')[1];
@@ -1722,7 +1814,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         </button>
                                         );
                                     })}
-                                    {(envWithRealtimeStatuses?.databases as any[] || []).map((db) => {
+                                    {(envWithRealtimeStatuses?.databases || []).map((db) => {
                                         const logDbStatusStr = typeof db.status === 'object' ? `${db.status.state}:${db.status.health}` : String(db.status || 'stopped');
                                         const logDbState = logDbStatusStr.split(':')[0];
                                         const logDbHealth = logDbStatusStr.split(':')[1];
@@ -2136,7 +2228,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                 onClone={(_nodeId, uuid, name, type) => {
                     openCloneModal(type === 'app' ? 'application' : 'database', uuid, name);
                 }}
-                canMigrate={(selectedEnv as any)?.type !== 'production'}
+                canMigrate={selectedEnv?.type !== 'production'}
                 canClone={canClone}
             />
 
@@ -2237,8 +2329,8 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                         setShowCloneModal(false);
                         setCloneSource(null);
                     }}
-                    resource={{ uuid: cloneSource.uuid, name: cloneSource.name } as any}
-                    resourceType={cloneSource.type as any}
+                    resource={{ uuid: cloneSource.uuid, name: cloneSource.name }}
+                    resourceType={cloneSource.type}
                 />
             )}
 
@@ -2248,9 +2340,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     open={showEnvMigrateModal}
                     onOpenChange={setShowEnvMigrateModal}
                     environment={selectedEnv}
-                    applications={(envWithRealtimeStatuses?.applications || []) as any}
-                    databases={(envWithRealtimeStatuses?.databases || []) as any}
-                    services={(envWithRealtimeStatuses?.services || []) as any}
+                    applications={envWithRealtimeStatuses?.applications || []}
+                    databases={envWithRealtimeStatuses?.databases || []}
+                    services={envWithRealtimeStatuses?.services || []}
                     projectUuid={project.uuid}
                 />
             )}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Database\StartDatabase;
 use App\Actions\Service\StartService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Deploy\ListDeploymentsRequest;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\Server;
@@ -66,8 +67,8 @@ class DeployController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $servers = Server::whereTeamId($teamId)->get();
-        $deployments_per_server = ApplicationDeploymentQueue::whereIn('status', ['in_progress', 'queued'])->whereIn('server_id', $servers->pluck('id'))->get()->sortBy('id');
+        $serverIds = Server::whereTeamId($teamId)->pluck('id');
+        $deployments_per_server = ApplicationDeploymentQueue::whereIn('status', ['in_progress', 'queued'])->whereIn('server_id', $serverIds)->limit(200)->get()->sortBy('id');
         $deployments_per_server = $deployments_per_server->map(function ($deployment) {
             return $this->removeSensitiveData($deployment);
         });
@@ -593,13 +594,8 @@ class DeployController extends Controller
             ),
         ]
     )]
-    public function get_application_deployments(Request $request)
+    public function get_application_deployments(ListDeploymentsRequest $request)
     {
-        $request->validate([
-            'skip' => ['nullable', 'integer', 'min:0'],
-            'take' => ['nullable', 'integer', 'min:1'],
-        ]);
-
         $app_uuid = $request->route('uuid', null);
         $skip = $request->get('skip', 0);
         $take = $request->get('take', 10);
@@ -608,8 +604,6 @@ class DeployController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $servers = Server::whereTeamId($teamId)->get();
-
         if (is_null($app_uuid)) {
             return response()->json(['message' => 'Application uuid is required'], 400);
         }

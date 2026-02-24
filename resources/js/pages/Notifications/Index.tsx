@@ -6,6 +6,7 @@ import type { Notification } from '@/types';
 import { Button, Badge } from '@/components/ui';
 import { Bell, Check, Filter, Settings, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react';
 import { useNotifications } from '@/hooks';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     notifications?: Notification[];
@@ -336,21 +337,20 @@ export default function NotificationsIndex({ notifications: propNotifications }:
                             <div className="sticky top-0 z-10 mb-3 bg-background py-2">
                                 <h2 className="text-sm font-semibold text-foreground-muted">{group}</h2>
                             </div>
-                            <div className="space-y-2">
-                                {items.map((notification) => (
-                                    <Link
-                                        key={notification.id}
-                                        href={`/notifications/${notification.id}`}
-                                    >
-                                        <NotificationItem
-                                            notification={notification}
-                                            onMarkAsRead={handleMarkAsRead}
-                                            onDelete={handleDelete}
-                                            allowNavigation
-                                        />
-                                    </Link>
+                            <StaggerList className="space-y-2">
+                                {items.map((notification, i) => (
+                                    <StaggerItem key={notification.id} index={i}>
+                                        <Link href={`/notifications/${notification.id}`}>
+                                            <NotificationItem
+                                                notification={notification}
+                                                onMarkAsRead={handleMarkAsRead}
+                                                onDelete={handleDelete}
+                                                allowNavigation
+                                            />
+                                        </Link>
+                                    </StaggerItem>
                                 ))}
-                            </div>
+                            </StaggerList>
                         </div>
                     ))}
                 </div>
@@ -379,14 +379,16 @@ function EmptyState({ filter }: { filter: FilterType }) {
     };
 
     return (
+        <FadeIn>
         <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-background-secondary p-12 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Bell className="h-8 w-8 text-foreground-muted" />
+                <Bell className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">{getEmptyMessage()}</h3>
             <p className="mt-2 text-foreground-muted">
                 You're all caught up! Check back later for new updates.
             </p>
         </div>
+        </FadeIn>
     );
 }

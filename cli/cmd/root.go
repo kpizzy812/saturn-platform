@@ -101,6 +101,7 @@ func init() {
 	rootCmd.AddCommand(update.NewUpdateCommand())
 	rootCmd.AddCommand(cliversion.NewVersionCommand())
 	rootCmd.AddCommand(NewDocsCommand())
+	rootCmd.AddCommand(NewLoginCommand())
 }
 
 func initConfig() {

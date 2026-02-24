@@ -1,4 +1,4 @@
-# CLI for [Coolify](https://coolify.io) API
+# CLI for [Saturn](https://saturn.ac) API
 
 ## Installation
 
@@ -7,114 +7,114 @@
 #### Linux/macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/coollabsio/coolify-cli/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/saturn-platform/saturn-cli/main/scripts/install.sh | bash
 ```
 
-It will install the CLI in `/usr/local/bin/coolify` and the configuration file in `~/.config/coolify/config.json`
+It will install the CLI in `/usr/local/bin/saturn` and the configuration file in `~/.config/saturn/config.json`
 
 #### Windows (PowerShell)
 
 ```powershell
-irm https://raw.githubusercontent.com/coollabsio/coolify-cli/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/saturn-platform/saturn-cli/main/scripts/install.ps1 | iex
 ```
 
-It will install the CLI in `%ProgramFiles%\Coolify\coolify.exe` and the configuration file in `%USERPROFILE%\.config\coolify\config.json`
+It will install the CLI in `%ProgramFiles%\Saturn\saturn.exe` and the configuration file in `%USERPROFILE%\.config\saturn\config.json`
 
 For user installation (no admin rights required):
 ```powershell
-$env:COOLIFY_USER_INSTALL=1; irm https://raw.githubusercontent.com/coollabsio/coolify-cli/main/scripts/install.ps1 | iex
+$env:SATURN_USER_INSTALL=1; irm https://raw.githubusercontent.com/saturn-platform/saturn-cli/main/scripts/install.ps1 | iex
 ```
 
 For a specific version:
 ```powershell
-$env:COOLIFY_VERSION='v1.0.0'; irm https://raw.githubusercontent.com/coollabsio/coolify-cli/main/scripts/install.ps1 | iex
+$env:SATURN_VERSION='v1.0.0'; irm https://raw.githubusercontent.com/saturn-platform/saturn-cli/main/scripts/install.ps1 | iex
 ```
 
 ### Using `go install`
-       
+
 ```bash
-go install github.com/coollabsio/coolify-cli/coolify@latest
+go install github.com/saturn-platform/saturn-cli/saturn@latest
 ```
 
-This will install the `coolify` binary in your `$GOPATH/bin` directory (usually `~/go/bin`). Make sure this directory is in your `$PATH`.
+This will install the `saturn` binary in your `$GOPATH/bin` directory (usually `~/go/bin`). Make sure this directory is in your `$PATH`.
 
 ### Using the install script
 
 
 ## Getting Started
-1. Get a `<token>` from your Coolify dashboard (Cloud or self-hosted) at `/security/api-tokens`
+1. Get a `<token>` from your Saturn dashboard (Cloud or self-hosted) at `/security/api-tokens`
 
 ### Cloud
 
-2. Add the token with `coolify context set-token cloud <token>`
+2. Add the token with `saturn context set-token cloud <token>`
 
 ### Self-hosted
 
-2. Add the token with `coolify context add -d <context_name> <url> <token>`
+2. Add the token with `saturn context add -d <context_name> <url> <token>`
 
 > Replace `<context_name>` with the name you want to give to the context.
 >
-> Replace `<url>` with the fully qualified domain name of your Coolify instance.
+> Replace `<url>` with the fully qualified domain name of your Saturn instance.
 
 Now you can use the CLI with the token you just added.
 
 ## Change default context
-You can change the default context with `coolify context use <context_name>` or `coolify context set-default <context_name>`
+You can change the default context with `saturn context use <context_name>` or `saturn context set-default <context_name>`
 ## Currently Supported Commands
 
 ### Update
-- `coolify update` - Update the CLI to the latest version
+- `saturn update` - Update the CLI to the latest version
 
 ### Configuration
-- `coolify config` - Show configuration file location
+- `saturn config` - Show configuration file location
 
 ### Shell Completion
-- `coolify completion <shell>` - Generate shell completion script
+- `saturn completion <shell>` - Generate shell completion script
   - Supported shells: `bash`, `zsh`, `fish`, `powershell`
 
 ### Context Management
-- `coolify context list` - List all configured contexts
-- `coolify context add <context_name> <url> <token>` - Add a new context
+- `saturn context list` - List all configured contexts
+- `saturn context add <context_name> <url> <token>` - Add a new context
   - `-d, --default` - Set as default context
   - `-f, --force` - Force overwrite if context already exists
-- `coolify context delete <context_name>` - Delete a context
-- `coolify context get <context_name>` - Get details of a specific context
-- `coolify context set-token <context_name> <token>` - Update the API token for a context
-- `coolify context set-default <context_name>` - Set a context as the default
-- `coolify context update <context_name>` - Update a context's properties
+- `saturn context delete <context_name>` - Delete a context
+- `saturn context get <context_name>` - Get details of a specific context
+- `saturn context set-token <context_name> <token>` - Update the API token for a context
+- `saturn context set-default <context_name>` - Set a context as the default
+- `saturn context update <context_name>` - Update a context's properties
   - `--name <new_name>` - Change the context name
   - `--url <new_url>` - Change the context URL
   - `--token <new_token>` - Change the context token
-- `coolify context use <context_name>` - Switch to a different context (set as default)
-- `coolify context verify` - Verify current context connection and authentication
-- `coolify context version` - Get the Coolify API version of the current context
+- `saturn context use <context_name>` - Switch to a different context (set as default)
+- `saturn context verify` - Verify current context connection and authentication
+- `saturn context version` - Get the Saturn API version of the current context
 
 ### Servers
 
 Commands can use `server` or `servers` interchangeably.
 
-- `coolify server list` - List all servers
-- `coolify server get <uuid>` - Get a server by UUID
+- `saturn server list` - List all servers
+- `saturn server get <uuid>` - Get a server by UUID
   - `--resources` - Get the resources and their status of a server
-- `coolify server add <name> <ip> <private_key_uuid>` - Add a new server
+- `saturn server add <name> <ip> <private_key_uuid>` - Add a new server
   - `-p, --port <port>` - SSH port (default: 22)
   - `-u, --user <user>` - SSH user (default: root)
   - `--validate` - Validate server immediately after adding
-- `coolify server remove <uuid>` - Remove a server
-- `coolify server validate <uuid>` - Validate a server connection
-- `coolify server domains <uuid>` - Get server domains by UUID
+- `saturn server remove <uuid>` - Remove a server
+- `saturn server validate <uuid>` - Validate a server connection
+- `saturn server domains <uuid>` - Get server domains by UUID
 
 ### Projects
-- `coolify projects list` - List all projects
-- `coolify projects get <uuid>` - Get project environments
+- `saturn projects list` - List all projects
+- `saturn projects get <uuid>` - Get project environments
 
 ### Resources
-- `coolify resources list` - List all resources
+- `saturn resources list` - List all resources
 
 ### Applications
-- `coolify app list` - List all applications
-- `coolify app get <uuid>` - Get application details
-- `coolify app update <uuid>` - Update application configuration
+- `saturn app list` - List all applications
+- `saturn app get <uuid>` - Get application details
+- `saturn app update <uuid>` - Update application configuration
   - `--name <name>` - Application name
   - `--description <description>` - Application description
   - `--git-branch <branch>` - Git branch
@@ -132,26 +132,26 @@ Commands can use `server` or `servers` interchangeably.
   - `--ports-mappings <mappings>` - Port mappings
   - `--health-check-enabled` - Enable health check
   - `--health-check-path <path>` - Health check path
-- `coolify app delete <uuid>` - Delete an application
+- `saturn app delete <uuid>` - Delete an application
   - `-f, --force` - Skip confirmation prompt
-- `coolify app start <uuid>` - Start an application
-- `coolify app stop <uuid>` - Stop an application
-- `coolify app restart <uuid>` - Restart an application
-- `coolify app logs <uuid>` - Get application logs
+- `saturn app start <uuid>` - Start an application
+- `saturn app stop <uuid>` - Stop an application
+- `saturn app restart <uuid>` - Restart an application
+- `saturn app logs <uuid>` - Get application logs
 
 #### Application Environment Variables
-- `coolify app env list <app_uuid>` - List all environment variables
-- `coolify app env get <app_uuid> <env_uuid_or_key>` - Get a specific environment variable
-- `coolify app env create <app_uuid>` - Create a new environment variable
+- `saturn app env list <app_uuid>` - List all environment variables
+- `saturn app env get <app_uuid> <env_uuid_or_key>` - Get a specific environment variable
+- `saturn app env create <app_uuid>` - Create a new environment variable
   - `--key <key>` - Variable key (required)
   - `--value <value>` - Variable value (required)
   - `--preview` - Available in preview deployments
   - `--build-time` - Available at build time
   - `--is-literal` - Treat value as literal (don't interpolate variables)
   - `--is-multiline` - Value is multiline
-- `coolify app env update <app_uuid> <env_uuid>` - Update an environment variable
-- `coolify app env delete <app_uuid> <env_uuid>` - Delete an environment variable
-- `coolify app env sync <app_uuid>` - Sync environment variables from a .env file
+- `saturn app env update <app_uuid> <env_uuid>` - Update an environment variable
+- `saturn app env delete <app_uuid> <env_uuid>` - Delete an environment variable
+- `saturn app env sync <app_uuid>` - Sync environment variables from a .env file
   - `--file <path>` - Path to .env file (required)
   - `--build-time` - Make all variables available at build time
   - `--preview` - Make all variables available in preview deployments
@@ -159,8 +159,8 @@ Commands can use `server` or `servers` interchangeably.
   - **Behavior**: Updates existing variables, creates missing ones. Does NOT delete variables not in the file.
 
 #### Application Deployments
-- `coolify app deployments list <app-uuid>` - List all deployments for an application
-- `coolify app deployments logs <app-uuid> [deployment-uuid]` - Get deployment logs (formatted as human-readable text)
+- `saturn app deployments list <app-uuid>` - List all deployments for an application
+- `saturn app deployments logs <app-uuid> [deployment-uuid]` - Get deployment logs (formatted as human-readable text)
   - If only `app-uuid` is provided: retrieves logs from the **latest/most recent deployment only**
   - If `deployment-uuid` is also provided: retrieves logs for that **specific deployment**
   - `-n, --lines <n>` - Number of log lines to display (default: 0 = all lines)
@@ -168,9 +168,9 @@ Commands can use `server` or `servers` interchangeably.
   - `--debuglogs` - Show debug logs (includes hidden commands and internal operations)
 
 ### Databases
-- `coolify database list` - List all databases
-- `coolify database get <uuid>` - Get database details
-- `coolify database create <type>` - Create a new database
+- `saturn database list` - List all databases
+- `saturn database get <uuid>` - Get database details
+- `saturn database create <type>` - Create a new database
   - Supported types: `postgresql`, `mysql`, `mariadb`, `mongodb`, `redis`, `keydb`, `clickhouse`, `dragonfly`
   - `--server-uuid <uuid>` - Server UUID (required)
   - `--project-uuid <uuid>` - Project UUID (required)
@@ -186,19 +186,19 @@ Commands can use `server` or `servers` interchangeably.
   - `--limits-memory <size>` - Memory limit (e.g., '512m', '2g')
   - `--limits-cpus <cpus>` - CPU limit (e.g., '0.5', '2')
   - Database-specific flags (postgres-user, mysql-root-password, etc.)
-- `coolify database update <uuid>` - Update database configuration
-- `coolify database delete <uuid>` - Delete a database
+- `saturn database update <uuid>` - Update database configuration
+- `saturn database delete <uuid>` - Delete a database
   - `--delete-configurations` - Delete configurations (default: true)
   - `--delete-volumes` - Delete volumes (default: true)
   - `--docker-cleanup` - Run docker cleanup (default: true)
   - `--delete-connected-networks` - Delete connected networks (default: true)
-- `coolify database start <uuid>` - Start a database
-- `coolify database stop <uuid>` - Stop a database
-- `coolify database restart <uuid>` - Restart a database
+- `saturn database start <uuid>` - Start a database
+- `saturn database stop <uuid>` - Stop a database
+- `saturn database restart <uuid>` - Restart a database
 
 #### Database Backups
-- `coolify database backup list <database_uuid>` - List all backup configurations
-- `coolify database backup create <database_uuid>` - Create a new backup configuration
+- `saturn database backup list <database_uuid>` - List all backup configurations
+- `saturn database backup create <database_uuid>` - Create a new backup configuration
   - `--frequency <cron>` - Backup frequency (cron expression)
   - `--enabled` - Enable backup schedule
   - `--save-s3` - Save backups to S3
@@ -213,28 +213,28 @@ Commands can use `server` or `servers` interchangeably.
   - `--retention-storage-s3 <size>` - Max storage for S3 backups (e.g., '1GB', '500MB')
   - `--timeout <seconds>` - Backup timeout in seconds
   - `--disable-local` - Disable local backup storage
-- `coolify database backup update <database_uuid> <backup_uuid>` - Update a backup configuration
-- `coolify database backup delete <database_uuid> <backup_uuid>` - Delete a backup configuration
-- `coolify database backup trigger <database_uuid> <backup_uuid>` - Trigger an immediate backup
-- `coolify database backup executions <database_uuid> <backup_uuid>` - List backup executions
-- `coolify database backup delete-execution <database_uuid> <backup_uuid> <execution_uuid>` - Delete a backup execution
+- `saturn database backup update <database_uuid> <backup_uuid>` - Update a backup configuration
+- `saturn database backup delete <database_uuid> <backup_uuid>` - Delete a backup configuration
+- `saturn database backup trigger <database_uuid> <backup_uuid>` - Trigger an immediate backup
+- `saturn database backup executions <database_uuid> <backup_uuid>` - List backup executions
+- `saturn database backup delete-execution <database_uuid> <backup_uuid> <execution_uuid>` - Delete a backup execution
 
 ### Services
-- `coolify service list` - List all services
-- `coolify service get <uuid>` - Get service details
-- `coolify service start <uuid>` - Start a service
-- `coolify service stop <uuid>` - Stop a service
-- `coolify service restart <uuid>` - Restart a service
-- `coolify service delete <uuid>` - Delete a service
+- `saturn service list` - List all services
+- `saturn service get <uuid>` - Get service details
+- `saturn service start <uuid>` - Start a service
+- `saturn service stop <uuid>` - Stop a service
+- `saturn service restart <uuid>` - Restart a service
+- `saturn service delete <uuid>` - Delete a service
 
 #### Service Environment Variables
-- `coolify service env list <service_uuid>` - List all environment variables
-- `coolify service env get <service_uuid> <env_uuid_or_key>` - Get a specific environment variable
-- `coolify service env create <service_uuid>` - Create a new environment variable
+- `saturn service env list <service_uuid>` - List all environment variables
+- `saturn service env get <service_uuid> <env_uuid_or_key>` - Get a specific environment variable
+- `saturn service env create <service_uuid>` - Create a new environment variable
   - Same flags as application environment variables
-- `coolify service env update <service_uuid> <env_uuid>` - Update an environment variable
-- `coolify service env delete <service_uuid> <env_uuid>` - Delete an environment variable
-- `coolify service env sync <service_uuid>` - Sync environment variables from a .env file
+- `saturn service env update <service_uuid> <env_uuid>` - Update an environment variable
+- `saturn service env delete <service_uuid> <env_uuid>` - Delete an environment variable
+- `saturn service env sync <service_uuid>` - Sync environment variables from a .env file
   - `--file <path>` - Path to .env file (required)
   - `--build-time` - Make all variables available at build time
   - `--preview` - Make all variables available in preview deployments
@@ -242,21 +242,21 @@ Commands can use `server` or `servers` interchangeably.
   - **Behavior**: Updates existing variables, creates missing ones. Does NOT delete variables not in the file.
 
 ### Deployments
-- `coolify deploy uuid <uuid>` - Deploy a resource by UUID
+- `saturn deploy uuid <uuid>` - Deploy a resource by UUID
   - `-f, --force` - Force deployment
-- `coolify deploy name <name>` - Deploy a resource by name
+- `saturn deploy name <name>` - Deploy a resource by name
   - `-f, --force` - Force deployment
-- `coolify deploy batch <name1,name2,...>` - Deploy multiple resources at once
+- `saturn deploy batch <name1,name2,...>` - Deploy multiple resources at once
   - `-f, --force` - Force all deployments
-- `coolify deploy list` - List all deployments
-- `coolify deploy get <uuid>` - Get deployment details
-- `coolify deploy cancel <uuid>` - Cancel a deployment
+- `saturn deploy list` - List all deployments
+- `saturn deploy get <uuid>` - Get deployment details
+- `saturn deploy cancel <uuid>` - Cancel a deployment
   - `-f, --force` - Skip confirmation prompt
 
 ### GitHub Apps
-- `coolify github list` - List all GitHub App integrations
-- `coolify github get <app_uuid>` - Get GitHub App details
-- `coolify github create` - Create a new GitHub App integration
+- `saturn github list` - List all GitHub App integrations
+- `saturn github get <app_uuid>` - Get GitHub App details
+- `saturn github create` - Create a new GitHub App integration
   - `--name <name>` - GitHub App name (required)
   - `--api-url <url>` - GitHub API URL (required, e.g., https://api.github.com)
   - `--html-url <url>` - GitHub HTML URL (required, e.g., https://github.com)
@@ -270,33 +270,33 @@ Commands can use `server` or `servers` interchangeably.
   - `--custom-port <port>` - Custom port for SSH (default: 22)
   - `--webhook-secret <secret>` - GitHub Webhook Secret
   - `--system-wide` - Is this app system-wide (cloud only)
-- `coolify github update <app_uuid>` - Update a GitHub App
-- `coolify github delete <app_uuid>` - Delete a GitHub App
+- `saturn github update <app_uuid>` - Update a GitHub App
+- `saturn github delete <app_uuid>` - Delete a GitHub App
   - `-f, --force` - Skip confirmation prompt
-- `coolify github repos <app_uuid>` - List repositories accessible by a GitHub App
-- `coolify github branches <app_uuid> <owner/repo>` - List branches for a repository
+- `saturn github repos <app_uuid>` - List repositories accessible by a GitHub App
+- `saturn github branches <app_uuid> <owner/repo>` - List branches for a repository
 
 ### Teams
-- `coolify team list` - List all teams
-- `coolify team get <team_id>` - Get team details
-- `coolify team current` - Get current team
-- `coolify team members list [team_id]` - List team members
+- `saturn team list` - List all teams
+- `saturn team get <team_id>` - Get team details
+- `saturn team current` - Get current team
+- `saturn team members list [team_id]` - List team members
 
 ### Private Keys
 
 Commands can use `private-key`, `private-keys`, `key`, or `keys` interchangeably.
 
-- `coolify private-key list` - List all private keys
-- `coolify private-key add <key_name> <private-key>` - Add a new private key
-  - Use `@filename` to read from file: `coolify private-key add mykey @~/.ssh/id_rsa`
-- `coolify private-key remove <uuid>` - Remove a private key
+- `saturn private-key list` - List all private keys
+- `saturn private-key add <key_name> <private-key>` - Add a new private key
+  - Use `@filename` to read from file: `saturn private-key add mykey @~/.ssh/id_rsa`
+- `saturn private-key remove <uuid>` - Remove a private key
 
 ## Global Flags
 
 All commands support these global flags:
 
 - `--context <name>` - Use a specific context instead of default
-- `--host <fqdn>` - Override the Coolify instance hostname
+- `--host <fqdn>` - Override the Saturn instance hostname
 - `--token <token>` - Override the authentication token
 - `--format <format>` - Output format: `table` (default), `json`, or `pretty`
 - `-s, --show-sensitive` - Show sensitive information (tokens, IPs, etc.)
@@ -309,124 +309,124 @@ All commands support these global flags:
 
 ```bash
 # Add multiple contexts
-coolify context add prod https://prod.coolify.io <prod-token>
-coolify context add staging https://staging.coolify.io <staging-token>
-coolify context add dev https://dev.coolify.io <dev-token>
+saturn context add prod https://saturn.ac <prod-token>
+saturn context add staging https://uat.saturn.ac <staging-token>
+saturn context add dev https://dev.saturn.ac <dev-token>
 
 # Set default
-coolify context use prod
+saturn context use prod
 
 # Use different contexts
-coolify --context=staging servers list
-coolify --context=prod deploy name api
-coolify --context=dev resources list
+saturn --context=staging servers list
+saturn --context=prod deploy name api
+saturn --context=dev resources list
 
 # Default context (prod in this case)
-coolify servers list
+saturn servers list
 ```
 
 ### Application Management
 
 ```bash
 # List all applications
-coolify app list
+saturn app list
 
 # Get application details
-coolify app get <uuid>
+saturn app get <uuid>
 
 # Manage application lifecycle
-coolify app start <uuid>
-coolify app stop <uuid>
-coolify app restart <uuid>
+saturn app start <uuid>
+saturn app stop <uuid>
+saturn app restart <uuid>
 
 # View application logs
-coolify app logs <uuid>
+saturn app logs <uuid>
 
 # Environment variables
-coolify app env list <uuid>
-coolify app env create <uuid> --key API_KEY --value secret123
+saturn app env list <uuid>
+saturn app env create <uuid> --key API_KEY --value secret123
 
 # Sync from .env file (updates existing, creates new, keeps others unchanged)
-coolify app env sync <uuid> --file .env
-coolify app env sync <uuid> --file .env.production --build-time --preview
+saturn app env sync <uuid> --file .env
+saturn app env sync <uuid> --file .env.production --build-time --preview
 ```
 
 ### Database Management
 
 ```bash
 # List databases
-coolify database list
+saturn database list
 
 # Create a PostgreSQL database
-coolify database create postgresql \
+saturn database create postgresql \
   --server-uuid <server-uuid> \
   --project-uuid <project-uuid> \
   --name mydb \
   --instant-deploy
 
 # Manage database lifecycle
-coolify database start <uuid>
-coolify database stop <uuid>
-coolify database restart <uuid>
+saturn database start <uuid>
+saturn database stop <uuid>
+saturn database restart <uuid>
 
 # Backup management
-coolify database backup list <database-uuid>
-coolify database backup create <database-uuid> \
+saturn database backup list <database-uuid>
+saturn database backup create <database-uuid> \
   --frequency "0 2 * * *" \
   --enabled \
   --save-s3 \
   --retention-days-locally 7
-coolify database backup trigger <database-uuid> <backup-uuid>
+saturn database backup trigger <database-uuid> <backup-uuid>
 ```
 
 ### Service Management
 
 ```bash
 # List services
-coolify service list
+saturn service list
 
 # Get service details
-coolify service get <uuid>
+saturn service get <uuid>
 
 # Manage services
-coolify service start <uuid>
-coolify service restart <uuid>
+saturn service start <uuid>
+saturn service restart <uuid>
 
 # Environment variables (same as applications)
-coolify service env sync <uuid> --file .env
+saturn service env sync <uuid> --file .env
 ```
 
 ### Deploy Workflows
 
 ```bash
 # Deploy single app by name (easier than UUID)
-coolify deploy name my-application
+saturn deploy name my-application
 
 # Deploy multiple apps at once
-coolify deploy batch api,worker,frontend
+saturn deploy batch api,worker,frontend
 
 # Force deploy with specific context
-coolify --context=prod deploy batch api,worker --force
+saturn --context=prod deploy batch api,worker --force
 
 # Traditional UUID deployment still works
-coolify deploy uuid abc123-def456-...
+saturn deploy uuid abc123-def456-...
 
 # Monitor deployments
-coolify deploy list
-coolify deploy get <deployment-uuid>
+saturn deploy list
+saturn deploy get <deployment-uuid>
 
 # Cancel a deployment
-coolify deploy cancel <deployment-uuid>
+saturn deploy cancel <deployment-uuid>
 ```
 
 ### GitHub Apps Integration
 
 ```bash
 # List GitHub Apps
-coolify github list
+saturn github list
 
 # Create a GitHub App integration
-coolify github create \
+saturn github create \
   --name "My GitHub App" \
   --api-url "https://api.github.com" \
   --html-url "https://github.com" \
@@ -437,39 +437,39 @@ coolify github create \
   --private-key-uuid <key-uuid>
 
 # List repositories accessible by the app
-coolify github repos <app-uuid>
+saturn github repos <app-uuid>
 
 # List branches for a repository
-coolify github branches <app-uuid> owner/repo
+saturn github branches <app-uuid> owner/repo
 
 # Delete a GitHub App
-coolify github delete <app-uuid>
+saturn github delete <app-uuid>
 ```
 
 ### Team Management
 
 ```bash
 # List teams
-coolify team list
+saturn team list
 
 # Get current team
-coolify team current
+saturn team current
 
 # List team members
-coolify team members list
+saturn team members list
 ```
 
 ### Server Management
 
 ```bash
 # List servers in production
-coolify --context=prod server list
+saturn --context=prod server list
 
 # Add a server with validation
-coolify server add myserver 192.168.1.100 <key-uuid> --validate
+saturn server add myserver 192.168.1.100 <key-uuid> --validate
 
 # Get server details with resources
-coolify server get <uuid> --resources
+saturn server get <uuid> --resources
 ```
 
 ## Output Formats
@@ -478,13 +478,13 @@ The CLI supports three output formats:
 
 ```bash
 # Table format (default, human-readable)
-coolify server list
+saturn server list
 
 # JSON format (for scripts)
-coolify server list --format=json
+saturn server list --format=json
 
 # Pretty JSON (for debugging)
-coolify server list --format=pretty
+saturn server list --format=pretty
 ```
 
 ## Architecture
@@ -499,7 +499,7 @@ This CLI follows a clean architecture with:
 
 ```bash
 # Build
-go build -o coolify ./coolify
+go build -o saturn ./saturn
 
 # Run tests
 go test ./...
@@ -508,7 +508,7 @@ go test ./...
 go test -cover ./...
 
 # Install locally
-go install ./coolify
+go install ./saturn
 ```
 
 ## Contributing

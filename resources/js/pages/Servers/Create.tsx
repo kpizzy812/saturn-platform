@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { router } from '@inertiajs/react';
-import { Link } from '@inertiajs/react';
+import { router, Link } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Textarea, Select } from '@/components/ui';
 import { ArrowLeft, Check, Server, Key } from 'lucide-react';
@@ -61,7 +61,7 @@ export default function ServerCreate({ privateKeys = [] }: Props) {
     };
 
     const handleSubmit = () => {
-        const data: Record<string, unknown> = {
+        const data: RouterPayload = {
             name,
             description,
             ip,
@@ -75,7 +75,7 @@ export default function ServerCreate({ privateKeys = [] }: Props) {
             data.private_key = privateKey;
         }
 
-        router.post('/servers', data as any);
+        router.post('/servers', data);
     };
 
     const hasValidKey = keyMode === 'existing' ? !!selectedKeyId : (!!privateKey && !privateKeyError);

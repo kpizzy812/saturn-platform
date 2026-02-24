@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Checkbox } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -77,7 +78,7 @@ export default function NotificationsPreferences({ preferences: initialPreferenc
 
     const handleSave = () => {
         setIsSaving(true);
-        router.put('/api/v1/notifications/preferences', preferences as any, {
+        router.put('/api/v1/notifications/preferences', preferences as unknown as RouterPayload, {
             onSuccess: () => {
                 addToast('success', 'Notification preferences saved successfully');
             },

@@ -215,7 +215,7 @@ class ServiceEnvsController extends Controller
         $this->authorize('manageEnvironment', $service);
 
         $validator = customApiValidator($request->all(), [
-            'key' => 'string|required',
+            'key' => ['string', 'required', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
             'value' => 'string|nullable',
             'is_literal' => 'boolean',
             'is_multiline' => 'boolean',
@@ -349,7 +349,7 @@ class ServiceEnvsController extends Controller
         $this->authorize('manageEnvironment', $service);
 
         $validator = customApiValidator($request->all(), [
-            'key' => 'string|required',
+            'key' => ['string', 'required', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
             'value' => 'string|nullable',
             'is_literal' => 'boolean',
             'is_multiline' => 'boolean',
@@ -498,7 +498,7 @@ class ServiceEnvsController extends Controller
         $updatedEnvs = collect();
         foreach ($bulk_data as $item) {
             $validator = customApiValidator($item, [
-                'key' => 'string|required',
+                'key' => ['string', 'required', 'max:255', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
                 'value' => 'string|nullable',
                 'is_literal' => 'boolean',
                 'is_multiline' => 'boolean',

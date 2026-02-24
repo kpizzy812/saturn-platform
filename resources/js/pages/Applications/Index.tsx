@@ -18,7 +18,9 @@ import {
     Settings,
     Trash2
 } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { EnvironmentType } from '@/types';
 
 interface AppStatus {
@@ -81,6 +83,7 @@ function normalizeStatus(status: unknown): AppStatus {
 }
 
 export default function ApplicationsIndex({ applications = [] }: Props) {
+    const { can } = usePermissions();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterProject, setFilterProject] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -140,12 +143,14 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
                         <h1 className="text-2xl font-bold text-foreground">Applications</h1>
                         <p className="text-foreground-muted">Manage your deployed applications</p>
                     </div>
-                    <Link href="/applications/create">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Application
-                        </Button>
-                    </Link>
+                    {can('applications.create') && (
+                        <Link href="/applications/create">
+                            <Button className="group">
+                                <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                                New Application
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Filters */}
@@ -194,18 +199,20 @@ export default function ApplicationsIndex({ applications = [] }: Props) {
 
                 {/* Applications Grid */}
                 {filteredApplications.length === 0 ? (
-                    applications.length === 0 ? <EmptyState /> : <NoResults />
+                    applications.length === 0 ? <EmptyState canCreate={can('applications.create')} /> : <NoResults />
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {filteredApplications.map((application) => (
-                            <ApplicationCard
-                                key={application.id}
-                                application={application}
-                                currentStatus={getAppStatus(application)}
-                                onDeleted={(uuid) => setDeletedUuids(prev => new Set(prev).add(uuid))}
-                            />
+                    <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {filteredApplications.map((application, i) => (
+                            <StaggerItem key={application.id} index={i}>
+                                <ApplicationCard
+                                    application={application}
+                                    currentStatus={getAppStatus(application)}
+                                    onDeleted={(uuid) => setDeletedUuids(prev => new Set(prev).add(uuid))}
+                                    can={can}
+                                />
+                            </StaggerItem>
                         ))}
-                    </div>
+                    </StaggerList>
                 )}
             </div>
         </AppLayout>
@@ -216,9 +223,10 @@ interface ApplicationCardProps {
     application: ApplicationWithRelations;
     currentStatus: AppStatus;
     onDeleted: (uuid: string) => void;
+    can: (permission: string) => boolean;
 }
 
-function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationCardProps) {
+function ApplicationCard({ application, currentStatus, onDeleted, can }: ApplicationCardProps) {
     const confirm = useConfirm();
     const { toast } = useToast();
 
@@ -292,12 +300,14 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
                         </button>
                     </DropdownTrigger>
                             <DropdownContent align="right">
-                                <DropdownItem
-                                    icon={<Rocket className="h-4 w-4" />}
-                                    onClick={(e) => handleAction('deploy', e)}
-                                >
-                                    Deploy
-                                </DropdownItem>
+                                {can('applications.deploy') && (
+                                    <DropdownItem
+                                        icon={<Rocket className="h-4 w-4" />}
+                                        onClick={(e) => handleAction('deploy', e)}
+                                    >
+                                        Deploy
+                                    </DropdownItem>
+                                )}
                                 <DropdownItem
                                     icon={<RotateCw className="h-4 w-4" />}
                                     onClick={(e) => handleAction('restart', e)}
@@ -329,14 +339,18 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
                                 >
                                     Settings
                                 </DropdownItem>
-                                <DropdownDivider />
-                                <DropdownItem
-                                    icon={<Trash2 className="h-4 w-4" />}
-                                    onClick={handleDelete}
-                                    danger
-                                >
-                                    Delete
-                                </DropdownItem>
+                                {can('applications.delete') && (
+                                    <>
+                                        <DropdownDivider />
+                                        <DropdownItem
+                                            icon={<Trash2 className="h-4 w-4" />}
+                                            onClick={handleDelete}
+                                            danger
+                                        >
+                                            Delete
+                                        </DropdownItem>
+                                    </>
+                                )}
                             </DropdownContent>
                         </Dropdown>
                     </div>
@@ -399,36 +413,44 @@ function ApplicationCard({ application, currentStatus, onDeleted }: ApplicationC
     );
 }
 
-function EmptyState() {
+function EmptyState({ canCreate }: { canCreate: boolean }) {
     return (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
-                <Rocket className="h-8 w-8 text-foreground-muted" />
+        <FadeIn>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                    <Rocket className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No applications yet</h3>
+                <p className="mt-1 text-sm text-foreground-muted">
+                    {canCreate
+                        ? 'Deploy your first application from Git or Docker image.'
+                        : 'No applications have been deployed yet. Contact a team admin to create one.'}
+                </p>
+                {canCreate && (
+                    <Link href="/applications/create" className="mt-6">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Application
+                        </Button>
+                    </Link>
+                )}
             </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No applications yet</h3>
-            <p className="mt-1 text-sm text-foreground-muted">
-                Deploy your first application from Git or Docker image.
-            </p>
-            <Link href="/applications/create" className="mt-6">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Application
-                </Button>
-            </Link>
-        </div>
+        </FadeIn>
     );
 }
 
 function NoResults() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
-                <Filter className="h-8 w-8 text-foreground-muted" />
+        <FadeIn>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                    <Filter className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No applications found</h3>
+                <p className="mt-1 text-sm text-foreground-muted">
+                    Try adjusting your filters or search query.
+                </p>
             </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No applications found</h3>
-            <p className="mt-1 text-sm text-foreground-muted">
-                Try adjusting your filters or search query.
-            </p>
-        </div>
+        </FadeIn>
     );
 }

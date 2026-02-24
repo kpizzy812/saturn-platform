@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Server;
 use App\Models\Service;
 use App\Models\Team;
+use Illuminate\Support\Facades\Log;
 
 trait ClearsGlobalSearchCache
 {
@@ -25,7 +26,7 @@ trait ClearsGlobalSearchCache
                 }
             } catch (\Throwable $e) {
                 // Silently fail cache clearing - don't break the save operation
-                ray('Failed to clear global search cache on saving: '.$e->getMessage());
+                Log::warning('Failed to clear global search cache on saving: '.$e->getMessage());
             }
         });
 
@@ -38,7 +39,7 @@ trait ClearsGlobalSearchCache
                 }
             } catch (\Throwable $e) {
                 // Silently fail cache clearing - don't break the create operation
-                ray('Failed to clear global search cache on creation: '.$e->getMessage());
+                Log::warning('Failed to clear global search cache on creation: '.$e->getMessage());
             }
         });
 
@@ -51,7 +52,7 @@ trait ClearsGlobalSearchCache
                 }
             } catch (\Throwable $e) {
                 // Silently fail cache clearing - don't break the delete operation
-                ray('Failed to clear global search cache on deletion: '.$e->getMessage());
+                Log::warning('Failed to clear global search cache on deletion: '.$e->getMessage());
             }
         });
     }
@@ -79,7 +80,7 @@ trait ClearsGlobalSearchCache
             return false;
         } catch (\Throwable $e) {
             // If checking changes fails, assume changes exist to be safe
-            ray('Failed to check searchable changes: '.$e->getMessage());
+            Log::warning('Failed to check searchable changes: '.$e->getMessage());
 
             return true;
         }
@@ -106,7 +107,7 @@ trait ClearsGlobalSearchCache
             return null;
         } catch (\Throwable $e) {
             // If we can't determine team ID, return null
-            ray('Failed to get team ID for cache: '.$e->getMessage());
+            Log::warning('Failed to get team ID for cache: '.$e->getMessage());
 
             return null;
         }

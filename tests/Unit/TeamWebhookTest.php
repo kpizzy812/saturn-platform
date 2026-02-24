@@ -13,7 +13,6 @@ it('generates uuid on creation', function () {
     $webhook->uuid = null;
     $reflectionClass = new ReflectionClass(TeamWebhook::class);
     $reflectionMethod = $reflectionClass->getMethod('booted');
-    $reflectionMethod->setAccessible(true);
 
     // Check that uuid is set when empty
     expect(empty($webhook->uuid))->toBeTrue();

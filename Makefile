@@ -1,7 +1,7 @@
 # Saturn Platform - Development Commands
 # Usage: make <command>
 
-.PHONY: help dev dev-build dev-down dev-logs dev-ps shell db-shell redis-shell test build install migrate fresh
+.PHONY: help dev dev-build dev-down dev-logs dev-ps shell db-shell redis-shell test build install migrate fresh panel panel-build panel-test
 
 # Default target
 help:
@@ -29,6 +29,11 @@ help:
 	@echo ""
 	@echo "  Build:"
 	@echo "    make build        - Build frontend assets"
+	@echo ""
+	@echo "  TUI Panel:"
+	@echo "    make panel        - Launch Saturn TUI Panel"
+	@echo "    make panel-build  - Build panel distributable"
+	@echo "    make panel-test   - Run panel tests"
 	@echo ""
 
 # ============================================
@@ -92,3 +97,15 @@ test-js:
 # ============================================
 build:
 	docker exec -it saturn-vite npm run build
+
+# ============================================
+# TUI Panel
+# ============================================
+panel:
+	cd panel && npm run dev
+
+panel-build:
+	cd panel && npm run build
+
+panel-test:
+	cd panel && npm test

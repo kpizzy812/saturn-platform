@@ -47,7 +47,7 @@ class CreatePrivateDeployKeyApplication
             'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
             'private_key_uuid' => 'string|required',
             'watch_paths' => 'string|nullable',
-            'docker_compose_location' => 'string',
+            'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
         ];
 

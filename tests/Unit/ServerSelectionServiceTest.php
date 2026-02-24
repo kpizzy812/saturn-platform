@@ -26,10 +26,10 @@ test('calculateScore penalizes high resource usage', function () {
     $service->shouldAllowMockingProtectedMethods();
     $service->shouldReceive('getQueuedDeployments')->andReturn(0);
 
-    // Server with low usage
+    // Server with low usage — use anonymous object to avoid Mockery class redeclaration
     $lowUsageServer = Mockery::mock(\App\Models\Server::class)->makePartial();
     $lowUsageServer->id = 1;
-    $lowUsageHealth = Mockery::mock(\App\Models\ServerHealthCheck::class)->makePartial();
+    $lowUsageHealth = new stdClass;
     $lowUsageHealth->cpu_usage_percent = 10;
     $lowUsageHealth->memory_usage_percent = 20;
     $lowUsageHealth->disk_usage_percent = 30;
@@ -41,7 +41,7 @@ test('calculateScore penalizes high resource usage', function () {
     // Server with high usage
     $highUsageServer = Mockery::mock(\App\Models\Server::class)->makePartial();
     $highUsageServer->id = 2;
-    $highUsageHealth = Mockery::mock(\App\Models\ServerHealthCheck::class)->makePartial();
+    $highUsageHealth = new stdClass;
     $highUsageHealth->cpu_usage_percent = 90;
     $highUsageHealth->memory_usage_percent = 85;
     $highUsageHealth->disk_usage_percent = 80;
@@ -63,7 +63,7 @@ test('calculateScore handles zero usage correctly', function () {
 
     $server = Mockery::mock(\App\Models\Server::class)->makePartial();
     $server->id = 1;
-    $health = Mockery::mock(\App\Models\ServerHealthCheck::class)->makePartial();
+    $health = new stdClass;
     $health->cpu_usage_percent = 0;
     $health->memory_usage_percent = 0;
     $health->disk_usage_percent = 0;

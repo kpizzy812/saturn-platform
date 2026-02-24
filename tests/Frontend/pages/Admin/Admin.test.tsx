@@ -86,6 +86,7 @@ vi.mock('@/components/ui/Dropdown', () => ({
         <button onClick={onClick}>{children}</button>
     ),
     DropdownDivider: () => <hr />,
+    useDropdown: () => ({ isOpen: false }),
 }));
 
 vi.mock('@/components/ui/Tabs', () => ({

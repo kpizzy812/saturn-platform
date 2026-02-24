@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Other\FeedbackRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
 use OpenApi\Attributes as OA;
 
 class OtherController extends Controller
@@ -145,14 +148,18 @@ class OtherController extends Controller
         return response()->json(['message' => 'API disabled.'], 200);
     }
 
-    public function feedback(Request $request)
+    public function feedback(FeedbackRequest $request)
     {
-        $content = $request->input('content');
+        $content = $request->validated('content');
         $webhook_url = config('constants.webhooks.feedback_discord_webhook');
         if ($webhook_url) {
-            Http::post($webhook_url, [
-                'content' => $content,
-            ]);
+            try {
+                Http::timeout(10)->post($webhook_url, [
+                    'content' => $content,
+                ]);
+            } catch (\Throwable $e) {
+                // Don't fail the request if Discord is down
+            }
         }
 
         return response()->json(['message' => 'Feedback sent.'], 200);
@@ -184,6 +191,44 @@ class OtherController extends Controller
     )]
     public function healthcheck(Request $request)
     {
-        return 'OK';
+        $checks = [];
+        $healthy = true;
+
+        // Check PostgreSQL
+        try {
+            DB::connection()->getPdo();
+            $checks['database'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['database'] = 'failing';
+            $healthy = false;
+        }
+
+        // Check Redis
+        try {
+            Redis::connection()->ping();
+            $checks['redis'] = 'ok';
+        } catch (\Throwable $e) {
+            $checks['redis'] = 'failing';
+            $healthy = false;
+        }
+
+        // Check Queue (pending/failed jobs count)
+        try {
+            $failedCount = DB::table('failed_jobs')->count();
+            $checks['queue'] = [
+                'status' => 'ok',
+                'failed' => $failedCount,
+            ];
+        } catch (\Throwable $e) {
+            $checks['queue'] = ['status' => 'failing'];
+            $healthy = false;
+        }
+
+        // Always return 200 for Docker/deploy liveness probes.
+        // Monitoring tools should check the 'status' field in the response body.
+        return response()->json([
+            'status' => $healthy ? 'healthy' : 'degraded',
+            'checks' => $checks,
+        ]);
     }
 }

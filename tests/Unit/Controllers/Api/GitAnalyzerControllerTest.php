@@ -28,7 +28,6 @@ class GitAnalyzerControllerTest extends TestCase
     private function getValidateMethod(): ReflectionMethod
     {
         $method = new ReflectionMethod(GitAnalyzerController::class, 'validateRepositoryUrl');
-        $method->setAccessible(true);
 
         return $method;
     }

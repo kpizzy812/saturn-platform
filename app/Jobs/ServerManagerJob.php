@@ -19,6 +19,10 @@ class ServerManagerJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
+    public $timeout = 120;
+
     /**
      * The time when this job execution started.
      */
@@ -60,6 +64,13 @@ class ServerManagerJob implements ShouldQueue
 
         // Process server-specific scheduled tasks
         $this->processScheduledTasks($servers);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerManagerJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     private function getServers(): Collection

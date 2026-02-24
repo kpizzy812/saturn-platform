@@ -724,9 +724,10 @@ class DatabaseBackupsController extends Controller
             return response()->json(['message' => 'Backup configuration not found.'], 404);
         }
 
-        // Get all executions for this backup configuration
+        // Get recent executions for this backup configuration
         $executions = $backup->executions()
             ->orderBy('created_at', 'desc')
+            ->limit(100)
             ->get()
             ->map(function ($execution) {
                 return [

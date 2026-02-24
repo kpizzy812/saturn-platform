@@ -86,7 +86,7 @@ class AddCspHeadersTest extends TestCase
         $this->assertStringContainsString("font-src 'self'", $csp);
         $this->assertStringContainsString("object-src 'none'", $csp);
         $this->assertStringContainsString("base-uri 'self'", $csp);
-        $this->assertStringContainsString("form-action 'self'", $csp);
+        $this->assertStringContainsString("form-action 'self' https://github.com", $csp);
         $this->assertStringContainsString("frame-ancestors 'self'", $csp);
     }
 

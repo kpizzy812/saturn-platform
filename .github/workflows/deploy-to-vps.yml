@@ -99,12 +99,10 @@ jobs:
           echo "Domain:      ${{ steps.env.outputs.domain }}"
 
   # =============================================================================
-  # Job 2: Run tests and static analysis (temporarily disabled)
+  # Job 2: Run tests and static analysis
   # =============================================================================
   test:
-    if: false
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -126,9 +124,6 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
       - name: Create CI .env
         run: |
           php -r "file_put_contents('.env', implode(\"\n\", [
@@ -146,6 +141,9 @@ jobs:
             'PUSHER_SCHEME=http',
           ]));"
 
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Run Pint (code style)
         run: ./vendor/bin/pint --test
 
@@ -156,7 +154,7 @@ jobs:
   # Job 3: Build and push Docker image
   # =============================================================================
   build:
-    needs: [prepare]
+    needs: [prepare, test]
     if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-24.04
     permissions:

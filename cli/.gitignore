@@ -1,5 +1,6 @@
 saturn-cli
 /saturn/saturn
+/saturn/main
 /bin/
 config.json
 .claude

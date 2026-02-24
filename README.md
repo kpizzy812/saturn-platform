@@ -1,177 +1,851 @@
 <div align="center">
 
 # Saturn Platform
-An open-source & self-hostable Heroku / Netlify / Vercel alternative. 
 
-![Latest Release Version](https://img.shields.io/badge/dynamic/json?labelColor=grey&color=6366f1&label=Latest%20released%20version&url=https%3A%2F%2Fexample.com/cdn%2Fsaturn%2Fversions.json&query=saturn.v4.version&style=for-the-badge
-) [![Bounty Issues](https://img.shields.io/static/v1?labelColor=grey&color=6366f1&label=Algora&message=%F0%9F%92%8E+Bounty+issues&style=for-the-badge)](https://console.algora.io/org/saturnplatform/bounties/new)
+**Internal self-hosted PaaS for deploying and managing company products**
+
+*Внутренняя self-hosted PaaS-платформа для деплоя и управления продуктами компании*
+
+[![PHP 8.4](https://img.shields.io/badge/PHP-8.4-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net/)
+[![Laravel 12](https://img.shields.io/badge/Laravel-12-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL 15](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green?style=flat-square)](LICENSE)
+
 </div>
 
-## About the Project
+---
 
-Saturn Platform is an open-source & self-hostable alternative to Heroku / Netlify / Vercel / etc.
+**[English](#english)** | **[Русский](#русский)**
 
-It helps you manage your servers, applications, and databases on your own hardware; you only need an SSH connection. You can manage VPS, Bare Metal, Raspberry PIs, and anything else.
+---
 
-Imagine having the ease of a cloud but with your own servers. That is **Saturn Platform**.
+<a id="english"></a>
 
-No vendor lock-in, which means that all the configurations for your applications/databases/etc are saved to your server. So, if you decide to stop using Saturn Platform (oh nooo), you could still manage your running resources. You lose the automations and all the magic. 🪄️
+## What is Saturn Platform?
 
-For more information, take a look at our landing page at [saturn.io](https://saturn.io).
+Saturn is a self-hosted Platform as a Service (PaaS) — an alternative to Heroku, Netlify, and Vercel that runs on your own infrastructure. It manages servers, applications, databases, and services via SSH, supporting Docker-based deployments with zero vendor lock-in.
 
-## Installation
+### Key Capabilities
+
+- **Application Deployment** — Git-based Docker deployments with build previews, rollbacks, and multi-server support
+- **Database Management** — 8 database types: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, KeyDB, Dragonfly, ClickHouse
+- **Service Templates** — 318 pre-built Docker Compose templates (Supabase, Elasticsearch, Appwrite, n8n, etc.)
+- **Real-time Monitoring** — WebSocket-driven live status, deployment logs, and container metrics
+- **Team Collaboration** — Multi-tenant with RBAC, deployment approvals, audit logging, and webhooks
+- **Notifications** — Slack, Discord, Telegram, Email, Pushover, custom webhooks
+- **REST API** — 89+ endpoints with OpenAPI spec, Sanctum token auth
+- **CLI & TUI** — Go-based CLI (`saturn`) + terminal UI panel (Ink/React)
+- **SSL/TLS** — Automatic Let's Encrypt certificates via Traefik
+- **Backups** — Scheduled database backups to S3/SFTP with pg_dump
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Traefik v3.6                             │
+│               (SSL termination, routing, GZIP)                  │
+├──────────┬──────────────┬──────────────┬───────────────────────-┤
+│  Web UI  │  REST API    │  WebSocket   │  Terminal WS           │
+│  :443    │  /api/v1/*   │  /app/{key}  │  /terminal/ws          │
+├──────────┴──────────────┴──────────────┴───────────────────────-┤
+│                     Laravel 12 (PHP 8.4)                        │
+│  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────────────┐  │
+│  │ Inertia  │ │ Sanctum  │ │  Actions  │ │   69 Queue Jobs  │  │
+│  │ React 18 │ │ API Auth │ │  Pattern  │ │   (deploy,       │  │
+│  │ 137 pages│ │ RBAC     │ │  94 models│ │    backup, ...)  │  │
+│  └──────────┘ └──────────┘ └───────────┘ └──────────────────┘  │
+├────────────────┬──────────────────┬────────────────────────────-┤
+│  PostgreSQL 15 │    Redis 7       │   Soketi (WebSocket)        │
+│  (data store)  │ (cache/queue/    │   (real-time events,        │
+│                │  sessions)       │    terminal streaming)      │
+└────────────────┴──────────────────┴────────────────────────────-┘
+```
+
+### Data Model
+
+```
+Team → Project → Environment → Application / Service / Database
+                                    ↓
+                                 Server (SSH target, Docker daemon)
+```
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Laravel 12, PHP 8.4, Eloquent ORM |
+| Frontend (new) | React 18, TypeScript 5.9, Inertia.js, Tailwind CSS 4 |
+| Frontend (legacy) | Livewire 3, Alpine.js, Blade |
+| Database | PostgreSQL 15 |
+| Cache / Queue | Redis 7 |
+| WebSocket | Soketi (self-hosted Pusher) |
+| Proxy | Traefik v3.6 (auto SSL, routing) |
+| Container Runtime | Docker + Docker Compose |
+| CLI | Go 1.24, Cobra framework |
+| TUI Panel | React 18 + Ink 5 + ssh2 |
+| CI/CD | GitHub Actions → GHCR → VPS SSH deploy |
+| Monitoring | Sentry, Laravel Telescope, Activity Log |
+| Testing | Pest 3.8, Vitest 4, Testing Library |
+
+## Repository Structure
+
+```
+saturn-platform/
+├── app/                        # Laravel backend
+│   ├── Actions/                #   Business logic (Action pattern)
+│   ├── Http/Controllers/Api/   #   40 API controllers
+│   ├── Jobs/                   #   69 background jobs
+│   ├── Models/                 #   94 Eloquent models
+│   ├── Events/                 #   WebSocket broadcast events
+│   ├── Policies/               #   Team-based authorization
+│   └── Services/               #   Core services (status aggregation, config generation)
+├── resources/js/               # React frontend
+│   ├── pages/                  #   137 Inertia.js pages
+│   ├── components/             #   UI components (Headless UI, Lucide icons)
+│   ├── hooks/                  #   40+ custom hooks
+│   └── types/                  #   TypeScript definitions
+├── cli/                        # Go CLI (saturn login/deploy/server/...)
+├── panel/                      # TUI Panel (Ink terminal UI)
+├── templates/compose/          # 318 service templates
+├── deploy/
+│   ├── scripts/                #   deploy.sh, saturn-ctl.sh, setup-proxy.sh
+│   ├── environments/           #   .env.example per environment
+│   └── proxy/                  #   Traefik configuration
+├── tests/
+│   ├── Unit/                   #   153 unit test files
+│   └── Feature/                #   52 feature test files
+├── docker-compose.yml          # Base services
+├── docker-compose.dev.yml      # Local development overrides
+├── docker-compose.env.yml      # VPS deployment (parameterized)
+├── Dockerfile                  # Multi-stage production build
+├── Makefile                    # Development shortcuts
+└── .github/workflows/          # CI/CD pipeline
+```
+
+## Environments & Deployment
+
+### Three-Environment Pipeline
+
+| Branch | Environment | Domain | Deploy Trigger |
+|--------|------------|--------|---------------|
+| `dev` | Development | `dev.saturn.ac` | Auto on push |
+| `staging` | UAT | `uat.saturn.ac` | Auto on push |
+| `main` | Production | `saturn.ac` | Auto on push |
+
+**Promotion flow:** `feature branch` → PR to `dev` → auto-deploy → PR to `staging` → auto-deploy → PR to `main` → production deploy
+
+### Infrastructure
+
+- **VPS:** Hetzner AX42, 64 GB RAM, Ubuntu 24.04
+- **Proxy:** Traefik v3.6 shared across all environments (`saturn` Docker network)
+- **Isolation:** Each environment gets its own database, Redis, and internal network
+- **Containers per env:** `saturn-{env}`, `saturn-db-{env}`, `saturn-redis-{env}`, `saturn-realtime-{env}`
+- **Data:** `/data/saturn/{dev,staging,production}/` — fully isolated per environment
+- **Registry:** `ghcr.io/kpizzy812/saturn-platform`
+
+### CI/CD Pipeline
+
+```
+Push to branch
+    │
+    ├── [prepare]   Determine env, image tag, domain
+    ├── [test]      Pint + PHPStan + Pest (PHP 8.4)
+    ├── [build]     Docker Buildx → push to GHCR
+    └── [deploy]    Rsync + SSH → deploy.sh on VPS
+                        │
+                        ├── pg_dump backup
+                        ├── Pull images
+                        ├── Start infrastructure (DB, Redis, Soketi)
+                        ├── Run migrations
+                        ├── Start application
+                        ├── Clear & rebuild caches
+                        ├── Restore Traefik config
+                        └── Health check (/api/health)
+```
+
+## Local Development
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Node.js 24+ (for frontend)
+- PHP 8.4 (for IDE / linting only)
+
+### Quick Start
 
 ```bash
-curl -fsSL #/saturn/install.sh | bash
+# 1. Clone and start
+git clone git@github.com:kpizzy812/coolify-Saturn.git
+cd coolify-Saturn
+cp .env.example .env
+
+# 2. Start all services
+make dev
+
+# 3. Install dependencies and seed database
+make install
+make fresh          # migrate:fresh --seed
+
+# 4. Start frontend dev server
+npm install
+npm run dev         # Vite HMR on :5173
 ```
-You can find the installation script source [here](./scripts/install.sh).
 
-> [!NOTE]
-> Please refer to the [docs](https://saturn.io/docs/installation) for more information about the installation.
+### Available Make Commands
 
-## Support
+| Command | Description |
+|---------|------------|
+| `make dev` | Start all Docker services |
+| `make dev-build` | Build images and start |
+| `make dev-down` | Stop all services |
+| `make dev-logs` | Follow container logs |
+| `make shell` | Open Laravel container shell |
+| `make db-shell` | Open PostgreSQL shell |
+| `make redis-shell` | Open Redis CLI |
+| `make install` | Run `composer install` |
+| `make migrate` | Run database migrations |
+| `make fresh` | Fresh migrate + seed |
+| `make test` | Run PHP tests (inside Docker) |
+| `make test-js` | Run frontend tests (Vitest) |
+| `make build` | Build frontend for production |
+| `make panel` | Launch TUI Panel |
+| `make panel-test` | Run TUI Panel tests |
 
-Contact us at [saturn.io/docs/contact](https://saturn.io/docs/contact).
+### Docker Services (Local)
 
-## Cloud
+| Service | Port | Description |
+|---------|------|------------|
+| saturn | 8000 | Laravel application |
+| postgres | 5432 | PostgreSQL 15 |
+| redis | 6379 | Redis 7 |
+| soketi | 6001, 6002 | WebSocket + Terminal |
+| vite | 5173 | Frontend HMR |
+| mailpit | 8025 | Email sandbox UI |
+| minio | 9000, 9001 | S3-compatible storage |
 
-If you do not want to self-host Saturn Platform, there is a paid cloud version available: [app.saturn.io](https://app.saturn.io)
+## Testing
 
-For more information & pricing, take a look at our landing page [saturn.io](https://saturn.io).
+### PHP Tests
 
-## Why should I use the Cloud version?
-The recommended way to use Saturn Platform is to have one server for Saturn Platform and one (or more) for the resources you are deploying. A server is around 4-5$/month.
+```bash
+# Unit tests (no database, can run locally)
+./vendor/bin/pest tests/Unit
+./vendor/bin/pest tests/Unit/SomeTest.php
 
-By subscribing to the cloud version, you get the Saturn Platform server for the same price, but with:
-- High-availability
-- Free email notifications
-- Better support
-- Less maintenance for you
+# Feature tests (MUST run inside Docker — requires database)
+docker exec saturn php artisan test
+docker exec saturn php artisan test --filter=SomeTest
+```
 
-## Donations
-To stay completely free and open-source, with no feature behind the paywall and evolve the project, we need your help. If you like Saturn Platform, please consider donating to help us fund the project's future development.
+### Frontend Tests
 
-[saturn.io/sponsorships](https://saturn.io/sponsorships)
+```bash
+npm run test              # Vitest (watch mode)
+npm run test -- --run     # Single run
+npm run test:coverage     # With coverage report
+```
 
-Thank you so much!
+### TUI Panel Tests
 
-### Big Sponsors
+```bash
+make panel-test           # 489 tests
+```
 
-* [23M](https://23m.com?ref=saturn.io) - Your experts for high-availability hosting solutions!
-* [Algora](https://algora.io?ref=saturn.io) - Open source contribution platform
-* [American Cloud](https://americancloud.com?ref=saturn.io) - US-based cloud infrastructure services
-* [Arcjet](https://arcjet.com?ref=saturn.io) - Advanced web security and performance solutions
-* [BC Direct](https://bc.direct?ref=saturn.io) - Your trusted technology consulting partner
-* [Blacksmith](https://blacksmith.sh?ref=saturn.io) - Infrastructure automation platform
-* [Brand.dev](https://brand.dev?ref=saturn.io) - API to personalize your product with logos, colors, and company info from any domain
-* [ByteBase](https://www.bytebase.com?ref=saturn.io) - Database CI/CD and Security at Scale
-* [CodeRabbit](https://coderabbit.ai?ref=saturn.io) - Cut Code Review Time & Bugs in Half
-* [COMIT](https://comit.international?ref=saturn.io) - New York Times award–winning contractor
-* [CompAI](https://www.trycomp.ai?ref=saturn.io) - Open source compliance automation platform
-* [Convex](https://convex.link/saturn.io) - Open-source reactive database for web app developers
-* [CubePath](https://cubepath.com/?ref=saturn.io) - Dedicated Servers & Instant Deploy
-* [Dade2](https://dade2.net/?ref=saturn.io) - IT Consulting, Cloud Solutions & System Integration
-* [Formbricks](https://formbricks.com?ref=saturn.io) - The open source feedback platform
-* [GoldenVM](https://billing.goldenvm.com?ref=saturn.io) - Premium virtual machine hosting solutions
-* [Hetzner](http://htznr.li/Saturn PlatformXHetzner) - Server, cloud, hosting, and data center solutions
-* [Hostinger](https://www.hostinger.com/vps/saturn-hosting?ref=saturn.io) - Web hosting and VPS solutions
-* [JobsCollider](https://jobscollider.com/remote-jobs?ref=saturn.io) - 30,000+ remote jobs for developers
-* [Juxtdigital](https://juxtdigital.com?ref=saturn.io) - Digital PR & AI Authority Building Agency
-* [LiquidWeb](https://liquidweb.com?ref=saturn.io) - Premium managed hosting solutions
-* [Logto](https://logto.io?ref=saturn.io) - The better identity infrastructure for developers
-* [Macarne](https://macarne.com?ref=saturn.io) - Best IP Transit & Carrier Ethernet Solutions for Simplified Network Connectivity
-* [Mobb](https://vibe.mobb.ai/?ref=saturn.io) - Secure Your AI-Generated Code to Unlock Dev Productivity
-* [PFGLabs](https://pfglabs.com?ref=saturn.io) - Build Real Projects with Golang
-* [Ramnode](https://ramnode.com/?ref=saturn.io) - High Performance Cloud VPS Hosting
-* [SaasyKit](https://saasykit.com?ref=saturn.io) - Complete SaaS starter kit for developers
-* [SupaGuide](https://supa.guide?ref=saturn.io) - Your comprehensive guide to Supabase
-* [Supadata AI](https://supadata.ai/?ref=saturn.io) - Scrape YouTube, web, and files. Get AI-ready, clean data
-* [Syntax.fm](https://syntax.fm?ref=saturn.io) - Podcast for web developers
-* [Tigris](https://www.tigrisdata.com?ref=saturn.io) - Modern developer data platform
-* [Tolgee](https://tolgee.io?ref=saturn.io) - The open source localization platform
-* [Ubicloud](https://www.ubicloud.com?ref=saturn.io) - Open source cloud infrastructure platform
+### Code Quality
 
+```bash
+./vendor/bin/pint           # PHP formatter (PSR-12)
+./vendor/bin/phpstan analyse  # Static analysis (level 5)
+npm run lint                # ESLint for TypeScript/React
+```
 
-### Small Sponsors
+## API
 
-<a href="https://open-elements.com/?utm_source=saturn.io"><img width="60px" alt="OpenElements" src="https://github.com/OpenElements.png"/></a>
-<a href="https://xaman.app/?utm_source=saturn.io"><img width="60px" alt="XamanApp" src="https://github.com/XamanApp.png"/></a>
-<a href="https://www.uxwizz.com/?utm_source=saturn.io"><img width="60px" alt="UXWizz" src="https://github.com/UXWizz.png"/></a>
-<a href="https://evercam.io/?utm_source=saturn.io"><img width="60px" alt="Evercam" src="https://github.com/evercam.png"/></a>
-<a href="https://github.com/iujlaki"><img width="60px" alt="Imre Ujlaki" src="https://github.com/iujlaki.png"/></a>
-<a href="https://bsky.app/profile/jyc.dev"><img width="60px" alt="jyc.dev" src="https://github.com/jycouet.png"/></a>
-<a href="https://github.com/therealjp?utm_source=saturn.io"><img width="60px" alt="TheRealJP" src="https://github.com/therealjp.png"/></a>
-<a href="https://360creators.com/?utm_source=saturn.io"><img width="60px" alt="360Creators" src="https://opencollective-production.s3.us-west-1.amazonaws.com/account-avatar/503e0953-bff7-4296-b4cc-5e36d40eecc0/icon-360creators.png"/></a>
-<a href="https://github.com/aniftyco"><img width="60px" alt="NiftyCo" src="https://github.com/aniftyco.png"/></a>
-<a href="https://dry.software/?utm_source=saturn.io"><img width="60px" alt="Dry Software" src="https://github.com/dry-software.png"/></a>
-<a href="https://lightspeed.run/?utm_source=saturn.io"><img width="60px" alt="Lightspeed.run" src="https://github.com/lightspeedrun.png"/></a>
-<a href="https://linkdr.com?utm_source=saturn.io"><img width="60px" alt="LinkDr" src="https://github.com/LLM-Inc.png"/></a>
-<a href="http://gravitywiz.com/?utm_source=saturn.io"><img width="60px" alt="Gravity Wiz" src="https://github.com/gravitywiz.png"/></a>
-<a href="https://bitlaunch.io/?utm_source=saturn.io"><img width="60px" alt="BitLaunch" src="https://github.com/bitlaunchio.png"/></a>
-<a href="https://bestforandroid.com/?utm_source=saturn.io"><img width="60px" alt="Best for Android" src="https://github.com/bestforandroid.png"/></a>
-<a href="https://il.ly/?utm_source=saturn.io"><img width="60px" alt="Ilias Ism" src="https://github.com/Illyism.png"/></a>
-<a href="https://formbricks.com/?utm_source=saturn.io"><img width="60px" alt="Formbricks" src="https://github.com/formbricks.png"/></a>
-<a href="https://www.serversearcher.com/"><img width="60px" alt="Server Searcher" src="https://github.com/serversearcher.png"/></a>
-<a href="https://www.reshot.ai/?utm_source=saturn.io"><img width="60px" alt="Reshot" src="https://saturn.io/images/reshotai.png"/></a>
-<a href="https://cirun.io/?utm_source=saturn.io"><img width="60px" alt="Cirun" src="https://saturn.io/images/cirun-logo.png"/></a>
-<a href="https://typebot.io/?utm_source=saturn.io"><img width="60px" alt="Typebot" src="https://cdn.bsky.app/img/avatar/plain/did:plc:gwxcta3pccyim4z5vuultdqx/bafkreig23hci7e2qpdxicsshnuzujbcbcgmydxhbybkewszdezhdodv42m@jpeg"/></a>
-<a href="https://cccareers.org/?utm_source=saturn.io"><img width="60px" alt="Creating Coding Careers" src="https://github.com/cccareers.png"/></a>
-<a href="https://internetgarden.co/?utm_source=saturn.io"><img width="60px" alt="Internet Garden" src="https://saturn.io/images/internetgarden.ico"/></a>
-<a href="https://web3.career/?utm_source=saturn.io"><img width="60px" alt="Web3 Jobs" src="https://saturn.io/images/web3jobs.png"/></a>
-<a href="https://codext.link/saturn-io?utm_source=saturn.io"><img width="60px" alt="Codext" src="https://saturn.io/images/codext.jpg"/></a>
-<a href="https://github.com/monocursive"><img width="60px" alt="Michael Mazurczak" src="https://github.com/monocursive.png"/></a>
-<a href="https://fider.io/?utm_source=saturn.io"><img width="60px" alt="Fider" src="https://github.com/getfider.png"/></a>
-<a href="https://www.flint.sh/en/home?utm_source=saturn.io"><img width="60px" alt="Flint" src="https://github.com/Flint-company.png"/></a>
-<a href="https://github.com/urtho"><img width="60px" alt="Paweł Pierścionek" src="https://github.com/urtho.png"/></a>
-<a href="https://www.runpod.io/?utm_source=saturn.io"><img width="60px" alt="RunPod" src="https://saturn.io/images/runpod.svg"/></a>
-<a href="https://dartnode.com/?utm_source=saturn.io"><img width="60px" alt="DartNode" src="https://github.com/dartnode.png"/></a>
-<a href="https://github.com/whitesidest"><img width="60px" alt="Tyler Whitesides" src="https://avatars.githubusercontent.com/u/12365916?s=52&v=4"/></a>
-<a href="https://serpapi.com/?utm_source=saturn.io"><img width="60px" alt="SerpAPI" src="https://github.com/serpapi.png"/></a>
-<a href="https://aquarela.io"><img width="60px" alt="Aquarela" src="https://github.com/aquarela-io.png"/></a>
-<a href="https://cryptojobslist.com/?utm_source=saturn.io"><img width="60px" alt="Crypto Jobs List" src="https://github.com/cryptojobslist.png"/></a>
-<a href="https://www.youtube.com/@AlfredNutile?utm_source=saturn.io"><img width="60px" alt="Alfred Nutile" src="https://github.com/alnutile.png"/></a>
-<a href="https://startupfa.me?utm_source=saturn.io"><img width="60px" alt="Startup Fame" src="https://github.com/startupfame.png"/></a>
-<a href="https://barrad.me/?utm_source=saturn.io"><img width="60px" alt="Younes Barrad" src="https://github.com/Flowko.png"/></a>
-<a href="https://jonasjaeger.com?utm_source=saturn.io"><img width="60px" alt="Jonas Jaeger" src="https://github.com/toxin20.png"/></a>
-<a href="https://pixel.ao/?utm_source=saturn.io"><img width="60px" alt="Pixel Infinito" src="https://github.com/pixelinfinito.png"/></a>
-<a href="https://github.com/corentinclichy"><img width="60px" alt="Corentin Clichy" src="https://github.com/corentinclichy.png"/></a>
-<a href="https://x.com/mrsmith9ja?utm_source=saturn.io"><img width="60px" alt="Thompson Edolo" src="https://github.com/verygreenboi.png"/></a>
-<a href="https://devhuset.no?utm_source=saturn.io"><img width="60px" alt="Devhuset" src="https://github.com/devhuset.png"/></a>
-<a href="https://arvensis.systems/?utm_source=saturn.io"><img width="60px" alt="Arvensis Systems" src="https://saturn.io/images/arvensis.png"/></a>
-<a href="https://github.com/Niki2k1"><img width="60px" alt="Niklas Lausch" src="https://github.com/Niki2k1.png"/></a>
-<a href="https://capgo.app/?utm_source=saturn.io"><img width="60px" alt="Cap-go" src="https://github.com/cap-go.png"/></a>
-<a href="https://interviewpal.com/?utm_source=saturn.io"><img width="60px" alt="InterviewPal" src="/public/svgs/interviewpal.svg"/></a>
+REST API v1 with 89+ endpoints. Authentication via Laravel Sanctum tokens.
 
+### Token Abilities
 
-...and many more at [GitHub Sponsors](https://github.com/sponsors/saturnplatform)
+| Ability | Description |
+|---------|------------|
+| `read` | Read resources |
+| `write` | Create / update resources |
+| `deploy` | Trigger deployments |
+| `root` | Full access |
+| `read:sensitive` | Access environment variables |
 
-## Recognitions
+### Key Endpoints
 
-<p>
-<a href="https://news.ycombinator.com/item?id=26624341">
-  <img
-    style="width: 250px; height: 54px;" width="250" height="54"
-    alt="Featured on Hacker News"
-    src="https://hackernews-badge.vercel.app/api?id=26624341"
-  />
-</a>
-</p>
+```
+GET    /api/health                          # Public health check
+POST   /api/v1/cli/auth/init               # Device auth flow (CLI)
 
-<a href="https://www.producthunt.com/posts/saturn?ref=badge-featured&utm_medium=badge&utm_souce=badge-saturn" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=338273&theme=light" alt="Saturn Platform - An&#0032;open&#0045;source&#0032;&#0038;&#0032;self&#0045;hostable&#0032;Heroku&#0044;&#0032;Netlify&#0032;alternative | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+GET    /api/v1/teams                        # Teams & members
+GET    /api/v1/projects                     # Projects & environments
+GET    /api/v1/servers                      # Servers + Sentinel metrics
+GET    /api/v1/applications                 # Applications CRUD
+GET    /api/v1/databases                    # Databases CRUD + backups
+GET    /api/v1/services                     # Services CRUD + health
+POST   /api/v1/deploy                       # Trigger deployment
+GET    /api/v1/deployments                  # Deployment history + logs
+GET    /api/v1/notifications                # Notification channels
+POST   /api/v1/webhooks                     # Team webhooks
+GET    /api/v1/deployment-approvals         # Approve/reject deploys
+```
 
-<a href="https://trendshift.io/repositories/634" target="_blank"><img src="https://trendshift.io/api/badge/repositories/634" alt="saturnplatform%2Fsaturn | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+## CLI
 
-## Core Maintainers
+Go-based CLI for managing Saturn from the terminal.
 
-| Andras Bacsai | 🏔️ Peak |
-|------------|------------|
-| <img src="https://github.com/andrasbacsai.png" width="200px" alt="Andras Bacsai" /> | <img src="https://github.com/peaklabs-dev.png" width="200px" alt="peaklabs-dev" /> |
-| <a href="https://github.com/andrasbacsai"><img src="https://api.iconify.design/devicon:github.svg" width="25px"></a> <a href="https://x.com/heyandras"><img src="https://api.iconify.design/devicon:twitter.svg" width="25px"></a> <a href="https://bsky.app/profile/heyandras.dev"><img src="https://api.iconify.design/simple-icons:bluesky.svg" width="25px"></a> | <a href="https://github.com/peaklabs-dev"><img src="https://api.iconify.design/devicon:github.svg" width="25px"></a> <a href="https://x.com/peaklabs_dev"><img src="https://api.iconify.design/devicon:twitter.svg" width="25px"></a> <a href="https://bsky.app/profile/peaklabs.dev"><img src="https://api.iconify.design/simple-icons:bluesky.svg" width="25px"></a> |
+```bash
+# Authentication (device auth flow — opens browser)
+saturn login
 
-## Repo Activity
+# Manage resources
+saturn server list
+saturn application list
+saturn application deploy <uuid>
+saturn database list
+saturn deployment list
+saturn deployment logs <uuid>
+```
 
-![Alt](https://repobeats.axiom.co/api/embed/eab1c8066f9c59d0ad37b76c23ebb5ccac4278ae.svg "Repobeats analytics image")
+Config stored at `~/.config/saturn/config.json`.
 
-## Star History
+## TUI Panel
 
-[![Star History Chart](https://api.star-history.com/svg?repos=saturnplatform/saturn&type=Date)](https://star-history.com/#saturnplatform/saturn&Date)
+Terminal UI for real-time infrastructure management. Connects directly to VPS via SSH.
+
+```bash
+make panel              # Launch TUI
+```
+
+**Screens:** Dashboard `[1]`, Git `[2]`, Deploy `[3]`, Logs `[4]`, Containers `[5]`, Database `[6]`, Env `[7]`
+
+**Navigation:** Number keys `1-7` switch screens, `q` quit, `?` help, `e` cycle environment, `Esc` back
+
+## VPS Management
+
+### Quick Commands (on server)
+
+```bash
+# Interactive control panel
+./deploy/scripts/saturn-ctl.sh
+
+# Direct commands
+./deploy/scripts/saturn-ctl.sh status
+./deploy/scripts/saturn-ctl.sh logs
+./deploy/scripts/saturn-ctl.sh deploy
+./deploy/scripts/saturn-ctl.sh restart
+```
+
+### Install Shell Aliases
+
+```bash
+./deploy/scripts/install-aliases.sh
+
+# After installation:
+saturn                    # Open control panel
+saturn-logs               # View logs
+saturn-deploy             # Deploy
+saturn-shell              # Container shell
+saturn-artisan            # Laravel Artisan
+saturn-db                 # PostgreSQL shell
+```
+
+### Manual Deploy (without CI/CD)
+
+```bash
+ssh root@157.180.57.47
+cd /root/coolify-Saturn
+git pull origin dev
+SATURN_ENV=dev ./deploy/scripts/deploy.sh
+```
+
+### Health Check
+
+```bash
+curl https://dev.saturn.ac/api/health
+# {"status":"ok"}
+```
+
+## Configuration
+
+Environment configuration per deployment:
+
+```
+deploy/environments/
+├── dev/.env.example          # Development defaults
+├── staging/.env.example      # Staging defaults
+└── production/.env.example   # Production defaults (hardened)
+```
+
+### Critical Environment Variables
+
+```env
+# Application
+APP_ENV=production|staging|development
+APP_URL=https://saturn.ac
+APP_KEY=                        # php artisan key:generate --show
+SATURN_ENV=production|staging|dev
+
+# Database
+DB_CONNECTION=pgsql
+DB_HOST=saturn-db               # Docker service name
+DB_DATABASE=saturn
+DB_PASSWORD=                    # openssl rand -base64 32
+
+# Redis
+REDIS_HOST=saturn-redis
+REDIS_PASSWORD=                 # openssl rand -base64 32
+
+# WebSocket (Soketi)
+BROADCAST_CONNECTION=pusher
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+
+# Security
+CORS_ALLOWED_ORIGINS=https://saturn.ac
+IS_REGISTRATION_ENABLED=false   # Production: disabled
+SANCTUM_STATEFUL_DOMAINS=saturn.ac
+
+# Monitoring
+SENTRY_DSN=                     # Optional
+TELESCOPE_ENABLED=false         # Production: disabled
+```
+
+## Project Documentation
+
+Detailed technical documentation lives in the `.ai/` directory:
+
+| Document | Contents |
+|----------|---------|
+| `.ai/core/technology-stack.md` | Version numbers (single source of truth) |
+| `.ai/core/application-architecture.md` | System design, CLI auth, container status |
+| `.ai/core/deployment-architecture.md` | Docker Compose, deploy script, Traefik |
+| `.ai/development/testing-patterns.md` | Testing conventions and patterns |
+| `.ai/patterns/security-patterns.md` | Mass assignment, injection, multi-tenancy |
+| `.ai/patterns/database-patterns.md` | Queries, caching, N+1 prevention |
+| `.ai/patterns/frontend-patterns.md` | React components, hooks, Inertia |
+
+## License
+
+[Apache License 2.0](LICENSE)
+
+---
+
+<a id="русский"></a>
+
+## Что такое Saturn Platform?
+
+Saturn — это self-hosted Platform as a Service (PaaS), альтернатива Heroku, Netlify и Vercel, которая работает на вашей собственной инфраструктуре. Платформа управляет серверами, приложениями, базами данных и сервисами через SSH, поддерживая Docker-based деплой без привязки к вендору.
+
+### Ключевые возможности
+
+- **Деплой приложений** — Git-based Docker деплой с превью билдов, откатами и мульти-серверной поддержкой
+- **Управление базами данных** — 8 типов БД: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, KeyDB, Dragonfly, ClickHouse
+- **Шаблоны сервисов** — 318 готовых Docker Compose шаблонов (Supabase, Elasticsearch, Appwrite, n8n и др.)
+- **Мониторинг в реальном времени** — WebSocket-обновления статусов, логов деплоя и метрик контейнеров
+- **Командная работа** — Мультитенантность с RBAC, аппрувы деплоев, аудит-логи и вебхуки
+- **Уведомления** — Slack, Discord, Telegram, Email, Pushover, кастомные вебхуки
+- **REST API** — 89+ эндпоинтов с OpenAPI-спецификацией, авторизация по Sanctum-токенам
+- **CLI и TUI** — Go-based CLI (`saturn`) + терминальная UI-панель (Ink/React)
+- **SSL/TLS** — Автоматические Let's Encrypt сертификаты через Traefik
+- **Бэкапы** — Расписание бэкапов БД на S3/SFTP через pg_dump
+
+## Архитектура
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Traefik v3.6                             │
+│             (SSL-терминация, роутинг, GZIP)                     │
+├──────────┬──────────────┬──────────────┬───────────────────────-┤
+│  Web UI  │  REST API    │  WebSocket   │  Terminal WS           │
+│  :443    │  /api/v1/*   │  /app/{key}  │  /terminal/ws          │
+├──────────┴──────────────┴──────────────┴───────────────────────-┤
+│                     Laravel 12 (PHP 8.4)                        │
+│  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────────────┐  │
+│  │ Inertia  │ │ Sanctum  │ │  Actions  │ │  69 фоновых      │  │
+│  │ React 18 │ │ API Auth │ │  Pattern  │ │  задач (деплой,  │  │
+│  │ 137 стр. │ │ RBAC     │ │  94 модели│ │  бэкап, ...)     │  │
+│  └──────────┘ └──────────┘ └───────────┘ └──────────────────┘  │
+├────────────────┬──────────────────┬────────────────────────────-┤
+│  PostgreSQL 15 │    Redis 7       │   Soketi (WebSocket)        │
+│  (хранилище)   │  (кэш/очереди/  │   (реалтайм события,        │
+│                │   сессии)        │    стриминг терминала)       │
+└────────────────┴──────────────────┴────────────────────────────-┘
+```
+
+### Модель данных
+
+```
+Команда → Проект → Окружение → Приложение / Сервис / База данных
+                                    ↓
+                                 Сервер (SSH-цель, Docker daemon)
+```
+
+### Технологический стек
+
+| Слой | Технология |
+|------|-----------|
+| Бэкенд | Laravel 12, PHP 8.4, Eloquent ORM |
+| Фронтенд (новый) | React 18, TypeScript 5.9, Inertia.js, Tailwind CSS 4 |
+| Фронтенд (legacy) | Livewire 3, Alpine.js, Blade |
+| База данных | PostgreSQL 15 |
+| Кэш / Очереди | Redis 7 |
+| WebSocket | Soketi (self-hosted Pusher) |
+| Прокси | Traefik v3.6 (авто SSL, роутинг) |
+| Контейнеры | Docker + Docker Compose |
+| CLI | Go 1.24, Cobra |
+| TUI-панель | React 18 + Ink 5 + ssh2 |
+| CI/CD | GitHub Actions → GHCR → VPS SSH деплой |
+| Мониторинг | Sentry, Laravel Telescope, Activity Log |
+| Тестирование | Pest 3.8, Vitest 4, Testing Library |
+
+## Структура репозитория
+
+```
+saturn-platform/
+├── app/                        # Laravel бэкенд
+│   ├── Actions/                #   Бизнес-логика (Action паттерн)
+│   ├── Http/Controllers/Api/   #   40 API контроллеров
+│   ├── Jobs/                   #   69 фоновых задач
+│   ├── Models/                 #   94 Eloquent модели
+│   ├── Events/                 #   WebSocket-события
+│   ├── Policies/               #   Авторизация на уровне команд
+│   └── Services/               #   Сервисы (агрегация статусов, генерация конфигов)
+├── resources/js/               # React фронтенд
+│   ├── pages/                  #   137 Inertia.js страниц
+│   ├── components/             #   UI-компоненты (Headless UI, Lucide)
+│   ├── hooks/                  #   40+ кастомных хуков
+│   └── types/                  #   TypeScript-определения
+├── cli/                        # Go CLI (saturn login/deploy/server/...)
+├── panel/                      # TUI-панель (Ink-терминальный UI)
+├── templates/compose/          # 318 шаблонов сервисов
+├── deploy/
+│   ├── scripts/                #   deploy.sh, saturn-ctl.sh, setup-proxy.sh
+│   ├── environments/           #   .env.example для каждого окружения
+│   └── proxy/                  #   Конфигурация Traefik
+├── tests/
+│   ├── Unit/                   #   153 файла юнит-тестов
+│   └── Feature/                #   52 файла функциональных тестов
+├── docker-compose.yml          # Базовые сервисы
+├── docker-compose.dev.yml      # Переопределения для локальной разработки
+├── docker-compose.env.yml      # VPS-деплой (параметризованный)
+├── Dockerfile                  # Многоэтапная продакшн-сборка
+├── Makefile                    # Команды разработки
+└── .github/workflows/          # CI/CD пайплайн
+```
+
+## Окружения и деплой
+
+### Три окружения
+
+| Ветка | Окружение | Домен | Триггер деплоя |
+|-------|----------|-------|---------------|
+| `dev` | Development | `dev.saturn.ac` | Автоматически при push |
+| `staging` | UAT | `uat.saturn.ac` | Автоматически при push |
+| `main` | Production | `saturn.ac` | Автоматически при push |
+
+**Путь промоции:** `feature branch` → PR в `dev` → авто-деплой → PR в `staging` → авто-деплой → PR в `main` → деплой в прод
+
+### Инфраструктура
+
+- **VPS:** Hetzner AX42, 64 ГБ RAM, Ubuntu 24.04
+- **Прокси:** Traefik v3.6, общий для всех окружений (Docker-сеть `saturn`)
+- **Изоляция:** Каждое окружение имеет собственную БД, Redis и внутреннюю сеть
+- **Контейнеры:** `saturn-{env}`, `saturn-db-{env}`, `saturn-redis-{env}`, `saturn-realtime-{env}`
+- **Данные:** `/data/saturn/{dev,staging,production}/` — полная изоляция по окружениям
+- **Registry:** `ghcr.io/kpizzy812/saturn-platform`
+
+### CI/CD пайплайн
+
+```
+Push в ветку
+    │
+    ├── [prepare]   Определение env, image tag, домена
+    ├── [test]      Pint + PHPStan + Pest (PHP 8.4)
+    ├── [build]     Docker Buildx → push в GHCR
+    └── [deploy]    Rsync + SSH → deploy.sh на VPS
+                        │
+                        ├── pg_dump бэкап БД
+                        ├── Pull образов
+                        ├── Запуск инфраструктуры (DB, Redis, Soketi)
+                        ├── Миграции
+                        ├── Запуск приложения
+                        ├── Очистка и пересборка кэшей
+                        ├── Восстановление конфигов Traefik
+                        └── Health check (/api/health)
+```
+
+## Локальная разработка
+
+### Предварительные требования
+
+- Docker и Docker Compose
+- Node.js 24+ (для фронтенда)
+- PHP 8.4 (только для IDE / линтинга)
+
+### Быстрый старт
+
+```bash
+# 1. Клонировать и запустить
+git clone git@github.com:kpizzy812/coolify-Saturn.git
+cd coolify-Saturn
+cp .env.example .env
+
+# 2. Запустить все сервисы
+make dev
+
+# 3. Установить зависимости и заполнить БД
+make install
+make fresh          # migrate:fresh --seed
+
+# 4. Запустить фронтенд дев-сервер
+npm install
+npm run dev         # Vite HMR на :5173
+```
+
+### Команды Makefile
+
+| Команда | Описание |
+|---------|---------|
+| `make dev` | Запуск всех Docker-сервисов |
+| `make dev-build` | Сборка образов и запуск |
+| `make dev-down` | Остановка сервисов |
+| `make dev-logs` | Следить за логами |
+| `make shell` | Shell в контейнере Laravel |
+| `make db-shell` | Shell PostgreSQL |
+| `make redis-shell` | Redis CLI |
+| `make install` | `composer install` |
+| `make migrate` | Миграции БД |
+| `make fresh` | Чистая миграция + seed |
+| `make test` | PHP-тесты (в Docker) |
+| `make test-js` | Фронтенд-тесты (Vitest) |
+| `make build` | Продакшн-сборка фронтенда |
+| `make panel` | Запуск TUI-панели |
+| `make panel-test` | Тесты TUI-панели |
+
+### Docker-сервисы (локально)
+
+| Сервис | Порт | Описание |
+|--------|------|---------|
+| saturn | 8000 | Laravel-приложение |
+| postgres | 5432 | PostgreSQL 15 |
+| redis | 6379 | Redis 7 |
+| soketi | 6001, 6002 | WebSocket + терминал |
+| vite | 5173 | Фронтенд HMR |
+| mailpit | 8025 | Песочница для email |
+| minio | 9000, 9001 | S3-совместимое хранилище |
+
+## Тестирование
+
+### PHP-тесты
+
+```bash
+# Юнит-тесты (без БД, можно запускать локально)
+./vendor/bin/pest tests/Unit
+./vendor/bin/pest tests/Unit/SomeTest.php
+
+# Функциональные тесты (ТОЛЬКО в Docker — требуют БД)
+docker exec saturn php artisan test
+docker exec saturn php artisan test --filter=SomeTest
+```
+
+### Фронтенд-тесты
+
+```bash
+npm run test              # Vitest (watch mode)
+npm run test -- --run     # Одноразовый запуск
+npm run test:coverage     # С покрытием
+```
+
+### Тесты TUI-панели
+
+```bash
+make panel-test           # 489 тестов
+```
+
+### Качество кода
+
+```bash
+./vendor/bin/pint           # PHP-форматтер (PSR-12)
+./vendor/bin/phpstan analyse  # Статический анализ (уровень 5)
+npm run lint                # ESLint для TypeScript/React
+```
+
+## API
+
+REST API v1 с 89+ эндпоинтами. Авторизация через токены Laravel Sanctum.
+
+### Возможности токенов
+
+| Ability | Описание |
+|---------|---------|
+| `read` | Чтение ресурсов |
+| `write` | Создание / обновление |
+| `deploy` | Запуск деплоев |
+| `root` | Полный доступ |
+| `read:sensitive` | Доступ к переменным окружения |
+
+### Основные эндпоинты
+
+```
+GET    /api/health                          # Публичный health check
+POST   /api/v1/cli/auth/init               # Device auth flow (CLI)
+
+GET    /api/v1/teams                        # Команды и участники
+GET    /api/v1/projects                     # Проекты и окружения
+GET    /api/v1/servers                      # Серверы + метрики Sentinel
+GET    /api/v1/applications                 # CRUD приложений
+GET    /api/v1/databases                    # CRUD баз данных + бэкапы
+GET    /api/v1/services                     # CRUD сервисов + health check
+POST   /api/v1/deploy                       # Запуск деплоя
+GET    /api/v1/deployments                  # История деплоев + логи
+GET    /api/v1/notifications                # Каналы уведомлений
+POST   /api/v1/webhooks                     # Командные вебхуки
+GET    /api/v1/deployment-approvals         # Аппрувы деплоев
+```
+
+## CLI
+
+Go-based CLI для управления Saturn из терминала.
+
+```bash
+# Авторизация (device auth flow — открывает браузер)
+saturn login
+
+# Управление ресурсами
+saturn server list
+saturn application list
+saturn application deploy <uuid>
+saturn database list
+saturn deployment list
+saturn deployment logs <uuid>
+```
+
+Конфигурация хранится в `~/.config/saturn/config.json`.
+
+## TUI-панель
+
+Терминальный UI для управления инфраструктурой в реальном времени. Подключается напрямую к VPS по SSH.
+
+```bash
+make panel              # Запуск TUI
+```
+
+**Экраны:** Dashboard `[1]`, Git `[2]`, Deploy `[3]`, Logs `[4]`, Containers `[5]`, Database `[6]`, Env `[7]`
+
+**Навигация:** Клавиши `1-7` — переключение экранов, `q` — выход, `?` — справка, `e` — смена окружения, `Esc` — назад
+
+## Управление VPS
+
+### Быстрые команды (на сервере)
+
+```bash
+# Интерактивная панель управления
+./deploy/scripts/saturn-ctl.sh
+
+# Прямые команды
+./deploy/scripts/saturn-ctl.sh status
+./deploy/scripts/saturn-ctl.sh logs
+./deploy/scripts/saturn-ctl.sh deploy
+./deploy/scripts/saturn-ctl.sh restart
+```
+
+### Установка алиасов
+
+```bash
+./deploy/scripts/install-aliases.sh
+
+# После установки:
+saturn                    # Панель управления
+saturn-logs               # Логи
+saturn-deploy             # Деплой
+saturn-shell              # Shell контейнера
+saturn-artisan            # Laravel Artisan
+saturn-db                 # PostgreSQL shell
+```
+
+### Ручной деплой (без CI/CD)
+
+```bash
+ssh root@157.180.57.47
+cd /root/coolify-Saturn
+git pull origin dev
+SATURN_ENV=dev ./deploy/scripts/deploy.sh
+```
+
+### Проверка здоровья
+
+```bash
+curl https://dev.saturn.ac/api/health
+# {"status":"ok"}
+```
+
+## Конфигурация
+
+Файлы конфигурации для каждого окружения:
+
+```
+deploy/environments/
+├── dev/.env.example          # Настройки для разработки
+├── staging/.env.example      # Настройки для UAT
+└── production/.env.example   # Продакшн (усиленная безопасность)
+```
+
+### Критические переменные окружения
+
+```env
+# Приложение
+APP_ENV=production|staging|development
+APP_URL=https://saturn.ac
+APP_KEY=                        # php artisan key:generate --show
+SATURN_ENV=production|staging|dev
+
+# База данных
+DB_CONNECTION=pgsql
+DB_HOST=saturn-db               # Имя Docker-сервиса
+DB_DATABASE=saturn
+DB_PASSWORD=                    # openssl rand -base64 32
+
+# Redis
+REDIS_HOST=saturn-redis
+REDIS_PASSWORD=                 # openssl rand -base64 32
+
+# WebSocket (Soketi)
+BROADCAST_CONNECTION=pusher
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+
+# Безопасность
+CORS_ALLOWED_ORIGINS=https://saturn.ac
+IS_REGISTRATION_ENABLED=false   # Продакшн: отключено
+SANCTUM_STATEFUL_DOMAINS=saturn.ac
+
+# Мониторинг
+SENTRY_DSN=                     # Опционально
+TELESCOPE_ENABLED=false         # Продакшн: отключено
+```
+
+## Документация проекта
+
+Детальная техническая документация находится в директории `.ai/`:
+
+| Документ | Содержание |
+|----------|-----------|
+| `.ai/core/technology-stack.md` | Версии технологий (единый источник истины) |
+| `.ai/core/application-architecture.md` | Архитектура, CLI auth, статусы контейнеров |
+| `.ai/core/deployment-architecture.md` | Docker Compose, скрипт деплоя, Traefik |
+| `.ai/development/testing-patterns.md` | Конвенции и паттерны тестирования |
+| `.ai/patterns/security-patterns.md` | Mass assignment, инъекции, мультитенантность |
+| `.ai/patterns/database-patterns.md` | Запросы, кэширование, предотвращение N+1 |
+| `.ai/patterns/frontend-patterns.md` | React-компоненты, хуки, Inertia |
+
+## Лицензия
+
+[Apache License 2.0](LICENSE)

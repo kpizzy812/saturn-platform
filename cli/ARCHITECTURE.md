@@ -1,10 +1,10 @@
-# Coolify CLI Architecture
+# Saturn CLI Architecture
 
-This document describes the architecture and design principles of the Coolify CLI.
+This document describes the architecture and design principles of the Saturn CLI.
 
 ## Overview
 
-The Coolify CLI is a command-line interface for managing Coolify instances, servers, projects, and deployments. It follows a layered architecture pattern that separates concerns and promotes maintainability.
+The Saturn CLI is a command-line interface for managing Saturn instances, servers, projects, and deployments. It follows a layered architecture pattern that separates concerns and promotes maintainability.
 
 ## Architecture Layers
 
@@ -46,8 +46,8 @@ The Coolify CLI is a command-line interface for managing Coolify instances, serv
 └────────────────────────┬────────────────────────────────┘
                          │
 ┌────────────────────────▼────────────────────────────────┐
-│                 Coolify API (External)                  │
-│              https://instance.coolify.io/api/v1/        │
+│                 Saturn API (External)                  │
+│              https://instance.saturn.io/api/v1/        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -59,7 +59,7 @@ The Coolify CLI is a command-line interface for managing Coolify instances, serv
 │  • Multi-instance management                            │
 │  • Default instance selection                           │
 │  • Token storage                                        │
-│  • ~/.config/coolify/config.json                        │
+│  • ~/.config/saturn/config.json                        │
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
@@ -159,7 +159,7 @@ func (s *ServerService) List(ctx context.Context) ([]models.Server, error) {
 
 ### 3. API Client Layer (`internal/api/`)
 
-**Purpose**: Handle all HTTP communication with Coolify API
+**Purpose**: Handle all HTTP communication with Saturn API
 
 **Responsibilities**:
 - Construct HTTP requests
@@ -194,7 +194,7 @@ func (c *Client) Get(ctx context.Context, path string, result interface{}) error
 
 **Responsibilities**:
 - Load/save configuration from disk
-- Manage multiple Coolify instances
+- Manage multiple Saturn instances
 - Select default instance
 - Store API tokens securely (file permissions)
 
@@ -203,19 +203,19 @@ func (c *Client) Get(ctx context.Context, path string, result interface{}) error
 - `instance.go` - Instance definition
 - `loader.go` - File I/O operations
 
-**Configuration File** (`~/.config/coolify/config.json`):
+**Configuration File** (`~/.config/saturn/config.json`):
 ```json
 {
   "instances": [
     {
       "name": "prod",
-      "fqdn": "https://coolify.example.com",
+      "fqdn": "https://saturn.example.com",
       "token": "your-api-token",
       "default": true
     },
     {
       "name": "staging",
-      "fqdn": "https://staging.coolify.example.com",
+      "fqdn": "https://staging.saturn.example.com",
       "token": "staging-token"
     }
   ]
@@ -262,7 +262,7 @@ func (c *Client) Get(ctx context.Context, path string, result interface{}) error
 
 ### Example: Listing Servers
 
-1. **User Input**: `coolify servers list --format=table`
+1. **User Input**: `saturn servers list --format=table`
 
 2. **Command Layer** (`cmd/servers.go`):
    - Cobra parses the command
@@ -389,8 +389,8 @@ Test multiple layers together:
 
 ### CLI Configuration
 
-**Location**: `~/.config/coolify/config.json` (Linux/macOS)
-**Location**: `%APPDATA%\coolify\config.json` (Windows)
+**Location**: `~/.config/saturn/config.json` (Linux/macOS)
+**Location**: `%APPDATA%\saturn\config.json` (Windows)
 
 **Structure**:
 ```json
@@ -398,7 +398,7 @@ Test multiple layers together:
   "instances": [
     {
       "name": "prod",
-      "fqdn": "https://coolify.example.com",
+      "fqdn": "https://saturn.example.com",
       "token": "your-token",
       "default": true
     }
@@ -413,7 +413,7 @@ Test multiple layers together:
 
 All API calls use: `{fqdn}/api/v1/{endpoint}`
 
-Example: `https://coolify.example.com/api/v1/servers`
+Example: `https://saturn.example.com/api/v1/servers`
 
 ### Authentication
 
@@ -550,10 +550,10 @@ c.httpClient = &http.Client{
 
 ```bash
 # Local build
-go build -o coolify ./coolify
+go build -o saturn ./saturn
 
 # Install locally
-go install ./coolify
+go install ./saturn
 
 # Multi-platform release
 goreleaser release --clean
@@ -583,5 +583,5 @@ goreleaser release --clean
 ## References
 
 - [Cobra Documentation](https://cobra.dev/)
-- [Coolify API Specification](https://github.com/coollabsio/coolify/blob/v4.x/openapi.json)
+- [Saturn API Specification](https://github.com/saturn-platform/saturn/blob/v4.x/openapi.json)
 - [Go Project Layout](https://github.com/golang-standards/project-layout)

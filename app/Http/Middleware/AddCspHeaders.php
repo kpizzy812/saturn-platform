@@ -42,7 +42,7 @@ class AddCspHeaders
             "font-src 'self' data: https://fonts.bunny.net",
             "object-src 'none'",
             "base-uri 'self'",
-            "form-action 'self'",
+            "form-action 'self' https://github.com",
             "frame-ancestors 'self'",
         ]);
     }

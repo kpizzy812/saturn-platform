@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Badge } from '@/components/ui';
 import { Plus, Network, Server, CheckCircle2, XCircle, Box } from 'lucide-react';
 import { getStatusLabel } from '@/lib/statusUtils';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Destination {
     id: number;
@@ -59,9 +60,10 @@ export default function DestinationsIndex({ destinations = [] }: Props) {
 
                 {/* Empty State */}
                 {destinations.length === 0 ? (
+                    <FadeIn>
                     <Card>
                         <CardContent className="p-12 text-center">
-                            <Network className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                            <Network className="h-16 w-16 mx-auto mb-4 opacity-50 animate-pulse-soft" />
                             <h3 className="text-lg font-semibold mb-2">No destinations configured</h3>
                             <p className="text-foreground-muted mb-6">
                                 Create a destination to define where your applications will be deployed
@@ -74,6 +76,7 @@ export default function DestinationsIndex({ destinations = [] }: Props) {
                             </Link>
                         </CardContent>
                     </Card>
+                    </FadeIn>
                 ) : (
                     /* Grouped by Server */
                     <div className="space-y-8">
@@ -84,9 +87,10 @@ export default function DestinationsIndex({ destinations = [] }: Props) {
                                     <h2 className="text-lg font-semibold">{server.name}</h2>
                                     <span className="text-sm text-foreground-muted">{server.ip}</span>
                                 </div>
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    {serverDests.map(dest => (
-                                        <Link key={dest.id} href={`/destinations/${dest.uuid}`}>
+                                <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {serverDests.map((dest, i) => (
+                                        <StaggerItem key={dest.id} index={i}>
+                                        <Link href={`/destinations/${dest.uuid}`}>
                                             <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
                                                 <CardContent className="p-6">
                                                     <div className="flex items-start justify-between mb-4">
@@ -120,8 +124,9 @@ export default function DestinationsIndex({ destinations = [] }: Props) {
                                                 </CardContent>
                                             </Card>
                                         </Link>
+                                        </StaggerItem>
                                     ))}
-                                </div>
+                                </StaggerList>
                             </div>
                         ))}
                     </div>

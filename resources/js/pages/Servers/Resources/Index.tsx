@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
 import { ArrowLeft, Package, Database, Globe, Boxes } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     server: ServerType;
@@ -78,42 +79,46 @@ export default function ServerResourcesIndex({ server, applications = 0, databas
             </div>
 
             {/* Resource Stats */}
-            <div className="mb-6 grid gap-4 md:grid-cols-3">
-                {resourceTypes.map((resource) => (
-                    <Link key={resource.title} href={resource.href}>
-                        <Card className="cursor-pointer transition-all hover:border-primary/50">
-                            <CardContent className="p-5">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${resource.iconBg}`}>
-                                            <div className={resource.iconColor}>{resource.icon}</div>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-foreground-muted">{resource.title}</p>
-                                            <p className="text-2xl font-bold text-foreground">{resource.count}</p>
+            <StaggerList className="mb-6 grid gap-4 md:grid-cols-3">
+                {resourceTypes.map((resource, i) => (
+                    <StaggerItem key={resource.title} index={i}>
+                        <Link href={resource.href}>
+                            <Card className="cursor-pointer transition-all hover:border-primary/50">
+                                <CardContent className="p-5">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${resource.iconBg}`}>
+                                                <div className={resource.iconColor}>{resource.icon}</div>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-foreground-muted">{resource.title}</p>
+                                                <p className="text-2xl font-bold text-foreground">{resource.count}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <p className="mt-3 text-sm text-foreground-muted">{resource.description}</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
+                                    <p className="mt-3 text-sm text-foreground-muted">{resource.description}</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    </StaggerItem>
                 ))}
-            </div>
+            </StaggerList>
 
             {/* Resource Details */}
             {totalResources === 0 ? (
-                <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
-                            <Boxes className="h-8 w-8 text-foreground-subtle" />
-                        </div>
-                        <h3 className="mt-4 font-medium text-foreground">No resources yet</h3>
-                        <p className="mt-1 text-sm text-foreground-muted">
-                            Deploy applications, databases, or services to see them here
-                        </p>
-                    </CardContent>
-                </Card>
+                <FadeIn>
+                    <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
+                                <Boxes className="h-8 w-8 animate-pulse-soft text-foreground-subtle" />
+                            </div>
+                            <h3 className="mt-4 font-medium text-foreground">No resources yet</h3>
+                            <p className="mt-1 text-sm text-foreground-muted">
+                                Deploy applications, databases, or services to see them here
+                            </p>
+                        </CardContent>
+                    </Card>
+                </FadeIn>
             ) : (
                 <div className="space-y-4">
                     {applications > 0 && (

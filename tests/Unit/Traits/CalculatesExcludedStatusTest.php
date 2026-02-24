@@ -10,9 +10,7 @@ class CalculatesExcludedStatusTestClass
 
     public function testAppendExcludedSuffix(string $status): string
     {
-        $reflection = new ReflectionMethod($this, 'appendExcludedSuffix');
-
-        return $reflection->invoke($this, $status);
+        return $this->appendExcludedSuffix($status);
     }
 
     public function testGetExcludedContainersFromDockerCompose(?string $dockerComposeRaw): Collection

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Link, router, useForm } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { useToast } from '@/components/ui/Toast';
 import {
     ArrowLeft,
@@ -106,7 +107,7 @@ export default function PermissionSetCreate({ allPermissions, environments, pare
             color: data.color,
             icon: data.icon,
             parent_id: data.parent_id || null,
-            permissions: permissions as any,
+            permissions: permissions as unknown as RouterPayload,
         }, {
             onSuccess: () => {
                 toast({

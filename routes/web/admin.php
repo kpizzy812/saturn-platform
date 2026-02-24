@@ -109,4 +109,7 @@ Route::prefix('admin')->middleware('is.superadmin')->group(function () {
 
     // Resource transfer history
     require __DIR__.'/admin/transfers.php';
+
+    // Public status page management
+    require __DIR__.'/admin/status-page.php';
 });

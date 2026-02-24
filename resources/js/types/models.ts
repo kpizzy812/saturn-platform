@@ -91,7 +91,7 @@ export interface Environment {
     name: string;
     type?: EnvironmentType;
     project_id: number;
-    project?: { id: number; name: string };
+    project?: { id: number; uuid?: string; name: string };
     applications: Application[];
     databases: StandaloneDatabase[];
     services: Service[];

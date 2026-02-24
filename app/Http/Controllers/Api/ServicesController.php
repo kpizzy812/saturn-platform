@@ -74,16 +74,11 @@ class ServicesController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $projects = Project::where('team_id', $teamId)->get();
-        $services = collect();
-        foreach ($projects as $project) {
-            $services->push($project->services()->get());
-        }
-        foreach ($services as $service) {
-            $service = $this->removeSensitiveData($service);
-        }
+        $projects = Project::where('team_id', $teamId)->with('services')->get();
+        $services = $projects->pluck('services')->flatten()->take(500);
+        $services = $services->map(fn ($service) => $this->removeSensitiveData($service));
 
-        return response()->json($services->flatten());
+        return response()->json($services->values());
     }
 
     #[OA\Post(

@@ -163,6 +163,10 @@ Route::get('/domains/{uuid}/redirects', function (string $uuid) {
 
 // Redirect rules CRUD
 Route::post('/domains/{uuid}/redirects', function (Request $request, string $uuid) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to create redirect rules.');
+    }
+
     $validated = $request->validate([
         'source' => 'required|string|max:500',
         'target' => 'required|string|max:500',
@@ -184,6 +188,10 @@ Route::post('/domains/{uuid}/redirects', function (Request $request, string $uui
 })->name('domains.redirects.store');
 
 Route::put('/domains/{uuid}/redirects/{id}', function (Request $request, string $uuid, int $id) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to update redirect rules.');
+    }
+
     $rule = \App\Models\RedirectRule::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
 
     $validated = $request->validate([
@@ -199,6 +207,10 @@ Route::put('/domains/{uuid}/redirects/{id}', function (Request $request, string 
 })->name('domains.redirects.update');
 
 Route::delete('/domains/{uuid}/redirects/{id}', function (string $uuid, int $id) {
+    if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+        abort(403, 'You do not have permission to delete redirect rules.');
+    }
+
     $rule = \App\Models\RedirectRule::ownedByCurrentTeam()->where('id', $id)->firstOrFail();
     $rule->delete();
 

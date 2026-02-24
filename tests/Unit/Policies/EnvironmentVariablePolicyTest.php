@@ -3,9 +3,11 @@
 use App\Models\EnvironmentVariable;
 use App\Models\User;
 use App\Policies\EnvironmentVariablePolicy;
+use App\Services\Authorization\ResourceAuthorizationService;
 
 beforeEach(function () {
-    $this->policy = new EnvironmentVariablePolicy;
+    $this->authService = Mockery::mock(ResourceAuthorizationService::class);
+    $this->policy = new EnvironmentVariablePolicy($this->authService);
 });
 
 afterEach(function () {
@@ -38,12 +40,7 @@ it('allows creating environment variables', function () {
 
 /*
 |--------------------------------------------------------------------------
-| View/Update/Delete/Restore/ForceDelete/ManageEnvironment Tests
-|--------------------------------------------------------------------------
-| NOTE: These tests require complex mocking of Eloquent relationships and
-| direct property access ($user->teams) which is difficult in unit tests.
-| These methods should be tested in feature tests instead where real database
-| models can be used.
+| View/Update/Delete Tests
 |--------------------------------------------------------------------------
 */
 
@@ -63,4 +60,22 @@ it('denies restoring environment variable when resource is null', function () {
     $envVar->resourceable = null;
 
     expect($this->policy->restore($user, $envVar))->toBeFalse();
+});
+
+it('denies updating environment variable when resource is null', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $envVar = Mockery::mock(EnvironmentVariable::class)->makePartial()->shouldIgnoreMissing();
+
+    $envVar->resourceable = null;
+
+    expect($this->policy->update($user, $envVar))->toBeFalse();
+});
+
+it('denies deleting environment variable when resource is null', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $envVar = Mockery::mock(EnvironmentVariable::class)->makePartial()->shouldIgnoreMissing();
+
+    $envVar->resourceable = null;
+
+    expect($this->policy->delete($user, $envVar))->toBeFalse();
 });

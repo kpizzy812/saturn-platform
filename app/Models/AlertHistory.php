@@ -24,7 +24,7 @@ class AlertHistory extends Model
         'triggered_at',
         'resolved_at',
         'value',
-        'message',
+        'status',
     ];
 
     protected $table = 'alert_histories';

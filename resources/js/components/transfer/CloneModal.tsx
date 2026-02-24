@@ -3,7 +3,7 @@ import { router } from '@inertiajs/react';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { Button, Badge } from '@/components/ui';
 import { Copy, Server, Folder, Loader2, AlertCircle, CheckCircle, Rocket, Box } from 'lucide-react';
-import type { Application, Service } from '@/types';
+import type { Application, Service, StandaloneDatabase } from '@/types';
 
 interface CloneTarget {
     environments: Array<{
@@ -22,8 +22,8 @@ interface CloneTarget {
 interface CloneModalProps {
     isOpen: boolean;
     onClose: () => void;
-    resource: Application | Service;
-    resourceType: 'application' | 'service';
+    resource: Application | Service | StandaloneDatabase | Pick<Application | Service | StandaloneDatabase, 'uuid' | 'name'>;
+    resourceType: 'application' | 'service' | 'database';
 }
 
 type CloneStep = 'options' | 'target' | 'confirm';
@@ -173,7 +173,7 @@ export function CloneModal({ isOpen, onClose, resource, resourceType }: CloneMod
         <Box className="h-5 w-5 text-primary" />
     );
 
-    const resourceLabel = resourceType === 'application' ? 'Application' : 'Service';
+    const resourceLabel = resourceType === 'application' ? 'Application' : resourceType === 'database' ? 'Database' : 'Service';
 
     return (
         <Modal

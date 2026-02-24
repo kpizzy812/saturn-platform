@@ -7,11 +7,13 @@ describe('CLI/Setup', () => {
         vi.clearAllMocks();
     });
 
-    it('renders page heading and description', () => {
+    it('renders page heading and tab navigation', () => {
         render(<CLISetup />);
 
         expect(screen.getByRole('heading', { level: 1, name: /saturn cli/i })).toBeInTheDocument();
         expect(screen.getByText(/install and configure the saturn command-line interface/i)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /^setup$/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /^commands$/i })).toBeInTheDocument();
     });
 
     it('renders latest version info', () => {
@@ -47,7 +49,7 @@ describe('CLI/Setup', () => {
     it('displays macOS installation command by default', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText('brew install saturn-cli')).toBeInTheDocument();
+        expect(screen.getByText('brew install kpizzy812/saturn/saturn-cli')).toBeInTheDocument();
         expect(screen.getByText(/install via homebrew/i)).toBeInTheDocument();
     });
 
@@ -57,7 +59,7 @@ describe('CLI/Setup', () => {
         const linuxButton = screen.getByRole('button', { name: 'Linux' });
         await user.click(linuxButton);
 
-        expect(screen.getByText(/curl -fsSL https:\/\/get\.saturn\.app\/install\.sh \| sh/)).toBeInTheDocument();
+        expect(screen.getByText(/curl -fsSL.*install\.sh \| sh/)).toBeInTheDocument();
         expect(screen.getByText(/install via shell script/i)).toBeInTheDocument();
     });
 
@@ -67,15 +69,16 @@ describe('CLI/Setup', () => {
         const windowsButton = screen.getByRole('button', { name: 'Windows' });
         await user.click(windowsButton);
 
-        expect(screen.getByText(/iwr https:\/\/get\.saturn\.app\/install\.ps1 -useb \| iex/)).toBeInTheDocument();
+        expect(screen.getByText(/iwr.*install\.ps1 -useb \| iex/)).toBeInTheDocument();
         expect(screen.getByText(/install via powershell/i)).toBeInTheDocument();
     });
 
-    it('renders Go alternative installation', () => {
+    it('renders GitHub Releases link', () => {
         render(<CLISetup />);
 
-        expect(screen.getByText(/alternative: install via go/i)).toBeInTheDocument();
-        expect(screen.getByText(/go install github\.com\/saturn-platform\/saturn-cli\/saturn@latest/)).toBeInTheDocument();
+        const releasesLink = screen.getByRole('link', { name: /github releases/i });
+        expect(releasesLink).toBeInTheDocument();
+        expect(releasesLink).toHaveAttribute('href', 'https://github.com/kpizzy812/saturn-cli/releases/latest');
     });
 
     it('renders verify installation section', () => {
@@ -145,10 +148,10 @@ describe('CLI/Setup', () => {
         expect(tokenLink).toHaveAttribute('href', '/settings/tokens');
     });
 
-    it('displays expected version in expected output', () => {
+    it('displays macOS install command in code block', () => {
         render(<CLISetup />);
 
-        const codeElements = screen.getAllByText('brew install saturn-cli');
+        const codeElements = screen.getAllByText(/brew install kpizzy812\/saturn\/saturn-cli/);
         expect(codeElements.length).toBeGreaterThan(0);
     });
 });

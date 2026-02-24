@@ -18,6 +18,8 @@ class UpdateSaturnJob implements ShouldBeEncrypted, ShouldQueue
 
     public $timeout = 600;
 
+    public $tries = 1;
+
     public function __construct()
     {
         $this->onQueue('high');
@@ -43,7 +45,15 @@ class UpdateSaturnJob implements ShouldBeEncrypted, ShouldQueue
             Log::info('Saturn Platform update completed successfully.');
         } catch (\Throwable $e) {
             Log::error('UpdateSaturnJob failed: '.$e->getMessage());
-            // Consider implementing a notification to administrators
+            throw $e;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('UpdateSaturnJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+        send_internal_notification('Saturn update failed: '.$exception->getMessage());
     }
 }

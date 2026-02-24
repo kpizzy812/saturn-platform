@@ -81,10 +81,8 @@ class ApplicationsController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $projects = Project::where('team_id', $teamId)->get();
-        $applications = collect();
-        $applications->push($projects->pluck('applications')->flatten());
-        $applications = $applications->flatten();
+        $projects = Project::where('team_id', $teamId)->with('applications')->get();
+        $applications = $projects->pluck('applications')->flatten();
         $applications = $applications->map(function ($application) {
             return $this->removeSensitiveData($application);
         });
@@ -106,7 +104,7 @@ class ApplicationsController extends Controller
             ]);
         }
 
-        return response()->json($applications);
+        return response()->json($applications->take(500)->values());
     }
 
     #[OA\Get(
@@ -254,29 +252,33 @@ class ApplicationsController extends Controller
             return response()->json(['message' => 'Application not found.'], 404);
         }
 
-        $containers = getCurrentApplicationContainerStatus($application->destination->server, $application->id);
+        try {
+            $containers = getCurrentApplicationContainerStatus($application->destination->server, $application->id);
 
-        if ($containers->count() == 0) {
+            if ($containers->count() == 0) {
+                return response()->json([
+                    'message' => 'Application is not running.',
+                ], 400);
+            }
+
+            $container = $containers->first();
+
+            $status = getContainerStatus($application->destination->server, $container['Names']);
+            if ($status !== 'running') {
+                return response()->json([
+                    'message' => 'Application is not running.',
+                ], 400);
+            }
+
+            $lines = $request->query->get('lines', 100) ?: 100;
+            $logs = getContainerLogs($application->destination->server, $container['ID'], $lines);
+
             return response()->json([
-                'message' => 'Application is not running.',
-            ], 400);
+                'logs' => $logs,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
         }
-
-        $container = $containers->first();
-
-        $status = getContainerStatus($application->destination->server, $container['Names']);
-        if ($status !== 'running') {
-            return response()->json([
-                'message' => 'Application is not running.',
-            ], 400);
-        }
-
-        $lines = $request->query->get('lines', 100) ?: 100;
-        $logs = getContainerLogs($application->destination->server, $container['ID'], $lines);
-
-        return response()->json([
-            'logs' => $logs,
-        ]);
     }
 
     #[OA\Delete(
@@ -574,7 +576,7 @@ class ApplicationsController extends Controller
             'description' => 'string|nullable',
             'static_image' => 'string',
             'watch_paths' => 'string|nullable',
-            'docker_compose_location' => 'string',
+            'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
             'docker_compose_domains' => 'array|nullable',
             'docker_compose_custom_start_command' => 'string|nullable',

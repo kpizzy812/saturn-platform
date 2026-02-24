@@ -43,6 +43,13 @@ class BackupRestoreTestManagerJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('BackupRestoreTestManagerJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function shouldRunRestoreTest(ScheduledDatabaseBackup $backup): bool
     {
         $frequency = $backup->restore_test_frequency ?? 'weekly';

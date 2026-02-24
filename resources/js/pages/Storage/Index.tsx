@@ -11,6 +11,7 @@ import {
     Server,
     Cloud
 } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import type { S3Storage } from '@/types';
 
 interface Props {
@@ -58,8 +59,8 @@ export default function StorageIndex({ storages = [] }: Props) {
                         <p className="text-foreground-muted">Manage S3-compatible backup destinations</p>
                     </div>
                     <Link href="/storage/create">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
+                        <Button className="group">
+                            <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                             Add Storage
                         </Button>
                     </Link>
@@ -82,11 +83,13 @@ export default function StorageIndex({ storages = [] }: Props) {
                 {filteredStorages.length === 0 ? (
                     storages.length === 0 ? <EmptyState /> : <NoResults />
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {filteredStorages.map((storage) => (
-                            <StorageCard key={storage.id} storage={storage} />
+                    <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {filteredStorages.map((storage, i) => (
+                            <StaggerItem key={storage.id} index={i}>
+                                <StorageCard storage={storage} />
+                            </StaggerItem>
                         ))}
-                    </div>
+                    </StaggerList>
                 )}
             </div>
         </AppLayout>
@@ -168,34 +171,38 @@ function StorageCard({ storage }: StorageCardProps) {
 
 function EmptyState() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Cloud className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No storage configured</h3>
-            <p className="mt-2 text-foreground-muted">
-                Add an S3-compatible storage provider to enable database backups.
-            </p>
-            <Link href="/storage/create" className="mt-6 inline-block">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Storage
-                </Button>
-            </Link>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Cloud className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No storage configured</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Add an S3-compatible storage provider to enable database backups.
+                </p>
+                <Link href="/storage/create" className="mt-6 inline-block">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Storage
+                    </Button>
+                </Link>
+            </Card>
+        </FadeIn>
     );
 }
 
 function NoResults() {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Search className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No storage found</h3>
-            <p className="mt-2 text-foreground-muted">
-                Try adjusting your search query.
-            </p>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Search className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No storage found</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Try adjusting your search query.
+                </p>
+            </Card>
+        </FadeIn>
     );
 }

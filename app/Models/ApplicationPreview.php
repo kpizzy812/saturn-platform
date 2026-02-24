@@ -16,13 +16,15 @@ class ApplicationPreview extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, status (system-managed), last_online_at (system-managed)
+     * Excludes: id (auto-increment)
      */
     protected $fillable = [
         'application_id',
         'pull_request_id',
         'pull_request_html_url',
         'fqdn',
+        'status',
+        'last_online_at',
         'docker_compose_domains',
     ];
 

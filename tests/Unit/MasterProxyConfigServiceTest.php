@@ -6,7 +6,6 @@ test('parseFqdns splits comma-separated domains', function () {
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('parseFqdns');
-    $method->setAccessible(true);
 
     $result = $method->invoke($service, 'https://app.saturn.io,http://app2.saturn.io');
 
@@ -17,7 +16,6 @@ test('parseFqdns handles empty input', function () {
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('parseFqdns');
-    $method->setAccessible(true);
 
     expect($method->invoke($service, null))->toBe([]);
     expect($method->invoke($service, ''))->toBe([]);
@@ -27,7 +25,6 @@ test('parseFqdns trims whitespace', function () {
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('parseFqdns');
-    $method->setAccessible(true);
 
     $result = $method->invoke($service, ' https://app.saturn.io , http://app2.saturn.io ');
 
@@ -38,7 +35,6 @@ test('getAppPort returns first port from ports_exposes', function () {
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('getAppPort');
-    $method->setAccessible(true);
 
     $app = Mockery::mock(\App\Models\Application::class)->makePartial();
     $app->ports_exposes = '3000,8080';
@@ -50,7 +46,6 @@ test('getAppPort returns 80 for empty ports', function () {
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('getAppPort');
-    $method->setAccessible(true);
 
     $app = Mockery::mock(\App\Models\Application::class)->makePartial();
     $app->ports_exposes = '';
@@ -62,7 +57,6 @@ test('buildRouteConfig generates valid Traefik config', function () {
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('buildRouteConfig');
-    $method->setAccessible(true);
 
     $app = Mockery::mock(\App\Models\Application::class)->makePartial();
     $app->uuid = 'test-app-uuid';
@@ -103,7 +97,6 @@ test('buildRouteConfig generates HTTP-only config for http domains', function ()
     $service = new MasterProxyConfigService;
     $reflection = new ReflectionClass($service);
     $method = $reflection->getMethod('buildRouteConfig');
-    $method->setAccessible(true);
 
     $app = Mockery::mock(\App\Models\Application::class)->makePartial();
     $app->uuid = 'http-app-uuid';

@@ -243,6 +243,8 @@ class Application extends BaseModel
         'monorepo_group_id',
         'auto_inject_database_url',
         'private_key_id',
+        'status',
+        'last_online_at',
         'restart_count',
         'last_restart_at',
         'last_restart_type',
@@ -1922,7 +1924,8 @@ class Application extends BaseModel
 
     protected function buildGitCheckoutCommand($target): string
     {
-        $command = "git checkout $target";
+        $escapedTarget = escapeshellarg($target);
+        $command = "git checkout {$escapedTarget}";
 
         if ($this->settings->is_git_submodules_enabled) {
             $command .= ' && git submodule update --init --recursive';

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -84,6 +85,10 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         'workspace_locale',
         'workspace_date_format',
         'default_project_id',
+        'max_servers',
+        'max_applications',
+        'max_databases',
+        'max_projects',
     ];
 
     protected $casts = [
@@ -118,26 +123,28 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
         });
 
         static::deleting(function ($team) {
-            $keys = $team->privateKeys;
-            foreach ($keys as $key) {
-                $key->delete();
-            }
-            $sources = $team->sources();
-            foreach ($sources as $source) {
-                $source->delete();
-            }
-            $tags = Tag::whereTeamId($team->id)->get();
-            foreach ($tags as $tag) {
-                $tag->delete();
-            }
-            $shared_variables = $team->environment_variables();
-            foreach ($shared_variables as $shared_variable) {
-                $shared_variable->delete();
-            }
-            $s3s = $team->s3s;
-            foreach ($s3s as $s3) {
-                $s3->delete();
-            }
+            DB::transaction(function () use ($team) {
+                $keys = $team->privateKeys;
+                foreach ($keys as $key) {
+                    $key->delete();
+                }
+                $sources = $team->sources();
+                foreach ($sources as $source) {
+                    $source->delete();
+                }
+                $tags = Tag::whereTeamId($team->id)->get();
+                foreach ($tags as $tag) {
+                    $tag->delete();
+                }
+                $shared_variables = $team->environment_variables()->get();
+                foreach ($shared_variables as $shared_variable) {
+                    $shared_variable->delete();
+                }
+                $s3s = $team->s3s;
+                foreach ($s3s as $s3) {
+                    $s3->delete();
+                }
+            });
         });
     }
 

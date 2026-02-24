@@ -74,25 +74,20 @@ it('logs comprehensive error details when failed() is called', function () {
     $reflection = new \ReflectionClass(ApplicationDeploymentJob::class);
 
     $queueProperty = $reflection->getProperty('application_deployment_queue');
-    $queueProperty->setAccessible(true);
     $queueProperty->setValue($job, $mockQueue);
 
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 0);
 
     $containerNameProperty = $reflection->getProperty('container_name');
-    $containerNameProperty->setAccessible(true);
     $containerNameProperty->setValue($job, 'test-container');
 
     // Set the server property to prevent uninitialized typed property error
     $mockServer = Mockery::mock(\App\Models\Server::class);
     $serverProperty = $reflection->getProperty('server');
-    $serverProperty->setAccessible(true);
     $serverProperty->setValue($job, $mockServer);
 
     // Mock the failDeployment method to prevent errors
@@ -101,7 +96,6 @@ it('logs comprehensive error details when failed() is called', function () {
 
     // Call the failed method
     $failedMethod = $reflection->getMethod('failed');
-    $failedMethod->setAccessible(true);
     $failedMethod->invoke($job, $exception);
 
     // Verify comprehensive error logging
@@ -189,32 +183,26 @@ it('handles exceptions with no message gracefully', function () {
     $reflection = new \ReflectionClass(ApplicationDeploymentJob::class);
 
     $queueProperty = $reflection->getProperty('application_deployment_queue');
-    $queueProperty->setAccessible(true);
     $queueProperty->setValue($job, $mockQueue);
 
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 0);
 
     $containerNameProperty = $reflection->getProperty('container_name');
-    $containerNameProperty->setAccessible(true);
     $containerNameProperty->setValue($job, 'test-container');
 
     // Set the server property to prevent uninitialized typed property error
     $mockServer = Mockery::mock(\App\Models\Server::class);
     $serverProperty = $reflection->getProperty('server');
-    $serverProperty->setAccessible(true);
     $serverProperty->setValue($job, $mockServer);
 
     $job->shouldReceive('failDeployment')->andReturn();
     $job->shouldReceive('execute_remote_command')->andReturn();
 
     $failedMethod = $reflection->getMethod('failed');
-    $failedMethod->setAccessible(true);
     $failedMethod->invoke($job, $exception);
 
     $errorMessages = array_column($logEntries, 'message');
@@ -286,32 +274,26 @@ it('logs error code 0 correctly', function () {
     $reflection = new \ReflectionClass(ApplicationDeploymentJob::class);
 
     $queueProperty = $reflection->getProperty('application_deployment_queue');
-    $queueProperty->setAccessible(true);
     $queueProperty->setValue($job, $mockQueue);
 
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 0);
 
     $containerNameProperty = $reflection->getProperty('container_name');
-    $containerNameProperty->setAccessible(true);
     $containerNameProperty->setValue($job, 'test-container');
 
     // Set the server property to prevent uninitialized typed property error
     $mockServer = Mockery::mock(\App\Models\Server::class);
     $serverProperty = $reflection->getProperty('server');
-    $serverProperty->setAccessible(true);
     $serverProperty->setValue($job, $mockServer);
 
     $job->shouldReceive('failDeployment')->andReturn();
     $job->shouldReceive('execute_remote_command')->andReturn();
 
     $failedMethod = $reflection->getMethod('failed');
-    $failedMethod->setAccessible(true);
     $failedMethod->invoke($job, $exception);
 
     $errorMessages = array_column($logEntries, 'message');

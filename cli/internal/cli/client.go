@@ -9,7 +9,9 @@ import (
 	"github.com/saturn-platform/saturn-cli/internal/config"
 )
 
-// GetAPIClient creates an API client from command flags or config
+// GetAPIClient creates an API client from command flags or config.
+// If the resolved instance has no token, it automatically triggers
+// browser-based device auth so the user doesn't have to run "saturn login" first.
 func GetAPIClient(cmd *cobra.Command) (*api.Client, error) {
 	// Get flags
 	token, _ := cmd.Flags().GetString("token")
@@ -42,6 +44,25 @@ func GetAPIClient(cmd *cobra.Command) (*api.Client, error) {
 	// Use token from flag if provided, otherwise use instance token
 	if token == "" {
 		token = instance.Token
+	}
+
+	// Auto-login: if still no token, run device auth transparently
+	if token == "" {
+		fmt.Println("Not authenticated. Starting browser login...")
+
+		result, err := RunDeviceAuth(fqdn)
+		if err != nil {
+			return nil, fmt.Errorf("authentication failed: %w", err)
+		}
+
+		token = result.Token
+
+		// Save token to config so subsequent commands don't need to re-auth
+		if saveErr := SaveAuthToConfig(fqdn, token); saveErr != nil {
+			fmt.Printf("Warning: authenticated but failed to save token: %v\n", saveErr)
+		}
+
+		fmt.Printf("\nAuthenticated as %s (team: %s)\n\n", result.UserName, result.TeamName)
 	}
 
 	// Create client

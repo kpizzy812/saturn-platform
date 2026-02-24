@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Authorization\PermissionService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 class CanCreateResources
@@ -16,11 +16,26 @@ class CanCreateResources
      */
     public function handle(Request $request, Closure $next): Response
     {
-        return $next($request);
-        // if (! Gate::allows('createAnyResource')) {
-        //     abort(403, 'You do not have permission to create resources.');
-        // }
+        $user = auth()->user();
+        if (! $user) {
+            abort(403, 'You do not have permission to create resources.');
+        }
 
-        // return $next($request);
+        $permissionService = app(PermissionService::class);
+
+        // Check if user has any create permission
+        $hasCreate = $permissionService->userHasAnyPermission($user, [
+            'applications.create',
+            'databases.create',
+            'services.create',
+            'servers.create',
+            'projects.create',
+        ]);
+
+        if (! $hasCreate) {
+            abort(403, 'You do not have permission to create resources.');
+        }
+
+        return $next($request);
     }
 }

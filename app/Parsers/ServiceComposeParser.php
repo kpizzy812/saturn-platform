@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Models\ServiceApplication;
 use App\Models\ServiceDatabase;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
 use Symfony\Component\Yaml\Yaml;
@@ -1363,7 +1364,7 @@ class ServiceComposeParser
             }
             $this->resource->docker_compose_raw = Yaml::dump($originalYaml, 10, 2);
         } catch (\Exception $e) {
-            ray('Failed to update docker_compose_raw in serviceParser: '.$e->getMessage());
+            Log::warning('Failed to update docker_compose_raw in serviceParser: '.$e->getMessage());
         }
 
         data_forget($this->resource, 'environment_variables');

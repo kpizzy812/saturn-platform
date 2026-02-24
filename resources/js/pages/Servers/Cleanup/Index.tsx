@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { ArrowLeft, Trash2, AlertTriangle, CheckCircle, HardDrive, Package, Database as DatabaseIcon } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
+import { StaggerList, StaggerItem } from '@/components/animation';
 
 interface Props {
     server: ServerType;
@@ -183,38 +184,40 @@ export default function ServerCleanupIndex({ server, cleanupStats }: Props) {
             </Card>
 
             {/* Cleanup Items */}
-            <div className="grid gap-4 md:grid-cols-2">
-                {cleanupItems.map((item) => (
-                    <Card key={item.type}>
-                        <CardContent className="p-5">
-                            <div className="flex items-start gap-3">
-                                <div className={`flex h-12 w-12 items-center justify-center rounded-lg bg-${item.color}/10`}>
-                                    <div className={`text-${item.color}`}>{item.icon}</div>
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="font-semibold text-foreground">{item.title}</h3>
-                                        <Badge variant={item.count > 0 ? 'warning' : 'secondary'}>
-                                            {item.count}
-                                        </Badge>
+            <StaggerList className="grid gap-4 md:grid-cols-2">
+                {cleanupItems.map((item, i) => (
+                    <StaggerItem key={item.type} index={i}>
+                        <Card>
+                            <CardContent className="p-5">
+                                <div className="flex items-start gap-3">
+                                    <div className={`flex h-12 w-12 items-center justify-center rounded-lg bg-${item.color}/10`}>
+                                        <div className={`text-${item.color}`}>{item.icon}</div>
                                     </div>
-                                    <p className="mt-1 text-sm text-foreground-muted">{item.description}</p>
-                                    <Button
-                                        className="mt-3"
-                                        size="sm"
-                                        variant="secondary"
-                                        onClick={() => handleCleanup(item.type)}
-                                        disabled={isRunning || item.count === 0}
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Clean Up
-                                    </Button>
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="font-semibold text-foreground">{item.title}</h3>
+                                            <Badge variant={item.count > 0 ? 'warning' : 'secondary'}>
+                                                {item.count}
+                                            </Badge>
+                                        </div>
+                                        <p className="mt-1 text-sm text-foreground-muted">{item.description}</p>
+                                        <Button
+                                            className="mt-3"
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => handleCleanup(item.type)}
+                                            disabled={isRunning || item.count === 0}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Clean Up
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </StaggerItem>
                 ))}
-            </div>
+            </StaggerList>
 
             {/* Automatic Cleanup */}
             <Card className="mt-6">

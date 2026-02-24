@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Input } from '@/components/ui';
 import { formatRelativeTime } from '@/lib/utils';
 import type { ActivityLog, ActivityAction } from '@/types';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import {
     Activity,
     Rocket,
@@ -163,15 +164,16 @@ export default function ActivityIndex({ activities: propActivities }: Props) {
             ) : (
                 <Card>
                     <CardContent className="p-0">
-                        <div className="divide-y divide-border">
+                        <StaggerList className="divide-y divide-border">
                             {filteredActivities.map((activity, index) => (
-                                <ActivityItem
-                                    key={activity.id}
-                                    activity={activity}
-                                    isLast={index === filteredActivities.length - 1}
-                                />
+                                <StaggerItem key={activity.id} index={index}>
+                                    <ActivityItem
+                                        activity={activity}
+                                        isLast={index === filteredActivities.length - 1}
+                                    />
+                                </StaggerItem>
                             ))}
-                        </div>
+                        </StaggerList>
                     </CardContent>
                 </Card>
             )}
@@ -279,14 +281,16 @@ function FilterButton({
 
 function EmptyState() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-background-secondary p-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Activity className="h-8 w-8 text-foreground-muted" />
+        <FadeIn>
+            <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-background-secondary p-12 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Activity className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No activities found</h3>
+                <p className="mt-2 text-foreground-muted">
+                    Try adjusting your filters or search query.
+                </p>
             </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No activities found</h3>
-            <p className="mt-2 text-foreground-muted">
-                Try adjusting your filters or search query.
-            </p>
-        </div>
+        </FadeIn>
     );
 }

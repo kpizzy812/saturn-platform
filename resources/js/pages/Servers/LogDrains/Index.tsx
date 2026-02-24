@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { ArrowLeft, Plus, FileText, CheckCircle, XCircle, Trash2, ExternalLink } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     server: ServerType;
@@ -95,78 +96,82 @@ export default function ServerLogDrainsIndex({ server, logDrains = [] }: Props) 
 
             {/* Log Drains List */}
             {logDrains.length > 0 ? (
-                <div className="space-y-3">
-                    {logDrains.map((drain) => (
-                        <Card key={drain.uuid}>
-                            <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${
-                                            drain.enabled ? 'bg-success/10' : 'bg-background-tertiary'
-                                        }`}>
-                                            <FileText className={`h-6 w-6 ${
-                                                drain.enabled ? 'text-success' : 'text-foreground-subtle'
-                                            }`} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-foreground">{drain.name}</h3>
-                                                <Badge variant={drain.enabled ? 'success' : 'secondary'} size="sm">
-                                                    {drain.enabled ? 'Enabled' : 'Disabled'}
-                                                </Badge>
-                                                <Badge variant="secondary" size="sm">
-                                                    {drain.type.toUpperCase()}
-                                                </Badge>
+                <StaggerList className="space-y-3">
+                    {logDrains.map((drain, i) => (
+                        <StaggerItem key={drain.uuid} index={i}>
+                            <Card>
+                                <CardContent className="p-5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${
+                                                drain.enabled ? 'bg-success/10' : 'bg-background-tertiary'
+                                            }`}>
+                                                <FileText className={`h-6 w-6 ${
+                                                    drain.enabled ? 'text-success' : 'text-foreground-subtle'
+                                                }`} />
                                             </div>
-                                            <p className="mt-1 text-sm text-foreground-muted">
-                                                {drain.endpoint}
-                                            </p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold text-foreground">{drain.name}</h3>
+                                                    <Badge variant={drain.enabled ? 'success' : 'secondary'} size="sm">
+                                                        {drain.enabled ? 'Enabled' : 'Disabled'}
+                                                    </Badge>
+                                                    <Badge variant="secondary" size="sm">
+                                                        {drain.type.toUpperCase()}
+                                                    </Badge>
+                                                </div>
+                                                <p className="mt-1 text-sm text-foreground-muted">
+                                                    {drain.endpoint}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleToggle(drain)}
+                                            >
+                                                {drain.enabled ? (
+                                                    <XCircle className="h-4 w-4 text-foreground-muted" />
+                                                ) : (
+                                                    <CheckCircle className="h-4 w-4 text-foreground-muted" />
+                                                )}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDelete(drain)}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-danger" />
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleToggle(drain)}
-                                        >
-                                            {drain.enabled ? (
-                                                <XCircle className="h-4 w-4 text-foreground-muted" />
-                                            ) : (
-                                                <CheckCircle className="h-4 w-4 text-foreground-muted" />
-                                            )}
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDelete(drain)}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-danger" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             ) : (
-                <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
-                            <FileText className="h-8 w-8 text-foreground-subtle" />
-                        </div>
-                        <h3 className="mt-4 font-medium text-foreground">No log drains configured</h3>
-                        <p className="mt-1 text-sm text-foreground-muted">
-                            Set up your first log drain to start forwarding logs
-                        </p>
-                        <Button
-                            className="mt-4"
-                            onClick={() => router.visit(`/servers/${server.uuid}/log-drains/create`)}
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Log Drain
-                        </Button>
-                    </CardContent>
-                </Card>
+                <FadeIn>
+                    <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
+                                <FileText className="h-8 w-8 animate-pulse-soft text-foreground-subtle" />
+                            </div>
+                            <h3 className="mt-4 font-medium text-foreground">No log drains configured</h3>
+                            <p className="mt-1 text-sm text-foreground-muted">
+                                Set up your first log drain to start forwarding logs
+                            </p>
+                            <Button
+                                className="mt-4"
+                                onClick={() => router.visit(`/servers/${server.uuid}/log-drains/create`)}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Log Drain
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </FadeIn>
             )}
 
             {/* Popular Services */}

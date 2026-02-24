@@ -39,9 +39,8 @@ class CleanupInstanceStuffsJob implements ShouldBeEncrypted, ShouldBeUnique, Sho
 
     private function cleanupInvitationLink()
     {
-        $invitation = TeamInvitation::all();
-        foreach ($invitation as $item) {
-            $item->isValid();
+        foreach (TeamInvitation::cursor() as $invitation) {
+            $invitation->isValid();
         }
     }
 

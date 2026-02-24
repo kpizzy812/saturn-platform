@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
@@ -117,6 +118,8 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
         return response()->json(['message' => 'Application not found.'], 404);
     }
 
+    Gate::authorize('update', $application);
+
     $allowedFields = [
         'health_check_enabled', 'health_check_path', 'health_check_interval',
         'health_check_timeout', 'health_check_retries',
@@ -226,6 +229,8 @@ Route::delete('/web-api/applications/{uuid}', function (string $uuid) {
     if (! $application) {
         return response()->json(['message' => 'Application not found.'], 404);
     }
+
+    Gate::authorize('delete', $application);
 
     $application->delete();
 
@@ -963,6 +968,11 @@ Route::prefix('web-api/ai-chat')->group(function () {
 
     // Confirm and execute command
     Route::post('/sessions/{uuid}/confirm', function (string $uuid, Request $request) {
+        // Command execution requires admin+ role
+        if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+            return response()->json(['error' => 'You do not have permission to execute AI commands.'], 403);
+        }
+
         $session = \App\Models\AiChatSession::where('uuid', $uuid)
             ->where('user_id', auth()->id())
             ->where('team_id', currentTeam()->id)

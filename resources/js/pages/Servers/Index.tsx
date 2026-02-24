@@ -4,7 +4,9 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Badge, Button, useConfirm } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { Plus, Server, MoreVertical, CheckCircle, XCircle, Settings, Trash2, RefreshCw, Terminal } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
+import { usePermissions } from '@/hooks/usePermissions';
 import type { Server as ServerType } from '@/types';
 
 interface Props {
@@ -12,6 +14,7 @@ interface Props {
 }
 
 export default function ServersIndex({ servers = [] }: Props) {
+    const { can } = usePermissions();
     // Track server statuses in state
     const [serverStatuses, setServerStatuses] = useState<Record<number, { isReachable: boolean; isUsable: boolean }>>({});
 
@@ -61,40 +64,44 @@ export default function ServersIndex({ servers = [] }: Props) {
                     <h1 className="text-2xl font-bold text-foreground">Servers</h1>
                     <p className="text-foreground-muted">Manage your connected servers</p>
                 </div>
-                <Link href="/servers/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Server
-                    </Button>
-                </Link>
+                {can('servers.create') && (
+                    <Link href="/servers/create">
+                        <Button className="group">
+                            <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                            Add Server
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             {/* Servers List */}
             {servers.length === 0 ? (
-                <EmptyState />
+                <EmptyState canCreate={can('servers.create')} />
             ) : (
-                <div className="space-y-4">
-                    {servers.map((server) => {
+                <StaggerList className="space-y-4">
+                    {servers.map((server, i) => {
                         const status = getServerStatus(server);
                         return (
-                            <ServerCard
-                                key={server.id}
-                                server={{
-                                    ...server,
-                                    is_reachable: status.isReachable,
-                                    is_usable: status.isUsable,
-                                }}
-                            />
+                            <StaggerItem key={server.id} index={i}>
+                                <ServerCard
+                                    server={{
+                                        ...server,
+                                        is_reachable: status.isReachable,
+                                        is_usable: status.isUsable,
+                                    }}
+                                    can={can}
+                                />
+                            </StaggerItem>
                         );
                     })}
-                </div>
+                </StaggerList>
             )}
             </div>
         </AppLayout>
     );
 }
 
-function ServerCard({ server }: { server: ServerType }) {
+function ServerCard({ server, can }: { server: ServerType; can: (permission: string) => boolean }) {
     const confirm = useConfirm();
     const isOnline = server.is_reachable && server.is_usable;
 
@@ -112,7 +119,7 @@ function ServerCard({ server }: { server: ServerType }) {
     };
 
     return (
-        <Link href={`/servers/${server.uuid}`}>
+        <Link href={`/servers/${server.uuid}`} className="group">
             <Card className="transition-colors hover:border-primary/50">
                 <CardContent className="p-4">
                     <div className="flex items-center justify-between">
@@ -121,7 +128,7 @@ function ServerCard({ server }: { server: ServerType }) {
                             <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${
                                 isOnline ? 'bg-primary/10' : 'bg-danger/10'
                             }`}>
-                                <Server className={`h-6 w-6 ${
+                                <Server className={`h-6 w-6 transition-transform duration-200 group-hover:animate-wiggle ${
                                     isOnline ? 'text-primary' : 'text-danger'
                                 }`} />
                             </div>
@@ -177,15 +184,17 @@ function ServerCard({ server }: { server: ServerType }) {
                                     >
                                         Validate Server
                                     </DropdownItem>
-                                    <DropdownItem
-                                        icon={<Terminal className="h-4 w-4" />}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            router.visit(`/servers/${server.uuid}/terminal`);
-                                        }}
-                                    >
-                                        Open Terminal
-                                    </DropdownItem>
+                                    {can('applications.terminal') && (
+                                        <DropdownItem
+                                            icon={<Terminal className="h-4 w-4" />}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                router.visit(`/servers/${server.uuid}/terminal`);
+                                            }}
+                                        >
+                                            Open Terminal
+                                        </DropdownItem>
+                                    )}
                                     <DropdownItem
                                         icon={<Settings className="h-4 w-4" />}
                                         onClick={(e) => {
@@ -195,7 +204,7 @@ function ServerCard({ server }: { server: ServerType }) {
                                     >
                                         Server Settings
                                     </DropdownItem>
-                                    {!server.is_localhost && (
+                                    {!server.is_localhost && can('servers.delete') && (
                                         <>
                                             <DropdownDivider />
                                             <DropdownItem
@@ -222,22 +231,28 @@ function ServerCard({ server }: { server: ServerType }) {
     );
 }
 
-function EmptyState() {
+function EmptyState({ canCreate }: { canCreate: boolean }) {
     return (
-        <Card className="p-12 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <Server className="h-8 w-8 text-foreground-muted" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No servers connected</h3>
-            <p className="mt-2 text-foreground-muted">
-                Add your first server to start deploying applications.
-            </p>
-            <Link href="/servers/create" className="mt-6 inline-block">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Server
-                </Button>
-            </Link>
-        </Card>
+        <FadeIn>
+            <Card className="p-12 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                    <Server className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No servers connected</h3>
+                <p className="mt-2 text-foreground-muted">
+                    {canCreate
+                        ? 'Add your first server to start deploying applications.'
+                        : 'No servers have been connected yet. Contact a team admin to add a server.'}
+                </p>
+                {canCreate && (
+                    <Link href="/servers/create" className="mt-6 inline-block">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Server
+                        </Button>
+                    </Link>
+                )}
+            </Card>
+        </FadeIn>
     );
 }

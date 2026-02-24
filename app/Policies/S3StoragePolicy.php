@@ -4,9 +4,14 @@ namespace App\Policies;
 
 use App\Models\S3Storage;
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 
 class S3StoragePolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
@@ -28,7 +33,9 @@ class S3StoragePolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -36,8 +43,11 @@ class S3StoragePolicy
      */
     public function update(User $user, S3Storage $storage): bool
     {
-        // return $user->teams->contains('id', $storage->team_id) && $user->isAdmin();
-        return $user->teams->contains('id', $storage->team_id);
+        if (! $user->teams->contains('id', $storage->team_id)) {
+            return false;
+        }
+
+        return $this->authService->canManageIntegrations($user, $storage->team_id);
     }
 
     /**
@@ -45,8 +55,11 @@ class S3StoragePolicy
      */
     public function delete(User $user, S3Storage $storage): bool
     {
-        // return $user->teams->contains('id', $storage->team_id) && $user->isAdmin();
-        return $user->teams->contains('id', $storage->team_id);
+        if (! $user->teams->contains('id', $storage->team_id)) {
+            return false;
+        }
+
+        return $this->authService->canManageIntegrations($user, $storage->team_id);
     }
 
     /**
