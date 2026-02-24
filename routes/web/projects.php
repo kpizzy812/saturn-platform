@@ -91,11 +91,29 @@ Route::get('/projects/create', function () {
         ->where('is_public', false)
         ->get(['id', 'uuid', 'name', 'installation_id']);
 
+    // Pass preselected project/environment from canvas "Create" button
+    $preselectedProject = null;
+    $preselectedEnvironment = null;
+    if ($projectUuid = request()->query('project')) {
+        $project = $projects->firstWhere('uuid', $projectUuid);
+        if ($project) {
+            $preselectedProject = $project->uuid;
+            if ($envUuid = request()->query('environment')) {
+                $env = $project->environments->firstWhere('uuid', $envUuid);
+                $preselectedEnvironment = $env?->uuid;
+            }
+            // Default to first environment if not specified
+            $preselectedEnvironment ??= $project->environments->first()?->uuid;
+        }
+    }
+
     return Inertia::render('Projects/Create', [
         'projects' => $projects,
         'wildcardDomain' => $wildcardDomain,
         'hasGithubApp' => $githubApps->isNotEmpty(),
         'githubApps' => $githubApps,
+        'preselectedProject' => $preselectedProject,
+        'preselectedEnvironment' => $preselectedEnvironment,
     ]);
 })->name('projects.create');
 

@@ -2,10 +2,11 @@ import { useState, useCallback } from 'react';
 import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
-import { Card, CardContent, Button, Input } from '@/components/ui';
+import { Card, CardContent, Button, Input, Select } from '@/components/ui';
 import { RepoSelector, extractRepoName } from '@/components/features/RepoSelector';
 import type { RepoSelectorResult } from '@/components/features/RepoSelector';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
+import { DeployGuide } from '@/components/features/DeployGuide';
 import {
     ArrowLeft,
     Sparkles,
@@ -38,6 +39,10 @@ interface Props {
     wildcardDomain?: WildcardDomain | null;
     hasGithubApp?: boolean;
     githubApps?: GithubApp[];
+    /** Pre-selected project UUID (when creating from canvas) */
+    preselectedProject?: string | null;
+    /** Pre-selected environment UUID (when creating from canvas) */
+    preselectedEnvironment?: string | null;
 }
 
 type Phase = 'repo_select' | 'analyze_deploy';
@@ -83,7 +88,10 @@ const secondaryOptions = [
 
 // ── Main Component ──────────────────────────────────────────────────
 
-export default function ProjectCreate({ projects: _projects = [], wildcardDomain = null, hasGithubApp: _hasGithubApp = false, githubApps = [] }: Props) {
+export default function ProjectCreate({ projects = [], wildcardDomain = null, hasGithubApp: _hasGithubApp = false, githubApps = [], preselectedProject = null, preselectedEnvironment = null }: Props) {
+    // When project is preselected (from canvas), we skip project creation
+    const hasPreselectedProject = !!(preselectedProject && preselectedEnvironment);
+
     const [phase, setPhase] = useState<Phase>('repo_select');
 
     // Repo selection
@@ -92,12 +100,16 @@ export default function ProjectCreate({ projects: _projects = [], wildcardDomain
     const [githubAppId, setGithubAppId] = useState<number | undefined>();
 
     // Quick config
-    const [projectName, setProjectName] = useState('');
+    const preselectedProjectObj = projects.find(p => p.uuid === preselectedProject);
+    const [projectName, setProjectName] = useState(preselectedProjectObj?.name || '');
     const [subdomain, setSubdomain] = useState('');
 
     // Created resources for MonorepoAnalyzer
-    const [environmentUuid, setEnvironmentUuid] = useState('');
-    const [projectUuid, setProjectUuid] = useState('');
+    const [environmentUuid, setEnvironmentUuid] = useState(preselectedEnvironment || '');
+    const [projectUuid, setProjectUuid] = useState(preselectedProject || '');
+
+    // Project selection mode: 'new' (create new) or 'existing' (pick from list)
+    const [projectMode, setProjectMode] = useState<'new' | 'existing'>(hasPreselectedProject ? 'existing' : 'new');
 
     // UI state
     const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -119,6 +131,12 @@ export default function ProjectCreate({ projects: _projects = [], wildcardDomain
     const handleAnalyzeAndDeploy = async () => {
         if (!gitRepository) {
             setError('Please select or enter a repository URL');
+            return;
+        }
+
+        // If project is preselected (from canvas) or user picked existing, skip creation
+        if (hasPreselectedProject || (projectMode === 'existing' && projectUuid && environmentUuid)) {
+            setPhase('analyze_deploy');
             return;
         }
 
@@ -182,9 +200,12 @@ export default function ProjectCreate({ projects: _projects = [], wildcardDomain
                     {phase === 'repo_select' && (
                         <>
                             {/* Back link */}
-                            <Link href="/dashboard" className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground">
+                            <Link
+                                href={hasPreselectedProject ? `/projects/${preselectedProject}` : '/dashboard'}
+                                className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
+                            >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Dashboard
+                                {hasPreselectedProject ? `Back to ${preselectedProjectObj?.name || 'Project'}` : 'Back to Dashboard'}
                             </Link>
 
                             {/* Header */}
@@ -213,18 +234,130 @@ export default function ProjectCreate({ projects: _projects = [], wildcardDomain
                                         branch={gitBranch}
                                     />
 
+                                    {/* Deploy Guide */}
+                                    <DeployGuide variant="compact" />
+
                                     {/* Quick Config (appears after repo is selected) */}
                                     {hasRepo && (
                                         <div className="space-y-4 border-t border-border pt-4">
-                                            {/* Project name */}
+                                            {/* Project selection */}
                                             <div>
-                                                <label className="mb-2 block text-sm font-medium text-foreground">Project Name</label>
-                                                <Input
-                                                    value={projectName}
-                                                    onChange={(e) => setProjectName(e.target.value)}
-                                                    placeholder="my-project"
-                                                />
-                                                <p className="mt-1 text-xs text-foreground-muted">Auto-filled from repository name</p>
+                                                <label className="mb-2 block text-sm font-medium text-foreground">Project</label>
+                                                {hasPreselectedProject ? (
+                                                    <div className="space-y-3">
+                                                        <div className="rounded-lg border border-border bg-background-secondary px-3 py-2 text-sm text-foreground">
+                                                            {preselectedProjectObj?.name || 'Selected Project'}
+                                                        </div>
+                                                        {/* Environment select for preselected project */}
+                                                        {(() => {
+                                                            const envs = preselectedProjectObj?.environments || [];
+                                                            return envs.length > 1 ? (
+                                                                <div>
+                                                                    <label className="mb-1.5 block text-xs font-medium text-foreground-muted">Environment</label>
+                                                                    <Select
+                                                                        value={environmentUuid}
+                                                                        onChange={(e) => setEnvironmentUuid(e.target.value)}
+                                                                    >
+                                                                        {envs.map(env => (
+                                                                            <option key={env.uuid} value={env.uuid}>{env.name}</option>
+                                                                        ))}
+                                                                    </Select>
+                                                                </div>
+                                                            ) : envs.length === 1 ? (
+                                                                <p className="text-xs text-foreground-muted">Environment: {envs[0].name}</p>
+                                                            ) : null;
+                                                        })()}
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {/* Mode toggle: existing vs new */}
+                                                        {projects.length > 0 && (
+                                                            <div className="mb-2 flex gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setProjectMode('new')}
+                                                                    className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                                                                        projectMode === 'new'
+                                                                            ? 'bg-primary/10 text-primary'
+                                                                            : 'text-foreground-muted hover:text-foreground'
+                                                                    }`}
+                                                                >
+                                                                    New project
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setProjectMode('existing');
+                                                                        // Pre-select first project
+                                                                        if (projects.length > 0 && !projectUuid) {
+                                                                            setProjectUuid(projects[0].uuid);
+                                                                            setEnvironmentUuid(projects[0].environments?.[0]?.uuid || '');
+                                                                            setProjectName(projects[0].name);
+                                                                        }
+                                                                    }}
+                                                                    className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                                                                        projectMode === 'existing'
+                                                                            ? 'bg-primary/10 text-primary'
+                                                                            : 'text-foreground-muted hover:text-foreground'
+                                                                    }`}
+                                                                >
+                                                                    Existing project
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        {projectMode === 'existing' && projects.length > 0 ? (
+                                                            <div className="space-y-3">
+                                                                <Select
+                                                                    value={projectUuid}
+                                                                    onChange={(e) => {
+                                                                        const proj = projects.find(p => p.uuid === e.target.value);
+                                                                        if (proj) {
+                                                                            setProjectUuid(proj.uuid);
+                                                                            setEnvironmentUuid(proj.environments?.[0]?.uuid || '');
+                                                                            setProjectName(proj.name);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {projects.map(p => (
+                                                                        <option key={p.uuid} value={p.uuid}>{p.name}</option>
+                                                                    ))}
+                                                                </Select>
+                                                                {/* Environment select */}
+                                                                {(() => {
+                                                                    const selectedProj = projects.find(p => p.uuid === projectUuid);
+                                                                    const envs = selectedProj?.environments || [];
+                                                                    return envs.length > 1 ? (
+                                                                        <div>
+                                                                            <label className="mb-1.5 block text-xs font-medium text-foreground-muted">Environment</label>
+                                                                            <Select
+                                                                                value={environmentUuid}
+                                                                                onChange={(e) => setEnvironmentUuid(e.target.value)}
+                                                                            >
+                                                                                {envs.map(env => (
+                                                                                    <option key={env.uuid} value={env.uuid}>{env.name}</option>
+                                                                                ))}
+                                                                            </Select>
+                                                                        </div>
+                                                                    ) : envs.length === 1 ? (
+                                                                        <p className="text-xs text-foreground-muted">Environment: {envs[0].name}</p>
+                                                                    ) : null;
+                                                                })()}
+                                                            </div>
+                                                        ) : (
+                                                            <div>
+                                                                <Input
+                                                                    value={projectName}
+                                                                    onChange={(e) => setProjectName(e.target.value)}
+                                                                    placeholder="my-project"
+                                                                />
+                                                                <p className="mt-1 text-xs text-foreground-muted">
+                                                                    New project with development environment will be created
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
 
                                             {/* Subdomain */}

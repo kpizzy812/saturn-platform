@@ -1583,17 +1583,17 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     </Button>
                                 </DropdownTrigger>
                                 <DropdownContent align="right" className="w-64">
-                                    {/* GitHub */}
+                                    {/* Git Repository (fast deploy) */}
                                     <DropdownItem
                                         className="flex items-center gap-3 py-3"
-                                        onClick={() => router.visit(`/applications/create?source=github&project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                        onClick={() => router.visit(`/projects/create?project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#24292e]">
                                             <BrandIcon name="github" className="h-4 w-4" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-foreground">GitHub Repo</p>
-                                            <p className="text-xs text-foreground-muted">Deploy from a repository</p>
+                                            <p className="font-medium text-foreground">Git Repository</p>
+                                            <p className="text-xs text-foreground-muted">Analyze & deploy from Git</p>
                                         </div>
                                     </DropdownItem>
 
