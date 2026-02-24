@@ -356,12 +356,10 @@ export function MonorepoAnalyzer({
         ? analysis?.databases.filter(db => !isComposeIncludedDb(db)) ?? []
         : analysis?.databases ?? [];
 
-    // Non-database compose services that aren't the main app (e.g. hummingbot).
-    // Filter out services that use `build:` (these are the app itself, already detected via Dockerfile).
+    // Non-database compose services that aren't already detected as apps (e.g. hummingbot).
+    // DB services are already shown in "Required Databases" section.
     const extraComposeServices = (analysis?.docker_compose_services ?? []).filter(
-        s => !s.is_database
-            && !s.image.startsWith('build:')
-            && !analysis?.applications.some(a => a.name === s.name)
+        s => !s.is_database && !analysis?.applications.some(a => a.name === s.name)
     );
 
     // ── Analyze screen ──────────────────────────────────────────────
@@ -766,7 +764,9 @@ export function MonorepoAnalyzer({
                                     <span>📦</span>
                                     <div className="min-w-0">
                                         <span className="font-medium">{service.name}</span>
-                                        <span className="text-foreground-muted ml-2 text-xs">{service.image}</span>
+                                        <span className="text-foreground-muted ml-2 text-xs">
+                                            {service.image.startsWith('build:') ? `Dockerfile: ${service.image.replace('build:', '')}` : service.image}
+                                        </span>
                                         {service.ports.length > 0 && (
                                             <span className="text-foreground-muted ml-2 text-xs">({service.ports.join(', ')})</span>
                                         )}
