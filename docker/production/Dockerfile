@@ -136,10 +136,10 @@ RUN mkdir -p /etc/nginx/conf.d && \
 
 # Ensure storage/logs has correct permissions for queue workers
 RUN mkdir -p /var/www/html/storage/logs && \
+    touch /var/www/html/storage/logs/laravel.log && \
     chown -R www-data:www-data /var/www/html/storage/logs && \
     chmod -R 755 /var/www/html/storage/logs && \
-    touch /var/www/html/storage/logs/laravel.log && \
-    chmod 640 /var/www/html/storage/logs/laravel.log
+    chmod 664 /var/www/html/storage/logs/laravel.log
 
 # Install MinIO client
 COPY --from=minio-client /usr/bin/mc /usr/bin/mc
