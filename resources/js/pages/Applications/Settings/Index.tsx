@@ -27,6 +27,8 @@ export default function ApplicationSettingsPage({ application, applicationSettin
         description: application.description || '',
         git_branch: application.git_branch || 'main',
         base_directory: application.base_directory || '/',
+        dockerfile_location: application.dockerfile_location || '/Dockerfile',
+        docker_compose_location: application.docker_compose_location || '/docker-compose.yaml',
         build_command: application.build_command || '',
         install_command: application.install_command || '',
         start_command: application.start_command || '',
@@ -230,6 +232,36 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         Root directory relative to repository root. For monorepos, use e.g. <code className="bg-muted px-1 rounded">apps/api</code>
                                     </p>
                                 </div>
+                                {settings.build_pack === 'dockerfile' && (
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground mb-2 block">
+                                            Dockerfile Location
+                                        </label>
+                                        <Input
+                                            value={settings.dockerfile_location}
+                                            onChange={(e) => setSettings({ ...settings, dockerfile_location: e.target.value })}
+                                            placeholder="/Dockerfile"
+                                        />
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Path to the Dockerfile relative to repository root. E.g. <code className="bg-muted px-1 rounded">/apps/api/Dockerfile</code>
+                                        </p>
+                                    </div>
+                                )}
+                                {settings.build_pack === 'dockercompose' && (
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground mb-2 block">
+                                            Docker Compose Location
+                                        </label>
+                                        <Input
+                                            value={settings.docker_compose_location}
+                                            onChange={(e) => setSettings({ ...settings, docker_compose_location: e.target.value })}
+                                            placeholder="/docker-compose.yaml"
+                                        />
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Path to docker-compose file relative to repository root.
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="text-sm font-medium text-foreground mb-2 block">
                                         Install Command

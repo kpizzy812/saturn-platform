@@ -840,6 +840,8 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'description' => 'sometimes|nullable|string',
         'git_branch' => 'sometimes|nullable|string|max:255',
         'base_directory' => 'sometimes|nullable|string|max:255',
+        'dockerfile_location' => 'sometimes|nullable|string|max:255',
+        'docker_compose_location' => 'sometimes|nullable|string|max:255',
         'build_command' => 'sometimes|nullable|string',
         'install_command' => 'sometimes|nullable|string',
         'start_command' => 'sometimes|nullable|string',

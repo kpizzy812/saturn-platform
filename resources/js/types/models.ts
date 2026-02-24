@@ -127,6 +127,8 @@ export interface Application {
     install_command?: string | null;
     start_command?: string | null;
     base_directory?: string | null;
+    dockerfile_location?: string | null;
+    docker_compose_location?: string | null;
     publish_directory?: string | null;
     // Health check settings
     health_check_enabled?: boolean;
