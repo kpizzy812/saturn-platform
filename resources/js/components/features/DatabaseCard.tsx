@@ -98,10 +98,10 @@ export function DatabaseCard({ database }: DatabaseCardProps) {
                     <div className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${config.bgColor} ${config.color}`}>
                         {getDbLogo(database.database_type)}
                     </div>
-                    <div>
-                        <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{database.name}</h3>
-                        <p className="text-sm text-foreground-muted">
-                            {formatDatabaseType(database.database_type)}
+                    <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-foreground truncate transition-colors group-hover:text-white">{database.name}</h3>
+                        <p className="text-sm text-foreground-muted truncate">
+                            {database.project_name ? `${database.project_name} · ` : ''}{formatDatabaseType(database.database_type)}
                         </p>
                     </div>
                 </div>

@@ -14,9 +14,6 @@ use Inertia\Inertia;
 */
 
 Route::get('/boarding', function () {
-    $servers = \App\Models\Server::ownedByCurrentTeam()->get(['id', 'name', 'ip']);
-    $privateKeys = \App\Models\PrivateKey::ownedByCurrentTeam()->get(['id', 'name']);
-
     // Get GitHub Apps for current team
     $githubApps = \App\Models\GithubApp::where(function ($query) {
         $query->where('team_id', currentTeam()->id)
@@ -25,8 +22,6 @@ Route::get('/boarding', function () {
 
     return Inertia::render('Boarding/Index', [
         'userName' => auth()->user()->name,
-        'existingServers' => $servers,
-        'privateKeys' => $privateKeys,
         'githubApps' => $githubApps->map(fn ($app) => [
             'id' => $app->id,
             'uuid' => $app->uuid,
@@ -55,17 +50,16 @@ Route::post('/boarding/deploy', function (Request $request) {
         'name' => 'required|string|max:255',
         'git_repository' => 'required|string',
         'git_branch' => 'nullable|string',
-        'server_id' => 'required|integer',
         'github_app_id' => 'nullable|integer',
     ]);
 
-    // Find server
+    // Auto-select server: prefer localhost (id=0), then first available
     $server = \App\Models\Server::ownedByCurrentTeam()
-        ->where('id', $validated['server_id'])
+        ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END')
         ->first();
 
     if (! $server) {
-        return redirect()->back()->withErrors(['server_id' => 'Server not found']);
+        return redirect()->back()->withErrors(['server' => 'No servers available. Please contact your administrator.']);
     }
 
     $destination = $server->destinations()->first();

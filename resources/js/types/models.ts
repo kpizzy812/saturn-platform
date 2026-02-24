@@ -178,6 +178,9 @@ export interface StandaloneDatabase {
         name: string;
         type: EnvironmentType;
     };
+    project_name?: string;
+    environment_name?: string;
+    environment_type?: EnvironmentType;
     destination_id?: number;
     destination?: Destination;
     // Connection URLs (appended by backend)

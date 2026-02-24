@@ -167,14 +167,33 @@ function ProjectCard({ project }: { project: Project }) {
             {/* Resource breakdown */}
             {resourceSegments.length > 0 && (
                 <div className="relative mt-3 flex items-center gap-3">
-                    {resourceSegments.map((seg) => (
-                        <div key={seg.label} className="flex items-center gap-1.5">
-                            <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
-                            <span className="text-xs text-foreground-muted">
-                                {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
-                            </span>
-                        </div>
-                    ))}
+                    {resourceSegments.map((seg) => {
+                        const targetUrl = seg.label === 'app'
+                            ? `/applications?project=${encodeURIComponent(project.name)}`
+                            : seg.label === 'db'
+                            ? `/databases?project=${encodeURIComponent(project.name)}`
+                            : null;
+                        return targetUrl ? (
+                            <Link
+                                key={seg.label}
+                                href={targetUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors hover:bg-white/10"
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </Link>
+                        ) : (
+                            <div key={seg.label} className="flex items-center gap-1.5">
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -182,9 +201,16 @@ function ProjectCard({ project }: { project: Project }) {
             {project.environments && project.environments.length > 0 && (
                 <div className="relative mt-3 flex flex-wrap gap-1.5">
                     {project.environments.slice(0, 4).map((env, i) => (
-                        <Badge key={i} variant={getEnvBadgeVariant(env.name || '')} size="sm">
-                            {env.name || 'unknown'}
-                        </Badge>
+                        <Link
+                            key={i}
+                            href={`${projectUrl}?env=${encodeURIComponent(env.name || '')}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex"
+                        >
+                            <Badge variant={getEnvBadgeVariant(env.name || '')} size="sm" className="transition-opacity hover:opacity-80">
+                                {env.name || 'unknown'}
+                            </Badge>
+                        </Link>
                     ))}
                     {project.environments.length > 4 && (
                         <Badge variant="default" size="sm">

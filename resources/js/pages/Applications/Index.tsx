@@ -84,8 +84,10 @@ function normalizeStatus(status: unknown): AppStatus {
 
 export default function ApplicationsIndex({ applications = [] }: Props) {
     const { can } = usePermissions();
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialProject = urlParams.get('project') || 'all';
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterProject, setFilterProject] = useState<string>('all');
+    const [filterProject, setFilterProject] = useState<string>(initialProject);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterEnvironment, setFilterEnvironment] = useState<string>('all');
     const [appStatuses, setAppStatuses] = useState<Record<number, AppStatus>>({});

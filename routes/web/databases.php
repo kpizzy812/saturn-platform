@@ -39,19 +39,22 @@ Route::get('/databases', function () {
             'name' => $db->environment->name,
             'type' => $db->environment->type ?? 'development',
         ] : null,
+        'project_name' => $db->environment?->project?->name,
+        'environment_name' => $db->environment?->name,
+        'environment_type' => $db->environment?->type ?? 'development',
         'created_at' => $db->created_at,
         'updated_at' => $db->updated_at,
     ];
 
     $databases = collect()
-        ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
-        ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mysql')))
-        ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
-        ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
-        ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'redis')))
-        ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'keydb')))
-        ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
-        ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
+        ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
+        ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'mysql')))
+        ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
+        ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
+        ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'redis')))
+        ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'keydb')))
+        ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
+        ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
         ->sortByDesc('updated_at')
         ->values();
 

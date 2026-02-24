@@ -133,9 +133,11 @@ function ProjectCard({ project }: { project: Project }) {
         { count: counts.services, label: 'svc', icon: Layers, color: 'text-primary', dotColor: 'bg-primary' },
     ].filter(s => s.count > 0);
 
+    const projectUrl = `/projects/${project.uuid}`;
+
     return (
         <Link
-            href={`/projects/${project.uuid}`}
+            href={projectUrl}
             className="group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20"
         >
             {/* Subtle gradient overlay on hover */}
@@ -188,23 +190,49 @@ function ProjectCard({ project }: { project: Project }) {
             {/* Resource breakdown */}
             {resourceSegments.length > 0 && (
                 <div className="relative mt-3 flex items-center gap-3">
-                    {resourceSegments.map((seg) => (
-                        <div key={seg.label} className="flex items-center gap-1.5">
-                            <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
-                            <span className="text-xs text-foreground-muted">
-                                {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
-                            </span>
-                        </div>
-                    ))}
+                    {resourceSegments.map((seg) => {
+                        const targetUrl = seg.label === 'app'
+                            ? `/applications?project=${encodeURIComponent(project.name)}`
+                            : seg.label === 'db'
+                            ? `/databases?project=${encodeURIComponent(project.name)}`
+                            : null;
+                        return targetUrl ? (
+                            <Link
+                                key={seg.label}
+                                href={targetUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors hover:bg-white/10"
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </Link>
+                        ) : (
+                            <div key={seg.label} className="flex items-center gap-1.5">
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
             {/* Environment badges */}
             <div className="relative mt-3 flex flex-wrap gap-1.5">
                 {project.environments?.slice(0, 4).map((env) => (
-                    <Badge key={env.id} variant={getEnvBadgeVariant(env.name)} size="sm">
-                        {env.name}
-                    </Badge>
+                    <Link
+                        key={env.id}
+                        href={`${projectUrl}?env=${encodeURIComponent(env.name)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex"
+                    >
+                        <Badge variant={getEnvBadgeVariant(env.name)} size="sm" className="transition-opacity hover:opacity-80">
+                            {env.name}
+                        </Badge>
+                    </Link>
                 ))}
                 {(project.environments?.length || 0) > 4 && (
                     <Badge variant="default" size="sm">

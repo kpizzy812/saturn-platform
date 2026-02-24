@@ -46,7 +46,12 @@ interface Props {
 }
 
 export default function ProjectShow({ project, userRole = 'member', canManageEnvironments = false }: Props) {
-    const [selectedEnv, setSelectedEnv] = useState<Environment | null>(project?.environments?.[0] || null);
+    // Check for environment query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const envParam = urlParams.get('env');
+    const initialEnv = (envParam && project?.environments?.find(e => e.name === envParam)) || project?.environments?.[0] || null;
+
+    const [selectedEnv, setSelectedEnv] = useState<Environment | null>(initialEnv);
     const [selectedService, setSelectedService] = useState<SelectedService | null>(null);
     const [activeAppTab, setActiveAppTab] = useState<'deployments' | 'variables' | 'metrics' | 'settings'>('deployments');
     const [activeDbTab, setActiveDbTab] = useState<'data' | 'connect' | 'credentials' | 'backups' | 'import' | 'extensions' | 'settings'>('connect');
