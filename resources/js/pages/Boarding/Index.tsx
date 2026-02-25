@@ -15,6 +15,7 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import Dashboard from '@/pages/Dashboard';
+import { RepoSelector, type RepoSelectorResult } from '@/components/features/RepoSelector';
 
 interface GithubApp {
     id: number;
@@ -134,7 +135,7 @@ export default function BoardingIndex({ userName, githubApps = [], projects = []
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div
                     className={`w-full transition-all duration-300 bg-background/90 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl ${
-                        isWideStep ? 'max-w-xl' : 'max-w-lg'
+                        isWideStep ? 'max-w-2xl' : 'max-w-lg'
                     }`}
                 >
                     {/* Modal Header: step indicator */}
@@ -212,6 +213,8 @@ export default function BoardingIndex({ userName, githubApps = [], projects = []
                                 setGitRepository={setGitRepository}
                                 gitBranch={gitBranch}
                                 setGitBranch={setGitBranch}
+                                githubApps={githubApps}
+                                setSelectedGithubAppId={setSelectedGithubAppId}
                                 onNext={handleDeploySubmit}
                                 onBack={() => setCurrentStep('git')}
                                 onSkip={handleSkip}
@@ -377,6 +380,8 @@ interface DeployStepProps {
     setGitRepository: (value: string) => void;
     gitBranch: string;
     setGitBranch: (value: string) => void;
+    githubApps: GithubApp[];
+    setSelectedGithubAppId: (value: string) => void;
     onNext: () => void;
     onBack: () => void;
     onSkip: () => void;
@@ -384,8 +389,21 @@ interface DeployStepProps {
 
 function DeployStep({
     appName, setAppName, gitRepository, setGitRepository, gitBranch, setGitBranch,
+    githubApps, setSelectedGithubAppId,
     onNext, onBack, onSkip
 }: DeployStepProps) {
+    const handleRepoSelected = (result: RepoSelectorResult) => {
+        setGitRepository(result.gitRepository);
+        setGitBranch(result.gitBranch);
+        if (result.githubAppId) {
+            setSelectedGithubAppId(result.githubAppId.toString());
+        }
+        // Auto-fill app name from repo name if empty
+        if (!appName && result.repoName) {
+            setAppName(result.repoName);
+        }
+    };
+
     return (
         <div>
             <div className="flex items-center gap-3 mb-5">
@@ -409,26 +427,13 @@ function DeployStep({
                         onChange={(e) => setAppName(e.target.value)}
                     />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">
-                        Git Repository URL
-                    </label>
-                    <Input
-                        placeholder="e.g. https://github.com/username/repo"
-                        value={gitRepository}
-                        onChange={(e) => setGitRepository(e.target.value)}
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-foreground mb-1.5">
-                        Branch
-                    </label>
-                    <Input
-                        placeholder="main"
-                        value={gitBranch}
-                        onChange={(e) => setGitBranch(e.target.value)}
-                    />
-                </div>
+
+                <RepoSelector
+                    githubApps={githubApps}
+                    onRepoSelected={handleRepoSelected}
+                    value={gitRepository}
+                    branch={gitBranch}
+                />
             </div>
 
             <div className="mt-6 flex justify-between">
