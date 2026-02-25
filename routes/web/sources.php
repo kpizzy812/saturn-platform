@@ -78,7 +78,13 @@ Route::prefix('sources')->group(function () {
             ]);
         })->name('sources.github.index');
 
-        Route::get('/create', function () {
+        Route::get('/create', function (Request $request) {
+            // Store return-to context so the GitHub OAuth flow can redirect back
+            $from = $request->query('from');
+            if ($from === 'boarding') {
+                session(['github_app_return_to' => 'boarding']);
+            }
+
             // Always use the current request URL for webhook registration.
             // GitHub App webhooks must point to the exact environment (dev/staging/prod)
             // where the app was created, not the canonical FQDN from InstanceSettings.
@@ -86,6 +92,7 @@ Route::prefix('sources')->group(function () {
 
             return Inertia::render('Sources/GitHub/Create', [
                 'webhookUrl' => $webhookBase.'/webhooks/source/github/events',
+                'from' => $from,
             ]);
         })->name('sources.github.create');
 

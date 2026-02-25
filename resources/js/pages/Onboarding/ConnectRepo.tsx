@@ -259,7 +259,7 @@ export default function OnboardingConnectRepo({ provider = 'github', githubApps 
                                             This allows Saturn to securely access your code and set up automatic deployments.
                                         </p>
                                         <div className="flex gap-3">
-                                            <Link href="/sources/github/create">
+                                            <Link href="/sources/github/create?from=boarding">
                                                 <Button>
                                                     <Plus className="mr-2 h-4 w-4" />
                                                     Create GitHub App
