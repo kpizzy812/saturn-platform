@@ -45,6 +45,7 @@ import {
     Sun,
     ArrowLeft,
     Globe,
+    UserPlus,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -88,6 +89,7 @@ const adminNavGroups: NavGroup[] = [
             { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
             { label: 'Teams', href: '/admin/teams', icon: <Users className="h-4 w-4" /> },
             { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
+            { label: 'Platform Invites', href: '/admin/platform-invites', icon: <UserPlus className="h-4 w-4" /> },
             { label: 'Login History', href: '/admin/login-history', icon: <History className="h-4 w-4" /> },
         ],
     },

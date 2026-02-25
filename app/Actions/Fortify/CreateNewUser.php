@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Models\PlatformInvite;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -21,21 +22,27 @@ class CreateNewUser implements CreatesNewUsers
     {
         $settings = instanceSettings();
 
-        // Check for valid root team invitation to bypass registration lock
-        $invitation = $this->resolveRootTeamInvitation($input);
+        // Check for valid team invitation to bypass registration lock
+        $invitation = $this->resolveInvitation($input);
 
-        if (! $settings->is_registration_enabled && ! $invitation) {
+        // Check for valid platform invite to bypass registration lock
+        $platformInvite = $this->resolvePlatformInvite($input);
+
+        if (! $settings->is_registration_enabled && ! $invitation && ! $platformInvite) {
             abort(403);
         }
 
-        // If registering via invitation, enforce email match
+        // Determine which invite constrains the email
+        $constrainedEmail = $invitation ? $invitation->email : $platformInvite?->email;
+
+        // If registering via any invite, enforce email match
         $emailRules = [
             'required', 'string', 'email', 'max:255',
             Rule::unique(User::class),
         ];
-        if ($invitation) {
-            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($invitation) {
-                if (strtolower($value) !== strtolower($invitation->email)) {
+        if ($constrainedEmail) {
+            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($constrainedEmail) {
+                if (strtolower($value) !== strtolower($constrainedEmail)) {
                     $fail('The email must match the invitation email.');
                 }
             };
@@ -75,11 +82,13 @@ class CreateNewUser implements CreatesNewUsers
                 $user->markEmailAsVerified();
             }
 
-            // Auto-accept root team invitation after registration
+            // Auto-accept team invitation after registration
             if ($invitation) {
                 $this->acceptInvitation($user, $invitation);
-                $team = $invitation->team;
             }
+
+            // Mark platform invite as used
+            $platformInvite?->markAsUsed();
         }
         // Set session variable
         session(['currentTeam' => $team]);
@@ -88,9 +97,9 @@ class CreateNewUser implements CreatesNewUsers
     }
 
     /**
-     * Resolve a valid root team invitation from input.
+     * Resolve a valid team invitation from input.
      */
-    private function resolveRootTeamInvitation(array $input): ?TeamInvitation
+    private function resolveInvitation(array $input): ?TeamInvitation
     {
         $inviteUuid = $input['invite'] ?? null;
         if (! $inviteUuid) {
@@ -98,11 +107,29 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         $invitation = TeamInvitation::where('uuid', $inviteUuid)->first();
-        if (! $invitation || ! $invitation->isValid() || $invitation->team_id !== 0) {
+        if (! $invitation || ! $invitation->isValid()) {
             return null;
         }
 
         return $invitation;
+    }
+
+    /**
+     * Resolve a valid platform invite from input.
+     */
+    private function resolvePlatformInvite(array $input): ?PlatformInvite
+    {
+        $uuid = $input['platform_invite'] ?? null;
+        if (! $uuid) {
+            return null;
+        }
+
+        $invite = PlatformInvite::where('uuid', $uuid)->first();
+        if (! $invite || ! $invite->isValid()) {
+            return null;
+        }
+
+        return $invite;
     }
 
     /**

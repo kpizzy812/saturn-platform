@@ -79,8 +79,8 @@ export default function BoardingIndex({ userName, githubApps = [], projects = []
             return;
         }
 
-        // Redirect to GitHub App creation page
-        router.visit('/sources/github/create');
+        // Redirect to GitHub App creation page with return context
+        router.visit('/sources/github/create?from=boarding');
     };
 
     const handleDeploySubmit = async () => {
@@ -331,7 +331,7 @@ function GitStep({
                         </div>
                     </div>
                     <div className="flex justify-center gap-3 py-2">
-                        <Link href="/sources/github/create">
+                        <Link href="/sources/github/create?from=boarding">
                             <Button className="gap-2" size="sm">
                                 <Plus className="h-4 w-4" />
                                 Create GitHub App

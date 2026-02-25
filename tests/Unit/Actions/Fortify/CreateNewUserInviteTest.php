@@ -7,10 +7,10 @@ beforeEach(function () {
     $this->action = new CreateNewUser;
 });
 
-describe('CreateNewUser root team invitation resolution', function () {
+describe('CreateNewUser invitation resolution', function () {
 
     it('returns null when no invite key in input', function () {
-        $reflection = new ReflectionMethod($this->action, 'resolveRootTeamInvitation');
+        $reflection = new ReflectionMethod($this->action, 'resolveInvitation');
         $reflection->setAccessible(true);
 
         $result = $reflection->invoke($this->action, [
@@ -22,7 +22,7 @@ describe('CreateNewUser root team invitation resolution', function () {
     });
 
     it('returns null when invite key is empty', function () {
-        $reflection = new ReflectionMethod($this->action, 'resolveRootTeamInvitation');
+        $reflection = new ReflectionMethod($this->action, 'resolveInvitation');
         $reflection->setAccessible(true);
 
         $result = $reflection->invoke($this->action, [
@@ -33,7 +33,7 @@ describe('CreateNewUser root team invitation resolution', function () {
     });
 
     it('returns null when invite key is null', function () {
-        $reflection = new ReflectionMethod($this->action, 'resolveRootTeamInvitation');
+        $reflection = new ReflectionMethod($this->action, 'resolveInvitation');
         $reflection->setAccessible(true);
 
         $result = $reflection->invoke($this->action, [

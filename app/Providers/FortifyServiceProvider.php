@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Models\OauthSetting;
+use App\Models\PlatformInvite;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -50,11 +51,11 @@ class FortifyServiceProvider extends ServiceProvider
             $settings = instanceSettings();
             $inviteData = null;
 
-            // Allow registration via root team invitation even if registration is disabled
+            // Allow registration via valid team invitation even if registration is disabled
             $inviteUuid = request()->query('invite');
             if ($inviteUuid) {
                 $invitation = TeamInvitation::where('uuid', $inviteUuid)->first();
-                if ($invitation && $invitation->isValid() && $invitation->team_id === 0) {
+                if ($invitation && $invitation->isValid()) {
                     $inviteData = [
                         'uuid' => $invitation->uuid,
                         'email' => $invitation->email,
@@ -64,7 +65,20 @@ class FortifyServiceProvider extends ServiceProvider
                 }
             }
 
-            if (! $settings->is_registration_enabled && ! $inviteData) {
+            // Allow registration via platform invite from admin
+            $platformInviteData = null;
+            $platformInviteUuid = request()->query('platform_invite');
+            if ($platformInviteUuid) {
+                $platformInvite = PlatformInvite::where('uuid', $platformInviteUuid)->first();
+                if ($platformInvite && $platformInvite->isValid()) {
+                    $platformInviteData = [
+                        'uuid' => $platformInvite->uuid,
+                        'email' => $platformInvite->email,
+                    ];
+                }
+            }
+
+            if (! $settings->is_registration_enabled && ! $inviteData && ! $platformInviteData) {
                 return redirect()->route('login');
             }
 
@@ -75,6 +89,7 @@ class FortifyServiceProvider extends ServiceProvider
                 'isFirstUser' => $isFirstUser,
                 'enabled_oauth_providers' => $enabled_oauth_providers,
                 'invitation' => $inviteData,
+                'platformInvite' => $platformInviteData,
             ]);
         });
 

@@ -705,6 +705,12 @@ class Github extends Controller
                 ]);
             }
 
+            // Redirect back to boarding if the user started from there
+            $returnTo = session()->pull('github_app_return_to');
+            if ($returnTo === 'boarding') {
+                return redirect('/boarding')->with('success', 'GitHub App connected successfully!');
+            }
+
             return redirect()->route('sources.github.show', ['id' => $github_app->id]);
         } catch (Exception $e) {
             \Log::error('GitHub App install error', [
