@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Models\PlatformInvite;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -24,18 +25,24 @@ class CreateNewUser implements CreatesNewUsers
         // Check for valid team invitation to bypass registration lock
         $invitation = $this->resolveInvitation($input);
 
-        if (! $settings->is_registration_enabled && ! $invitation) {
+        // Check for valid platform invite to bypass registration lock
+        $platformInvite = $this->resolvePlatformInvite($input);
+
+        if (! $settings->is_registration_enabled && ! $invitation && ! $platformInvite) {
             abort(403);
         }
 
-        // If registering via invitation, enforce email match
+        // Determine which invite constrains the email
+        $constrainedEmail = $invitation ? $invitation->email : $platformInvite?->email;
+
+        // If registering via any invite, enforce email match
         $emailRules = [
             'required', 'string', 'email', 'max:255',
             Rule::unique(User::class),
         ];
-        if ($invitation) {
-            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($invitation) {
-                if (strtolower($value) !== strtolower($invitation->email)) {
+        if ($constrainedEmail) {
+            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($constrainedEmail) {
+                if (strtolower($value) !== strtolower($constrainedEmail)) {
                     $fail('The email must match the invitation email.');
                 }
             };
@@ -79,6 +86,9 @@ class CreateNewUser implements CreatesNewUsers
             if ($invitation) {
                 $this->acceptInvitation($user, $invitation);
             }
+
+            // Mark platform invite as used
+            $platformInvite?->markAsUsed();
         }
         // Set session variable
         session(['currentTeam' => $team]);
@@ -102,6 +112,24 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         return $invitation;
+    }
+
+    /**
+     * Resolve a valid platform invite from input.
+     */
+    private function resolvePlatformInvite(array $input): ?PlatformInvite
+    {
+        $uuid = $input['platform_invite'] ?? null;
+        if (! $uuid) {
+            return null;
+        }
+
+        $invite = PlatformInvite::where('uuid', $uuid)->first();
+        if (! $invite || ! $invite->isValid()) {
+            return null;
+        }
+
+        return $invite;
     }
 
     /**
