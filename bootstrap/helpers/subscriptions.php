@@ -87,6 +87,7 @@ function allowedPathsForBoardingAccounts()
         'sources',
         'source',
         'servers',
+        'webhooks/source/github',
     ];
 }
 function allowedPathsForInvalidAccounts()
